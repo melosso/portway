@@ -567,13 +567,13 @@ public class FileHandlerService : IDisposable
     /// </summary>
     private string GenerateFileId(string environment, string filename)
     {
-        // Simple format: env:filename (URL-safe Base64)
-        string rawId = $"{environment}:{filename}";
-        byte[] bytes = Encoding.UTF8.GetBytes(rawId);
+        // Ensure fileName can contain subdirectory paths
+        string combined = $"{environment}:{filename}";
+        byte[] bytes = Encoding.UTF8.GetBytes(combined);
         return Convert.ToBase64String(bytes)
             .Replace('+', '-')
             .Replace('/', '_')
-            .Replace("=", "");
+            .TrimEnd('=');
     }
 
     /// <summary>
@@ -581,43 +581,35 @@ public class FileHandlerService : IDisposable
     /// </summary>
     private bool ParseFileId(string fileId, out string environment, out string filename)
     {
-        environment = "";
-        filename = "";
-
         try
         {
-            // Restore padding if needed
-            string paddedId = fileId;
-            int padding = (4 - (paddedId.Length % 4)) % 4;
-            if (padding > 0)
-            {
-                paddedId += new string('=', padding);
-            }
-
-            // Convert from URL-safe Base64
-            string base64 = paddedId
+            // Decode the file ID
+            string decoded = fileId
                 .Replace('-', '+')
                 .Replace('_', '/');
-
-            byte[] bytes = Convert.FromBase64String(base64);
-            string rawId = Encoding.UTF8.GetString(bytes);
-
-            // Split into environment and filename
-            int separatorIndex = rawId.IndexOf(':');
-            if (separatorIndex < 0)
+            // Add padding if needed
+            while (decoded.Length % 4 != 0)
             {
-                return false;
+                decoded += "=";
             }
-
-            environment = rawId.Substring(0, separatorIndex);
-            filename = rawId.Substring(separatorIndex + 1);
-
-            return true;
+            byte[] bytes = Convert.FromBase64String(decoded);
+            string combined = Encoding.UTF8.GetString(bytes);
+            // Split on first colon to separate environment from filepath
+            int colonIndex = combined.IndexOf(':');
+            if (colonIndex > 0)
+            {
+                environment = combined.Substring(0, colonIndex);
+                filename = combined.Substring(colonIndex + 1);
+                return true;
+            }
         }
         catch
         {
-            return false;
+            // Invalid file ID format
         }
+        environment = string.Empty;
+        filename = string.Empty;
+        return false;
     }
 
     /// <summary>
@@ -759,7 +751,6 @@ public class FileSystemIndex
     public async Task<Dictionary<string, FileMetadata>> GetDirectoryIndexAsync(string environment, bool forceRefresh = false)
     {
         string cacheKey = $"file:index:{environment}";
-        
         // Try to get from cache first if not forcing refresh
         if (!forceRefresh)
         {
@@ -769,7 +760,6 @@ public class FileSystemIndex
                 return cachedIndex;
             }
         }
-        
         // Cache miss or force refresh - rebuild index from filesystem
         await _indexLock.WaitAsync();
         try
@@ -783,39 +773,34 @@ public class FileSystemIndex
                     return cachedIndex;
                 }
             }
-            
             string environmentDir = Path.Combine(_baseDirectory, environment);
             Dictionary<string, FileMetadata> index = new();
-            
             if (Directory.Exists(environmentDir))
             {
-                // Use enumerator for better memory usage with large directories
-                foreach (var file in Directory.EnumerateFiles(environmentDir))
+                // Use recursive enumeration to scan ALL subdirectories
+                foreach (var file in Directory.EnumerateFiles(environmentDir, "*", SearchOption.AllDirectories))
                 {
                     var fileInfo = new FileInfo(file);
-                    string fileName = Path.GetFileName(file);
-                    
-                    index[fileName] = new FileMetadata
+                    // Calculate relative path from environment directory
+                    string relativePath = Path.GetRelativePath(environmentDir, file);
+                    // Normalize path separators to forward slashes for consistency
+                    string normalizedPath = relativePath.Replace('\\', '/');
+                    index[normalizedPath] = new FileMetadata
                     {
-                        FileId = _fileIdGenerator(environment, fileName),
-                        FileName = fileName,
-                        ContentType = _contentTypeResolver(fileName),
+                        FileId = _fileIdGenerator(environment, normalizedPath),
+                        FileName = normalizedPath,
+                        ContentType = _contentTypeResolver(normalizedPath),
                         Size = fileInfo.Length,
                         LastModified = fileInfo.LastWriteTimeUtc,
                         IsInMemoryOnly = false
                     };
                 }
             }
-            
             // Cache the index with expiration
             await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
-            
             // Also store in memory for very fast access
             _environmentIndices[environment] = index;
-            
-            _logger.Debug("📂 Built file index for environment {Environment}: {Count} files", 
-                environment, index.Count);
-            
+            _logger.Debug("📂 Built file index for environment {Environment}: {Count} files", environment, index.Count);
             return index;
         }
         finally
@@ -871,11 +856,17 @@ public class FileSystemIndex
     public async Task<IEnumerable<FileMetadata>> ListFilesAsync(string environment, string? prefix = null)
     {
         var index = await GetDirectoryIndexAsync(environment);
-        
-        // Efficiently filter in memory
-        return string.IsNullOrEmpty(prefix)
-            ? index.Values
-            : index.Values.Where(f => f.FileName.StartsWith(prefix));
+        // Efficiently filter in memory - handle both filename and path prefixes
+        if (string.IsNullOrEmpty(prefix))
+        {
+            return index.Values;
+        }
+        // Normalize prefix to use forward slashes
+        string normalizedPrefix = prefix.Replace('\\', '/');
+        return index.Values.Where(f =>
+            f.FileName.StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) ||
+            Path.GetFileName(f.FileName).StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase)
+        );
     }
     
     // Periodic refresh to catch files added outside the API

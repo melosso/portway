@@ -1,49 +1,20 @@
 # File Endpoints
 
-File endpoints in Portway provide a simple yet powerful way to store, retrieve, and manage files in your application. These endpoints handle file operations through a RESTful API interface, making it easy to build file storage capabilities into your services without complex infrastructure.
+File endpoints let you store, retrieve, and manage files through simple API calls. Perfect for document management, image galleries, data imports, and file sharing in your applications.
 
-## Overview
+## What You Can Do
 
-File endpoints allow you to:
-- Upload files to secure storage
-- Download files through API endpoints
-- Delete files when no longer needed
-- List available files with metadata
-- Restrict file types for security
-- Organize files by environment and category
+- **Upload files** - Store documents, images, data files securely
+- **Download files** - Retrieve files with a simple web request
+- **Organize files** - Group files by type, environment, or purpose
+- **Control access** - Restrict file types and environments
+- **List files** - Browse available files with search capabilities
 
-## How File Endpoints Work
+## Quick Start
 
-```mermaid
-sequenceDiagram
-    participant Client as Client Application
-    participant Portway as Portway Gateway
-    participant Cache as Memory Cache
-    participant Storage as File Storage
-    
-    Client->>Portway: POST /api/600/files/Documents (file upload)
-    Note over Portway: Validate file & permissions
-    Portway->>Cache: Store in memory cache
-    Portway->>Storage: Persist to disk storage
-    Portway-->>Client: Return fileId
-    
-    Client->>Portway: GET /api/600/files/Documents/{fileId}
-    Portway->>Cache: Check memory cache
-    alt File in cache
-        Cache-->>Portway: Return file from cache
-    else File not in cache
-        Portway->>Storage: Fetch from disk
-        Storage-->>Portway: Return file data
-        Portway->>Cache: Update cache
-    end
-    Portway-->>Client: Return file with content-type
-```
+### 1. Set Up a File Endpoint
 
-## Configuration
-
-### Basic File Endpoint Configuration
-
-Create a JSON file in the `endpoints/Files/Documents/entity.json` directory:
+Create a configuration file for your endpoint (e.g., `Documents`):
 
 ```json
 {
@@ -55,171 +26,100 @@ Create a JSON file in the `endpoints/Files/Documents/entity.json` directory:
 }
 ```
 
-### Configuration Properties
+### 2. Upload a File
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `StorageType` | string | Yes | Storage provider type (currently "Local") |
-| `BaseDirectory` | string | No | Base directory for storing files (relative to storage root) |
-| `AllowedExtensions` | array | No | List of allowed file extensions (empty = allow all) |
-| `IsPrivate` | boolean | No | Whether the endpoint is hidden from public documentation |
-| `AllowedEnvironments` | array | No | List of environments that can access this endpoint |
-
-## Storage System
-
-### Local Storage
-
-Files are stored in the configured file system:
-
-```
-{StorageDirectory}/{Environment}/{BaseDirectory}/{Filename}
+```bash
+curl -X POST "https://your-api.com/api/600/files/Documents" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "file=@report.pdf"
 ```
 
-Example:
-```
-files/600/documents/report-2024.pdf
-```
+### 3. List Your Files
 
-### Memory Caching
-
-For performance optimization, files can be cached in memory:
-
-- **Cache Duration**: Configurable, default 60 seconds
-- **Cache Limit**: Maximum total size in memory (default 200MB)
-- **Cache Eviction**: Least recently used (LRU) policy
-- **Cache Persistence**: Files are flushed to disk periodically
-
-## Using File Endpoints
-
-### File Endpoint URL Format
-
-```
-/api/{environment}/files/{endpointName}
+```bash
+curl -X GET "https://your-api.com/api/600/files/Documents/list" \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-- `{environment}`: Target environment (e.g., "600", "700")
-- `{endpointName}`: Name of the file endpoint (e.g., "Documents", "Images")
-
-### File Operations
-
-#### 1. Upload Files
-
-```http
-POST /api/600/files/Documents
-Content-Type: multipart/form-data
-Authorization: Bearer <token>
-
-Form Data:
-  - file: [binary file data]
-  - overwrite: true (optional)
-```
-
-Response:
-```json
-{
-  "success": true,
-  "fileId": "NjAwOmRvY3VtZW50cy9yZXBvcnQucGRm",
-  "filename": "report.pdf",
-  "contentType": "application/pdf",
-  "size": 125679,
-  "url": "/api/600/files/Documents/NjAwOmRvY3VtZW50cy9yZXBvcnQucGRm"
-}
-```
-
-#### 2. Download Files
-
-```http
-GET /api/600/files/Documents/NjAwOmRvY3VtZW50cy9yZXBvcnQucGRm
-Authorization: Bearer <token>
-```
-
-Response: Binary file with appropriate content-type header
-
-#### 3. Delete Files
-
-```http
-DELETE /api/600/files/Documents/NjAwOmRvY3VtZW50cy9yZXBvcnQucGRm
-Authorization: Bearer <token>
-```
-
-Response:
-```json
-{
-  "success": true,
-  "message": "File deleted successfully"
-}
-```
-
-#### 4. List Files
-
-```http
-GET /api/600/files/Documents/list?prefix=reports/
-Authorization: Bearer <token>
-```
-
-Response:
+Response shows available files with download links:
 ```json
 {
   "success": true,
   "files": [
     {
-      "fileId": "NjAwOmRvY3VtZW50cy9yZXBvcnRzL3ExLnBkZg==",
-      "fileName": "reports/q1.pdf",
-      "contentType": "application/pdf",
-      "size": 245830,
-      "lastModified": "2024-03-10T14:30:45Z",
-      "url": "/api/600/files/Documents/NjAwOmRvY3VtZW50cy9yZXBvcnRzL3ExLnBkZg=="
-    },
-    {
-      "fileId": "NjAwOmRvY3VtZW50cy9yZXBvcnRzL3EyLnBkZg==",
-      "fileName": "reports/q2.pdf",
-      "contentType": "application/pdf",
-      "size": 289436,
-      "lastModified": "2024-05-15T09:45:22Z",
-      "url": "/api/600/files/Documents/NjAwOmRvY3VtZW50cy9yZXBvcnRzL3EyLnBkZg=="
+      "fileName": "report.pdf",
+      "contentType": "application/pdf", 
+      "size": 125679,
+      "url": "/api/600/files/Documents/abc123fileId"
     }
-  ],
-  "count": 2
+  ]
 }
 ```
 
-## File Endpoint Types
+### 4. Download a File
+
+Use the `url` from the list response:
+
+```bash
+curl -X GET "https://your-api.com/api/600/files/Documents/abc123fileId" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -o "downloaded-report.pdf"
+```
+
+## Common Use Cases
 
 ### Document Repository
+Store business documents like contracts, reports, and manuals.
 
-Configure storage for business documents:
-
+**Configuration:**
 ```json
 {
   "StorageType": "Local",
-  "BaseDirectory": "documents",
-  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt", ".csv"],
-  "IsPrivate": false,
+  "BaseDirectory": "documents", 
+  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
   "AllowedEnvironments": ["600", "700"]
 }
 ```
 
+**Example:** Upload a contract, share download link with team members.
+
 ### Image Gallery
+Store and serve product images, logos, and marketing materials.
 
-Configure storage for image files:
-
+**Configuration:**
 ```json
 {
   "StorageType": "Local",
   "BaseDirectory": "images",
-  "AllowedExtensions": [".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp"],
-  "IsPrivate": false,
+  "AllowedExtensions": [".jpg", ".png", ".gif", ".svg"],
+  "AllowedEnvironments": ["600", "700"]  
+}
+```
+
+**Example:** Upload product photos that display directly in your website.
+
+### Data Exchange
+Import/export data files for business processes.
+
+**Configuration:**
+```json
+{
+  "StorageType": "Local",
+  "BaseDirectory": "data-import",
+  "AllowedExtensions": [".csv", ".xlsx", ".json"],
   "AllowedEnvironments": ["600", "700"]
 }
 ```
 
-### Secure Reports Repository
+**Example:** Upload customer CSV files for import processing.
 
-Configure storage for sensitive reports:
+### Secure Reports
+Store sensitive internal reports with restricted access.
 
+**Configuration:**
 ```json
 {
-  "StorageType": "Local",
+  "StorageType": "Local", 
   "BaseDirectory": "reports",
   "AllowedExtensions": [".pdf", ".xlsx"],
   "IsPrivate": true,
@@ -227,261 +127,184 @@ Configure storage for sensitive reports:
 }
 ```
 
-### Data Import/Export
+**Example:** Quarterly financial reports available only in production environment.
 
-Configure storage for data exchange:
+## Configuration Options
 
-```json
-{
-  "StorageType": "Local",
-  "BaseDirectory": "data-exchange",
-  "AllowedExtensions": [".csv", ".json", ".xml", ".xlsx"],
-  "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"]
-}
-```
+| Setting | Purpose | Example |
+|---------|---------|---------|
+| `BaseDirectory` | Organize files in folders | `"documents"`, `"images/{env}"` |
+| `AllowedExtensions` | Security - control file types | `[".pdf", ".jpg", ".csv"]` |
+| `AllowedEnvironments` | Control which environments can access | `["600"]` for production only |
+| `IsPrivate` | Hide from public API documentation | `true` for internal endpoints |
 
-### Temporary Files
+### Smart Folder Organization
 
-Configure storage for ephemeral files:
+Use placeholders for automatic organization:
 
 ```json
 {
-  "StorageType": "Local",
-  "BaseDirectory": "temp",
-  "AllowedExtensions": [],
-  "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700", "Dev"]
+  "BaseDirectory": "backups/{env}/{year}/{month}"
 }
 ```
 
-## Security Considerations
+Files automatically organized like:
+- `backups/600/2025/01/database-backup.sql`
+- `backups/700/2025/01/test-backup.sql`
 
-### Authentication
+Available placeholders:
+- `{env}` - Environment (600, 700, etc.)
+- `{year}` - Current year (2025)
+- `{month}` - Current month (01, 02, etc.)
+- `{date}` - Current date (2025-01-15)
 
-All file endpoints require Bearer token authentication:
+## Supported File Types
 
-```http
-Authorization: Bearer <your-token>
+Common file types work automatically with proper browser handling:
+
+| File Type | Extensions | Browser Behavior |
+|-----------|------------|------------------|
+| **Documents** | `.pdf`, `.docx`, `.xlsx` | PDFs display inline, others download |
+| **Images** | `.jpg`, `.png`, `.gif`, `.svg` | Show directly in browser |
+| **Data Files** | `.csv`, `.json`, `.xml` | Download for processing |
+| **Text Files** | `.txt`, `.log` | Display inline as text |
+
+## Web Integration
+
+### Display Images Directly
+```html
+<img src="https://your-api.com/api/600/files/Images/imageFileId" 
+     alt="Product Photo" />
 ```
 
-### Extension Restrictions
+### Embed PDF Documents
+```html
+<embed src="https://your-api.com/api/600/files/Documents/pdfFileId"
+       type="application/pdf" 
+       width="800" height="600" />
+```
 
-For security, you can restrict which file extensions are allowed:
+### Download Files with JavaScript
+```javascript
+// Get file list
+const response = await fetch('/api/600/files/Documents/list', {
+  headers: { 'Authorization': 'Bearer ' + token }
+});
+const data = await response.json();
+
+// Download first file
+const fileUrl = data.files[0].url;
+window.open(fileUrl + '?token=' + token);
+```
+
+## Security & Access Control
+
+### File Type Restrictions
+Always specify allowed file types for security:
 
 ```json
-"AllowedExtensions": [".pdf", ".docx", ".xlsx"]
+"AllowedExtensions": [".pdf", ".jpg", ".png"]  // Only these types allowed
 ```
 
-Files with other extensions will be rejected with a 400 Bad Request.
-
-### Blocked Extensions
-
-Certain high-risk extensions are globally blocked regardless of configuration:
-
-```json
-"BlockedExtensions": [".exe", ".dll", ".bat", ".sh", ".cmd", ".msi", ".vbs"]
-```
+### Environment Control
+Separate files by environment:
+- **Development/Testing:** Environment `700`
+- **Production:** Environment `600`
+- **Sensitive Data:** Restrict to `["600"]` only
 
 ### Size Limits
+- Default maximum file size: **50MB**
+- Configurable in system settings
+- Large files automatically rejected
 
-File uploads are limited by a configurable maximum size:
-
-```json
-"MaxFileSizeBytes": 52428800  // 50MB default
-```
-
-### Environment Isolation
-
-Files are isolated by environment, preventing cross-environment access:
-
-```
-/api/600/files/Documents  // Only accesses files in 600 environment
-/api/700/files/Documents  // Only accesses files in 700 environment
-```
-
-### Path Traversal Protection
-
-The system prevents path traversal attacks by:
-- Sanitizing filenames
-- Removing directory components
-- Replacing invalid characters
-- Validating file IDs
+### Blocked File Types
+These dangerous file types are always blocked:
+`.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`
 
 ## Best Practices
 
-### 1. Use Specific Directories
+### 1. Name Endpoints Clearly
+```
+✓ ProductImages, CustomerReports, InvoiceDocuments
+✗ Files, Data, Stuff
+```
 
-Organize files logically with dedicated base directories:
-
+### 2. Organize with Folders
 ```json
-{
-  "BaseDirectory": "invoices/2024"  // ✓ Good
-}
+"BaseDirectory": "invoices/2025"     // ✓ Organized by purpose and year
+"BaseDirectory": ""                  // ✗ Everything mixed together
 ```
 
-Instead of:
-
+### 3. Restrict File Types
 ```json
-{
-  "BaseDirectory": ""  // ✗ Not recommended
-}
+"AllowedExtensions": [".pdf", ".jpg"]  // ✓ Only what you need
+"AllowedExtensions": []                // ✗ Allows everything (risky)
 ```
 
-### 2. Restrict File Types
-
-Always specify allowed extensions for security:
-
+### 4. Use Environment Restrictions
 ```json
-{
-  "AllowedExtensions": [".pdf", ".jpg", ".png"]  // ✓ Good
-}
-```
-
-Instead of:
-
-```json
-{
-  "AllowedExtensions": []  // ✗ Allows any extension
-}
-```
-
-### 3. Environment-Specific Configuration
-
-Limit environments that can access sensitive files:
-
-```json
-{
-  "AllowedEnvironments": ["600"]  // ✓ Production only
-}
-```
-
-### 4. Implement File Cleanup
-
-Regularly clean up temporary files:
-
-```sql
--- Create stored procedure for file cleanup
-CREATE PROCEDURE CleanupTempFiles
-AS
-BEGIN
-    -- Your cleanup logic
-END
-```
-
-### 5. Use Prefixes for Organization
-
-When listing files, use prefixes to navigate directory structures:
-
-```http
-GET /api/600/files/Documents/list?prefix=reports/2024/
+"AllowedEnvironments": ["600"]         // ✓ Production-only for sensitive files
+"AllowedEnvironments": ["600", "700"]  // ✓ Both environments for general files
 ```
 
 ## Troubleshooting
 
-### Common Issues
+### Files Not Showing Up
+**Problem:** File list returns empty but files exist.
 
-1. **File upload failed: "File size exceeds maximum allowed size"**
-   - Check file size is under the configured limit (default 50MB)
-   - If larger files are needed, adjust `MaxFileSizeBytes` in configuration
+**Solution:** Check if your `BaseDirectory` uses placeholders like `{env}`. Files might be in the wrong folder structure.
 
-2. **File upload failed: "Files with extension .exe are not allowed"**
-   - Verify file extension is in the `AllowedExtensions` list
-   - Certain extensions are blocked for security and cannot be allowed
+**Fix:** Move files from `files/customer-data/{env}/` to `files/600/customer-data/600/`
 
-3. **File not found**
-   - Verify the file ID is correct
-   - Check file hasn't been deleted
-   - Ensure you're accessing from the correct environment
+### Upload Fails - File Too Large
+**Problem:** "File size exceeds maximum allowed size"
 
-4. **"Environment not allowed" error**
-   - Check that the environment is in the `AllowedEnvironments` list
-   - Verify the environment exists in global settings
+**Solution:** File is larger than 50MB limit. Contact administrator to increase limit or compress the file.
 
-### Debugging File Operations
+### Upload Fails - File Type Not Allowed  
+**Problem:** "Files with extension .exe are not allowed"
 
-1. **Check file existence on disk**:
-   ```
-   files/600/documents/your-file.pdf
-   ```
+**Solution:** Check the `AllowedExtensions` list in your endpoint configuration. Add the extension if safe, or convert to an allowed format.
 
-2. **Review application logs**:
-   ```
-   log/portwayapi-yyyyMMdd.log
-   ```
+### Can't Download File
+**Problem:** File not found or access denied.
 
-3. **Test basic file operations**:
-   ```bash
-   # Upload test file
-   curl -X POST https://your-api/api/600/files/Documents \
-     -H "Authorization: Bearer <token>" \
-     -F "file=@test.pdf"
-     
-   # List files
-   curl -X GET https://your-api/api/600/files/Documents/list \
-     -H "Authorization: Bearer <token>"
-   ```
+**Solutions:**
+- Verify you're using the correct `fileId` from the list response
+- Check you're accessing the right environment (600 vs 700)
+- Ensure your token has proper permissions
+- Confirm file hasn't been deleted
 
-## File IDs Explained
+## Getting Help
 
-File IDs are base64-encoded identifiers containing:
-- Environment
-- Relative file path
+### Check File Locations
+Files are stored in predictable locations:
+```
+files/{environment}/{baseDirectory}/{filename}
+```
 
-For example:
-- `NjAwOmRvY3VtZW50cy9yZXBvcnQucGRm` decodes to `600:documents/report.pdf`
+### View System Logs
+Application logs show detailed information about file operations:
+```
+log/portwayapi-[date].log
+```
 
-This design ensures:
-- File IDs are URL-safe
-- Environment isolation is maintained
-- Path information is obscured
+### Test Basic Operations
+Use simple commands to verify functionality:
+```bash
+# Test upload
+curl -X POST https://your-api/api/600/files/Documents \
+  -H "Authorization: Bearer TOKEN" -F "file=@test.txt"
 
-## File vs Other Endpoints
-
-| Feature | File Endpoints | SQL Endpoints | Proxy Endpoints | Webhook Endpoints |
-|---------|---------------|---------------|----------------|-------------------|
-| Purpose | File storage & retrieval | Database operations | Service forwarding | Event receiving |
-| HTTP Methods | GET, POST, DELETE | GET, POST, PUT, DELETE | Configurable | POST only |
-| Response | Binary files or file metadata | JSON data | Service response | Success confirmation |
-| Use Case | Document management | Data operations | Service integration | Event processing |
-
-## Performance Optimizations
-
-### 1. Memory Caching
-
-Files are cached in memory for faster access:
-
-- Recently accessed files remain in memory
-- Most frequently accessed files stay cached longer
-- Cache is automatically managed based on memory limits
-
-### 2. Deferred Disk Writes
-
-File uploads benefit from optimized disk I/O:
-
-- Files are stored in memory first
-- Batch flushing reduces disk operations
-- Background thread handles persistence
-
-### 3. Filesystem Indexing
-
-File listings use an index for faster querying:
-
-- Directory structure is cached in memory
-- File metadata is pre-loaded
-- Prefix filtering happens in memory
-
-## Limitations
-
-1. **Local Storage Only**: Currently only local filesystem storage is supported
-2. **No Versioning**: File overwrites replace the previous version completely
-3. **No Thumbnails**: Image thumbnails are not automatically generated
-4. **No Content Scanning**: Files are not scanned for viruses or malware
-5. **No CDN Integration**: No built-in content delivery network support
+# Test listing  
+curl -X GET https://your-api/api/600/files/Documents/list \
+  -H "Authorization: Bearer TOKEN"
+```
 
 ## Next Steps
 
-- Configure [SQL Endpoints](/guide/endpoints/sql) for file metadata database storage
-- Set up [Security](/guide/security) for file access control
-- Implement [Monitoring](/guide/operations/monitoring) for file storage usage
-- Create [Composite Endpoints](/guide/endpoints/composite) to process files with business logic
+1. **Plan your file organization** - Decide on endpoint names and folder structure
+2. **Set up configurations** - Create endpoint definitions for each file type
+3. **Test with sample files** - Upload and download test files to verify setup
+4. **Integrate with applications** - Add file operations to your business processes
+5. **Monitor usage** - Track file storage and access patterns

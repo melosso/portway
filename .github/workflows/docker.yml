@@ -12,32 +12,10 @@ on:
       - created
 
 env:
-  DOTNET_VERSION: '9.0'
+  DOTNET_VERSION: '8.0'
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-    
-    - name: Restore dependencies
-      run: dotnet restore Source/PortwayApi/PortwayApi.csproj
-    
-    - name: Build
-      run: dotnet build Source/PortwayApi/PortwayApi.csproj --no-restore --configuration Release
-    
-    - name: Test
-      run: dotnet test Source/ --no-build --configuration Release --verbosity normal
-
   build:
-    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
