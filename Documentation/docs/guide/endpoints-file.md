@@ -173,15 +173,19 @@ Common file types work automatically with proper browser handling:
 
 ### Display Images Directly
 ```html
+<!-- Note: This requires authentication headers to work -->
 <img src="https://your-api.com/api/600/files/Images/imageFileId" 
      alt="Product Photo" />
+<!-- For web apps, you'll need to handle authentication via JavaScript -->
 ```
 
 ### Embed PDF Documents
 ```html
+<!-- Note: This requires authentication headers to work -->
 <embed src="https://your-api.com/api/600/files/Documents/pdfFileId"
        type="application/pdf" 
        width="800" height="600" />
+<!-- For web apps, you'll need to handle authentication via JavaScript -->
 ```
 
 ### Download Files with JavaScript
@@ -192,9 +196,23 @@ const response = await fetch('/api/600/files/Documents/list', {
 });
 const data = await response.json();
 
-// Download first file
-const fileUrl = data.files[0].url;
-window.open(fileUrl + '?token=' + token);
+// Download first file using the fileId from the response
+const fileId = data.files[0].fileId;
+const downloadUrl = `/api/600/files/Documents/${fileId}`;
+
+// Download file
+const fileResponse = await fetch(downloadUrl, {
+  headers: { 'Authorization': 'Bearer ' + token }
+});
+const blob = await fileResponse.blob();
+
+// Trigger download
+const url = window.URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = data.files[0].fileName;
+a.click();
+window.URL.revokeObjectURL(url);
 ```
 
 ## Security & Access Control
@@ -252,9 +270,9 @@ These dangerous file types are always blocked:
 ### Files Not Showing Up
 **Problem:** File list returns empty but files exist.
 
-**Solution:** Check if your `BaseDirectory` uses placeholders like `{env}`. Files might be in the wrong folder structure.
+**Solution:** Check if your `BaseDirectory` uses placeholders like `{env}`. The system might have created literal placeholder folders instead of processing them.
 
-**Fix:** Move files from `files/customer-data/{env}/` to `files/600/customer-data/600/`
+**Fix:** If you see a folder literally named `{env}`, move files from `files/customer-data/{env}/` to `files/600/customer-data/600/`
 
 ### Upload Fails - File Too Large
 **Problem:** "File size exceeds maximum allowed size"
