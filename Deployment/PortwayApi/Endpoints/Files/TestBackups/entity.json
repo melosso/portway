@@ -1,0 +1,7 @@
+{
+  "StorageType": "Local",
+  "BaseDirectory": "backups/{env}/{year}/{month}",
+  "AllowedExtensions": [".zip", ".backup", ".sql"],
+  "IsPrivate": true,
+  "AllowedEnvironments": ["600"]
+}

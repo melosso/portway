@@ -480,6 +480,9 @@ public class EndpointController : ControllerBase
             var baseDirectory = endpoint.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj) 
                 ? baseDirObj?.ToString() ?? string.Empty
                 : string.Empty;
+
+            // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
+            baseDirectory = ProcessBaseDirectory(baseDirectory, env);
                 
             var allowedExtensions = endpoint.Properties != null && endpoint.Properties.TryGetValue("AllowedExtensions", out var extensionsObj) 
                 && extensionsObj is List<string> extensions
@@ -516,7 +519,27 @@ public class EndpointController : ControllerBase
             
             // Upload the file
             using var stream = file.OpenReadStream();
-            string fileId = await _fileHandlerService.UploadFileAsync(env, filename, stream, overwrite);
+            string fileId;
+            
+            // Check if we should use absolute path handling
+            if (!string.IsNullOrEmpty(baseDirectory) && Path.IsPathRooted(baseDirectory))
+            {
+                // For absolute paths, construct the full path
+                string absoluteFilePath = filename;
+                if (!string.IsNullOrEmpty(subpath))
+                {
+                    absoluteFilePath = Path.Combine(subpath, file.FileName);
+                }
+                absoluteFilePath = Path.Combine(baseDirectory, absoluteFilePath);
+                
+                // Use the absolute path upload method
+                fileId = await _fileHandlerService.UploadFileToAbsolutePathAsync(env, absoluteFilePath, stream, baseDirectory, overwrite);
+            }
+            else
+            {
+                // Use the standard relative path upload method
+                fileId = await _fileHandlerService.UploadFileAsync(env, filename, stream, overwrite);
+            }
             
             // Return success with file info
             return Ok(new { 
@@ -695,6 +718,9 @@ public class EndpointController : ControllerBase
             var baseDirectory = (endpoint.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj)) 
                 ? baseDirObj?.ToString() ?? string.Empty
                 : string.Empty;
+
+            // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
+            baseDirectory = ProcessBaseDirectory(baseDirectory, env);
                 
             // Prepare the prefix by combining base directory and provided prefix
             if (!string.IsNullOrEmpty(baseDirectory))
@@ -787,6 +813,49 @@ public class EndpointController : ControllerBase
             endpointType, endpointName, id, remainingPath);
 
         return (endpointType, endpointName, id, remainingPath);
+    }
+
+    /// <summary>
+    /// Replaces placeholders in the base directory with actual values
+    /// </summary>
+    private string ProcessBaseDirectory(string baseDirectory, string environment)
+    {
+        if (string.IsNullOrEmpty(baseDirectory))
+            return string.Empty;
+        
+        // Replace {env} placeholder with actual environment
+        var processedDirectory = baseDirectory.Replace("{env}", environment, StringComparison.OrdinalIgnoreCase);
+        
+        // Add support for additional placeholders if needed
+        processedDirectory = processedDirectory.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
+        processedDirectory = processedDirectory.Replace("{year}", DateTime.UtcNow.Year.ToString());
+        processedDirectory = processedDirectory.Replace("{month}", DateTime.UtcNow.Month.ToString("00"));
+        
+        return processedDirectory;
+    }
+
+    /// <summary>
+    /// Resolves the storage path, supporting both relative and absolute BaseDirectory paths
+    /// </summary>
+    private string ResolveStoragePath(string baseDirectory, string environment, string filename)
+    {
+        // If BaseDirectory is an absolute path, use it directly
+        if (!string.IsNullOrEmpty(baseDirectory) && Path.IsPathRooted(baseDirectory))
+        {
+            // For absolute paths, create subdirectory structure: AbsolutePath/Environment/Filename
+            var environmentDir = Path.Combine(baseDirectory, environment);
+            Directory.CreateDirectory(environmentDir);
+            return Path.Combine(environmentDir, filename);
+        }
+        
+        // For relative paths, use the existing logic
+        if (!string.IsNullOrEmpty(baseDirectory))
+        {
+            filename = Path.Combine(baseDirectory, filename);
+        }
+        
+        // Return the combined path with storage directory
+        return filename;
     }
 
     /// <summary>

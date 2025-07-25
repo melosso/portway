@@ -330,6 +330,63 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>
+    /// Uploads a file to an absolute path location
+    /// </summary>
+    public async Task<string> UploadFileToAbsolutePathAsync(
+        string environment, 
+        string absoluteFilePath, 
+        Stream fileStream, 
+        string baseDirectory,
+        bool overwrite = false)
+    {
+        // Validate file
+        if (fileStream == null || fileStream.Length == 0)
+            throw new ArgumentException("File is empty", nameof(fileStream));
+
+        if (fileStream.Length > _options.MaxFileSizeBytes)
+            throw new ArgumentException($"File size exceeds maximum allowed size", nameof(fileStream));
+
+        // Sanitize the filename part only
+        string fileName = Path.GetFileName(absoluteFilePath);
+        string sanitizedFileName = SanitizeFileName(fileName);
+        
+        // Reconstruct the full path with sanitized filename
+        string directoryPath = Path.GetDirectoryName(absoluteFilePath) ?? baseDirectory;
+        string fullPath = Path.Combine(directoryPath, sanitizedFileName);
+
+        // Create directory if it doesn't exist
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? baseDirectory);
+
+        // Generate file ID for absolute paths (special encoding)
+        string fileId = GenerateAbsoluteFileId(environment, fullPath);
+
+        // Check if file exists
+        if (File.Exists(fullPath) && !overwrite)
+            throw new InvalidOperationException($"File already exists at {fullPath}");
+
+        // Write file
+        using var fileStreamWriter = new FileStream(fullPath, FileMode.Create);
+        await fileStream.CopyToAsync(fileStreamWriter);
+
+        Log.Debug("💾 File saved to absolute path: {Path}", fullPath);
+        return fileId;
+    }
+
+    /// <summary>
+    /// Generates a special file ID for absolute path files
+    /// </summary>
+    private string GenerateAbsoluteFileId(string environment, string absolutePath)
+    {
+        // Special encoding for absolute paths
+        string combined = $"ABS:{environment}:{absolutePath}";
+        byte[] bytes = Encoding.UTF8.GetBytes(combined);
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+    }
+
+    /// <summary>
     /// Flushes all dirty files from memory to disk
     /// </summary>
     public async Task FlushAllAsync()
