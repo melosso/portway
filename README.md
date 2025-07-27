@@ -203,26 +203,7 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 Here are some common requests you'll make using Portway's endpoints.
 
 ### SQL
-Upload, list, and download files:
 
-```http
-POST /api/600/files/Documents
-Authorization: Bearer YOUR_TOKEN
-Content-Type: multipart/form-data
-file=@report.pdf
-```
-
-List files:
-```http
-GET /api/600/files/Documents/list
-Authorization: Bearer YOUR_TOKEN
-```
-
-Download a file:
-```http
-GET /api/600/files/Documents/abc123fileId
-Authorization: Bearer YOUR_TOKEN
-```
 Query specific data with full OData support:
 
 ```http
