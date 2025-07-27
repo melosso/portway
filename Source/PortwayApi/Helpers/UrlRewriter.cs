@@ -92,18 +92,16 @@ public static class UrlRewriter
             }
 
             // 4. Rewrite all Exact.Entity.REST.svc URLs regardless of domain/path
-            var svcEntityPattern = @"(\"")?(?:https?:\/\/[^\""\s]*?)?\/?[^\""\s]*?Exact\.Entity\.REST\.svc\/([^\""\s]+)\(guid'[^\""\s]+?'\)(\""|[\s,}])";
+            var svcEntityPattern = @"(\"")?(?:https?:\/\/[^\""\s]*?)?\/?[^\""\s]*?Exact\.Entity\.REST\.(?:svc|EG)\/([^\""\s]+)\(([^)]+)\)(\""|[\s,}])";
             content = Regex.Replace(content, svcEntityPattern, m =>
             {
                 var hasQuotes = m.Groups[1].Success;
-                var entityName = m.Groups[2].Value; // e.g., Request
-                var entityFull = m.Value
-                    .Split("Exact.Entity.REST.svc/")[1]  // Get the entity part after "Exact.Entity.REST.svc/"
-                    .TrimEnd(m.Groups[3].Value.ToCharArray()); // Clean up trailing quote or brace
-                var end = m.Groups[3].Value;
+                var entityName = m.Groups[2].Value; // e.g., Request, Classification  
+                var idPart = m.Groups[3].Value; // Everything between parentheses
+                var end = m.Groups[4].Value;
 
-                // Use the new base URL, path, and the correct entity part (e.g., Request(guid'...'))
-                var rewritten = $"{newBaseUrl.TrimEnd('/')}{newPath.TrimEnd('/')}/{entityFull}";
+                // Use the new base URL, path, and just the ID part
+                var rewritten = $"{newBaseUrl.TrimEnd('/')}{newPath.TrimEnd('/')}({idPart})";
                 return (hasQuotes ? "\"" : "") + rewritten + end;
             });
 

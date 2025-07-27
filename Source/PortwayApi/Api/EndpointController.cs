@@ -228,13 +228,13 @@ public class EndpointController : ControllerBase
                     return await HandleProxyRequest(env, endpointName, null, remainingPath, "POST");
                     
                 case EndpointType.Composite:
-                    // Strip off the "composite/" prefix from the endpoint name if needed
                     string actualCompositeName = endpointName.Replace("composite/", "");
                     return await HandleCompositeRequest(env, actualCompositeName, requestBody);
                     
                 case EndpointType.Webhook:
+                    string webhookId = remainingPath.Split('/')[0];
                     var webhookData = JsonSerializer.Deserialize<JsonElement>(requestBody);
-                    return await HandleWebhookRequest(env, endpointName, webhookData);
+                    return await HandleWebhookRequest(env, webhookId, webhookData);
                     
                 default:
                     Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
@@ -357,6 +357,9 @@ public class EndpointController : ControllerBase
                     return await HandleProxyRequest(env, endpointName, parsedId, remainingPath, "DELETE");
                     
                 case EndpointType.Composite:
+                    Log.Warning("❌ Composite endpoints don't support DELETE requests");
+                    return StatusCode(405, new { error = "Method not allowed for composite endpoints" });
+                    
                 case EndpointType.Webhook:
                     Log.Warning("❌ {Type} endpoints don't support DELETE requests", endpointType);
                     return StatusCode(405, new { error = $"Method not allowed for {endpointType} endpoints" });

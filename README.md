@@ -140,6 +140,19 @@ Combines multiple calls into a single logical transaction for APIs requiring seq
 }
 ```
 
+#### Files Endpoint — `endpoints/Files/Documents/entity.json`
+
+Stores and serves files such as documents, images, or data files.
+
+```json
+{
+  "StorageType": "Local",
+  "BaseDirectory": "documents",
+  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
+  "AllowedEnvironments": ["600", "700"]
+}
+```
+
 #### Webhook Endpoint — `endpoints/Webhooks/entity.json`
 
 Used for receiving and storing webhook payloads directly into your database.
@@ -154,7 +167,9 @@ Used for receiving and storing webhook payloads directly into your database.
 
 ### 4. Deploy
 
-Host the app in IIS. For proxy usage, configure the correct identity. Ensure your app pool and security settings are production-ready. Note, if you're going to use the proxy make sure to change the application identity. Make sure to modify your application pool and website settings, for optimal uptime and security policies. E.g. for more information check [Security Headers by Probely](https://securityheaders.com/)
+When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
+
+> If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
 
 ## 🔐 Auth & Security
 
@@ -167,7 +182,7 @@ Portway uses a lightweight token-based system for authentication. Tokens are mac
 💾 Saved to /tokens/SERVER-1.txt
 ```
 
-Include the token in request headers:
+Include the token in request headers, with the Bearer prefix included:
 
 ```http
 Authorization: Bearer YOUR_TOKEN
@@ -188,7 +203,26 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 Here are some common requests you'll make using Portway's endpoints.
 
 ### SQL
+Upload, list, and download files:
 
+```http
+POST /api/600/files/Documents
+Authorization: Bearer YOUR_TOKEN
+Content-Type: multipart/form-data
+file=@report.pdf
+```
+
+List files:
+```http
+GET /api/600/files/Documents/list
+Authorization: Bearer YOUR_TOKEN
+```
+
+Download a file:
+```http
+GET /api/600/files/Documents/abc123fileId
+Authorization: Bearer YOUR_TOKEN
+```
 Query specific data with full OData support:
 
 ```http
@@ -223,6 +257,29 @@ Content-Type: application/json
 }
 ```
 
+### Files
+
+Depending on your configuration, you could upload, list, and download files.
+
+```http
+POST /api/600/files/Documents
+Authorization: Bearer YOUR_TOKEN
+Content-Type: multipart/form-data
+file=@report.pdf
+```
+
+List files:
+```http
+GET /api/600/files/Documents/list
+Authorization: Bearer YOUR_TOKEN
+```
+
+Download a file:
+```http
+GET /api/600/files/Documents/abc123fileId
+Authorization: Bearer YOUR_TOKEN
+```
+
 ### Webhooks
 
 Receive data from external services:
@@ -238,6 +295,8 @@ Content-Type: application/json
   }
 }
 ```
+
+You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
 
 ## 📊 Logging & Monitoring
 
@@ -275,4 +334,4 @@ Portway is available under two licensing models:
 
 ## Contribution 
 
-Contributions welcome — submit a PR if you'd like to help improve Portway. With your contributions, you’ll be eligible for a free license. 
+Contributions are welcome. Please submit a PR if you'd like to help improve Portway. With your contributions, you may be eligible for a free license. 
