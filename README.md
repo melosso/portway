@@ -8,7 +8,7 @@
 
 Common applications that benefit from Portway are businesses looking to unlock their SQL Server data through modern APIs, companies modernizing legacy systems without costly rewrites, and organizations needing integration between internal services and external partners or software.
 
-> 📍 [Landing Page](https://portway.melosso.com/) | 🧪 [Live Demo](https://portway-demo.melosso.com/)
+> 📍 [Landing Page](https://portway.melosso.com/)   |  📜 [Documentation](https://portway-docs.melosso.com/)  |  🧪 [Live Demo](https://portway-demo.melosso.com/)
 
 A quick example to give you an idea of what this is all about:
 
