@@ -1,191 +1,98 @@
-# Licensing
+# Open Source License
 
-Portway offers flexible licensing options to suit different use cases, from personal projects to enterprise deployments.
+Portway is now completely **open source** and **free to use** for all purposes, including commercial use.
 
-## License Types
+## License Information
 
-### Free Tier
-- **Free forever** for basic usage
-- Core API gateway functionality
-- Community support via GitHub
-- Limited to basic features
+Portway is released under the **GNU Affero General Public License (AGPL) v3**, which means:
 
-### Professional Tier
-- **Paid subscription** for commercial use
-- All features unlocked including advanced capabilities
-- Commercial usage permitted
-- Priority support and updates
-- Redis caching, traffic logging, and composite endpoints
+- ✅ **Free to use** - No cost for any use case
+- ✅ **Commercial use permitted** - Use in commercial projects without restrictions
+- ✅ **All features included** - No feature limitations or tiers
+- ✅ **Modify and distribute** - Fork, modify, and redistribute as needed
+- ✅ **Community driven** - Open source development and support
 
-## Getting a License
+## What This Means for You
 
-1. Visit the Portway licensing portal
-2. Choose the Professional tier
-3. Complete the purchase process
-4. Receive your license key via email
-5. Follow the activation steps below
+### No License Keys Required
+- No license files or activation keys needed
+- All features are available immediately upon installation
+- No restrictions on the number of API tokens or users
 
-## License Activation
+### All Features Included
+All Portway features are available to everyone:
 
-### Method 1: Direct License File (Recommended)
+| Feature | Status |
+|---------|--------|
+| Core API Gateway | ✅ Available |
+| SQL Endpoints | ✅ Available |
+| Proxy Endpoints | ✅ Available |
+| File Storage | ✅ Available |
+| Memory Caching | ✅ Available |
+| Redis Caching | ✅ Available |
+| Authentication & Rate Limiting | ✅ Available |
+| Multiple Authentication Keys | ✅ Available |
+| Traffic Logging | ✅ Available |
+| Composite Endpoints | ✅ Available |
+| Commercial Use | ✅ Available |
 
-The simplest way to activate your license:
+### AGPL v3 Requirements
 
-1. **Locate License Key** - From your purchase confirmation email
-2. **Create License File** - Create a new text file named `.license` (note the dot at the beginning)
-3. **Save License Content** - Copy your license key into this file
-4. **Place in Portway Directory** - Put the `.license` file in the same folder as your Portway application
-5. **Restart Portway** - Restart the application or recycle the application pool (IIS)
+The AGPL v3 license requires that if you:
+- **Modify Portway** and distribute it, you must share your modifications under the same license
+- **Run a modified version** as a network service, you must provide the source code to users
+- **Use Portway as-is** without modifications, no additional obligations apply
 
-**Example `.license` file content:**
-```
-LIC-1734567890-ABC123
-```
+## Getting Started
 
-**File location examples:**
-- **IIS**: `C:\inetpub\wwwroot\YourPortwayApp\.license`
-- **Standalone**: `C:\Portway\.license`
-- **Custom Path**: Same directory as `PortwayApi.exe`
+Since there are no licensing restrictions:
 
-### Method 2: API Activation
+1. **Download or clone** the Portway repository
+2. **Deploy** to your preferred environment
+3. **Configure** your endpoints and settings
+4. **Start using** all features immediately
 
-For programmatic activation, you can use the licensing API:
+No registration, activation, or license keys required!
 
-**POST** to `/api/license/activate`
-```json
-{
-  "licenseKey": "LIC-1734567890-ABC123"
-}
-```
+## Support and Community
 
-**Headers required:**
-```
-Content-Type: application/json
-Authorization: Bearer YOUR_API_TOKEN
-```
+### Community Support
+- **GitHub Issues** - Report bugs and request features
+- **GitHub Discussions** - Ask questions and share knowledge
+- **Documentation** - Comprehensive guides and API reference
+- **Community Contributions** - Pull requests welcome
 
-### Verifying Activation
+### Contributing
 
-After placing the license file and restarting:
+We welcome contributions from the community:
 
-1. **Check Application Logs** - Look for license status messages during startup
-2. **Test Professional Features** - Try accessing features like Redis caching or composite endpoints
-3. **Monitor License Status** - Check if restrictions are lifted
+- **Bug fixes** and **feature improvements**
+- **Documentation** updates
+- **Example configurations** and use cases
+- **Testing** and **feedback**
 
-**Successful activation log messages:**
-```
-🔐 License service initialized
-📋 Valid signed license loaded: Professional
-✅ License activated and verified successfully
-```
+See our contributing guidelines in the repository for more details.
 
-## License File Format
+## Migration from Licensed Versions
 
-After successful activation, Portway automatically creates a detailed `.license` file:
+If you were previously using a licensed version of Portway:
 
-```json
-{
-  "licenseKey": "LIC-1734567890-ABC123",
-  "productId": "portway-pro",
-  "status": "active",
-  "tier": "professional",
-  "expiresAt": "2025-12-31T23:59:59Z",
-  "activatedAt": "2024-12-01T10:30:00Z",
-  "machineId": "abc123def456",
-  "signature": "...",
-  "features": ["redis-caching", "traffic-logging", "composite-endpoints"]
-}
-```
+1. **No changes required** - Your existing configuration will continue to work
+2. **Remove license files** - Any `.license` files can be safely deleted
+3. **All features unlocked** - Previously restricted features are now available
+4. **Update documentation** - Remove any references to licensing in your internal docs
 
-## Managing Your License
+## Commercial Use
 
-### Checking License Status
+Portway can be used commercially under the AGPL v3 license. This means:
 
-**Method 1: Application Logs**
-Check the Portway application logs during startup for license information.
+- ✅ **Use in commercial products** - Include Portway in your commercial offerings
+- ✅ **Deploy for customers** - Run Portway instances for your clients
+- ✅ **Modify for business needs** - Customize Portway for your use case
+- ⚠️ **Share modifications** - If you modify and distribute Portway, share the source code
 
-**Method 2: Feature Testing**
-Try to use Professional features:
-- Access Redis caching configuration
-- Create composite endpoints
-- Enable traffic logging
-
-### Transferring Licenses
-
-Professional licenses can be moved between installations:
-
-1. **Stop Portway** on the current server
-2. **Delete `.license` file** from the current installation
-3. **Copy license key** to the new installation following the activation steps above
-4. **Restart Portway** on the new server
-
-### License Issues
-
-**License Not Found:**
-- Ensure the `.license` file is in the correct directory
-- Check file permissions (application must be able to read the file)
-- Verify the file name starts with a dot (`.license`)
-
-**Invalid License:**
-- Check for extra spaces or characters in the license file
-- Ensure the license key format is correct
-- Verify the license is for the correct product
-
-**License Expired:**
-- Contact support for renewal options
-- Check if auto-renewal is enabled in your account
-
-## Features by Tier
-
-| Feature | Free | Professional |
-|---------|------|--------------|
-| Core API Gateway | ✅ | ✅ |
-| SQL Endpoints | ✅ | ✅ |
-| Proxy Endpoints | ✅ | ✅ |
-| File Storage | ✅ | ✅ |
-| Memory Caching | ✅ | ✅ |
-| Authentication & Rate Limiting | ✅ | ✅ |
-| **Multiple Authenication Keys** | Limited | Unlimited |
-| **Commercial Use** | ❌ | ✅ |
-| **Priority Support** | ❌ | ✅ |
-
-## Troubleshooting
-
-### Common File Issues
-
-**License file not found:**
-```
-- Check file location: same directory as Portway executable
-- Verify file name: exactly ".license" (with dot)
-- Confirm file encoding: plain text (UTF-8)
-- Test file permissions: application can read the file
-```
-
-**License file ignored:**
-```
-- Restart Portway completely
-- Check application logs for license errors
-- Verify file contains only the license key
-- Ensure no extra characters or line breaks
-```
-
-### Getting Support
-
-**Community Support:**
-- GitHub issues for technical problems
-- Documentation and FAQ sections
-- Community forums and discussions
-
-**Professional Support:**
-- Email support with license details
-- Priority response for licensed customers
-- Direct technical assistance
-
-**License Support:**
-- License activation assistance
-- Transfer and renewal help
-- Custom licensing arrangements
+For businesses that prefer a different licensing model, please contact the maintainers to discuss alternative arrangements.
 
 ---
 
-*For licensing questions, technical support, or custom arrangements, contact support through the official channels provided with your license purchase.*
+*Portway is now free and open source. Enjoy building with all features unlocked!*

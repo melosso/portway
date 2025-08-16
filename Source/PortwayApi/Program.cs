@@ -190,9 +190,6 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddHostedService<LogFlusher>();
 
-    // Configure licensing services
-    builder.Services.AddLicenseServices();
-
     // Register route constraint for ProxyConstraint
     builder.Services.Configure<RouteOptions>(options =>
     {
@@ -243,9 +240,6 @@ try
     builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
     builder.Services.AddSingleton<FileHandlerService>();
     builder.Services.AddSqlConnectionPooling(builder.Configuration);
-
-    // Add license check
-    builder.Services.AddSingleton<ILicenseService, LicenseService>();
 
     // Initialize endpoints directories
     DirectoryHelper.EnsureDirectoryStructure();

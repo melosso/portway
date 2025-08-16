@@ -49,4 +49,4 @@ Portway is a lightweight API gateway designed specifically for Windows environme
 
 ## License
 
-Portway is released under the MIT License. See the [LICENSE](https://github.com/melosso/portwayapi/blob/main/LICENSE) file for details.
+Portway is released under the Open Source (AGPL-3.0) license. See the [LICENSE](https://github.com/melosso/portwayapi/blob/main/LICENSE) file for details.
