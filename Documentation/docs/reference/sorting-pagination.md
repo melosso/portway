@@ -14,26 +14,26 @@ $orderby=field [asc|desc]
 
 ```http
 # Ascending (default)
-GET /api/600/Products?$orderby=Name
+GET /api/prod/Products?$orderby=Name
 
 # Explicit ascending
-GET /api/600/Products?$orderby=Name asc
+GET /api/prod/Products?$orderby=Name asc
 
 # Descending
-GET /api/600/Products?$orderby=Price desc
+GET /api/prod/Products?$orderby=Price desc
 ```
 
 ### Multiple Field Sorting
 
 ```http
 # Primary and secondary sort
-GET /api/600/Products?$orderby=Category,Price desc
+GET /api/prod/Products?$orderby=Category,Price desc
 
 # Multiple fields with mixed directions
-GET /api/600/Products?$orderby=Category asc,Price desc,Name asc
+GET /api/prod/Products?$orderby=Category asc,Price desc,Name asc
 
 # Complex sorting
-GET /api/600/Orders?$orderby=CustomerCode,OrderDate desc,Priority asc
+GET /api/prod/Orders?$orderby=CustomerCode,OrderDate desc,Priority asc
 ```
 
 ### Sorting Rules
@@ -51,10 +51,10 @@ Controls the maximum number of items returned:
 
 ```http
 # Return first 10 items
-GET /api/600/Products?$top=10
+GET /api/prod/Products?$top=10
 
 # Return first 50 items
-GET /api/600/Products?$top=50
+GET /api/prod/Products?$top=50
 ```
 
 ### $skip - Skip Results
@@ -63,23 +63,23 @@ Skips a specified number of items:
 
 ```http
 # Skip first 20 items
-GET /api/600/Products?$skip=20
+GET /api/prod/Products?$skip=20
 
 # Skip first 100 items
-GET /api/600/Products?$skip=100
+GET /api/prod/Products?$skip=100
 ```
 
 ### Combined Pagination
 
 ```http
 # Page 1 (items 1-10)
-GET /api/600/Products?$top=10&$skip=0
+GET /api/prod/Products?$top=10&$skip=0
 
 # Page 2 (items 11-20)
-GET /api/600/Products?$top=10&$skip=10
+GET /api/prod/Products?$top=10&$skip=10
 
 # Page 3 (items 21-30)
-GET /api/600/Products?$top=10&$skip=20
+GET /api/prod/Products?$top=10&$skip=20
 ```
 
 ## Pagination Patterns
@@ -90,13 +90,13 @@ Implement page-based navigation:
 
 ```http
 # Page size: 25, Page number: 1
-GET /api/600/Orders?$top=25&$skip=0&$orderby=OrderDate desc
+GET /api/prod/Orders?$top=25&$skip=0&$orderby=OrderDate desc
 
 # Page size: 25, Page number: 2
-GET /api/600/Orders?$top=25&$skip=25&$orderby=OrderDate desc
+GET /api/prod/Orders?$top=25&$skip=25&$orderby=OrderDate desc
 
 # Page size: 25, Page number: 3
-GET /api/600/Orders?$top=25&$skip=50&$orderby=OrderDate desc
+GET /api/prod/Orders?$top=25&$skip=50&$orderby=OrderDate desc
 ```
 
 Formula:
@@ -111,10 +111,10 @@ Direct control over starting position:
 
 ```http
 # Get items 51-75
-GET /api/600/Products?$top=25&$skip=50
+GET /api/prod/Products?$top=25&$skip=50
 
 # Get items 101-150
-GET /api/600/Products?$top=50&$skip=100
+GET /api/prod/Products?$top=50&$skip=100
 ```
 
 ### Cursor-Based Pagination
@@ -125,16 +125,16 @@ Use the NextLink provided in responses:
 {
   "Count": 10,
   "Value": [...],
-  "NextLink": "/api/600/Products?$top=10&$skip=10&$orderby=ItemCode"
+  "NextLink": "/api/prod/Products?$top=10&$skip=10&$orderby=ItemCode"
 }
 ```
 
 ```http
 # First page
-GET /api/600/Products?$top=10&$orderby=ItemCode
+GET /api/prod/Products?$top=10&$orderby=ItemCode
 
 # Next page (use NextLink)
-GET /api/600/Products?$top=10&$skip=10&$orderby=ItemCode
+GET /api/prod/Products?$top=10&$skip=10&$orderby=ItemCode
 ```
 
 ## Combining Sort and Pagination
@@ -145,32 +145,32 @@ Always include $orderby when using pagination:
 
 ```http
 # Good - consistent ordering
-GET /api/600/Products?$orderby=ItemCode&$top=20&$skip=0
+GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=0
 
 # Problematic - inconsistent results
-GET /api/600/Products?$top=20&$skip=0
+GET /api/prod/Products?$top=20&$skip=0
 ```
 
 ### Common Patterns
 
 1. **Recent Items First**
 ```http
-GET /api/600/Orders?$orderby=OrderDate desc&$top=10
+GET /api/prod/Orders?$orderby=OrderDate desc&$top=10
 ```
 
 2. **Alphabetical with Pagination**
 ```http
-GET /api/600/Customers?$orderby=LastName,FirstName&$top=50&$skip=0
+GET /api/prod/Customers?$orderby=LastName,FirstName&$top=50&$skip=0
 ```
 
 3. **Priority Sorting**
 ```http
-GET /api/600/Tasks?$orderby=Priority asc,DueDate asc&$top=20
+GET /api/prod/Tasks?$orderby=Priority asc,DueDate asc&$top=20
 ```
 
 4. **Multi-Level Sorting**
 ```http
-GET /api/600/Products?$orderby=Category,SubCategory,Name&$top=100&$skip=0
+GET /api/prod/Products?$orderby=Category,SubCategory,Name&$top=100&$skip=0
 ```
 
 ## Performance Optimization
@@ -181,13 +181,13 @@ Sort on indexed fields for better performance:
 
 ```http
 # Good - sorting on primary key
-GET /api/600/Products?$orderby=ItemCode&$top=50
+GET /api/prod/Products?$orderby=ItemCode&$top=50
 
 # Good - sorting on indexed field
-GET /api/600/Orders?$orderby=OrderDate desc&$top=20
+GET /api/prod/Orders?$orderby=OrderDate desc&$top=20
 
 # Less efficient - non-indexed field
-GET /api/600/Products?$orderby=Description&$top=50
+GET /api/prod/Products?$orderby=Description&$top=50
 ```
 
 ### Efficient Pagination
@@ -195,22 +195,22 @@ GET /api/600/Products?$orderby=Description&$top=50
 1. **Use Reasonable Page Sizes**
 ```http
 # Optimal
-GET /api/600/Products?$top=50&$skip=0
+GET /api/prod/Products?$top=50&$skip=0
 
 # Too large (may timeout)
-GET /api/600/Products?$top=10000&$skip=0
+GET /api/prod/Products?$top=10000&$skip=0
 
 # Too small (many requests)
-GET /api/600/Products?$top=5&$skip=0
+GET /api/prod/Products?$top=5&$skip=0
 ```
 
 2. **Avoid Deep Pagination**
 ```http
 # Efficient
-GET /api/600/Products?$top=50&$skip=100
+GET /api/prod/Products?$top=50&$skip=100
 
 # Inefficient (deep pagination)
-GET /api/600/Products?$top=50&$skip=10000
+GET /api/prod/Products?$top=50&$skip=10000
 ```
 
 ### Sorting Performance Tips
@@ -218,19 +218,19 @@ GET /api/600/Products?$top=50&$skip=10000
 1. **Single Field vs Multiple Fields**
 ```http
 # Faster
-GET /api/600/Products?$orderby=ItemCode
+GET /api/prod/Products?$orderby=ItemCode
 
 # Slower
-GET /api/600/Products?$orderby=Category,SubCategory,Name
+GET /api/prod/Products?$orderby=Category,SubCategory,Name
 ```
 
 2. **Direction Matters**
 ```http
 # Often faster (uses index efficiently)
-GET /api/600/Orders?$orderby=OrderDate desc
+GET /api/prod/Orders?$orderby=OrderDate desc
 
 # May be slower (depends on index)
-GET /api/600/Orders?$orderby=OrderDate asc
+GET /api/prod/Orders?$orderby=OrderDate asc
 ```
 
 ## Complete Examples
@@ -239,39 +239,39 @@ GET /api/600/Orders?$orderby=OrderDate asc
 
 ```http
 # Products by category, then price
-GET /api/600/Products?$orderby=Category,Price desc&$top=20&$skip=0
+GET /api/prod/Products?$orderby=Category,Price desc&$top=20&$skip=0
 
 # Products in "Electronics" category, sorted by price
-GET /api/600/Products?$filter=Category eq 'Electronics'&$orderby=Price desc&$top=10
+GET /api/prod/Products?$filter=Category eq 'Electronics'&$orderby=Price desc&$top=10
 
 # Most expensive products per category
-GET /api/600/Products?$select=Category,Name,Price&$orderby=Category,Price desc&$top=5
+GET /api/prod/Products?$select=Category,Name,Price&$orderby=Category,Price desc&$top=5
 ```
 
 ### Customer Order History
 
 ```http
 # Recent orders for a customer
-GET /api/600/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$top=10
+GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$top=10
 
 # Customer's largest orders
-GET /api/600/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=TotalAmount desc&$top=5
+GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=TotalAmount desc&$top=5
 
 # Orders with status tracking
-GET /api/600/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$select=OrderNumber,OrderDate,Status,TotalAmount&$top=20
+GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$select=OrderNumber,OrderDate,Status,TotalAmount&$top=20
 ```
 
 ### Inventory Management
 
 ```http
 # Low stock items
-GET /api/600/Products?$filter=StockLevel le 10&$orderby=StockLevel asc&$top=20
+GET /api/prod/Products?$filter=StockLevel le 10&$orderby=StockLevel asc&$top=20
 
 # Items by warehouse location
-GET /api/600/Products?$orderby=WarehouseLocation,Bin&$select=ItemCode,Name,WarehouseLocation,Bin,StockLevel&$top=50
+GET /api/prod/Products?$orderby=WarehouseLocation,Bin&$select=ItemCode,Name,WarehouseLocation,Bin,StockLevel&$top=50
 
 # Recent stock movements
-GET /api/600/StockMovements?$orderby=MovementDate desc&$top=100
+GET /api/prod/StockMovements?$orderby=MovementDate desc&$top=100
 ```
 
 ## Error Handling
@@ -280,14 +280,14 @@ GET /api/600/StockMovements?$orderby=MovementDate desc&$top=100
 
 ```http
 # Error: Invalid field name
-GET /api/600/Products?$orderby=InvalidField
+GET /api/prod/Products?$orderby=InvalidField
 Response: 400 Bad Request
 {
   "error": "Invalid orderby field: InvalidField"
 }
 
 # Error: Missing field name
-GET /api/600/Products?$orderby=
+GET /api/prod/Products?$orderby=
 Response: 400 Bad Request
 {
   "error": "Empty orderby clause"
@@ -298,14 +298,14 @@ Response: 400 Bad Request
 
 ```http
 # Error: Negative $skip value
-GET /api/600/Products?$skip=-10
+GET /api/prod/Products?$skip=-10
 Response: 400 Bad Request
 {
   "error": "$skip cannot be negative"
 }
 
 # Error: $top exceeds maximum
-GET /api/600/Products?$top=10000
+GET /api/prod/Products?$top=10000
 Response: 400 Bad Request
 {
   "error": "$top cannot exceed 1000"
@@ -334,7 +334,7 @@ Response: 400 Bad Request
     }
     // ... 8 more items
   ],
-  "NextLink": "/api/600/Products?$orderby=Category,Price desc&$top=10&$skip=10"
+  "NextLink": "/api/prod/Products?$orderby=Category,Price desc&$top=10&$skip=10"
 }
 ```
 
@@ -358,10 +358,10 @@ Ensure consistent pagination by including a unique identifier:
 
 ```http
 # Good - stable sorting
-GET /api/600/Products?$orderby=Price desc,ItemCode&$top=20&$skip=0
+GET /api/prod/Products?$orderby=Price desc,ItemCode&$top=20&$skip=0
 
 # Problematic - may have inconsistent ordering
-GET /api/600/Products?$orderby=Price desc&$top=20&$skip=0
+GET /api/prod/Products?$orderby=Price desc&$top=20&$skip=0
 ```
 
 ### Keyset Pagination
@@ -370,10 +370,10 @@ More efficient for large datasets:
 
 ```http
 # Traditional offset pagination (slower for large offsets)
-GET /api/600/Products?$orderby=ItemCode&$top=20&$skip=10000
+GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=10000
 
 # Keyset pagination (faster)
-GET /api/600/Products?$filter=ItemCode gt 'PROD10000'&$orderby=ItemCode&$top=20
+GET /api/prod/Products?$filter=ItemCode gt 'PROD10000'&$orderby=ItemCode&$top=20
 ```
 
 ### Dynamic Sorting
@@ -404,10 +404,10 @@ Handle null values in sorting:
 
 ```http
 # Nulls typically sort first in ascending order
-GET /api/600/Products?$orderby=DiscountPrice asc
+GET /api/prod/Products?$orderby=DiscountPrice asc
 
 # Nulls typically sort last in descending order
-GET /api/600/Products?$orderby=DiscountPrice desc
+GET /api/prod/Products?$orderby=DiscountPrice desc
 ```
 
 ## Troubleshooting
@@ -432,7 +432,7 @@ GET /api/600/Products?$orderby=DiscountPrice desc
 
 ```http
 # Add timing headers to monitor performance
-GET /api/600/Products?$orderby=Name&$top=100
+GET /api/prod/Products?$orderby=Name&$top=100
 Response Headers:
 X-Query-Time: 45ms
 X-Total-Records: 5000

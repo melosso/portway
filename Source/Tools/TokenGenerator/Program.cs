@@ -686,8 +686,8 @@ public class TokenService
                         Examples = new[]
                         {
                             "* (access to all environments)",
-                            "600,700,Synergy (access to only these environments)",
-                            "6* (access to all environments starting with 6)"
+                            "prod,dev,exactsynergy (access to only these environments)",
+                            "p* (access to all environments starting with p ...)"
                         }
                     }
                 }

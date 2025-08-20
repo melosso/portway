@@ -840,7 +840,7 @@ public static class EndpointHandler
                 BaseDirectory = "sample",
                 AllowedExtensions = new List<string> { ".jpg", ".png", ".pdf", ".docx", ".xlsx" },
                 IsPrivate = false,
-                AllowedEnvironments = new List<string> { "600", "700" }
+                AllowedEnvironments = new List<string> { "prod", "dev" }
             };
 
             var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });

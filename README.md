@@ -179,7 +179,7 @@ Stores and serves files such as documents, images, or data files.
   "StorageType": "Local",
   "BaseDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["prod", "dev"]
 }
 ```
 
@@ -219,7 +219,7 @@ Include the token in request headers, with the Bearer prefix included:
 Authorization: **Bearer** YOUR_TOKEN
 ```
 
-> [!IMPORTANT] 
+> [!CAUTION] 
 > The generated token files are highly sensitive and pose a significant security risk if left on disk. **Remove these files immediately after securely saving your token elsewhere.** Unauthorized access to these files can compromise your environment.
 
 ### Azure Key Vault Support
@@ -277,7 +277,7 @@ Content-Type: application/json
 Depending on your configuration, you could upload, list, and download files.
 
 ```http
-POST /api/600/files/Documents
+POST /api/prod/files/Documents
 Authorization: Bearer YOUR_TOKEN
 Content-Type: multipart/form-data
 file=@report.pdf
@@ -285,13 +285,13 @@ file=@report.pdf
 
 List files:
 ```http
-GET /api/600/files/Documents/list
+GET /api/prod/files/Documents/list
 Authorization: Bearer YOUR_TOKEN
 ```
 
 Download a file:
 ```http
-GET /api/600/files/Documents/abc123fileId
+GET /api/prod/files/Documents/abc123fileId
 Authorization: Bearer YOUR_TOKEN
 ```
 
@@ -350,4 +350,4 @@ The commercial variant solely focusses on Business/Enterprise that requrire: Pri
 
 ## Contribution 
 
-Contributions are welcome. Please submit a PR if you'd like to help improve Portway. With your contributions, you may be eligible for a free license. 
+Contributions are welcome. Please submit a PR if you'd like to help improve Portway.

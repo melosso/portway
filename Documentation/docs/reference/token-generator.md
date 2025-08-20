@@ -53,13 +53,13 @@ TokenGenerator.exe username
 TokenGenerator.exe username -s "Products,Orders,Customers"
 
 # Token with environment restrictions
-TokenGenerator.exe username -e "600,700"
+TokenGenerator.exe username -e "prod,dev"
 
 # Token with expiration
 TokenGenerator.exe username --expires 90
 
 # Combined parameters
-TokenGenerator.exe username -s "Products,Orders" -e "600" --expires 30 --description "Frontend API access"
+TokenGenerator.exe username -s "Products,Orders" -e "prod" --expires 30 --description "Frontend API access"
 ```
 
 ## Command Line Parameters
@@ -70,7 +70,7 @@ TokenGenerator.exe username -s "Products,Orders" -e "600" --expires 30 --descrip
 | `-d, --database` | Path to auth.db file | `-d "C:\path\to\auth.db"` |
 | `-t, --tokens` | Token files directory | `-t "C:\path\to\tokens"` |
 | `-s, --scopes` | Allowed endpoints (comma-separated) | `-s "Products,Orders"` |
-| `-e, --environments` | Allowed environments | `-e "600,700,Synergy"` |
+| `-e, --environments` | Allowed environments | `-e "prod,dev,Synergy"` |
 | `--description` | Token description | `--description "API access"` |
 | `--expires` | Expiration in days | `--expires 90` |
 
@@ -107,7 +107,7 @@ TokenGenerator.exe readonly -s "Products,Orders" --description "Read-only access
 | Format | Description | Example |
 |--------|-------------|---------|
 | `*` | All environments | `*` |
-| `Env1,Env2` | Specific environments | `600,700` |
+| `Env1,Env2` | Specific environments | `prod,dev` |
 | `Prefix*` | Environments with prefix | `6*` |
 
 ### Examples
@@ -117,10 +117,10 @@ TokenGenerator.exe readonly -s "Products,Orders" --description "Read-only access
 TokenGenerator.exe admin -e "*"
 
 # Production only
-TokenGenerator.exe prod-api -e "600"
+TokenGenerator.exe prod-api -e "prod"
 
 # Test environments
-TokenGenerator.exe test-api -e "700,Synergy"
+TokenGenerator.exe test-api -e "dev,Synergy"
 
 # Pattern matching
 TokenGenerator.exe staging -e "7*"
@@ -137,7 +137,7 @@ View all active tokens with their permissions:
 ID    Username             Created              Expires              Scopes          Environments
 ----  ------------------   ------------------   ------------------   --------------  --------------
 1     admin               2024-01-15 10:30     Never                *               *
-2     frontend            2024-01-16 14:22     2024-04-16           Products,Or...  600,700
+2     frontend            2024-01-16 14:22     2024-04-16           Products,Or...  prod,dev
 3     reporting           2024-01-17 09:15     2024-02-17           Report*         *
 ```
 
@@ -160,8 +160,8 @@ Enter new scopes: Products,Orders,Customers,Reports
 
 #### Update Environments
 ```
-Current environments: 600
-Enter new environments: 600,700,Synergy
+Current environments: prod
+Enter new environments: prod,dev,Synergy
 ```
 
 #### Update Expiration
@@ -190,7 +190,7 @@ tokens/
   "Username": "frontend",
   "Token": "eyJhbGci...truncated...",
   "AllowedScopes": "Products,Orders",
-  "AllowedEnvironments": "600,700",
+  "AllowedEnvironments": "prod,dev",
   "ExpiresAt": "2024-04-16 14:22:00",
   "CreatedAt": "2024-01-16 14:22:00",
   "Description": "Frontend API access",
@@ -216,7 +216,7 @@ tokens/
 2. **Apply principle of least privilege**
    ```bash
    # Good - specific access
-   TokenGenerator.exe orders-service -s "Orders,Customers" -e "600"
+   TokenGenerator.exe orders-service -s "Orders,Customers" -e "prod"
    
    # Avoid - excessive access
    TokenGenerator.exe orders-service -s "*" -e "*"
@@ -260,9 +260,9 @@ Create multiple tokens using scripts:
 ```powershell
 # PowerShell script
 $services = @(
-    @{name="orders-service"; scopes="Orders,Customers"; env="600"},
-    @{name="products-service"; scopes="Products,Categories"; env="600"},
-    @{name="reporting-service"; scopes="*"; env="700"}
+    @{name="orders-service"; scopes="Orders,Customers"; env="prod"},
+    @{name="products-service"; scopes="Products,Categories"; env="prod"},
+    @{name="reporting-service"; scopes="*"; env="dev"}
 )
 
 foreach ($service in $services) {
@@ -279,7 +279,7 @@ Verify token permissions programmatically:
 bool hasAccess = token.HasAccessToEndpoint("Products");
 
 // Check environment access
-bool canAccessEnv = token.HasAccessToEnvironment("600");
+bool canAccessEnv = token.HasAccessToEnvironment("prod");
 
 // Validate token is active
 bool isActive = token.IsActive;
@@ -340,13 +340,13 @@ TokenGenerator.exe prod-monitoring -s "health,metrics" -e "prod*"
 
 ```http
 # HTTP request with token
-GET /api/600/Products
+GET /api/prod/Products
 Authorization: Bearer eyJhbGci...truncated...
 ```
 
 ```javascript
 // JavaScript example
-const response = await fetch('https://api.example.com/api/600/Products', {
+const response = await fetch('https://api.example.com/api/prod/Products', {
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
@@ -358,7 +358,7 @@ const response = await fetch('https://api.example.com/api/600/Products', {
 // C# example
 var client = new HttpClient();
 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-var response = await client.GetAsync("https://api.example.com/api/600/Products");
+var response = await client.GetAsync("https://api.example.com/api/prod/Products");
 ```
 
 ### Automation Scripts

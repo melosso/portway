@@ -345,12 +345,12 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
             }
             
             // Return default if settings not found
-            return new List<string> { "600", "700" };
+            return new List<string> { "prod", "dev" };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading environment settings");
-            return new List<string> { "600", "700" };
+            return new List<string> { "prod", "dev" };
         }
     }
 

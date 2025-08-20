@@ -644,7 +644,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
                                     ["contentType"] = new OpenApiString("application/pdf"),
                                     ["size"] = new OpenApiInteger(12345),
                                     ["lastModified"] = new OpenApiString("2025-05-20T10:15:30Z"),
-                                    ["url"] = new OpenApiString($"/api/600/files/{endpointName}/YTAwOmV4YW1wbGUucGRm")
+                                    ["url"] = new OpenApiString($"/api/prod/files/{endpointName}/YTAwOmV4YW1wbGUucGRm")
                                 },
                                 new OpenApiObject
                                 {
@@ -653,7 +653,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
                                     ["contentType"] = new OpenApiString("image/jpeg"),
                                     ["size"] = new OpenApiInteger(54321),
                                     ["lastModified"] = new OpenApiString("2025-05-19T14:30:45Z"),
-                                    ["url"] = new OpenApiString($"/api/600/files/{endpointName}/YTAwOmltYWdlLmpwZw")
+                                    ["url"] = new OpenApiString($"/api/prod/files/{endpointName}/YTAwOmltYWdlLmpwZw")
                                 }
                             },
                             ["count"] = new OpenApiInteger(2)
@@ -689,7 +689,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         if (operationType == "upload")
         {
             curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X POST \"https://yourserver.com/api/600/files/{endpointName}\"");
+            curlExample.AppendLine($"curl -X POST \"https://yourserver.com/api/prod/files/{endpointName}\"");
             curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
             curlExample.AppendLine("  -H \"Content-Type: multipart/form-data\"");
             curlExample.AppendLine("  -F \"file=@/path/to/yourfile.pdf\"");
@@ -698,7 +698,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         else if (operationType == "download")
         {
             curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X GET \"https://yourserver.com/api/600/files/{endpointName}/YOUR_FILE_ID\"");
+            curlExample.AppendLine($"curl -X GET \"https://yourserver.com/api/prod/files/{endpointName}/YOUR_FILE_ID\"");
             curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
             curlExample.AppendLine("  --output downloaded_file.pdf");
             curlExample.AppendLine("```");
@@ -706,14 +706,14 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         else if (operationType == "delete")
         {
             curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X DELETE \"https://yourserver.com/api/600/files/{endpointName}/YOUR_FILE_ID\"");
+            curlExample.AppendLine($"curl -X DELETE \"https://yourserver.com/api/prod/files/{endpointName}/YOUR_FILE_ID\"");
             curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
             curlExample.AppendLine("```");
         }
         else if (operationType == "list")
         {
             curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X GET \"https://yourserver.com/api/600/files/{endpointName}/list\"");
+            curlExample.AppendLine($"curl -X GET \"https://yourserver.com/api/prod/files/{endpointName}/list\"");
             curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
             curlExample.AppendLine("```");
         }
@@ -748,12 +748,12 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             }
             
             // Return default if settings not found
-            return new List<string> { "600", "700" };
+            return new List<string> { "prod", "dev" };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error loading environment settings");
-            return new List<string> { "600", "700" };
+            return new List<string> { "prod", "dev" };
         }
     }
 

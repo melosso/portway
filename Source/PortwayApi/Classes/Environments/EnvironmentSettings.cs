@@ -54,7 +54,7 @@ public class EnvironmentSettings
                     Environment = new EnvironmentModel
                     {
                         ServerName = ".",
-                        AllowedEnvironments = new List<string> { "600", "700" }
+                        AllowedEnvironments = new List<string> { "prod", "dev" }
                     }
                 };
                 

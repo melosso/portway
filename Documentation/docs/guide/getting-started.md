@@ -14,11 +14,42 @@ Before you begin, make sure you have:
 
 ## Installation
 
+
 ### Download and Extract
 
 1. Go to the [Releases page](https://github.com/melosso/portway/releases/)
 2. Download the latest `Deployment.zip` file
 3. Extract it to your IIS directory (e.g., `C:\path\to\your\PortwayApi`)
+
+---
+
+
+### Alternative: Docker Compose (Recommended for Home Lab Users)
+
+You can quickly deploy Portway using Docker Compose and the official image:
+
+```yaml
+services:
+  portway:
+    image: melosso/portway:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./environments:/app/environments
+      - ./endpoints:/app/endpoints
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+```
+
+Then run:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment.
 
 ### Configure IIS
 
@@ -33,7 +64,7 @@ Before you begin, make sure you have:
    - Name: `Portway`
    - Application pool: `PortwayAppPool`
    - Physical path: `C:\path\to\your\PortwayApi`
-   - Binding: https://localhost:80 (or your preferred port)
+   - Binding: https://localhost:443 (or your preferred port)
    - Certificate: The certificate you created
 6. Set Application Pool Identity (for proxy endpoints):
    - Select your Application Pool
@@ -56,6 +87,8 @@ Before you begin, make sure you have:
 </configuration>
 ```
 
+You should now be ready for running Portway for the first time.
+
 ### First Run
 
 1. Browse to your configured URL (e.g., https://localhost)
@@ -68,7 +101,7 @@ Before you begin, make sure you have:
 
 Open your browser and navigate to:
 ```
-https://localhost/docs
+https://localhost
 ```
 
 You should see the OpenAPI UI interface with the Portway API documentation.
@@ -95,6 +128,9 @@ This JSON file contains your Bearer token for API authentication:
   "Usage": "Use this token in the Authorization header as: Bearer your-bearer-token-here"
 }
 ```
+
+> [!CAUTION]
+> The generated token files are highly sensitive and pose a significant security risk if left on disk. **Remove these files immediately after securely saving your token elsewhere.** Unauthorized access to these files can compromise your environment.
 
 ### Configure Environments
 

@@ -20,7 +20,7 @@ GET /api/{environment}/{endpoint}?{query_options}
 
 Example:
 ```http
-GET /api/600/Products?$select=ItemCode,Description&$filter=Price gt 50&$orderby=Price desc&$top=10
+GET /api/prod/Products?$select=ItemCode,Description&$filter=Price gt 50&$orderby=Price desc&$top=10
 ```
 
 ## $select - Field Selection
@@ -35,13 +35,13 @@ $select=field1,field2,field3
 ### Examples
 ```http
 # Single field
-GET /api/600/Products?$select=ItemCode
+GET /api/prod/Products?$select=ItemCode
 
 # Multiple fields
-GET /api/600/Products?$select=ItemCode,Description,Price
+GET /api/prod/Products?$select=ItemCode,Description,Price
 
 # All allowed fields (based on entity configuration)
-GET /api/600/Products
+GET /api/prod/Products
 ```
 
 ### Field Selection Rules
@@ -91,22 +91,22 @@ $filter=field operator value
 
 ```http
 # Exact match
-GET /api/600/Products?$filter=ItemCode eq 'PROD001'
+GET /api/prod/Products?$filter=ItemCode eq 'PROD001'
 
 # Numeric comparison
-GET /api/600/Products?$filter=Price gt 50.00
+GET /api/prod/Products?$filter=Price gt 50.00
 
 # String contains
-GET /api/600/Products?$filter=contains(Description,'Widget')
+GET /api/prod/Products?$filter=contains(Description,'Widget')
 
 # Multiple conditions
-GET /api/600/Products?$filter=Price gt 100 and Assortment eq 'Electronics'
+GET /api/prod/Products?$filter=Price gt 100 and Assortment eq 'Electronics'
 
 # OR condition
-GET /api/600/Products?$filter=Status eq 'Active' or Status eq 'Pending'
+GET /api/prod/Products?$filter=Status eq 'Active' or Status eq 'Pending'
 
 # Complex filter
-GET /api/600/Products?$filter=(Price gt 100 and Price lt 500) or contains(Description,'Special')
+GET /api/prod/Products?$filter=(Price gt 100 and Price lt 500) or contains(Description,'Special')
 ```
 
 ## $orderby - Sorting Results
@@ -121,16 +121,16 @@ $orderby=field [asc|desc]
 ### Examples
 ```http
 # Single field ascending (default)
-GET /api/600/Products?$orderby=Name
+GET /api/prod/Products?$orderby=Name
 
 # Single field descending
-GET /api/600/Products?$orderby=Price desc
+GET /api/prod/Products?$orderby=Price desc
 
 # Multiple fields
-GET /api/600/Products?$orderby=Category,Price desc
+GET /api/prod/Products?$orderby=Category,Price desc
 
 # Complex sorting
-GET /api/600/Products?$orderby=Category asc,Price desc,Name asc
+GET /api/prod/Products?$orderby=Category asc,Price desc,Name asc
 ```
 
 ### Sorting Rules
@@ -157,16 +157,16 @@ $skip=number
 ### Pagination Examples
 ```http
 # First 10 items
-GET /api/600/Products?$top=10
+GET /api/prod/Products?$top=10
 
 # Skip first 20 items
-GET /api/600/Products?$skip=20
+GET /api/prod/Products?$skip=20
 
 # Page 2 with 10 items per page
-GET /api/600/Products?$top=10&$skip=10
+GET /api/prod/Products?$top=10&$skip=10
 
 # Page 3 with 25 items per page
-GET /api/600/Products?$top=25&$skip=50
+GET /api/prod/Products?$top=25&$skip=50
 ```
 
 ### Pagination Best Practices
@@ -182,7 +182,7 @@ Multiple query options can be combined in a single request:
 
 ```http
 # Complete query example
-GET /api/600/Products
+GET /api/prod/Products
   ?$select=ItemCode,Description,Price,Category
   &$filter=Price gt 50 and Category eq 'Electronics'
   &$orderby=Price desc
@@ -273,7 +273,7 @@ Successful queries return a JSON response:
       "Price": 149.99
     }
   ],
-  "NextLink": "/api/600/Products?$top=10&$skip=20"
+  "NextLink": "/api/prod/Products?$top=10&$skip=20"
 }
 ```
 
@@ -290,34 +290,34 @@ Successful queries return a JSON response:
 ### Search by Text
 ```http
 # Contains search
-GET /api/600/Products?$filter=contains(Description,'widget')
+GET /api/prod/Products?$filter=contains(Description,'widget')
 
 # Starts with search
-GET /api/600/Products?$filter=startswith(Name,'A')
+GET /api/prod/Products?$filter=startswith(Name,'A')
 ```
 
 ### Date Range Queries
 ```http
 # Records created this year
-GET /api/600/Orders?$filter=CreatedDate ge 2024-01-01T00:00:00Z
+GET /api/prod/Orders?$filter=CreatedDate ge 2024-01-01T00:00:00Z
 
 # Records in date range
-GET /api/600/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
+GET /api/prod/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 ```
 
 ### Null Checking
 ```http
 # Find unassigned items
-GET /api/600/Tasks?$filter=AssignedTo eq null
+GET /api/prod/Tasks?$filter=AssignedTo eq null
 
 # Find completed items
-GET /api/600/Tasks?$filter=CompletedDate ne null
+GET /api/prod/Tasks?$filter=CompletedDate ne null
 ```
 
 ### Complex Filters
 ```http
 # Multiple conditions with grouping
-GET /api/600/Products
+GET /api/prod/Products
   ?$filter=(Price gt 100 and Price lt 500) and 
            (Category eq 'Electronics' or Category eq 'Computers')
 ```
@@ -377,34 +377,34 @@ GET /api/600/Products
 1. **Use Field Selection**
    ```http
    # Good - only needed fields
-   GET /api/600/Products?$select=ItemCode,Name,Price
+   GET /api/prod/Products?$select=ItemCode,Name,Price
    
    # Avoid - retrieving all fields
-   GET /api/600/Products
+   GET /api/prod/Products
    ```
 
 2. **Implement Efficient Pagination**
    ```http
    # Good - ordered pagination
-   GET /api/600/Products?$orderby=ItemCode&$top=50&$skip=0
+   GET /api/prod/Products?$orderby=ItemCode&$top=50&$skip=0
    
    # Avoid - pagination without ordering
-   GET /api/600/Products?$top=50&$skip=0
+   GET /api/prod/Products?$top=50&$skip=0
    ```
 
 3. **Use Appropriate Filters**
    ```http
    # Good - specific filter
-   GET /api/600/Products?$filter=ItemCode eq 'PROD001'
+   GET /api/prod/Products?$filter=ItemCode eq 'PROD001'
    
    # Avoid - filtering in application
-   GET /api/600/Products  # Then filter in code
+   GET /api/prod/Products  # Then filter in code
    ```
 
 4. **Optimize Complex Queries**
    ```http
    # Good - server-side filtering
-   GET /api/600/Orders
+   GET /api/prod/Orders
      ?$filter=Status eq 'Open' and CustomerCode eq 'CUST001'
      &$orderby=OrderDate desc
      &$top=10
