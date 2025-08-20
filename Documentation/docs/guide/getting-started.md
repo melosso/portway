@@ -31,7 +31,7 @@ You can quickly deploy Portway using Docker Compose and the official image:
 ```yaml
 services:
   portway:
-    image: melosso/portway:latest
+    image: ghcr.io/melosso/portway:latest
     ports:
       - "8080:8080"
     volumes:
