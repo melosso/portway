@@ -1,0 +1,14 @@
+{
+  "StorageType": "Local",
+  "BaseDirectory": "reports",
+  "AllowedExtensions": [".pdf", ".xlsx", ".csv"],
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600"],
+  "Documentation": {
+    "TagDescription": "**Report Storage**\n\nUpload and download business reports in various formats. Supports PDF, Excel, and CSV files for automated report distribution and archival.",
+    "MethodDescriptions": {
+      "GET": "Download reports by file ID with secure access control",
+      "POST": "Upload new reports to the centralized storage system"
+    }
+  }
+}

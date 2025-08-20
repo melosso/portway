@@ -1,0 +1,18 @@
+{
+    "DatabaseObjectName": "ServiceCancellation", 
+    "DatabaseSchema": "dbo",
+    "AllowedColumns": [
+      "RequestId",
+      "Status"
+    ],
+    "Procedure": "dbo.sp_ManageServiceRequests",
+    "AllowedMethods": ["GET","DELETE"],
+    "AllowedEnvironments": ["600"],
+    "Documentation": {
+        "TagDescription": "**Service Cancellations**\n\nManage service request cancellations and status updates. Handle customer cancellation requests and maintain audit trails for service modifications.",
+        "MethodDescriptions": {
+            "GET": "Retrieve cancellation records",
+            "DELETE": "Process a service cancellation"
+        }
+    }
+  }

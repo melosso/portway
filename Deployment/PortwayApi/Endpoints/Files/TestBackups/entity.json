@@ -1,0 +1,15 @@
+{
+  "StorageType": "Local",
+  "BaseDirectory": "backups/{env}/{year}/{month}",
+  "AllowedExtensions": [".zip", ".backup", ".sql"],
+  "IsPrivate": true,
+  "AllowedEnvironments": ["600"],
+  "Documentation": {
+    "TagDescription": "**Backup Management**\n\nSecure backup file storage and retrieval system. Manages database backups, system archives, and SQL scripts with organized date-based folder structure. **Private endpoint - restricted access.**",
+    "MethodDescriptions": {
+      "GET": "Download backup files with proper authentication and access control",
+      "POST": "Upload new backup files to organized storage structure",
+      "DELETE": "Remove outdated backup files (admin only)"
+    }
+  }
+}

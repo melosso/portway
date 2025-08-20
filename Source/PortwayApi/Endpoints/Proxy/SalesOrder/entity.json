@@ -1,0 +1,37 @@
+{
+  "Type": "Composite",
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
+  "Methods": ["POST"],
+  "CompositeConfig": {
+    "Name": "SalesOrder",
+    "Description": "Creates a complete sales order with multiple order lines and a header",
+    "Steps": [
+      {
+        "Name": "CreateOrderLines",
+        "Endpoint": "SalesOrderLine",
+        "Method": "POST",
+        "IsArray": true,
+        "ArrayProperty": "Lines",
+        "TemplateTransformations": {
+          "TransactionKey": "$guid"
+        }
+      },
+      {
+        "Name": "CreateOrderHeader",
+        "Endpoint": "SalesOrderHeader",
+        "Method": "POST",
+        "SourceProperty": "Header",
+        "TemplateTransformations": {
+          "TransactionKey": "$prev.CreateOrderLines.0.d.TransactionKey"
+        }
+      }
+    ]
+  },
+  "AllowedEnvironments": ["600","700"],
+  "Documentation": {
+    "TagDescription": "**Sales Order Management**\n\nCreate complete sales orders with headers and multiple line items. Composite endpoint that orchestrates order creation workflow with automatic transaction key linking.",
+    "MethodDescriptions": {
+      "POST": "Create complete sales orders with header and multiple order lines in a coordinated transaction"
+    }
+  }
+}

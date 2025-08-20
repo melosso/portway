@@ -1,0 +1,35 @@
+
+name: portway-stack
+services:
+  portwayapi:
+    image: ghcr.io/melosso/portwayapi:latest
+    ports:
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - USE_HTTPS=false
+      - ASPNETCORE_ENVIRONMENT=Production
+      - PROXY_USERNAME=serviceaccount
+      - PROXY_PASSWORD=password
+      - PROXY_DOMAIN=YOURDOMAIN
+      # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
+      # - AZURE_CLIENT_ID=your-client-id
+      # - AZURE_TENANT_ID=your-tenant-id
+      # - AZURE_CLIENT_SECRET=your-client-secret
+    volumes:
+      - portwayapi-data:/app/auth.db
+      - ./endpoints:/app/endpoints
+      - ./environments:/app/environments
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  portwayapi-data:
+    name: portwayapi-data
+    driver: local

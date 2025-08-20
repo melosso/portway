@@ -1,0 +1,8 @@
+
+{
+  "ServerName": "VM2K22",
+  "ConnectionString": "Server=VM2K22;Database=600_Synergy;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;",
+  "Headers": {
+    "Origin": "Portway"
+  }
+}

@@ -1,0 +1,7 @@
+Deployment/PortwayApi/log/
+# Ignore log files
+*.log
+/logs/
+# Ignore log files
+
+# Ignore log files

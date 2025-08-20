@@ -1,0 +1,11 @@
+{
+    "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/SalesOrderLine", 
+    "Methods": ["POST"],
+    "IsPrivate": true,
+    "Documentation": {
+        "TagDescription": "**Sales Order Lines**\n\nInternal endpoint for managing individual sales order line items. Handles product details, quantities, pricing, and line-specific information for complex order workflows.",
+        "MethodDescriptions": {
+            "POST": "Create sales order line items with product and pricing details (internal use only)"
+        }
+    }
+}

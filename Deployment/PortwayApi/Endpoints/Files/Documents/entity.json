@@ -1,0 +1,15 @@
+{
+  "StorageType": "Local",
+  "BaseDirectory": "documents",
+  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600", "700"],
+  "Documentation": {
+    "TagDescription": "**Document Management**\n\nManage business documents including PDFs, Word documents, Excel spreadsheets, and text files. Centralized document storage for reports, contracts, and business correspondence.",
+    "MethodDescriptions": {
+      "GET": "Download business documents by filename and path",
+      "POST": "Upload new business documents to document library",
+      "DELETE": "Remove documents from document storage"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+    "DatabaseObjectName": "WebhookData",
+    "DatabaseSchema": "dbo",
+    "AllowedColumns": [
+      "webhook1",
+      "webhook2"
+    ],
+    "Documentation": {
+        "TagDescription": "**Webhook Management**\n\nManage webhook data and configuration. Store and retrieve webhook payloads, event data, and integration information for external system communications.",
+        "MethodDescriptions": {
+            "GET": "Retrieve webhook data and event information",
+            "POST": "Store new webhook payloads and event data"
+        }
+    }
+  }

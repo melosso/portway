@@ -1,0 +1,88 @@
+name: Manual Release Deployment
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Install semver
+      run: pip install semver
+    - name: Calculate new version
+      id: versioning
+      run: |
+        # Get the latest tag or default
+        LATEST_TAG=$(git tag --sort=-v:refname | head -n 1 || echo "$(date +%Y).0.0")
+        # Extract input
+        RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+        # Calculate new version
+        VERSION=$(python -c "
+        import semver
+        import datetime
+        input_type = '${{ github.event.inputs.release_type }}'
+        latest = '${LATEST_TAG}'
+        # handle first time
+        try:
+            v = semver.VersionInfo.parse(latest)
+        except:
+            v = semver.VersionInfo( datetime.datetime.now().year, 0, 0 )
+        current_year = datetime.datetime.now().year
+        if input_type == 'major':
+            # ensure year is at least current_year
+            new_major = max(current_year, v.major + 1)
+            new_version = semver.VersionInfo(new_major, 0, 0)
+        elif input_type == 'minor':
+            new_version = semver.VersionInfo(v.major, v.minor + 1, 0)
+        else:  # patch
+            new_version = semver.VersionInfo(v.major, v.minor, v.patch + 1)
+        print(new_version)
+        ")
+        echo "new_version=$VERSION" >> $GITHUB_OUTPUT
+    - name: Create and push new tag
+      run: |
+        NEW_TAG=${{ steps.versioning.outputs.new_version }}
+        
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git tag -f "$NEW_TAG"
+        git push origin --force "refs/tags/$NEW_TAG"
+    - name: Create version file and zip Deployment folder
+      run: |
+        NEW_TAG=${{ steps.versioning.outputs.new_version }}
+        # Create version file inside the Deployment/PortwayApi folder
+        echo "$NEW_TAG" > Deployment/PortwayApi/version.txt
+        # Remove unwanted files from the Deployment folder
+        find Deployment -name "docker-compose.yml" -type f -delete
+        find Deployment -name ".gitignore" -type f -delete
+        find Deployment -name ".dockerignore" -type f -delete
+        # Zip the Deployment folder
+        zip -r "${NEW_TAG}-Deployment.zip" Deployment
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.versioning.outputs.new_version }}
+        files: |
+          ${{ steps.versioning.outputs.new_version }}-Deployment.zip
+        generate_release_notes: true
+    - name: Deploy to target environment
+      run: |
+        NEW_TAG=${{ steps.versioning.outputs.new_version }}
+        echo "Deploying version $NEW_TAG"
+        unzip -o "${NEW_TAG}-Deployment.zip"

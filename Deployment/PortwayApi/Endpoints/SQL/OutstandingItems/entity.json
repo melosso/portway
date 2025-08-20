@@ -1,0 +1,12 @@
+{
+    "DatabaseObjectName": "CSAdvDebtorOutstanding",
+    "DatabaseSchema": "dbo",
+    "AllowedEnvironments": ["600","700"],
+    "Documentation": {
+        "TagDescription": "**Outstanding Items**\n\nRetrieve outstanding debtor information and payment tracking. Access critical financial data for accounts receivable management and cash flow analysis.",
+        "MethodDescriptions": {
+            "GET": "Query outstanding debtor balances"
+        }
+    }
+}
+  

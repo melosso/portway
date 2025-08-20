@@ -1,0 +1,14 @@
+{ 
+    "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account", 
+    "Methods": ["GET", "POST", "PUT", "DELETE","MERGE"],
+    "Documentation": {
+        "TagDescription": "**Account Management**\n\nYou'll be able to manage customer and vendor accounts easily with this endpoint.",
+        "MethodDescriptions": {
+            "GET": "Retrieve account records",
+            "POST": "Create a new account",
+            "PUT": "Update an existing account",
+            "DELETE": "Remove an account",
+            "MERGE": "Partially update an account"
+        }
+    }
+} 
