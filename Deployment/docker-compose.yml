@@ -2,7 +2,7 @@
 name: portway-stack
 services:
   portwayapi:
-    image: ghcr.io/melosso/portwayapi:latest
+    image: ghcr.io/melosso/portway:latest
     ports:
     environment:
       - ASPNETCORE_URLS=http://+:8080

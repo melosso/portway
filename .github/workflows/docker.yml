@@ -32,7 +32,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/melosso/portwayapi
+        images: ghcr.io/melosso/portway
         tags: |
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}

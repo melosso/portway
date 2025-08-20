@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Repository and folder details
-REPO_URL="https://github.com/melosso/portwayapi.git"
+REPO_URL="https://github.com/melosso/portway.git"
 REPO_BRANCH="main"
 SOURCE_FOLDER="/Pages/Web"
 DESTINATION_FOLDER="/usr/share/nginx/html"

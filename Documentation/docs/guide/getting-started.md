@@ -16,7 +16,7 @@ Before you begin, make sure you have:
 
 ### Download and Extract
 
-1. Go to the [Releases page](https://github.com/melosso/portwayapi/releases/)
+1. Go to the [Releases page](https://github.com/melosso/portway/releases/)
 2. Download the latest `Deployment.zip` file
 3. Extract it to your IIS directory (e.g., `C:\path\to\your\PortwayApi`)
 

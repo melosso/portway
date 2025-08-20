@@ -13,10 +13,10 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: Download
-      link: https://github.com/melosso/portwayapi/releases/
+      link: https://github.com/melosso/portway/releases/
     - theme: alt
       text: View on GitHub
-      link: https://github.com/melosso/portwayapi
+      link: https://github.com/melosso/portway
 
 features:
   - icon: 🗄️
