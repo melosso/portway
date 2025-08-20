@@ -24,6 +24,7 @@ Portway is built with flexibility and control in mind. Whether you're proxying s
   * **Proxy** — forward to internal services; supports complex orchestration
   * **File System** — read/write from local storage or cache
   * **Webhook** — receive external calls and persist data to SQL
+  * **Static** — read static files or set-up a mock-up endpoint
 * **Auth system**: Token-based, with Azure Key Vault integration
 * **Environment-aware routing**: Dev, staging, production — all isolated and configurable
 * **Built-in Documentation**: Every endpoint is documented out-of-the-box
