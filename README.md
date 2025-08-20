@@ -67,6 +67,7 @@ services:
       - ./endpoints:/app/endpoints
       - ./tokens:/app/tokens
       - ./log:/app/log
+      - ./data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080

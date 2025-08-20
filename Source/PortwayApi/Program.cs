@@ -412,12 +412,19 @@ try
     }
 
     // 9. CORS (before authentication)
-    app.UseCors(builder =>
+    if (!builder.Environment.IsDevelopment())
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
+        app.UseCors("AllowAllOrigins");
+    }
+    else
+    {
+        app.UseCors(builder =>
+        {
+            builder.AllowAnyOrigin()
+                   .AllowAnyMethod()
+                   .AllowAnyHeader();
+        });
+    }
 
     // 10. Rate limiting (before authentication to limit by IP)
     PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app);
