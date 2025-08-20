@@ -45,9 +45,39 @@ Ready to go? Then lets continue:
 
 Follow these steps to get Portway up and running in your environment. Setup is fast and modular, making it easy to configure just what you need.
 
+
 ### 1. Download & Extract
 
 Grab the [latest release](https://github.com/melosso/portway/releases) and extract it to your deployment folder. It already includes a set of example environment and endpoint configurations.
+
+---
+
+#### **Alternative: Docker Compose (Recommended for Home Lab)**
+
+You can quickly deploy Portway using Docker Compose and the official image:
+
+```yaml
+services:
+  portway:
+    image: melosso/portway:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./environments:/app/environments
+      - ./endpoints:/app/endpoints
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+```
+
+Then run:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment.
 
 ### 2. Configure Your Environments
 
@@ -169,11 +199,12 @@ Used for receiving and storing webhook payloads directly into your database.
 
 When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
 
-> If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
+> [!TIP] 
+>  If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
 
 ## 🔐 Auth & Security
 
-### Token-Based Authentication (Local)
+### Token-Based Authentication
 
 Portway uses a lightweight token-based system for authentication. Tokens are machine-bound and stored securely on disk.
 
