@@ -155,6 +155,9 @@ public class RateLimiter
     // Track blocked IPs with last logged time to prevent log flooding
     private readonly ConcurrentDictionary<string, (DateTime BlockedUntil, DateTime LastLogged)> _blockedIps = new();
     
+    // Cache for token ID lookups to avoid repeated database calls
+    private readonly ConcurrentDictionary<string, string> _tokenDisplayCache = new();
+    
     // Configuration for block tracking
     private readonly int _maxConsecutiveBlocks = 3;
     private readonly TimeSpan _logCooldown = TimeSpan.FromSeconds(10);
@@ -244,7 +247,7 @@ public class RateLimiter
         
         // IP-based rate limiting
         string ipKey = $"ip:{clientIp}";
-        var ipBucket = _buckets.GetOrAdd(ipKey, key => CreateBucket(key, _settings.IpLimit, _settings.IpWindow, "IP"));
+        var ipBucket = _buckets.GetOrAdd(ipKey, key => CreateBucket(key, _settings.IpLimit, _settings.IpWindow, "IP", tokenService));
         bool ipAllowed = ipBucket.TryConsume(1, _logger);
 
         if (!ipAllowed)
@@ -312,7 +315,7 @@ public class RateLimiter
             }
             
             tokenBucket = _buckets.GetOrAdd(tokenKey, key => 
-                CreateBucket(key, _settings.TokenLimit, _settings.TokenWindow, "TOKEN"));
+                CreateBucket(key, _settings.TokenLimit, _settings.TokenWindow, "TOKEN", tokenService));
             
             bool tokenAllowed = tokenBucket.TryConsume(1, _logger);
             
@@ -487,8 +490,51 @@ public class RateLimiter
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, options));
     }
-    private TokenBucket CreateBucket(string key, int limit, int windowSeconds, string type)
+    private TokenBucket CreateBucket(string key, int limit, int windowSeconds, string type, TokenService? tokenService = null)
     {
+        string displayKey = key;
+        
+        // For token buckets, try to get the token ID instead of showing the masked token
+        if (type == "TOKEN" && tokenService != null && key.StartsWith("token:"))
+        {
+            // Check cache first
+            if (_tokenDisplayCache.TryGetValue(key, out var cachedDisplay))
+            {
+                displayKey = cachedDisplay;
+            }
+            else
+            {
+                var token = key.Substring("token:".Length);
+                try
+                {
+                    // Attempt to get token details synchronously for logging purposes
+                    var tokenDetails = Task.Run(async () => await tokenService.GetTokenDetailsByTokenAsync(token)).Result;
+                    if (tokenDetails != null)
+                    {
+                        displayKey = $"TOKEN_ID:{tokenDetails.Id} ({tokenDetails.Username})";
+                        // Cache the result for future use
+                        _tokenDisplayCache.TryAdd(key, displayKey);
+                    }
+                    else
+                    {
+                        displayKey = "UNKNOWN_TOKEN";
+                        _tokenDisplayCache.TryAdd(key, displayKey);
+                    }
+                }
+                catch
+                {
+                    // Fallback to masking if lookup fails
+                    displayKey = MaskKey(key);
+                    _tokenDisplayCache.TryAdd(key, displayKey);
+                }
+            }
+        }
+        else
+        {
+            // For IP buckets and fallback cases, use the masking function
+            displayKey = MaskKey(key);
+        }
+
         string MaskKey(string key, int visibleChars = 4, char maskChar = '*')
         {
             if (string.IsNullOrEmpty(key) || key.Length <= visibleChars)
@@ -498,7 +544,7 @@ public class RateLimiter
         }
 
         _logger.LogInformation("🔧 Created {Type} rate limit bucket for {Key} with limit: {Limit}/{Window}s",
-            type, MaskKey(key), limit, windowSeconds);
+            type, displayKey, limit, windowSeconds);
             
         return new TokenBucket(
             limit,

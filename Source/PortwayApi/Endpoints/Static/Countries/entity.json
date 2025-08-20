@@ -1,0 +1,13 @@
+{
+  "ContentType": "application/json",
+  "ContentFile": "countries-2025.json",
+  "EnableFiltering": true,
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600", "700", "Synergy"],
+  "Documentation": {
+    "TagDescription": "**Mock Countries API**\n\nStatic country data for testing frontend applications and API simulation.\n\nSupports OData filtering: $filter, $select, $orderby, $top, $skip",
+    "MethodDescriptions": {
+      "GET": "Retrieve country data"
+    }
+  }
+}

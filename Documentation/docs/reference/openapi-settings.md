@@ -109,6 +109,8 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 
 ## Tag Description Best Practices
 
+It's wise to describe the tag description, with Markdown support.
+
 ### Formatting Guidelines
 
 Use **bold titles** and descriptive content:
@@ -123,22 +125,6 @@ Provide clear information about what the endpoint does:
 
 ```json
 "TagDescription": "**Financial Data**\n\nRetrieve outstanding debtor information and payment tracking. Access critical financial data for accounts receivable management and cash flow analysis."
-```
-
-### Add Warnings and Tips
-
-Use markdown admonitions for important information:
-
-```json
-"TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information. Query by assortment, search descriptions, and retrieve item details.\n\n[!TIP]\n> This endpoint doesn't include complex price information."
-```
-
-### Mention Integration Capabilities
-
-Highlight integration scenarios:
-
-```json
-"TagDescription": "**External Requests**\n\nAccess workflow information. Retrieve request records and integration data for cross-system synchronization and reporting."
 ```
 
 ## Method Descriptions

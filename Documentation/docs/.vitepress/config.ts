@@ -39,6 +39,7 @@ export default withMermaid(
           items: [
             { text: 'SQL', link: '/guide/endpoints-sql' },
             { text: 'Proxy', link: '/guide/endpoints-proxy' },
+            { text: 'Static', link: '/guide/endpoints-static' },
             { text: 'Composite', link: '/guide/endpoints-composite' },
             { text: 'File System', link: '/guide/endpoints-file' },
             { text: 'Webhook', link: '/guide/endpoints-webhook' }            

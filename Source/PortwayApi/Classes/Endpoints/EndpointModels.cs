@@ -102,6 +102,11 @@ public enum EndpointType
     Files,
 
     /// <summary>
+    /// Static endpoint for serving predefined content
+    /// </summary>
+    Static,
+
+    /// <summary>
     /// Private endpoint (not publicly accessible)
     /// </summary>
     Private
@@ -136,4 +141,40 @@ public class FileEndpointEntity
     /// List of environments allowed to access this endpoint
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
+}
+
+/// <summary>
+/// Represents a Static endpoint entity for serving predefined content
+/// </summary>
+public class StaticEndpointEntity
+{
+    /// <summary>
+    /// MIME type for the response (application/json, text/plain, image/png, etc.)
+    /// </summary>
+    public string ContentType { get; set; } = "text/plain";
+    
+    /// <summary>
+    /// Filename containing the static content (relative to the endpoint directory)
+    /// </summary>
+    public string ContentFile { get; set; } = "content.txt";
+    
+    /// <summary>
+    /// Whether OData filtering ($filter, $select, etc.) is enabled for this endpoint
+    /// </summary>
+    public bool EnableFiltering { get; set; } = false;
+    
+    /// <summary>
+    /// Whether this endpoint is private (not accessible via API)
+    /// </summary>
+    public bool IsPrivate { get; set; } = false;
+    
+    /// <summary>
+    /// List of environments allowed to access this endpoint
+    /// </summary>
+    public List<string>? AllowedEnvironments { get; set; }
+    
+    /// <summary>
+    /// OpenAPI documentation for this endpoint
+    /// </summary>
+    public Documentation? Documentation { get; set; }
 }

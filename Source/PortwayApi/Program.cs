@@ -498,8 +498,9 @@ try
     var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
     var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
     var fileEndpoints = EndpointHandler.GetFileEndpoints();
+    var staticEndpoints = EndpointHandler.GetStaticEndpoints();
 
-    EndpointSummaryHelper.LogEndpointSummary(sqlEndpoints, proxyEndpointMap, webhookEndpoints, fileEndpoints);
+    EndpointSummaryHelper.LogEndpointSummary(sqlEndpoints, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 
     // ================================
     // ENDPOINT MAPPING

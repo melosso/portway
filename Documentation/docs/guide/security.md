@@ -3,8 +3,8 @@
 Portway implements multiple layers of security to protect your APIs, data, and internal services. This guide covers authentication, authorization, network security, and best practices for securing your deployment.
 
 
-::: warning Security Notice
-Always follow your organization's security policies and compliance requirements when configuring Portway.
+::: warning Warning
+Always follow your organization's security policies and compliance requirements when configuring Portway. If you're not certain which internal guidelines you have, don't continue.
 :::
 
 ## Authentication

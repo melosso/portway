@@ -5,13 +5,12 @@
     "AllowedColumns": [
         "ItemCode","Description","Assortment","sysguid"
     ],
+    "AllowedMethods": ["GET"],
     "AllowedEnvironments": ["600","700"],
     "Documentation": {
-        "TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information. Query by assortment, search descriptions, and retrieve item details for integration with external systems.\n> [!tip]> This endpoint doesn't and will never include complex price information.",
+        "TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information. Query by assortment, search descriptions, and retrieve item details for integration with external systems.\n> [!important]\n>Remark:\n>This endpoint doesn't and will never include complex price information.",
         "MethodDescriptions": {
-            "GET": "Query product catalog",
-            "POST": "Add new products",
-            "PUT": "Update existing products"
+            "GET": "Retrieve product catalog"
         }
     }
 }

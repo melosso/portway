@@ -21,16 +21,31 @@ dotnet publish C:\Github\portway\Source\PortwayApi -c Release -o $deploymentPath
 Write-Host "Removing development files..."
 $filesToRemove = @(
     "*.pdb",
-    "*.xml",
     "appsettings.Development.json",
     "*.publish.ps1",
-    "*.db"
+    "*.db",
+    ".git*"
 )
 
 foreach ($pattern in $filesToRemove) {
     Get-ChildItem -Path $deploymentPath -Filter $pattern -Recurse -ErrorAction SilentlyContinue | 
     Remove-Item -Force -ErrorAction SilentlyContinue
 }
+
+# Remove .git folder specifically (if it exists)
+$gitFolder = Join-Path $deploymentPath ".git"
+if (Test-Path $gitFolder) {
+    Write-Host "Removing .git folder..."
+    Remove-Item -Path $gitFolder -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Remove XML documentation files (but not content files)
+Get-ChildItem -Path $deploymentPath -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue |
+Where-Object { 
+    $_.FullName -notlike "*\Endpoints\*" -and 
+    $_.Name -like "*.xml" 
+} |
+Remove-Item -Force -ErrorAction SilentlyContinue
 
 # Remove all localized folders with SqlClient resources, except for 'en' and 'nl'
 Get-ChildItem -Path $deploymentPath -Directory -ErrorAction SilentlyContinue |

@@ -23,9 +23,9 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
     {
         try
         {
-            // Load composite endpoint definitions
-            string endpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints");
-            var compositeEndpoints = LoadCompositeEndpoints(endpointsDirectory);
+            // Load composite endpoint definitions using the centralized EndpointHandler
+            var proxyEndpointMap = EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
+            var compositeEndpoints = EndpointHandler.GetCompositeDefinitions(proxyEndpointMap);
             
             // Add Composite tag to document if there are any composite endpoints
             if (compositeEndpoints.Any())
@@ -271,59 +271,6 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 Summary = "Sample sales order with multiple lines"
             }
         };
-    }
-
-    private Dictionary<string, CompositeDefinition> LoadCompositeEndpoints(string endpointsDirectory)
-    {
-        var compositeDefinitions = new Dictionary<string, CompositeDefinition>(StringComparer.OrdinalIgnoreCase);
-        
-        try
-        {
-            if (!Directory.Exists(endpointsDirectory))
-            {
-                _logger.LogWarning("Endpoints directory not found: {Directory}", endpointsDirectory);
-                return compositeDefinitions;
-            }
-            
-            // Get all JSON files in the endpoints directory and subdirectories
-            foreach (var file in Directory.GetFiles(endpointsDirectory, "*.json", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    // Read and parse the endpoint definition
-                    var json = File.ReadAllText(file);
-                    var entity = JsonSerializer.Deserialize<ExtendedEndpointEntity>(json, 
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    
-                    if (entity != null && entity.Type?.Equals("Composite", StringComparison.OrdinalIgnoreCase) == true 
-                        && entity.CompositeConfig != null)
-                    {
-                        // Extract endpoint name from directory name
-                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
-                        
-                        // Skip if no valid name could be extracted
-                        if (string.IsNullOrWhiteSpace(endpointName))
-                        {
-                            _logger.LogWarning("Could not determine endpoint name for composite endpoint: {File}", file);
-                            continue;
-                        }
-                        
-                        // Add to composite definitions
-                        compositeDefinitions[endpointName] = entity.CompositeConfig;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error parsing composite endpoint file: {File}", file);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading composite endpoints");
-        }
-        
-        return compositeDefinitions;
     }
 
     private List<string> GetAllowedEnvironments()

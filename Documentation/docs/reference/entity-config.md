@@ -1,6 +1,6 @@
 # Entity Configuration
 
-Entity configuration files define how endpoints behave and what data they expose. Each endpoint type (SQL, Proxy, Composite, Webhook, File) has specific configuration options.
+Entity configuration files define how endpoints behave and what data they expose. Each endpoint type (SQL, Proxy, Static, Composite, Webhook, File) has specific configuration options.
 
 ## File Structure
 
@@ -14,6 +14,10 @@ Entity configuration files are JSON files located in the endpoints directory str
   ├── Proxy/
   │   └── [EntityName]/
   │       └── entity.json
+  ├── Static/
+  │   └── [EntityName]/
+  │       ├── entity.json
+  │       └── [content-file]
   ├── Composite/
   │   └── [EntityName]/
   │       └── entity.json
@@ -127,6 +131,58 @@ Proxy entities forward requests to internal web services.
 | `Methods` | array | Yes | Allowed HTTP methods |
 | `IsPrivate` | boolean | No | Hide from API documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
+
+## Static Entity Configuration
+
+Static entities serve pre-defined content files with optional OData filtering capabilities.
+
+### Basic Example
+
+```json
+{
+  "ContentType": "application/xml",
+  "ContentFile": "summary.xml",
+  "EnableFiltering": true,
+  "IsPrivate": false,
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### With Documentation
+
+```json
+{
+  "ContentType": "application/json",
+  "ContentFile": "countries.json",
+  "EnableFiltering": true,
+  "AllowedEnvironments": ["prod", "dev"],
+  "Documentation": {
+    "TagDescription": "Country reference data for application forms and validation",
+    "MethodDescriptions": {
+      "GET": "Retrieve country list with optional filtering"
+    }
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `ContentType` | string | No | MIME type (auto-detected if not specified) |
+| `ContentFile` | string | Yes | Content filename relative to endpoint directory |
+| `EnableFiltering` | boolean | No | Enable OData query parameters (default: false) |
+| `IsPrivate` | boolean | No | Require authentication (default: false) |
+| `AllowedEnvironments` | array | Yes | Environments where endpoint is available |
+| `Documentation` | object | No | OpenAPI documentation metadata |
+
+### Supported Content Types
+
+- **JSON** (`application/json`) - With full OData filtering support
+- **XML** (`application/xml`) - With OData filtering support  
+- **CSV** (`text/csv`) - Raw file serving
+- **Text** (`text/plain`) - Raw file serving
+- **Images** (`image/*`) - Raw file serving
 
 ## Composite Entity Configuration
 

@@ -2,6 +2,8 @@
 
 This guide explains how to deploy the Portway API on a Windows Server using Internet Information Services (IIS), which is currently the only officially documented deployment method. 
 
+**Alternative Deployment:** For development and testing environments, you can use Docker Compose. See our [Docker Compose Installation Guide](docker-compose.md) for a quick setup.
+
 **Note:** If you're running the API using Docker (Compose) and would like to contribute, you're welcome to start a discussion on GitHub.
 
 ## Prerequisites
@@ -12,7 +14,7 @@ Before you begin, ensure you have:
 - [ASP.NET Core 9.0 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/9.0)
 
 > [!WARNING]
-> There's a slight difference between the x64-installer and the Hosting Bundle that ASP.NET Core 9.0 provides. Make sure to select the latter.
+> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core 9.0** provides. Make sure to choose the last option ("Hosting Bundle").
 
 > [!IMPORTANT]
 > This guide assumes you have basic knowledge of IIS configuration and data source connectivity. While we cover the essential steps, some details may require your existing expertise.

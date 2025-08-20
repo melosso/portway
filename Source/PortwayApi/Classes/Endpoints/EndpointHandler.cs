@@ -35,6 +35,7 @@ public class EndpointDefinition
     public bool IsComposite => Type == EndpointType.Composite || 
                               (CompositeConfig != null && !string.IsNullOrEmpty(CompositeConfig.Name));
     public bool IsSql => Type == EndpointType.SQL;
+    public bool IsStatic => Type == EndpointType.Static;
                               
     // Helper method to get a consistent tuple format compatible with existing code
     public (string Url, HashSet<string> Methods, bool IsPrivate, string Type) ToTuple()
@@ -51,6 +52,7 @@ public static class EndpointHandler
     private static Dictionary<string, EndpointDefinition>? _loadedSqlEndpoints = null;
     private static Dictionary<string, EndpointDefinition>? _loadedSqlWebhookEndpoints = null;
     private static Dictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
+    private static Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
 
     /// <summary>
@@ -122,6 +124,24 @@ public static class EndpointHandler
                 if (_loadedFileEndpoints == null)
                 {
                     _loadedFileEndpoints = LoadFileEndpoints(endpointsDirectory);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Loads static endpoints if they haven't been loaded yet
+    /// </summary>
+    private static void LoadStaticEndpointsIfNeeded(string endpointsDirectory)
+    {
+        // Use double-check locking pattern to ensure thread safety
+        if (_loadedStaticEndpoints == null)
+        {
+            lock (_loadLock)
+            {
+                if (_loadedStaticEndpoints == null)
+                {
+                    _loadedStaticEndpoints = LoadStaticEndpoints(endpointsDirectory);
                 }
             }
         }
@@ -467,6 +487,72 @@ public static class EndpointHandler
     }
 
     /// <summary>
+    /// Internal method to load all static endpoints from the endpoints directory
+    /// </summary>
+    private static Dictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory)
+    {
+        var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            if (!Directory.Exists(endpointsDirectory))
+            {
+                Log.Warning($"⚠️ Static endpoints directory not found: {endpointsDirectory}");
+                Directory.CreateDirectory(endpointsDirectory);
+                return endpoints;
+            }
+
+            // Get all entity.json files in the endpoints directory subdirectories
+            foreach (var file in Directory.GetFiles(endpointsDirectory, "entity.json", SearchOption.AllDirectories))
+            {
+                try
+                {
+                    // Read and parse the endpoint definition
+                    var json = File.ReadAllText(file);
+                    var definition = ParseStaticEndpointDefinition(json);
+
+                    if (definition != null)
+                    {
+                        // Extract endpoint name from directory name
+                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
+
+                        // Skip if no valid name could be extracted
+                        if (string.IsNullOrWhiteSpace(endpointName))
+                        {
+                            Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
+                            continue;
+                        }
+
+                        // Add the endpoint to the dictionary
+                        endpoints[endpointName] = definition;
+
+                        Log.Debug("📄 Static Endpoint: {Name} ({IsPrivate}) - {ContentType}",
+                            endpointName,
+                            definition.IsPrivate ? "Private" : "Public",
+                            definition.Properties?.GetValueOrDefault("ContentType", "unknown"));
+                    }
+                    else
+                    {
+                        Log.Warning("⚠️ Failed to load static endpoint from {File}", file);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "❌ Error parsing static endpoint file: {File}", file);
+                }
+            }
+
+            Log.Debug($"✅ Loaded {endpoints.Count} static endpoints from {endpointsDirectory}");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ Error scanning static endpoints directory: {Directory}", endpointsDirectory);
+        }
+
+        return endpoints;
+    }
+
+    /// <summary>
     /// Parses a file endpoint definition from JSON
     /// </summary>
     private static EndpointDefinition? ParseFileEndpointDefinition(string json)
@@ -501,11 +587,57 @@ public static class EndpointHandler
         return null;
     }
 
+    /// <summary>
+    /// Parses a static endpoint definition from JSON
+    /// </summary>
+    private static EndpointDefinition? ParseStaticEndpointDefinition(string json)
+    {
+        try
+        {
+            var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (entity != null)
+            {
+                return new EndpointDefinition
+                {
+                    Type = EndpointType.Static,
+                    AllowedEnvironments = entity.AllowedEnvironments,
+                    IsPrivate = entity.IsPrivate,
+                    Documentation = entity.Documentation,
+                    // Store static-specific properties in Properties dictionary
+                    Properties = new Dictionary<string, object>
+                    {
+                        ["ContentType"] = entity.ContentType,
+                        ["ContentFile"] = entity.ContentFile,
+                        ["EnableFiltering"] = entity.EnableFiltering
+                    }
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error parsing static endpoint definition");
+        }
+
+        return null;
+    }
+
     public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
     {
         string fileEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Files");
         LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
         return _loadedFileEndpoints!;
+    }
+
+    /// <summary>
+    /// Gets Static endpoints from the /endpoints/Static directory
+    /// </summary>
+    public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
+    {
+        string staticEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static");
+        LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
+        return _loadedStaticEndpoints!;
     }
 
     /// <summary>

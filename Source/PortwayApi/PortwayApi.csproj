@@ -4,7 +4,19 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Explicitly include all necessary folders and copy to output -->
+    <Content Include="Endpoints\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Environments\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="tokens\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="files\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Include other necessary content files -->
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Authentication & Identity -->
@@ -53,6 +65,11 @@
 
     <!-- HTTP Utilities -->
     <PackageReference Include="Flurl" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ensure Endpoints folder content is copied to output -->
+    <Content Update="endpoints\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

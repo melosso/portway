@@ -10,6 +10,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Xml.Linq;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
@@ -87,6 +88,22 @@ public class EndpointController : ControllerBase
                     allowedEnvironments = webhookEndpoint.AllowedEnvironments;
                 }
                 break;
+                
+            case EndpointType.Static:
+                var staticEndpoints = EndpointHandler.GetStaticEndpoints();
+                if (staticEndpoints.TryGetValue(endpointName, out var staticEndpoint))
+                {
+                    allowedEnvironments = staticEndpoint.AllowedEnvironments;
+                }
+                break;
+                
+            case EndpointType.Files:
+                var fileEndpoints = EndpointHandler.GetFileEndpoints();
+                if (fileEndpoints.TryGetValue(endpointName, out var fileEndpoint))
+                {
+                    allowedEnvironments = fileEndpoint.AllowedEnvironments;
+                }
+                break;
         }
 
         if (allowedEnvironments != null && 
@@ -160,6 +177,8 @@ public class EndpointController : ControllerBase
                     return await HandleSqlGetRequest(env, endpointName, id, select, filter, orderby, top, skip);
                 case EndpointType.Proxy:
                     return await HandleProxyRequest(env, endpointName, id, remainingPath, "GET");
+                case EndpointType.Static:
+                    return await HandleStaticGetRequest(env, endpointName, select, filter, orderby, top, skip);
                 case EndpointType.Composite:
                     Log.Warning("❌ Composite endpoints don't support GET requests");
                     return StatusCode(405, new { error = "Method not allowed for composite endpoints" });
@@ -179,6 +198,80 @@ public class EndpointController : ControllerBase
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Error"
             );
+        }
+    }
+
+    /// <summary>
+    /// Handles HEAD requests to static endpoints
+    /// </summary>
+    [HttpHead("{env}/{**catchall}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public IActionResult HeadAsync(string env, string catchall)
+    {
+        try
+        {
+            // Process the catchall to determine endpoint type
+            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            
+            // Only support HEAD for static endpoints
+            if (endpointType != EndpointType.Static)
+            {
+                return StatusCode(405, new { error = "HEAD method is only supported for static endpoints" });
+            }
+
+            Log.Debug("📄 HEAD request for static endpoint: {Name}", endpointName);
+
+            // Check environment restrictions
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            if (!isAllowed)
+            {
+                return errorResponse!;
+            }
+
+            // Get static endpoint definition
+            var staticEndpoints = EndpointHandler.GetStaticEndpoints();
+            if (!staticEndpoints.TryGetValue(endpointName, out var endpoint))
+            {
+                return NotFound();
+            }
+
+            // Build path to content file
+            var endpointDir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
+            var contentFilePath = Path.Combine(endpointDir, contentFile);
+
+            if (!System.IO.File.Exists(contentFilePath))
+            {
+                return NotFound();
+            }
+
+            // Get content type and file info
+            var contentType = endpoint.Properties["ContentType"].ToString();
+            
+            // Auto-detect content type if not specified
+            if (string.IsNullOrEmpty(contentType))
+            {
+                contentType = GetContentTypeFromExtension(contentFile);
+                Log.Information("🔍 Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
+            }
+            
+            var fileInfo = new FileInfo(contentFilePath);
+
+            // Set headers without returning body
+            Response.Headers["Content-Type"] = contentType;
+            Response.Headers["Content-Length"] = fileInfo.Length.ToString();
+            Response.Headers["Last-Modified"] = fileInfo.LastWriteTimeUtc.ToString("R");
+
+            Log.Information("✅ HEAD response for static content: {Endpoint} ({ContentType})", endpointName, contentType);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ Error processing HEAD request for {Path}", Request.Path);
+            return StatusCode(500);
         }
     }
 
@@ -808,6 +901,7 @@ public class EndpointController : ControllerBase
             _ when EndpointHandler.GetSqlEndpoints().ContainsKey(endpointName) => EndpointType.SQL,
             _ when EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy")).ContainsKey(endpointName) => EndpointType.Proxy,
             _ when EndpointHandler.GetFileEndpoints().ContainsKey(endpointName) => EndpointType.Files,
+            _ when EndpointHandler.GetStaticEndpoints().ContainsKey(endpointName) => EndpointType.Static,
             _ => EndpointType.Standard
         };
 
@@ -2074,6 +2168,629 @@ public class EndpointController : ControllerBase
     }
 
     /// <summary>
+    /// Handles Static GET requests
+    /// </summary>
+    private async Task<IActionResult> HandleStaticGetRequest(
+        string env,
+        string endpointName,
+        string? select,
+        string? filter,
+        string? orderby,
+        int top,
+        int skip)
+    {
+        var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
+        Log.Debug("📄 Static Content Request: {Url}", url);
+
+        try
+        {
+            // Get static endpoint definition
+            var staticEndpoints = EndpointHandler.GetStaticEndpoints();
+            if (!staticEndpoints.TryGetValue(endpointName, out var endpoint))
+            {
+                return NotFound(new { error = $"Static endpoint '{endpointName}' not found" });
+            }
+
+            // Check environment restrictions
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, EndpointType.Static);
+            if (!isAllowed)
+            {
+                return errorResponse!;
+            }
+
+            // Build path to content file
+            var endpointDir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
+            var contentFilePath = Path.Combine(endpointDir, contentFile);
+
+            if (!System.IO.File.Exists(contentFilePath))
+            {
+                Log.Warning("⚠️ Content file not found: {FilePath}", contentFilePath);
+                return NotFound(new { error = $"Content file not found: {contentFile}" });
+            }
+
+            // Get content type and filtering settings
+            var contentType = endpoint.Properties["ContentType"].ToString();
+            
+            // Auto-detect content type if not specified
+            if (string.IsNullOrEmpty(contentType))
+            {
+                contentType = GetContentTypeFromExtension(contentFile);
+                Log.Information("🔍 Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
+            }
+            
+            var enableFiltering = (bool)(endpoint.Properties.GetValueOrDefault("EnableFiltering", false));
+
+            // Content negotiation: Check if client's Accept header matches our content type
+            var acceptHeader = Request.Headers["Accept"].ToString();
+            if (!string.IsNullOrEmpty(acceptHeader) && acceptHeader != "*/*")
+            {
+                var acceptedTypes = acceptHeader.Split(',').Select(t => t.Trim().Split(';')[0]).ToList();
+                
+                // Check if our content type is acceptable to the client
+                if (!acceptedTypes.Contains(contentType) && !acceptedTypes.Contains("*/*"))
+                {
+                    Log.Debug("⚠️ Content negotiation failed: Client accepts {AcceptHeader}, endpoint provides {ContentType}", 
+                        acceptHeader, contentType);
+                    
+                    return StatusCode(406, new 
+                    { 
+                        error = "Not Acceptable",
+                        detail = $"Endpoint provides '{contentType}' but client accepts '{acceptHeader}'",
+                        availableContentType = contentType
+                    });
+                }
+            }
+
+            // Read content from file
+            var contentBytes = await System.IO.File.ReadAllBytesAsync(contentFilePath);
+
+            // Check if OData filtering is requested and supported
+            var hasODataParams = !string.IsNullOrEmpty(select) || !string.IsNullOrEmpty(filter) || 
+                               !string.IsNullOrEmpty(orderby) || Request.Query.ContainsKey("$top") || Request.Query.ContainsKey("$skip");
+
+            if (hasODataParams && enableFiltering)
+            {
+                if (contentType.Contains("json"))
+                {
+                    // Apply JSON filtering
+                    return await ApplyJsonFiltering(contentBytes, contentType, select, filter, orderby, top, skip);
+                }
+                else if (contentType.Contains("xml"))
+                {
+                    // Apply XML filtering
+                    return await ApplyXmlFiltering(contentBytes, contentType, select, filter, orderby, top, skip);
+                }
+            }
+
+            Log.Debug("✅ Serving static content: {Endpoint} ({ContentType})", endpointName, contentType);
+           
+            return File(contentBytes, contentType);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ Error serving static content for {Endpoint}", endpointName);
+            return StatusCode(500, new { error = "Error serving static content" });
+        }
+    }
+
+    /// <summary>
+    /// Applies JSON filtering using OData-style parameters
+    /// </summary>
+    private Task<IActionResult> ApplyJsonFiltering(
+        byte[] jsonBytes,
+        string contentType,
+        string? select,
+        string? filter,
+        string? orderby,
+        int top,
+        int skip)
+    {
+        try
+        {
+            var json = Encoding.UTF8.GetString(jsonBytes);
+            var jsonDoc = JsonDocument.Parse(json);
+            
+            // Start with the root data
+            JsonElement data = jsonDoc.RootElement;
+            List<JsonElement> items = new List<JsonElement>();
+            
+            // Handle different JSON structures
+            if (data.ValueKind == JsonValueKind.Array)
+            {
+                // Direct array
+                items = data.EnumerateArray().ToList();
+            }
+            else if (data.ValueKind == JsonValueKind.Object)
+            {
+                // Look for common array properties
+                var arrayProperties = new[] { "data", "items", "results", "value", "users", "records", "countries", "products", "orders", "customers" };
+                foreach (var prop in arrayProperties)
+                {
+                    if (data.TryGetProperty(prop, out var arrayElement) && arrayElement.ValueKind == JsonValueKind.Array)
+                    {
+                        items = arrayElement.EnumerateArray().ToList();
+                        Log.Debug("🔍 Found array property '{Property}' with {Count} items", prop, items.Count);
+                        break;
+                    }
+                }
+                
+                // If no array found, treat the object as a single item
+                if (items.Count == 0)
+                {
+                    Log.Debug("🔍 No array property found, treating root object as single item");
+                    items.Add(data);
+                }
+            }
+            
+            Log.Debug("🔍 Applying OData filtering to {Count} items", items.Count);
+            
+            // Apply filtering
+            if (!string.IsNullOrEmpty(filter))
+            {
+                items = ApplyFilter(items, filter);
+                Log.Debug("🔍 After filter: {Count} items", items.Count);
+            }
+            
+            // Apply ordering
+            if (!string.IsNullOrEmpty(orderby))
+            {
+                items = ApplyOrderBy(items, orderby);
+                Log.Debug("🔍 After orderby: {Count} items", items.Count);
+            }
+            
+            // Apply pagination (skip and top)
+            var totalCount = items.Count;
+            items = items.Skip(skip).Take(top).ToList();
+            Log.Debug("🔍 After pagination (skip:{Skip}, top:{Top}): {Count} items", skip, top, items.Count);
+            
+            // Apply field selection
+            if (!string.IsNullOrEmpty(select))
+            {
+                items = ApplySelect(items, select);
+                Log.Debug("🔍 After select: field selection applied", items.Count);
+            }
+            
+            // Build result in the correct API format
+            var result = new
+            {
+                count = items.Count,
+                value = items.Select(SerializeJsonElement).ToArray(),
+                nextLink = (string?)null  // Static endpoints don't support pagination links
+            };
+            
+            var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            var resultBytes = Encoding.UTF8.GetBytes(resultJson);
+            
+            Log.Debug("✅ JSON filtering applied successfully: {Count} items returned", items.Count);
+
+            Response.Headers["X-Filtering-Status"] = "Applied";
+            Response.Headers["X-Total-Count"] = totalCount.ToString();
+            Response.Headers["X-Returned-Count"] = items.Count.ToString();
+            
+            return Task.FromResult<IActionResult>(File(resultBytes, contentType));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ Error applying JSON filtering: {Message}", ex.Message);
+            
+            // Return error response
+            var errorResponse = new
+            {
+                error = "JSON filtering failed",
+                details = ex.Message,
+                originalDataAvailable = true
+            };
+            
+            var errorJson = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions { WriteIndented = true });
+            var errorBytes = Encoding.UTF8.GetBytes(errorJson);
+            
+            Response.Headers["X-Filtering-Status"] = "Error";
+            return Task.FromResult<IActionResult>(StatusCode(500, errorResponse));
+        }
+    }
+    
+    /// <summary>
+    /// Applies OData-style filtering to JSON items
+    /// </summary>
+    private List<JsonElement> ApplyFilter(List<JsonElement> items, string filter)
+    {
+        try
+        {
+            Log.Debug("🔍 Parsing filter: {Filter}", filter);
+            
+            // Parse filter expression (simplified OData filter support)
+            // Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc.
+            var filterParts = filter.Split(' ');
+            if (filterParts.Length >= 3)
+            {
+                var field = filterParts[0];
+                var operation = filterParts[1].ToLower();
+                var value = string.Join(" ", filterParts.Skip(2));
+                
+                // Remove quotes from string values
+                value = value.Trim('\'', '"');
+                
+                Log.Debug("🔍 Filter components - Field: {Field}, Operation: {Operation}, Value: {Value}", field, operation, value);
+                
+                var filteredItems = items.Where(item =>
+                {
+                    if (!item.TryGetProperty(field, out var fieldValue))
+                    {
+                        Log.Debug("🔍 Field '{Field}' not found in item", field);
+                        return false;
+                    }
+                    
+                    Log.Debug("🔍 Comparing field '{Field}' value '{FieldValue}' with '{TargetValue}' using operation '{Operation}'", 
+                        field, fieldValue, value, operation);
+                        
+                    var result = operation switch
+                    {
+                        "eq" => CompareValues(fieldValue, value, "eq"),
+                        "ne" => CompareValues(fieldValue, value, "ne"),
+                        "gt" => CompareValues(fieldValue, value, "gt"),
+                        "lt" => CompareValues(fieldValue, value, "lt"),
+                        "ge" => CompareValues(fieldValue, value, "ge"),
+                        "le" => CompareValues(fieldValue, value, "le"),
+                        "contains" => fieldValue.GetString()?.Contains(value, StringComparison.OrdinalIgnoreCase) == true,
+                        "startswith" => fieldValue.GetString()?.StartsWith(value, StringComparison.OrdinalIgnoreCase) == true,
+                        "endswith" => fieldValue.GetString()?.EndsWith(value, StringComparison.OrdinalIgnoreCase) == true,
+                        _ => false
+                    };
+                    
+                    Log.Debug("🔍 Filter result for item: {Result}", result);
+                    return result;
+                }).ToList();
+                
+                Log.Debug("🔍 Filter matched {Count} items out of {TotalCount}", filteredItems.Count, items.Count);
+                return filteredItems;
+            }
+            
+            Log.Warning("⚠️ Filter expression could not be parsed: {Filter}", filter);
+            return items; // Return original if filter couldn't be parsed
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ Filter parsing failed, returning unfiltered data");
+            return items;
+        }
+    }
+    
+    /// <summary>
+    /// Compares JSON values for filtering
+    /// </summary>
+    private bool CompareValues(JsonElement fieldValue, string targetValue, string operation)
+    {
+        try
+        {
+            Log.Debug("🔍 CompareValues - FieldValue: {FieldValue} ({Type}), TargetValue: {TargetValue}, Operation: {Operation}", 
+                fieldValue, fieldValue.ValueKind, targetValue, operation);
+            
+            switch (fieldValue.ValueKind)
+            {
+                case JsonValueKind.String:
+                    var stringValue = fieldValue.GetString() ?? "";
+                    var result = operation switch
+                    {
+                        "eq" => stringValue.Equals(targetValue, StringComparison.OrdinalIgnoreCase),
+                        "ne" => !stringValue.Equals(targetValue, StringComparison.OrdinalIgnoreCase),
+                        "gt" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) > 0,
+                        "lt" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) < 0,
+                        "ge" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) >= 0,
+                        "le" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) <= 0,
+                        _ => false
+                    };
+                    Log.Debug("🔍 String comparison result: {Result}", result);
+                    return result;
+                    
+                case JsonValueKind.Number:
+                    if (double.TryParse(targetValue, out var targetNumber) && fieldValue.TryGetDouble(out var fieldNumber))
+                    {
+                        return operation switch
+                        {
+                            "eq" => Math.Abs(fieldNumber - targetNumber) < 0.0001,
+                            "ne" => Math.Abs(fieldNumber - targetNumber) >= 0.0001,
+                            "gt" => fieldNumber > targetNumber,
+                            "lt" => fieldNumber < targetNumber,
+                            "ge" => fieldNumber >= targetNumber,
+                            "le" => fieldNumber <= targetNumber,
+                            _ => false
+                        };
+                    }
+                    break;
+                    
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    if (bool.TryParse(targetValue, out var targetBool))
+                    {
+                        var fieldBool = fieldValue.GetBoolean();
+                        return operation switch
+                        {
+                            "eq" => fieldBool == targetBool,
+                            "ne" => fieldBool != targetBool,
+                            _ => false
+                        };
+                    }
+                    break;
+            }
+            
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Applies OData-style ordering to JSON items
+    /// </summary>
+    private List<JsonElement> ApplyOrderBy(List<JsonElement> items, string orderby)
+    {
+        try
+        {
+            var orderParts = orderby.Split(' ');
+            var field = orderParts[0];
+            var direction = orderParts.Length > 1 && orderParts[1].ToLower() == "desc" ? "desc" : "asc";
+            
+            return direction == "desc"
+                ? items.OrderByDescending(item => GetSortableValue(item, field)).ToList()
+                : items.OrderBy(item => GetSortableValue(item, field)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ OrderBy parsing failed, returning original order");
+            return items;
+        }
+    }
+    
+    /// <summary>
+    /// Gets a sortable value from a JSON element
+    /// </summary>
+    private object GetSortableValue(JsonElement item, string field)
+    {
+        if (!item.TryGetProperty(field, out var fieldValue))
+            return "";
+            
+        return fieldValue.ValueKind switch
+        {
+            JsonValueKind.String => fieldValue.GetString() ?? "",
+            JsonValueKind.Number => fieldValue.TryGetDouble(out var d) ? d : 0,
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => ""
+        };
+    }
+    
+    /// <summary>
+    /// Applies field selection to JSON items
+    /// </summary>
+    private List<JsonElement> ApplySelect(List<JsonElement> items, string select)
+    {
+        try
+        {
+            var fields = select.Split(',').Select(f => f.Trim()).ToArray();
+            var selectedItems = new List<JsonElement>();
+            
+            foreach (var item in items)
+            {
+                var selectedObject = new Dictionary<string, object?>();
+                
+                foreach (var field in fields)
+                {
+                    if (item.TryGetProperty(field, out var fieldValue))
+                    {
+                        selectedObject[field] = SerializeJsonElement(fieldValue);
+                    }
+                }
+                
+                var json = JsonSerializer.Serialize(selectedObject);
+                var element = JsonDocument.Parse(json).RootElement;
+                selectedItems.Add(element);
+            }
+            
+            return selectedItems;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ Select parsing failed, returning all fields");
+            return items;
+        }
+    }
+
+    /// <summary>
+    /// Applies XML filtering using OData-style parameters
+    /// </summary>
+    private Task<IActionResult> ApplyXmlFiltering(
+        byte[] xmlBytes,
+        string contentType,
+        string? select,
+        string? filter,
+        string? orderby,
+        int top,
+        int skip)
+    {
+        try
+        {
+            var xmlString = Encoding.UTF8.GetString(xmlBytes);
+            var doc = XDocument.Parse(xmlString);
+            
+            // Find repeating elements (likely the data items to filter)
+            var rootElement = doc.Root;
+            if (rootElement == null)
+            {
+                return Task.FromResult<IActionResult>(File(xmlBytes, contentType));
+            }
+
+            // Find the main data items - prioritize direct children of root
+            var directChildren = rootElement.Elements().ToList();
+            List<XElement> items;
+            
+            if (directChildren.Count > 1)
+            {
+                // Multiple direct children - these are likely our main data items
+                items = directChildren;
+                Log.Debug("🔍 Found {Count} direct child elements under root '{RootName}'", items.Count, rootElement.Name.LocalName);
+            }
+            else
+            {
+                // Look for collections of similar elements at any level
+                var elementGroups = rootElement.Descendants()
+                    .GroupBy(e => e.Name.LocalName)
+                    .Where(g => g.Count() > 1)
+                    .OrderByDescending(g => g.Count())
+                    .FirstOrDefault();
+
+                if (elementGroups != null)
+                {
+                    // Found repeating elements - these are likely our data items
+                    items = elementGroups.ToList();
+                    Log.Debug("🔍 Found {Count} repeating XML elements of type '{ElementName}'", items.Count, elementGroups.Key);
+                }
+                else
+                {
+                    // Fallback: treat root as single item
+                    items = new List<XElement> { rootElement };
+                    Log.Debug("🔍 No repeating elements found, treating root as single item");
+                }
+            }
+
+            var totalCount = items.Count;
+            Log.Debug("🔍 Applying XML filtering to {Count} elements", totalCount);
+
+            // Apply filtering
+            if (!string.IsNullOrEmpty(filter))
+            {
+                items = ApplyXmlFilter(items, filter);
+                Log.Debug("🔍 After filter: {Count} items remaining", items.Count);
+            }
+
+            // Apply ordering
+            if (!string.IsNullOrEmpty(orderby))
+            {
+                items = ApplyXmlOrderBy(items, orderby);
+                Log.Debug("🔍 After orderby: items reordered");
+            }
+
+            // Apply skip
+            if (skip > 0)
+            {
+                items = items.Skip(skip).ToList();
+                Log.Debug("🔍 After skip: {Count} items remaining", items.Count);
+            }
+
+            // Apply top
+            if (top > 0 && top < items.Count)
+            {
+                items = items.Take(top).ToList();
+                Log.Debug("🔍 After top: {Count} items selected", items.Count);
+            }
+
+            // Apply select (field selection)
+            if (!string.IsNullOrEmpty(select))
+            {
+                items = ApplyXmlSelect(items, select);
+                Log.Debug("🔍 After select: field selection applied");
+            }
+
+            // Rebuild XML with filtered items
+            XDocument resultDoc;
+            if (directChildren.Count > 1)
+            {
+                // Create new document with same structure but filtered items
+                resultDoc = new XDocument(doc.Declaration);
+                var newRoot = new XElement(rootElement.Name, rootElement.Attributes());
+                
+                // Add filtered items back to the root
+                foreach (var item in items)
+                {
+                    newRoot.Add(new XElement(item));
+                }
+                
+                resultDoc.Add(newRoot);
+            }
+            else
+            {
+                // Simple structure - just replace root children
+                resultDoc = new XDocument(doc.Declaration);
+                var newRoot = new XElement(rootElement.Name, rootElement.Attributes());
+                newRoot.Add(items);
+                resultDoc.Add(newRoot);
+            }
+
+            var resultXml = resultDoc.ToString();
+            var resultBytes = Encoding.UTF8.GetBytes(resultXml);
+            
+            Log.Debug("✅ XML filtering applied successfully: {Count} items returned out of {Total}", items.Count, totalCount);
+
+            Response.Headers["X-Filtering-Status"] = "Applied";
+            Response.Headers["X-Total-Count"] = totalCount.ToString();
+            Response.Headers["X-Returned-Count"] = items.Count.ToString();
+            
+            return Task.FromResult<IActionResult>(File(resultBytes, contentType));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ Error applying XML filtering: {Message}", ex.Message);
+            
+            // Fallback to original content
+            Response.Headers["X-Filtering-Status"] = "Error";
+            return Task.FromResult<IActionResult>(File(xmlBytes, contentType));
+        }
+    }
+
+    /// <summary>
+    /// Serializes a JsonElement to an object for JSON output
+    /// </summary>
+    private object? SerializeJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject().ToDictionary(p => p.Name, p => SerializeJsonElement(p.Value)),
+            JsonValueKind.Array => element.EnumerateArray().Select(SerializeJsonElement).ToArray(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt32(out var i) ? i : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => element.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Auto-detects content type based on file extension
+    /// </summary>
+    private string GetContentTypeFromExtension(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        
+        return extension switch
+        {
+            ".json" => "application/json",
+            ".xml" => "application/xml",
+            ".html" => "text/html",
+            ".htm" => "text/html",
+            ".css" => "text/css",
+            ".js" => "application/javascript",
+            ".txt" => "text/plain",
+            ".csv" => "text/csv",
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".svg" => "image/svg+xml",
+            ".webp" => "image/webp",
+            ".ico" => "image/x-icon",
+            ".pdf" => "application/pdf",
+            ".zip" => "application/zip",
+            ".mp4" => "video/mp4",
+            ".mp3" => "audio/mpeg",
+            ".wav" => "audio/wav",
+            _ => "application/octet-stream"
+        };
+    }
+
+    /// <summary>
     /// Helper method to create a standard error response
     /// </summary>
     private IActionResult CreateErrorResponse(string message, string? detail = null, int statusCode = 400)
@@ -2227,5 +2944,158 @@ public class EndpointController : ControllerBase
             await _next(context);
         }
     }
+
+    /// <summary>
+    /// Applies XML filtering using OData $filter syntax
+    /// </summary>
+    private List<XElement> ApplyXmlFilter(List<XElement> items, string filter)
+    {
+        try
+        {
+            Log.Debug("🔍 Parsing XML filter: {Filter}", filter);
+            
+            // Simple filter implementations for common patterns
+            if (filter.Contains(" eq "))
+            {
+                // Handle equality: field eq 'value'
+                var parts = filter.Split(" eq ");
+                if (parts.Length == 2)
+                {
+                    var fieldName = parts[0].Trim();
+                    var fieldValue = parts[1].Trim().Trim('\'').Trim('"');
+                    
+                    return items.Where(item => 
+                    {
+                        var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+                        return element?.Value?.Equals(fieldValue, StringComparison.OrdinalIgnoreCase) == true;
+                    }).ToList();
+                }
+            }
+            else if (filter.Contains(" contains "))
+            {
+                // Handle contains: contains(field, 'value')
+                var containsMatch = Regex.Match(filter, @"contains\((\w+),\s*['""]([^'""]+)['""]", RegexOptions.IgnoreCase);
+                if (containsMatch.Success)
+                {
+                    var fieldName = containsMatch.Groups[1].Value;
+                    var fieldValue = containsMatch.Groups[2].Value;
+                    
+                    return items.Where(item => 
+                    {
+                        var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+                        return element?.Value?.Contains(fieldValue, StringComparison.OrdinalIgnoreCase) == true;
+                    }).ToList();
+                }
+                
+                // Handle simple contains: field contains 'value'
+                var simpleParts = filter.Split(" contains ");
+                if (simpleParts.Length == 2)
+                {
+                    var fieldName = simpleParts[0].Trim();
+                    var fieldValue = simpleParts[1].Trim().Trim('\'').Trim('"');
+                    
+                    return items.Where(item => 
+                    {
+                        var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+                        return element?.Value?.Contains(fieldValue, StringComparison.OrdinalIgnoreCase) == true;
+                    }).ToList();
+                }
+            }
+            
+            Log.Warning("⚠️ Unsupported XML filter pattern: {Filter}", filter);
+            return items;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ XML filter parsing failed: {Filter}, returning unfiltered results", filter);
+            return items;
+        }
+    }
+
+    /// <summary>
+    /// Applies XML ordering using OData $orderby syntax
+    /// </summary>
+    private List<XElement> ApplyXmlOrderBy(List<XElement> items, string orderby)
+    {
+        try
+        {
+            Log.Debug("🔍 Parsing XML orderby: {OrderBy}", orderby);
+            
+            var parts = orderby.Split(' ');
+            var fieldName = parts[0].Trim();
+            var direction = parts.Length > 1 && parts[1].Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+            
+            if (direction == "desc")
+            {
+                return items.OrderByDescending(item =>
+                {
+                    var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+                    return element?.Value ?? "";
+                }).ToList();
+            }
+            else
+            {
+                return items.OrderBy(item =>
+                {
+                    var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
+                    return element?.Value ?? "";
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ XML orderby parsing failed: {OrderBy}, returning original order", orderby);
+            return items;
+        }
+    }
+
+    /// <summary>
+    /// Applies XML field selection using OData $select syntax
+    /// </summary>
+    private List<XElement> ApplyXmlSelect(List<XElement> items, string select)
+    {
+        try
+        {
+            Log.Debug("🔍 Parsing XML select: {Select}", select);
+            
+            var fields = select.Split(',').Select(f => f.Trim()).ToList();
+            var selectedItems = new List<XElement>();
+            
+            foreach (var item in items)
+            {
+                var newItem = new XElement(item.Name);
+                
+                // Copy attributes
+                foreach (var attr in item.Attributes())
+                {
+                    newItem.Add(new XAttribute(attr));
+                }
+                
+                // Add only selected fields
+                foreach (var field in fields)
+                {
+                    var elements = item.Descendants().Where(e => e.Name.LocalName.Equals(field, StringComparison.OrdinalIgnoreCase));
+                    foreach (var element in elements)
+                    {
+                        // Only add direct children, not nested descendants
+                        if (element.Parent == item)
+                        {
+                            newItem.Add(new XElement(element));
+                        }
+                    }
+                }
+                
+                selectedItems.Add(newItem);
+            }
+            
+            return selectedItems;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "⚠️ XML select parsing failed: {Select}, returning all fields", select);
+            return items;
+        }
+    }
+
     #endregion
 }

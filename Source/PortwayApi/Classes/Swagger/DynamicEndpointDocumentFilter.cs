@@ -44,6 +44,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             AddSqlEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter, documentTags);
             AddProxyEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter, documentTags);
             AddWebhookEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter);
+            AddStaticEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter, documentTags);
             
             // Collect file endpoint tags (but don't create operations since they're handled by EndpointController)
             CollectFileEndpointTags(documentTags);
@@ -423,6 +424,158 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             {
                 documentTags[endpointName] = definition.Documentation.TagDescription;
             }
+        }
+    }
+    
+    /// <summary>
+    /// Adds static endpoints to the OpenAPI document
+    /// </summary>
+    private void AddStaticEndpoints(OpenApiDocument swaggerDoc, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    {
+        var staticEndpoints = EndpointHandler.GetStaticEndpoints();
+        
+        foreach (var endpoint in staticEndpoints)
+        {
+            string endpointName = endpoint.Key;
+            var definition = endpoint.Value;
+            
+            // Skip private endpoints
+            if (definition.IsPrivate)
+                continue;
+            
+            // Collect tag description
+            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
+            {
+                documentTags[endpointName] = definition.Documentation.TagDescription;
+            }
+            
+            // Get content type and filtering capability
+            var contentType = definition.Properties?.GetValueOrDefault("ContentType", "text/plain")?.ToString() ?? "text/plain";
+            var enableFiltering = (bool)(definition.Properties?.GetValueOrDefault("EnableFiltering", false) ?? false);
+            
+            // Create single OpenAPI path with environment parameter
+            string path = $"/api/{{env}}/{endpointName}";
+            
+            if (!swaggerDoc.Paths.ContainsKey(path))
+            {
+                swaggerDoc.Paths[path] = new OpenApiPathItem();
+            }
+                
+            // Add GET operation
+            var getOperation = new OpenApiOperation
+            {
+                OperationId = $"get{endpointName}Static{operationIdCounter++}",
+                Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("GET") ?? $"Get static content from {endpointName}",
+                Description = GetStaticOperationDescription("GET", endpointName, definition, contentType),
+                Tags = new List<OpenApiTag> { new OpenApiTag { Name = endpointName } },
+                Parameters = new List<OpenApiParameter>
+                {
+                    // Environment parameter
+                    new OpenApiParameter
+                    {
+                        Name = "env",
+                        In = ParameterLocation.Path,
+                        Required = true,
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "string",
+                            Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+                        },
+                        Description = "Environment identifier"
+                    },
+                    // Accept header parameter with the correct content type
+                    new OpenApiParameter
+                    {
+                        Name = "Accept",
+                        In = ParameterLocation.Header,
+                        Required = false,
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "string",
+                            Default = new OpenApiString(contentType)
+                        },
+                        Description = $"Specifies the media type of the response (default is {contentType})"
+                    }
+                },
+                Responses = new OpenApiResponses
+                {
+                    ["200"] = new OpenApiResponse
+                    {
+                        Description = "Static content returned successfully",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            [contentType] = new OpenApiMediaType
+                            {
+                                Schema = contentType.Contains("json") 
+                                    ? new OpenApiSchema { Type = "object", Description = "Static JSON content" }
+                                    : new OpenApiSchema { Type = "string", Description = "Static content" }
+                            }
+                        }
+                    },
+                    ["404"] = new OpenApiResponse
+                    {
+                        Description = "Static endpoint not found",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema { Type = "object" }
+                            }
+                        }
+                    }
+                }
+            };
+            
+            // Add OData parameters if filtering is enabled and content supports filtering
+            if (enableFiltering && (contentType.Contains("json") || contentType.Contains("xml")))
+            {
+                getOperation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "$select",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = "string" },
+                    Description = "Select specific fields (OData $select)"
+                });
+                
+                getOperation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "$filter",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = "string" },
+                    Description = "Filter results (OData $filter)"
+                });
+                
+                getOperation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "$orderby",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = "string" },
+                    Description = "Sort results (OData $orderby)"
+                });
+                
+                getOperation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "$top",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = "integer", Default = new OpenApiInteger(10) },
+                    Description = "Maximum number of results (OData $top)"
+                });
+                
+                getOperation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "$skip",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = "integer", Default = new OpenApiInteger(0) },
+                    Description = "Number of results to skip (OData $skip)"
+                });
+            }
+            
+            swaggerDoc.Paths[path].Operations[OperationType.Get] = getOperation;
         }
     }
     
@@ -811,6 +964,22 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         {
             return $"Proxies {method} requests to an internal webservice.";
         }
+    }
+    
+    /// <summary>
+    /// Gets the operation description for static endpoints, using custom description if available or default format
+    /// </summary>
+    private string GetStaticOperationDescription(string method, string endpointName, EndpointDefinition definition, string contentType)
+    {
+        // Check if there's a custom description for this method
+        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customDescription) == true 
+            && !string.IsNullOrWhiteSpace(customDescription))
+        {
+            return customDescription;
+        }
+        
+        // Return default description for static endpoints
+        return $"Returns static {contentType} content from the {endpointName} endpoint.";
     }
     
     /// <summary>

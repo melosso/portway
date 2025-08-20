@@ -14,11 +14,12 @@ Before you begin, make sure you have:
 
 ## Installation
 
+We offer two methods, beginning with installation on Windows Server.
 
 ### Download and Extract
 
 1. Go to the [Releases page](https://github.com/melosso/portway/releases/)
-2. Download the latest `Deployment.zip` file
+2. Download the latest `*-Deployment.zip` file
 3. Extract it to your IIS directory (e.g., `C:\path\to\your\PortwayApi`)
 
 ---
@@ -26,7 +27,9 @@ Before you begin, make sure you have:
 
 ### Alternative: Docker Compose (Recommended for Home Lab Users)
 
-You can quickly deploy Portway using Docker Compose and the official image:
+You can quickly deploy Portway using Docker Compose. For a complete setup guide with detailed configuration options, see our [Docker Compose Installation Guide](docker-compose.md).
+
+Quick start:
 
 ```yaml
 services:
@@ -51,7 +54,7 @@ Then run:
 docker compose pull && docker compose up -d
 ```
 
-This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment.
+This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment. 
 
 ### Configure IIS
 

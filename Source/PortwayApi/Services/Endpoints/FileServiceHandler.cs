@@ -93,7 +93,7 @@ public class FileHandlerService : IDisposable
         
         // Start a timer to refresh the file indices periodically
         _ = new Timer(_ => _fileSystemIndex.RefreshAllIndicesAsync().ConfigureAwait(false), 
-            null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+            null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
     }
 
     /// <summary>

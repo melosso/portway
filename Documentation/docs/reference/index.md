@@ -13,11 +13,13 @@ graph TD
     B -->|Route| D{Endpoint Type}
     D -->|SQL| E[SQL Endpoints]
     D -->|Proxy| F[Proxy Endpoints]
+    D -->|Static| M[Static Endpoints]
     D -->|Composite| G[Composite Endpoints]
     D -->|Webhook| H[Webhook Endpoints]
     D -->|Files| K[Files Endpoints]
     E -->|Query| I[SQL Server]
     F -->|Forward| J[Internal Services]
+    M -->|Serve| N[Content Files]
     G -->|Orchestrate| F
     H -->|Store| I
     K -->|Upload/Download| L[File Storage]
@@ -54,6 +56,13 @@ Forward requests to internal web services.
 ```http
 GET /api/700/Accounts
 POST /api/700/Orders
+```
+
+### Static Endpoints
+Serve static content files with optional OData filtering.
+
+```http
+GET /api/600/ProductionMachine?$top=1&$filter=status eq 'running'
 ```
 
 ### Composite Endpoints

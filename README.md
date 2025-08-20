@@ -172,6 +172,19 @@ Combines multiple calls into a single logical transaction for APIs requiring seq
 }
 ```
 
+#### Static Endpoint — `endpoints/Static/ProductionMachine/entity.json`
+
+Serves static content (JSON, XML, CSV, etc.) with optional OData filtering support.
+
+```json
+{
+  "ContentType": "application/xml",
+  "ContentFile": "summary.xml",
+  "EnableFiltering": true,
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
 #### Files Endpoint — `endpoints/Files/Documents/entity.json`
 
 Stores and serves files such as documents, images, or data files.
@@ -272,6 +285,15 @@ Content-Type: application/json
     { "Itemcode": "BEK0002", "Quantity": 4, "Price": 0 }
   ]
 }
+```
+
+### Static
+
+Serve static content with optional OData filtering:
+
+```http
+GET /api/prod/ProductionMachine?$top=1&$filter=status eq 'running'
+Accept: application/xml
 ```
 
 ### Files

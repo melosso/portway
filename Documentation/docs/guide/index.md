@@ -14,10 +14,13 @@ Portway is a lightweight API gateway designed specifically for Windows environme
 
 - **SQL Server databases** - Expose tables and stored procedures as REST APIs
 - **Internal services** - Proxy requests to internal web services with authentication
+- **Static content** - Serve JSON, XML, CSV files with optional OData filtering
 - **Webhook endpoints** - Receive and process webhooks from external systems
 - **Composite operations** - Chain multiple operations in a single request
 
 ## Key Features
+
+We've built Portway in a way to include commonly requested features, such as:
 
 ### 🔐 Enterprise Security
 - Token-based authentication with scoped access
@@ -40,7 +43,9 @@ Portway is a lightweight API gateway designed specifically for Windows environme
 - SQL endpoints with OData query support
 - Proxy endpoints for service forwarding
 - Composite endpoints for multi-step operations
+- File endpoints for document storage and retrieval
 - Webhook endpoints for external integrations
+- Static endpoints for serving content files
 
 ## Getting Help
 

@@ -5,7 +5,7 @@
     "Documentation": {
         "TagDescription": "**Product Classifications**\n\nAccess all unique account classifications, which is used to segment the accounts effectively.",
         "MethodDescriptions": {
-            "GET": "Query account classifications"
+            "GET": "Retrieve account classifications"
         }
     }
 } 
