@@ -1,4 +1,5 @@
 Deployment/PortwayApi/log/
+Deployment/PortwayApi/tokens/
 # Ignore log files
 *.log
 /logs/
