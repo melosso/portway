@@ -69,6 +69,7 @@ services:
       - ./log:/app/log
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
 ```
 
 Then run:
