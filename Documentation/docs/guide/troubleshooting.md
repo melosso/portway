@@ -1,6 +1,6 @@
 # Troubleshooting
 
-When working with your Portway gateway, you might encounter various issues that can disrupt your API operations. This guide walks you through the most common problems and provides step-by-step solutions to get you back on track quickly. Rather than just listing fixes, we'll help you understand what's happening behind the scenes so you can troubleshoot more effectively in the future.
+This guide is designed for consultants, administrators, and technical support staff who need to diagnose and resolve issues with Portway gateway deployments. Rather than just listing fixes, this guide helps you understand the underlying causes of problems so you can more effectively support your users and prevent recurring issues.
 
 **Quick actions:**
 
@@ -8,105 +8,161 @@ When working with your Portway gateway, you might encounter various issues that 
 
 ## Common Issues
 
+The following issues represent the most frequent problems encountered in production Portway deployments. Each includes guidance for both immediate resolution and long-term prevention.
+
 ### Authentication Failures
 
-Authentication problems are among the most frequent issues you'll encounter when working with the Portway gateway. These typically manifest when your requests can't be properly verified or when your credentials don't have the right permissions.
+Authentication issues are the most common problems reported by API consumers. These occur when requests cannot be verified or when credentials lack proper permissions.
 
-#### When Your Token Isn't Working
+#### Missing or Invalid Tokens
 
-If you're seeing 401 Unauthorized responses or messages about authentication being required, the problem usually lies with your Bearer token. The gateway requires every API request to include a valid token in the Authorization header, and when this is missing or incorrect, your requests will be rejected.
+**Symptoms:**
+- Users receive `401 Unauthorized` responses
+- "Authentication required" error messages
+- "Invalid or expired token" errors in logs
 
-Start by checking that your requests are actually sending the token. Your HTTP requests should include a header that looks like this:
+**Common Causes:**
+- Missing Authorization header in client requests
+- Expired or revoked authentication tokens
+- Incorrectly formatted Bearer token headers
+- Token associated with deleted or disabled user accounts
 
-```http
-Authorization: Bearer YOUR_TOKEN
-```
+**Diagnostic Steps:**
 
-If the header is present but you're still getting authentication errors, the token itself might be invalid or expired. The most reliable way to verify this is to check whether the user associated with your token still exists in the system. You can do this by running the TokenGenerator tool:
+1. **Verify token format in user requests:**
+   Ensure client applications include the proper header:
+   ```http
+   Authorization: Bearer YOUR_TOKEN
+   ```
 
-```powershell
-# Run TokenGenerator
-cd tools\TokenGenerator
-.\TokenGenerator.exe
-```
+2. **Check token validity:**
+   Use TokenGenerator to verify the token and associated user still exist:
+   ```powershell
+   # Run TokenGenerator
+   cd tools\TokenGenerator
+   .\TokenGenerator.exe
+   ```
 
-Sometimes the simplest solution is to generate a fresh token. When you do this, make sure to revoke the old token to prevent any security issues:
+3. **Review authentication logs:**
+   Look for patterns in failed authentication attempts to identify systemic issues.
 
-```powershell
-# Run TokenGenerator
-cd tools\TokenGenerator
-.\TokenGenerator.exe
-```
+**Solutions:**
+
+- **Generate new token:** Create a fresh token for the user and ensure old tokens are properly revoked:
+  ```powershell
+  # Run TokenGenerator
+  cd tools\TokenGenerator
+  .\TokenGenerator.exe
+  ```
+
+- **User guidance:** Provide clear documentation on proper Authorization header format
+- **Security review:** If multiple users are affected, verify that token storage and transmission are secure
 
 ::: tip Security Best Practice
-Your tokens are essentially the keys to your API kingdom. Always store them securely using environment variables or dedicated secret management systems. Never commit tokens directly into your code repository - this is a common security mistake that can expose your API to unauthorized access.
+Tokens are essentially API keys. Ensure users store them securely using environment variables or dedicated secret management systems. Never allow tokens to be committed to version control.
 :::
 
-#### When You Have the Right Token but Wrong Permissions
+#### Insufficient Token Permissions
 
-Even with a valid token, you might encounter 403 Forbidden responses. This happens when your token exists and is properly formatted, but it doesn't have permission to access the specific endpoint or environment you're targeting. Think of it like having a valid ID card that doesn't give you access to a restricted area.
+**Symptoms:**
+- Users receive `403 Forbidden` responses  
+- "Access denied to endpoint" errors
+- "Access denied to environment" errors in logs
 
-To diagnose scope issues, first examine what permissions your current token actually has:
+**Common Causes:**
+- Token lacks required scopes for the requested endpoint
+- User attempting to access environments not permitted for their token
+- Endpoint configuration restricts access more than token allows
 
-```powershell
-# View token file content
-Get-Content ".\tokens\username.txt" | ConvertFrom-Json | Format-List
-```
+**Diagnostic Steps:**
 
-If your token lacks the necessary scopes, you can update them using the TokenGenerator:
+1. **Review token permissions:**
+   ```powershell
+   # View token file content
+   Get-Content ".\tokens\username.txt" | ConvertFrom-Json | Format-List
+   ```
 
-```powershell
-# Using TokenGenerator
-.\TokenGenerator.exe
-# Select option 4: Update token scopes
-```
+2. **Verify endpoint configuration:**
+   Check if the endpoint allows the user's environment and required scopes:
+   ```json
+   {
+     "AllowedEnvironments": ["prod", "dev"],
+     "AllowedScopes": "Products,Orders"
+   }
+   ```
 
-Also verify that your endpoint configuration allows the environments and scopes you're trying to use:
+3. **Cross-reference user needs:**
+   Confirm what access the user legitimately requires for their integration.
 
-```json
-{
-  "AllowedEnvironments": ["prod", "dev"],
-  "AllowedScopes": "Products,Orders"
-}
-```
+**Solutions:**
+
+- **Update token scopes:** Use TokenGenerator to modify permissions:
+  ```powershell
+  # Using TokenGenerator
+  .\TokenGenerator.exe
+  # Select option 4: Update token scopes
+  ```
+
+- **Review endpoint access:** Ensure endpoint configuration matches business requirements
+- **Document permissions:** Maintain clear documentation of what scopes are needed for different use cases
 
 ### Rate Limiting Issues
 
-Rate limiting is a protective mechanism that prevents your gateway from being overwhelmed by too many requests. When you hit these limits, it's the system's way of saying "slow down" to maintain stability for all users.
+Rate limiting protects the gateway from being overwhelmed by too many requests. When users encounter these limits, it indicates either legitimate high usage or potentially problematic request patterns that need investigation.
 
-#### When Your IP Gets Blocked
+#### IP or Token Rate Limiting
 
-If you're seeing 429 "Too Many Requests" responses, you've likely exceeded the rate limits configured for your IP address or token. This is particularly common during development when you might be making rapid test calls, or if you have automated scripts that are too aggressive in their request patterns.
+**Symptoms:**
+- Users report `429 "Too Many Requests"` responses
+- "Rate limit exceeded" errors in application logs
+- "IP blocked" messages for specific addresses
 
-The first step is understanding what limits are currently in place. Check your rate limiting configuration to see what thresholds are set:
+**Common Causes:**
+- Development teams making rapid test calls during integration
+- Automated scripts or batch processes with aggressive request patterns
+- Legitimate high-volume usage exceeding configured thresholds
+- Potential abuse or misconfigured client applications
 
-```json
-{
-  "RateLimiting": {
-    "Enabled": true,
-    "IpLimit": 100,
-    "IpWindow": 60,
-    "TokenLimit": 1000,
-    "TokenWindow": 60
-  }
-}
-```
+**Diagnostic Steps:**
 
-This configuration means you can make 100 requests per minute from a single IP address, and 1000 requests per minute per token. If you need to see exactly when and how often you're hitting these limits, search through your logs:
+1. **Check current rate limit configuration:**
+   ```json
+   {
+     "RateLimiting": {
+       "Enabled": true,
+       "IpLimit": 100,
+       "IpWindow": 60,
+       "TokenLimit": 1000,
+       "TokenWindow": 60
+     }
+   }
+   ```
 
-```powershell
-# Search for rate limit events
-Select-String -Path ".\log\*.log" -Pattern "Rate limit" | 
-    Sort-Object -Property LastWriteTime -Descending | 
-    Select-Object -First 20
-```
+2. **Review rate limit violations in logs:**
+   ```powershell
+   # Search for rate limit events
+   Select-String -Path ".\log\*.log" -Pattern "Rate limit" | 
+       Sort-Object -Property LastWriteTime -Descending | 
+       Select-Object -First 20
+   ```
 
-If you're temporarily blocked and need immediate access, you can clear the rate limiting counters by restarting the application pool. Keep in mind this will reset limits for all users:
+3. **Identify affected users/IPs:**
+   Look for patterns in the logs to determine if this is isolated to specific users or widespread.
 
-```powershell
-# Restart IIS Application Pool
-Restart-WebAppPool -Name "PortwayAppPool"
-```
+**Solutions:**
+
+- **Immediate relief:** Restart the application pool to reset all rate limit counters:
+  ```powershell
+  # Restart IIS Application Pool
+  Restart-WebAppPool -Name "PortwayAppPool"
+  ```
+
+- **Long-term fix:** Adjust rate limits in configuration if legitimate usage patterns require higher thresholds
+- **User guidance:** Advise development teams to implement proper retry logic with exponential backoff
+
+::: warning Important Note
+Rate limiting uses in-memory token buckets. Restarting the application resets all counters to zero. This provides immediate relief but should be followed by addressing the root cause.
+:::
 
 ::: warning Important Note
 The rate limiting system uses in-memory token buckets to track usage. This means when you restart the application, all rate limit counters are reset to zero. While this can help in emergency situations, it's not a long-term solution if you're consistently hitting limits.
@@ -118,7 +174,7 @@ Connection problems can be frustrating because they often indicate issues with u
 
 #### When Your Database Won't Connect
 
-Database connection failures will typically show up as 500 Internal Server Error responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL Server or when the connection is dropped unexpectedly.
+Database connection failures will typically show up as `500 Internal Server Error` responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL Server or when the connection is dropped unexpectedly.
 
 Your first step should be verifying that your connection string is correct and complete:
 
@@ -160,7 +216,7 @@ If basic connectivity works but you're still having issues, the problem might be
 
 #### When Proxy Endpoints Stop Responding
 
-Proxy endpoints act as intermediaries between your API consumers and your backend services. When these fail, you'll typically see timeout errors, "Error processing endpoint" messages, or 503 Service Unavailable responses.
+Proxy endpoints act as intermediaries between your API consumers and your backend services. When these fail, you'll typically see timeout errors, "Error processing endpoint" messages, or `503 Service Unavailable` responses. This pretty common in legacy applications, where high availability of an API isn't guaranteed.
 
 Start by testing whether the target service is actually available. Try accessing it directly:
 
@@ -192,7 +248,7 @@ The gateway includes built-in health monitoring to help you identify problems be
 
 #### When You're Running Out of Disk Space
 
-One of the most critical health issues you can encounter is low disk space. When the system detects critically low storage, health checks will show "Unhealthy" status with warnings about remaining disk space. This can lead to log write failures and eventually cause the entire application to stop functioning.
+One of the most critical health issues you can encounter is low disk space. When the system detects critically low storage, health checks will show `"Unhealthy"` status with warnings about remaining disk space. This can lead to log write failures and eventually cause the entire application to stop functioning.
 
 Start by checking exactly how much space you have available:
 
@@ -259,7 +315,7 @@ Performance problems can be subtle at first but significantly impact user experi
 
 #### When Everything Feels Slow
 
-If you're experiencing high latency on API calls, timeout errors, or seeing duration measurements over 1000ms in your logs, you're dealing with performance degradation. This can stem from various causes, including database bottlenecks, network issues, or resource constraints.
+If you're experiencing high latency on API calls, timeout errors, or seeing duration measurements over `1000ms` in your logs, you're dealing with performance degradation. This can stem from various causes, including database bottlenecks, network issues, or resource constraints.
 
 First, enable detailed traffic logging to get visibility into exactly where time is being spent:
 
@@ -408,12 +464,12 @@ When troubleshooting issues, the specific error codes and messages you encounter
 
 | Status Code | Error Message | What's Actually Happening | How to Fix It |
 |------------|---------------|---------------------------|---------------|
-| 400 | "Environment '{env}' is not allowed" | The environment specified in your URL path isn't configured as valid for this endpoint | Check the allowed environments list in your endpoint's `settings.json` file |
-| 401 | "Authentication required" | Your request doesn't include a valid Authorization header with a Bearer token | Add the proper Authorization header to your request |
-| 403 | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update your token's scopes using the TokenGenerator tool |
-| 404 | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
-| 429 | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
-| 500 | "Database operation failed" | The gateway can't connect to or query the SQL Server database | Check your connection string and verify SQL Server is accessible |
+| `400` | "Environment '{env}' is not allowed" | The environment specified in your URL path isn't configured as valid for this endpoint | Check the allowed environments list in your endpoint's `settings.json` file |
+| `401` | "Authentication required" | Your request doesn't include a valid Authorization header with a Bearer token | Add the proper Authorization header to your request |
+| `403` | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update your token's scopes using the TokenGenerator tool |
+| `404` | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
+| `429` | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
+| `500` | "Database operation failed" | The gateway can't connect to or query the SQL Server database | Check your connection string and verify SQL Server is accessible |
 | Blank | No content/blank page | Usually indicates TLS/SSL certificate issues | Bind a proper SSL certificate to your website in IIS |
 
 ### Recognizing Log Message Patterns
@@ -495,7 +551,7 @@ iisreset /start
 
 After performing a reset, monitor the application logs carefully to ensure it starts up properly and test a few basic endpoints to verify functionality.
 
-## Maintaining a Healthy Gateway
+## Keeping it Healthy
 
 Prevention is always better than cure when it comes to gateway operations. By following these practices, you can avoid many of the common issues described in this guide and catch problems before they impact your users.
 
@@ -503,25 +559,25 @@ Prevention is always better than cure when it comes to gateway operations. By fo
 
 Regular maintenance doesn't have to be complicated, but it does need to be consistent. Here are the key activities that will keep your gateway running smoothly:
 
-**Keep an eye on your storage space.** Disk space issues are one of the most common causes of gateway failures, but they're also completely preventable. Set up monitoring to alert you when disk space drops below 20%, and establish a routine for cleaning up old log files. The gateway can generate substantial logs, especially with detailed traffic logging enabled.
+- **Keep an eye on your storage space.** Disk space issues are one of the most common causes of gateway failures, but they're also completely preventable. Set up monitoring to alert you when disk space drops below 20%, and establish a routine for cleaning up old log files. The gateway can generate substantial logs, especially with detailed traffic logging enabled.
 
-**Monitor your health endpoints regularly.** Don't wait for users to report problems - set up automated health checks that call your `/health` endpoint and alert you to issues. Consider setting up simple monitoring scripts that test both the basic health endpoint and a few key API endpoints to ensure end-to-end functionality.
+- **Monitor your health endpoints regularly.** Don't wait for users to report problems; set up automated health checks that call your `/health` endpoint and alert you to issues. Consider setting up simple monitoring scripts that test both the basic health endpoint and a few key API endpoints to ensure end-to-end functionality.
 
-**Test connectivity to your backend services.** The gateway is only as reliable as the services it connects to. Regularly verify that your SQL Server connections are working and that proxy endpoints can reach their target services. This is especially important after any network changes or server maintenance.
+- **Test connectivity to your backend services.** The gateway is only as reliable as the services it connects to. Regularly verify that your SQL Server connections are working and that proxy endpoints can reach their target services. This is especially important after any network changes or server maintenance.
 
-**Keep audit logs of configuration changes.** When you modify endpoint configurations, token scopes, or other settings, document what you changed and why. This information becomes invaluable when troubleshooting issues that appear after configuration updates.
+- **Keep audit logs of configuration changes.** When you modify endpoint configurations, token scopes, or other settings, document what you changed and why. This information becomes invaluable when troubleshooting issues that appear after configuration updates.
 
-**Rotate your tokens periodically.** Authentication tokens should be treated like passwords - change them regularly and immediately revoke any tokens that are no longer needed. This reduces your security exposure and ensures that only current, authorized integrations have access to your gateway.
+- **Rotate your tokens periodically.** Authentication tokens should be treated like passwords, change them regularly and immediately revoke any tokens that are no longer needed. This reduces your security exposure and ensures that only current, authorized integrations have access to your gateway.
 
-### Security Considerations
+### Security/Considerations
 
 Security isn't just about preventing attacks - it's also about maintaining clean diagnostic information and ensuring you can trust your troubleshooting data.
 
-**Never expose detailed error messages to external clients.** While detailed error information is crucial for troubleshooting, it can also reveal sensitive information about your internal systems to potential attackers. Configure your gateway to return generic error messages to clients while logging detailed information internally.
+- **Never expose detailed error messages to external clients.** While detailed error information is crucial for troubleshooting, it can also reveal sensitive information about your internal systems to potential attackers. Configure your gateway to return generic error messages to clients while logging detailed information internally.
 
-**Monitor failed authentication attempts.** Keep track of repeated authentication failures, especially from the same IP addresses. This can indicate either misconfigured integrations that need attention or potential security threats that need investigation.
+- **Monitor failed authentication attempts.** Keep track of repeated authentication failures, especially from the same IP addresses. This can indicate either misconfigured integrations that need attention or potential security threats that need investigation.
 
-**Secure your diagnostic tools.** The same database queries and log analysis tools that help you troubleshoot can also reveal sensitive information. Ensure that access to logs, databases, and diagnostic endpoints is properly restricted to authorized personnel only.
+- **Secure your diagnostic tools.** The same database queries and log analysis tools that help you troubleshoot can also reveal sensitive information. Ensure that access to logs, databases, and diagnostic endpoints is properly restricted to authorized personnel only.
 
 ## Where to Go From Here
 

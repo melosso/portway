@@ -26,7 +26,7 @@ graph TD
 ```
 :::info
 **Note:** Advanced configuration such as the various caching strategies are not depicted in the diagram above, since this overview focuses on a high-level API flow.
-
+:::
 
 ## Base URL Structure
 
