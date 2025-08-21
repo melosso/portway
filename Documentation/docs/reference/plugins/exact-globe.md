@@ -142,7 +142,7 @@ Globe+ specific error responses are preserved and forwarded:
 
 Portway automatically rewrites Globe+ URLs in responses to maintain proxy routing:
 
-- Original: `http://vm2k22:8020/services/Exact.Entity.REST.EG/Account(guid'123')`
+- Original: `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')`
 - Rewritten: `https://api.company.com/api/600/Account(guid'123')`
 
 This ensures that related links in responses continue to work through the proxy.

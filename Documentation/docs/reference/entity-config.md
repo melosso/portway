@@ -577,7 +577,7 @@ Configure allowed environments in `environments/settings.json`:
 ```json
 {
   "Environment": {
-    "ServerName": "VM2K22",
+    "ServerName": "localhost",
     "AllowedEnvironments": ["600", "700", "Synergy"]
   }
 }

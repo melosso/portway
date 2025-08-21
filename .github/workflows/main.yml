@@ -63,6 +63,8 @@ jobs:
         git config user.email github-actions@github.com
         git tag -f "$NEW_TAG"
         git push origin --force "refs/tags/$NEW_TAG"
+    - name: Install jq for JSON processing
+      run: sudo apt-get update && sudo apt-get install -y jq
     - name: Create version file and zip Deployment folder
       run: |
         NEW_TAG=${{ steps.versioning.outputs.new_version }}
@@ -72,6 +74,64 @@ jobs:
         find Deployment -name "docker-compose.yml" -type f -delete
         find Deployment -name ".gitignore" -type f -delete
         find Deployment -name ".dockerignore" -type f -delete
+        
+        # Clean up Endpoints to keep only specific examples
+        # Create temporary directory to store only the required examples
+        mkdir -p temp_endpoints/{Proxy,Static,SQL,Webhooks}
+        
+        # Copy only the required examples
+        # Requests (from Proxy)
+        if [ -d "Deployment/PortwayApi/Endpoints/Proxy/Requests" ]; then
+          cp -r "Deployment/PortwayApi/Endpoints/Proxy/Requests" "temp_endpoints/Proxy/"
+        fi
+        
+        # Countries (from Static - Files)
+        if [ -d "Deployment/PortwayApi/Endpoints/Static/Countries" ]; then
+          cp -r "Deployment/PortwayApi/Endpoints/Static/Countries" "temp_endpoints/Static/"
+        fi
+        
+        # Products (from SQL)
+        if [ -d "Deployment/PortwayApi/Endpoints/SQL/Products" ]; then
+          cp -r "Deployment/PortwayApi/Endpoints/SQL/Products" "temp_endpoints/SQL/"
+        fi
+        
+        # Webhooks (modify to keep only webhook1)
+        if [ -f "Deployment/PortwayApi/Endpoints/Webhooks/entity.json" ]; then
+          cp "Deployment/PortwayApi/Endpoints/Webhooks/entity.json" "temp_endpoints/Webhooks/"
+          # Modify the entity.json to keep only webhook1 using jq
+          jq '.AllowedColumns = ["webhook1"]' "temp_endpoints/Webhooks/entity.json" > "temp_endpoints/Webhooks/entity_temp.json"
+          mv "temp_endpoints/Webhooks/entity_temp.json" "temp_endpoints/Webhooks/entity.json"
+        fi
+        
+        # Replace the original Endpoints directory with our filtered version
+        rm -rf "Deployment/PortwayApi/Endpoints"
+        mv "temp_endpoints" "Deployment/PortwayApi/Endpoints"
+        
+        # Rename environment references in the deployment package
+        # Be more specific to avoid replacing cache control values and other numbers
+        find Deployment -type f -name "*.json" -exec sed -i \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"600"\([^]]*\)\]/"AllowedEnvironments": [\1"prod"\2]/g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"700"\([^]]*\)\]/"AllowedEnvironments": [\1"test"\2]/g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"Synergy"\([^]]*\)\]/"AllowedEnvironments": [\1"web"\2]/g' \
+          -e 's/"DatabaseName": "600"/"DatabaseName": "prod"/g' \
+          -e 's/"DatabaseName": "700"/"DatabaseName": "test"/g' \
+          -e 's/"DatabaseName": "Synergy"/"DatabaseName": "web"/g' \
+          -e 's/Database=600/Database=prod/g' \
+          -e 's/Database=700/Database=test/g' \
+          -e 's/Database=.*_Synergy/Database=web/g' \
+          {} \;
+        
+        # Also rename environment directory names if they exist
+        if [ -d "Deployment/PortwayApi/Environments/600" ]; then
+          mv "Deployment/PortwayApi/Environments/600" "Deployment/PortwayApi/Environments/prod"
+        fi
+        if [ -d "Deployment/PortwayApi/Environments/700" ]; then
+          mv "Deployment/PortwayApi/Environments/700" "Deployment/PortwayApi/Environments/test"
+        fi
+        if [ -d "Deployment/PortwayApi/Environments/Synergy" ]; then
+          mv "Deployment/PortwayApi/Environments/Synergy" "Deployment/PortwayApi/Environments/web"
+        fi
+        
         # Zip the Deployment folder
         zip -r "${NEW_TAG}-Deployment.zip" Deployment
     - name: Create GitHub Release
