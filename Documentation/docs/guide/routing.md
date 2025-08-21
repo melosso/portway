@@ -55,6 +55,9 @@ PortwayApi/
 │   │   │   └── entity.json
 │   │   └── Images/
 │   │       └── entity.json 
+|   └── Static/              # Static endpoints
+│   │   ├── Countries/
+│   │   │   └── entity.json
 ├── appsettings.json        # Application configuration
 ├── auth.db                 # Authentication database (created automatically)
 └── web.config              # IIS configuration

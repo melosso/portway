@@ -1,6 +1,8 @@
 # SQL Endpoints
 
-SQL endpoints in Portway provide secure, controlled access to your SQL Server databases through a RESTful API interface. These endpoints support OData queries and enable CRUD operations on your database tables with fine-grained column-level access control.
+:::important
+**Important:** You must have a high level of understanding of SQL Server database administration before continuing. Ensure you have the necessary permissions and are aware of the potential impact of your actions on the database and/or your organisations' policies.
+:::
 
 ## Overview
 
@@ -320,6 +322,8 @@ Enable detailed logging to troubleshoot issues:
 ```
 
 ## Best Practices
+
+These should be pretty known for anyone familiar with SQL Server, but just give you a short insight:
 
 1. **Use Stored Procedures for Write Operations**
    - Provides better control and validation

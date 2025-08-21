@@ -1,6 +1,6 @@
 # API Reference Overview
 
-Portway provides a comprehensive API Gateway that simplifies access to your Windows environment's data and services. This reference guide covers all aspects of interacting with Portway's API, from authentication to advanced query operations.
+This reference guide covers all aspects of interacting with Portway's API, from authentication to documentation & advanced query operations.
 
 ## API Architecture
 

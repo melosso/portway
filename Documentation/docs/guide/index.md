@@ -22,24 +22,24 @@ Portway is a lightweight API gateway designed specifically for Windows environme
 
 We've built Portway in a way to include commonly requested features, such as:
 
-### 🔐 Enterprise Security
+#### Enterprise Security
 - Token-based authentication with scoped access
 - Environment-specific access controls
 - Azure Key Vault integration for secrets
 - Rate limiting and request validation
 
-### 🌍 Environment Awareness
+#### Environment Awareness
 - Route requests to different environments (dev, test, prod)
 - Environment-specific configurations
 - Isolated connection strings and headers
 
-### 📊 Developer Experience
+#### Developer Experience
 - Automatic API documentation
 - Comprehensive logging and tracing
 - Health check endpoints
 - Simple JSON-based configuration
 
-### 🔄 Flexible Endpoint Types
+#### Flexible Endpoint Types
 - SQL endpoints with OData query support
 - Proxy endpoints for service forwarding
 - Composite endpoints for multi-step operations
@@ -50,7 +50,7 @@ We've built Portway in a way to include commonly requested features, such as:
 ## Getting Help
 
 - **Issues**: [GitHub Issues](https://github.com/melosso/portway/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/melosso/portway/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/melosso/portway/issues)
 
 ## License
 

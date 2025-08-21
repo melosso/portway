@@ -1,12 +1,14 @@
-# Docker Compose Installation
+# Docker Installation
 
-This guide explains how to deploy Portway API using Docker Compose for quick development and testing environments.
+This guide explains how to deploy Portway API using Docker Compose for quick development, testing and/or Home Lab environments.
 
 ## Prerequisites
 
 Before you begin, ensure you have:
-- [Docker](https://www.docker.com/get-started) installed and running
-- [Docker Compose](https://docs.docker.com/compose/install/) (included with Docker Desktop)
+
+- [Docker](https://www.docker.com/get-started) installed and running.
+
+We'll primarily be using [Docker Compose](https://docs.docker.com/compose/install/).
 
 ## Quick Start
 
@@ -30,7 +32,7 @@ Before you begin, ensure you have:
 
 2. **Start the application:**
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. **Verify the installation:**
@@ -118,14 +120,6 @@ volumes:
 
 ## Customizing the Setup
 
-### Changing the Port
-
-To change the external port from 8080 to another port:
-
-1. Edit `docker-compose.yml`
-2. Modify the ports mapping: `"YOUR_PORT:8080"`
-3. Restart the container: `docker-compose restart`
-
 ### Custom Configuration
 
 1. Create your configuration files in the mounted directories:
@@ -135,7 +129,7 @@ To change the external port from 8080 to another port:
 
 2. Restart the container to apply changes:
    ```bash
-   docker-compose restart
+   docker compose restart
    ```
 
 ## Health Check
@@ -144,10 +138,10 @@ The container can be monitored to verify the API is responding:
 
 ```bash
 # Check container health
-docker-compose ps
+docker compose ps
 
 # View container logs
-docker-compose logs portway
+docker compose logs portway
 ```
 
 ## Troubleshooting
@@ -156,16 +150,7 @@ docker-compose logs portway
 
 1. Check Docker logs:
    ```bash
-   docker-compose logs portway
-   ```
-
-2. Verify port availability:
-   ```bash
-   # Windows
-   netstat -an | findstr :8080
-   
-   # Linux/Mac
-   netstat -an | grep :8080
+   docker compose logs portway
    ```
 
 ### Configuration Issues
@@ -194,7 +179,7 @@ After successful installation:
 ## Production Considerations
 
 > [!WARNING]
-> This Docker Compose setup is intended for development and testing. For production deployments, consider:
+> This Docker setup is intended for development and testing. For production deployments, consider:
 > - Using proper secrets management
 > - Implementing reverse proxy with SSL/TLS
 > - Setting up proper logging and monitoring

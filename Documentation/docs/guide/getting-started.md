@@ -12,6 +12,9 @@ Before you begin, make sure you have:
 - SQL Server database access (for SQL endpoints)
 - Administrative access to configure IIS
 
+> [!WARNING]
+> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core 9.0** provides. Make sure to choose the last option ("Hosting Bundle").
+
 ## Installation
 
 We offer two methods, beginning with installation on Windows Server.
@@ -24,10 +27,9 @@ We offer two methods, beginning with installation on Windows Server.
 
 ---
 
-
 ### Alternative: Docker Compose (Recommended for Home Lab Users)
 
-You can quickly deploy Portway using Docker Compose. For a complete setup guide with detailed configuration options, see our [Docker Compose Installation Guide](docker-compose.md).
+You can quickly deploy Portway using Docker Compose. For a complete setup guide with detailed configuration options, see our [Docker Installation Guide](docker-compose.md).
 
 Quick start:
 
@@ -58,20 +60,23 @@ This will start Portway on port [8080](#) and mount your configuration folders. 
 
 ### Configure IIS
 
+> [!IMPORTANT]
+> This guide assumes you have basic knowledge of IIS configuration and data source connectivity. While we cover the essential steps, some details may require your existing expertise.
+
 1. Open IIS Manager
 2. Create a new Application Pool:
    - Name: `PortwayAppPool`
    - .NET CLR version: `No Managed Code`
    - Managed pipeline mode: `Integrated`
    - User: `Running as a priviledged (NT) user`
-3. Create a new TLS/SSL certificate or use an existing one
+3. Create a new TLS/SSL certificate or use an existing one (unless you disable TLS/SSL)
 4. Create a new Website or Application:
    - Name: `Portway`
    - Application pool: `PortwayAppPool`
    - Physical path: `C:\path\to\your\PortwayApi`
    - Binding: https://localhost:443 (or your preferred port)
    - Certificate: The certificate you created
-6. Set Application Pool Identity (for proxy endpoints):
+5. Set Application Pool Identity (for proxy endpoints):
    - Select your Application Pool
    - Advanced Settings > Identity
    - Choose appropriate user account with network access

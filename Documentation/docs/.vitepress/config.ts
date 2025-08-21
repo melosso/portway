@@ -66,7 +66,7 @@ export default withMermaid(
           text: 'Contributing',
           items: [
             { text: 'Bugs', link: 'https://github.com/melosso/portway/issues' },
-            { text: 'Suggestions', link: 'https://github.com/melosso/portway/discussions/' },
+            { text: 'Suggestions', link: 'https://github.com/melosso/portway/issues/' },
           ]
         },
         {

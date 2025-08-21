@@ -1,8 +1,8 @@
 # Deploying
 
-This guide explains how to deploy the Portway API on a Windows Server using Internet Information Services (IIS), which is currently the only officially documented deployment method. 
+This guide explains how to deploy the Portway API on a Windows Server using Internet Information Services (IIS), which is currently our primary deployment method. 
 
-**Alternative Deployment:** For development and testing environments, you can use Docker Compose. See our [Docker Compose Installation Guide](docker-compose.md) for a quick setup.
+**Alternative Deployment:** For development and testing environments, you can use Docker. See our [Docker Installation Guide](docker-compose.md) for a quick setup.
 
 **Note:** If you're running the API using Docker (Compose) and would like to contribute, you're welcome to start a discussion on GitHub.
 
@@ -37,7 +37,7 @@ Ensure your deployment package contains:
 ├── endpoints/
 │   ├── SQL/
 │   ├── Proxy/
-│   └── Webhooks/
+│   └── (...)
 ├── environments/
 │   └── settings.json
 ├── wwwroot/
@@ -83,7 +83,7 @@ Ensure your deployment package contains:
    - **Identity**: ApplicationPoolIdentity (or service account)
 
 ::: tip
-If you're planning to use the **Proxy** to connect to any internal webservice, you may have to rely on NTLM-authentication (e.g. for [Exact Globe+](https://www.exact.com/nl/software/exact-globe)). You'll have to bind the Identity of the Application Pool to an internal (domain) user instead. This user has to have the necessary permissions to connect to the internal services.
+If you're planning to use the **Proxy** to connect to any internal webservice, you may have to rely on NTLM-authentication (e.g. for Exact Globe+ or AFAS Profit). You'll have to bind the Identity of the Application Pool to an internal (domain) user instead. This user has to have the necessary permissions to connect to the internal services.
 :::
 
 ### Step 5: Set Directory Permissions

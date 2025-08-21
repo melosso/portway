@@ -1,6 +1,6 @@
 # Troubleshooting
 
-A comprehensive guide to diagnosing and resolving common issues with your Portway API gateway.
+When working with your Portway gateway, you might encounter various issues that can disrupt your API operations. This guide walks you through the most common problems and provides step-by-step solutions to get you back on track quickly. Rather than just listing fixes, we'll help you understand what's happening behind the scenes so you can troubleshoot more effectively in the future.
 
 **Quick actions:**
 
@@ -10,318 +10,315 @@ A comprehensive guide to diagnosing and resolving common issues with your Portwa
 
 ### Authentication Failures
 
-#### Missing or Invalid Token
+Authentication problems are among the most frequent issues you'll encounter when working with the Portway gateway. These typically manifest when your requests can't be properly verified or when your credentials don't have the right permissions.
 
-**Symptoms:**
-- 401 Unauthorized responses
-- "Authentication required" error messages
-- "Invalid or expired token" errors
+#### When Your Token Isn't Working
 
-**Solutions:**
+If you're seeing 401 Unauthorized responses or messages about authentication being required, the problem usually lies with your Bearer token. The gateway requires every API request to include a valid token in the Authorization header, and when this is missing or incorrect, your requests will be rejected.
 
-1. **Verify token is being sent:**
-   ```http
-   Authorization: Bearer YOUR_TOKEN
-   ```
+Start by checking that your requests are actually sending the token. Your HTTP requests should include a header that looks like this:
 
-2. **Check user associated to the token exists:**
+```http
+Authorization: Bearer YOUR_TOKEN
+```
 
-    Check if the token has the necessary permissions.
-   
-   ```powershell
-   # Run TokenGenerator
-   cd tools\TokenGenerator
-   .\TokenGenerator.exe
-   ```
+If the header is present but you're still getting authentication errors, the token itself might be invalid or expired. The most reliable way to verify this is to check whether the user associated with your token still exists in the system. You can do this by running the TokenGenerator tool:
 
-4. **Generate new token if needed:**
+```powershell
+# Run TokenGenerator
+cd tools\TokenGenerator
+.\TokenGenerator.exe
+```
 
-    Make sure to revoke the old user/token afterwards:
+Sometimes the simplest solution is to generate a fresh token. When you do this, make sure to revoke the old token to prevent any security issues:
 
-   ```powershell
-   # Run TokenGenerator
-   cd tools\TokenGenerator
-   .\TokenGenerator.exe
-   ```
+```powershell
+# Run TokenGenerator
+cd tools\TokenGenerator
+.\TokenGenerator.exe
+```
 
-::: tip
-Always store tokens securely and never commit them to version control. Use environment variables or secure vaults for production deployments.
+::: tip Security Best Practice
+Your tokens are essentially the keys to your API kingdom. Always store them securely using environment variables or dedicated secret management systems. Never commit tokens directly into your code repository - this is a common security mistake that can expose your API to unauthorized access.
 :::
 
-#### Scope Restrictions
+#### When You Have the Right Token but Wrong Permissions
 
-**Symptoms:**
-- 403 Forbidden responses
-- "Access denied to endpoint" errors
-- "Access denied to environment" errors
+Even with a valid token, you might encounter 403 Forbidden responses. This happens when your token exists and is properly formatted, but it doesn't have permission to access the specific endpoint or environment you're targeting. Think of it like having a valid ID card that doesn't give you access to a restricted area.
 
-**Solutions:**
+To diagnose scope issues, first examine what permissions your current token actually has:
 
-1. **Check token scopes:**
-   ```powershell
-   # View token file content
-   Get-Content ".\tokens\username.txt" | ConvertFrom-Json | Format-List
-   ```
+```powershell
+# View token file content
+Get-Content ".\tokens\username.txt" | ConvertFrom-Json | Format-List
+```
 
-2. **Update token scopes:**
-   ```powershell
-   # Using TokenGenerator
-   .\TokenGenerator.exe
-   # Select option 4: Update token scopes
-   ```
+If your token lacks the necessary scopes, you can update them using the TokenGenerator:
 
-3. **Verify endpoint configuration:**
-   ```json
-   {
-     "AllowedEnvironments": ["prod", "dev"],
-     "AllowedScopes": "Products,Orders"
-   }
-   ```
+```powershell
+# Using TokenGenerator
+.\TokenGenerator.exe
+# Select option 4: Update token scopes
+```
+
+Also verify that your endpoint configuration allows the environments and scopes you're trying to use:
+
+```json
+{
+  "AllowedEnvironments": ["prod", "dev"],
+  "AllowedScopes": "Products,Orders"
+}
+```
 
 ### Rate Limiting Issues
 
-#### IP Blocking
+Rate limiting is a protective mechanism that prevents your gateway from being overwhelmed by too many requests. When you hit these limits, it's the system's way of saying "slow down" to maintain stability for all users.
 
-**Symptoms:**
-- 429 Too Many Requests responses
-- "Rate limit exceeded" errors
-- "IP blocked" messages in logs
+#### When Your IP Gets Blocked
 
-**Solutions:**
+If you're seeing 429 "Too Many Requests" responses, you've likely exceeded the rate limits configured for your IP address or token. This is particularly common during development when you might be making rapid test calls, or if you have automated scripts that are too aggressive in their request patterns.
 
-1. **Check rate limit configuration:**
-   ```json
-   {
-     "RateLimiting": {
-       "Enabled": true,
-       "IpLimit": 100,
-       "IpWindow": 60,
-       "TokenLimit": 1000,
-       "TokenWindow": 60
-     }
-   }
-   ```
+The first step is understanding what limits are currently in place. Check your rate limiting configuration to see what thresholds are set:
 
-2. **Monitor rate limit logs:**
-   ```powershell
-   # Search for rate limit events
-   Select-String -Path ".\log\*.log" -Pattern "Rate limit" | 
-       Sort-Object -Property LastWriteTime -Descending | 
-       Select-Object -First 20
-   ```
+```json
+{
+  "RateLimiting": {
+    "Enabled": true,
+    "IpLimit": 100,
+    "IpWindow": 60,
+    "TokenLimit": 1000,
+    "TokenWindow": 60
+  }
+}
+```
 
-3. **Clear blocked IPs (restart required):**
-   ```powershell
-   # Restart IIS Application Pool
-   Restart-WebAppPool -Name "PortwayAppPool"
-   ```
+This configuration means you can make 100 requests per minute from a single IP address, and 1000 requests per minute per token. If you need to see exactly when and how often you're hitting these limits, search through your logs:
 
-::: warning
-Rate limiting operates using in-memory token buckets. Restarting the application will reset all rate limit counters.
+```powershell
+# Search for rate limit events
+Select-String -Path ".\log\*.log" -Pattern "Rate limit" | 
+    Sort-Object -Property LastWriteTime -Descending | 
+    Select-Object -First 20
+```
+
+If you're temporarily blocked and need immediate access, you can clear the rate limiting counters by restarting the application pool. Keep in mind this will reset limits for all users:
+
+```powershell
+# Restart IIS Application Pool
+Restart-WebAppPool -Name "PortwayAppPool"
+```
+
+::: warning Important Note
+The rate limiting system uses in-memory token buckets to track usage. This means when you restart the application, all rate limit counters are reset to zero. While this can help in emergency situations, it's not a long-term solution if you're consistently hitting limits.
 :::
 
 ### Connection Issues
 
-#### Database Connection Failures
+Connection problems can be frustrating because they often indicate issues with underlying services that your gateway depends on. Let's walk through the two main types you'll encounter.
 
-**Symptoms:**
-- 500 Internal Server Error on SQL endpoints
-- "Database operation failed" errors
-- Connection timeout messages
+#### When Your Database Won't Connect
 
-**Solutions:**
+Database connection failures will typically show up as 500 Internal Server Error responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL Server or when the connection is dropped unexpectedly.
 
-1. **Verify connection string:**
-   ```json
-   {
-     "ConnectionString": "Server=YOUR_SERVER;Database=600;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;"
-   }
-   ```
+Your first step should be verifying that your connection string is correct and complete:
 
-2. **Test SQL connectivity:**
-   ```powershell
-   # Test SQL connection
-   $conn = New-Object System.Data.SqlClient.SqlConnection
-   $conn.ConnectionString = "Server=YOUR_SERVER;Database=600;Trusted_Connection=True;"
-   try {
-       $conn.Open()
-       Write-Host "Connection successful"
-   } catch {
-       Write-Host "Connection failed: $_"
-   } finally {
-       $conn.Close()
-   }
-   ```
+```json
+{
+  "ConnectionString": "Server=YOUR_SERVER;Database=600;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;"
+}
+```
 
-3. **Check connection pool settings:**
-   ```json
-   {
-     "SqlConnectionPooling": {
-       "MinPoolSize": 5,
-       "MaxPoolSize": 100,
-       "ConnectionTimeout": 15,
-       "CommandTimeout": 30,
-       "Enabled": true
-     }
-   }
-   ```
+Before diving into complex troubleshooting, test whether you can connect to SQL Server at all from your gateway server:
 
-#### Proxy Endpoint Failures
+```powershell
+# Test SQL connection
+$conn = New-Object System.Data.SqlClient.SqlConnection
+$conn.ConnectionString = "Server=YOUR_SERVER;Database=600;Trusted_Connection=True;"
+try {
+    $conn.Open()
+    Write-Host "Connection successful"
+} catch {
+    Write-Host "Connection failed: $_"
+} finally {
+    $conn.Close()
+}
+```
 
-**Symptoms:**
-- Timeout errors on proxy endpoints
-- "Error processing endpoint" messages
-- 503 Service Unavailable responses
+If basic connectivity works but you're still having issues, the problem might be with connection pooling settings. The gateway manages a pool of database connections to improve performance, but if these settings are misconfigured, you might see intermittent failures:
 
-**Solutions:**
+```json
+{
+  "SqlConnectionPooling": {
+    "MinPoolSize": 5,
+    "MaxPoolSize": 100,
+    "ConnectionTimeout": 15,
+    "CommandTimeout": 30,
+    "Enabled": true
+  }
+}
+```
 
-1. **Verify target service availability:**
-   ```powershell
-   # Test endpoint connectivity
-   Invoke-WebRequest -Uri "http://localhost:8020/services/Exact.Entity.REST.EG/Account" -UseDefaultCredentials
-   ```
+#### When Proxy Endpoints Stop Responding
 
-2. **Check proxy configuration:**
-   ```json
-   {
-     "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
-     "Methods": ["GET", "POST"],
-     "AllowedEnvironments": ["prod", "dev"]
-   }
-   ```
+Proxy endpoints act as intermediaries between your API consumers and your backend services. When these fail, you'll typically see timeout errors, "Error processing endpoint" messages, or 503 Service Unavailable responses.
 
-3. **Review proxy headers:**
-   ```powershell
-   # Check current environment settings
-   Get-Content ".\environments\600\settings.json" | ConvertFrom-Json
-   ```
+Start by testing whether the target service is actually available. Try accessing it directly:
+
+```powershell
+# Test endpoint connectivity
+Invoke-WebRequest -Uri "http://localhost:8020/services/Exact.Entity.REST.EG/Account" -UseDefaultCredentials
+```
+
+If the direct connection works, check your proxy configuration to ensure the URL and settings are correct:
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET", "POST"],
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+Sometimes proxy issues are related to environment-specific configurations. Review your environment settings to make sure they match what the backend service expects:
+
+```powershell
+# Check current environment settings
+Get-Content ".\environments\600\settings.json" | ConvertFrom-Json
+```
 
 ### Health Check Failures
 
-#### Disk Space Issues
+The gateway includes built-in health monitoring to help you identify problems before they impact your users. When health checks fail, it's usually indicating a resource constraint or connectivity issue that needs immediate attention.
 
-**Symptoms:**
-- Health check shows "Unhealthy" status
-- "Critical: Only X% disk space remaining" warnings
-- Log write failures
+#### When You're Running Out of Disk Space
 
-**Solutions:**
+One of the most critical health issues you can encounter is low disk space. When the system detects critically low storage, health checks will show "Unhealthy" status with warnings about remaining disk space. This can lead to log write failures and eventually cause the entire application to stop functioning.
 
-1. **Check disk space:**
-   ```powershell
-   # Check available disk space
-   Get-PSDrive -PSProvider FileSystem | 
-       Select-Object Name, @{Name="FreeGB";Expression={[math]::Round($_.Free/1GB,2)}}, 
-                     @{Name="UsedGB";Expression={[math]::Round($_.Used/1GB,2)}}, 
-                     @{Name="TotalGB";Expression={[math]::Round(($_.Free + $_.Used)/1GB,2)}}
-   ```
+Start by checking exactly how much space you have available:
 
-2. **Clean up old logs:**
-   ```powershell
-   # Remove logs older than 30 days
-   Get-ChildItem ".\log" -Recurse -File | 
-       Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | 
-       Remove-Item -Force
-   ```
+```powershell
+# Check available disk space
+Get-PSDrive -PSProvider FileSystem | 
+    Select-Object Name, @{Name="FreeGB";Expression={[math]::Round($_.Free/1GB,2)}}, 
+                  @{Name="UsedGB";Expression={[math]::Round($_.Used/1GB,2)}}, 
+                  @{Name="TotalGB";Expression={[math]::Round(($_.Free + $_.Used)/1GB,2)}}
+```
 
-3. **Configure log rotation:**
-   ```json
-   {
-     "RequestTrafficLogging": {
-       "MaxFileSizeMB": 50,
-       "MaxFileCount": 5
-     }
-   }
-   ```
+If you're running low on space, the quickest relief usually comes from cleaning up old log files. The gateway can generate substantial logs over time, especially with traffic logging enabled:
 
-#### Endpoint Health Issues
+```powershell
+# Remove logs older than 30 days
+Get-ChildItem ".\log" -Recurse -File | 
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | 
+    Remove-Item -Force
+```
 
-**Symptoms:**
-- "One or more proxy services are not responding properly"
-- Specific endpoints returning errors
-- Intermittent connectivity problems
+For ongoing space management, configure automatic log rotation to prevent this problem from recurring:
 
-**Solutions:**
+```json
+{
+  "RequestTrafficLogging": {
+    "MaxFileSizeMB": 50,
+    "MaxFileCount": 5
+  }
+}
+```
 
-1. **Run detailed health check:**
-   ```http
-   GET /health/details
-   Authorization: Bearer YOUR_TOKEN
-   ```
+#### When Your Backend Services Aren't Responding
 
-2. **Test individual endpoints:**
-   ```powershell
-   # Test specific endpoint
-   $headers = @{
-       "Authorization" = "Bearer YOUR_TOKEN"
-   }
-   Invoke-RestMethod -Uri "https://your-gateway/api/600/Products" -Headers $headers
-   ```
+Sometimes health checks will report that "one or more proxy services are not responding properly." This indicates that while your gateway is running fine, some of the backend services it depends on are having problems.
 
-3. **Review endpoint logs:**
-   ```powershell
-   # Find endpoint-specific errors
-   Select-String -Path ".\log\*.log" -Pattern "endpoint: Products" | 
-       Where-Object { $_ -match "ERROR" }
-   ```
+To get detailed information about which specific services are failing, request a detailed health report:
+
+```http
+GET /health/details
+Authorization: Bearer YOUR_TOKEN
+```
+
+Once you know which endpoints are problematic, test them individually to isolate the issue:
+
+```powershell
+# Test specific endpoint
+$headers = @{
+    "Authorization" = "Bearer YOUR_TOKEN"
+}
+Invoke-RestMethod -Uri "https://your-gateway/api/600/Products" -Headers $headers
+```
+
+If specific endpoints are consistently failing, review their error logs to understand what's happening:
+
+```powershell
+# Find endpoint-specific errors
+Select-String -Path ".\log\*.log" -Pattern "endpoint: Products" | 
+    Where-Object { $_ -match "ERROR" }
+```
 
 ### Performance Issues
 
-#### Slow Response Times
+Performance problems can be subtle at first but significantly impact user experience as they worsen. The gateway includes monitoring capabilities to help you identify and resolve these issues before they become critical.
 
-**Symptoms:**
-- High latency on API calls
-- Timeout errors
-- "DurationMs" values over 1000ms in logs
+#### When Everything Feels Slow
 
-**Solutions:**
+If you're experiencing high latency on API calls, timeout errors, or seeing duration measurements over 1000ms in your logs, you're dealing with performance degradation. This can stem from various causes, including database bottlenecks, network issues, or resource constraints.
 
-1. **Enable traffic logging:**
-   ```json
-   {
-     "RequestTrafficLogging": {
-       "Enabled": true,
-       "EnableInfoLogging": true
-     }
-   }
-   ```
+First, enable detailed traffic logging to get visibility into exactly where time is being spent:
 
-2. **Analyze slow queries:**
-   ```sql
-   -- Find slow requests (using SQLite logging)
-   SELECT Path, QueryString, DurationMs, StatusCode
-   FROM TrafficLogs
-   WHERE DurationMs > 1000
-   ORDER BY DurationMs DESC
-   LIMIT 20;
-   ```
+```json
+{
+  "RequestTrafficLogging": {
+    "Enabled": true,
+    "EnableInfoLogging": true
+  }
+}
+```
 
-3. **Optimize connection pooling:**
-   ```json
-   {
-     "SqlConnectionPooling": {
-       "MinPoolSize": 10,
-       "MaxPoolSize": 200,
-       "ConnectionTimeout": 30
-     }
-   }
-   ```
+With logging enabled, you can analyze which requests are taking the longest to complete. If you're using SQLite for traffic logging, you can query this data directly:
+
+```sql
+-- Find slow requests (using SQLite logging)
+SELECT Path, QueryString, DurationMs, StatusCode
+FROM TrafficLogs
+WHERE DurationMs > 1000
+ORDER BY DurationMs DESC
+LIMIT 20;
+```
+
+Often, performance issues are related to database connection management. If your connection pool is too small or configured incorrectly, requests may wait for available connections. Try optimizing these settings:
+
+```json
+{
+  "SqlConnectionPooling": {
+    "MinPoolSize": 10,
+    "MaxPoolSize": 200,
+    "ConnectionTimeout": 30
+  }
+}
+```
 
 ## Diagnostic Tools
 
-### Log Analysis
+Effective troubleshooting requires the right tools and knowledge of where to look for information. The Portway gateway generates extensive diagnostic data, but knowing how to access and interpret this information is crucial for quick problem resolution.
 
-#### Log File Locations
+### Understanding Your Log Files
 
-| Log Type | Default Location | Description |
+The gateway creates several different types of logs, each serving a specific purpose in helping you understand what's happening in your system. Knowing which log to check for which type of problem will save you significant time during troubleshooting.
+
+#### Where to Find Your Logs
+
+Your logs are organized in a logical structure, with different types of information stored in different locations:
+
+| Log Type | Default Location | What You'll Find Here |
 |----------|-----------------|-------------|
-| Application Logs | `./log/portwayapi-*.log` | General application events |
-| Traffic Logs (File) | `./log/traffic/proxy_traffic_*.json` | Request/response details |
-| Traffic Logs (SQLite) | `./log/traffic_logs.db` | Queryable traffic database |
-| Auth Database | `./auth.db` | Token authentication data |
+| Application Logs | `./log/portwayapi-*.log` | General application events, errors, and startup information |
+| Traffic Logs (File) | `./log/traffic/proxy_traffic_*.json` | Detailed request/response information in JSON format |
+| Traffic Logs (SQLite) | `./log/traffic_logs.db` | Queryable database of all traffic for analysis |
+| Auth Database | `./auth.db` | Token authentication data and user information |
 
-#### Useful PowerShell Commands
+#### Essential PowerShell Commands for Log Analysis
 
+When you're troubleshooting an active issue, these PowerShell commands will help you quickly find relevant information:
+
+To find recent errors across all log files:
 ```powershell
 # Find all errors in last hour
 $oneHourAgo = (Get-Date).AddHours(-1)
@@ -329,21 +326,31 @@ Get-ChildItem ".\log\*.log" |
     Where-Object { $_.LastWriteTime -gt $oneHourAgo } | 
     Select-String -Pattern "ERROR|EXCEPTION" | 
     Format-Table -AutoSize
+```
 
+To understand what types of errors are most common:
+```powershell
 # Count errors by type
 Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | 
     Select-String -Pattern "ERROR.*?:" | 
     Group-Object -Property Line | 
     Sort-Object Count -Descending | 
     Select-Object Count, Name -First 10
+```
 
+For real-time monitoring during active troubleshooting:
+```powershell
 # Monitor log file in real-time
 Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" -Wait -Tail 50
 ```
 
 ### Database Diagnostics
 
-#### Check Token Status
+The gateway uses SQLite databases to store authentication and traffic data. These databases contain valuable information for troubleshooting authentication issues and analyzing usage patterns.
+
+#### Checking Authentication Status
+
+When users report authentication problems, start by verifying their token status in the database:
 
 ```sql
 -- Using SQLite browser or command line
@@ -353,7 +360,11 @@ WHERE RevokedAt IS NULL
 ORDER BY CreatedAt DESC;
 ```
 
-#### Analyze Traffic Patterns
+This query shows you all active tokens, when they were created, when they expire, and what permissions they have.
+
+#### Understanding Traffic Patterns and Errors
+
+The traffic logs database is particularly useful for identifying patterns in errors or performance issues:
 
 ```sql
 -- Error distribution by endpoint
@@ -368,7 +379,11 @@ HAVING Errors > 0
 ORDER BY ErrorRate DESC;
 ```
 
-### Network Diagnostics
+This query helps you identify which endpoints are experiencing the highest error rates, giving you a clear starting point for investigation.
+
+### Network and Connectivity Diagnostics
+
+Sometimes the issue isn't with the gateway itself, but with the network connections it depends on. These PowerShell commands help you verify connectivity to essential services:
 
 ```powershell
 # Test connectivity to SQL Server
@@ -383,108 +398,140 @@ Get-NetTCPConnection -State Listen |
     Where-Object { $_.LocalPort -in @(80, 443, 8080) }
 ```
 
-## Error Reference
+These tests will quickly tell you if the problem is a basic connectivity issue versus something more complex within the application itself.
 
-### Common Error Codes
+## Understanding Error Messages
 
-| Status Code | Error Message | Common Cause | Solution |
-|------------|---------------|--------------|----------|
-| 400 | "Environment '{env}' is not allowed" | Invalid environment in URL | Check allowed environments in `settings.json` |
-| 401 | "Authentication required" | Missing Authorization header | Add Bearer token to request |
-| 403 | "Access denied to endpoint" | Token lacks required scope | Update token scopes in TokenGenerator |
-| 404 | "Endpoint '{name}' not found" | Endpoint not configured | Verify endpoint configuration file exists |
-| 429 | "Too many requests" | Rate limit exceeded | Wait for retry period or increase limits |
-| 500 | "Database operation failed" | SQL connection issue | Check connection string and SQL Server status |
-| Blank | None/blank page | TLS/SSL | Bind a SSL-certificate to the website | 
+When troubleshooting issues, the specific error codes and messages you encounter provide valuable clues about what's going wrong. Rather than just memorizing these codes, understanding what they actually mean will help you diagnose problems more effectively.
 
+### Common Error Codes and What They Really Mean
 
-### Log Message Patterns
+| Status Code | Error Message | What's Actually Happening | How to Fix It |
+|------------|---------------|---------------------------|---------------|
+| 400 | "Environment '{env}' is not allowed" | The environment specified in your URL path isn't configured as valid for this endpoint | Check the allowed environments list in your endpoint's `settings.json` file |
+| 401 | "Authentication required" | Your request doesn't include a valid Authorization header with a Bearer token | Add the proper Authorization header to your request |
+| 403 | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update your token's scopes using the TokenGenerator tool |
+| 404 | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
+| 429 | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
+| 500 | "Database operation failed" | The gateway can't connect to or query the SQL Server database | Check your connection string and verify SQL Server is accessible |
+| Blank | No content/blank page | Usually indicates TLS/SSL certificate issues | Bind a proper SSL certificate to your website in IIS |
+
+### Recognizing Log Message Patterns
+
+The gateway uses specific emoji and formatting patterns in its log messages to help you quickly identify different types of events:
 
 ```text
-🚫 Rate limit enforced for {Identifier}
-❌ Invalid token: {MaskedToken}
-❌ Error processing endpoint {EndpointName}
-📥 SQL Query Request: {Url}
-✅ Successfully processed query for {Endpoint}
-🔄 Converting OData to SQL for entity: {EntityName}
+🚫 Rate limit enforced for {Identifier} - Someone hit the rate limits
+❌ Invalid token: {MaskedToken} - Authentication failure
+❌ Error processing endpoint {EndpointName} - Backend service issue
+📥 SQL Query Request: {Url} - Database query being executed
+✅ Successfully processed query for {Endpoint} - Normal operation
+🔄 Converting OData to SQL for entity: {EntityName} - OData translation in progress
 ```
+
+These patterns help you quickly scan logs and identify the types of issues you're dealing with.
 
 ## Emergency Procedures
 
-### Application Won't Start
+Sometimes things go seriously wrong and you need to get the system back online quickly. These procedures are for emergency situations when normal troubleshooting isn't sufficient.
 
-1. **Check Event Viewer:**
-   ```powershell
-   Get-EventLog -LogName Application -Source "IIS*" -Newest 20
-   ```
+### When the Application Won't Start at All
 
-2. **Verify IIS configuration:**
-   ```powershell
-   # Check application pool status
-   Get-WebAppPoolState -Name "PortwayAppPool"
-   
-   # Restart application pool
-   Restart-WebAppPool -Name "PortwayAppPool"
-   ```
+If your gateway won't start, the problem is usually at the infrastructure level rather than within the application code itself. Start with the most basic diagnostics:
 
-3. **Review startup logs:**
-   ```powershell
-   Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | 
-       Select-String -Pattern "Application start|FATAL|ERROR" | 
-       Select-Object -First 50
-   ```
+First, check the Windows Event Viewer for any critical startup errors:
+```powershell
+Get-EventLog -LogName Application -Source "IIS*" -Newest 20
+```
 
-### Complete System Reset
+Next, verify that IIS and your application pool are in the correct state:
+```powershell
+# Check application pool status
+Get-WebAppPoolState -Name "PortwayAppPool"
 
-::: danger
-Only perform these steps after backing up your configuration and tokens!
+# Restart application pool
+Restart-WebAppPool -Name "PortwayAppPool"
+```
+
+If IIS appears to be working but the application still won't start, check the application logs for startup errors:
+```powershell
+Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | 
+    Select-String -Pattern "Application start|FATAL|ERROR" | 
+    Select-Object -First 50
+```
+
+### Complete System Reset (Use with Extreme Caution)
+
+::: danger Emergency Only
+Only perform these steps when you've exhausted other options and after creating proper backups. This procedure will reset your gateway to a clean state, which may resolve persistent issues but will also clear all temporary data.
 :::
 
-1. **Backup critical files:**
-   ```powershell
-   # Create backup directory
-   $backupDir = ".\backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-   New-Item -ItemType Directory -Path $backupDir
-   
-   # Copy important files
-   Copy-Item ".\tokens\*" "$backupDir\tokens\" -Recurse
-   Copy-Item ".\auth.db" "$backupDir\"
-   Copy-Item ".\environments\*" "$backupDir\environments\" -Recurse
-   Copy-Item ".\endpoints\*" "$backupDir\endpoints\" -Recurse
-   ```
+Before doing anything drastic, create a complete backup of your critical configuration:
 
-2. **Reset application state:**
-   ```powershell
-   # Stop IIS
-   iisreset /stop
-   
-   # Clear logs
-   Remove-Item ".\log\*" -Recurse -Force
-   
-   # Start IIS
-   iisreset /start
-   ```
+```powershell
+# Create backup directory
+$backupDir = ".\backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+New-Item -ItemType Directory -Path $backupDir
 
-## Best Practices
+# Copy important files
+Copy-Item ".\tokens\*" "$backupDir\tokens\" -Recurse
+Copy-Item ".\auth.db" "$backupDir\"
+Copy-Item ".\environments\*" "$backupDir\environments\" -Recurse
+Copy-Item ".\endpoints\*" "$backupDir\endpoints\" -Recurse
+```
 
-::: tip Preventive Maintenance
-1. Regularly monitor disk space and clean old logs
-2. Set up automated health checks with alerting
-3. Keep backup copies of configuration files
-4. Document all custom configurations
-5. Test connectivity to backend services regularly
-:::
+Once you have a backup, you can reset the application state:
 
-::: warning Security Considerations
-- Never expose detailed error messages to clients
-- Rotate tokens periodically
-- Monitor failed authentication attempts
-- Keep audit logs of all configuration changes
-:::
+```powershell
+# Stop IIS
+iisreset /stop
 
-## Next Steps
+# Clear logs (this removes diagnostic history)
+Remove-Item ".\log\*" -Recurse -Force
 
-- [Monitoring Guide](../monitoring)
-- [Security Guide](../security)
-- [Deployment Guide](../deployment)
-- [API Endpoints Guide](../api-endpoints)
+# Start IIS
+iisreset /start
+```
+
+After performing a reset, monitor the application logs carefully to ensure it starts up properly and test a few basic endpoints to verify functionality.
+
+## Maintaining a Healthy Gateway
+
+Prevention is always better than cure when it comes to gateway operations. By following these practices, you can avoid many of the common issues described in this guide and catch problems before they impact your users.
+
+### Proactive Monitoring and Maintenance
+
+Regular maintenance doesn't have to be complicated, but it does need to be consistent. Here are the key activities that will keep your gateway running smoothly:
+
+**Keep an eye on your storage space.** Disk space issues are one of the most common causes of gateway failures, but they're also completely preventable. Set up monitoring to alert you when disk space drops below 20%, and establish a routine for cleaning up old log files. The gateway can generate substantial logs, especially with detailed traffic logging enabled.
+
+**Monitor your health endpoints regularly.** Don't wait for users to report problems - set up automated health checks that call your `/health` endpoint and alert you to issues. Consider setting up simple monitoring scripts that test both the basic health endpoint and a few key API endpoints to ensure end-to-end functionality.
+
+**Test connectivity to your backend services.** The gateway is only as reliable as the services it connects to. Regularly verify that your SQL Server connections are working and that proxy endpoints can reach their target services. This is especially important after any network changes or server maintenance.
+
+**Keep audit logs of configuration changes.** When you modify endpoint configurations, token scopes, or other settings, document what you changed and why. This information becomes invaluable when troubleshooting issues that appear after configuration updates.
+
+**Rotate your tokens periodically.** Authentication tokens should be treated like passwords - change them regularly and immediately revoke any tokens that are no longer needed. This reduces your security exposure and ensures that only current, authorized integrations have access to your gateway.
+
+### Security Considerations
+
+Security isn't just about preventing attacks - it's also about maintaining clean diagnostic information and ensuring you can trust your troubleshooting data.
+
+**Never expose detailed error messages to external clients.** While detailed error information is crucial for troubleshooting, it can also reveal sensitive information about your internal systems to potential attackers. Configure your gateway to return generic error messages to clients while logging detailed information internally.
+
+**Monitor failed authentication attempts.** Keep track of repeated authentication failures, especially from the same IP addresses. This can indicate either misconfigured integrations that need attention or potential security threats that need investigation.
+
+**Secure your diagnostic tools.** The same database queries and log analysis tools that help you troubleshoot can also reveal sensitive information. Ensure that access to logs, databases, and diagnostic endpoints is properly restricted to authorized personnel only.
+
+## Where to Go From Here
+
+This troubleshooting guide covers the most common issues you'll encounter, but every environment is unique. As you become more familiar with your specific gateway configuration and usage patterns, you'll develop intuition about where to look first when problems arise.
+
+For deeper information about specific aspects of gateway operation and configuration, these additional guides will provide more detailed guidance:
+
+- **[Monitoring Guide](../monitoring)** - Set up comprehensive monitoring and alerting for your gateway
+- **[Security Guide](../security)** - Implement robust security practices and threat monitoring  
+- **[Deployment Guide](../deployment)** - Best practices for deploying and configuring your gateway
+- **[API Endpoints Guide](../api-endpoints)** - Detailed information about configuring and managing your API endpoints
+
+Remember that troubleshooting is a skill that improves with practice. The more familiar you become with your gateway's normal operation patterns, the more quickly you'll be able to identify and resolve issues when they occur.
