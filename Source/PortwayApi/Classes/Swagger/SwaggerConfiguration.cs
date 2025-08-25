@@ -286,6 +286,11 @@ public static class SwaggerConfiguration
         data-url=""/docs/openapi/{swaggerSettings.Version}/openapi.json""
         data-configuration='{configJson}'>
     </script>
+    <script
+        id=""foss-source""
+        >
+        (function(){{console.log(atob('JWNAbWVsb3Nzby9wb3J0d2F5JWMuIExpY2Vuc2VkIHVuZGVyICVjQUdQTCAzLjAlYy4='), atob('Y29sb3I6ICM2ZjQyYzE7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJweDs='), atob('Y29sb3I6ICMyOGE3NDU7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJ4Ow==') );}})();
+    </script>
     <script src=""https://cdn.jsdelivr.net/npm/@scalar/api-reference""></script>
     <script>
         window.addEventListener('load', function() {{
@@ -400,14 +405,6 @@ public static class SwaggerConfiguration
             iconsContainer.appendChild(githubContainer);
             iconsContainer.appendChild(licenseContainer);
             document.body.appendChild(iconsContainer);
-
-            // Add console information with colors
-            console.log('%c@melosso/portway%c. Licensed under %cAGPL 3.0%c.', 
-                'color: #6f42c1; font-weight: bold; font-size: 12px;',
-                'color: #333; font-size: 12px;',
-                'color: #28a745; font-weight: bold; font-size: 12px;',
-                'color: #333; font-size: 12x;'
-            );
         }});
     </script>
 </body>

@@ -141,7 +141,7 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 {
                     ["200"] = new OpenApiResponse
                     {
-                        Description = "Successful execution",
+                        Description = "Successful response",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType

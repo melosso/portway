@@ -315,7 +315,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                                 Schema = new OpenApiSchema { Type = "object" }
                             }
                         }
-                    }
+                    },
+                    ["400"] = new OpenApiResponse { Description = "Bad Request - Invalid request" },
+                    ["401"] = new OpenApiResponse { Description = "Unauthorized - Missing or invalid authentication token" },
+                    ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
+                    ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
+                    ["500"] = new OpenApiResponse { Description = "Internal Server Error" }
                 };
 
                 // Add the operation to the path with the appropriate HTTP method
@@ -348,8 +353,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         var webhookOperation = new OpenApiOperation
         {
             Tags = new List<OpenApiTag> { new() { Name = "Webhook" } },
-            Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming webhook",
-            Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a webhook payload",
+            Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
+            Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
             OperationId = $"op_{operationIdCounter++}",
             Parameters = new List<OpenApiParameter>
             {
@@ -391,11 +396,150 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             },
             Responses = new OpenApiResponses
             {
-                ["200"] = new OpenApiResponse { Description = "Success" },
-                ["400"] = new OpenApiResponse { Description = "Bad Request" },
-                ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-                ["403"] = new OpenApiResponse { Description = "Forbidden" },
-                ["500"] = new OpenApiResponse { Description = "Server Error" }
+                ["200"] = new OpenApiResponse 
+                { 
+                    Description = "Successful response",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["message"] = new OpenApiSchema { Type = "string", Example = new OpenApiString("Request processed successfully.") },
+                                    ["id"] = new OpenApiSchema { Type = "integer", Example = new OpenApiInteger(12345) }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["message"] = new OpenApiString("Webhook processed successfully."),
+                                ["id"] = new OpenApiInteger(12345)
+                            }
+                        }
+                    }
+                },
+                ["400"] = new OpenApiResponse 
+                { 
+                    Description = "Bad Request - Invalid request",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" },
+                                    ["success"] = new OpenApiSchema { Type = "boolean", Example = new OpenApiBoolean(false) }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("Environment is not configured properly."),
+                                ["success"] = new OpenApiBoolean(false)
+                            }
+                        }
+                    }
+                },
+                ["401"] = new OpenApiResponse 
+                { 
+                    Description = "Unauthorized - Missing or invalid authentication token",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("Unauthorized access. Valid authentication token required.")
+                            }
+                        }
+                    }
+                },
+                ["403"] = new OpenApiResponse 
+                { 
+                    Description = "Forbidden - Token valid but insufficient permissions",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("Environment 'production' is not allowed.")
+                            }
+                        }
+                    }
+                },
+                ["404"] = new OpenApiResponse 
+                { 
+                    Description = "Not Found - Resource not found or not configured",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" },
+                                    ["success"] = new OpenApiSchema { Type = "boolean", Example = new OpenApiBoolean(false) }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("Webhook ID 'unknown_webhook' is not configured."),
+                                ["success"] = new OpenApiBoolean(false)
+                            }
+                        }
+                    }
+                },
+                ["500"] = new OpenApiResponse 
+                { 
+                    Description = "Internal Server Error",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["type"] = new OpenApiSchema { Type = "string" },
+                                    ["title"] = new OpenApiSchema { Type = "string" },
+                                    ["status"] = new OpenApiSchema { Type = "integer" },
+                                    ["detail"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                ["title"] = new OpenApiString("Error"),
+                                ["status"] = new OpenApiInteger(500),
+                                ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                            }
+                        }
+                    }
+                }
             }
         };
         
@@ -465,7 +609,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             var getOperation = new OpenApiOperation
             {
                 OperationId = $"get{endpointName}Static{operationIdCounter++}",
-                Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("GET") ?? $"Get static content from {endpointName}",
+                Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("GET") ?? $"Get content from {endpointName}",
                 Description = GetStaticOperationDescription("GET", endpointName, definition, contentType),
                 Tags = new List<OpenApiTag> { new OpenApiTag { Name = endpointName } },
                 Parameters = new List<OpenApiParameter>
@@ -501,25 +645,180 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 {
                     ["200"] = new OpenApiResponse
                     {
-                        Description = "Static content returned successfully",
+                        Description = "Successful response",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
                             [contentType] = new OpenApiMediaType
                             {
                                 Schema = contentType.Contains("json") 
-                                    ? new OpenApiSchema { Type = "object", Description = "Static JSON content" }
-                                    : new OpenApiSchema { Type = "string", Description = "Static content" }
+                                    ? new OpenApiSchema { Type = "object", Description = "JSON content" }
+                                    : new OpenApiSchema { Type = "string", Description = "Content" },
+                                Examples = contentType.Contains("json") 
+                                    ? new Dictionary<string, OpenApiExample>
+                                    {
+                                        ["sample_data"] = new OpenApiExample
+                                        {
+                                            Summary = "Sample JSON data",
+                                            Value = new OpenApiArray
+                                            {
+                                                new OpenApiObject()
+                                            }
+                                        }
+                                    }
+                                    : new Dictionary<string, OpenApiExample>
+                                    {
+                                        ["sample_text"] = new OpenApiExample
+                                        {
+                                            Summary = "Sample text content",
+                                            Value = new OpenApiString("Hello world")
+                                        }
+                                    }
+                            }
+                        }
+                    },
+                    ["304"] = new OpenApiResponse
+                    {
+                        Description = "Not Modified - Content has not changed since last request",
+                        Headers = new Dictionary<string, OpenApiHeader>
+                        {
+                            ["Last-Modified"] = new OpenApiHeader
+                            {
+                                Description = "Date when the content was last modified",
+                                Schema = new OpenApiSchema { Type = "string", Format = "date-time" }
+                            },
+                            ["ETag"] = new OpenApiHeader
+                            {
+                                Description = "Entity tag for the current version of the content",
+                                Schema = new OpenApiSchema { Type = "string" }
+                            }
+                        }
+                    },
+                    ["401"] = new OpenApiResponse
+                    {
+                        Description = "Unauthorized - Missing or invalid authentication token",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                    }
+                                },
+                                Example = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Unauthorized access. Valid Bearer token required.")
+                                }
+                            }
+                        }
+                    },
+                    ["403"] = new OpenApiResponse
+                    {
+                        Description = "Forbidden - Insufficient permissions",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                    }
+                                },
+                                Example = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Environment 'production' is not allowed for this endpoint")
+                                }
                             }
                         }
                     },
                     ["404"] = new OpenApiResponse
                     {
-                        Description = "Static endpoint not found",
+                        Description = "Not Found - Resource not found",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "object" }
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                    }
+                                },
+                                Examples = new Dictionary<string, OpenApiExample>
+                                {
+                                    ["endpoint_not_found"] = new OpenApiExample
+                                    {
+                                        Summary = "Endpoint not found",
+                                        Value = new OpenApiObject
+                                        {
+                                            ["error"] = new OpenApiString($"Endpoint '{endpointName}' not found")
+                                        }
+                                    },
+                                    ["content_not_found"] = new OpenApiExample
+                                    {
+                                        Summary = "Content not found",
+                                        Value = new OpenApiObject
+                                        {
+                                            ["error"] = new OpenApiString("Content not found")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    ["406"] = new OpenApiResponse
+                    {
+                        Description = "Not Acceptable - Content negotiation failed",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = "string" },
+                                        ["detail"] = new OpenApiSchema { Type = "string" },
+                                        ["availableContentType"] = new OpenApiSchema { Type = "string" }
+                                    }
+                                },
+                                Example = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Not Acceptable"),
+                                    ["detail"] = new OpenApiString($"Endpoint provides '{contentType}' but client accepts 'text/html'"),
+                                    ["availableContentType"] = new OpenApiString(contentType)
+                                }
+                            }
+                        }
+                    },
+                    ["500"] = new OpenApiResponse
+                    {
+                        Description = "Internal Server Error",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                    }
+                                },
+                                Example = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Error serving content")
+                                }
                             }
                         }
                     }
@@ -689,15 +988,348 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             };
         }
         
-        // Add standard responses
+        // Add comprehensive responses with detailed schemas and examples  
         operation.Responses = new OpenApiResponses
         {
-            ["200"] = new OpenApiResponse { Description = "Success" },
-            ["400"] = new OpenApiResponse { Description = "Bad Request" },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["403"] = new OpenApiResponse { Description = "Forbidden" },
-            ["404"] = new OpenApiResponse { Description = "Not Found" },
-            ["500"] = new OpenApiResponse { Description = "Server Error" }
+            ["200"] = new OpenApiResponse 
+            { 
+                Description = method switch
+                {
+                    "GET" => "Successful response",
+                    "POST" => "Successful response",
+                    "PUT" => "Successful response",
+                    "MERGE" => "Successful response",
+                    "DELETE" => "Successful response",
+                    _ => "Successful response"
+                },
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = method switch
+                        {
+                            "GET" => new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["count"] = new OpenApiSchema { Type = "integer" },
+                                    ["value"] = new OpenApiSchema 
+                                    { 
+                                        Type = "array",
+                                        Items = new OpenApiSchema { Type = "object" }
+                                    },
+                                    ["nextLink"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            "POST" => new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["success"] = new OpenApiSchema { Type = "boolean" },
+                                    ["id"] = new OpenApiSchema { Type = "integer" },
+                                    ["message"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            "PUT" or "MERGE" => new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["success"] = new OpenApiSchema { Type = "boolean" },
+                                    ["rowsAffected"] = new OpenApiSchema { Type = "integer" },
+                                    ["message"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            _ => new OpenApiSchema { Type = "object" }
+                        },
+                        Examples = method switch
+                        {
+                            "GET" => new Dictionary<string, OpenApiExample>
+                            {
+                                ["success"] = new OpenApiExample
+                                {
+                                    Summary = "Successful data retrieval",
+                                    Value = new OpenApiObject
+                                    {
+                                        ["count"] = new OpenApiInteger(0),
+                                        ["value"] = new OpenApiArray(),
+                                        ["nextLink"] = new OpenApiString($"/api/{endpointName}?$top=10&$skip=0")
+                                    }
+                                }
+                            },
+                            "POST" => new Dictionary<string, OpenApiExample>
+                            {
+                                ["success"] = new OpenApiExample
+                                {
+                                    Summary = "Successful creation",
+                                    Value = new OpenApiObject
+                                    {
+                                        ["success"] = new OpenApiBoolean(true),
+                                        ["id"] = new OpenApiInteger(123),
+                                        ["message"] = new OpenApiString("Record created successfully")
+                                    }
+                                }
+                            },
+                            "PUT" or "MERGE" => new Dictionary<string, OpenApiExample>
+                            {
+                                ["success"] = new OpenApiExample
+                                {
+                                    Summary = "Successful update",
+                                    Value = new OpenApiObject
+                                    {
+                                        ["success"] = new OpenApiBoolean(true),
+                                        ["rowsAffected"] = new OpenApiInteger(1),
+                                        ["message"] = new OpenApiString("Record updated successfully")
+                                    }
+                                }
+                            },
+                            _ => new Dictionary<string, OpenApiExample>()
+                        }
+                    }
+                }
+            },
+            ["400"] = new OpenApiResponse 
+            { 
+                Description = "Bad Request - Invalid request",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" },
+                                ["details"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Examples = new Dictionary<string, OpenApiExample>
+                        {
+                            ["invalid_odata"] = new OpenApiExample
+                            {
+                                Summary = "Invalid OData syntax",
+                                Value = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Invalid OData filter syntax"),
+                                    ["details"] = new OpenApiString("Syntax error in $filter expression near 'invalidField'")
+                                }
+                            },
+                            ["missing_required"] = new OpenApiExample
+                            {
+                                Summary = "Missing required field",
+                                Value = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Required field 'name' is missing"),
+                                    ["details"] = new OpenApiString("POST request must include 'name' field in request body")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ["401"] = new OpenApiResponse 
+            { 
+                Description = "Unauthorized - Missing or invalid authentication token",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["error"] = new OpenApiString("Unauthorized access. Valid Bearer token required.")
+                        }
+                    }
+                }
+            },
+            ["403"] = new OpenApiResponse 
+            { 
+                Description = "Forbidden - Insufficient permissions",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Examples = new Dictionary<string, OpenApiExample>
+                        {
+                            ["environment_restricted"] = new OpenApiExample
+                            {
+                                Summary = "Environment access denied",
+                                Value = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Environment 'production' is not allowed for this endpoint")
+                                }
+                            },
+                            ["method_not_allowed"] = new OpenApiExample
+                            {
+                                Summary = "Method not allowed",
+                                Value = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("DELETE method is not allowed for this endpoint")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ["404"] = new OpenApiResponse 
+            { 
+                Description = "Not Found - Resource not found",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Examples = new Dictionary<string, OpenApiExample>
+                        {
+                            ["endpoint_not_found"] = new OpenApiExample
+                            {
+                                Summary = "Endpoint not found",
+                                Value = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString($"Endpoint '{endpointName}' not found")
+                                }
+                            },
+                            ["record_not_found"] = new OpenApiExample
+                            {
+                                Summary = "Record not found",
+                                Value = new OpenApiObject
+                                {
+                                    ["error"] = new OpenApiString("Record with specified ID not found")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ["409"] = new OpenApiResponse 
+            { 
+                Description = "Conflict - Duplicate key violation or business rule conflict",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" },
+                                ["conflictType"] = new OpenApiSchema { Type = "string" },
+                                ["details"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["error"] = new OpenApiString("Record with this identifier already exists"),
+                            ["conflictType"] = new OpenApiString("CONSTRAINT_VIOLATION"),
+                            ["details"] = new OpenApiString("Violation of the constraint 'UK_Name'")
+                        }
+                    }
+                }
+            },
+            ["422"] = new OpenApiResponse 
+            { 
+                Description = "Unprocessable Entity - Validation errors or business rule violations",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" },
+                                ["validationErrors"] = new OpenApiSchema 
+                                { 
+                                    Type = "array",
+                                    Items = new OpenApiSchema
+                                    {
+                                        Type = "object",
+                                        Properties = new Dictionary<string, OpenApiSchema>
+                                        {
+                                            ["field"] = new OpenApiSchema { Type = "string" },
+                                            ["message"] = new OpenApiSchema { Type = "string" }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["error"] = new OpenApiString("Validation failed"),
+                            ["validationErrors"] = new OpenApiArray
+                            {
+                                new OpenApiObject
+                                {
+                                    ["field"] = new OpenApiString("email"),
+                                    ["message"] = new OpenApiString("Invalid email format")
+                                },
+                                new OpenApiObject
+                                {
+                                    ["field"] = new OpenApiString("age"),
+                                    ["message"] = new OpenApiString("Age must be between 18 and 120")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["type"] = new OpenApiSchema { Type = "string" },
+                                ["title"] = new OpenApiSchema { Type = "string" },
+                                ["status"] = new OpenApiSchema { Type = "integer" },
+                                ["detail"] = new OpenApiSchema { Type = "string" },
+                                ["traceId"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                            ["title"] = new OpenApiString("Internal Server Error"),
+                            ["status"] = new OpenApiInteger(500),
+                            ["detail"] = new OpenApiString("An internal error occurred. Please check the logs for more details."),
+                            ["traceId"] = new OpenApiString("value")
+                        }
+                    }
+                }
+            }
         };
         
         return operation;
@@ -742,12 +1374,165 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             },
             Responses = new OpenApiResponses
             {
-                ["200"] = new OpenApiResponse { Description = "Success" },
-                ["400"] = new OpenApiResponse { Description = "Bad Request" },
-                ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-                ["403"] = new OpenApiResponse { Description = "Forbidden" },
-                ["404"] = new OpenApiResponse { Description = "Not Found" },
-                ["500"] = new OpenApiResponse { Description = "Server Error" }
+                ["200"] = new OpenApiResponse 
+                { 
+                    Description = "Successful response",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["success"] = new OpenApiSchema { Type = "boolean" },
+                                    ["rowsAffected"] = new OpenApiSchema { Type = "integer" },
+                                    ["message"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["success"] = new OpenApiBoolean(true),
+                                ["rowsAffected"] = new OpenApiInteger(1),
+                                ["message"] = new OpenApiString("Record deleted successfully")
+                            }
+                        }
+                    }
+                },
+                ["400"] = new OpenApiResponse 
+                { 
+                    Description = "Bad Request - Invalid request",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("ID parameter is required for delete operation")
+                            }
+                        }
+                    }
+                },
+                ["401"] = new OpenApiResponse 
+                { 
+                    Description = "Unauthorized - Missing or invalid authentication token",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("Unauthorized access. Valid Bearer token required.")
+                            }
+                        }
+                    }
+                },
+                ["403"] = new OpenApiResponse 
+                { 
+                    Description = "Forbidden - Insufficient permissions",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["error"] = new OpenApiString("DELETE method is not allowed for this endpoint")
+                            }
+                        }
+                    }
+                },
+                ["404"] = new OpenApiResponse 
+                { 
+                    Description = "Not Found - Resource not found",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Examples = new Dictionary<string, OpenApiExample>
+                            {
+                                ["endpoint_not_found"] = new OpenApiExample
+                                {
+                                    Summary = "Endpoint not found",
+                                    Value = new OpenApiObject
+                                    {
+                                        ["error"] = new OpenApiString($"Endpoint '{endpointName}' not found")
+                                    }
+                                },
+                                ["record_not_found"] = new OpenApiExample
+                                {
+                                    Summary = "Record not found",
+                                    Value = new OpenApiObject
+                                    {
+                                        ["error"] = new OpenApiString("Record with specified ID not found")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                ["500"] = new OpenApiResponse 
+                { 
+                    Description = "Internal Server Error",
+                    Content = new Dictionary<string, OpenApiMediaType>
+                    {
+                        ["application/json"] = new OpenApiMediaType
+                        {
+                            Schema = new OpenApiSchema
+                            {
+                                Type = "object",
+                                Properties = new Dictionary<string, OpenApiSchema>
+                                {
+                                    ["type"] = new OpenApiSchema { Type = "string" },
+                                    ["title"] = new OpenApiSchema { Type = "string" },
+                                    ["status"] = new OpenApiSchema { Type = "integer" },
+                                    ["detail"] = new OpenApiSchema { Type = "string" },
+                                    ["traceId"] = new OpenApiSchema { Type = "string" }
+                                }
+                            },
+                            Example = new OpenApiObject
+                            {
+                                ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                ["title"] = new OpenApiString("Internal Server Error"),
+                                ["status"] = new OpenApiInteger(500),
+                                ["detail"] = new OpenApiString("An internal error occurred. Please check the logs for more details."),
+                                ["traceId"] = new OpenApiString("value")
+                            }
+                        }
+                    }
+                }
             }
         };
         
@@ -855,12 +1640,47 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         // Add standard responses
         operation.Responses = new OpenApiResponses
         {
-            ["200"] = new OpenApiResponse { Description = "Success" },
-            ["400"] = new OpenApiResponse { Description = "Bad Request" },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["403"] = new OpenApiResponse { Description = "Forbidden" },
-            ["404"] = new OpenApiResponse { Description = "Not Found" },
-            ["500"] = new OpenApiResponse { Description = "Server Error" }
+            ["200"] = new OpenApiResponse { Description = "Successful response" },
+            ["400"] = new OpenApiResponse { Description = "Bad Request - Invalid request" },
+            ["401"] = new OpenApiResponse 
+            { 
+                Description = "Unauthorized - Missing or invalid authentication token",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        }
+                    }
+                }
+            },
+            ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
+            ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["error"] = new OpenApiSchema { Type = "string" },
+                                ["message"] = new OpenApiSchema { Type = "string" }
+                            }
+                        }
+                    }
+                }
+            }
         };
         
         return operation;
@@ -956,9 +1776,9 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         {
             return method.ToUpper() switch
             {
-                "GET" => $"Download files from the {endpointName} storage endpoint",
-                "POST" => $"Upload files to the {endpointName} storage endpoint",
-                _ => $"{method} operation for file endpoint {endpointName}"
+                "GET" => $"Download content from the {endpointName} storage endpoint",
+                "POST" => $"Upload content to the {endpointName} storage endpoint",
+                _ => $"{method} operation for storage endpoint {endpointName}"
             };
         }
         else
@@ -980,7 +1800,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         }
         
         // Return default description for static endpoints
-        return $"Returns static {contentType} content from the {endpointName} endpoint.";
+        return $"Returns {contentType} content from the {endpointName} endpoint.";
     }
     
     /// <summary>

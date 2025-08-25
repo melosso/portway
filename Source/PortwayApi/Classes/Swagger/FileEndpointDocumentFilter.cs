@@ -262,7 +262,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         {
             ["200"] = new OpenApiResponse
             {
-                Description = "File uploaded successfully",
+                Description = "Successful response",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
@@ -291,9 +291,6 @@ public class FileEndpointDocumentFilter : IDocumentFilter
 
         // Add file endpoint properties info
         AddFileEndpointPropertiesInfo(operation, endpoint, "upload");
-        
-        // Add curl examples
-        AddCurlExamples(operation, "upload", endpointName);
         
         // Add the upload operation
         swaggerDoc.Paths[path].Operations[OperationType.Post] = operation;
@@ -360,7 +357,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         {
             ["200"] = new OpenApiResponse
             {
-                Description = "File content",
+                Description = "Successful response",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["*/*"] = new OpenApiMediaType
@@ -381,9 +378,6 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         // Add file endpoint properties info
         AddFileEndpointPropertiesInfo(operation, endpoint, "download");
         
-        // Add curl examples
-        AddCurlExamples(operation, "download", endpointName);
-
         // Add the download operation
         swaggerDoc.Paths[path].Operations[OperationType.Get] = operation;
     }
@@ -449,7 +443,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         {
             ["200"] = new OpenApiResponse
             {
-                Description = "File deleted successfully",
+                Description = "Successful response",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
@@ -477,9 +471,6 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         // Add file endpoint properties info
         AddFileEndpointPropertiesInfo(operation, endpoint, "delete");
         
-        // Add curl examples
-        AddCurlExamples(operation, "delete", endpointName);
-
         // Add the delete operation
         swaggerDoc.Paths[path].Operations[OperationType.Delete] = operation;
     }
@@ -545,7 +536,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         {
             ["200"] = new OpenApiResponse
             {
-                Description = "List of files",
+                Description = "Successful response",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
@@ -589,9 +580,6 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         // Add file endpoint properties info
         AddFileEndpointPropertiesInfo(operation, endpoint, "list");
         
-        // Add curl examples
-        AddCurlExamples(operation, "list", endpointName);
-
         // Add the list operation
         swaggerDoc.Paths[path].Operations[OperationType.Get] = operation;
     }
@@ -681,54 +669,6 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         // Update operation description
         operation.Description = description.ToString();
     }
-
-    private void AddCurlExamples(OpenApiOperation operation, string operationType, string endpointName)
-    {
-        var curlExample = new StringBuilder();
-        
-        if (operationType == "upload")
-        {
-            curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X POST \"https://yourserver.com/api/prod/files/{endpointName}\"");
-            curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
-            curlExample.AppendLine("  -H \"Content-Type: multipart/form-data\"");
-            curlExample.AppendLine("  -F \"file=@/path/to/yourfile.pdf\"");
-            curlExample.AppendLine("```");
-        }
-        else if (operationType == "download")
-        {
-            curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X GET \"https://yourserver.com/api/prod/files/{endpointName}/YOUR_FILE_ID\"");
-            curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
-            curlExample.AppendLine("  --output downloaded_file.pdf");
-            curlExample.AppendLine("```");
-        }
-        else if (operationType == "delete")
-        {
-            curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X DELETE \"https://yourserver.com/api/prod/files/{endpointName}/YOUR_FILE_ID\"");
-            curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
-            curlExample.AppendLine("```");
-        }
-        else if (operationType == "list")
-        {
-            curlExample.AppendLine("```bash");
-            curlExample.AppendLine($"curl -X GET \"https://yourserver.com/api/prod/files/{endpointName}/list\"");
-            curlExample.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\"");
-            curlExample.AppendLine("```");
-        }
-        
-        // Add curl examples to description
-        if (operation.Description == null)
-        {
-            operation.Description = curlExample.ToString();
-        }
-        else
-        {
-            operation.Description += "\n\n## Example\n" + curlExample.ToString();
-        }
-    }
-
     private List<string> GetAllowedEnvironments()
     {
         try

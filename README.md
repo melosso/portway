@@ -369,7 +369,7 @@ Portway is available under two licensing models:
 * **Open Source (AGPL-3.0)** — Free for open source projects and personal use
 * **Commercial License** — For commercial use with full transparency of the open source project
 
-The commercial variant solely focusses on Business/Enterprise that requrire: Priority support, guaranteed patches, DTAP environments require a [commercial license](https://melosso.com/licensing/portway). Activation is simple with a license key from your account portal.
+A [commercial license](https://melosso.com/licensing/portway) is available for businesses and enterprises that require formal guarantees. This license includes features such as **priority support**, **guaranteed patches**, and **DTAP environment support**. Activation is easy—simply, by storing the license key (file) that can be downloaded from your account portal.
 
 [Get your license →](https://melosso.com/licensing/portway)
 
