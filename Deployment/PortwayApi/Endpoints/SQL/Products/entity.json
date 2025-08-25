@@ -3,7 +3,10 @@
     "DatabaseSchema": "dbo",
     "PrimaryKey": "ItemCode",
     "AllowedColumns": [
-        "ItemCode","Description","Assortment","sysguid"
+        "ItemCode;ProductNumber",
+        "Description;Description", 
+        "Assortment;AssortmentID",
+        "sysguid;InternalID"
     ],
     "AllowedMethods": ["GET"],
     "AllowedEnvironments": ["600","700"],

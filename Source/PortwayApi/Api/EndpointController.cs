@@ -1639,22 +1639,36 @@ public class EndpointController : ControllerBase
                 return StatusCode(405);
             }
 
-            // If ID is provided, create a filter by primary key
+            // Step 4: Handle ID-based filtering
             if (!string.IsNullOrEmpty(id))
             {
+                // Get the actual database column name for the primary key
+                // The primaryKey could be an alias, so we need to resolve it to the database column name
+                string actualPrimaryKey = primaryKey;
+                
+                if (allowedColumns.Count > 0)
+                {
+                    var aliasToDatabase = endpoint.AliasToDatabase;
+                    if (aliasToDatabase.TryGetValue(primaryKey, out var databasePrimaryKey))
+                    {
+                        actualPrimaryKey = databasePrimaryKey;
+                        Log.Debug("Converted primary key alias '{Alias}' to database column '{DatabaseColumn}'", primaryKey, actualPrimaryKey);
+                    }
+                }
+                
                 // Create appropriate filter expression by primary key
                 // Check if the ID is a GUID
                 if (Guid.TryParse(id, out _))
                 {
-                    filter = $"{primaryKey} eq guid'{id}'";
+                    filter = $"{actualPrimaryKey} eq guid'{id}'";
                 }
                 else
                 {
                     // Handle numeric or string IDs
                     bool isNumeric = long.TryParse(id, out _);
                     filter = isNumeric 
-                        ? $"{primaryKey} eq {id}" 
-                        : $"{primaryKey} eq '{id}'";
+                        ? $"{actualPrimaryKey} eq {id}" 
+                        : $"{actualPrimaryKey} eq '{id}'";
                 }
 
                 // Set top to 1 to return only one record when requesting by ID
@@ -1663,48 +1677,76 @@ public class EndpointController : ControllerBase
                 Log.Debug("Created filter for ID-based query: {Filter}", filter);
             }
 
-            // Step 5: Validate column names
+            // Step 5: Handle column aliases and validation
+            string? selectForQuery = select; // This will contain database column names for the SQL query
+            string? filterForQuery = filter; // This will contain database column names for the SQL query
+            string? orderbyForQuery = orderby; // This will contain database column names for the SQL query
+            
             if (allowedColumns.Count > 0)
             {
-                // Validate select columns
+                // Get column mappings for alias support
+                var aliasToDatabase = endpoint.AliasToDatabase;
+                var databaseToAlias = endpoint.DatabaseToAlias;
+                
+                // Validate select columns (using aliases)
                 if (!string.IsNullOrEmpty(select))
                 {
-                    var selectedColumns = select.Split(',')
-                        .Select(c => c.Trim())
-                        .ToList();
-
-                    var invalidColumns = selectedColumns
-                        .Where(col => !allowedColumns.Contains(col, StringComparer.OrdinalIgnoreCase))
-                        .ToList();
-
-                    if (invalidColumns.Any())
+                    var (isValid, invalidAliases) = PortwayApi.Classes.Helpers.ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
+                    
+                    if (!isValid)
                     {
                         return BadRequest(new { 
-                            error = $"Selected columns not allowed: {string.Join(", ", invalidColumns)}", 
+                            error = $"Selected columns not allowed: {string.Join(", ", invalidAliases)}", 
                             success = false 
                         });
                     }
+                    
+                    // Convert aliases to database column names for the SQL query
+                    selectForQuery = PortwayApi.Classes.Helpers.ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
+                    Log.Debug("Converted aliases '{Aliases}' to database columns '{DatabaseColumns}'", select, selectForQuery);
                 }
                 else
                 {
-                    // If no select and columns are restricted, use allowed columns
-                    select = string.Join(",", allowedColumns);
+                    // If no select and columns are restricted, use all allowed database columns
+                    var allDatabaseColumns = PortwayApi.Classes.Helpers.ColumnMappingHelper.GetDatabaseColumns(databaseToAlias);
+                    selectForQuery = string.Join(",", allDatabaseColumns);
+                    Log.Debug("No select specified, using all allowed database columns: {DatabaseColumns}", selectForQuery);
+                }
+                
+                // Convert filter column references from aliases to database columns
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    filterForQuery = PortwayApi.Classes.Helpers.ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
+                    if (filterForQuery != filter)
+                    {
+                        Log.Debug("Converted filter aliases: '{OriginalFilter}' -> '{ConvertedFilter}'", filter, filterForQuery);
+                    }
+                }
+                
+                // Convert orderby column references from aliases to database columns
+                if (!string.IsNullOrEmpty(orderby))
+                {
+                    orderbyForQuery = PortwayApi.Classes.Helpers.ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
+                    if (orderbyForQuery != orderby)
+                    {
+                        Log.Debug("Converted orderby aliases: '{OriginalOrderBy}' -> '{ConvertedOrderBy}'", orderby, orderbyForQuery);
+                    }
                 }
             }
 
-            // Step 6: Prepare OData parameters
+            // Step 6: Prepare OData parameters (using database column names)
             var odataParams = new Dictionary<string, string>
             {
                 { "top", (top + 1).ToString() },
                 { "skip", skip.ToString() }
             };
 
-            if (!string.IsNullOrEmpty(select)) 
-                odataParams["select"] = select;
-            if (!string.IsNullOrEmpty(filter)) 
-                odataParams["filter"] = filter;
-            if (!string.IsNullOrEmpty(orderby)) 
-                odataParams["orderby"] = orderby;
+            if (!string.IsNullOrEmpty(selectForQuery)) 
+                odataParams["select"] = selectForQuery;
+            if (!string.IsNullOrEmpty(filterForQuery)) 
+                odataParams["filter"] = filterForQuery;
+            if (!string.IsNullOrEmpty(orderbyForQuery)) 
+                odataParams["orderby"] = orderbyForQuery;
 
             // Step 7: Convert OData to SQL
             var (query, parameters) = _oDataToSqlConverter.ConvertToSQL($"{schema}.{objectName}", odataParams);
@@ -1716,19 +1758,32 @@ public class EndpointController : ControllerBase
             var results = await connection.QueryAsync(query, parameters);
             var resultList = results.ToList();
 
+            // Step 9: Transform results to use aliases (if column mappings exist)
+            var transformedResults = resultList;
+            if (allowedColumns.Count > 0)
+            {
+                var databaseToAlias = endpoint.DatabaseToAlias;
+                if (databaseToAlias.Count > 0)
+                {
+                    var aliasResults = PortwayApi.Classes.Helpers.ColumnMappingHelper.TransformQueryResultsToAliases(resultList, databaseToAlias);
+                    transformedResults = aliasResults.Cast<object>().ToList();
+                    Log.Debug("Transformed {Count} results from database columns to aliases", transformedResults.Count);
+                }
+            }
+
             // Determine if it's the last page
-            bool isLastPage = resultList.Count <= top;
+            bool isLastPage = transformedResults.Count <= top;
             if (!isLastPage)
             {
                 // Remove the extra row used for pagination
-                resultList.RemoveAt(resultList.Count - 1);
+                transformedResults.RemoveAt(transformedResults.Count - 1);
             }
 
             // For ID-based requests, return the single item directly
             if (!string.IsNullOrEmpty(id))
             {
                 // Return 404 if no results found
-                if (resultList.Count == 0)
+                if (transformedResults.Count == 0)
                 {
                     return NotFound(new {
                         error = $"No record found with {primaryKey} = {id}",
@@ -1737,14 +1792,14 @@ public class EndpointController : ControllerBase
                 }
                 
                 // Return the single item directly (without wrapping in a collection)
-                return Ok(resultList.FirstOrDefault());
+                return Ok(transformedResults.FirstOrDefault());
             }
 
-            // Step 9: Prepare response for collection requests
+            // Step 10: Prepare response for collection requests
             var response = new
             {
-                Count = resultList.Count,
-                Value = resultList,
+                Count = transformedResults.Count,
+                Value = transformedResults,
                 NextLink = isLastPage 
                     ? null 
                     : BuildNextLink(env, endpointName, select, filter, orderby, top, skip)

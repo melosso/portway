@@ -3,6 +3,7 @@
 [Oo]bj/
 /[Ll]og/
 /[Ll]ogs/
+files/
 
 # Visual Studio files
 .vs/

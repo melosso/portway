@@ -1,5 +1,9 @@
+# Get script and root directory paths
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
+
 # Define the deployment path
-$deploymentPath = "C:\Github\portway\Deployment\PortwayApi"
+$deploymentPath = Join-Path $rootDir "Deployment\PortwayApi"
 
 # Check if the deployment folder exists, create it if not
 if (-not (Test-Path -Path $deploymentPath)) {
@@ -15,7 +19,8 @@ else {
 
 # Publish the application
 Write-Host "Publishing application..."
-dotnet publish C:\Github\portway\Source\PortwayApi -c Release -o $deploymentPath
+$sourceProjectPath = Join-Path $rootDir "Source\PortwayApi"
+dotnet publish $sourceProjectPath -c Release -o $deploymentPath
 
 # Clean up unnecessary development files
 Write-Host "Removing development files..."
@@ -38,6 +43,18 @@ if (Test-Path $gitFolder) {
     Write-Host "Removing .git folder..."
     Remove-Item -Path $gitFolder -Recurse -Force -ErrorAction SilentlyContinue
 }
+
+# Remove tokens folder/files (if they exist)
+$tokensFolder = Join-Path $deploymentPath "tokens"
+if (Test-Path $tokensFolder) {
+    Write-Host "Removing tokens folder and files..."
+    Remove-Item -Path $tokensFolder -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+# Remove any token files in subdirectories
+Get-ChildItem -Path $deploymentPath -Directory -Recurse -ErrorAction SilentlyContinue |
+Where-Object { $_.Name -eq "tokens" } |
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 # Remove XML documentation files (but not content files)
 Get-ChildItem -Path $deploymentPath -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue |
@@ -82,7 +99,6 @@ $webConfigContent = @'
         <remove name="Referrer-Policy" />
         <remove name="Permissions-Policy" />
         <remove name="Content-Security-Policy" />
-
         <add name="X-Content-Type-Options" value="nosniff" />
         <add name="X-Frame-Options" value="DENY" />
         <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
@@ -99,8 +115,18 @@ $webConfigContent = @'
 $webConfigPath = "$deploymentPath\web.config"
 $webConfigContent | Out-File -FilePath $webConfigPath -Encoding UTF8 -Force
 
+# Copy LICENSE file to deployment directory
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
+$licensePath = Join-Path $rootDir "LICENSE"
+$deploymentLicensePath = Join-Path $rootDir "Deployment\PortwayApi\license.txt"
+if (Test-Path $licensePath) {
+    Write-Host "Copying LICENSE file to deployment directory..."
+    Copy-Item -Path $licensePath -Destination $deploymentLicensePath -Force
+}
+
 # Ensure .gitignore exists
-$gitignorePath = "C:\Github\portway\.gitignore"
+$gitignorePath = Join-Path $rootDir ".gitignore"
 $logIgnoreRules = @(
     "# Ignore log files",
     "*.log",

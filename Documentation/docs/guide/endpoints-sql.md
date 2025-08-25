@@ -48,6 +48,32 @@ Create a JSON file in the `endpoints/SQL/{EndpointName}/entity.json` directory:
 | `AllowedEnvironments` | array | No | Environments where endpoint is available |
 | `Procedure` | string | No | Stored procedure for POST/PUT/DELETE operations |
 
+### Column Aliases
+
+You can create user-friendly column names using semicolon-separated aliases:
+
+```json
+{
+  "DatabaseObjectName": "Items",
+  "DatabaseSchema": "dbo",
+  "PrimaryKey": "ItemCode",
+  "AllowedColumns": [
+    "ItemCode;ProductNumber",
+    "Description;ProductName",
+    "Assortment;Category",
+    "sysguid;InternalID"
+  ]
+}
+```
+
+With aliases configured, you can use friendly names in your API requests:
+
+```http
+GET /api/prod/Products?$select=ProductNumber,ProductName&$filter=Category eq 'Electronics'
+```
+
+This automatically converts to the actual database columns (`ItemCode`, `Description`, `Assortment`) while keeping your API clean and user-friendly.
+
 ## Using SQL Endpoints
 
 ### GET Requests (Query Data)

@@ -20,7 +20,6 @@ public class SecurityHeadersMiddleware
         _unsafeResponseHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Server",
-            "X-Powered-By",
             "X-AspNet-Version",
             "X-SourceFiles",
             "X-AspNetMvc-Version"
@@ -29,6 +28,9 @@ public class SecurityHeadersMiddleware
         // Carefully configured security headers
         _securityHeaders = new Dictionary<string, string>
         {
+            // Custom branding
+            { "X-Powered-By", "Portway API" },
+            
             // Prevent MIME type sniffing
             { "X-Content-Type-Options", "nosniff" },
             
@@ -55,10 +57,7 @@ public class SecurityHeadersMiddleware
             { "Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=()" },
             
             // HTTP Strict Transport Security (HSTS)
-            { "Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload" },
-            
-            // Disable old XSS filter, rely on CSP
-            { "X-XSS-Protection", "0" }
+            { "Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload" }
         };
     }
 

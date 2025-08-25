@@ -112,14 +112,14 @@ Endpoints are configured as JSON files. Each type has its own directory and form
 
 #### SQL Endpoint — `endpoints/SQL/Products/entity.json`
 
-Exposes a SQL table with restricted columns and CRUD operations.
+Exposes a SQL table with restricted columns and CRUD operations. Use column aliasing to prevent exposing sensitive field names.
 
 ```json
 {
   "DatabaseObjectName": "Items",
   "DatabaseSchema": "dbo",
   "PrimaryKey": "ItemCode",
-  "AllowedColumns": ["ItemCode", "Description", "Assortment", "sysguid"],
+  "AllowedColumns": ["ItemCode;ProductNumber", "LongDescription;Description", "Assortment;AssortmentCode", "sysguid;InternalID"],
   "AllowedEnvironments": ["prod", "dev"]
 }
 ```

@@ -21,6 +21,38 @@ public class EndpointDefinition
     public string? Procedure { get; set; }
     public string? PrimaryKey { get; set; }
     
+    // Column mapping properties (lazy-loaded from AllowedColumns)
+    private Dictionary<string, string>? _aliasToDatabase;
+    private Dictionary<string, string>? _databaseToAlias;
+    
+    public Dictionary<string, string> AliasToDatabase
+    {
+        get
+        {
+            if (_aliasToDatabase == null)
+            {
+                var (aliasToDb, dbToAlias) = PortwayApi.Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(AllowedColumns);
+                _aliasToDatabase = aliasToDb;
+                _databaseToAlias = dbToAlias;
+            }
+            return _aliasToDatabase;
+        }
+    }
+    
+    public Dictionary<string, string> DatabaseToAlias
+    {
+        get
+        {
+            if (_databaseToAlias == null)
+            {
+                var (aliasToDb, dbToAlias) = PortwayApi.Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(AllowedColumns);
+                _aliasToDatabase = aliasToDb;
+                _databaseToAlias = dbToAlias;
+            }
+            return _databaseToAlias;
+        }
+    }
+    
     // Environment restrictions
     public List<string>? AllowedEnvironments { get; set; }
 
@@ -707,6 +739,15 @@ public static class EndpointHandler
                 var allowedMethods = entity.AllowedMethods ?? new List<string> { "GET" };
                 var schema = entity.DatabaseSchema ?? "dbo";
 
+                // Validate the endpoint configuration before creating the definition
+                var validationResults = ValidateSqlEndpointConfiguration(entity);
+                if (validationResults.Any())
+                {
+                    var errors = string.Join(", ", validationResults);
+                    Log.Error("SQL endpoint validation failed: {Errors}", errors);
+                    throw new InvalidOperationException($"SQL endpoint configuration is invalid: {errors}");
+                }
+
                 return new EndpointDefinition
                 {
                     Type = EndpointType.SQL,
@@ -727,6 +768,59 @@ public static class EndpointHandler
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Validates SQL endpoint configuration to prevent runtime errors
+    /// </summary>
+    private static List<string> ValidateSqlEndpointConfiguration(EndpointEntity entity)
+    {
+        var errors = new List<string>();
+
+        // Validate AllowedColumns for malformed entries
+        if (entity.AllowedColumns != null)
+        {
+            for (int i = 0; i < entity.AllowedColumns.Count; i++)
+            {
+                var column = entity.AllowedColumns[i];
+                
+                if (string.IsNullOrWhiteSpace(column))
+                {
+                    errors.Add($"AllowedColumns[{i}] is empty or whitespace");
+                    continue;
+                }
+
+                // Check for problematic patterns that could cause IndexOutOfRangeException
+                var parts = column.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 0)
+                {
+                    errors.Add($"AllowedColumns[{i}] '{column}' contains only separators and is invalid");
+                }
+                else if (parts.Any(part => string.IsNullOrWhiteSpace(part)))
+                {
+                    errors.Add($"AllowedColumns[{i}] '{column}' contains empty parts");
+                }
+            }
+        }
+
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
+        {
+            errors.Add("DatabaseObjectName is required for SQL endpoints");
+        }
+
+        // Validate allowed methods
+        if (entity.AllowedMethods != null)
+        {
+            var validMethods = new[] { "GET", "POST", "PUT", "DELETE", "MERGE" };
+            var invalidMethods = entity.AllowedMethods.Where(m => !validMethods.Contains(m.ToUpper())).ToList();
+            if (invalidMethods.Any())
+            {
+                errors.Add($"Invalid HTTP methods: {string.Join(", ", invalidMethods)}");
+            }
+        }
+
+        return errors;
     }
 
     /// <summary>

@@ -85,10 +85,32 @@ SQL entities expose database tables or views through OData endpoints.
 | `DatabaseObjectName` | string | Yes | Name of the table or view |
 | `DatabaseSchema` | string | No | Database schema (default: "dbo") |
 | `PrimaryKey` | string | No | Primary key column (default: "Id") |
-| `AllowedColumns` | array | Yes | List of accessible columns |
+| `AllowedColumns` | array | Yes | List of accessible columns (supports aliases) |
 | `Procedure` | string | No | Stored procedure for data operations |
 | `AllowedMethods` | array | No | HTTP methods (default: ["GET"]) |
 | `AllowedEnvironments` | array | No | Allowed environments (default: all) |
+
+### Column Aliases
+
+The `AllowedColumns` array supports semicolon-separated aliases for user-friendly column names:
+
+```json
+{
+  "AllowedColumns": [
+    "ItemCode;ProductNumber",     // Database column: ItemCode, API alias: ProductNumber
+    "Description;ProductName",    // Database column: Description, API alias: ProductName
+    "Assortment;Category",        // Database column: Assortment, API alias: Category
+    "sysguid;InternalID"          // Database column: sysguid, API alias: InternalID
+  ]
+}
+```
+
+**Format:** `"DatabaseColumn;Alias"`
+
+**Benefits:**
+- Create intuitive API column names while preserving database structure
+- Backward compatible with existing configurations
+- Automatic conversion in all OData operations (`$select`, `$filter`, `$orderby`)
 
 ## Proxy Entity Configuration
 

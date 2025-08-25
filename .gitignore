@@ -1,9 +1,7 @@
 Deployment/PortwayApi/log/
 Deployment/PortwayApi/tokens/
-# Ignore log files
 *.log
+.venv/
 /logs/
+.git/# Ignore log files
 # Ignore log files
-
-# Ignore log files
-.git/

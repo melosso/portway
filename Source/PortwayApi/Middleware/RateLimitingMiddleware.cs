@@ -450,7 +450,6 @@ public class RateLimiter
         response.Headers["X-RateLimit-Reset"] = resetTimestamp.ToString();
         response.Headers["X-RateLimit-Resource"] = resourceName;
         response.Headers["X-RateLimit-Used"] = used.ToString();
-        response.Headers["X-XSS-Protection"] = "0";
     }
     
     private async Task RespondWithRateLimit(HttpContext context, string identifier, int retryAfterSeconds, bool log)
