@@ -349,7 +349,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         {
             Tags = new List<OpenApiTag> { new() { Name = "Webhook" } },
             Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming webhook",
-            Description = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Receives and processes a webhook payload",
+            Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a webhook payload",
             OperationId = $"op_{operationIdCounter++}",
             Parameters = new List<OpenApiParameter>
             {
@@ -759,13 +759,14 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         string method, 
         string targetUrl,
         List<string> allowedEnvironments,
-        int operationId)
+        int operationId,
+        EndpointDefinition? definition = null)
     {
         var operation = new OpenApiOperation
         {
             Tags = new List<OpenApiTag> { new() { Name = endpointName } }, // Assign unique tag based on endpoint name
-            Summary = $"{method} {endpointName}",
-            Description = $"Proxy {method} request to {targetUrl}",
+            Summary = definition != null ? GetOperationSummary(method, endpointName, definition) : $"{method} {endpointName}",
+            Description = definition != null ? GetOperationDescription(method, endpointName, definition) : $"Proxy {method} request to {targetUrl}",
             OperationId = $"op_{operationId}",
             Parameters = new List<OpenApiParameter>
             {
@@ -919,15 +920,15 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     }
     
     /// <summary>
-    /// Gets the operation summary, using custom description if available or default format
+    /// Gets the operation summary, using custom summary if available or default format
     /// </summary>
     private string GetOperationSummary(string method, string endpointName, EndpointDefinition definition)
     {
-        // Check if there's a custom description for this method
-        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customDescription) == true 
-            && !string.IsNullOrWhiteSpace(customDescription))
+        // Check if there's a custom summary for this method in MethodDescriptions
+        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customSummary) == true 
+            && !string.IsNullOrWhiteSpace(customSummary))
         {
-            return customDescription;
+            return customSummary;
         }
         
         // Return default format
@@ -939,11 +940,11 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     /// </summary>
     private string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
     {
-        // Check if there's a custom description for this method
-        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customDescription) == true 
-            && !string.IsNullOrWhiteSpace(customDescription))
+        // Check if there's a custom detailed description for this method in MethodDocumentation
+        if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDocumentation) == true 
+            && !string.IsNullOrWhiteSpace(customDocumentation))
         {
-            return customDescription;
+            return customDocumentation;
         }
         
         // Return default description based on endpoint type
@@ -972,7 +973,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     private string GetStaticOperationDescription(string method, string endpointName, EndpointDefinition definition, string contentType)
     {
         // Check if there's a custom description for this method
-        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customDescription) == true 
+        if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDescription) == true 
             && !string.IsNullOrWhiteSpace(customDescription))
         {
             return customDescription;

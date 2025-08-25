@@ -8,6 +8,9 @@
     "TagDescription": "**Mock Countries API**\n\nStatic country data for testing frontend applications and API simulation.\n\nSupports OData filtering: $filter, $select, $orderby, $top, $skip",
     "MethodDescriptions": {
       "GET": "Retrieve country data"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns static country information for testing and development purposes. Supports OData filtering for flexible data retrieval.\n\n> [!TIP]\n> Supports OData filtering: Use `$filter`, `$select`, `$orderby`, `$top`, and `$skip` parameters for flexible data retrieval."
     }
   }
 }

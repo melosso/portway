@@ -10,6 +10,9 @@
         "TagDescription": "**Webhook Management**\n\nManage webhook data and configuration. Store and retrieve webhook payloads, event data, and integration information for external system communications.",
         "MethodDescriptions": {
             "POST": "Store new payloads and event data"
+        },
+        "MethodDocumentation": {
+            "POST": "Store new webhook payloads and event data in the system for (asynchronous) processing."
         }
     }
-  }
+} 

@@ -12,7 +12,11 @@
         "TagDescription": "**Service Cancellations**\n\nManage service request cancellations and status updates. Handle customer cancellation requests and maintain audit trails for service modifications.",
         "MethodDescriptions": {
             "GET": "Retrieve cancellation records",
-            "DELETE": "Process a service cancellation"
+            "DELETE": "Delete a service cancellation"
+        },
+        "MethodDocumentation": {
+            "GET": "Retrieves service cancellation records with status information and request details for tracking and reporting purposes.",
+            "DELETE": "> [!WARNING]\n> This performs a **hard delete** operation that permanently removes data.\n\nRemoves service cancellation records from the system while maintaining audit trails for compliance."
         }
     }
   }

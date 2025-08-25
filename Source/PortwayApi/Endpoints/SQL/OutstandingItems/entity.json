@@ -6,6 +6,9 @@
         "TagDescription": "**Outstanding Items**\n\nRetrieve outstanding debtor information and payment tracking. Access critical financial data for accounts receivable management and cash flow analysis.",
         "MethodDescriptions": {
             "GET": "Retrieve debtor balances"
+        },
+        "MethodDocumentation": {
+            "GET": "Access all outstanding customer balances and payment information. **Helpful for** cash flow analysis and debt collection processes."
         }
     }
 }

@@ -8,6 +8,9 @@
     "TagDescription": "**Static CSV Response**\n\nSimple static CSV response for testing and demonstration purposes.",
     "MethodDescriptions": {
       "GET": "Retrieve production line data"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns production line data in CSV format for testing, integration, and demonstration purposes."
     }
   }
 }

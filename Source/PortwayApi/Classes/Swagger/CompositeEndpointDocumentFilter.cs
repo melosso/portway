@@ -50,6 +50,9 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
             // Create paths for each composite endpoint
             foreach (var (endpointName, definition) in compositeEndpoints)
             {
+                // Load documentation from entity.json file
+                var documentation = LoadCompositeDocumentation(endpointName);
+                
                 // Create a generic path with {env} parameter
                 string path = $"/api/{{env}}/composite/{endpointName}";
                 
@@ -63,8 +66,8 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 var operation = new OpenApiOperation
                 {
                     Tags = new List<OpenApiTag> { new OpenApiTag { Name = "Composite" } },
-                    Summary = $"Execute {endpointName} endpoint",
-                    Description = definition.Description ?? $"Executes the {endpointName} composite process with multiple steps",
+                    Summary = documentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? $"Execute {endpointName} endpoint",
+                    Description = documentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? definition.Description ?? $"Executes the {endpointName} composite process with multiple steps",
                     OperationId = $"composite_{endpointName}".Replace(" ", "_"),
                     Parameters = new List<OpenApiParameter>()
                 };
@@ -311,5 +314,36 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
     {
         public string ServerName { get; set; } = ".";
         public List<string> AllowedEnvironments { get; set; } = new List<string>();
+    }
+
+    /// <summary>
+    /// Load composite endpoint documentation from entity.json file
+    /// </summary>
+    private Documentation? LoadCompositeDocumentation(string endpointName)
+    {
+        try
+        {
+            string entityPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy", endpointName, "entity.json");
+            if (!File.Exists(entityPath))
+            {
+                _logger.LogWarning("⚠️ Composite endpoint entity.json not found at: {Path}", entityPath);
+                return null;
+            }
+
+            string json = File.ReadAllText(entityPath);
+            var entity = JsonSerializer.Deserialize<CompositeEntity>(json);
+            return entity?.Documentation;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error loading composite documentation for {EndpointName}", endpointName);
+            return null;
+        }
+    }
+
+    // Helper class for deserializing entity.json
+    private class CompositeEntity
+    {
+        public Documentation? Documentation { get; set; }
     }
 }

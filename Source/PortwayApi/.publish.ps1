@@ -115,14 +115,16 @@ $webConfigContent = @'
 $webConfigPath = "$deploymentPath\web.config"
 $webConfigContent | Out-File -FilePath $webConfigPath -Encoding UTF8 -Force
 
-# Copy LICENSE file to deployment directory
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$rootDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
+# Copy LICENSE file to deployment directory under /license/
+$licenseDir = Join-Path $deploymentPath "license"
+if (-not (Test-Path $licenseDir)) {
+  New-Item -Path $licenseDir -ItemType Directory -Force | Out-Null
+}
 $licensePath = Join-Path $rootDir "LICENSE"
-$deploymentLicensePath = Join-Path $rootDir "Deployment\PortwayApi\license.txt"
+$deploymentLicensePath = Join-Path $licenseDir "license.txt"
 if (Test-Path $licensePath) {
-    Write-Host "Copying LICENSE file to deployment directory..."
-    Copy-Item -Path $licensePath -Destination $deploymentLicensePath -Force
+  Write-Host "Copying LICENSE file to deployment directory under /license/..."
+  Copy-Item -Path $licensePath -Destination $deploymentLicensePath -Force
 }
 
 # Ensure .gitignore exists

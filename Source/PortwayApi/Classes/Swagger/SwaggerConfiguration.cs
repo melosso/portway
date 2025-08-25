@@ -400,6 +400,14 @@ public static class SwaggerConfiguration
             iconsContainer.appendChild(githubContainer);
             iconsContainer.appendChild(licenseContainer);
             document.body.appendChild(iconsContainer);
+
+            // Add console information with colors
+            console.log('%c@melosso/portway%c. Licensed under %cAGPL 3.0%c.', 
+                'color: #6f42c1; font-weight: bold; font-size: 12px;',
+                'color: #333; font-size: 12px;',
+                'color: #28a745; font-weight: bold; font-size: 12px;',
+                'color: #333; font-size: 12x;'
+            );
         }});
     </script>
 </body>

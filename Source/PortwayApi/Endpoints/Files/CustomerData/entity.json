@@ -10,6 +10,11 @@
       "GET": "Download customer data files by filename",
       "POST": "Upload new customer data files for processing",
       "DELETE": "Remove customer data files from storage"
+    },
+    "MethodDocumentation": {
+      "GET": "Retrieves customer data files from secure storage for download and review.",
+      "POST": "Uploads customer data files in supported formats for processing and integration.",
+      "DELETE": "Permanently removes customer data files from the storage system."
     }
   }
 }

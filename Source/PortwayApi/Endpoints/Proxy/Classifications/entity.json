@@ -6,6 +6,9 @@
         "TagDescription": "**Product Classifications**\n\nAccess all unique account classifications, which is used to segment the accounts effectively.",
         "MethodDescriptions": {
             "GET": "Retrieve account classifications"
+        },
+        "MethodDocumentation": {
+            "GET": "Access standard account categorization codes used for organizing customers and vendors into business segments."
         }
     }
 } 

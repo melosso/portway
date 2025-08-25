@@ -15,14 +15,16 @@ public class Documentation
     public string? TagDescription { get; set; }
     
     /// <summary>
-    /// Custom descriptions per HTTP method (e.g., "GET": "Retrieve account data")
+    /// Custom summaries per HTTP method for OpenAPI operation summaries (e.g., "GET": "Retrieve account data")
     /// </summary>
     public Dictionary<string, string>? MethodDescriptions { get; set; }
+    
+    /// <summary>
+    /// Custom detailed documentation per HTTP method for OpenAPI operation descriptions (e.g., "GET": "You can retrieve **all items** in the catalog...")
+    /// </summary>
+    public Dictionary<string, string>? MethodDocumentation { get; set; }
 }
 
-/// <summary>
-/// Represents an endpoint entity with extended support for composite operations
-/// </summary>
 /// <summary>
 /// Represents an endpoint entity with extended support for composite operations
 /// </summary>
@@ -32,10 +34,8 @@ public class ExtendedEndpointEntity
     public List<string> Methods { get; set; } = new List<string>();
     public string Type { get; set; } = "Standard"; // "Standard" or "Composite"
     public CompositeDefinition? CompositeConfig { get; set; }
-    public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API
+    public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
     public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
-    
-    // OpenAPI documentation properties
     public Documentation? Documentation { get; set; } // OpenAPI documentation settings
 }
 
@@ -63,7 +63,7 @@ public class EndpointEntity
     public List<string>? AllowedEnvironments { get; set; }
     
     // OpenAPI documentation properties
-    public Documentation? Documentation { get; set; } // OpenAPI documentation settings
+    public Documentation? Documentation { get; set; }
 }
 
 /// <summary>

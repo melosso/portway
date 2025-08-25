@@ -32,6 +32,9 @@
     "TagDescription": "**Financial Entry Management**\n\nCreate complete financial transactions with headers and multiple line items. Composite endpoint that handles complex financial data entry workflows with automatic transaction key management.",
     "MethodDescriptions": {
       "POST": "Create complete financial entries with header and multiple line items in a single transaction"
+    },
+    "MethodDocumentation": {
+      "POST": "Process complex financial transactions that require both header information and multiple detailed line items. **Automatically handles** transaction linking and validation across all components."
     }
   }
 }

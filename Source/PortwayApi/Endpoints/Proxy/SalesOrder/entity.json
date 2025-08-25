@@ -32,6 +32,9 @@
     "TagDescription": "**Sales Order Management**\n\nCreate complete sales orders with headers and multiple line items. Composite endpoint that orchestrates order creation workflow with automatic transaction key linking.",
     "MethodDescriptions": {
       "POST": "Create complete sales orders with header and multiple order lines in a coordinated transaction"
+    },
+    "MethodDocumentation": {
+      "POST": "Creates complete sales orders by coordinating header and line item creation. Automatically manages transaction linking and ensures data consistency across the order workflow."
     }
   }
 }
