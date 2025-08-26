@@ -75,62 +75,42 @@ jobs:
         find Deployment -name ".gitignore" -type f -delete
         find Deployment -name ".dockerignore" -type f -delete
         
-        # Clean up Endpoints to keep only specific examples
-        # Create temporary directory to store only the required examples
-        mkdir -p temp_endpoints/{Proxy,Static,SQL,Webhooks}
-        
-        # Copy only the required examples
-        # Requests (from Proxy)
-        if [ -d "Deployment/PortwayApi/Endpoints/Proxy/Requests" ]; then
-          cp -r "Deployment/PortwayApi/Endpoints/Proxy/Requests" "temp_endpoints/Proxy/"
-        fi
-        
-        # Countries (from Static - Files)
-        if [ -d "Deployment/PortwayApi/Endpoints/Static/Countries" ]; then
-          cp -r "Deployment/PortwayApi/Endpoints/Static/Countries" "temp_endpoints/Static/"
-        fi
-        
-        # Products (from SQL)
-        if [ -d "Deployment/PortwayApi/Endpoints/SQL/Products" ]; then
-          cp -r "Deployment/PortwayApi/Endpoints/SQL/Products" "temp_endpoints/SQL/"
-        fi
-        
-        # Webhooks (modify to keep only webhook1)
-        if [ -f "Deployment/PortwayApi/Endpoints/Webhooks/entity.json" ]; then
-          cp "Deployment/PortwayApi/Endpoints/Webhooks/entity.json" "temp_endpoints/Webhooks/"
-          # Modify the entity.json to keep only webhook1 using jq
-          jq '.AllowedColumns = ["webhook1"]' "temp_endpoints/Webhooks/entity.json" > "temp_endpoints/Webhooks/entity_temp.json"
-          mv "temp_endpoints/Webhooks/entity_temp.json" "temp_endpoints/Webhooks/entity.json"
-        fi
-        
-        # Replace the original Endpoints directory with our filtered version
+        # Clean up Endpoints to only include Static/Example (renamed from Countries)
         rm -rf "Deployment/PortwayApi/Endpoints"
-        mv "temp_endpoints" "Deployment/PortwayApi/Endpoints"
+        mkdir -p "Deployment/PortwayApi/Endpoints/Static/Example"
+        if [ -d "Deployment/PortwayApi/Endpoints/Static/Countries" ]; then
+          cp -r "Deployment/PortwayApi/Endpoints/Static/Countries/." "Deployment/PortwayApi/Endpoints/Static/Example/"
+        fi
+        # Remove any other directories inside Endpoints except Static/Example
+        find "Deployment/PortwayApi/Endpoints" -mindepth 1 -maxdepth 1 ! -name 'Static' -exec rm -rf {} +
+        find "Deployment/PortwayApi/Endpoints/Static" -mindepth 1 -maxdepth 1 ! -name 'Example' -exec rm -rf {} +
         
-        # Rename environment references in the deployment package
-        # Be more specific to avoid replacing cache control values and other numbers
-        find Deployment -type f -name "*.json" -exec sed -i \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"600"\([^]]*\)\]/"AllowedEnvironments": [\1"prod"\2]/g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"700"\([^]]*\)\]/"AllowedEnvironments": [\1"test"\2]/g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"Synergy"\([^]]*\)\]/"AllowedEnvironments": [\1"web"\2]/g' \
-          -e 's/"DatabaseName": "600"/"DatabaseName": "prod"/g' \
-          -e 's/"DatabaseName": "700"/"DatabaseName": "test"/g' \
-          -e 's/"DatabaseName": "Synergy"/"DatabaseName": "web"/g' \
-          -e 's/Database=600/Database=prod/g' \
-          -e 's/Database=700/Database=test/g' \
-          -e 's/Database=.*_Synergy/Database=web/g' \
-          {} \;
-        
-        # Also rename environment directory names if they exist
+        # Only keep the prod environment, rename it to demo, and remove all references to 600
+        rm -rf "Deployment/PortwayApi/Environments/700" "Deployment/PortwayApi/Environments/Synergy"
         if [ -d "Deployment/PortwayApi/Environments/600" ]; then
-          mv "Deployment/PortwayApi/Environments/600" "Deployment/PortwayApi/Environments/prod"
+          mv "Deployment/PortwayApi/Environments/600" "Deployment/PortwayApi/Environments/demo"
         fi
-        if [ -d "Deployment/PortwayApi/Environments/700" ]; then
-          mv "Deployment/PortwayApi/Environments/700" "Deployment/PortwayApi/Environments/test"
-        fi
-        if [ -d "Deployment/PortwayApi/Environments/Synergy" ]; then
-          mv "Deployment/PortwayApi/Environments/Synergy" "Deployment/PortwayApi/Environments/web"
-        fi
+        # Remove any reference to 600, prod, 700, test, Synergy, web in JSON files, only keep demo
+        find Deployment -type f -name "*.json" -exec sed -i \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"600"\([^]]*\)\]/"AllowedEnvironments": [\1"demo"\2]/g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"prod"\([^]]*\)\]/"AllowedEnvironments": [\1"demo"\2]/g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"700"\([^]]*\)\]//g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"test"\([^]]*\)\]//g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"Synergy"\([^]]*\)\]//g' \
+          -e 's/"AllowedEnvironments": \[\([^]]*\)"web"\([^]]*\)\]//g' \
+          -e 's/"DatabaseName": "600"/"DatabaseName": "demo"/g' \
+          -e 's/"DatabaseName": "prod"/"DatabaseName": "demo"/g' \
+          -e 's/"DatabaseName": "700"//g' \
+          -e 's/"DatabaseName": "test"//g' \
+          -e 's/"DatabaseName": "Synergy"//g' \
+          -e 's/"DatabaseName": "web"//g' \
+          -e 's/Database=600/Database=demo/g' \
+          -e 's/Database=prod/Database=demo/g' \
+          -e 's/Database=700//g' \
+          -e 's/Database=test//g' \
+          -e 's/Database=.*_Synergy//g' \
+          -e 's/Database=web//g' \
+          {} \;
         
         # Zip the Deployment folder
         zip -r "${NEW_TAG}-Deployment.zip" Deployment
