@@ -78,17 +78,65 @@ SQL entities expose database tables or views through OData endpoints.
 }
 ```
 
+### With Table-Valued Functions (TVF)
+
+Table-Valued Functions allow you to expose parameterized, read-only endpoints that return dynamic result sets. Use these for endpoints that should execute a SQL function with input parameters, rather than exposing a static table or view.
+
+```json
+{
+  "DatabaseObjectName": "GenerateSampleUsers",
+  "DatabaseSchema": "dbo",
+  "DatabaseObjectType": "TableValuedFunction",
+  "FunctionParameters": [
+    {
+      "Name": "DepartmentId",
+      "SqlType": "int",
+      "Source": "Path",
+      "Position": 1,
+      "Required": false,
+      "DefaultValue": "DEFAULT",
+      "ValidationPattern": "^[0-9]+$"
+    },
+    {
+      "Name": "UserCount",
+      "SqlType": "int",
+      "Source": "Query",
+      "Required": false,
+      "DefaultValue": "DEFAULT"
+    }
+  ],
+  "AllowedColumns": [
+    "user_id;UserId",
+    "first_name;FirstName",
+    "department_name;DepartmentName"
+  ],
+  "AllowedMethods": ["GET"],
+  "AllowedEnvironments": ["dev", "test"]
+}
+```
+
+**Key points:**
+- Set `DatabaseObjectType` to `"TableValuedFunction"`.
+- Use `FunctionParameters` to define the function's input parameters (with type, source, and validation).
+- TVF endpoints are always read-only (`AllowedMethods` should only include `GET`).
+- No `PrimaryKey` property is needed for TVFs.
+- Use column aliases in `AllowedColumns` as with regular endpoints.
+
 ### Property Reference
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `DatabaseObjectName` | string | Yes | Name of the table or view |
-| `DatabaseSchema` | string | No | Database schema (default: "dbo") |
-| `PrimaryKey` | string | No | Primary key column (default: "Id") |
-| `AllowedColumns` | array | Yes | List of accessible columns (supports aliases) |
-| `Procedure` | string | No | Stored procedure for data operations |
-| `AllowedMethods` | array | No | HTTP methods (default: ["GET"]) |
-| `AllowedEnvironments` | array | No | Allowed environments (default: all) |
+| Property              | Type    | Required | Description                                                                                  |
+|-----------------------|---------|----------|----------------------------------------------------------------------------------------------|
+| `DatabaseObjectName`  | string  | Yes      | Name of the table, view, or function                                                         |
+| `DatabaseSchema`      | string  | No       | Database schema (default: "dbo")                                                             |
+| `PrimaryKey`          | string  | No       | Primary key column (default: "Id"). Not used for TVF endpoints                               |
+| `DatabaseObjectType`  | string  | No*      | Set to `"TableValuedFunction"` for TVF endpoints only                                        |
+| `FunctionParameters`  | array   | No*      | List of input parameters for TVF endpoints only                                              |
+| `AllowedColumns`      | array   | Yes      | List of accessible columns (supports aliases)                                                |
+| `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
+| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"])                                                              |
+| `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
+
+\* Only required for Table-Valued Function (TVF) endpoints.
 
 ### Column Aliases
 

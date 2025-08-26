@@ -27,58 +27,6 @@ Portway implements comprehensive logging using Serilog, providing detailed insig
 | Error | Failures and exceptions | Database errors, API failures |
 | Fatal | Critical failures | Application startup failures |
 
-## Log Categories
-
-### Startup Logging
-
-```
-🔑 Portway Token Generator
-=================================
-✅ Portway has started successfully
-🌎 Environment: Production
-🖥️ Host: SERVER-01
-💾 Working Directory: C:\PortwayApi
-⏰ Current Time: 2025-05-20 10:30:00
-🔧 .NET Version: 9.0.0
-💻 OS: Microsoft Windows 10.0.x
-```
-
-### API Request Logging
-
-```
-📥 Incoming request: GET /api/600/Products?$top=10
-🔄 Processing SQL endpoint: Products for GET
-✅ Successfully processed query for Products
-📤 Outgoing response: 200 for /api/600/Products - Took 45ms
-```
-
-### Authentication Logging
-
-```
-✅ Authorized admin for GET /api/600/Orders
-❌ Token lacks permission for endpoint Orders. Available scopes: Products
-❌ Invalid or expired token used for /api/600/Customers
-❌ Authorization header missing for /api/600/Products
-```
-
-### Database Operations
-
-```
-🔧 Building EDM model for entity: Products
-🔄 Converting OData to SQL for entity: Products
-✅ Successfully converted OData to SQL
-📊 SQL Connection Pool Status: Active=5, Idle=15
-✅ Connection pool prewarmed with 5 connections
-```
-
-### Error Logging
-
-```
-❌ Error processing GET request for /api/600/InvalidEndpoint
-❌ Error during SQL query for endpoint: Products
-❌ Error during proxy request: Accounts
-❌ Database initialization failed: Invalid connection string
-```
 
 ## Configuration Settings
 

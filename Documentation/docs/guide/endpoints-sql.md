@@ -205,6 +205,69 @@ END
 Stored procedures provide better control over complex business logic and can include audit logging, validation, and transaction management.
 :::
 
+:::important
+This method doesn't support full "CRUD". Retrieve (used for GET-methods) isn't supported.
+:::
+
+## Table-Valued Functions (TVF)
+
+Table-Valued Functions provide parameterized data generation for dynamic endpoints, unlike regular table/view endpoints that query static data.
+
+**Regular Table Endpoint:**
+```json
+{
+  "DatabaseObjectName": "Items",
+  "DatabaseSchema": "dbo",
+  "PrimaryKey": "ItemCode",
+  "AllowedColumns": ["ItemCode", "Description"],
+  "AllowedMethods": ["GET", "POST", "PUT", "DELETE"]
+}
+```
+
+**Table-Valued Function Endpoint:**
+```json
+{
+  "DatabaseObjectName": "GenerateSampleUsers",
+  "DatabaseSchema": "dbo",
+  "DatabaseObjectType": "TableValuedFunction",
+  //"PrimaryKey" isn't supported in this method
+  "FunctionParameters": [
+    {
+      "Name": "DepartmentId",
+      "SqlType": "int",
+      "Source": "Path",
+      "Position": 1,
+      "Required": false,
+      "DefaultValue": "DEFAULT",
+      "ValidationPattern": "^[0-9]+$"
+    },
+    {
+      "Name": "UserCount",
+      "SqlType": "int",
+      "Source": "Query",
+      "Required": false,
+      "DefaultValue": "DEFAULT"
+    }
+  ],
+  "AllowedColumns": [
+    "user_id;UserId",
+    "first_name;FirstName",
+    "department_name;DepartmentName"
+  ],
+  "AllowedMethods": ["GET"]
+}
+```
+
+**Usage Examples:**
+```http
+GET /api/dev/Departments/5?UserCount=25
+GET /api/dev/Departments?UserCount=50&$top=20&$orderby=FirstName
+```
+
+:::tip
+TVFs are ideal for generating test data, reporting functions, and parameterized queries. Parameters can be sourced from URL paths, query strings, or headers for flexible endpoint design.
+:::
+
 ## Security Considerations
 
 ### Column-Level Access Control

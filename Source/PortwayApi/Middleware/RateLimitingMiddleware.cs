@@ -377,7 +377,8 @@ public class RateLimiter
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
-                Log.Warning("❌ Invalid token: {MaskedToken}", maskedToken);
+
+                Log.Debug("❌ Invalid token: {MaskedToken}", maskedToken);
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new
                 {

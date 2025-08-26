@@ -1,0 +1,46 @@
+{
+    "DatabaseObjectName": "GenerateSampleUsers",
+    "DatabaseSchema": "dbo",
+    "DatabaseObjectType": "TableValuedFunction",
+    "FunctionParameters": [
+        {
+            "Name": "DepartmentId",
+            "SqlType": "int",
+            "Source": "Path",
+            "Position": 1,
+            "Required": false,
+            "DefaultValue": "DEFAULT",
+            "ValidationPattern": "^[0-9]+$"
+        },
+        {
+            "Name": "BaseDate",
+            "SqlType": "date",
+            "Source": "Query",
+            "Required": false,
+            "DefaultValue": "DEFAULT",
+            "ValidationPattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+    ],
+    "AllowedColumns": [
+        "user_id;UserId",
+        "first_name;FirstName",
+        "last_name;LastName",
+        "email;Email",
+        "department_id;DepartmentId",
+        "department_name;DepartmentName",
+        "hire_date;HireDate",
+        "salary;Salary",
+        "is_active;IsActive"
+    ],
+    "AllowedMethods": ["GET"],
+    "AllowedEnvironments": ["600", "700"],
+    "Documentation": {
+        "TagDescription": "**Departments**\n\nDepartment-related endpoints that demonstrate Table-Valued Function (TVF) integration. This endpoint generates fictional user test data for a specific department and serves as an example of how to implement and use TVFs in Portway.\n\n> [!NOTE]\n> This endpoint showcases the power of SQL Table-Valued Functions for dynamic data generation and serves as a reference implementation for other TVF-based endpoints.\n\n> [!TIP]\n> You can specify a department by using `/<id>` in the path (e.g., `/Departments/5` to get users for department ID 5).",
+        "MethodDescriptions": {
+            "GET": "Generate sample department users"
+        },
+        "MethodDocumentation": {
+            "GET": "Generate **fictional user records** for a specific department using Table-Valued Functions. This endpoint demonstrates how to integrate SQL Server's table valued functions."
+        }
+    }
+}

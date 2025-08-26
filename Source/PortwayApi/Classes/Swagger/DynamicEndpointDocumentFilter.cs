@@ -139,39 +139,48 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 methods.Add("GET");
             }
             
-            // Add each allowed operation
+            // Add each allowed operation, but skip DELETE for the base path
             foreach (var method in methods)
             {
+                if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
+                    continue;
                 var opType = GetOperationType(method);
                 if (opType == null) continue;
-                
                 var operation = CreateSqlOperation(
                     endpointName, 
                     method, 
                     definition, 
                     allowedEnvironments, 
                     operationIdCounter++);
-                    
                 swaggerDoc.Paths[path].Operations[opType.Value] = operation;
             }
             
-            // Add specific delete endpoint with ID parameter
+            // Add specific delete endpoint with OData-style ID in path
             if (methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
-                var deletePath = $"/api/{{env}}/{endpointName}";
-                
+                // Use OData-style path: /api/{env}/{endpointName}({id})
+                var deletePath = $"/api/{{env}}/{endpointName}({{id}})";
                 // Create path item if it doesn't exist
                 if (!swaggerDoc.Paths.ContainsKey(deletePath))
                 {
                     swaggerDoc.Paths[deletePath] = new OpenApiPathItem();
                 }
-                
                 var deleteOperation = CreateSqlDeleteOperation(
-                    endpointName, 
-                    definition, 
-                    allowedEnvironments, 
+                    endpointName,
+                    definition,
+                    allowedEnvironments,
                     operationIdCounter++);
-                    
+                // Remove the query parameter for id, and add a path parameter instead
+                deleteOperation.Parameters = deleteOperation.Parameters
+                    .Where(p => p.Name != "id")
+                    .ToList();
+                deleteOperation.Parameters.Add(new OpenApiParameter {
+                    Name = "id",
+                    In = ParameterLocation.Path,
+                    Required = true,
+                    Schema = new OpenApiSchema { Type = "string" },
+                    Description = "ID of the record to delete (OData-style: /endpointName(id))"
+                });
                 swaggerDoc.Paths[deletePath].Operations[OperationType.Delete] = deleteOperation;
             }
         }
@@ -1387,15 +1396,17 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                                 Properties = new Dictionary<string, OpenApiSchema>
                                 {
                                     ["success"] = new OpenApiSchema { Type = "boolean" },
-                                    ["rowsAffected"] = new OpenApiSchema { Type = "integer" },
-                                    ["message"] = new OpenApiSchema { Type = "string" }
+                                    ["message"] = new OpenApiSchema { Type = "string" },
+                                    ["id"] = new OpenApiSchema { Type = "string" },
+                                    ["result"] = new OpenApiSchema { Type = "object", Nullable = true }
                                 }
                             },
                             Example = new OpenApiObject
                             {
                                 ["success"] = new OpenApiBoolean(true),
-                                ["rowsAffected"] = new OpenApiInteger(1),
-                                ["message"] = new OpenApiString("Record deleted successfully")
+                                ["message"] = new OpenApiString("Record deleted successfully"),
+                                ["id"] = new OpenApiString("744276DE-4918-4B56-AF75-16901371983B"),
+                                ["result"] = new OpenApiObject() // leave blank
                             }
                         }
                     }

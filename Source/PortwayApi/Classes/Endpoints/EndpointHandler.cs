@@ -21,6 +21,10 @@ public class EndpointDefinition
     public string? Procedure { get; set; }
     public string? PrimaryKey { get; set; }
     
+    // NEW: Table Valued Function properties
+    public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
+    public List<TVFParameter>? FunctionParameters { get; set; }
+    
     // Column mapping properties (lazy-loaded from AllowedColumns)
     private Dictionary<string, string>? _aliasToDatabase;
     private Dictionary<string, string>? _databaseToAlias;
@@ -756,6 +760,8 @@ public static class EndpointHandler
                     AllowedColumns = entity.AllowedColumns ?? new List<string>(),
                     Procedure = entity.Procedure,
                     PrimaryKey = entity.PrimaryKey,
+                    DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
+                    FunctionParameters = entity.FunctionParameters,
                     Methods = allowedMethods,
                     AllowedEnvironments = entity.AllowedEnvironments,
                     Documentation = entity.Documentation
@@ -807,6 +813,23 @@ public static class EndpointHandler
         if (string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
         {
             errors.Add("DatabaseObjectName is required for SQL endpoints");
+        }
+
+        // Validate Table Valued Function specific configuration
+        if (!string.IsNullOrEmpty(entity.DatabaseObjectType) && 
+            entity.DatabaseObjectType.Equals("TableValuedFunction", StringComparison.OrdinalIgnoreCase))
+        {
+            // Create a temporary endpoint definition for TVF validation
+            var tempEndpoint = new EndpointDefinition
+            {
+                DatabaseObjectType = entity.DatabaseObjectType,
+                DatabaseObjectName = entity.DatabaseObjectName,
+                FunctionParameters = entity.FunctionParameters,
+                Methods = entity.AllowedMethods ?? new List<string> { "GET" }
+            };
+
+            var tvfErrors = PortwayApi.Classes.Handlers.TableValuedFunctionSqlHandler.ValidateTVFConfiguration(tempEndpoint);
+            errors.AddRange(tvfErrors);
         }
 
         // Validate allowed methods

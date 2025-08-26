@@ -59,7 +59,8 @@ export default withMermaid(
           text: 'Operations',
           items: [
             { text: 'Monitoring', link: '/guide/monitoring' },
-            { text: 'Troubleshooting', link: '/guide/troubleshooting' }
+            { text: 'Troubleshooting', link: '/guide/troubleshooting' },
+            { text: 'Upgrading', link: '/guide/upgrading' }
           ]
         },
         {

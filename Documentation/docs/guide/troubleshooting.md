@@ -478,7 +478,6 @@ The gateway uses specific emoji and formatting patterns in its log messages to h
 
 ```text
 🚫 Rate limit enforced for {Identifier} - Someone hit the rate limits
-❌ Invalid token: {MaskedToken} - Authentication failure
 ❌ Error processing endpoint {EndpointName} - Backend service issue
 📥 SQL Query Request: {Url} - Database query being executed
 ✅ Successfully processed query for {Endpoint} - Normal operation

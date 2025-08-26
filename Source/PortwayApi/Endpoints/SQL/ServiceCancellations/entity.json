@@ -1,5 +1,5 @@
 {
-    "DatabaseObjectName": "ServiceCancellation", 
+    "DatabaseObjectName": "ServiceCancellations", 
     "DatabaseSchema": "dbo",
     "AllowedColumns": [
       "RequestId",
@@ -16,7 +16,7 @@
         },
         "MethodDocumentation": {
             "GET": "Retrieves service cancellation records with status information and request details for tracking and reporting purposes.",
-            "DELETE": "> [!WARNING]\n> This performs a **hard delete** operation that permanently removes data.\n\nRemoves service cancellation records from the system while maintaining audit trails for compliance."
+            "DELETE": "> [!WARNING]\n> This performs a **soft delete** operation that marks data as deleted.\n\nRemoves service cancellation records from the system while maintaining audit trails for compliance."
         }
     }
   }

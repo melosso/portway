@@ -179,7 +179,7 @@ public class EndpointController : ControllerBase
             switch (endpointType)
             {
                 case EndpointType.SQL:
-                    return await HandleSqlGetRequest(env, endpointName, id, select, filter, orderby, top, skip);
+                    return await HandleSqlGetRequest(env, endpointName, id, remainingPath, select, filter, orderby, top, skip);
                 case EndpointType.Proxy:
                     return await HandleProxyRequest(env, endpointName, id, remainingPath, "GET");
                 case EndpointType.Static:
@@ -1637,6 +1637,7 @@ public class EndpointController : ControllerBase
         string env, 
         string endpointName,
         string? id,
+        string? remainingPath,
         string? select, 
         string? filter,
         string? orderby,
@@ -1668,6 +1669,87 @@ public class EndpointController : ControllerBase
             // Step 2: Get endpoint configuration 
             var endpoint = sqlEndpoints[endpointName];
 
+            // NEW: Check if this is a Table Valued Function endpoint
+            if (PortwayApi.Classes.Helpers.TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
+            {
+                Log.Debug("🔄 Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);
+                
+                // Extract path segments for parameter values
+                var pathSegments = string.IsNullOrEmpty(remainingPath) 
+                    ? new string[0] 
+                    : remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+                // Prepare OData parameters for TVF handling
+                var tvfODataParams = new Dictionary<string, string>
+                {
+                    { "top", (top + 1).ToString() }, // +1 for pagination detection
+                    { "skip", skip.ToString() }
+                };
+
+                if (!string.IsNullOrEmpty(select)) 
+                    tvfODataParams["select"] = select;
+                if (!string.IsNullOrEmpty(filter)) 
+                    tvfODataParams["filter"] = filter;
+                if (!string.IsNullOrEmpty(orderby)) 
+                    tvfODataParams["orderby"] = orderby;
+
+                // Handle TVF request using the dedicated handler
+                var tvfResult = await PortwayApi.Classes.Handlers.TableValuedFunctionSqlHandler.HandleTVFGetRequest(
+                    endpoint,
+                    Request,
+                    pathSegments,
+                    _connectionPoolService.OptimizeConnectionString(connectionString),
+                    tvfODataParams);
+
+                bool tvfSuccess = tvfResult.Item1;
+                IActionResult? tvfActionResult = tvfResult.Item2;
+                List<object>? tvfData = tvfResult.Item3;
+
+                if (!tvfSuccess)
+                {
+                    return tvfActionResult!;
+                }
+
+                // Process results for pagination and response formatting
+                var tvfResultList = tvfData!;
+
+                // Determine if it's the last page
+                bool tvfIsLastPage = tvfResultList.Count <= top;
+                if (!tvfIsLastPage)
+                {
+                    // Remove the extra row used for pagination
+                    tvfResultList.RemoveAt(tvfResultList.Count - 1);
+                }
+
+                // For ID-based requests (if applicable to TVF), return single item
+                if (!string.IsNullOrEmpty(id))
+                {
+                    if (tvfResultList.Count == 0)
+                    {
+                        return NotFound(new {
+                            error = $"No record found with specified parameters",
+                            success = false
+                        });
+                    }
+                    
+                    return Ok(tvfResultList.FirstOrDefault());
+                }
+
+                // Return collection response
+                var tvfResponse = new
+                {
+                    Count = tvfResultList.Count,
+                    Value = tvfResultList,
+                    NextLink = tvfIsLastPage 
+                        ? null 
+                        : BuildNextLink(env, endpointName, select, filter, orderby, top, skip)
+                };
+
+                Log.Debug("✅ Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
+                return Ok(tvfResponse);
+            }
+
+            // EXISTING: Continue with regular table/view handling
             // Step 3: Extract endpoint details
             var schema = endpoint.DatabaseSchema ?? "dbo";
             var objectName = endpoint.DatabaseObjectName;
@@ -1853,18 +1935,29 @@ public class EndpointController : ControllerBase
         catch (SqlException sqlEx)
         {
             // Handle SQL-specific exceptions with more detail
-            Log.Error(sqlEx, "❌ SQL Error during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
-                endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
-            
-            // Provide more specific error messages based on SQL error number
+            // Generate a masked error reference for troubleshooting
+            var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            Log.Error(sqlEx, "❌ SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
+                errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
+
+            // Provide only generic error messages for all SQL errors to avoid leaking database details
             string errorMessage = sqlEx.Number switch
             {
-                208 => $"Referenced object does not exist. Please contact support.",
-                2 => "Internal connection error. Please contact support.",
-                18456 => "Authentication failed. Please contact support.",
-                _ => "An error occurred while processing your request."
+                208 => $"A data error occurred. Please contact support with reference: {errorId}", // Invalid object name
+                2 => $"A data error occurred. Please contact support with reference: {errorId}", // Connection error
+                18456 => $"A data error occurred. Please contact support with reference: {errorId}", // Login failed
+                547 => $"A data error occurred. Please contact support with reference: {errorId}", // Constraint violation
+                2627 => $"A data error occurred. Please contact support with reference: {errorId}", // Unique constraint
+                2601 => $"A data error occurred. Please contact support with reference: {errorId}", // Duplicate key
+                4060 => $"A data error occurred. Please contact support with reference: {errorId}", // Cannot open database
+                53 => $"A data error occurred. Please contact support with reference: {errorId}", // Network error
+                1205 => $"A data error occurred. Please contact support with reference: {errorId}", // Deadlock
+                8152 => $"A data error occurred. Please contact support with reference: {errorId}", // Data too long
+                8114 => $"A data error occurred. Please contact support with reference: {errorId}", // Data conversion
+                50000 => $"A data error occurred. Please contact support with reference: {errorId}", // User-defined error
+                _ => $"An error occurred while processing your request. Reference: {errorId}"
             };
-            
+
             return Problem(
                 detail: errorMessage,
                 statusCode: StatusCodes.Status500InternalServerError,
