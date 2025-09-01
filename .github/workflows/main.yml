@@ -90,14 +90,8 @@ jobs:
         if [ -d "Deployment/PortwayApi/Environments/600" ]; then
           mv "Deployment/PortwayApi/Environments/600" "Deployment/PortwayApi/Environments/demo"
         fi
-        # Remove any reference to 600, prod, 700, test, Synergy, web in JSON files, only keep demo
+        # Remove any reference to 600, prod, 700, test, Synergy, web in DatabaseName and connection strings in JSON files, only keep demo
         find Deployment -type f -name "*.json" -exec sed -i \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"600"\([^]]*\)\]/"AllowedEnvironments": [\1"demo"\2]/g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"prod"\([^]]*\)\]/"AllowedEnvironments": [\1"demo"\2]/g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"700"\([^]]*\)\]//g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"test"\([^]]*\)\]//g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"Synergy"\([^]]*\)\]//g' \
-          -e 's/"AllowedEnvironments": \[\([^]]*\)"web"\([^]]*\)\]//g' \
           -e 's/"DatabaseName": "600"/"DatabaseName": "demo"/g' \
           -e 's/"DatabaseName": "prod"/"DatabaseName": "demo"/g' \
           -e 's/"DatabaseName": "700"//g' \
@@ -112,7 +106,22 @@ jobs:
           -e 's/Database=web//g' \
           {} \;
         
+        # Ensure Example entity.json exists by copying from Countries if available
+        if [ ! -f "Deployment/PortwayApi/Endpoints/Static/Example/entity.json" ]; then
+          if [ -f "Deployment/PortwayApi/Endpoints/Static/Countries/entity.json" ]; then
+            cp "Deployment/PortwayApi/Endpoints/Static/Countries/entity.json" "Deployment/PortwayApi/Endpoints/Static/Example/entity.json"
+          fi
+        fi
+
+        # Also copy countries-2025.json if it exists
+        if [ -f "Deployment/PortwayApi/Endpoints/Static/Countries/countries-2025.json" ]; then
+          cp "Deployment/PortwayApi/Endpoints/Static/Countries/countries-2025.json" "Deployment/PortwayApi/Endpoints/Static/Example/countries-2025.json"
+        fi
+
         # Zip the Deployment folder
+        # Update AllowedEnvironments in all JSON files: replace 600 with demo, remove 700 and Synergy
+        find Deployment -type f -name "*.json" -exec jq 'if .AllowedEnvironments then .AllowedEnvironments |= map(select(. != "700" and . != "Synergy")) | .AllowedEnvironments |= map(if . == "600" then "demo" else . end) elif .Environment?.AllowedEnvironments then .Environment.AllowedEnvironments |= map(select(. != "700" and . != "Synergy")) | .Environment.AllowedEnvironments |= map(if . == "600" then "demo" else . end) else . end' {} > tmp.json \; -exec mv tmp.json {} \;
+
         zip -r "${NEW_TAG}-Deployment.zip" Deployment
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
