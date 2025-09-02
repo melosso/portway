@@ -3,7 +3,7 @@
 Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from a previous version.
 
 > [!IMPORTANT]
-> **Portway is subject to data and database changes between versions.** Staying up to date with the release notes, especially for major version upgrades, is adviced to avoid data loss or compatibility issues. Please make sure to validate no such breaking changes have been made before upgrading.
+> **Portway can be subject to data and database changes between versions.** Staying up to date with the release notes, especially for major version upgrades, is adviced to avoid data loss or compatibility issues. Please make sure to validate no such breaking changes have been made before upgrading.
 
 1. **Read the Release Notes**
    - Review the [release notes](https://github.com/melosso/portway/releases/) for important changes or migration steps.
@@ -12,8 +12,8 @@ Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from 
    - Copy your existing Portway directory to a safe location.
    - Save your configuration files, including:
      - `appsettings.json`
-     - `endpoints.json` (or similar)
-     - `environments.json` (or similar)
+     - `Endpoints\` folder (and its content)
+     - `Environments\` folder (and its content)
    - Backup any SQLite database files used by Portway (e.g., `*.db`).
 
 3. **Install the New Version**
@@ -29,5 +29,5 @@ Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from 
 > [!TIP]
 > For major upgrades, always test in a non-production environment first.
 
-> [!INFORMATION0]
-> You can find your installated version in file `version.txt`.
+> [!INFORMATION]
+> You can find your installated version in file `version.txt`. Please make sure to overwrite it, to keep version information up to date (which is especially important when submitting bug reports).
