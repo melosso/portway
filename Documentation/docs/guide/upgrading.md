@@ -16,14 +16,17 @@ Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from 
      - `Environments\` folder (and its content)
    - Backup any SQLite database files used by Portway (e.g., `*.db`).
 
-3. **Install the New Version**
+3. **Windows: Suspend The Webserver**
+   - If you're using Windows Server (IIS): Stop the Application Pool. 
+
+4. **Install the New Version**
    - Download the latest release from GitHub.
    - Replace the old files with the new ones, or follow the [installation guide](/guide/getting-started).
 
-4. **Restore Configuration and Data**
+5. **Restore Configuration and Data**
    - Copy your saved configuration files and SQLite databases into the new installation if needed.
 
-5. **Test and Validate**
+6. **Test and Validate**
    - Start Portway and verify that your endpoints, environments, and data work as expected.
 
 > [!TIP]

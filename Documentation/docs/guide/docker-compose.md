@@ -167,6 +167,56 @@ If you're behind a corporate proxy:
 2. Ensure your proxy credentials are correct
 3. Contact your network administrator for proxy details
 
+
+
+## Using the Token Tool via Docker Compose
+
+You can expose the token management tool as a separate service in your `docker-compose.yml` for easy CLI access. This allows you to run token commands (add, revoke, list, etc.) directly using Docker.
+
+### Example Service Definition
+
+Add the following service to your `docker-compose.yml`:
+
+```yaml
+services:
+  portway:
+    # You may have Portway already running. Then make
+    # sure to add this definition seperately:
+
+  token-tool:
+    image: ghcr.io/melosso/portway:latest  
+    entrypoint: ["dotnet", "/app/tools/TokenGenerator.dll"]
+    volumes:
+      - ./tokens:/app/tokens
+      - ./data:/app/data
+```
+
+### Running Token Commands
+
+To run a token command, use:
+
+```bash
+docker compose run --rm token-tool <command> [options]
+```
+
+For example, to list tokens:
+
+```bash
+docker compose run --rm token-tool list
+```
+
+To add or revoke tokens, pass the appropriate arguments as defined by your tool:
+
+```bash
+docker compose run --rm token-tool add --user alice
+docker compose run --rm token-tool revoke --token <token>
+```
+
+### Notes
+- The `--rm` flag cleans up the container after the command runs.
+- Mount volumes as needed for token persistence and configuration.
+- Refer to your token tool's documentation for available commands and options.
+
 ## Next Steps
 
 After successful installation:
