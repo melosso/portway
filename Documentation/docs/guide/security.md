@@ -286,12 +286,56 @@ Enable detailed request tracing for security analysis:
    - Alert administrators on breaches
    - Implement automatic backups
 
+## SQL Server User Management with Dedicated NTLM User in IIS
+
+If you are using a dedicated NTLM (Windows) user when using Internet Information Services, I'd wise to use the principle of least privilege. You'll need to configure SQL Server to allow access for this user and assign the appropriate rights. Below is a sample script to set up the login, database user, and permissions for a Windows account (replace `DOMAIN\USER_NAME` with your actual domain and username):
+
+```sql
+USE [master];
+GO
+-- Create a login for the Windows account if it doesn't exist
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\USER_NAME')
+BEGIN
+   EXEC ('CREATE LOGIN [DOMAIN\USER_NAME] FROM WINDOWS;');
+END
+GO
+USE [600];
+GO
+-- Create a user for the login in the database if not exists
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'DOMAIN\USER_NAME')
+BEGIN
+   CREATE USER [DOMAIN\USER_NAME] FOR LOGIN [DOMAIN\USER_NAME];
+END
+GO
+-- Read all tables/views
+ALTER ROLE [db_datareader] ADD MEMBER [DOMAIN\USER_NAME];
+
+-- Write (insert/update/delete)
+ALTER ROLE [db_datawriter] ADD MEMBER [DOMAIN\USER_NAME];
+
+-- Allow schema changes (optional)
+-- ALTER ROLE [db_ddladmin] ADD MEMBER [DOMAIN\USER_NAME];
+
+-- Execute stored procedures and functions
+GRANT EXECUTE TO [DOMAIN\USER_NAME];
+
+-- Allow viewing metadata (schema definitions)
+GRANT VIEW DEFINITION TO [DOMAIN\USER_NAME];
+GO
+```
+
+**Note:**
+- Replace `DOMAIN\USER_NAME` with your actual domain and Windows username.
+- Replace `[600]` with your target database name if different.
+- Grant only the permissions required for your application.
+
 ## Security Checklist
 
 ### Pre-Deployment
 
 - [ ] Configure HTTPS in IIS
-- [ ] Set up Azure Key Vault
+- [ ] Configure (NTLM) connections (using principle of least privilege)
+- [ ] Set up Azure Key Vault (if applicable)
 - [ ] Create restricted tokens
 - [ ] Configure rate limiting
 - [ ] Review firewall rules
