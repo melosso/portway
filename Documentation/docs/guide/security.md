@@ -286,7 +286,7 @@ Enable detailed request tracing for security analysis:
    - Alert administrators on breaches
    - Implement automatic backups
 
-## SQL Server User Management with Dedicated NTLM User in IIS
+## SQL Server User Management
 
 If you are using a dedicated NTLM (Windows) user when using Internet Information Services, I'd wise to use the principle of least privilege. You'll need to configure SQL Server to allow access for this user and assign the appropriate rights. Below is a sample script to set up the login, database user, and permissions for a Windows account (replace `DOMAIN\USER_NAME` with your actual domain and username):
 
@@ -299,7 +299,7 @@ BEGIN
    EXEC ('CREATE LOGIN [DOMAIN\USER_NAME] FROM WINDOWS;');
 END
 GO
-USE [600];
+USE [<your target database>];
 GO
 -- Create a user for the login in the database if not exists
 IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'DOMAIN\USER_NAME')
@@ -313,9 +313,6 @@ ALTER ROLE [db_datareader] ADD MEMBER [DOMAIN\USER_NAME];
 -- Write (insert/update/delete)
 ALTER ROLE [db_datawriter] ADD MEMBER [DOMAIN\USER_NAME];
 
--- Allow schema changes (optional)
--- ALTER ROLE [db_ddladmin] ADD MEMBER [DOMAIN\USER_NAME];
-
 -- Execute stored procedures and functions
 GRANT EXECUTE TO [DOMAIN\USER_NAME];
 
@@ -326,8 +323,8 @@ GO
 
 **Note:**
 - Replace `DOMAIN\USER_NAME` with your actual domain and Windows username.
-- Replace `[600]` with your target database name if different.
-- Grant only the permissions required for your application.
+- Replace `[<your target database>]` with your target database name if different.
+- Grant only the permissions required for your application, which in your case can be more or less permissive.
 
 ## Security Checklist
 
