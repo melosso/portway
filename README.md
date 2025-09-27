@@ -8,7 +8,7 @@
 
 Applications that benefit from Portway are businesses looking to unlock their SQL Server data through modern APIs, companies modernizing legacy systems without costly rewrites, and organizations needing integration between internal services and external partners or software.
 
-> 📍 [Landing Page](https://portway.melosso.com/)   |  📜 [Documentation](https://portway-docs.melosso.com/)  |  🧪 [Live Demo](https://portway-demo.melosso.com/)
+> 📍 [Landing Page](https://portway.melosso.com/)   |  📜 [Documentation](https://portway-docs.melosso.com/)  |  🐋 [Docker Image](https://github.com/melosso/portway/pkgs/container/portway)  |  🧪 [Live Demo](https://portway-demo.melosso.com/)
 
 A quick example to give you an idea of what this is all about:
 
@@ -250,19 +250,18 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 
 ### Protecting Secrets
 
-To keep your sensitive information (like passwords and connection strings) safe, Portway gives you simple tools to lock (encrypt) or unlock (decrypt) all your environment settings files with a single command. This way, only you can access your secrets even if someone else gets the files.
+To keep your sensitive information (like connection strings in connection strings) safe, Portway gives you simple tools to encrypt and decrypt all your environment settings files with a single command line utility. This way, only you can access your secrets even if your machine gets comprimised.
 
 **How to use:**
 
 1. Open a terminal in the `Source/Tools/Encrypt` folder.
 2. To lock your settings, run the command `.\encrypt.exe -e` or `--encrypt`
 3. To unlock your settings, run the command `.\encrypt.exe -d` or `--decrypt`
-  (You’ll be asked to paste your private key. Keep it safe!)
-4. If you ever need a new key, or want to check your key, just follow the on-screen instructions (`--help`).
 
-If you see a message saying your key doesn’t match, it means you’re using the wrong key or the file is damaged.
+The public (and private) keys will be stored safely in the `cert` folder. 
 
-**Tip:** Never share your private key. Store it somewhere safe! 
+> [!TIP] 
+>  Make sure to securely store your private key (*.pem) somewhere else. It's recommended to only store the private key temporarily in the `cert` folder during your time maintaining the application.
 
 ## 📡 API Examples
 
@@ -306,7 +305,7 @@ Content-Type: application/json
 
 ### Static
 
-Serve static content with optional OData filtering:
+Serve static content with the (optional) OData filtering:
 
 ```http
 GET /api/prod/ProductionMachine?$top=1&$filter=status eq 'running'
