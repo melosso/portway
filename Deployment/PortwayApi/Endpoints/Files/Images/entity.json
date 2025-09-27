@@ -3,13 +3,5 @@
   "BaseDirectory": "images",
   "AllowedExtensions": [".jpg", ".jpeg", ".png", ".gif", ".svg"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"],
-  "Documentation": {
-    "TagDescription": "**Image Management**\n\nUpload and manage image files for web applications, product catalogs, and marketing materials. Supports common image formats including JPEG, PNG, GIF, and SVG.",
-    "MethodDescriptions": {
-      "GET": "Download images by filename for web display or processing",
-      "POST": "Upload new images to the image library",
-      "DELETE": "Remove images from storage"
-    }
-  }
+  "AllowedEnvironments": ["600", "700"]
 }

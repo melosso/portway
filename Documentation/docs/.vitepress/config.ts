@@ -108,6 +108,7 @@ export default withMermaid(
           text: 'Tools & Options',
           items: [
             { text: 'Token Generator', link: '/reference/token-generator' },
+            { text: 'Secret Encryption', link: '/reference/secrets' },
             { text: 'Health Checks', link: '/reference/health-checks' },
             { text: 'Caching', link: '/reference/caching' },
             { text: 'Logging', link: '/reference/logging' },

@@ -248,6 +248,22 @@ $env:KEYVAULT_URI = "https://your-keyvault-name.vault.azure.net/"
 
 Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 
+### Protecting Secrets
+
+To keep your sensitive information (like passwords and connection strings) safe, Portway gives you simple tools to lock (encrypt) or unlock (decrypt) all your environment settings files with a single command. This way, only you can access your secrets even if someone else gets the files.
+
+**How to use:**
+
+1. Open a terminal in the `Source/Tools/Encrypt` folder.
+2. To lock your settings, run the command `.\encrypt.exe -e` or `--encrypt`
+3. To unlock your settings, run the command `.\encrypt.exe -d` or `--decrypt`
+  (You’ll be asked to paste your private key. Keep it safe!)
+4. If you ever need a new key, or want to check your key, just follow the on-screen instructions (`--help`).
+
+If you see a message saying your key doesn’t match, it means you’re using the wrong key or the file is damaged.
+
+**Tip:** Never share your private key. Store it somewhere safe! 
+
 ## 📡 API Examples
 
 Here are some common requests you'll make using Portway's endpoints.
@@ -282,8 +298,8 @@ Content-Type: application/json
     "YourReference": "Connect async"
   },
   "Lines": [
-    { "Itemcode": "BEK0001", "Quantity": 2, "Price": 0 },
-    { "Itemcode": "BEK0002", "Quantity": 4, "Price": 0 }
+    { "Itemcode": "ITEM-001", "Quantity": 2, "Price": 0 },
+    { "Itemcode": "ITEM-002", "Quantity": 4, "Price": 0 }
   ]
 }
 ```

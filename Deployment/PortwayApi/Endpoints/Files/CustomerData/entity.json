@@ -3,18 +3,5 @@
   "BaseDirectory": "customer-data/{env}",
   "AllowedExtensions": [".csv", ".json", ".xml", ".xlsx"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"],
-  "Documentation": {
-    "TagDescription": "**Customer Data Files**\n\nUpload and download customer data files in various formats. Supports CSV, JSON, XML, and Excel files for customer information import/export and data integration workflows.",
-    "MethodDescriptions": {
-      "GET": "Download customer data files by filename",
-      "POST": "Upload new customer data files for processing",
-      "DELETE": "Remove customer data files from storage"
-    },
-    "MethodDocumentation": {
-      "GET": "Retrieves customer data files from secure storage for download and review.",
-      "POST": "Uploads customer data files in supported formats for processing and integration.",
-      "DELETE": "Permanently removes customer data files from the storage system."
-    }
-  }
+  "AllowedEnvironments": ["600", "700"]
 }

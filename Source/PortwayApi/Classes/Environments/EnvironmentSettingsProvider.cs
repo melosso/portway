@@ -5,6 +5,7 @@ using Serilog;
 using PortwayApi.Interfaces;
 using Microsoft.Data.SqlClient;
 using System.Security;
+using PortwayApi.Helpers;
 
 namespace PortwayApi.Classes;
 
@@ -12,16 +13,32 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 {
     private readonly string _basePath;
     private readonly string? _keyVaultUri;
+    private readonly string? _privateKeyPem;
 
     public EnvironmentSettingsProvider()
     {
         _basePath = Path.Combine(Directory.GetCurrentDirectory(), "environments");
         _keyVaultUri = Environment.GetEnvironmentVariable("KEYVAULT_URI");
+        _privateKeyPem = Environment.GetEnvironmentVariable("PORTWAY_PRIVATE_KEY");
+        
+        // If no private key in environment variable, try to read from certs directory
+        if (string.IsNullOrWhiteSpace(_privateKeyPem))
+        {
+            var certsPath = Path.Combine(Directory.GetCurrentDirectory(), "certs");
+            var privateKeyPath = Path.Combine(certsPath, "portway_private_key.pem");
+            
+            if (File.Exists(privateKeyPath))
+            {
+                _privateKeyPem = File.ReadAllText(privateKeyPath);
+                Log.Debug("🔐 Loaded private key from: {KeyPath}", privateKeyPath);
+            }
+        }
 
         // Debug logging to show configured vault services
         Log.Debug("🔧 Environment settings initialized:");
         Log.Debug("  📂 Local environments path: {BasePath}", _basePath);
         Log.Debug("  🔑 Azure Key Vault: {Status}", !string.IsNullOrWhiteSpace(_keyVaultUri) ? _keyVaultUri : "Not configured");
+        Log.Debug("  🔐 Settings decryption: {Status}", !string.IsNullOrWhiteSpace(_privateKeyPem) ? "Available" : "Not configured");
     }
 
     public async Task<(string ConnectionString, string ServerName, Dictionary<string, string> Headers)> LoadEnvironmentOrThrowAsync(string env)
@@ -205,6 +222,20 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         try
         {
             var json = File.ReadAllText(settingsPath);
+            
+            // Check if the content is encrypted and decrypt if necessary
+            if (SettingsEncryptionHelper.IsEncrypted(json))
+            {
+                if (string.IsNullOrWhiteSpace(_privateKeyPem))
+                {
+                    Log.Error("❌ Settings file is encrypted but no private key provided via PORTWAY_PRIVATE_KEY environment variable for environment: {Environment}", env);
+                    throw new InvalidOperationException($"Settings file is encrypted but no private key available for environment: {env}. Set the PORTWAY_PRIVATE_KEY environment variable.");
+                }
+                
+                Log.Debug("🔓 Decrypting settings file for environment: {Environment}", env);
+                json = SettingsEncryptionHelper.Decrypt(json, _privateKeyPem);
+            }
+            
             var config = JsonSerializer.Deserialize<EnvironmentConfig>(json);
                      
             if (config == null)

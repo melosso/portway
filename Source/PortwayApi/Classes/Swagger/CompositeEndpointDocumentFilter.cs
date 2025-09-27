@@ -219,7 +219,7 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 Type = "object",
                 Properties = new Dictionary<string, OpenApiSchema>
                 {
-                    { "Itemcode", new OpenApiSchema { Type = "string", Example = new OpenApiString("BEK0001") } },
+                    { "Itemcode", new OpenApiSchema { Type = "string", Example = new OpenApiString("ITEM-001") } },
                     { "Quantity", new OpenApiSchema { Type = "number", Format = "float", Example = new OpenApiFloat(2.0f) } },
                     { "Price", new OpenApiSchema { Type = "number", Format = "float", Example = new OpenApiFloat(0.0f) } }
                 }
@@ -240,13 +240,13 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
             {
                 new OpenApiObject
                 {
-                    ["Itemcode"] = new OpenApiString("BEK0001"),
+                    ["Itemcode"] = new OpenApiString("ITEM-001"),
                     ["Quantity"] = new OpenApiInteger(2),
                     ["Price"] = new OpenApiFloat(0.0f)
                 },
                 new OpenApiObject
                 {
-                    ["Itemcode"] = new OpenApiString("BEK0002"),
+                    ["Itemcode"] = new OpenApiString("ITEM-002"),
                     ["Quantity"] = new OpenApiInteger(4),
                     ["Price"] = new OpenApiFloat(0.0f)
                 },
