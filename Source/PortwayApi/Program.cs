@@ -467,7 +467,7 @@ try
             else
             {
                 Log.Information("🔐 Using existing tokens. Total active tokens: {Count}", activeTokens.Count());
-                Log.Warning("💥 Tokens are available in the tokens directory; this is considered a high security risk (CVE-2023-25577)!");
+                Log.Warning("💥 Tokens are available in the tokens directory; this is considered a high security risk (CVE-2023-25577)");
             }
         }
         catch (Exception ex)
@@ -547,7 +547,7 @@ try
     else if (builder.Environment.IsProduction() && Environment.GetEnvironmentVariable("ASPNETCORE_IIS_PHYSICAL_PATH") != null)
     {
         // We're running in IIS
-        Log.Information("🌐 Application is hosted in IIS");
+        Log.Debug("🌐 Application is hosted in IIS");
     }
     else
     {

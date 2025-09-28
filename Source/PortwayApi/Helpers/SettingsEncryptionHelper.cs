@@ -23,7 +23,7 @@ namespace PortwayApi.Helpers
                 return _currentPublicKeyPem;
 
             // Try to read public key directly from file first
-            var certsPath = Path.Combine(Directory.GetCurrentDirectory(), "certs");
+            var certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
             var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
             
             if (File.Exists(publicKeyPath))

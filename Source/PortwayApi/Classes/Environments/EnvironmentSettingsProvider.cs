@@ -24,7 +24,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         // If no private key in environment variable, try to read from certs directory
         if (string.IsNullOrWhiteSpace(_privateKeyPem))
         {
-            var certsPath = Path.Combine(Directory.GetCurrentDirectory(), "certs");
+            var certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
             var privateKeyPath = Path.Combine(certsPath, "key_b.pem");
             
             if (File.Exists(privateKeyPath))

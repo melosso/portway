@@ -8,28 +8,13 @@ using System.Linq;
 using Serilog;
 
 namespace EncryptTool;
+
 class Program
 {
     private const string EncryptedHeader = "PWENC:";
 
     // Dynamic public key - will be loaded from private key or generated
-    private static string _currentPublicKeyPem = PublicKeyPem;
-    
-    // Fixed public key (fallback)
-    private const string PublicKeyPem = @"-----BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAyz9H4bRMXhB5x4ure6kt
-nkSspl8i/ub3TRoaFh83CW5LiFSdq/F5UodlEvloaP5jIXjNA+sKqRSgeytWy2pn
-t/ACYrckVLEx6t2qVqE5X48E3KJDoIFy3RUy5fUt3aQP2xHLX/GQ/i/AtZ9Z3IUI
-7tBm4qHUDiwBHbVU62u6issYR1smp9m0xGVj/uQSu+X8bUtUTRQu3NNjsCTVNIS+
-FfTu11I+dyL7LxcwASihI2F4l8HbMfXgAEv0ap7AdalwLHwOuSA8HaZ9T2BG28Y/
-0xnSxRzGHMZIE5UcWmJxEN4VoSzR11UgjP0z+tjKg98YMfXJEAYLnC1PyNpaUmPR
-3a0X0mVEYZR26SLN6kzDXnUIb6cJY+maz/djadpiPVqywX9GSJswLXGHxisER1e7
-R6W/tfbcnx5irmQ/gbxGdY8z65hCXWiFJ93gvc107hidk4kDdRw2iqFa5RZE8PJC
-8/2oeAg8kPsNZFOYbkOiIQOjQ+KnDUvywk0GENyrJbsiSsgi8yv2cDr20vrqq+ta
-DRwIdm+l6WAP1AUQtcLJcE66kJrJCRQTdDT4M4F129V1rjbV5Lj3Umtwg5ca89Y5
-H/l/Zr708b8Rcs3jGgzYhEwoDR7m+tO9aTtR0m3Kb2p+J5ncFBPprJEbVHP9YVex
-b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
------END PUBLIC KEY-----";
+    private static string _currentPublicKeyPem = string.Empty;
 
     private const string PrivateKeyFileName = "key_b.pem";
 
@@ -99,7 +84,7 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
 
             // Certs folder
             var rootPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".."));
-            var certsPath = Path.Combine(rootPath, "certs");
+            var certsPath = Path.Combine(rootPath, ".core");
             var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
 
             Directory.CreateDirectory(certsPath);
@@ -144,7 +129,7 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
                 }
 
                 var privateKey = File.ReadAllText(privateKeyPath);
-                Log.Information("🔑Using private key from {PrivateKeyPath}", privateKeyPath);
+                Log.Information("Using private key from {PrivateKeyPath}", privateKeyPath);
 
                 foreach (var file in files)
                 {
@@ -201,7 +186,7 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
         if (!File.Exists(privateKeyPath))
         {
             Log.Information("Private key not found. Generating new keypair...");
-            
+
             // Create certs directory
             Directory.CreateDirectory(certsPath);
             if (OperatingSystem.IsWindows())
@@ -212,21 +197,21 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
                     dirInfo.Attributes |= FileAttributes.Hidden;
                 }
             }
-            
+
             // Generate new keypair
             using var rsa = RSA.Create(2048);
             var privateKeyPem = ExportPrivateKeyPem(rsa);
             var publicKeyPem = ExportPublicKeyPem(rsa);
-            
+
             // Save private key
             File.WriteAllText(privateKeyPath, privateKeyPem);
             Log.Information("Private key saved to: {PrivateKeyPath}", privateKeyPath);
-            
+
             // Save public key to certs directory
             var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
             File.WriteAllText(publicKeyPath, publicKeyPem);
             Log.Information("Public key saved to: {PublicKeyPath}", publicKeyPath);
-            
+
             // Update current public key
             _currentPublicKeyPem = publicKeyPem;
             Log.Information("Generated new keypair for this session.");
@@ -241,11 +226,11 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
                 rsa.ImportFromPem(privateKeyPem);
                 var derivedPublicKeyPem = ExportPublicKeyPem(rsa);
                 _currentPublicKeyPem = derivedPublicKeyPem;
-                
+
                 // Also save/update public key file
                 var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
                 File.WriteAllText(publicKeyPath, derivedPublicKeyPem);
-                
+
                 Log.Information("Loaded existing private key and derived public key.");
             }
             catch (Exception ex)

@@ -258,10 +258,7 @@ To keep your sensitive information (like passwords in connection strings) safe, 
 2. To lock your settings, run the command `.\encrypt.exe -e` or `--encrypt`
 3. To unlock your settings, run the command `.\encrypt.exe -d` or `--decrypt`
 
-The public (and private) keys will be stored safely in the `cert` folder. 
-
-> [!TIP] 
->  Make sure to securely store your private key (*.pem) somewhere else. It's recommended to only store the private key temporarily in the `cert` folder during your time maintaining the application.
+The key pair will be stored safely in the `.core` folder.
 
 ## 📡 API Examples
 
