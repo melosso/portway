@@ -58,9 +58,6 @@ foreach ($pattern in $filesToRemove) {
     Get-ChildItem -Path $deploymentDir -Filter $pattern -Recurse | Remove-Item -Force
 }
 
-# Copy the batch file for convenience
-Copy-Item "$toolsDir\TokenGenerator.bat" "$deploymentDir" -Force
-
 # Get file size info
 $exeFile = Get-ChildItem "$deploymentDir\TokenGenerator.exe"
 $sizeInMB = [math]::Round($exeFile.Length / 1MB, 2)

@@ -31,7 +31,7 @@ H/l/Zr708b8Rcs3jGgzYhEwoDR7m+tO9aTtR0m3Kb2p+J5ncFBPprJEbVHP9YVex
 b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
 -----END PUBLIC KEY-----";
 
-    private const string PrivateKeyFileName = "portway_private_key.pem";
+    private const string PrivateKeyFileName = "key_b.pem";
 
     static void Main(string[] args)
     {
@@ -97,10 +97,20 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
                 }
             }
 
-            // Certs path
+            // Certs folder
             var rootPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".."));
             var certsPath = Path.Combine(rootPath, "certs");
             var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
+
+            Directory.CreateDirectory(certsPath);
+            if (OperatingSystem.IsWindows())
+            {
+                var dirInfo = new DirectoryInfo(certsPath);
+                if ((dirInfo.Attributes & FileAttributes.Hidden) == 0)
+                {
+                    dirInfo.Attributes |= FileAttributes.Hidden;
+                }
+            }
 
             // Initialize keypair - ensure we have matching public/private keys
             InitializeKeyPair(certsPath, privateKeyPath);
@@ -129,12 +139,12 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
             {
                 if (!File.Exists(privateKeyPath))
                 {
-                    Log.Error("❌ Private key not found at {Path}. Required for decryption.", privateKeyPath);
+                    Log.Error("Private key not found at {Path}. Required for decryption.", privateKeyPath);
                     return;
                 }
 
                 var privateKey = File.ReadAllText(privateKeyPath);
-                Log.Information("🔑 Using private key from {PrivateKeyPath}", privateKeyPath);
+                Log.Information("🔑Using private key from {PrivateKeyPath}", privateKeyPath);
 
                 foreach (var file in files)
                 {
@@ -154,7 +164,7 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, "❌ Failed to decrypt {File}", file);
+                        Log.Error(ex, "Failed to decrypt {File}", file);
                     }
                 }
             }
@@ -194,6 +204,14 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
             
             // Create certs directory
             Directory.CreateDirectory(certsPath);
+            if (OperatingSystem.IsWindows())
+            {
+                var dirInfo = new DirectoryInfo(certsPath);
+                if ((dirInfo.Attributes & FileAttributes.Hidden) == 0)
+                {
+                    dirInfo.Attributes |= FileAttributes.Hidden;
+                }
+            }
             
             // Generate new keypair
             using var rsa = RSA.Create(2048);
@@ -205,7 +223,7 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
             Log.Information("Private key saved to: {PrivateKeyPath}", privateKeyPath);
             
             // Save public key to certs directory
-            var publicKeyPath = Path.Combine(certsPath, "portway_public_key.pem");
+            var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
             File.WriteAllText(publicKeyPath, publicKeyPem);
             Log.Information("Public key saved to: {PublicKeyPath}", publicKeyPath);
             
@@ -225,7 +243,7 @@ b4f8Vz/IrxYrXxKY9IaofXECAwEAAQ==
                 _currentPublicKeyPem = derivedPublicKeyPem;
                 
                 // Also save/update public key file
-                var publicKeyPath = Path.Combine(certsPath, "portway_public_key.pem");
+                var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
                 File.WriteAllText(publicKeyPath, derivedPublicKeyPem);
                 
                 Log.Information("Loaded existing private key and derived public key.");

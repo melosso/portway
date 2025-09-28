@@ -24,7 +24,7 @@ namespace PortwayApi.Helpers
 
             // Try to read public key directly from file first
             var certsPath = Path.Combine(Directory.GetCurrentDirectory(), "certs");
-            var publicKeyPath = Path.Combine(certsPath, "portway_public_key.pem");
+            var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
             
             if (File.Exists(publicKeyPath))
             {
@@ -40,7 +40,7 @@ namespace PortwayApi.Helpers
             }
 
             // Try to derive public key from private key in certs directory
-            var privateKeyPath = Path.Combine(certsPath, "portway_private_key.pem");
+            var privateKeyPath = Path.Combine(certsPath, "key_b.pem");
             
             if (File.Exists(privateKeyPath))
             {

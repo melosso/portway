@@ -59,10 +59,11 @@ foreach ($pattern in $filesToRemove) {
 }
 
 Copy-Item "$toolsDir\appsettings.json" "$deploymentDir" -Force
+Copy-Item "$toolsDir\Encrypt.bat" "$deploymentDir" -Force
 
 # Get file size info
 $exeFile = Get-ChildItem "$deploymentDir\Encrypt.exe"
 $sizeInMB = [math]::Round($exeFile.Length / 1MB, 2)
 
-Write-Host "✅ Encrypt tool published successfully to $deploymentDir" -ForegroundColor Green
+Write-Host "Encrypt tool published successfully to $deploymentDir" -ForegroundColor Green
 Write-Host "   - Size: $sizeInMB MB" -ForegroundColor Green

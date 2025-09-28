@@ -19,13 +19,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     {
         _basePath = Path.Combine(Directory.GetCurrentDirectory(), "environments");
         _keyVaultUri = Environment.GetEnvironmentVariable("KEYVAULT_URI");
-        _privateKeyPem = Environment.GetEnvironmentVariable("PORTWAY_PRIVATE_KEY");
+        _privateKeyPem = Environment.GetEnvironmentVariable("key_b");
         
         // If no private key in environment variable, try to read from certs directory
         if (string.IsNullOrWhiteSpace(_privateKeyPem))
         {
             var certsPath = Path.Combine(Directory.GetCurrentDirectory(), "certs");
-            var privateKeyPath = Path.Combine(certsPath, "portway_private_key.pem");
+            var privateKeyPath = Path.Combine(certsPath, "key_b.pem");
             
             if (File.Exists(privateKeyPath))
             {
@@ -228,8 +228,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             {
                 if (string.IsNullOrWhiteSpace(_privateKeyPem))
                 {
-                    Log.Error("❌ Settings file is encrypted but no private key provided via PORTWAY_PRIVATE_KEY environment variable for environment: {Environment}", env);
-                    throw new InvalidOperationException($"Settings file is encrypted but no private key available for environment: {env}. Set the PORTWAY_PRIVATE_KEY environment variable.");
+                    Log.Error("❌ Settings file is encrypted but no private key provided via key_b environment variable for environment: {Environment}", env);
+                    throw new InvalidOperationException($"Settings file is encrypted but no private key available for environment: {env}. Set the key_b environment variable.");
                 }
                 
                 Log.Debug("🔓 Decrypting settings file for environment: {Environment}", env);

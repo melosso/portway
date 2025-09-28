@@ -1,8 +1,8 @@
-# Enhanced TokenGenerator Usage Guide
+# TokenGenerator Usage Guide
 
 ## Overview
 
-The enhanced TokenGenerator allows you to create and manage authentication tokens with fine-grained scope control. This lets you implement the principle of least privilege by giving tokens access only to the specific endpoints they need.
+The token generator allows you to create and manage authentication tokens with fine-grained scope control. This lets you implement the principle of least privilege by giving tokens access only to the specific endpoints they need.
 
 ## Command-Line Usage
 

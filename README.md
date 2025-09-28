@@ -250,7 +250,7 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 
 ### Protecting Secrets
 
-To keep your sensitive information (like connection strings in connection strings) safe, Portway gives you simple tools to encrypt and decrypt all your environment settings files with a single command line utility. This way, only you can access your secrets even if your machine gets comprimised.
+To keep your sensitive information (like passwords in connection strings) safe, Portway gives you simple tools to encrypt and decrypt all your environment settings files with a single command line utility. This way, only you can access your secrets even if your machine gets comprimised.
 
 **How to use:**
 

@@ -1,6 +1,6 @@
-# Encrypt/Decrypt Tool
+# Encrypt/Decrypt Usage Guide
 
-A utility to securely manage `settings.json` files in **PortwayApi** environments.
+A utility to securely manage `environment` files in **Portway**.
 
 ---
 
@@ -10,8 +10,8 @@ A utility to securely manage `settings.json` files in **PortwayApi** environment
 - Uses an **RSA keypair**:
   - Public key is loaded from private key if available.  
   - Private key is generated automatically if missing.  
-- Exports **private key** to `<root>/certs/portway_private_key.pem`.  
-- Automatically derives and saves the **public key** to `<root>/certs/portway_public_key.pem`.  
+- Exports **private key** to `<root>/certs/key_b.pem`.  
+- Automatically derives and saves the **public key** to `<root>/certs/key_a.pem`.  
 - Detects already-encrypted files using the header `PWENC:`.  
 - Prompts for private key only if missing (optional fallback).  
 - Compatible with `PortwayApi/Helpers/SettingsEncryptionHelper`.
@@ -22,26 +22,26 @@ A utility to securely manage `settings.json` files in **PortwayApi** environment
 
 ```bash
 # Encrypt all environment settings
-dotnet run -- encrypt
+Encrypt.exe -e
 
 # Decrypt all environment settings
-dotnet run -- decrypt
+Encrypt.exe -d
 
 # Verify encryption status of files
-dotnet run -- verify
+Encrypt.exe -v
 
 # Specify a custom environment directory
-dotnet run -- encrypt --envdir /path/to/Environments
+Encrypt.exe --encrypt --envdir /path/to/Environments
 ```
 
 ---
 
 ## Behavior
 
-1. **On first run**, if `<root>/certs/portway_private_key.pem` does not exist:  
+1. **On first run**, if `<root>/certs/key_b.pem` does not exist:  
    - Generates a new 2048-bit RSA keypair.  
-   - Saves the private key to `certs/portway_private_key.pem`.  
-   - Derives and saves the public key to `certs/portway_public_key.pem`.  
+   - Saves the private key to `certs/key_b.pem`.  
+   - Derives and saves the public key to `certs/key_a.pem`.  
 
 2. **Subsequent runs**:  
    - Loads the existing private key and derives the current public key.  
@@ -55,7 +55,7 @@ dotnet run -- encrypt --envdir /path/to/Environments
 
 ## Notes
 
-- Keep `certs/portway_private_key.pem` safe — it is required to decrypt files.  
+- Keep `certs/key_b.pem` safe — it is required to decrypt files.  
 - The public key is dynamically derived from the private key and will not change mid-project.  
 
 ---
@@ -63,17 +63,15 @@ dotnet run -- encrypt --envdir /path/to/Environments
 ## Example
 
 ```bash
-# First-time setup (generates keypair)
-dotnet run -- encrypt
 
 # Encrypt environment files
-dotnet run -- encrypt
+Encrypt.exe -e
 
 # Decrypt environment files
-dotnet run -- decrypt
+Encrypt.exe -d
 
 # Verify encryption status
-dotnet run -- verify
+Encrypt.exe -v
 ```
 
 ---
