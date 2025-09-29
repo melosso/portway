@@ -229,7 +229,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 if (string.IsNullOrWhiteSpace(_privateKeyPem))
                 {
                     Log.Error("❌ Settings file is encrypted but no private key provided via key_b environment variable for environment: {Environment}", env);
-                    throw new InvalidOperationException($"Settings file is encrypted but no private key available for environment: {env}. Set the key_b environment variable.");
+                    throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
                 }
                 
                 Log.Debug("🔓 Decrypting settings file for environment: {Environment}", env);
@@ -241,13 +241,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             if (config == null)
             {
                 Log.Error("❌ Failed to deserialize JSON from {FilePath}", settingsPath);
-                throw new InvalidOperationException($"Invalid JSON in settings.json for environment: {env}");
+                throw new InvalidOperationException($"Application connection configuration could not be loaded for the current environment.");
             }
 
             if (string.IsNullOrWhiteSpace(config.ConnectionString))
             {
                 Log.Error("❌ Missing ConnectionString in settings.json for environment: {Environment}", env);
-                throw new InvalidOperationException($"Missing connection string in settings.json for environment: {env}");
+                throw new InvalidOperationException($"Application connection settings could not be loaded for the current environment.");
             }
 
             // Initialize headers if not present
