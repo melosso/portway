@@ -467,7 +467,7 @@ try
             else
             {
                 Log.Information("🔐 Using existing tokens. Total active tokens: {Count}", activeTokens.Count());
-                Log.Warning("💥 Tokens are available in the tokens directory; this is considered a high security risk (CVE-2023-25577)");
+                Log.Warning("💥 Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this high security risk!");
             }
         }
         catch (Exception ex)

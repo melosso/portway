@@ -8,6 +8,68 @@ namespace PortwayApi.Helpers;
 
 public static class EndpointSummaryHelper
 {
+    /// <summary>
+    /// Validates endpoint configuration for naming conflicts
+    /// </summary>
+    public static void ValidateAndLogDuplicateEndpoints(
+        Dictionary<string, EndpointDefinition> sqlEndpoints,
+        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)> proxyEndpointMap,
+        Dictionary<string, EndpointDefinition> webhookEndpoints,
+        Dictionary<string, EndpointDefinition> fileEndpoints,
+        Dictionary<string, EndpointDefinition> staticEndpoints)
+    {
+        var endpointRegistry = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        
+        // Collect endpoint names by type
+        AddEndpoints(endpointRegistry, sqlEndpoints.Keys, "SQL");
+        AddEndpoints(endpointRegistry, proxyEndpointMap.Keys.Where(k => proxyEndpointMap[k].Type != "Composite"), "Proxy");
+        AddEndpoints(endpointRegistry, proxyEndpointMap.Keys.Where(k => proxyEndpointMap[k].Type == "Composite"), "Composite");
+        AddEndpoints(endpointRegistry, webhookEndpoints.Keys, "Webhook");
+        AddEndpoints(endpointRegistry, fileEndpoints.Keys, "File");
+        AddEndpoints(endpointRegistry, staticEndpoints.Keys, "Static");
+        
+        var conflicts = endpointRegistry.Where(e => e.Value.Count > 1).ToList();
+        
+        if (conflicts.Any())
+        {
+            Log.Warning("Configuration conflict: multiple endpoints share the same name. Please assign unique names to guarantee consistent routing for:");
+            
+            foreach (var conflict in conflicts.OrderBy(c => c.Key))
+            {
+                var activeType = GetActiveEndpointType(conflict.Value);
+                var shadowedTypes = conflict.Value.Where(t => t != activeType);
+                
+                Log.Warning("🚧 Endpoint '{Name}' defined in [{Types}] - {Active} active, {Shadowed} unreachable.", 
+                    conflict.Key, 
+                    string.Join(", ", conflict.Value),
+                    activeType,
+                    string.Join(", ", shadowedTypes));
+            }
+        }
+    }
+    
+    private static void AddEndpoints(Dictionary<string, List<string>> registry, IEnumerable<string> endpoints, string type)
+    {
+        foreach (var endpoint in endpoints)
+        {
+            if (!registry.ContainsKey(endpoint))
+                registry[endpoint] = new List<string>();
+            registry[endpoint].Add(type);
+        }
+    }
+    
+    private static string GetActiveEndpointType(List<string> types)
+    {
+        // Matches routing precedence in EndpointController.ParseEndpoint
+        if (types.Contains("SQL")) return "SQL";
+        if (types.Contains("Proxy")) return "Proxy";
+        if (types.Contains("File")) return "File";
+        if (types.Contains("Static")) return "Static";
+        if (types.Contains("Composite")) return "Composite";
+        if (types.Contains("Webhook")) return "Webhook";
+        return types.First();
+    }
+
     public static void LogEndpointSummary(
         Dictionary<string, EndpointDefinition> sqlEndpoints,
         Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)> proxyEndpointMap,
@@ -15,6 +77,9 @@ public static class EndpointSummaryHelper
         Dictionary<string, EndpointDefinition> fileEndpoints,
         Dictionary<string, EndpointDefinition> staticEndpoints)
     {
+        // First, validate and log any duplicate endpoint names
+        ValidateAndLogDuplicateEndpoints(sqlEndpoints, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
+        
         var separator = new string('─', 80);
         
         Log.Information(separator);
@@ -24,33 +89,103 @@ public static class EndpointSummaryHelper
         // SQL endpoints
         if (sqlEndpoints.Count > 0)
         {
+            int publicSqlCount = sqlEndpoints.Count(e => !e.Value.IsPrivate);
+            int privateSqlCount = sqlEndpoints.Count(e => e.Value.IsPrivate);
+            
             Log.Information("📊 SQL Endpoints ({Count})", sqlEndpoints.Count);
-            var lastSqlKey = sqlEndpoints.Keys.OrderBy(k => k).Last();
-            foreach (var endpoint in sqlEndpoints.OrderBy(e => e.Key))
+            
+            // Public SQL endpoints
+            var publicSqlEndpoints = sqlEndpoints
+                .Where(e => !e.Value.IsPrivate)
+                .OrderBy(e => e.Key)
+                .ToList();
+                
+            if (publicSqlEndpoints.Count > 0)
             {
-                string prefix = endpoint.Key == lastSqlKey ? "└──" : "├──";
-                Log.Information("│ {Prefix} {Name}: {Schema}.{Object}", 
-                    prefix, endpoint.Key, endpoint.Value.DatabaseSchema, endpoint.Value.DatabaseObjectName);
+                Log.Information("│ ├── Public ({Count})", publicSqlCount);
+                var lastPublicKey = publicSqlEndpoints.Last().Key;
+                
+                foreach (var endpoint in publicSqlEndpoints)
+                {
+                    string prefix = endpoint.Key == lastPublicKey ? "└──" : "├──";
+                    Log.Information("│ │ {Prefix} {Name}: {Schema}.{Object}", 
+                        prefix, endpoint.Key, endpoint.Value.DatabaseSchema, endpoint.Value.DatabaseObjectName);
+                }
+            }
+            
+            // Private SQL endpoints
+            var privateSqlEndpoints = sqlEndpoints
+                .Where(e => e.Value.IsPrivate)
+                .OrderBy(e => e.Key)
+                .ToList();
+                
+            if (privateSqlEndpoints.Count > 0)
+            {
+                string privatePrefix = publicSqlCount > 0 ? "└──" : "├──";
+                Log.Information("│ {Prefix} Private ({Count})", privatePrefix, privateSqlCount);
+                var lastPrivateKey = privateSqlEndpoints.Last().Key;
+                
+                foreach (var endpoint in privateSqlEndpoints)
+                {
+                    string prefix = endpoint.Key == lastPrivateKey ? "└──" : "├──";
+                    Log.Information("│ │ {Prefix} {Name}: {Schema}.{Object}", 
+                        prefix, endpoint.Key, endpoint.Value.DatabaseSchema, endpoint.Value.DatabaseObjectName);
+                }
             }
             Log.Information("│");
         }
         
-        // Proxy endpoints
-        var standardProxyEndpoints = proxyEndpointMap
-            .Where(e => !e.Value.IsPrivate && e.Value.Type != "Composite")
-            .OrderBy(e => e.Key)
+        // Proxy endpoints (both public and private)
+        var allProxyEndpoints = proxyEndpointMap
+            .Where(e => e.Value.Type != "Composite")
             .ToList();
             
-        if (standardProxyEndpoints.Count > 0)
+        if (allProxyEndpoints.Count > 0)
         {
-            Log.Information("🌐 Proxy Endpoints ({Count})", standardProxyEndpoints.Count);
-            var lastProxyKey = standardProxyEndpoints.Last().Key;
-            foreach (var entry in standardProxyEndpoints)
+            int publicProxyCount = allProxyEndpoints.Count(e => !e.Value.IsPrivate);
+            int privateProxyCount = allProxyEndpoints.Count(e => e.Value.IsPrivate);
+            
+            Log.Information("🌐 Proxy Endpoints ({Count})", allProxyEndpoints.Count);
+            
+            // Public proxy endpoints
+            var publicProxyEndpoints = allProxyEndpoints
+                .Where(e => !e.Value.IsPrivate)
+                .OrderBy(e => e.Key)
+                .ToList();
+                
+            if (publicProxyEndpoints.Count > 0)
             {
-                var (url, methods, _, _) = entry.Value;
-                string prefix = entry.Key == lastProxyKey ? "└──" : "├──";
-                Log.Information("│ {Prefix} {Name}: {Url} [{Methods}]", 
-                    prefix, entry.Key, url, string.Join(", ", methods));
+                Log.Information("│ ├── Public ({Count})", publicProxyCount);
+                var lastPublicKey = publicProxyEndpoints.Last().Key;
+                
+                foreach (var entry in publicProxyEndpoints)
+                {
+                    var (url, methods, _, _) = entry.Value;
+                    string prefix = entry.Key == lastPublicKey ? "└──" : "├──";
+                    Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
+                        prefix, entry.Key, url, string.Join(", ", methods));
+                }
+            }
+            
+            // Private proxy endpoints
+            var privateProxyEndpoints = allProxyEndpoints
+                .Where(e => e.Value.IsPrivate)
+                .OrderBy(e => e.Key)
+                .ToList();
+                
+            if (privateProxyEndpoints.Count > 0)
+            {
+                string privatePrefix = publicProxyCount > 0 ? "└──" : "├──";
+                Log.Information("│ {Prefix} Private ({Count})", privatePrefix, privateProxyCount);
+                var lastPrivateKey = privateProxyEndpoints.Last().Key;
+                
+                foreach (var entry in privateProxyEndpoints)
+                {
+                    var (url, methods, _, _) = entry.Value;
+                    string prefix = entry.Key == lastPrivateKey ? "└──" : "├──";
+                    Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
+                        prefix, entry.Key, url, string.Join(", ", methods));
+                }
             }
             Log.Information("│");
         }
@@ -64,32 +199,13 @@ public static class EndpointSummaryHelper
         if (compositeEndpoints.Count > 0)
         {
             Log.Information("🧩 Composite Endpoints ({Count})", compositeEndpoints.Count);
+            Log.Information("│ ├── Public ({Count})", compositeEndpoints.Count);
             var lastCompositeKey = compositeEndpoints.Last().Key;
             foreach (var entry in compositeEndpoints)
             {
                 var (url, methods, _, _) = entry.Value;
                 string prefix = entry.Key == lastCompositeKey ? "└──" : "├──";
-                Log.Information("│ {Prefix} {Name}: {Url} [{Methods}]", 
-                    prefix, entry.Key, url, string.Join(", ", methods));
-            }
-            Log.Information("│");
-        }
-        
-        // Private proxy endpoints only (keep the name clear)
-        var privateEndpoints = proxyEndpointMap
-            .Where(e => e.Value.IsPrivate)
-            .OrderBy(e => e.Key)
-            .ToList();
-            
-        if (privateEndpoints.Count > 0)
-        {
-            Log.Information("🔒 Private Proxy Endpoints ({Count})", privateEndpoints.Count);
-            var lastPrivateKey = privateEndpoints.Last().Key;
-            foreach (var entry in privateEndpoints)
-            {
-                var (url, methods, _, _) = entry.Value;
-                string prefix = entry.Key == lastPrivateKey ? "└──" : "├──";
-                Log.Information("│ {Prefix} {Name}: {Url} [{Methods}]", 
+                Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                     prefix, entry.Key, url, string.Join(", ", methods));
             }
             Log.Information("│");
@@ -98,20 +214,60 @@ public static class EndpointSummaryHelper
         // Webhook endpoints
         if (webhookEndpoints.Count > 0)
         {
-            Log.Information("🔔 Webhook Endpoints ({Count})", webhookEndpoints.Count);
-            var lastWebhookKey = webhookEndpoints.Keys.OrderBy(k => k).Last();
+            int publicWebhookCount = webhookEndpoints.Count(e => !e.Value.IsPrivate);
+            int privateWebhookCount = webhookEndpoints.Count(e => e.Value.IsPrivate);
             
-            foreach (var endpoint in webhookEndpoints.OrderBy(e => e.Key))
-            {
-                string prefix = endpoint.Key == lastWebhookKey ? "└──" : "├──";
+            Log.Information("🔔 Webhook Endpoints ({Count})", webhookEndpoints.Count);
+            
+            // Public webhook endpoints
+            var publicWebhookEndpoints = webhookEndpoints
+                .Where(e => !e.Value.IsPrivate)
+                .OrderBy(e => e.Key)
+                .ToList();
                 
-                // Handle the allowed webhook IDs if they exist
-                var allowedIds = endpoint.Value.AllowedColumns != null && endpoint.Value.AllowedColumns.Count > 0
-                    ? string.Join(", ", endpoint.Value.AllowedColumns)
-                    : "All";
+            if (publicWebhookEndpoints.Count > 0)
+            {
+                Log.Information("│ ├── Public ({Count})", publicWebhookCount);
+                var lastPublicKey = publicWebhookEndpoints.Last().Key;
+                
+                foreach (var endpoint in publicWebhookEndpoints)
+                {
+                    string prefix = endpoint.Key == lastPublicKey ? "└──" : "├──";
                     
-                Log.Information("│ {Prefix} {Name}: [{AllowedIds}]", 
-                    prefix, endpoint.Key, allowedIds);
+                    // Handle the allowed webhook IDs if they exist
+                    var allowedIds = endpoint.Value.AllowedColumns != null && endpoint.Value.AllowedColumns.Count > 0
+                        ? string.Join(", ", endpoint.Value.AllowedColumns)
+                        : "All";
+                        
+                    Log.Information("│ │ {Prefix} {Name}: [{AllowedIds}]", 
+                        prefix, endpoint.Key, allowedIds);
+                }
+            }
+            
+            // Private webhook endpoints
+            var privateWebhookEndpoints = webhookEndpoints
+                .Where(e => e.Value.IsPrivate)
+                .OrderBy(e => e.Key)
+                .ToList();
+                
+            if (privateWebhookEndpoints.Count > 0)
+            {
+                string privatePrefix = publicWebhookCount > 0 ? "└──" : "├──";
+                Log.Information("│ {Prefix} Private ({Count})", privatePrefix, privateWebhookCount);
+                var lastPrivateKey = privateWebhookEndpoints.Last().Key;
+                
+                foreach (var endpoint in privateWebhookEndpoints)
+                {
+                    string prefix = endpoint.Key == lastPrivateKey ? "└──" : "├──";
+                    
+                    // Handle the allowed webhook IDs if they exist
+                    var allowedIds = endpoint.Value.AllowedColumns != null && endpoint.Value.AllowedColumns.Count > 0
+                        ? string.Join(", ", endpoint.Value.AllowedColumns)
+                        : "All";
+                        
+                    Log.Information("│ │ {Prefix} {Name}: [{AllowedIds}]", 
+                        prefix, endpoint.Key, allowedIds);
+                }
             }
             Log.Information("│");
         }
@@ -242,7 +398,7 @@ public static class EndpointSummaryHelper
         
         // Summary total
         int totalEndpoints = sqlEndpoints.Count + 
-                                standardProxyEndpoints.Count + 
+                                allProxyEndpoints.Count + 
                                 compositeEndpoints.Count + 
                                 webhookEndpoints.Count + 
                                 fileEndpoints.Count +

@@ -44,7 +44,7 @@ public class EnvironmentSettings
                 }
 
                 Log.Information("✅ Loaded environments: {AllowedEnvironments}", string.Join(", ", _allowedEnvironments));
-                Log.Information("✅ Using server: {ServerName}", _serverName);
+                Log.Debug("✅ Using server: {ServerName}", _serverName);
             }
             else
             {
