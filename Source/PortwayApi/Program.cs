@@ -28,41 +28,50 @@ using System.Net;
 // Create log directory
 Directory.CreateDirectory("log");
 
-// Configure logger
+// Create logger
 Log.Logger = new LoggerConfiguration()
-   .WriteTo.Console(restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information)
-   .WriteTo.File(
-       path: "log/portwayapi-.log",
-       rollingInterval: RollingInterval.Day,
-       fileSizeLimitBytes: 10 * 1024 * 1024,
-       rollOnFileSizeLimit: true,
-       retainedFileCountLimit: 10,
-       restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information,
-       buffered: true,
-       flushToDiskInterval: TimeSpan.FromSeconds(30))
-   .MinimumLevel.Information() // Change default from Debug to Information
-   .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-   .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
-   .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
-   .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-   .Filter.ByExcluding(logEvent =>
-       logEvent.Properties.ContainsKey("RequestPath") &&
-       (logEvent.Properties["RequestPath"].ToString().Contains("/swagger") ||
-        logEvent.Properties["RequestPath"].ToString().Contains("/index.html")))
-   .CreateLogger();
-
-LogApplicationStartup();
-Log.Information("🔍 Logging initialized successfully");
+    .WriteTo.Console()
+    .CreateLogger();
 
 try
 {
-    // Create WebApplication Builder
-    var builder = WebApplication.CreateBuilder(args);
-    builder.Host.UseSerilog();
-    builder.Services.AddSingleton<Serilog.ILogger>(Log.Logger);
+    LogApplicationStartup();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Failed to log application startup");
+}
+finally
+{
+    Log.Information("🔍 Logging initialized successfully");
+}
 
-    builder.Configuration.AddJsonFile("appsettings.json", optional: false)
-                     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true);
+// Spawn the main application
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
+
+    builder.Host.UseSerilog((context, configuration) =>
+        configuration
+            .ReadFrom.Configuration(context.Configuration)
+            .WriteTo.Console()
+            .WriteTo.File(
+                path: "log/portwayapi-.log",
+                rollingInterval: RollingInterval.Day,
+                fileSizeLimitBytes: 10 * 1024 * 1024,
+                rollOnFileSizeLimit: true,
+                retainedFileCountLimit: 25,
+                buffered: true,
+                flushToDiskInterval: TimeSpan.FromSeconds(30))
+            .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+            .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+            .Filter.ByExcluding(logEvent =>
+                logEvent.Properties.ContainsKey("RequestPath") &&
+                (logEvent.Properties["RequestPath"].ToString().Contains("/swagger") ||
+                 logEvent.Properties["RequestPath"].ToString().Contains("/index.html")))
+    );
 
     // In Docker, HTTPS is opt-in (USE_HTTPS=true). On Windows Server/IIS, HTTPS is enabled by default unless USE_HTTPS=false.
     var useHttpsEnv = Environment.GetEnvironmentVariable("USE_HTTPS");
@@ -385,8 +394,8 @@ try
         {
             // Exclude swagger and docs paths from logging
             var path = context.Request.Path.Value?.ToLowerInvariant();
-            var shouldLog = !string.IsNullOrEmpty(path) && 
-                           !path.Contains("/swagger") && 
+            var shouldLog = !string.IsNullOrEmpty(path) &&
+                           !path.Contains("/swagger") &&
                            !path.Contains("/docs");
 
             if (shouldLog)
@@ -441,10 +450,6 @@ try
     // 13. Routing
     app.UseRouting();
 
-    // ================================
-    // INITIALIZATION AND SETUP
-    // ================================
-
     // Initialize Database & Create Default Token if needed
     using (var scope = app.Services.CreateScope())
     {
@@ -466,7 +471,7 @@ try
             }
             else
             {
-                Log.Information("🔐 Using existing tokens. Total active tokens: {Count}", activeTokens.Count());
+                Log.Information("🔐 Total active tokens: {Count}", activeTokens.Count());
                 Log.Warning("💥 Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this high security risk!");
             }
         }
@@ -573,7 +578,7 @@ try
 }
 catch (Exception ex)
 {
-    Log.Fatal(ex, "❌ Application failed to start.");
+    Log.Fatal(ex, "Application failed to start.");
 }
 finally
 {

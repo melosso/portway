@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v9.0": {
-      "PortwayApi/1.0.0": {
+      "PortwayApi/2025.11.2": {
         "dependencies": {
           "Azure.Security.KeyVault.Secrets": "4.7.0",
           "Dapper": "2.1.66",
@@ -1457,7 +1457,7 @@
     }
   },
   "libraries": {
-    "PortwayApi/1.0.0": {
+    "PortwayApi/2025.11.2": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

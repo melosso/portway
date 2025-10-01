@@ -193,6 +193,19 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
+### With HTTP Method Translation
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "CustomProperties": {
+    "HttpMethodTranslation": "PUT:MERGE,POST:CREATE"
+  }
+}
+```
+```
+
 ### Property Reference
 
 | Property | Type | Required | Description |
@@ -201,6 +214,27 @@ Proxy entities forward requests to internal web services.
 | `Methods` | array | Yes | Allowed HTTP methods |
 | `IsPrivate` | boolean | No | Hide from API documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
+| `CustomProperties` | object | No | Extended functionality settings |
+
+#### CustomProperties Options
+
+| Property | Type | Description | Example |
+|----------|------|-------------|---------|
+| `HttpMethodTranslation` | string | Translate HTTP methods before proxying | `"PUT:MERGE,POST:CREATE"` |
+| `HttpMethodAppendHeaders` | string | Auto-append headers based on HTTP method | `"PUT:X-HTTP-Method={ORIGINAL_METHOD}"` |
+
+### With HTTP Method Translation and Header Appending
+
+```json
+{
+  "Url": "http://api.example.com/accounts",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "CustomProperties": {
+    "HttpMethodTranslation": "PUT:POST",
+    "HttpMethodAppendHeaders": "PUT:X-HTTP-Method={ORIGINAL_METHOD},Content-Type=application/merge-patch+json"
+  }
+}
+```
 
 ## Static Entity Configuration
 

@@ -332,7 +332,7 @@ public class EndpointController : ControllerBase
                     return await HandleSqlPostRequest(env, endpointName, data);
                     
                 case EndpointType.Proxy:
-                    return await HandleProxyRequest(env, endpointName, null, remainingPath, "POST");
+                    return await HandleProxyRequest(env, endpointName, id, remainingPath, "POST");
                     
                 case EndpointType.Composite:
                     string actualCompositeName = endpointName.Replace("composite/", "");
@@ -405,7 +405,7 @@ public class EndpointController : ControllerBase
             }
             else if (endpointType == EndpointType.Proxy)
             {
-                return await HandleProxyRequest(env, endpointName, null, remainingPath, "PUT");
+                return await HandleProxyRequest(env, endpointName, id, remainingPath, "PUT");
             }
             else
             {
@@ -513,7 +513,7 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine what type of endpoint we're dealing with
-            var (endpointType, endpointName, _, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
             Log.Debug("🔄 Processing {Type} endpoint: {Name} for PATCH", endpointType, endpointName);
 
@@ -527,7 +527,7 @@ public class EndpointController : ControllerBase
             // Currently only proxy endpoints support PATCH
             if (endpointType == EndpointType.Proxy)
             {
-                return await HandleProxyRequest(env, endpointName, null, remainingPath, "PATCH");
+                return await HandleProxyRequest(env, endpointName, id, remainingPath, "PATCH");
             }
             
             Log.Warning("❌ {Type} endpoints don't support PATCH requests", endpointType);
@@ -917,6 +917,9 @@ public class EndpointController : ControllerBase
         string? id = null;
         string remainingPath = segments.Length > 1 ? string.Join('/', segments.Skip(1)) : string.Empty;
 
+        Log.Debug("🔍 Parsing endpoint: Original='{OriginalEndpointName}', RemainingPath='{RemainingPath}'", 
+            endpointName, remainingPath);
+
         // Modern pattern matching for ID extraction
         id = endpointName switch
         {
@@ -928,6 +931,8 @@ public class EndpointController : ControllerBase
                 Regex.Match(name, @"^\w+\((\d+)\)$").Groups[1].Value,
             _ => null
         };
+
+        Log.Debug("🔍 ID extraction result: ID='{Id}' from endpoint name '{EndpointName}'", id, endpointName);
 
         // Clean endpoint name if ID was extracted
         if (id != null)
@@ -1015,24 +1020,43 @@ public class EndpointController : ControllerBase
         try
         {
             // Load proxy endpoints
-            var proxyEndpoints = EndpointHandler.GetEndpoints(
-                Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy")
-            );
+            var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
 
             // Find the endpoint configuration
-            if (!proxyEndpoints.TryGetValue(endpointName, out var endpointConfig))
+            if (!proxyEndpoints.TryGetValue(endpointName, out var endpointDefinition))
             {
                 Log.Warning("❌ Endpoint not found: {EndpointName}", endpointName);
                 return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
 
-            // Check if method is allowed
-            if (!endpointConfig.Methods.Contains(method))
+            // Translate HTTP method if configured
+            var originalMethod = method;
+            var translatedMethod = PortwayApi.Classes.Helpers.HttpMethodTranslator.TranslateMethod(method, endpointDefinition.CustomProperties);
+            
+            if (!originalMethod.Equals(translatedMethod, StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Debug("🔄 HTTP method translation: {OriginalMethod} -> {TranslatedMethod} for endpoint {EndpointName}", 
+                    originalMethod, translatedMethod, endpointName);
+            }
+            
+            // Check if method is allowed (using original method for validation)
+            if (!endpointDefinition.Methods.Contains(originalMethod))
             {
                 Log.Warning("❌ Method {Method} not allowed for endpoint {EndpointName}", 
-                    method, endpointName);
+                    originalMethod, endpointName);
                 return StatusCode(405);
             }
+
+            // Validate translated method
+            if (!PortwayApi.Classes.Helpers.HttpMethodTranslator.IsValidHttpMethod(translatedMethod))
+            {
+                Log.Warning("❌ Translated method {TranslatedMethod} is not valid for endpoint {EndpointName}", 
+                    translatedMethod, endpointName);
+                return StatusCode(500, new { error = "Invalid translated HTTP method" });
+            }
+
+            // Convert endpoint definition to tuple format for legacy compatibility
+            var endpointConfig = endpointDefinition.ToTuple();
 
             // Construct full URL
             var queryString = Request.QueryString.Value ?? "";
@@ -1042,14 +1066,21 @@ public class EndpointController : ControllerBase
             if (!string.IsNullOrEmpty(id))
             {
                 fullUrl += $"(guid'{id}')";
+                Log.Debug("🔧 Added GUID to URL: {Url} (ID: {Id})", fullUrl, id);
             }
             else if (!string.IsNullOrEmpty(remainingPath))
             {
                 fullUrl += $"/{remainingPath}";
+                Log.Debug("🔧 Added remaining path to URL: {Url} (Path: {RemainingPath})", fullUrl, remainingPath);
+            }
+            else
+            {
+                Log.Debug("🔧 No ID or remaining path found for URL: {Url}", fullUrl);
             }
 
             // Add query string
             fullUrl += queryString;
+            Log.Debug("🎯 Final constructed URL: {Url}", fullUrl);
 
             // Store the target URL in the context items for logging
             HttpContext.Items["TargetUrl"] = fullUrl;
@@ -1064,19 +1095,19 @@ public class EndpointController : ControllerBase
             // Detect if this is likely a SOAP request
             bool isSoapRequest = Request.ContentType?.Contains("text/xml") == true || 
                                 Request.ContentType?.Contains("application/soap+xml") == true ||
-                                fullUrl.Contains(".svc") || 
+                                (fullUrl.Contains(".svc") && !fullUrl.Contains("REST")) || 
                                 Request.Headers.ContainsKey("SOAPAction");
 
             if (isSoapRequest)
             {
                 Log.Information("🧼 Detected SOAP request for endpoint: {Endpoint}", endpointName);
                 // SOAP requests generally shouldn't be cached, so bypass cache and execute directly
-                await ExecuteProxyRequest(method, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true);
+                await ExecuteProxyRequest(translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                 return new EmptyResult(); // Response already written
             }
 
             // For GET requests, try to use cache
-            if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
+            if (originalMethod.Equals("GET", StringComparison.OrdinalIgnoreCase))
             {
                 // Create a cache key based on the request details
                 string cacheKey = CreateCacheKey(env, endpointName, remainingPath, queryString, Request.Headers);
@@ -1135,7 +1166,7 @@ public class EndpointController : ControllerBase
                     }
                     
                     // Continue with normal proxy process for cache miss
-                    var responseDetails = await ExecuteProxyRequest(method, fullUrl, env, endpointConfig, endpointName);
+                    var responseDetails = await ExecuteProxyRequest(translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                     
                     // For successful responses, store in cache
                     if (responseDetails.IsSuccessful && _cacheManager.ShouldCacheResponse(responseDetails.ContentType))
@@ -1169,7 +1200,7 @@ public class EndpointController : ControllerBase
                 {
                     // If we couldn't acquire a lock, just execute the request without caching
                     Log.Warning("⏱️ Could not acquire lock for caching: {Endpoint}", endpointName);
-                    await ExecuteProxyRequest(method, fullUrl, env, endpointConfig, endpointName);
+                    await ExecuteProxyRequest(translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                 }
                 
                 return new EmptyResult(); // Response already written
@@ -1177,7 +1208,7 @@ public class EndpointController : ControllerBase
             else
             {
                 // For non-GET requests, just execute the proxy request without caching
-                await ExecuteProxyRequest(method, fullUrl, env, endpointConfig, endpointName);
+                await ExecuteProxyRequest(translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                 return new EmptyResult(); // Response already written
             }
         }
@@ -1239,7 +1270,9 @@ public class EndpointController : ControllerBase
         string method, string fullUrl, string env, 
         (string Url, HashSet<string> Methods, bool IsPrivate, string Type) endpointConfig,
         string endpointName,
-        bool isSoapRequest = false)
+        bool isSoapRequest = false,
+        string? originalMethod = null,
+        EndpointDefinition? endpointDefinition = null)
     {
         // Create HttpClient
         var client = _httpClientFactory.CreateClient("ProxyClient");
@@ -1250,11 +1283,15 @@ public class EndpointController : ControllerBase
             fullUrl
         );
 
+        // Log the actual HTTP method being sent to backend
+        Log.Debug("🌐 Sending {Method} request to backend: {Url}", method, fullUrl);
+
         // Copy request body for methods that can have body content
         if (HttpMethods.IsPost(method) ||
             HttpMethods.IsPut(method) ||
             HttpMethods.IsPatch(method) ||
-            HttpMethods.IsDelete(method))
+            HttpMethods.IsDelete(method) ||
+            method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
         {
             // Enable buffering to allow multiple reads
             Request.EnableBuffering();
@@ -1326,6 +1363,62 @@ public class EndpointController : ControllerBase
             catch (Exception ex)
             {
                 Log.Warning(ex, "Could not add environment header {HeaderKey}", header.Key);
+            }
+        }
+
+        // Add custom headers based on HttpMethodAppendHeaders custom property
+        if (endpointDefinition != null && !string.IsNullOrEmpty(originalMethod))
+        {
+            // Get list of existing headers to check for conflicts
+            var existingHeaders = new List<string>();
+            
+            // Collect headers from the request
+            foreach (var header in Request.Headers)
+            {
+                existingHeaders.Add(header.Key);
+            }
+            
+            // Collect headers from environment settings
+            foreach (var header in envHeaders)
+            {
+                existingHeaders.Add(header.Key);
+            }
+            
+            var customHeaders = PortwayApi.Classes.Helpers.HttpMethodHeaderAppender.GetAppendHeaders(
+                originalMethod, method, endpointDefinition.CustomProperties, 
+                existingHeaders, PortwayApi.Classes.Helpers.HeaderConflictResolution.Skip);
+                
+            foreach (var header in customHeaders)
+            {
+                try
+                {
+                    // Validate header name
+                    if (PortwayApi.Classes.Helpers.HttpMethodHeaderAppender.IsValidHeaderName(header.Key))
+                    {
+                        // Check if header already exists in the request message
+                        var headerExists = requestMessage.Headers.Contains(header.Key) || 
+                                         (requestMessage.Content?.Headers.Contains(header.Key) == true);
+                        
+                        if (!headerExists)
+                        {
+                            requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                            Log.Debug("Added custom header for method {OriginalMethod}: {HeaderKey}={HeaderValue}", 
+                                originalMethod, header.Key, header.Value);
+                        }
+                        else
+                        {
+                            Log.Debug("Custom header {HeaderKey} already exists in request, skipping to avoid conflicts", header.Key);
+                        }
+                    }
+                    else
+                    {
+                        Log.Warning("Invalid custom header name: {HeaderKey}", header.Key);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not add custom header {HeaderKey}", header.Key);
+                }
             }
         }
 

@@ -114,9 +114,12 @@ The documentation will be available at `/docs` (or your custom route) once confi
     "EnableValidator": true,
     "EnableScalar": true,
     "ScalarTheme": "default",
+    "ScalarLayout": "modern",
     "ScalarShowSidebar": true,
     "ScalarHideDownloadButton": true,
-    "ScalarHideModels": true
+    "ScalarHideModels": true,
+    "ScalarHideClientButton": true,
+    "ScalarHideTestRequestButton": false
   }
 }
 ```
@@ -141,9 +144,12 @@ The documentation will be available at `/docs` (or your custom route) once confi
 | `EnableValidator` | boolean | `true` | Enable request/response validation |
 | `EnableScalar` | boolean | `true` | Use Scalar UI instead of default Swagger UI |
 | `ScalarTheme` | string | `"default"` | Scalar theme: `"default"`, `"alternate"`, `"moon"`, `"purple"`, `"solarized"` |
+| `ScalarLayout` | string | `"modern"` | Scalar layout: `"modern"`, `"classic"` |
 | `ScalarShowSidebar` | boolean | `true` | Display navigation sidebar |
 | `ScalarHideDownloadButton` | boolean | `true` | Hide OpenAPI spec download button |
 | `ScalarHideModels` | boolean | `true` | Hide data models section |
+| `ScalarHideClientButton` | boolean | `true` | Hide client generation button |
+| `ScalarHideTestRequestButton` | boolean | `false` | Hide test request button |
 
 ## Rate Limiting Configuration
 

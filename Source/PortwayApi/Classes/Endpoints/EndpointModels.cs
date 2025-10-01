@@ -37,6 +37,7 @@ public class ExtendedEndpointEntity
     public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
     public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
     public Documentation? Documentation { get; set; } // OpenAPI documentation settings
+    public Dictionary<string, object>? CustomProperties { get; set; } // Custom properties for extended functionality
 }
 
 /// <summary>
@@ -67,6 +68,9 @@ public class EndpointEntity
     
     // OpenAPI documentation properties
     public Documentation? Documentation { get; set; }
+    
+    // Custom properties for extended functionality
+    public Dictionary<string, object>? CustomProperties { get; set; }
 }
 
 /// <summary>

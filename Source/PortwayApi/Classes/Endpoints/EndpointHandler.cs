@@ -65,6 +65,9 @@ public class EndpointDefinition
     
     // OpenAPI documentation properties
     public Documentation? Documentation { get; set; } // OpenAPI documentation settings
+    
+    // Custom properties for extended functionality
+    public Dictionary<string, object>? CustomProperties { get; set; }
 
     // Helper properties to simplify type checking
     public bool IsStandard => Type == EndpointType.Standard && !IsPrivate;
@@ -697,7 +700,8 @@ public static class EndpointHandler
                     Type = ParseEndpointType(extendedEntity.Type),
                     CompositeConfig = extendedEntity.CompositeConfig,
                     AllowedEnvironments = extendedEntity.AllowedEnvironments,
-                    Documentation = extendedEntity.Documentation
+                    Documentation = extendedEntity.Documentation,
+                    CustomProperties = extendedEntity.CustomProperties
                 };
             }
 
@@ -715,7 +719,8 @@ public static class EndpointHandler
                     Type = EndpointType.Standard,
                     CompositeConfig = null,
                     AllowedEnvironments = entity.AllowedEnvironments,
-                    Documentation = entity.Documentation
+                    Documentation = entity.Documentation,
+                    CustomProperties = entity.CustomProperties
                 };
             }
         }

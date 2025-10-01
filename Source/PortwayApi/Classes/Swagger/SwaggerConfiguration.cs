@@ -36,9 +36,12 @@ public class SwaggerSettings
     // Scalar-specific settings
     public bool EnableScalar { get; set; } = true;
     public string ScalarTheme { get; set; } = "purple"; // alternate, default, moon, purple, solarized, bluePlanet, saturn, kepler, mars, deepSpace
+    public string ScalarLayout { get; set; } = "modern"; // modern, classic
     public bool ScalarShowSidebar { get; set; } = true;
     public bool ScalarHideDownloadButton { get; set; } = false;
     public bool ScalarHideModels { get; set; } = true; // Hide the Models/Schemas section
+    public bool ScalarHideClientButton { get; set; } = true; // Hide the client generation button
+    public bool ScalarHideTestRequestButton { get; set; } = false; // Hide the test request button
 }
 
 public class ContactInfo
@@ -105,6 +108,9 @@ public static class SwaggerConfiguration
             
         if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarTheme))
             swaggerSettings.ScalarTheme = "purple";
+            
+        if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarLayout))
+            swaggerSettings.ScalarLayout = "modern";
             
         // Register Swagger services if enabled
         if (swaggerSettings.Enabled)
@@ -260,13 +266,17 @@ public static class SwaggerConfiguration
                 var sidebarConfig = swaggerSettings.ScalarShowSidebar ? "true" : "false";
                 
                 // Debug logging
-                Log.Debug("🎨 Scalar theme configuration: Theme={Theme}", swaggerSettings.ScalarTheme);
+                Log.Debug("🎨 Scalar configuration: Theme={Theme}, Layout={Layout}", 
+                    swaggerSettings.ScalarTheme, swaggerSettings.ScalarLayout);
                 
                 var configJson = $@"{{
                     ""theme"": ""{GetScalarThemeName(swaggerSettings.ScalarTheme)}"",
+                    ""layout"": ""{GetScalarLayoutName(swaggerSettings.ScalarLayout)}"",
                     ""sidebar"": {sidebarConfig},
                     ""documentDownloadType"": ""{(swaggerSettings.ScalarHideDownloadButton ? "none" : "both")}"",
-                    ""hideModels"": {(swaggerSettings.ScalarHideModels ? "true" : "false")}
+                    ""hideModels"": {(swaggerSettings.ScalarHideModels ? "true" : "false")},
+                    ""hideClientButton"": {(swaggerSettings.ScalarHideClientButton ? "true" : "false")},
+                    ""hideTestRequestButton"": {(swaggerSettings.ScalarHideTestRequestButton ? "true" : "false")}
                 }}";
                 
             var html = $@"
@@ -451,6 +461,16 @@ public static class SwaggerConfiguration
             "laserwave" => "laserwave",
             "none" => "none",
             _ => "purple"
+        };
+    }
+
+    private static string GetScalarLayoutName(string layout)
+    {
+        return layout?.ToLowerInvariant() switch
+        {
+            "modern" => "modern",
+            "classic" => "classic",
+            _ => "modern"
         };
     }
 
