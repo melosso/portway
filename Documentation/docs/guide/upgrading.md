@@ -14,7 +14,8 @@ Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from 
      - `appsettings.json`
      - `Endpoints\` folder (and its content)
      - `Environments\` folder (and its content)
-   - Backup any SQLite database files used by Portway (e.g., `*.db`).
+     - `.core\` folder (and its content)
+   - Backup any SQLite database files used by Portway (e.g., `auth.db`).
 
 3. **Windows: Suspend The Webserver**
    - If you're using Windows Server (IIS): Stop the Application Pool. 
@@ -30,7 +31,10 @@ Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from 
    - Start Portway and verify that your endpoints, environments, and data work as expected.
 
 > [!TIP]
-> For major upgrades, always test in a non-production environment first.
+> For major upgrades, always test in a non-production environment first. We try to make sure you're always up to date with any breaking changes (in the release notes).
 
-> [!INFORMATION]
+> [!IMPORTANT]
+> By stopping the web server on IIS (either by either stopping the website or application pool) you'll reset any cache and/or rate limits configured by the application.
+
+> [!NOTE]
 > You can find your installated version in file `version.txt`. Please make sure to overwrite it, to keep version information up to date (which is especially important when submitting bug reports).

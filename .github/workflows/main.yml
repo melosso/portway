@@ -76,9 +76,9 @@ jobs:
         find Deployment -name ".dockerignore" -type f -delete
         
         # Clean up Endpoints to only include Static/Example (renamed from Countries)
-        rm -rf "Deployment/PortwayApi/Endpoints"
-        mkdir -p "Deployment/PortwayApi/Endpoints/Static/Example"
+        # First copy Countries to Example before removing anything
         if [ -d "Deployment/PortwayApi/Endpoints/Static/Countries" ]; then
+          mkdir -p "Deployment/PortwayApi/Endpoints/Static/Example"
           cp -r "Deployment/PortwayApi/Endpoints/Static/Countries/." "Deployment/PortwayApi/Endpoints/Static/Example/"
         fi
         # Remove any other directories inside Endpoints except Static/Example
@@ -106,18 +106,6 @@ jobs:
           -e 's/Database=web//g' \
           {} \;
         
-        # Ensure Example entity.json exists by copying from Countries if available
-        if [ ! -f "Deployment/PortwayApi/Endpoints/Static/Example/entity.json" ]; then
-          if [ -f "Deployment/PortwayApi/Endpoints/Static/Countries/entity.json" ]; then
-            cp "Deployment/PortwayApi/Endpoints/Static/Countries/entity.json" "Deployment/PortwayApi/Endpoints/Static/Example/entity.json"
-          fi
-        fi
-
-        # Also copy countries-2025.json if it exists
-        if [ -f "Deployment/PortwayApi/Endpoints/Static/Countries/countries-2025.json" ]; then
-          cp "Deployment/PortwayApi/Endpoints/Static/Countries/countries-2025.json" "Deployment/PortwayApi/Endpoints/Static/Example/countries-2025.json"
-        fi
-
         # Zip the Deployment folder
         # Update AllowedEnvironments in all JSON files: replace 600 with demo, remove 700 and Synergy
         find Deployment -type f -name "*.json" -exec jq 'if .AllowedEnvironments then .AllowedEnvironments |= map(select(. != "700" and . != "Synergy")) | .AllowedEnvironments |= map(if . == "600" then "demo" else . end) elif .Environment?.AllowedEnvironments then .Environment.AllowedEnvironments |= map(select(. != "700" and . != "Synergy")) | .Environment.AllowedEnvironments |= map(if . == "600" then "demo" else . end) else . end' {} > tmp.json \; -exec mv tmp.json {} \;
