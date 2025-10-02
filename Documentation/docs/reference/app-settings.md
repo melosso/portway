@@ -31,10 +31,40 @@ Application settings control the core behavior of Portway, including logging, se
 
 ## Logging Configuration
 
+Portway uses Serilog for structured logging with configurable sinks and filtering.
+
 ### Basic Structure
 
 ```json
 {
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.EntityFrameworkCore.Database.Command": "Warning",
+        "System": "Warning",
+        "Microsoft.AspNetCore": "Warning"
+      }
+    },
+    "WriteTo": [
+      {
+        "Name": "Console"
+      },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "log/portwayapi-.log",
+          "rollingInterval": "Day",
+          "fileSizeLimitBytes": 10485760,
+          "rollOnFileSizeLimit": true,
+          "retainedFileCountLimit": 10,
+          "buffered": true,
+          "flushToDiskInterval": "00:00:30"
+        }
+      }
+    ]
+  },
   "Logging": {
     "LogLevel": {
       "Default": "Information",
@@ -48,25 +78,28 @@ Application settings control the core behavior of Portway, including logging, se
 
 | Level | Description | Use Case |
 |-------|-------------|----------|
-| `Trace` | Most detailed logging | Debugging specific issues |
 | `Debug` | Debugging information | Development troubleshooting |
 | `Information` | General flow of events | Normal operations |
 | `Warning` | Abnormal or unexpected events | Potential issues |
 | `Error` | Error events | Application errors |
-| `Critical` | Critical failures | System failures |
-| `None` | No logging | Disable logging |
+| `Fatal` | Critical failures | System failures |
 
-### Category-Specific Logging
+### Configuration Options
+
+- **MinimumLevel.Default**: Controls the overall logging level
+- **MinimumLevel.Override**: Set specific levels for different namespaces
+- **WriteTo**: Configure output destinations (Console, File, etc.)
+- **File Settings**: Control log file rotation, size limits, and buffering
+
+### Changing Log Levels
+
+To change the logging level, modify the `Default` value in `appsettings.json`:
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Microsoft.EntityFrameworkCore": "Warning",
-      "System": "Warning",
-      "PortwayApi.Services": "Debug"
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug"  // Change to Debug, Information, Warning, Error, or Fatal
     }
   }
 }
