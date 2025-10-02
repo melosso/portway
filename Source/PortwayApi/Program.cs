@@ -28,50 +28,22 @@ using System.Net;
 // Create log directory
 Directory.CreateDirectory("log");
 
-// Create logger
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .CreateLogger();
-
-try
-{
-    LogApplicationStartup();
-}
-catch (Exception ex)
-{
-    Log.Fatal(ex, "Failed to log application startup");
-}
-finally
-{
-    Log.Information("🔍 Logging initialized successfully");
-}
-
 // Spawn the main application
 try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Host.UseSerilog((context, configuration) =>
-        configuration
-            .ReadFrom.Configuration(context.Configuration)
-            .WriteTo.Console()
-            .WriteTo.File(
-                path: "log/portwayapi-.log",
-                rollingInterval: RollingInterval.Day,
-                fileSizeLimitBytes: 10 * 1024 * 1024,
-                rollOnFileSizeLimit: true,
-                retainedFileCountLimit: 25,
-                buffered: true,
-                flushToDiskInterval: TimeSpan.FromSeconds(30))
-            .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
-            .Filter.ByExcluding(logEvent =>
-                logEvent.Properties.ContainsKey("RequestPath") &&
-                (logEvent.Properties["RequestPath"].ToString().Contains("/swagger") ||
-                 logEvent.Properties["RequestPath"].ToString().Contains("/index.html")))
-    );
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(builder.Configuration)
+        .Filter.ByExcluding(logEvent =>
+            logEvent.Properties.ContainsKey("RequestPath") &&
+            (logEvent.Properties["RequestPath"].ToString().Contains("/swagger") ||
+                logEvent.Properties["RequestPath"].ToString().Contains("/index.html")))
+        .CreateLogger();
+
+    builder.Host.UseSerilog();
+
+    LogApplicationAscii();
 
     // In Docker, HTTPS is opt-in (USE_HTTPS=true). On Windows Server/IIS, HTTPS is enabled by default unless USE_HTTPS=false.
     var useHttpsEnv = Environment.GetEnvironmentVariable("USE_HTTPS");
@@ -259,6 +231,10 @@ try
     builder.Services.AddSingleton<IEdmModelBuilder, EdmModelBuilder>();
     builder.Services.AddSingleton<Compiler, SqlServerCompiler>();
     builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
+
+    // Register Serilog logger for dependency injection (so Serilog.ILogger can be injected)
+    builder.Services.AddSingleton<Serilog.ILogger>(sp => Log.Logger);
+
     builder.Services.AddSingleton<FileHandlerService>();
     builder.Services.AddSqlConnectionPooling(builder.Configuration);
 
@@ -585,7 +561,7 @@ finally
     Log.CloseAndFlush();
 }
 
-void LogApplicationStartup()
+void LogApplicationAscii()
 {
     var logo = new StringBuilder();
     logo.AppendLine(@"");

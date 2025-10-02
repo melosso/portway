@@ -1,12 +1,27 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
+    <!-- Target framework and project settings -->
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
     <Version>2025.11.2</Version>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    
+    <!-- Assembly Information -->
+    <AssemblyTitle>Portway</AssemblyTitle>
+    <AssemblyDescription>A fast, lightweight API gateway with fine-grained access to SQL Server data and flexible service proxying.</AssemblyDescription>
+    <AssemblyProduct>Portway</AssemblyProduct>
+    <AssemblyCompany>Melosso</AssemblyCompany>
+    <AssemblyCopyright>Copyright © Melosso 2025</AssemblyCopyright>
+
+    <!-- Additional Metadata -->
+    <Authors>Melosso</Authors>
+    <RepositoryUrl>https://github.com/melosso/portway</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://portway.melosso.com/</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,48 +37,49 @@
 
   <ItemGroup>
     <!-- Authentication & Identity -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.8" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.14.0" />
 
     <!-- Entity Framework & Databases -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.4" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.4">
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
 
     <!-- OData & SQL Querying -->
     <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="DynamicODataToSQL" Version="2.1.0" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.12.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.13.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.13.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.12.0-beta.1" />
-    <PackageReference Include="Polly" Version="8.5.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.12.0-beta.3" />
+    <PackageReference Include="Polly" Version="8.6.4" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="9.0.0" />
     <PackageReference Include="SqlKata" Version="2.4.0" />
     <PackageReference Include="SqlKata.Execution" Version="2.4.0" />
-    <PackageReference Include="Microsoft.OData.Core" Version="7.21.4" />
-    <PackageReference Include="Microsoft.OData.Edm" Version="7.21.4" />
-    <PackageReference Include="Microsoft.OData.ModelBuilder" Version="1.0.9" />
+    <PackageReference Include="Microsoft.OData.Core" Version="8.4.0" />
+    <PackageReference Include="Microsoft.OData.Edm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.OData.ModelBuilder" Version="2.0.0" />
 
     <!-- Logging -->
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
 
     <!-- Azure -->
-    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.8.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.25" />
 
     <!-- Swagger -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
-    <PackageReference Include="Scalar.AspNetCore" Version="1.2.46" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.8.8" />
 
     <!-- HTTP Utilities -->
     <PackageReference Include="Flurl" Version="4.0.0" />
