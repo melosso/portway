@@ -12,5 +12,9 @@ Documentation/* linguist-vendored
 *.yml linguist-vendored=true
 *.sh linguist-vendored=true
 *.sln linguist-vendored=true
+*.sql linguist-vendored=true
+*.ps1 linguist-vendored=true
+*.bat linguist-vendored=true
+*.cmd linguist-vendored=true
 *.pack filter=lfs diff=lfs merge=lfs -text
 *.idx filter=lfs diff=lfs merge=lfs -text
