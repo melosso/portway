@@ -82,6 +82,8 @@ Tokens can be restricted to specific endpoints:
 | `*` | Full access to all endpoints | Default for admin tokens |
 | `Products,Orders` | Access to specific endpoints | API integration tokens |
 | `Product*` | Wildcard access to endpoints | All product-related endpoints |
+| `Company/Employees` | Access to namespaced endpoint | Specific namespaced access |
+| `Company/*` | Access to all endpoints in namespace | All Company namespace endpoints |
 | `GET:Products` | Method-specific access | Read-only access |
 
 ### Environment Access Control

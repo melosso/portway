@@ -12,20 +12,6 @@ using Microsoft.Extensions.Logging;
 using Serilog;
 
 /*
- * Enhanced TokenGenerator with Runtime Stability Improvements and Fixed Logging
- * ===========================================================================
- * 
- * This version includes fixes for .NET runtime issues, enhanced features, and proper logging:
- * 
- * 1. Runtime stability improvements for Windows CFG/shadow stack compatibility
- * 2. Better error handling and graceful degradation
- * 3. Command-line parameters for setting scopes and token expiration
- * 4. Menu options to update token scopes and expiration
- * 5. Improved token file format with better scope display and instructions
- * 6. Support for wildcard scopes and environments
- * 7. Enhanced logging and error reporting
- * 8. FIXED: Disabled SQL query logging to prevent console clutter
- * 
  * Usage examples:
  * - Generate token with specific scopes:
  *   TokenGenerator.exe admin -s "Products,Orders,Customers"

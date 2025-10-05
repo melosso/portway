@@ -91,6 +91,7 @@ export default withMermaid(
           items: [
             { text: 'Entity Configuration', link: '/reference/entity-config' },
             { text: 'Environment Configuration', link: '/reference/environment-settings' },
+            { text: 'Namespace Configuration', link: '/reference/namespaces' },
             { text: 'Application Settings', link: '/reference/app-settings' },
             { text: 'OpenAPI Settings', link: '/reference/openapi-settings' },
 

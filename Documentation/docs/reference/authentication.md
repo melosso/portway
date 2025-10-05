@@ -100,6 +100,8 @@ Control access to specific endpoints:
 | `Products` | Access to Products endpoint only | Single endpoint |
 | `Products,Orders` | Access to multiple endpoints | Comma-separated |
 | `Product*` | Access to endpoints starting with "Product" | Wildcard |
+| `Company/Employees` | Access to namespaced endpoint | Specific namespaced access |
+| `Company/*` | Access to all endpoints in namespace | All Company namespace endpoints |
 
 ### Environment Scopes
 

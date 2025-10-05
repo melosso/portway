@@ -9,6 +9,16 @@ Namespaces allow you to organize endpoints into logical groups, such as:
 - **Business domains**: `Account`, `Masterdata`, `Sales`
 - **System boundaries**: `Internal`, `External`, `Public`
 
+**Supported Endpoint Types:**
+- ✅ **SQL** endpoints
+- ✅ **Proxy** endpoints  
+- ✅ **Static** endpoints
+- ✅ **Composite** endpoints (stored in Proxy directory)
+
+**Not Supported:**
+- ❌ **Files** endpoints (use directory name only)
+- ❌ **Webhooks** endpoints (use directory name only)
+
 ## Directory Structure
 
 Namespaces are implemented through directory organization within each endpoint type:
@@ -35,13 +45,12 @@ Namespaces are implemented through directory organization within each endpoint t
   │   └── [EntityName]/              # Non-namespaced (legacy)
   │       ├── entity.json
   │       └── [content-file]
-  ├── Files/
-  │   ├── [Namespace]/
-  │   │   └── [EntityName]/
-  │   │       └── entity.json
-  │   └── [EntityName]/              # Non-namespaced (legacy)
+  ├── Files/                         # Files do NOT support namespaces
+  │   └── [EntityName]/
   │       └── entity.json
-  └── Composite/
+  ├── Webhooks/                      # Webhooks do NOT support namespaces
+  │   └── entity.json
+  └── Composite/                     # Composite endpoints use Proxy structure
       ├── [Namespace]/
       │   └── [EntityName]/
       │       └── entity.json
@@ -210,26 +219,25 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-### File Endpoint with Namespace
+### File Endpoint (No Namespace Support)
 
-**File**: `/endpoints/Files/Documents/Contracts/entity.json`
+**File**: `/endpoints/Files/Documents/entity.json`
 
 ```json
 {
-  "StorageDirectory": "contracts",
+  "StorageDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".txt"],
   "MaxFileSizeBytes": 10485760,
   "IsPrivate": false,
-  "Namespace": "Documents",
-  "NamespaceDisplayName": "Document Management",
-  "DisplayName": "Contract Files",
   "AllowedEnvironments": ["dev", "test", "prod"]
 }
 ```
 
+**Note**: File endpoints do not support namespaces. They use only the immediate directory name as the endpoint name.
+
 ### Composite Endpoint with Namespace
 
-**File**: `/endpoints/Composite/Sales/OrderProcessing/entity.json`
+**File**: `/endpoints/Proxy/Sales/OrderProcessing/entity.json`
 
 ```json
 {
@@ -258,6 +266,8 @@ The system attempts namespaced access first, then falls back to non-namespaced:
   "AllowedEnvironments": ["test", "prod"]
 }
 ```
+
+**Note**: Composite endpoints are stored in the `/endpoints/Proxy/` directory with `"Type": "Composite"`.
 
 ## Naming Conventions
 
@@ -348,6 +358,11 @@ Group related endpoints together:
   ├── Contacts/
   ├── Opportunities/
   └── Activities/
+
+/endpoints/Files/        # No namespace support
+  ├── Documents/
+  ├── Images/
+  └── Reports/
 ```
 
 ### 3. Clear Display Names
@@ -449,7 +464,8 @@ During migration, both URL patterns work:
 - [ ] Namespace is not a reserved word
 - [ ] Directory structure matches namespace organization
 - [ ] `NamespaceDisplayName` provided for documentation
-- [ ] URLs accessible with namespaced patterns
+- [ ] URLs accessible with namespaced patterns (SQL, Proxy, Static, Composite only)
+- [ ] File and Webhook endpoints use simple directory structure (no namespaces)
 - [ ] Backward compatibility maintained for existing clients
 - [ ] Environment consistency across dev/test/prod
 
