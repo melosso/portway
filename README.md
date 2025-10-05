@@ -12,21 +12,22 @@ Applications that benefit from Portway are businesses looking to unlock their SQ
 
 A quick example to give you an idea of what this is all about:
 
-![Screenshot of OpenAPI UI](https://github.com/melosso/portway/blob/main/Source/example.png?raw=true)
+![Screenshot of Portway](https://github.com/melosso/portway/blob/main/Source/example.png?raw=true)
 
 ## 🧩 Key Features
 
-Portway is built with flexibility and control in mind. Whether you're proxying services or exposing SQL endpoints, Portway adapts to your infrastructure with secure, high-performance routing.
+Portway is built with flexibility and control in mind. Whether you're proxying services or exposing SQL endpoints, this API gateway adapts to your infrastructure with secure, high-performance routing.
 
-* **Multiple endpoint types**: Endpoints can be set-up easily for various purposes. They can be even be bundled or isolated using with Namespaces.
+* **Multiple endpoint types**: Endpoints can be set up easily for various purposes. They can also be grouped together or kept separate by using namespaces.
+
   * **SQL Server (OData)** — direct CRUD access with schema-level control
   * **Proxy** — forward to internal services; supports complex orchestration
   * **File System** — read/write from local storage or cache
   * **Webhook** — receive external calls and persist data to SQL
-  * **Static** — read static files or set-up a mock-up endpoint
+  * **Static** — read static files or set up a mock endpoint
 * **Auth system**: Token-based, with Azure Key Vault integration
-* **Environment-aware routing**: All your environments can isolated and configurable 
-* **Built-in Documentation**: Every endpoint is documented out-of-the-box
+* **Environment-aware routing**: All your environments can be isolated and configured
+* **Built-in documentation**: Every endpoint is documented out of the box
 * **Comprehensive logging**: Request/response tracing, including live monitoring (configurable)
 * **Rate limiting**: Easy to configure; protects downstream systems
 
