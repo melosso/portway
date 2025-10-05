@@ -7,34 +7,19 @@ public class AuthDbContext : DbContext
 {
     public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
     public DbSet<AuthToken> Tokens { get; set; }
+    public DbSet<AuthTokenAudit> TokenAudits { get; set; }
 
     public void EnsureTablesCreated()
     {
         try
         {
-            // First check if the table exists
-            bool tableExists = false;
-            try
-            {
-                // Use ExecuteSqlRaw with proper result handling
-                using var cmd = Database.GetDbConnection().CreateCommand();
-                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Tokens'";
-                
-                if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
-                    Database.GetDbConnection().Open();
-                    
-                var result = cmd.ExecuteScalar();
-                tableExists = Convert.ToInt32(result) > 0;
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Error checking if Tokens table exists");
-                return;
-            }
+            // Check if the Tokens table exists
+            bool tokensTableExists = CheckTableExists("Tokens");
+            bool auditsTableExists = CheckTableExists("TokenAudits");
             
-            if (tableExists)
+            if (tokensTableExists && auditsTableExists)
             {
-                // Check if AllowedEnvironments column exists
+                // Check if AllowedEnvironments column exists in Tokens table
                 bool hasEnvironmentColumn = false;
                 try
                 {
@@ -66,13 +51,52 @@ public class AuthDbContext : DbContext
                     }
                 }
                 
+                Log.Debug("✅ All tables verified with correct schema");
                 return;
             }
             
-            // Create the table with the current schema
-            try
+            // Create missing tables
+            if (!tokensTableExists)
             {
-                Database.ExecuteSqlRaw(@"
+                CreateTokensTable();
+            }
+            
+            if (!auditsTableExists)
+            {
+                CreateTokenAuditsTable();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "❌ Error ensuring tables are created");
+        }
+    }
+
+    private bool CheckTableExists(string tableName)
+    {
+        try
+        {
+            using var cmd = Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
+            
+            if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
+                Database.GetDbConnection().Open();
+                
+            var result = cmd.ExecuteScalar();
+            return Convert.ToInt32(result) > 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error checking if {TableName} table exists", tableName);
+            return false;
+        }
+    }
+
+    private void CreateTokensTable()
+    {
+        try
+        {
+            Database.ExecuteSqlRaw(@"
                 CREATE TABLE Tokens (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT, 
                     Username TEXT NOT NULL DEFAULT 'legacy',
@@ -86,17 +110,40 @@ public class AuthDbContext : DbContext
                     Description TEXT NOT NULL DEFAULT ''
                 )");
             
-                
-                Log.Debug("✅ Created new Tokens table");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "❌ Error creating Tokens table: {Message}", ex.Message);
-            }
+            Log.Debug("Created new Tokens table");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error ensuring Tokens table is created");
+            Log.Error(ex, "Error creating Tokens table: {Message}", ex.Message);
+            throw;
+        }
+    }
+
+    private void CreateTokenAuditsTable()
+    {
+        try
+        {
+            Database.ExecuteSqlRaw(@"
+                CREATE TABLE TokenAudits (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    TokenId INTEGER NULL,
+                    Username TEXT NOT NULL DEFAULT '',
+                    Operation TEXT NOT NULL DEFAULT '',
+                    OldTokenHash TEXT NULL,
+                    NewTokenHash TEXT NULL,
+                    Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    Details TEXT NOT NULL DEFAULT '',
+                    Source TEXT NOT NULL DEFAULT 'PortwayApi',
+                    IpAddress TEXT NULL,
+                    UserAgent TEXT NULL
+                )");
+            
+            Log.Debug("Migration completed: Created new TokenAudits table");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error creating TokenAudits table: {Message}", ex.Message);
+            throw;
         }
     }
 
@@ -109,13 +156,42 @@ public class AuthDbContext : DbContext
         {
             entity.ToTable("Tokens");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Username).IsRequired();
-            entity.Property(e => e.TokenHash).IsRequired();
-            entity.Property(e => e.TokenSalt).IsRequired();
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.TokenSalt).IsRequired().HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.RevokedAt).IsRequired(false);
-            entity.Property(e => e.AllowedScopes).HasDefaultValue("*");
-            entity.Property(e => e.AllowedEnvironments).HasDefaultValue("*"); // Add this line
+            entity.Property(e => e.ExpiresAt).IsRequired(false);
+            entity.Property(e => e.AllowedScopes).HasDefaultValue("*").HasMaxLength(1000);
+            entity.Property(e => e.AllowedEnvironments).HasDefaultValue("*").HasMaxLength(1000);
+            entity.Property(e => e.Description).HasDefaultValue("").HasMaxLength(500);
+            
+            // Add indexes for performance
+            entity.HasIndex(e => e.Username).IsUnique(false);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+        
+        // Configure the TokenAudits table
+        modelBuilder.Entity<AuthTokenAudit>(entity =>
+        {
+            entity.ToTable("TokenAudits");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TokenId).IsRequired(false);
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Operation).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.OldTokenHash).IsRequired(false).HasMaxLength(500);
+            entity.Property(e => e.NewTokenHash).IsRequired(false).HasMaxLength(500);
+            entity.Property(e => e.Timestamp).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.Details).HasDefaultValue("").HasMaxLength(2000);
+            entity.Property(e => e.Source).HasDefaultValue("PortwayApi").HasMaxLength(100);
+            entity.Property(e => e.IpAddress).IsRequired(false).HasMaxLength(45);
+            entity.Property(e => e.UserAgent).IsRequired(false).HasMaxLength(500);
+            
+            // Add indexes for performance
+            entity.HasIndex(e => e.TokenId);
+            entity.HasIndex(e => e.Username);
+            entity.HasIndex(e => e.Operation);
+            entity.HasIndex(e => e.Timestamp);
         });
     }
 }

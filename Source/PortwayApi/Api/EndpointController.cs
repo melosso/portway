@@ -1932,7 +1932,7 @@ public class EndpointController : ControllerBase
             top = ApplyMaxPageSizeLimit(top, endpoint);
             orderby = ApplyDefaultSorting(orderby, endpoint);
 
-            // NEW: Check if this is a Table Valued Function endpoint
+            // Check if this is a Table Valued Function endpoint
             if (PortwayApi.Classes.Helpers.TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
                 Log.Debug("🔄 Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);

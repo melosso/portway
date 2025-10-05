@@ -4,7 +4,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-**Portway** is a fast, lightweight API gateway optimized for Windows Server environments. It offers fine-grained access to SQL Server data and flexible service proxying, with full environment-awareness, secure authentication, and automatic (developer friendly) documentation.
+**Portway** is a fast, lightweight API gateway optimized for Windows Server environments. It offers fine-grained access to SQL Server data and supports flexible service proxying, with full environment-awareness, secure authentication, and automatic (developer friendly) documentation.
 
 Applications that benefit from Portway are businesses looking to unlock their SQL Server data through modern APIs, companies modernizing legacy systems without costly rewrites, and organizations needing integration between internal services and external partners or software.
 
@@ -16,7 +16,7 @@ A quick example to give you an idea of what this is all about:
 
 ## 🧩 Key Features
 
-Portway is built with flexibility and control in mind. Whether you're proxying services or exposing SQL endpoints, this API gateway adapts to your infrastructure with secure, high-performance routing.
+Portway is built with flexibility and control in mind. Whether you're proxying services or exposing SQL endpoints, this API gateway adapts to your infrastructure with secure, high-performance routing. Configuration can be done quickly by setting up a minimum amount of configuration files.
 
 * **Multiple endpoint types**: Endpoints can be set up easily for various purposes. They can also be grouped together or kept separate by using namespaces.
 

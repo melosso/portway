@@ -274,7 +274,7 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 },
                 new OpenApiObject
                 {
-                    ["Itemcode"] = new OpenApiString("BEK0003"),
+                    ["Itemcode"] = new OpenApiString("ITEM-003"),
                     ["Quantity"] = new OpenApiInteger(5),
                     ["Price"] = new OpenApiFloat(0.0f)
                 }

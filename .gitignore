@@ -4,4 +4,5 @@ Deployment/PortwayApi/tokens/
 .venv/
 /logs/
 .git/# Ignore log files
+.fake# Ignore log files
 # Ignore log files

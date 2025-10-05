@@ -22,7 +22,6 @@ public class EndpointDefinition
     public string? Procedure { get; set; }
     public string? PrimaryKey { get; set; }
     
-    // NEW: Table Valued Function properties
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }
     
@@ -70,7 +69,6 @@ public class EndpointDefinition
     // Custom properties for extended functionality
     public Dictionary<string, object>? CustomProperties { get; set; }
 
-    // NEW: Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
     /// Takes precedence over folder-inferred namespace
@@ -107,7 +105,7 @@ public class EndpointDefinition
     public bool IsSql => Type == EndpointType.SQL;
     public bool IsStatic => Type == EndpointType.Static;
     
-    // NEW: Namespace helper properties
+    // Namespace helper properties
     /// <summary>
     /// Gets the effective namespace (explicit namespace takes precedence over inferred)
     /// </summary>
@@ -904,11 +902,11 @@ public static class EndpointHandler
                     AllowedEnvironments = extendedEntity.AllowedEnvironments,
                     Documentation = extendedEntity.Documentation,
                     CustomProperties = extendedEntity.CustomProperties,
-                    
-                    // NEW: Copy namespace properties from entity
+
+                    // Copy namespace properties from entity
                     Namespace = extendedEntity.Namespace,
-                    DisplayName = extendedEntity.DisplayName,
-                    NamespaceDisplayName = extendedEntity.NamespaceDisplayName
+                    NamespaceDisplayName = extendedEntity.NamespaceDisplayName,
+                    DisplayName = extendedEntity.DisplayName
                 };
             }
 
@@ -929,7 +927,7 @@ public static class EndpointHandler
                     Documentation = entity.Documentation,
                     CustomProperties = entity.CustomProperties,
                     
-                    // NEW: Copy namespace properties from entity (fallback)
+                    // Copy namespace properties from entity (fallback)
                     Namespace = entity.Namespace,
                     DisplayName = entity.DisplayName,
                     NamespaceDisplayName = entity.NamespaceDisplayName
@@ -983,10 +981,10 @@ public static class EndpointHandler
                     AllowedEnvironments = entity.AllowedEnvironments,
                     Documentation = entity.Documentation,
                     
-                    // NEW: Copy namespace properties from entity
+                    // Copy namespace properties from entity
                     Namespace = entity.Namespace,
-                    DisplayName = entity.DisplayName,
-                    NamespaceDisplayName = entity.NamespaceDisplayName
+                    NamespaceDisplayName = entity.NamespaceDisplayName,
+                    DisplayName = entity.DisplayName
                 };
             }
         }

@@ -77,6 +77,17 @@ public class TokenService
         _dbContext.Tokens.Add(tokenEntry);
         await _dbContext.SaveChangesAsync();
         
+        // Log the token creation in audit trail
+        await LogAuditAsync(tokenEntry.Id, username, "Created", null, hashedToken, 
+            JsonSerializer.Serialize(new 
+            { 
+                AllowedScopes = allowedScopes,
+                AllowedEnvironments = allowedEnvironments,
+                Description = description,
+                ExpiresAt = expiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                TokenLength = token.Length
+            }));
+        
         // Save token to file
         await SaveTokenToFileAsync(username, token, allowedScopes, allowedEnvironments, expiresAt, description);
         
@@ -230,9 +241,15 @@ public class TokenService
             // Compare hashed tokens
             if (hashedToken == storedToken.TokenHash)
             {
+                // Log successful token access (debug level to avoid spam)
+                Log.Debug("Token access: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
                 return storedToken;
             }
         }
+        
+        // Log failed token access attempt
+        Log.Warning("Failed token access attempt with token: {TokenPrefix}...", 
+            token.Length > 10 ? token[..10] : token);
         
         return null;
     }
@@ -379,9 +396,100 @@ public class TokenService
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null) return false;
         
+        string oldScopes = token.AllowedScopes;
         token.AllowedScopes = scopes;
         await _dbContext.SaveChangesAsync();
         
+        // Log the token scope update in audit trail
+        await LogAuditAsync(token.Id, token.Username, "ScopesUpdated", null, null,
+            JsonSerializer.Serialize(new 
+            { 
+                OldScopes = oldScopes,
+                NewScopes = scopes,
+                UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+            }));
+        
         return true;
+    }
+    
+    /// <summary>
+    /// Log audit information for token operations
+    /// </summary>
+    private async Task LogAuditAsync(int? tokenId, string username, string operation, 
+        string? oldTokenHash = null, string? newTokenHash = null, string details = "")
+    {
+        try
+        {
+            var auditEntry = new AuthTokenAudit
+            {
+                TokenId = tokenId,
+                Username = username,
+                Operation = operation,
+                OldTokenHash = oldTokenHash,
+                NewTokenHash = newTokenHash,
+                Timestamp = DateTime.UtcNow,
+                Details = details,
+                Source = "PortwayApi",
+                IpAddress = null, // Could be enhanced to capture actual IP from HttpContext
+                UserAgent = Environment.MachineName + "/" + Environment.UserName
+            };
+            
+            await _dbContext.TokenAudits.AddAsync(auditEntry);
+            await _dbContext.SaveChangesAsync();
+            
+            Log.Debug("Audit log created: {Operation} for user {Username}", operation, username);
+        }
+        catch (Exception ex)
+        {
+            // Don't throw exceptions from audit logging to avoid disrupting main operations
+            Log.Error(ex, "Failed to create audit log for operation {Operation} on user {Username}", operation, username);
+        }
+    }
+    
+    /// <summary>
+    /// Get audit log entries for a specific token or user
+    /// </summary>
+    public async Task<List<AuthTokenAudit>> GetAuditLogAsync(string? username = null, int? tokenId = null, int maxRecords = 100)
+    {
+        var query = _dbContext.TokenAudits.AsQueryable();
+        
+        if (!string.IsNullOrEmpty(username))
+        {
+            query = query.Where(a => a.Username == username);
+        }
+        
+        if (tokenId.HasValue)
+        {
+            query = query.Where(a => a.TokenId == tokenId);
+        }
+        
+        return await query
+            .OrderByDescending(a => a.Timestamp)
+            .Take(maxRecords)
+            .ToListAsync();
+    }
+    
+    /// <summary>
+    /// Check for recent token operations (useful for detecting rotations)
+    /// </summary>
+    public async Task<bool> HasRecentTokenActivity(string username, TimeSpan timeSpan)
+    {
+        var cutoffTime = DateTime.UtcNow - timeSpan;
+        
+        return await _dbContext.TokenAudits
+            .AnyAsync(a => a.Username == username && 
+                          a.Timestamp > cutoffTime && 
+                          (a.Operation == "Rotated" || a.Operation == "Created" || a.Operation == "Revoked"));
+    }
+    
+    /// <summary>
+    /// Get the most recent audit entry for a username (useful for detecting recent changes)
+    /// </summary>
+    public async Task<AuthTokenAudit?> GetLatestAuditEntryAsync(string username)
+    {
+        return await _dbContext.TokenAudits
+            .Where(a => a.Username == username)
+            .OrderByDescending(a => a.Timestamp)
+            .FirstOrDefaultAsync();
     }
 }

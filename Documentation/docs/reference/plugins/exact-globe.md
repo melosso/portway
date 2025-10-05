@@ -63,12 +63,12 @@ Content-Type: application/json
   },
   "Lines": [
     {
-      "Itemcode": "BEK0001",
+      "Itemcode": "ITEM-001",
       "Quantity": 2,
       "Price": 0
     },
     {
-      "Itemcode": "BEK0002",
+      "Itemcode": "ITEM-002",
       "Quantity": 4,
       "Price": 0
     }

@@ -60,7 +60,13 @@ public class TokenAuthMiddleware
 
         if (!isValid)
         {
-            Log.Warning("❌ Invalid or expired token used for {Path}", context.Request.Path);
+            Log.Warning("❌ Invalid or expired token used for {Path} from {RemoteIP}", 
+                context.Request.Path, 
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+            
+            // Log failed authentication attempt in audit trail
+            await LogFailedAuthAttemptAsync(dbContext, tokenString, context);
+            
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token", success = false });
@@ -90,6 +96,9 @@ public class TokenAuthMiddleware
                 Log.Warning("❌ Token lacks permission for environment {Environment}. Available environments: {Environments}", 
                     env, tokenDetails.AllowedEnvironments);
                 
+                // Log authorization failure in audit trail
+                await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Environment", env);
+                
                 context.Response.StatusCode = 403;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new { 
@@ -111,6 +120,9 @@ public class TokenAuthMiddleware
             {
                 Log.Warning("❌ Token lacks permission for endpoint {Endpoint}. Available scopes: {Scopes}", 
                     endpointName, tokenDetails.AllowedScopes);
+                
+                // Log authorization failure in audit trail
+                await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Endpoint", endpointName);
                 
                 context.Response.StatusCode = 403;
                 context.Response.ContentType = "application/json";
@@ -209,6 +221,85 @@ public class TokenAuthMiddleware
             return segments[1];
             
         return string.Empty;
+    }
+    
+    /// <summary>
+    /// Log failed authentication attempts for security auditing
+    /// </summary>
+    private static async Task LogFailedAuthAttemptAsync(AuthDbContext dbContext, string tokenString, HttpContext context)
+    {
+        try
+        {
+            var auditEntry = new AuthTokenAudit
+            {
+                TokenId = null, // No valid token found
+                Username = "Unknown",
+                Operation = "FailedAuth",
+                OldTokenHash = null,
+                NewTokenHash = null,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new 
+                { 
+                    RequestPath = context.Request.Path.Value,
+                    Method = context.Request.Method,
+                    TokenPrefix = tokenString.Length > 10 ? tokenString[..10] : tokenString,
+                    UserAgent = context.Request.Headers.UserAgent.ToString(),
+                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                }),
+                Source = "PortwayApi.Middleware",
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = context.Request.Headers.UserAgent.ToString()
+            };
+            
+            await dbContext.TokenAudits.AddAsync(auditEntry);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Don't throw exceptions from audit logging
+            Log.Error(ex, "Failed to log authentication attempt");
+        }
+    }
+    
+    /// <summary>
+    /// Log authorization failures for security auditing
+    /// </summary>
+    private static async Task LogAuthorizationFailureAsync(AuthDbContext dbContext, AuthToken tokenDetails, 
+        HttpContext context, string resourceType, string resourceName)
+    {
+        try
+        {
+            var auditEntry = new AuthTokenAudit
+            {
+                TokenId = tokenDetails.Id,
+                Username = tokenDetails.Username,
+                Operation = "AuthorizationFailed",
+                OldTokenHash = null,
+                NewTokenHash = null,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new 
+                { 
+                    ResourceType = resourceType, // "Environment" or "Endpoint"
+                    ResourceName = resourceName,
+                    RequestPath = context.Request.Path.Value,
+                    Method = context.Request.Method,
+                    AvailableScopes = tokenDetails.AllowedScopes,
+                    AvailableEnvironments = tokenDetails.AllowedEnvironments,
+                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                }),
+                Source = "PortwayApi.Middleware",
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = context.Request.Headers.UserAgent.ToString()
+            };
+            
+            await dbContext.TokenAudits.AddAsync(auditEntry);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Don't throw exceptions from audit logging
+            Log.Error(ex, "Failed to log authorization failure");
+        }
     }
 }
 

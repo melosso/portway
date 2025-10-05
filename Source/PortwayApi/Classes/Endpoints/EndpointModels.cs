@@ -47,7 +47,7 @@ public class ExtendedEndpointEntity
     public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
     public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
     
-    // NEW: Namespace support properties
+    // Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related endpoints (e.g., "CRM", "External")
     /// If specified, overrides namespace inferred from folder structure
@@ -96,7 +96,7 @@ public class EndpointEntity
     public CompositeDefinition? CompositeConfig { get; set; }
     public List<string>? AllowedEnvironments { get; set; }
     
-    // NEW: Namespace support properties
+    // Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
     /// If specified, overrides namespace inferred from folder structure
@@ -198,7 +198,7 @@ public class FileEndpointEntity
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
     
-    // NEW: Namespace support properties
+    // Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related file endpoints (e.g., "CRM", "HR")
     /// If specified, overrides namespace inferred from folder structure
@@ -253,7 +253,7 @@ public class StaticEndpointEntity
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
     
-    // NEW: Namespace support properties
+    // Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related static endpoints (e.g., "Reports", "Templates")
     /// If specified, overrides namespace inferred from folder structure

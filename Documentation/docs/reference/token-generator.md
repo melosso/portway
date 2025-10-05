@@ -39,6 +39,7 @@ Interactive menu options:
 4. Update token scopes
 5. Update token environments
 6. Update token expiration
+7. Rotate token
 0. Exit
 
 ### Command Line Mode
@@ -61,6 +62,8 @@ TokenGenerator.exe username --expires 90
 # Combined parameters
 TokenGenerator.exe username -s "Products,Orders" -e "prod" --expires 30 --description "Frontend API access"
 ```
+
+**Note**: Token rotation is only available through interactive mode (menu option 7).
 
 ## Command Line Parameters
 
@@ -169,6 +172,15 @@ Enter new environments: prod,dev,Synergy
 Current expiration: Never
 Enter days until expiration (0 for no expiration): 90
 ```
+
+### Token Rotation
+
+Securely replace tokens while maintaining permissions.
+
+1. Select option 7 (Rotate token)
+2. Enter token ID and confirm
+3. Old token becomes invalid, new token generated with same permissions
+4. Token file automatically updated, all operations logged for audit
 
 ## Token Files
 
@@ -372,24 +384,187 @@ $tokenInfo = Get-Content "tokens/api-service.txt" | ConvertFrom-Json
 Set-AzKeyVaultSecret -VaultName "MyVault" -Name "api-token" -SecretValue $tokenInfo.Token
 ```
 
+## Audit Trail & Security Monitoring (NEW)
+
+The Token Generator now includes comprehensive audit logging for all token operations, providing complete visibility into token lifecycle management.
+
+### Audit Trail Features
+
+All token operations are automatically logged with detailed information:
+
+- **Token Creation**: User, permissions, expiration details
+- **Token Rotation**: Old/new token hashes, timestamp, reason
+- **Token Revocation**: User, timestamp, reason
+- **Permission Updates**: Before/after values, modification details
+- **Failed Access Attempts**: Invalid tokens, authorization failures
+
+### Viewing Audit Logs
+
+#### Database Queries
+
+Connect to the `auth.db` SQLite database to query audit logs:
+
+```sql
+-- View all operations for a specific user
+SELECT * FROM TokenAudits 
+WHERE Username = 'api-service' 
+ORDER BY Timestamp DESC;
+
+-- View all rotation operations
+SELECT Username, Operation, Timestamp, Details 
+FROM TokenAudits 
+WHERE Operation LIKE '%Rotat%' 
+ORDER BY Timestamp DESC;
+
+-- View security events (failed auth, authorization failures)
+SELECT Username, Operation, IpAddress, UserAgent, Timestamp 
+FROM TokenAudits 
+WHERE Operation IN ('FailedAuth', 'AuthorizationFailed') 
+ORDER BY Timestamp DESC;
+
+-- View recent activity (last 24 hours)
+SELECT * FROM TokenAudits 
+WHERE Timestamp > datetime('now', '-1 day') 
+ORDER BY Timestamp DESC;
+```
+
+#### Audit Log Schema
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `Id` | Unique audit entry ID | `1547` |
+| `TokenId` | Associated token ID (if applicable) | `23` |
+| `Username` | Token owner username | `api-service` |
+| `Operation` | Type of operation | `Rotated`, `Created`, `FailedAuth` |
+| `OldTokenHash` | Previous token hash (for rotations) | `abc123...` |
+| `NewTokenHash` | New token hash (for rotations) | `xyz789...` |
+| `Timestamp` | When operation occurred | `2024-01-15 14:30:22` |
+| `Details` | JSON metadata with operation details | `{"reason": "security_review"}` |
+| `Source` | Application that performed operation | `TokenGenerator`, `PortwayApi` |
+| `IpAddress` | Client IP address (when available) | `192.168.1.100` |
+| `UserAgent` | Client user agent (when available) | `DESKTOP-ABC/user1` |
+
+### Security Monitoring
+
+#### Failed Authentication Tracking
+
+The system automatically logs failed authentication attempts:
+
+```json
+{
+  "RequestPath": "/api/prod/Products",
+  "Method": "GET",
+  "TokenPrefix": "invalidtok...",
+  "UserAgent": "Mozilla/5.0...",
+  "Timestamp": "2024-01-15 14:30:22"
+}
+```
+
+#### Authorization Failure Tracking
+
+Access denied events are logged with full context:
+
+```json
+{
+  "ResourceType": "Environment",
+  "ResourceName": "prod",
+  "RequestPath": "/api/prod/Orders",
+  "Method": "POST",
+  "AvailableScopes": "Products,Customers",
+  "AvailableEnvironments": "dev,test",
+  "Timestamp": "2024-01-15 14:30:22"
+}
+```
+
+### Automated Monitoring Examples
+
+#### PowerShell Monitoring Script
+
+```powershell
+# Check for suspicious activity in last hour
+$query = @"
+SELECT COUNT(*) as FailedAttempts, IpAddress 
+FROM TokenAudits 
+WHERE Operation = 'FailedAuth' 
+AND Timestamp > datetime('now', '-1 hour')
+GROUP BY IpAddress
+HAVING COUNT(*) > 10
+"@
+
+$results = Invoke-SqliteQuery -Query $query -DataSource "auth.db"
+foreach ($result in $results) {
+    Write-Warning "Suspicious activity: $($result.FailedAttempts) failed attempts from $($result.IpAddress)"
+}
+```
+
+#### Security Alert Integration
+
+```csharp
+// C# example for monitoring service
+public async Task CheckSecurityEvents()
+{
+    var recentFailures = await dbContext.TokenAudits
+        .Where(a => a.Operation == "FailedAuth" && 
+                   a.Timestamp > DateTime.UtcNow.AddMinutes(-15))
+        .GroupBy(a => a.IpAddress)
+        .Where(g => g.Count() > 5)
+        .ToListAsync();
+        
+    foreach (var group in recentFailures)
+    {
+        await alertService.SendSecurityAlert(
+            $"Multiple failed auth attempts from {group.Key}");
+    }
+}
+```
+
 ## Security Considerations
 
 1. **Token Lifecycle Management**
    - Set appropriate expiration times
    - Revoke compromised tokens immediately
+   - **Use token rotation for regular security maintenance**
    - Audit token usage regularly
 
 2. **Access Control**
    - Limit token generation to authorized personnel
    - Use separate tokens for different services
    - Apply environment restrictions appropriately
+   - **Monitor audit logs for unauthorized access attempts**
 
 3. **Secure Storage**
    - Encrypt token files at rest
    - Use secure key management systems
    - Never expose tokens in logs or error messages
+   - **Protect the audit database with appropriate access controls**
 
 4. **Monitoring and Auditing**
    - Track token creation and revocation
    - Monitor failed authentication attempts
    - Set up alerts for suspicious activity
+   - **Review audit logs regularly for security compliance**
+   - **Use token rotation logs to track security maintenance**
+
+### Token Rotation Best Practices
+
+1. **Regular Rotation Schedule**
+   ```bash
+   # Rotate high-privilege tokens monthly
+   # Rotate service tokens quarterly
+   # Rotate temporary tokens after use
+   ```
+
+2. **Emergency Rotation**
+   ```bash
+   # Immediately rotate tokens when:
+   # - Security incident detected
+   # - Employee access changes
+   # - Suspected compromise
+   ```
+
+3. **Automated Rotation**
+   ```powershell
+   # Schedule regular rotations
+   # Monitor for tokens nearing expiration
+   # Alert on failed rotation attempts
+   ```

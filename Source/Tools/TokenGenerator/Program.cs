@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using TokenGenerator.Classes;
 
 /*
  * Usage examples:
@@ -24,682 +25,6 @@ using Serilog;
  */
 
 namespace TokenGenerator;
-
-public class AuthToken
-{
-    public int Id { get; set; }
-    public required string Username { get; set; } = $"user_{Guid.NewGuid().ToString("N")[..8]}";
-    public required string TokenHash { get; set; } = string.Empty;
-    public required string TokenSalt { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? RevokedAt { get; set; } = null;        
-    public DateTime? ExpiresAt { get; set; } = null;
-    public string AllowedScopes { get; set; } = "*"; // Default to full access
-    public string AllowedEnvironments { get; set; } = "*"; // Default to full access
-    public string Description { get; set; } = string.Empty;
-    public bool IsActive => RevokedAt == null && (ExpiresAt == null || ExpiresAt > DateTime.UtcNow);
-}
-
-public class AuthDbContext : DbContext
-{
-    public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
-
-    public DbSet<AuthToken> Tokens { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            // Add connection resilience for SQLite
-            optionsBuilder.UseSqlite(options =>
-            {
-                options.CommandTimeout(30);
-            });
-        }
-        
-        // Disable all database logging to prevent SQL queries appearing in console
-        optionsBuilder.EnableSensitiveDataLogging(false);
-        optionsBuilder.EnableServiceProviderCaching();
-        optionsBuilder.EnableDetailedErrors(false);
-        
-        // Supress the EF Core logging
-        optionsBuilder.UseLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(builder => 
-        {
-            // Create a logger factory that discards all messages
-            builder.AddFilter((category, level) => false);
-        }));
-        
-        // Additional safeguards for .NET 9.0
-        optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuted));
-        optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ContextInitialized));
-    }
-
-    public async Task<bool> EnsureTablesCreatedAsync()
-    {
-        try
-        {
-            // Use async methods to avoid thread blocking issues
-            await Database.OpenConnectionAsync();
-            
-            // Check if the table exists
-            bool tableExists = await CheckTableExistsAsync();
-            
-            if (tableExists)
-            {
-                // Verify schema and update if needed
-                bool hasCorrectSchema = await CheckSchemaAsync();
-                if (!hasCorrectSchema)
-                {
-                    await UpdateSchemaAsync();
-                }
-                
-                Log.Debug("Tokens table verified with correct schema");
-                return true;
-            }
-            
-            // Create the table with the complete schema
-            await CreateTableAsync();
-            Log.Information("Created new Tokens table with complete schema");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error ensuring Tokens table is created");
-            return false;
-        }
-        finally
-        {
-            await Database.CloseConnectionAsync();
-        }
-    }
-
-    private async Task<bool> CheckTableExistsAsync()
-    {
-        try
-        {
-            using var command = Database.GetDbConnection().CreateCommand();
-            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Tokens'";
-            
-            var result = await command.ExecuteScalarAsync();
-            return Convert.ToInt32(result) > 0;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error checking if Tokens table exists");
-            return false;
-        }
-    }
-
-    private async Task<bool> CheckSchemaAsync()
-    {
-        try
-        {
-            using var command = Database.GetDbConnection().CreateCommand();
-            command.CommandText = @"
-                SELECT COUNT(*) FROM pragma_table_info('Tokens') 
-                WHERE name IN ('AllowedScopes', 'AllowedEnvironments', 'ExpiresAt', 'Description')";
-            
-            var result = await command.ExecuteScalarAsync();
-            return Convert.ToInt32(result) >= 4; // Should have at least 4 required columns
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error checking Tokens table schema");
-            return false;
-        }
-    }
-
-    private async Task UpdateSchemaAsync()
-    {
-        try
-        {
-            Log.Information("Updating Tokens table schema...");
-            
-            var commands = new[]
-            {
-                "ALTER TABLE Tokens ADD COLUMN AllowedScopes TEXT NOT NULL DEFAULT '*'",
-                "ALTER TABLE Tokens ADD COLUMN AllowedEnvironments TEXT NOT NULL DEFAULT '*'",
-                "ALTER TABLE Tokens ADD COLUMN ExpiresAt DATETIME NULL",
-                "ALTER TABLE Tokens ADD COLUMN Description TEXT NOT NULL DEFAULT ''"
-            };
-
-            foreach (var sql in commands)
-            {
-                try
-                {
-                    await Database.ExecuteSqlRawAsync(sql);
-                }
-                catch (Exception ex) when (ex.Message.Contains("duplicate column"))
-                {
-                    // Column already exists, continue
-                    Log.Debug("Column already exists, skipping: {Sql}", sql);
-                }
-            }
-            
-            Log.Information("Successfully updated Tokens table schema");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error updating Tokens table schema");
-            throw;
-        }
-    }
-
-    private async Task CreateTableAsync()
-    {
-        try
-        {
-            await Database.ExecuteSqlRawAsync(@"
-                CREATE TABLE Tokens (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                    Username TEXT NOT NULL DEFAULT 'legacy',
-                    TokenHash TEXT NOT NULL DEFAULT '', 
-                    TokenSalt TEXT NOT NULL DEFAULT '',
-                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    RevokedAt DATETIME NULL,
-                    ExpiresAt DATETIME NULL,
-                    AllowedScopes TEXT NOT NULL DEFAULT '*',
-                    AllowedEnvironments TEXT NOT NULL DEFAULT '*',
-                    Description TEXT NOT NULL DEFAULT ''
-                )");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error creating Tokens table");
-            throw;
-        }
-    }
-    
-    public async Task<bool> IsValidDatabaseAsync()
-    {
-        try
-        {
-            return await EnsureTablesCreatedAsync();
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Database validation failed");
-            return false;
-        }
-    }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-        
-        // Configure the Tokens table
-        modelBuilder.Entity<AuthToken>(entity =>
-        {
-            entity.ToTable("Tokens");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(500);
-            entity.Property(e => e.TokenSalt).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.RevokedAt).IsRequired(false);
-            entity.Property(e => e.ExpiresAt).IsRequired(false);
-            entity.Property(e => e.AllowedScopes).HasDefaultValue("*").HasMaxLength(1000);
-            entity.Property(e => e.AllowedEnvironments).HasDefaultValue("*").HasMaxLength(1000);
-            entity.Property(e => e.Description).HasDefaultValue("").HasMaxLength(500);
-            
-            // Add index for performance
-            entity.HasIndex(e => e.Username).IsUnique(false);
-            entity.HasIndex(e => e.CreatedAt);
-        });
-    }
-}
-
-public class CommandLineOptions
-{
-    public string? DatabasePath { get; set; }
-    public string? TokensFolder { get; set; }
-    public string? Username { get; set; }
-    public string? Scopes { get; set; }
-    public string? Environments { get; set; }
-    public string? Description { get; set; }
-    public int? ExpiresInDays { get; set; }
-    public bool ShowHelp { get; set; }
-    public bool Verbose { get; set; }
-}
-
-public class AppConfig
-{
-    public string DatabasePath { get; set; } = "auth.db";
-    public string TokensFolder { get; set; } = "tokens";
-    public bool EnableDetailedLogging { get; set; } = false;
-}
-
-public class TokenService
-{
-    private readonly AuthDbContext _dbContext;
-    private readonly string _tokenFolderPath;
-    private readonly ILogger<TokenService> _logger;
-
-    public TokenService(AuthDbContext dbContext, AppConfig config, ILogger<TokenService> logger)
-    {
-        _dbContext = dbContext;
-        _logger = logger;
-        
-        // Ensure tokens directory exists
-        _tokenFolderPath = !Path.IsPathRooted(config.TokensFolder) 
-            ? Path.GetFullPath(config.TokensFolder) 
-            : config.TokensFolder;
-        
-        if (!Directory.Exists(_tokenFolderPath))
-        {
-            Directory.CreateDirectory(_tokenFolderPath);
-            Log.Information("Created tokens directory at {Path}", _tokenFolderPath);
-        }
-    }
-    
-    public async Task<string> GenerateTokenAsync(
-        string username, 
-        string allowedScopes = "*",
-        string allowedEnvironments = "*", 
-        string description = "",
-        int? expiresInDays = null)
-    {
-        try
-        {
-            // Check if a token for this username already exists
-            string tokenFilePath = Path.Combine(_tokenFolderPath, $"{username}.txt");
-            if (File.Exists(tokenFilePath))
-            {
-                Log.Warning("⚠️ A token file for user '{Username}' already exists at '{Path}'", username, tokenFilePath);
-                Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"WARNING: A token file for user '{username}' already exists.");
-                Console.WriteLine($"Location: {tokenFilePath}");
-                Console.WriteLine("Do you want to generate a new token and overwrite the existing file? (y/n)");
-                Console.ResetColor();
-                
-                string? response = Console.ReadLine()?.Trim().ToLower();
-                if (response != "y" && response != "yes")
-                {
-                    Log.Information("Token generation canceled by user");
-                    throw new OperationCanceledException("Token generation canceled by user");
-                }
-                
-                Log.Information("User confirmed overwriting existing token file");
-            }
-            
-            // Generate a secure random token
-            string token = GenerateSecureToken();
-            
-            // Generate salt for hashing
-            byte[] salt = GenerateSalt();
-            string saltString = Convert.ToBase64String(salt);
-            
-            // Hash the token
-            string hashedToken = HashToken(token, salt);
-
-            // Calculate expiration if specified
-            DateTime? expiresAt = expiresInDays.HasValue 
-                ? DateTime.UtcNow.AddDays(expiresInDays.Value) 
-                : null;
-            
-            // Create a new token entry
-            var tokenEntry = new AuthToken
-            {
-                Username = username,
-                TokenHash = hashedToken,
-                TokenSalt = saltString,
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = expiresAt,
-                AllowedScopes = allowedScopes,
-                AllowedEnvironments = allowedEnvironments,
-                Description = description
-            };
-            
-            // Add to database using async methods
-            await _dbContext.Tokens.AddAsync(tokenEntry);
-            await _dbContext.SaveChangesAsync();
-            
-            // Save token to file
-            await SaveTokenToFileAsync(username, token, allowedScopes, allowedEnvironments, expiresAt, description);
-            
-            return token;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating token for user {Username}", username);
-            throw;
-        }
-    }
-
-    private static string GenerateSecureToken()
-    {
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-        return RandomNumberGenerator.GetString(chars, 128);
-    }
-
-    public async Task<List<AuthToken>> GetActiveTokensAsync()
-    {
-        try
-        {
-            return await _dbContext.Tokens
-                .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-                .OrderByDescending(t => t.CreatedAt)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving active tokens");
-            return new List<AuthToken>();
-        }
-    }
-
-    public async Task<List<AuthToken>> GetAllTokensAsync()
-    {
-        try
-        {
-            return await _dbContext.Tokens
-                .OrderByDescending(t => t.CreatedAt)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving all tokens");
-            return new List<AuthToken>();
-        }
-    }
-
-    public async Task<AuthToken?> GetTokenByIdAsync(int id)
-    {
-        try
-        {
-            return await _dbContext.Tokens.FindAsync(id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving token with ID {Id}", id);
-            return null;
-        }
-    }
-
-    public async Task<bool> RevokeTokenAsync(int id)
-    {
-        try
-        {
-            var token = await _dbContext.Tokens.FindAsync(id);
-            if (token == null)
-                return false;
-                
-            // Update the RevokedAt timestamp instead of deleting
-            token.RevokedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync();
-            
-            // Delete the token file if it exists
-            string filePath = Path.Combine(_tokenFolderPath, $"{token.Username}.txt");
-            if (File.Exists(filePath))
-            {
-                try 
-                {
-                    File.Delete(filePath);
-                    Log.Information("Deleted token file for {Username}", token.Username);
-                }
-                catch (Exception ex)
-                {
-                    Log.Warning(ex, "Could not delete token file for {Username}", token.Username);
-                }
-            }
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error revoking token with ID {Id}", id);
-            return false;
-        }
-    }
-    
-    public async Task<bool> UpdateTokenScopesAsync(int id, string newScopes)
-    {
-        try
-        {
-            var token = await _dbContext.Tokens.FindAsync(id);
-            if (token == null)
-                return false;
-                
-            token.AllowedScopes = newScopes;
-            await _dbContext.SaveChangesAsync();
-            
-            // Update token file if it exists
-            await UpdateTokenFileAsync(token);
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating token scopes for ID {Id}", id);
-            return false;
-        }
-    }
-
-    public async Task<bool> UpdateTokenEnvironmentsAsync(int id, string newEnvironments)
-    {
-        try
-        {
-            var token = await _dbContext.Tokens.FindAsync(id);
-            if (token == null)
-                return false;
-                
-            token.AllowedEnvironments = newEnvironments;
-            await _dbContext.SaveChangesAsync();
-            
-            // Update token file if it exists
-            await UpdateTokenFileAsync(token);
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating token environments for ID {Id}", id);
-            return false;
-        }
-    }
-
-    public async Task<bool> UpdateTokenExpirationAsync(int id, int? daysValid)
-    {
-        try
-        {
-            var token = await _dbContext.Tokens.FindAsync(id);
-            if (token == null)
-                return false;
-                
-            // Calculate new expiration
-            DateTime? expiresAt = daysValid.HasValue 
-                ? DateTime.UtcNow.AddDays(daysValid.Value) 
-                : null;
-                
-            token.ExpiresAt = expiresAt;
-            await _dbContext.SaveChangesAsync();
-            
-            // Update token file if it exists
-            await UpdateTokenFileAsync(token);
-            
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating token expiration for ID {Id}", id);
-            return false;
-        }
-    }
-
-    private async Task UpdateTokenFileAsync(AuthToken token)
-    {
-        string filePath = Path.Combine(_tokenFolderPath, $"{token.Username}.txt");
-        if (File.Exists(filePath))
-        {
-            try
-            {
-                // Read the existing token file to preserve the token value
-                string jsonContent = await File.ReadAllTextAsync(filePath);
-                var tokenInfo = JsonSerializer.Deserialize<TokenFileInfo>(jsonContent);
-                
-                if (tokenInfo != null)
-                {
-                    await SaveTokenToFileAsync(
-                        token.Username, 
-                        tokenInfo.Token, 
-                        token.AllowedScopes,
-                        token.AllowedEnvironments,
-                        token.ExpiresAt, 
-                        token.Description);
-                        
-                    Log.Information("Updated token file for {Username}", token.Username);
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Could not update token file for {Username}", token.Username);
-            }
-        }
-    }
-    
-    public async Task<bool> VerifyTokenAsync(string token)
-    {
-        try
-        {
-            // Get active tokens
-            var tokens = await _dbContext.Tokens
-                .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-                .ToListAsync();
-            
-            // Check each token
-            foreach (var storedToken in tokens)
-            {
-                // Convert stored salt from string to bytes
-                byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-                
-                // Hash the provided token with the stored salt
-                string hashedToken = HashToken(token, salt);
-                
-                // Compare hashed tokens
-                if (hashedToken == storedToken.TokenHash)
-                {
-                    return true;
-                }
-            }
-            
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error verifying token");
-            return false;
-        }
-    }
-    
-    // Helper class for token file serialization/deserialization
-    private class TokenFileInfo
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Token { get; set; } = string.Empty;
-        public string AllowedScopes { get; set; } = "*";
-        public string AllowedEnvironments { get; set; } = "*";
-        public string ExpiresAt { get; set; } = "Never";
-        public string CreatedAt { get; set; } = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
-        public string Description { get; set; } = string.Empty;
-        public object? Remarks { get; set; }
-        public string Usage { get; set; } = string.Empty;
-    }
-    
-    private static string HashToken(string token, byte[] salt)
-    {
-        using var pbkdf2 = new Rfc2898DeriveBytes(token, salt, 10000, HashAlgorithmName.SHA256);
-        byte[] hash = pbkdf2.GetBytes(32); // 256 bits
-        return Convert.ToBase64String(hash);
-    }
-    
-    private static byte[] GenerateSalt()
-    {
-        byte[] salt = new byte[16];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(salt);
-        return salt;
-    }
-    
-    private async Task SaveTokenToFileAsync(
-        string username, 
-        string token, 
-        string allowedScopes = "*", 
-        string allowedEnvironments = "*",
-        DateTime? expiresAt = null,
-        string description = "")
-    {
-        try
-        {
-            // Ensure tokens directory exists
-            if (!Directory.Exists(_tokenFolderPath))
-            {
-                Directory.CreateDirectory(_tokenFolderPath);
-                Log.Information("Created tokens directory at {Path}", _tokenFolderPath);
-            }
-            
-            string filePath = Path.Combine(_tokenFolderPath, $"{username}.txt");
-            
-            // Create a more informative token file with usage instructions
-            var currentWindowsUser = Environment.UserName;
-            var tokenInfo = new TokenFileInfo
-            {
-                Username = username,
-                Token = token,
-                AllowedScopes = allowedScopes,
-                AllowedEnvironments = allowedEnvironments,
-                ExpiresAt = expiresAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never",
-                CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
-                Description = string.IsNullOrEmpty(description) 
-                    ? $"Generated by {currentWindowsUser}"
-                    : description,
-                Usage = "Use this token in the Authorization header as: Bearer " + token,
-                Remarks = new
-                {
-                    ScopeInformation = new
-                    {
-                        Format = "Comma-separated list of endpoint names, or * for all endpoints",
-                        Examples = new[]
-                        {
-                            "* (access to all endpoints)",
-                            "Products,Customers (access to only these endpoints)",
-                            "Company/Employees,Company/Accounts (access to specific namespaced endpoints)",
-                            "Company/* (access to all endpoints in Company namespace)",
-                            "Product* (access to all endpoints starting with Product)"
-                        }
-                    },
-                    EnvironmentInformation = new
-                    {
-                        Format = "Comma-separated list of environment names, or * for all environments",
-                        Examples = new[]
-                        {
-                            "* (access to all environments)",
-                            "prod,dev,exactsynergy (access to only these environments)",
-                            "p* (access to all environments starting with p ...)"
-                        }
-                    }
-                }
-            };
-            
-            var options = new JsonSerializerOptions { WriteIndented = true };
-            string tokenJson = JsonSerializer.Serialize(tokenInfo, options);
-            await File.WriteAllTextAsync(filePath, tokenJson);
-            
-            Log.Information("Token file saved to {FilePath}", filePath);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to save token file for user {Username} at {Path}", username, _tokenFolderPath);
-            throw;
-        }
-    }
-
-    // Make the token folder path accessible
-    public string GetTokenFolderPath()
-    {
-        return _tokenFolderPath;
-    }
-}
 
 class Program
 {
@@ -788,6 +113,9 @@ class Program
                         case "6":
                             await UpdateTokenExpirationAsync(serviceProvider);
                             break;
+                        case "7":
+                            await RotateTokenAsync(serviceProvider);
+                            break;
                         case "0":
                             exitRequested = true;
                             break;
@@ -850,9 +178,18 @@ class Program
 
     static void ConfigureLogging(bool verbose = false)
     {
+        // Ensure logs directory exists
+        string logsDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+        Directory.CreateDirectory(logsDirectory);
+        
         var logConfig = new LoggerConfiguration()
             .WriteTo.Console(
                 outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.File(
+                path: Path.Combine(logsDirectory, "tokengenerator-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}")
             .MinimumLevel.Information();
 
         if (verbose)
@@ -861,13 +198,14 @@ class Program
         }
 
         Log.Logger = logConfig.CreateLogger();
+        Log.Information("TokenGenerator started - logging to {LogsDirectory}", logsDirectory);
     }
 
     static void DisplayHelp()
     {
-        Console.WriteLine("PortwayApi Token Generator v2.0");
+        Console.WriteLine("Portway Token Management");
         Console.WriteLine("===============================");
-        Console.WriteLine("A utility to manage authentication tokens for the PortwayApi service.");
+        Console.WriteLine("A utility to manage authentication tokens for Portway.");
         Console.WriteLine();
         Console.WriteLine("Usage:");
         Console.WriteLine("  TokenGenerator.exe [options] [username]");
@@ -881,6 +219,14 @@ class Program
         Console.WriteLine("  --description <text>          Add a description for the token");
         Console.WriteLine("  --expires <days>              Set token expiration in days");
         Console.WriteLine("  -v, --verbose                 Enable verbose logging");
+        Console.WriteLine();
+        Console.WriteLine("Interactive Features:");
+        Console.WriteLine("  • List and manage existing tokens");
+        Console.WriteLine("  • Generate new tokens with custom permissions");
+        Console.WriteLine("  • Revoke tokens securely");
+        Console.WriteLine("  • Update token scopes, environments, and expiration");
+        Console.WriteLine("  • Rotate tokens (revoke old + generate new with same permissions)");
+        Console.WriteLine("  • Complete audit trail for all operations");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  TokenGenerator.exe                                 Run in interactive mode");
@@ -996,6 +342,7 @@ class Program
         Console.WriteLine("4. Update token scopes");
         Console.WriteLine("5. Update token environments");
         Console.WriteLine("6. Update token expiration");
+        Console.WriteLine("7. Rotate token");
         Console.WriteLine("0. Exit");
         Console.WriteLine("-----------------------------------------------");
         Console.WriteLine("");
@@ -1376,6 +723,104 @@ class Program
         }
     }
 
+    static async Task RotateTokenAsync(IServiceProvider serviceProvider)
+    {
+        // Display current tokens first
+        await ListAllTokensAsync(serviceProvider);
+
+        Console.WriteLine("\n=== Rotate Token ===");
+        Console.WriteLine("Token rotation will:");
+        Console.WriteLine("  • Revoke the existing token");
+        Console.WriteLine("  • Generate a new token with the same permissions");
+        Console.WriteLine("  • Update the token file");
+        Console.WriteLine("  • Log all operations for audit trail");
+        Console.WriteLine();
+        
+        Console.Write("Enter token ID to rotate (or 0 to cancel): ");
+        
+        if (!int.TryParse(Console.ReadLine(), out int tokenId) || tokenId <= 0)
+        {
+            Console.WriteLine("Operation cancelled.");
+            return;
+        }
+
+        using var scope = serviceProvider.CreateScope();
+        var tokenService = scope.ServiceProvider.GetRequiredService<TokenService>();
+        
+        // Get the token to rotate
+        var token = await tokenService.GetTokenByIdAsync(tokenId);
+        if (token == null)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Token with ID {tokenId} not found.");
+            Console.ResetColor();
+            return;
+        }
+        
+        if (!token.IsActive)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Cannot rotate inactive token for {token.Username}.");
+            Console.ResetColor();
+            return;
+        }
+        
+        // Display token information
+        Console.WriteLine($"\nToken to rotate:");
+        Console.WriteLine($"  Username: {token.Username}");
+        Console.WriteLine($"  Scopes: {token.AllowedScopes}");
+        Console.WriteLine($"  Environments: {token.AllowedEnvironments}");
+        Console.WriteLine($"  Expires: {token.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never"}");
+        Console.WriteLine($"  Created: {token.CreatedAt:yyyy-MM-dd HH:mm:ss}");
+        Console.WriteLine();
+        
+        // Confirm rotation
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("WARNING: ");
+        Console.WriteLine("   After rotation, the old token will be permanently revoked!");
+        Console.ResetColor();
+        Console.Write("Confirm token rotation? (y/n): ");
+        
+        string? response = Console.ReadLine()?.Trim().ToLower();
+        if (response != "y" && response != "yes")
+        {
+            Console.WriteLine("Token rotation cancelled.");
+            return;
+        }
+        
+        try
+        {
+            Console.WriteLine("\nRotating token...");
+            
+            // Perform token rotation
+            string newToken = await tokenService.RotateTokenAsync(tokenId);
+            
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("\nToken rotation completed successfully!");
+            Console.ResetColor();
+            
+            Console.WriteLine("\n--- Rotation Results ---");
+            Console.WriteLine($"Username: {token.Username}");
+            Console.WriteLine($"New Token: {newToken}");
+            Console.WriteLine($"Scopes: {token.AllowedScopes}");
+            Console.WriteLine($"Environments: {token.AllowedEnvironments}");
+            Console.WriteLine($"Expires: {token.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never"}");
+            
+            string tokenFolderPath = tokenService.GetTokenFolderPath();
+            Console.WriteLine($"Token file: {Path.Combine(tokenFolderPath, $"{token.Username}.txt")}");
+            
+            Console.WriteLine("\nSuccess: The old token has been revoked and logged in the audit trail.");
+            Console.WriteLine("The new token is now active and ready for use.");
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\nToken rotation failed: {ex.Message}");
+            Console.ResetColor();
+            Log.Error(ex, "Token rotation failed for token ID {TokenId}", tokenId);
+        }
+    }
+
     static async Task GenerateTokenForUserAsync(
         string username, 
         string scopes, 
@@ -1403,7 +848,7 @@ class Program
                 description,
                 expiresInDays);
             
-            Log.Information("✅ Token generation successful!");
+            Log.Information("Success: Token generation successful!");
             Log.Information("Username: {Username}", username);
             Log.Information("Token: {Token}", token);
             Log.Information("Scopes: {Scopes}", scopes);
