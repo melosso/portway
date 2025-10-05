@@ -194,6 +194,7 @@ public static class SwaggerConfiguration
                 c.DocumentFilter<DynamicEndpointDocumentFilter>();
                 c.DocumentFilter<CompositeEndpointDocumentFilter>();
                 c.DocumentFilter<FileEndpointDocumentFilter>();
+                c.DocumentFilter<TagSorterDocumentFilter>();
                 c.OperationFilter<DynamicEndpointOperationFilter>();
                 
                 // Add this line to resolve conflicting actions
@@ -202,7 +203,7 @@ public static class SwaggerConfiguration
 
             // Register the parameter filter for complex parameters
             builder.Services.AddSingleton<ComplexParameterFilter>();
-            
+
             // Register the document filters
             builder.Services.AddSingleton<DynamicEndpointDocumentFilter>();
             builder.Services.AddSingleton<CompositeEndpointDocumentFilter>();
@@ -435,6 +436,9 @@ public static class SwaggerConfiguration
                 // Apply basic settings
                 c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
                 c.DefaultModelsExpandDepth(swaggerSettings.DefaultModelsExpandDepth);
+                
+                // Enable alphabetical sorting of tags
+                c.ConfigObject.AdditionalItems["tagsSorter"] = "alpha";
                 
                 if (swaggerSettings.DisplayRequestDuration)
                     c.DisplayRequestDuration();

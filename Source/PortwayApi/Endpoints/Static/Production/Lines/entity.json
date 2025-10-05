@@ -1,0 +1,19 @@
+{
+  "Namespace": "Production",
+  "DisplayName": "Production Line Data",
+  "NamespaceDisplayName": "Production",
+  "ContentType": "text/csv",
+  "ContentFile": "content.csv",
+  "EnableFiltering": false,
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600", "700"],
+  "Documentation": {
+    "TagDescription": "**Production Line Data API**\n\nProduction line data in CSV format for testing frontend applications, dashboards, and API simulation.\n\nReturns machine status, production metrics, and operational data across all production lines.",
+    "MethodDescriptions": {
+      "GET": "Retrieve production line data"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns production line data in CSV format including machine status, production counts, uptime, and maintenance information for testing, integration, and demonstration purposes."
+    }
+  }
+}

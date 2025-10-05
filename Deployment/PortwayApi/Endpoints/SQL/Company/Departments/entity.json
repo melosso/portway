@@ -1,0 +1,48 @@
+{
+    "DatabaseObjectName": "GenerateSampleUsers",
+    "DatabaseSchema": "dbo",
+    "DatabaseObjectType": "TableValuedFunction",
+    "Namespace": "Company",
+    "NamespaceDisplayName": "Company",
+    "FunctionParameters": [
+        {
+            "Name": "DepartmentId",
+            "SqlType": "int",
+            "Source": "Path",
+            "Position": 1,
+            "Required": false,
+            "DefaultValue": "DEFAULT",
+            "ValidationPattern": "^[0-9]+$"
+        },
+        {
+            "Name": "BaseDate",
+            "SqlType": "date",
+            "Source": "Query",
+            "Required": false,
+            "DefaultValue": "DEFAULT",
+            "ValidationPattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+    ],
+    "AllowedColumns": [
+        "user_id;UserId",
+        "first_name;FirstName",
+        "last_name;LastName",
+        "email;Email",
+        "department_id;DepartmentId",
+        "department_name;DepartmentName",
+        "hire_date;HireDate",
+        "salary;Salary",
+        "is_active;IsActive"
+    ],
+    "AllowedMethods": ["GET"],
+    "AllowedEnvironments": ["600", "700"],
+    "Documentation": {
+        "TagDescription": "Retrieve and manage company information and related organizational settings.",
+        "MethodDescriptions": {
+            "GET": "Retrieve department data"
+        },
+        "MethodDocumentation": {
+            "GET": "Generate **fictional user records** for a specific department using Table-Valued Functions. This endpoint demonstrates how to integrate SQL Server's table valued functions."
+        }
+    }
+}

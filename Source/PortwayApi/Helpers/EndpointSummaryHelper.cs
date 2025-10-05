@@ -18,33 +18,36 @@ public static class EndpointSummaryHelper
         Dictionary<string, EndpointDefinition> fileEndpoints,
         Dictionary<string, EndpointDefinition> staticEndpoints)
     {
+        // Use a registry that tracks endpoint identities to avoid dual-key false positives
         var endpointRegistry = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         
-        // Collect endpoint names by type
-        AddEndpoints(endpointRegistry, sqlEndpoints.Keys, "SQL");
-        AddEndpoints(endpointRegistry, proxyEndpointMap.Keys.Where(k => proxyEndpointMap[k].Type != "Composite"), "Proxy");
-        AddEndpoints(endpointRegistry, proxyEndpointMap.Keys.Where(k => proxyEndpointMap[k].Type == "Composite"), "Composite");
-        AddEndpoints(endpointRegistry, webhookEndpoints.Keys, "Webhook");
-        AddEndpoints(endpointRegistry, fileEndpoints.Keys, "File");
-        AddEndpoints(endpointRegistry, staticEndpoints.Keys, "Static");
+        // Only add primary endpoint keys to avoid dual-key conflicts
+        AddUniqueEndpoints(endpointRegistry, sqlEndpoints, "SQL");
+        AddUniqueEndpoints(endpointRegistry, proxyEndpointMap.ToDictionary(x => x.Key, x => x.Value), "Proxy", excludeComposite: true);
+        AddUniqueEndpoints(endpointRegistry, proxyEndpointMap.ToDictionary(x => x.Key, x => x.Value), "Composite", onlyComposite: true);
+        AddUniqueEndpoints(endpointRegistry, webhookEndpoints, "Webhook");
+        AddUniqueEndpoints(endpointRegistry, fileEndpoints, "File");
+        AddUniqueEndpoints(endpointRegistry, staticEndpoints, "Static");
         
         var conflicts = endpointRegistry.Where(e => e.Value.Count > 1).ToList();
         
         if (conflicts.Any())
         {
-            Log.Warning("Configuration conflict: multiple endpoints share the same name. Please assign unique names to guarantee consistent routing for:");
+            Log.Warning("Configuration conflict: multiple endpoints share the same path. Please assign unique paths to guarantee consistent routing:");
             
             foreach (var conflict in conflicts.OrderBy(c => c.Key))
             {
                 var activeType = GetActiveEndpointType(conflict.Value);
                 var shadowedTypes = conflict.Value.Where(t => t != activeType);
                 
-                Log.Warning("🚧 Endpoint '{Name}' defined in [{Types}] - {Active} active, {Shadowed} unreachable.", 
+                Log.Warning("🚧 Endpoint path '{Path}' defined in [{Types}] - {Active} active, {Shadowed} unreachable.", 
                     conflict.Key, 
                     string.Join(", ", conflict.Value),
                     activeType,
                     string.Join(", ", shadowedTypes));
             }
+            
+            Log.Information("ℹ️  Note: Endpoints in different namespaces (e.g., 'CRM/Accounts' vs 'Finance/Accounts') do not conflict.");
         }
     }
     
@@ -55,6 +58,63 @@ public static class EndpointSummaryHelper
             if (!registry.ContainsKey(endpoint))
                 registry[endpoint] = new List<string>();
             registry[endpoint].Add(type);
+        }
+    }
+    
+    /// <summary>
+    /// Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility
+    /// </summary>
+    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, EndpointDefinition> endpoints, string type)
+    {
+        foreach (var kvp in endpoints)
+        {
+            var key = kvp.Key;
+            
+            // Skip if this looks like a backward-compatibility duplicate
+            // (non-namespaced key when a namespaced version exists)
+            if (!key.Contains('/'))
+            {
+                var namespacedVersion = endpoints.Keys.FirstOrDefault(k => k.Contains('/') && k.EndsWith($"/{key}"));
+                if (namespacedVersion != null)
+                {
+                    // This is a backward-compatibility key, skip it to avoid false conflicts
+                    continue;
+                }
+            }
+            
+            if (!registry.ContainsKey(key))
+                registry[key] = new List<string>();
+            registry[key].Add(type);
+        }
+    }
+    
+    /// <summary>
+    /// Adds proxy endpoints to registry with composite filtering
+    /// </summary>
+    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)> endpoints, string type, bool excludeComposite = false, bool onlyComposite = false)
+    {
+        foreach (var kvp in endpoints)
+        {
+            var key = kvp.Key;
+            var endpoint = kvp.Value;
+            
+            // Apply composite filtering
+            if (excludeComposite && endpoint.Type == "Composite") continue;
+            if (onlyComposite && endpoint.Type != "Composite") continue;
+            
+            // Skip if this looks like a backward-compatibility duplicate
+            if (!key.Contains('/'))
+            {
+                var namespacedVersion = endpoints.Keys.FirstOrDefault(k => k.Contains('/') && k.EndsWith($"/{key}"));
+                if (namespacedVersion != null)
+                {
+                    continue;
+                }
+            }
+            
+            if (!registry.ContainsKey(key))
+                registry[key] = new List<string>();
+            registry[key].Add(type);
         }
     }
     

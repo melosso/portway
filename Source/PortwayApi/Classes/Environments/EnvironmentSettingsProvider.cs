@@ -290,7 +290,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             
             if (hasUserID || hasPassword)
             {
-                Log.Warning("⚠️ Connection string contains hardcoded credentials. Storing securely in memory");
+                // Log a warning if credentials are present, intrusively to encourage best practices
+                Log.Warning("⚠️ Connection string contains hardcoded credentials. Consider encrypting the connection string using the toools available.");
                 
                 // Store credentials securely
                 if (hasPassword)
@@ -316,9 +317,6 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 var masked = MaskConnectionString(connectionString);
                 Log.Debug("🔍 Using connection string with credentials: {ConnectionString}", masked);
                 
-                // Return the original string which will be used directly by SQL connections
-                // We use the original string to ensure the connection works properly
-                // but we've removed it from our accessible application state
                 return connectionString;
             }
             else
@@ -336,8 +334,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
     private string MaskConnectionString(string connectionString)
     {
-        // Create a safe representation of connection string for logging
-        // This masks passwords and other sensitive values while keeping the structure
+        // Create a safe representation of connection string for logging. This masks passwords and other sensitive values while keeping the structure
         try
         {
             var parts = connectionString.Split(';')

@@ -1,4 +1,0 @@
-machine_id,name,status,units_produced_today,uptime_hours,last_updated,last_maintenance,location_id
-"MILL-01","CNC Milling Machine","running","120","5.3","2025-08-20T09:15:00Z","2025-06-12","550e8400-e29b-41d4-a716-446655440000"
-"PRESS-07","Hydraulic Press","idle","0","4.1","2025-08-20T09:10:00Z","2025-03-01","550e8400-e29b-41d4-a716-446655440001"
-"WELD-22","Robotic Welder","maintenance","0","0.0","2025-08-20T09:05:00Z","2025-05-15","550e8400-e29b-41d4-a716-446655440000"

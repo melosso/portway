@@ -1,0 +1,19 @@
+{
+  "Namespace": "Production",
+  "DisplayName": "Machine Details",
+  "NamespaceDisplayName": "Production",
+  "ContentType": "application/xml",
+  "ContentFile": "summary.xml",
+  "EnableFiltering": true,
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600", "700"],
+  "Documentation": {
+    "TagDescription": "**Production Machine Details API**\n\nDetailed machine data in XML format for testing frontend applications, dashboards, and API simulation.\n\nReturns comprehensive information for individual machines including status, sensors, production units, and maintenance info.",
+    "MethodDescriptions": {
+      "GET": "Retrieve machine details"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns detailed machine information in XML format including operational status, sensor data, production metrics, and maintenance schedules for testing and simulation."
+    }
+  }
+}

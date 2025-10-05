@@ -43,6 +43,7 @@ public class EndpointController : ControllerBase
     /// </summary>
     private (bool IsAllowed, IActionResult? ErrorResponse) ValidateEnvironmentRestrictions(
         string env,
+        string? namespaceName,
         string endpointName,
         EndpointType endpointType)
     {
@@ -60,9 +61,9 @@ public class EndpointController : ControllerBase
         {
             case EndpointType.SQL:
                 var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-                if (sqlEndpoints.TryGetValue(endpointName, out var sqlEndpoint))
+                if (TryGetEndpoint(sqlEndpoints, namespaceName, endpointName, out var sqlEndpoint))
                 {
-                    allowedEnvironments = sqlEndpoint.AllowedEnvironments;
+                    allowedEnvironments = sqlEndpoint?.AllowedEnvironments;
                 }
                 break;
                 
@@ -70,38 +71,38 @@ public class EndpointController : ControllerBase
                 var proxyEndpoints = EndpointHandler.GetEndpoints(
                     Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
                     
-                if (proxyEndpoints.TryGetValue(endpointName, out var proxyConfig))
+                if (TryGetEndpoint(proxyEndpoints, namespaceName, endpointName, out var proxyConfig))
                 {
                     // Get the full endpoint definition to access AllowedEnvironments
                     var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
-                    if (endpointDefinitions.TryGetValue(endpointName, out var proxyEndpoint))
+                    if (TryGetEndpoint(endpointDefinitions, namespaceName, endpointName, out var proxyEndpoint))
                     {
-                        allowedEnvironments = proxyEndpoint.AllowedEnvironments;
+                        allowedEnvironments = proxyEndpoint?.AllowedEnvironments;
                     }
                 }
                 break;
                 
             case EndpointType.Webhook:
                 var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
-                if (webhookEndpoints.TryGetValue(endpointName, out var webhookEndpoint))
+                if (TryGetEndpoint(webhookEndpoints, namespaceName, endpointName, out var webhookEndpoint))
                 {
-                    allowedEnvironments = webhookEndpoint.AllowedEnvironments;
+                    allowedEnvironments = webhookEndpoint?.AllowedEnvironments;
                 }
                 break;
                 
             case EndpointType.Static:
                 var staticEndpoints = EndpointHandler.GetStaticEndpoints();
-                if (staticEndpoints.TryGetValue(endpointName, out var staticEndpoint))
+                if (TryGetEndpoint(staticEndpoints, namespaceName, endpointName, out var staticEndpoint))
                 {
-                    allowedEnvironments = staticEndpoint.AllowedEnvironments;
+                    allowedEnvironments = staticEndpoint?.AllowedEnvironments;
                 }
                 break;
                 
             case EndpointType.Files:
                 var fileEndpoints = EndpointHandler.GetFileEndpoints();
-                if (fileEndpoints.TryGetValue(endpointName, out var fileEndpoint))
+                if (TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var fileEndpoint))
                 {
-                    allowedEnvironments = fileEndpoint.AllowedEnvironments;
+                    allowedEnvironments = fileEndpoint?.AllowedEnvironments;
                 }
                 break;
         }
@@ -140,6 +141,33 @@ public class EndpointController : ControllerBase
     }
 
     /// <summary>
+    /// Helper method to try resolving an endpoint with namespace-aware lookup
+    /// </summary>
+    /// <typeparam name="T">The type of endpoint entity</typeparam>
+    /// <param name="endpoints">The dictionary of endpoints to search</param>
+    /// <param name="namespaceName">The namespace from the parsed URL (can be null)</param>
+    /// <param name="endpointName">The endpoint name</param>
+    /// <param name="endpoint">The found endpoint (if any)</param>
+    /// <returns>True if endpoint was found, false otherwise</returns>
+    private bool TryGetEndpoint<T>(Dictionary<string, T> endpoints, string? namespaceName, string endpointName, out T? endpoint)
+    {
+        endpoint = default;
+        
+        // First try with namespace if provided
+        if (!string.IsNullOrEmpty(namespaceName))
+        {
+            var namespacedKey = $"{namespaceName}/{endpointName}";
+            if (endpoints.TryGetValue(namespacedKey, out endpoint))
+            {
+                return true;
+            }
+        }
+        
+        // Fallback to endpoint name only (backward compatibility)
+        return endpoints.TryGetValue(endpointName, out endpoint);
+    }
+
+    /// <summary>
     /// Handles GET requests to endpoints
     /// </summary>
     [HttpGet("{env}/{**catchall}")]
@@ -165,12 +193,12 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine what type of endpoint we're dealing with
-            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             var _allowedEnvironments = new List<string>();
-            Log.Debug("🔄 Processing {Type} endpoint: {Name}", endpointType, endpointName);
+            Log.Debug("🔄 Processing {Type} endpoint: {Namespace}/{Name}", endpointType, namespaceName ?? "None", endpointName);
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -179,11 +207,17 @@ public class EndpointController : ControllerBase
             switch (endpointType)
             {
                 case EndpointType.SQL:
-                    return await HandleSqlGetRequest(env, endpointName, id, remainingPath, select, filter, orderby, top, skip);
+                    // For SQL endpoints, build the full key for lookup (same as static endpoints)
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleSqlGetRequest(env, sqlKey, id, remainingPath, select, filter, orderby, top, skip);
                 case EndpointType.Proxy:
-                    return await HandleProxyRequest(env, endpointName, id, remainingPath, "GET");
+                    // For proxy endpoints, build the full key for lookup
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, id, remainingPath, "GET");
                 case EndpointType.Static:
-                    return await HandleStaticGetRequest(env, endpointName, select, filter, orderby, top, skip);
+                    // For static endpoints, build the full key for lookup
+                    var staticKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleStaticGetRequest(env, staticKey, select, filter, orderby, top, skip);
                 case EndpointType.Composite:
                     Log.Warning("❌ Composite endpoints don't support GET requests");
                     return StatusCode(405, new { error = "Method not allowed for composite endpoints" });
@@ -222,7 +256,7 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine endpoint type
-            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
             // Only support HEAD for static endpoints
             if (endpointType != EndpointType.Static)
@@ -233,7 +267,7 @@ public class EndpointController : ControllerBase
             Log.Debug("📄 HEAD request for static endpoint: {Name}", endpointName);
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -241,15 +275,29 @@ public class EndpointController : ControllerBase
 
             // Get static endpoint definition
             var staticEndpoints = EndpointHandler.GetStaticEndpoints();
-            if (!staticEndpoints.TryGetValue(endpointName, out var endpoint))
+            // For static endpoints, build the full key for lookup
+            var staticKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+            if (!staticEndpoints.TryGetValue(staticKey, out var endpoint))
             {
                 return NotFound();
             }
 
-            // Build path to content file
-            var endpointDir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            // Build path to content file - handle namespaced endpoints
+            string endpointPath;
+            if (endpoint.HasNamespace)
+            {
+                // For namespaced endpoints, use the full namespace/endpoint structure
+                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", 
+                    endpoint.EffectiveNamespace!, endpoint.FolderName ?? endpointName);
+            }
+            else
+            {
+                // For non-namespaced endpoints, use just the endpoint name
+                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            }
+            
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
-            var contentFilePath = Path.Combine(endpointDir, contentFile);
+            var contentFilePath = Path.Combine(endpointPath, contentFile);
 
             if (!System.IO.File.Exists(contentFilePath))
             {
@@ -304,12 +352,12 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine what type of endpoint we're dealing with
-            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
             Log.Debug("🔄 Processing {Type} endpoint: {Name} for POST", endpointType, endpointName);
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -329,19 +377,27 @@ public class EndpointController : ControllerBase
             {
                 case EndpointType.SQL:
                     var data = JsonSerializer.Deserialize<JsonElement>(requestBody);
-                    return await HandleSqlPostRequest(env, endpointName, data);
+                    // For SQL endpoints, build the full key for lookup (same as GET)
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleSqlPostRequest(env, sqlKey, data);
                     
                 case EndpointType.Proxy:
-                    return await HandleProxyRequest(env, endpointName, id, remainingPath, "POST");
+                    // For proxy endpoints, build the full key for lookup
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, id, remainingPath, "POST");
                     
                 case EndpointType.Composite:
-                    string actualCompositeName = endpointName.Replace("composite/", "");
+                    // For composite endpoints, build the full key for lookup
+                    var compositeKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    string actualCompositeName = compositeKey.Replace("composite/", "");
                     return await HandleCompositeRequest(env, actualCompositeName, requestBody);
                     
                 case EndpointType.Webhook:
+                    // For webhook endpoints, build the full key for lookup
+                    var webhookKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     string webhookId = remainingPath.Split('/')[0];
                     var webhookData = JsonSerializer.Deserialize<JsonElement>(requestBody);
-                    return await HandleWebhookRequest(env, webhookId, webhookData);
+                    return await HandleWebhookRequest(env, webhookKey, webhookId, webhookData);
                     
                 default:
                     Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
@@ -380,12 +436,12 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine what type of endpoint we're dealing with
-            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
             Log.Debug("🔄 Processing {Type} endpoint: {Name} for PUT", endpointType, endpointName);
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -401,11 +457,15 @@ public class EndpointController : ControllerBase
                 }
                 
                 var data = JsonSerializer.Deserialize<JsonElement>(requestBody);
-                return await HandleSqlPutRequest(env, endpointName, data);
+                // For SQL endpoints, build the full key for lookup (same as GET)
+                var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                return await HandleSqlPutRequest(env, sqlKey, data);
             }
             else if (endpointType == EndpointType.Proxy)
             {
-                return await HandleProxyRequest(env, endpointName, id, remainingPath, "PUT");
+                // For proxy endpoints, build the full key for lookup
+                var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PUT");
             }
             else
             {
@@ -446,12 +506,12 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine what type of endpoint we're dealing with
-            var (endpointType, endpointName, parsedId, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, namespaceName, endpointName, parsedId, remainingPath) = ParseEndpoint(catchall);
             
             Log.Debug("🔄 Processing {Type} endpoint: {Name} for DELETE", endpointType, endpointName);
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -469,10 +529,14 @@ public class EndpointController : ControllerBase
                         });
                     }
                     
-                    return await HandleSqlDeleteRequest(env, endpointName, parsedId);
+                    // For SQL endpoints, build the full key for lookup (same as GET)
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleSqlDeleteRequest(env, sqlKey, parsedId);
                     
                 case EndpointType.Proxy:
-                    return await HandleProxyRequest(env, endpointName, parsedId, remainingPath, "DELETE");
+                    // For proxy endpoints, build the full key for lookup
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, parsedId, remainingPath, "DELETE");
                     
                 case EndpointType.Composite:
                     Log.Warning("❌ Composite endpoints don't support DELETE requests");
@@ -513,12 +577,12 @@ public class EndpointController : ControllerBase
         try
         {
             // Process the catchall to determine what type of endpoint we're dealing with
-            var (endpointType, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
             Log.Debug("🔄 Processing {Type} endpoint: {Name} for PATCH", endpointType, endpointName);
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, endpointType);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -527,7 +591,9 @@ public class EndpointController : ControllerBase
             // Currently only proxy endpoints support PATCH
             if (endpointType == EndpointType.Proxy)
             {
-                return await HandleProxyRequest(env, endpointName, id, remainingPath, "PATCH");
+                // For proxy endpoints, build the full key for lookup
+                var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PATCH");
             }
             
             Log.Warning("❌ {Type} endpoints don't support PATCH requests", endpointType);
@@ -566,8 +632,9 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            // Extract the endpoint name from the catchall
+            // Parse the catchall to extract namespace and endpoint information for files
             string endpointName;
+            string? namespaceName = null;
             string? subpath = null;
             
             var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -576,22 +643,49 @@ public class EndpointController : ControllerBase
                 return BadRequest(new { error = "Missing endpoint name in the URL path" });
             }
             
-            endpointName = segments[0];
-            
-            if (segments.Length > 1)
+            // Check if we have namespace/endpoint format (2+ segments)
+            if (segments.Length >= 2)
             {
-                subpath = string.Join('/', segments.Skip(1));
+                // Could be namespace/endpoint/subpath or just endpoint/subpath
+                // Try to determine if first segment is a namespace by checking if namespace/endpoint exists
+                var potentialNamespace = segments[0];
+                var potentialEndpoint = segments[1];
+                var allFileEndpoints = EndpointHandler.GetFileEndpoints();
+                
+                // Check if namespace/endpoint key exists
+                if (allFileEndpoints.ContainsKey($"{potentialNamespace}/{potentialEndpoint}"))
+                {
+                    namespaceName = potentialNamespace;
+                    endpointName = potentialEndpoint;
+                    if (segments.Length > 2)
+                    {
+                        subpath = string.Join('/', segments.Skip(2));
+                    }
+                }
+                else
+                {
+                    // Fallback to treating first segment as endpoint name
+                    endpointName = segments[0];
+                    if (segments.Length > 1)
+                    {
+                        subpath = string.Join('/', segments.Skip(1));
+                    }
+                }
+            }
+            else
+            {
+                endpointName = segments[0];
             }
             
             // Check if this endpoint exists
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
-            if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
+            if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
             {
                 return NotFound(new { error = $"File endpoint '{endpointName}' not found" });
             }
             
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -604,14 +698,14 @@ public class EndpointController : ControllerBase
             }
             
             // Get storage options from endpoint definition
-            var baseDirectory = endpoint.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj) 
+            var baseDirectory = endpoint?.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj) 
                 ? baseDirObj?.ToString() ?? string.Empty
                 : string.Empty;
 
             // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
             baseDirectory = ProcessBaseDirectory(baseDirectory, env);
                 
-            var allowedExtensions = endpoint.Properties != null && endpoint.Properties.TryGetValue("AllowedExtensions", out var extensionsObj) 
+            var allowedExtensions = endpoint?.Properties != null && endpoint.Properties.TryGetValue("AllowedExtensions", out var extensionsObj) 
                 && extensionsObj is List<string> extensions
                 ? extensions
                 : new List<string>();
@@ -733,7 +827,7 @@ public class EndpointController : ControllerBase
             }
             
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -795,7 +889,7 @@ public class EndpointController : ControllerBase
             }
             
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -846,7 +940,7 @@ public class EndpointController : ControllerBase
             }
             
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -905,23 +999,77 @@ public class EndpointController : ControllerBase
     #region Helper Methods and Handlers
 
     /// <summary>
-    /// Parses the catchall segment to determine endpoint type and name
+    /// Parses the catchall segment to determine endpoint type and name with namespace support
     /// </summary>
-    private (EndpointType Type, string Name, string? Id, string RemainingPath) ParseEndpoint(string catchall)
+    private (EndpointType Type, string? Namespace, string Name, string? Id, string RemainingPath) ParseEndpoint(string catchall)
     {
         var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length == 0)
-            return (EndpointType.Standard, string.Empty, null, string.Empty);
+            return (EndpointType.Standard, null, string.Empty, null, string.Empty);
 
+        Log.Debug("🔍 Parsing endpoint: Segments=[{Segments}]", string.Join(", ", segments));
+
+        // Try to parse as namespaced endpoint first
+        if (segments.Length >= 2)
+        {
+            var potentialNamespace = segments[0];
+            var potentialEndpoint = segments[1];
+            var namespacedKey = $"{potentialNamespace}/{potentialEndpoint}";
+            
+            // Check if this namespaced endpoint exists
+            if (NamespaceEndpointExists(namespacedKey))
+            {
+                string? id = null;
+                string remainingPath = "";
+                
+                // Handle ID and remaining path for namespaced endpoints
+                if (segments.Length > 2)
+                {
+                    // Check if third segment is an ID or part of remaining path
+                    var thirdSegment = segments[2];
+                    
+                    // Extract ID if it matches expected patterns
+                    id = thirdSegment switch
+                    {
+                        var segment when Regex.IsMatch(segment, @"^guid'([\w\-]+)'$") => 
+                            Regex.Match(segment, @"^guid'([\w\-]+)'$").Groups[1].Value,
+                        var segment when Regex.IsMatch(segment, @"^'([^']+)'$") => 
+                            Regex.Match(segment, @"^'([^']+)'$").Groups[1].Value,
+                        var segment when Regex.IsMatch(segment, @"^\d+$") => segment,
+                        _ => null
+                    };
+                    
+                    // Set remaining path
+                    if (id != null && segments.Length > 3)
+                    {
+                        remainingPath = string.Join('/', segments.Skip(3));
+                    }
+                    else if (id == null)
+                    {
+                        // Third segment is not an ID, so it's part of remaining path
+                        remainingPath = string.Join('/', segments.Skip(2));
+                    }
+                }
+                
+                var endpointType = DetermineEndpointType(namespacedKey);
+                
+                Log.Debug("🎯 Namespaced endpoint found: {Namespace}/{Name}, Type={Type}, ID={Id}", 
+                    potentialNamespace, potentialEndpoint, endpointType, id);
+                
+                return (endpointType, potentialNamespace, potentialEndpoint, id, remainingPath);
+            }
+        }
+
+        // Fallback to traditional parsing (backward compatibility)
         string endpointName = segments[0];
-        string? id = null;
-        string remainingPath = segments.Length > 1 ? string.Join('/', segments.Skip(1)) : string.Empty;
+        string? fallbackId = null;
+        string fallbackRemainingPath = segments.Length > 1 ? string.Join('/', segments.Skip(1)) : string.Empty;
 
-        Log.Debug("🔍 Parsing endpoint: Original='{OriginalEndpointName}', RemainingPath='{RemainingPath}'", 
-            endpointName, remainingPath);
+        Log.Debug("🔄 Fallback to traditional parsing: '{EndpointName}', RemainingPath='{RemainingPath}'", 
+            endpointName, fallbackRemainingPath);
 
-        // Modern pattern matching for ID extraction
-        id = endpointName switch
+        // Extract ID from endpoint name (legacy format)
+        fallbackId = endpointName switch
         {
             var name when Regex.IsMatch(name, @"^\w+\(guid'([\w\-]+)'\)$") => 
                 Regex.Match(name, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
@@ -932,31 +1080,50 @@ public class EndpointController : ControllerBase
             _ => null
         };
 
-        Log.Debug("🔍 ID extraction result: ID='{Id}' from endpoint name '{EndpointName}'", id, endpointName);
-
         // Clean endpoint name if ID was extracted
-        if (id != null)
+        if (fallbackId != null)
         {
             endpointName = Regex.Replace(endpointName, @"\([^)]+\)$", "");
         }
 
         // Determine endpoint type using pattern matching
-        var endpointType = endpointName switch
+        var fallbackEndpointType = DetermineEndpointType(endpointName);
+
+        Log.Debug("✅ Final parsed endpoint: Type={Type}, Name={Name}, ID={Id}", 
+            fallbackEndpointType, endpointName, fallbackId);
+
+        return (fallbackEndpointType, null, endpointName, fallbackId, fallbackRemainingPath);
+    }
+    
+    /// <summary>
+    /// Checks if a namespaced endpoint exists
+    /// </summary>
+    private bool NamespaceEndpointExists(string key)
+    {
+        return EndpointHandler.GetSqlEndpoints().ContainsKey(key) ||
+               EndpointHandler.GetProxyEndpoints().ContainsKey(key) ||
+               EndpointHandler.GetFileEndpoints().ContainsKey(key) ||
+               EndpointHandler.GetStaticEndpoints().ContainsKey(key);
+    }
+    
+    /// <summary>
+    /// Determines endpoint type for a given key (supports both namespaced and non-namespaced)
+    /// </summary>
+    private EndpointType DetermineEndpointType(string key)
+    {
+        return key switch
         {
             "composite" => EndpointType.Composite,
             "webhook" => EndpointType.Webhook,
-            _ when EndpointHandler.GetSqlEndpoints().ContainsKey(endpointName) => EndpointType.SQL,
-            _ when EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy")).ContainsKey(endpointName) => EndpointType.Proxy,
-            _ when EndpointHandler.GetFileEndpoints().ContainsKey(endpointName) => EndpointType.Files,
-            _ when EndpointHandler.GetStaticEndpoints().ContainsKey(endpointName) => EndpointType.Static,
+            _ when EndpointHandler.GetSqlEndpoints().ContainsKey(key) => EndpointType.SQL,
+            _ when EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key) => EndpointType.Webhook,
+            _ when EndpointHandler.GetProxyEndpoints().ContainsKey(key) && 
+                   EndpointHandler.GetProxyEndpoints()[key].IsComposite => EndpointType.Composite,
+            _ when EndpointHandler.GetProxyEndpoints().ContainsKey(key) => EndpointType.Proxy,
+            _ when EndpointHandler.GetFileEndpoints().ContainsKey(key) => EndpointType.Files,
+            _ when EndpointHandler.GetStaticEndpoints().ContainsKey(key) => EndpointType.Static,
             _ => EndpointType.Standard
         };
-
-        // Log the output
-        Log.Debug("Parsed endpoint: Type={Type}, Name={Name}, Id={Id}, RemainingPath={RemainingPath}",
-            endpointType, endpointName, id, remainingPath);
-
-        return (endpointType, endpointName, id, remainingPath);
     }
 
     /// <summary>
@@ -1596,6 +1763,7 @@ public class EndpointController : ControllerBase
     /// </summary>
     private async Task<IActionResult> HandleWebhookRequest(
         string env,
+        string webhookEndpointKey,
         string webhookId,
         JsonElement payload)
     {
@@ -1615,14 +1783,12 @@ public class EndpointController : ControllerBase
                 });
             }
 
-            // Load webhook endpoint configuration
-            var endpointConfig = EndpointHandler.GetSqlWebhookEndpoints()
-                .FirstOrDefault(e => e.Key.Equals("Webhooks", StringComparison.OrdinalIgnoreCase)).Value;
-
-            if (endpointConfig == null)
+            // Load webhook endpoint configuration using the namespace-aware key
+            var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
+            if (!webhookEndpoints.TryGetValue(webhookEndpointKey, out var endpointConfig))
             {
                 return NotFound(new { 
-                    error = "Webhooks endpoint is not configured properly.", 
+                    error = $"Webhook endpoint '{webhookEndpointKey}' is not configured properly.", 
                     success = false 
                 });
             }
@@ -1761,6 +1927,10 @@ public class EndpointController : ControllerBase
 
             // Step 2: Get endpoint configuration 
             var endpoint = sqlEndpoints[endpointName];
+
+            // Step 2.1: Apply endpoint-specific property overrides
+            top = ApplyMaxPageSizeLimit(top, endpoint);
+            orderby = ApplyDefaultSorting(orderby, endpoint);
 
             // NEW: Check if this is a Table Valued Function endpoint
             if (PortwayApi.Classes.Helpers.TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
@@ -1968,7 +2138,25 @@ public class EndpointController : ControllerBase
             // Step 7: Convert OData to SQL
             var (query, parameters) = _oDataToSqlConverter.ConvertToSQL($"{schema}.{objectName}", odataParams);
 
-            // Step 8: Execute query
+            // Step 8: Check cache first if enabled
+            object? cachedResponse = null;
+            string? cacheKey = null;
+            bool cacheEnabled = IsCacheEnabled(endpoint);
+            
+            if (cacheEnabled)
+            {
+                // Create cache key based on query parameters
+                cacheKey = $"sql:{env}:{endpointName}:{query.GetHashCode()}:{string.Join(",", parameters?.Select(p => $"{p.Key}={p.Value}") ?? new string[0])}";
+                cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
+                
+                if (cachedResponse != null)
+                {
+                    Log.Debug("📋 Cache hit for SQL query: {Endpoint}", endpointName);
+                    return Ok(cachedResponse);
+                }
+            }
+
+            // Step 9: Execute query
             await using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
             await connection.OpenAsync();
 
@@ -2009,7 +2197,17 @@ public class EndpointController : ControllerBase
                 }
                 
                 // Return the single item directly (without wrapping in a collection)
-                return Ok(transformedResults.FirstOrDefault());
+                var singleItemResponse = transformedResults.FirstOrDefault();
+                
+                // Cache the single item response if caching is enabled
+                if (cacheEnabled && !string.IsNullOrEmpty(cacheKey))
+                {
+                    var cacheDuration = GetCacheDurationMinutes(endpoint);
+                    await _cacheManager.SetAsync(cacheKey, singleItemResponse, TimeSpan.FromMinutes(cacheDuration));
+                    Log.Debug("📋 Cached SQL single item response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
+                }
+                
+                return Ok(singleItemResponse);
             }
 
             // Step 10: Prepare response for collection requests
@@ -2023,6 +2221,15 @@ public class EndpointController : ControllerBase
             };
 
             Log.Debug("✅ Successfully processed query for {Endpoint}", endpointName);
+            
+            // Cache the response if caching is enabled
+            if (cacheEnabled && !string.IsNullOrEmpty(cacheKey))
+            {
+                var cacheDuration = GetCacheDurationMinutes(endpoint);
+                await _cacheManager.SetAsync(cacheKey, response, TimeSpan.FromMinutes(cacheDuration));
+                Log.Debug("📋 Cached SQL response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
+            }
+            
             return Ok(response);
         }
         catch (SqlException sqlEx)
@@ -2475,16 +2682,28 @@ public class EndpointController : ControllerBase
             }
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, endpointName, EndpointType.Static);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Static);
             if (!isAllowed)
             {
                 return errorResponse!;
             }
 
-            // Build path to content file
-            var endpointDir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            // Build path to content file - handle namespaced endpoints
+            string endpointPath;
+            if (endpoint.HasNamespace)
+            {
+                // For namespaced endpoints, use the full namespace/endpoint structure
+                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", 
+                    endpoint.EffectiveNamespace!, endpoint.FolderName ?? endpointName);
+            }
+            else
+            {
+                // For non-namespaced endpoints, use just the endpoint name
+                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
+            }
+            
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
-            var contentFilePath = Path.Combine(endpointDir, contentFile);
+            var contentFilePath = Path.Combine(endpointPath, contentFile);
 
             if (!System.IO.File.Exists(contentFilePath))
             {
@@ -3379,6 +3598,98 @@ public class EndpointController : ControllerBase
             return items;
         }
     }
+
+    #region Endpoint Property Override Helpers
+
+    /// <summary>
+    /// Applies the MaxPageSize limit from endpoint properties, overriding the requested top value if necessary
+    /// </summary>
+    private int ApplyMaxPageSizeLimit(int requestedTop, EndpointDefinition endpoint)
+    {
+        // Check if MaxPageSize is defined in endpoint properties
+        if (endpoint.Properties?.TryGetValue("MaxPageSize", out var maxPageSizeObj) == true)
+        {
+            if (maxPageSizeObj is int maxPageSize)
+            {
+                Log.Debug("📏 Applying MaxPageSize limit: {MaxPageSize} for endpoint {Endpoint}", maxPageSize, endpoint.EndpointName);
+                return Math.Min(requestedTop, maxPageSize);
+            }
+            else if (int.TryParse(maxPageSizeObj?.ToString(), out var parsedMaxPageSize))
+            {
+                Log.Debug("📏 Applying MaxPageSize limit: {MaxPageSize} for endpoint {Endpoint}", parsedMaxPageSize, endpoint.EndpointName);
+                return Math.Min(requestedTop, parsedMaxPageSize);
+            }
+        }
+        
+        return requestedTop; // No limit defined, use original value
+    }
+
+    /// <summary>
+    /// Applies the DefaultSort from endpoint properties if no orderby is provided
+    /// </summary>
+    private string? ApplyDefaultSorting(string? requestedOrderBy, EndpointDefinition endpoint)
+    {
+        // Only apply default if no orderby was requested
+        if (!string.IsNullOrEmpty(requestedOrderBy))
+        {
+            return requestedOrderBy;
+        }
+
+        // Check if DefaultSort is defined in endpoint properties
+        if (endpoint.Properties?.TryGetValue("DefaultSort", out var defaultSortObj) == true)
+        {
+            var defaultSort = defaultSortObj?.ToString();
+            if (!string.IsNullOrEmpty(defaultSort))
+            {
+                Log.Debug("🔀 Applying DefaultSort: {DefaultSort} for endpoint {Endpoint}", defaultSort, endpoint.EndpointName);
+                return defaultSort;
+            }
+        }
+
+        return requestedOrderBy; // No default defined, use original value
+    }
+
+    /// <summary>
+    /// Checks if caching is enabled for the endpoint
+    /// </summary>
+    private bool IsCacheEnabled(EndpointDefinition endpoint)
+    {
+        if (endpoint.Properties?.TryGetValue("CacheEnabled", out var cacheEnabledObj) == true)
+        {
+            if (cacheEnabledObj is bool cacheEnabled)
+            {
+                return cacheEnabled;
+            }
+            else if (bool.TryParse(cacheEnabledObj?.ToString(), out var parsedCacheEnabled))
+            {
+                return parsedCacheEnabled;
+            }
+        }
+        
+        return false; // Default: caching disabled
+    }
+
+    /// <summary>
+    /// Gets the cache duration in minutes for the endpoint
+    /// </summary>
+    private int GetCacheDurationMinutes(EndpointDefinition endpoint)
+    {
+        if (endpoint.Properties?.TryGetValue("CacheDurationMinutes", out var durationObj) == true)
+        {
+            if (durationObj is int duration)
+            {
+                return duration;
+            }
+            else if (int.TryParse(durationObj?.ToString(), out var parsedDuration))
+            {
+                return parsedDuration;
+            }
+        }
+        
+        return 5; // Default: 5 minutes
+    }
+
+    #endregion
 
     #endregion
 }

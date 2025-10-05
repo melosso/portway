@@ -677,6 +677,8 @@ public class TokenService
                         {
                             "* (access to all endpoints)",
                             "Products,Customers (access to only these endpoints)",
+                            "Company/Employees,Company/Accounts (access to specific namespaced endpoints)",
+                            "Company/* (access to all endpoints in Company namespace)",
                             "Product* (access to all endpoints starting with Product)"
                         }
                     },
@@ -900,6 +902,8 @@ class Program
         Console.WriteLine("  TokenGenerator.exe                                 Generate token with auto-generated UUID username");
         Console.WriteLine("  TokenGenerator.exe admin                           Generate token for user 'admin'");
         Console.WriteLine("  TokenGenerator.exe admin -s \"Products,Orders\"    Generate token with specific scopes");
+        Console.WriteLine("  TokenGenerator.exe admin -s \"Company/*\"          Generate token for all Company namespace endpoints");
+        Console.WriteLine("  TokenGenerator.exe admin -s \"Company/Employees\"  Generate token for specific namespaced endpoint");
         Console.WriteLine("  TokenGenerator.exe admin -e \"prod,dev\"           Generate token for specific environments");
         Console.WriteLine("  TokenGenerator.exe -s \"*\" --expires 90 admin     Generate token that expires in 90 days");
     }
@@ -1065,7 +1069,7 @@ class Program
             : input;
 
         // Get scopes e.g. endpoints
-        Console.Write("Enter allowed scopes (comma-separated, or * for all endpoints): ");
+        Console.Write("Enter allowed scopes (comma-separated, * for all, or use namespace/endpoint format): ");
         string scopesInput = Console.ReadLine() ?? "*";
         string scopes = string.IsNullOrWhiteSpace(scopesInput) ? "*" : scopesInput;
 
@@ -1194,6 +1198,8 @@ class Program
         Console.WriteLine("\nScope format options:");
         Console.WriteLine("  * - Full access to all endpoints");
         Console.WriteLine("  Products,Orders,Invoices - Access to specific endpoints (comma separated)");
+        Console.WriteLine("  Company/Employees,Company/Accounts - Access to specific namespaced endpoints");
+        Console.WriteLine("  Company/* - Access to all endpoints in Company namespace");
         Console.WriteLine("  Product* - Access to all endpoints that start with 'Product'");
         
         // Get new scopes

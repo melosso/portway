@@ -37,4 +37,4 @@ Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from 
 > By stopping the web server on IIS (either by either stopping the website or application pool) you'll reset any cache and/or rate limits configured by the application.
 
 > [!NOTE]
-> You can find your installated version in file `version.txt`. Please make sure to overwrite it, to keep version information up to date (which is especially important when submitting bug reports).
+> You can find your installated version in file `.version.txt`. Please make sure to overwrite it, to keep version information up to date (which is especially important when submitting bug reports).

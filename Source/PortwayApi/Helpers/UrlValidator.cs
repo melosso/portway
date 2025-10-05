@@ -54,7 +54,7 @@ public class UrlValidator
                 "169.254.0.0/16"
             };
 
-        Log.Information("🔒 URL Validator configured with allowed hosts: {Hosts}", 
+        Log.Information("🔒 Network traffic allowed for hosts: {Hosts}", 
             string.Join(", ", _allowedHosts));
     }
 

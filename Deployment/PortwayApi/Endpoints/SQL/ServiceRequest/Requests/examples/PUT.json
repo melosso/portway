@@ -1,0 +1,12 @@
+{
+  "RequestId": 12345,
+  "CustomerCode": "CUST001",
+  "Title": "Email server connectivity issues - RESOLVED",
+  "Description": "Customer unable to connect to email server. Intermittent connection timeouts and authentication failures reported. Issue started this morning around 9:00 AM. \n\nUPDATE: Issue resolved by restarting mail server service and updating DNS settings.",
+  "Priority": "High",
+  "Status": "Resolved",
+  "CategoryId": 1,
+  "AssignedTo": "tech.support@company.com",
+  "LastModifiedBy": "senior.tech@company.com",
+  "ResolvedDate": "2025-10-05T14:30:00Z"
+}

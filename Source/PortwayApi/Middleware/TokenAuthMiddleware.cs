@@ -137,7 +137,9 @@ public class TokenAuthMiddleware
     {
         // Parse patterns like:
         // /api/{env}/{endpointName}
+        // /api/{env}/{namespace}/{endpointName}
         // /api/{env}/{endpointName}/{id}
+        // /api/{env}/{namespace}/{endpointName}/{id}
         // /api/{env}/composite/{endpointName}
         // /webhook/{env}/{webhookId}
         
@@ -147,16 +149,34 @@ public class TokenAuthMiddleware
             
         if (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase))
         {
-            // For regular endpoints: /api/{env}/{endpointName}
-            if (segments.Length >= 3 && !segments[2].Equals("composite", StringComparison.OrdinalIgnoreCase))
-            {
-                return segments[2];
-            }
-            
             // For composite endpoints: /api/{env}/composite/{endpointName}
             if (segments.Length >= 4 && segments[2].Equals("composite", StringComparison.OrdinalIgnoreCase))
             {
                 return $"composite/{segments[3]}";
+            }
+            
+            // For regular endpoints, check if this is a namespaced endpoint
+            // We need to determine if segments[2] is a namespace or an endpoint
+            // by checking against loaded endpoints
+            if (segments.Length >= 4)
+            {
+                // Try namespaced format first: /api/{env}/{namespace}/{endpoint}
+                string namespacedEndpoint = $"{segments[2]}/{segments[3]}";
+                
+                // Check if this namespaced endpoint exists
+                var sqlEndpoints = Classes.EndpointHandler.GetSqlEndpoints();
+                var proxyEndpoints = Classes.EndpointHandler.GetProxyEndpoints();
+                
+                if (sqlEndpoints.ContainsKey(namespacedEndpoint) || proxyEndpoints.ContainsKey(namespacedEndpoint))
+                {
+                    return namespacedEndpoint;
+                }
+            }
+            
+            // Fall back to non-namespaced format: /api/{env}/{endpointName}
+            if (segments.Length >= 3)
+            {
+                return segments[2];
             }
         }
         else if (segments[0].Equals("webhook", StringComparison.OrdinalIgnoreCase))

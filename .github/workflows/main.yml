@@ -69,7 +69,7 @@ jobs:
       run: |
         NEW_TAG=${{ steps.versioning.outputs.new_version }}
         # Create version file inside the Deployment/PortwayApi folder
-        echo "$NEW_TAG" > Deployment/PortwayApi/version.txt
+        echo "$NEW_TAG" > Deployment/PortwayApi/.version.txt
         # Remove unwanted files from the Deployment folder
         find Deployment -name "docker-compose.yml" -type f -delete
         find Deployment -name ".gitignore" -type f -delete

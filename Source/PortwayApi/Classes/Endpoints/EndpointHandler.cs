@@ -2,6 +2,7 @@ namespace PortwayApi.Classes;
 
 using System.Text.Json;
 using Serilog;
+using PortwayApi.Helpers;
 
 /// <summary>
 /// Unified endpoint definition that handles all endpoint types
@@ -69,18 +70,147 @@ public class EndpointDefinition
     // Custom properties for extended functionality
     public Dictionary<string, object>? CustomProperties { get; set; }
 
+    // NEW: Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
+    /// Takes precedence over folder-inferred namespace
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this specific endpoint (e.g., "Account Management")
+    /// Used in Swagger documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Customer Relationship Management")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+    
+    /// <summary>
+    /// Folder name where the endpoint definition is located (for backward compatibility)
+    /// Used as fallback for SwaggerTag when DisplayName is not specified
+    /// </summary>
+    public string? FolderName { get; set; }
+    
+    /// <summary>
+    /// Namespace inferred from folder structure (for internal use)
+    /// </summary>
+    public string? InferredNamespace { get; set; }
+
     // Helper properties to simplify type checking
     public bool IsStandard => Type == EndpointType.Standard && !IsPrivate;
     public bool IsComposite => Type == EndpointType.Composite || 
                               (CompositeConfig != null && !string.IsNullOrEmpty(CompositeConfig.Name));
     public bool IsSql => Type == EndpointType.SQL;
     public bool IsStatic => Type == EndpointType.Static;
+    
+    // NEW: Namespace helper properties
+    /// <summary>
+    /// Gets the effective namespace (explicit namespace takes precedence over inferred)
+    /// </summary>
+    public string? EffectiveNamespace => Namespace ?? InferredNamespace;
+    
+    /// <summary>
+    /// Indicates if this endpoint has a namespace (explicit or inferred)
+    /// </summary>
+    public bool HasNamespace => !string.IsNullOrEmpty(EffectiveNamespace);
+    
+    /// <summary>
+    /// Gets the endpoint name for URL and key generation
+    /// </summary>
+    public string EndpointName => FolderName ?? (IsSql ? DatabaseObjectName : Path.GetFileNameWithoutExtension(Url)) ?? "Unknown";
+    
+    /// <summary>
+    /// Gets the full path including namespace (for routing keys)
+    /// </summary>
+    public string FullPath => HasNamespace ? $"{EffectiveNamespace}/{EndpointName}" : EndpointName;
+    
+    /// <summary>
+    /// Gets the display path for documentation and UI
+    /// </summary>
+    public string DisplayPath => HasNamespace && !string.IsNullOrEmpty(DisplayName) 
+        ? $"{NamespaceDisplayName ?? EffectiveNamespace} - {DisplayName}" 
+        : DisplayName ?? EndpointName;
+    
+    /// <summary>
+    /// Gets the appropriate Swagger tag name
+    /// </summary>
+    public string SwaggerTag
+    {
+        get
+        {
+            // Debug logging to trace the issue
+            var result = !string.IsNullOrEmpty(Namespace) ? (NamespaceDisplayName ?? Namespace) 
+                       : HasNamespace ? (NamespaceDisplayName ?? EffectiveNamespace!) 
+                       : (DisplayName ?? FolderName ?? EndpointName);
+            
+            System.Diagnostics.Debug.WriteLine($"SwaggerTag Debug - Namespace: '{Namespace}', InferredNamespace: '{InferredNamespace}', EffectiveNamespace: '{EffectiveNamespace}', Result: '{result}'");
+            
+            return result;
+        }
+    }
                               
     // Helper method to get a consistent tuple format compatible with existing code
     public (string Url, HashSet<string> Methods, bool IsPrivate, string Type) ToTuple()
     {
         string typeString = this.Type.ToString();
         return (Url, new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase), IsPrivate, typeString);
+    }
+    
+    /// <summary>
+    /// Creates URL patterns for routing (supports both namespaced and non-namespaced)
+    /// </summary>
+    public List<string> GetUrlPatterns()
+    {
+        var patterns = new List<string>();
+        
+        if (HasNamespace)
+        {
+            // Primary pattern with namespace
+            patterns.Add($"/api/{{env}}/{EffectiveNamespace}/{EndpointName}");
+            patterns.Add($"/api/{{env}}/{EffectiveNamespace}/{EndpointName}/{{id}}");
+        }
+        
+        // Fallback pattern without namespace (for backward compatibility)
+        patterns.Add($"/api/{{env}}/{EndpointName}");
+        patterns.Add($"/api/{{env}}/{EndpointName}/{{id}}");
+        
+        return patterns;
+    }
+    
+    /// <summary>
+    /// Validates namespace naming conventions
+    /// </summary>
+    public List<string> ValidateNamespace()
+    {
+        var errors = new List<string>();
+        var namespaceToCheck = EffectiveNamespace;
+        
+        if (!string.IsNullOrEmpty(namespaceToCheck))
+        {
+            // Check namespace naming rules
+            if (!System.Text.RegularExpressions.Regex.IsMatch(namespaceToCheck, @"^[A-Za-z][A-Za-z0-9_]*$"))
+            {
+                errors.Add("Namespace must start with a letter and contain only letters, numbers, and underscores");
+            }
+            
+            if (namespaceToCheck.Length > 50)
+            {
+                errors.Add("Namespace cannot exceed 50 characters");
+            }
+            
+            // Reserved namespace names
+            var reserved = new[] { "api", "docs", "swagger", "health", "admin", "system", "composite", "webhook", "files" };
+            if (reserved.Contains(namespaceToCheck.ToLowerInvariant()))
+            {
+                errors.Add($"'{namespaceToCheck}' is a reserved namespace name");
+            }
+        }
+        
+        return errors;
     }
 }
 
@@ -298,8 +428,14 @@ public static class EndpointHandler
 
                     if (definition != null && !string.IsNullOrWhiteSpace(definition.Url) && definition.Methods.Any())
                     {
-                        // Extract endpoint name from directory name
-                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
+                        // Extract namespace and endpoint name from directory structure
+                        var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
+                        
+                        // Set inferred namespace (entity.json namespace takes precedence)
+                        definition.InferredNamespace = inferredNamespace;
+                        
+                        // Set folder name for backward compatibility with SwaggerTag logic
+                        definition.FolderName = endpointName;
 
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
@@ -307,11 +443,26 @@ public static class EndpointHandler
                             Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
                             continue;
                         }
+                        
+                        // Validate namespace if present
+                        var validationErrors = definition.ValidateNamespace();
+                        if (validationErrors.Any())
+                        {
+                            Log.Warning("⚠️ Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
+                            continue;
+                        }
 
-                        // Add the endpoint to the dictionary
-                        endpoints[endpointName] = definition;
+                        // Create keys for both namespaced and non-namespaced access
+                        var effectiveNamespace = definition.EffectiveNamespace;
+                        
+                        // Create the appropriate key based on namespace
+                        var primaryKey = !string.IsNullOrEmpty(effectiveNamespace) 
+                            ? $"{effectiveNamespace}/{endpointName}" 
+                            : endpointName;
+                        
+                        endpoints[primaryKey] = definition;
 
-                        LogEndpointLoading(endpointName, definition);
+                        LogEndpointLoading(primaryKey, definition);
                     }
                     else
                     {
@@ -361,20 +512,41 @@ public static class EndpointHandler
 
                     if (definition != null && !string.IsNullOrWhiteSpace(definition.DatabaseObjectName))
                     {
-                        // Extract endpoint name from directory name
-                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
-
+                        // Extract namespace and endpoint name from directory structure
+                        var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
+                        
+                        // Set inferred namespace (entity.json namespace takes precedence)
+                        definition.InferredNamespace = inferredNamespace;
+                        
+                        // Set folder name for backward compatibility with SwaggerTag logic
+                        definition.FolderName = endpointName;
+                        
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
                         {
                             Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
                             continue;
                         }
+                        
+                        // Validate namespace if present
+                        var validationErrors = definition.ValidateNamespace();
+                        if (validationErrors.Any())
+                        {
+                            Log.Warning("⚠️ Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
+                            continue;
+                        }
 
-                        // Add the endpoint to the dictionary
-                        endpoints[endpointName] = definition;
+                        // Create the appropriate key based on namespace
+                        var effectiveNamespace = definition.EffectiveNamespace;
+                        
+                        // Create key (with namespace if available)
+                        var primaryKey = !string.IsNullOrEmpty(effectiveNamespace) 
+                            ? $"{effectiveNamespace}/{endpointName}" 
+                            : endpointName;
+                        
+                        endpoints[primaryKey] = definition;
 
-                        Log.Debug($"📊 SQL Endpoint: {endpointName}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}");
+                        Log.Debug($"📊 SQL Endpoint: {primaryKey}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}; Namespace: {effectiveNamespace ?? "None"}");
                     }
                     else
                     {
@@ -497,6 +669,9 @@ public static class EndpointHandler
                             continue;
                         }
 
+                        // Set folder name for backward compatibility with SwaggerTag logic
+                        definition.FolderName = endpointName;
+
                         // Add the endpoint to the dictionary
                         endpoints[endpointName] = definition;
 
@@ -552,8 +727,14 @@ public static class EndpointHandler
 
                     if (definition != null)
                     {
-                        // Extract endpoint name from directory name
-                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
+                        // Extract namespace and endpoint name from directory structure
+                        var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
+                        
+                        // Set inferred namespace (entity.json namespace takes precedence)
+                        definition.InferredNamespace = inferredNamespace;
+                        
+                        // Set folder name for backward compatibility with SwaggerTag logic
+                        definition.FolderName = endpointName;
 
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
@@ -561,14 +742,32 @@ public static class EndpointHandler
                             Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
                             continue;
                         }
+                        
+                        // Validate namespace if present
+                        var validationErrors = definition.ValidateNamespace();
+                        if (validationErrors.Any())
+                        {
+                            Log.Warning("⚠️ Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
+                            continue;
+                        }
 
-                        // Add the endpoint to the dictionary
-                        endpoints[endpointName] = definition;
+                        // Create the appropriate key based on namespace
+                        var effectiveNamespace = definition.EffectiveNamespace;
+                        
+                        // Create key (with namespace if available)
+                        var primaryKey = !string.IsNullOrEmpty(effectiveNamespace) 
+                            ? $"{effectiveNamespace}/{endpointName}" 
+                            : endpointName;
+                        
+                        endpoints[primaryKey] = definition;
 
-                        Log.Debug("📄 Static Endpoint: {Name} ({IsPrivate}) - {ContentType}",
-                            endpointName,
+                        Log.Debug("📄 Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | SwaggerTag: {SwaggerTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
+                            primaryKey,
                             definition.IsPrivate ? "Private" : "Public",
-                            definition.Properties?.GetValueOrDefault("ContentType", "unknown"));
+                            definition.Properties?.GetValueOrDefault("ContentType", "unknown"),
+                            definition.SwaggerTag,
+                            definition.Namespace ?? "null",
+                            definition.InferredNamespace ?? "null");
                     }
                     else
                     {
@@ -644,6 +843,9 @@ public static class EndpointHandler
                     AllowedEnvironments = entity.AllowedEnvironments,
                     IsPrivate = entity.IsPrivate,
                     Documentation = entity.Documentation,
+                    Namespace = entity.Namespace,
+                    DisplayName = entity.DisplayName,
+                    NamespaceDisplayName = entity.NamespaceDisplayName,
                     // Store static-specific properties in Properties dictionary
                     Properties = new Dictionary<string, object>
                     {
@@ -701,7 +903,12 @@ public static class EndpointHandler
                     CompositeConfig = extendedEntity.CompositeConfig,
                     AllowedEnvironments = extendedEntity.AllowedEnvironments,
                     Documentation = extendedEntity.Documentation,
-                    CustomProperties = extendedEntity.CustomProperties
+                    CustomProperties = extendedEntity.CustomProperties,
+                    
+                    // NEW: Copy namespace properties from entity
+                    Namespace = extendedEntity.Namespace,
+                    DisplayName = extendedEntity.DisplayName,
+                    NamespaceDisplayName = extendedEntity.NamespaceDisplayName
                 };
             }
 
@@ -720,7 +927,12 @@ public static class EndpointHandler
                     CompositeConfig = null,
                     AllowedEnvironments = entity.AllowedEnvironments,
                     Documentation = entity.Documentation,
-                    CustomProperties = entity.CustomProperties
+                    CustomProperties = entity.CustomProperties,
+                    
+                    // NEW: Copy namespace properties from entity (fallback)
+                    Namespace = entity.Namespace,
+                    DisplayName = entity.DisplayName,
+                    NamespaceDisplayName = entity.NamespaceDisplayName
                 };
             }
         }
@@ -769,7 +981,12 @@ public static class EndpointHandler
                     FunctionParameters = entity.FunctionParameters,
                     Methods = allowedMethods,
                     AllowedEnvironments = entity.AllowedEnvironments,
-                    Documentation = entity.Documentation
+                    Documentation = entity.Documentation,
+                    
+                    // NEW: Copy namespace properties from entity
+                    Namespace = entity.Namespace,
+                    DisplayName = entity.DisplayName,
+                    NamespaceDisplayName = entity.NamespaceDisplayName
                 };
             }
         }

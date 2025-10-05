@@ -47,9 +47,17 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
             // Get allowed environments for parameter description
             var allowedEnvironments = GetAllowedEnvironments();
 
+            // Sort composite endpoints by name to ensure alphabetical order in documentation
+            var sortedCompositeEndpoints = compositeEndpoints
+                .OrderBy(ep => ep.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             // Create paths for each composite endpoint
-            foreach (var (endpointName, definition) in compositeEndpoints)
+            foreach (var endpoint in sortedCompositeEndpoints)
             {
+                string endpointName = endpoint.Key;
+                var definition = endpoint.Value;
+                
                 // Load documentation from entity.json file
                 var documentation = LoadCompositeDocumentation(endpointName);
                 

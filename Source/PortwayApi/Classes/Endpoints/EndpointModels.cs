@@ -10,6 +10,16 @@ using Serilog;
 public class Documentation
 {
     /// <summary>
+    /// Brief summary of what this endpoint does (e.g., "Get product details")
+    /// </summary>
+    public string? Summary { get; set; }
+    
+    /// <summary>
+    /// Detailed description of the endpoint functionality (supports Markdown)
+    /// </summary>
+    public string? Description { get; set; }
+    
+    /// <summary>
     /// Description for the OpenAPI tag (supports Markdown)
     /// </summary>
     public string? TagDescription { get; set; }
@@ -36,6 +46,26 @@ public class ExtendedEndpointEntity
     public CompositeDefinition? CompositeConfig { get; set; }
     public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
     public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
+    
+    // NEW: Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related endpoints (e.g., "CRM", "External")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this specific endpoint (e.g., "Weather Service")
+    /// Used in Swagger documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "External Services")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+    
     public Documentation? Documentation { get; set; } // OpenAPI documentation settings
     public Dictionary<string, object>? CustomProperties { get; set; } // Custom properties for extended functionality
 }
@@ -65,6 +95,25 @@ public class EndpointEntity
     public string Type { get; set; } = "Standard"; // Standard, SQL, Composite
     public CompositeDefinition? CompositeConfig { get; set; }
     public List<string>? AllowedEnvironments { get; set; }
+    
+    // NEW: Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this specific endpoint (e.g., "Account Management")
+    /// Used in Swagger documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Customer Relationship Management")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
     
     // OpenAPI documentation properties
     public Documentation? Documentation { get; set; }
@@ -148,6 +197,30 @@ public class FileEndpointEntity
     /// List of environments allowed to access this endpoint
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
+    
+    // NEW: Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related file endpoints (e.g., "CRM", "HR")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this file endpoint (e.g., "Customer Documents")
+    /// Used in Swagger documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Customer Relationship Management")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+    
+    /// <summary>
+    /// OpenAPI documentation for this endpoint
+    /// </summary>
+    public Documentation? Documentation { get; set; }
 }
 
 /// <summary>
@@ -179,6 +252,25 @@ public class StaticEndpointEntity
     /// List of environments allowed to access this endpoint
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
+    
+    // NEW: Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related static endpoints (e.g., "Reports", "Templates")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this static endpoint (e.g., "Sales Report Template")
+    /// Used in Swagger documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Reporting System")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
     
     /// <summary>
     /// OpenAPI documentation for this endpoint

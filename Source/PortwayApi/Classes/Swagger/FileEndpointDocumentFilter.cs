@@ -45,10 +45,12 @@ public class FileEndpointDocumentFilter : IDocumentFilter
                     continue; // Skip private endpoints
                 }
                 
-                // Use "Files" as the main tag, with endpoint-specific descriptions stored for operations
+                // Use "Files" as the main tag for all file endpoints (file endpoints don't use namespaces)
                 string mainTag = "Files";
+                
                 if (!documentTags.ContainsKey(mainTag))
                 {
+                    // Use consistent description for Files tag
                     documentTags[mainTag] = "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.";
                 }
 
@@ -68,8 +70,7 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             // Add collected file endpoint tags to the document
             AddFileTagsToDocument(swaggerDoc, documentTags);
             
-            // Sort ALL tags alphabetically (FileEndpointDocumentFilter runs last)
-            SortAllTagsAlphabetically(swaggerDoc);
+            // Note: Tag sorting is now handled by TagSorterDocumentFilter which runs after this filter
         }
         catch (Exception ex)
         {
@@ -694,38 +695,6 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         {
             _logger.LogError(ex, "Error loading environment settings");
             return new List<string> { "prod", "dev" };
-        }
-    }
-
-    /// <summary>
-    /// Sort all tags in the document alphabetically. This runs in FileEndpointDocumentFilter which is the last document filter in the chain.
-    /// </summary>
-    private void SortAllTagsAlphabetically(OpenApiDocument swaggerDoc)
-    {
-        try 
-        {
-            if (swaggerDoc.Tags != null && swaggerDoc.Tags.Count > 0)
-            {                
-                var sortedTags = swaggerDoc.Tags
-                    .OrderBy(tag => tag.Name, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                
-                swaggerDoc.Tags.Clear();
-                foreach (var tag in sortedTags)
-                {
-                    swaggerDoc.Tags.Add(tag);
-                }
-                
-                string.Join(", ", swaggerDoc.Tags.Select(t => t.Name));
-            }
-            else
-            {
-                _logger.LogWarning("⚠️ No tags found to sort");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ Error in tag sorting");
         }
     }
 

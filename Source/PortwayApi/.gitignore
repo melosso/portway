@@ -4,6 +4,7 @@
 /[Ll]og/
 /[Ll]ogs/
 files/
+storage/
 
 # Visual Studio files
 .vs/

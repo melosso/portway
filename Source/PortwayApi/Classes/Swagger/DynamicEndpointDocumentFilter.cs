@@ -51,6 +51,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             
             // Add all collected tags to the document with descriptions
             AddTagsToDocument(swaggerDoc, documentTags);
+            
 
             // Ensure application/json is added automatically to all operations with request bodies
             foreach (var path in swaggerDoc.Paths)
@@ -110,7 +111,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         // Get SQL endpoints
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
         
-        foreach (var endpoint in sqlEndpoints)
+        // Sort endpoints by SwaggerTag to ensure alphabetical order in documentation
+        var sortedSqlEndpoints = sqlEndpoints
+            .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        
+        foreach (var endpoint in sortedSqlEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
@@ -118,11 +124,11 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             // Collect tag description if provided
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
             {
-                documentTags[endpointName] = definition.Documentation.TagDescription;
+                documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
             }
             
-            // Path template for this endpoint
-            string path = $"/api/{{env}}/{endpointName}";
+            // Path template for this endpoint (use FullPath to include namespace if present)
+            string path = $"/api/{{env}}/{definition.FullPath}";
             
             // Create path item if it doesn't exist
             if (!swaggerDoc.Paths.ContainsKey(path))
@@ -190,8 +196,13 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         // Get proxy endpoints using the new method
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
+        
+        // Sort endpoints by SwaggerTag to ensure alphabetical order in documentation
+        var sortedProxyEndpoints = proxyEndpoints
+            .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
+            .ToList();
             
-        foreach (var endpoint in proxyEndpoints)
+        foreach (var endpoint in sortedProxyEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
@@ -200,10 +211,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             if (definition.IsPrivate || definition.IsComposite)
                 continue;
             
-            // Collect tag description if provided
-            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
+            // Collect tag description if provided using the SwaggerTag for proper namespace grouping
+            // Only set the description if we haven't seen this SwaggerTag before to avoid overwriting
+            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) && 
+                !documentTags.ContainsKey(definition.SwaggerTag))
             {
-                documentTags[endpointName] = definition.Documentation.TagDescription;
+                documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
             }
                 
             // Path template for this endpoint
@@ -220,10 +233,10 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             {
                 var operation = new OpenApiOperation
                 {
-                    Tags = new List<OpenApiTag> { new OpenApiTag { Name = endpointName } },
-                    Summary = GetOperationSummary(method, endpointName, definition),
-                    Description = GetOperationDescription(method, endpointName, definition),
-                    OperationId = $"{method.ToLower()}_{endpointName}".Replace(" ", "_"),
+                    Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
+                    Summary = GetOperationSummary(method, definition.DisplayName ?? definition.EndpointName, definition),
+                    Description = GetOperationDescription(method, definition.DisplayName ?? definition.EndpointName, definition),
+                    OperationId = $"{method.ToLower()}_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
                     Parameters = new List<OpenApiParameter>()
                 };
 
@@ -587,7 +600,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         var staticEndpoints = EndpointHandler.GetStaticEndpoints();
         
-        foreach (var endpoint in staticEndpoints)
+        // Sort endpoints by endpoint name to ensure alphabetical order in documentation
+        var sortedStaticEndpoints = staticEndpoints
+            .OrderBy(ep => ep.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        
+        foreach (var endpoint in sortedStaticEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
@@ -596,18 +614,19 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             if (definition.IsPrivate)
                 continue;
             
-            // Collect tag description
+            // Collect tag description using the SwaggerTag for proper namespace grouping
+            string swaggerTag = definition.SwaggerTag;
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
             {
-                documentTags[endpointName] = definition.Documentation.TagDescription;
+                documentTags[swaggerTag] = definition.Documentation.TagDescription;
             }
             
             // Get content type and filtering capability
             var contentType = definition.Properties?.GetValueOrDefault("ContentType", "text/plain")?.ToString() ?? "text/plain";
             var enableFiltering = (bool)(definition.Properties?.GetValueOrDefault("EnableFiltering", false) ?? false);
             
-            // Create single OpenAPI path with environment parameter
-            string path = $"/api/{{env}}/{endpointName}";
+            // Create single OpenAPI path with environment parameter (use FullPath to include namespace if present)
+            string path = $"/api/{{env}}/{definition.FullPath}";
             
             if (!swaggerDoc.Paths.ContainsKey(path))
             {
@@ -620,7 +639,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 OperationId = $"get{endpointName}Static{operationIdCounter++}",
                 Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("GET") ?? $"Get content from {endpointName}",
                 Description = GetStaticOperationDescription("GET", endpointName, definition, contentType),
-                Tags = new List<OpenApiTag> { new OpenApiTag { Name = endpointName } },
+                Tags = new List<OpenApiTag> { new OpenApiTag { Name = swaggerTag } },
                 Parameters = new List<OpenApiParameter>
                 {
                     // Environment parameter
@@ -896,7 +915,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = endpointName } }, // Assign unique tag based on endpoint name
+            Tags = new List<OpenApiTag> { new() { Name = definition.SwaggerTag } }, // Use SwaggerTag for proper namespace grouping
             Summary = GetOperationSummary(method, endpointName, definition),
             Description = GetOperationDescription(method, endpointName, definition),
             OperationId = $"op_{operationId}",
@@ -1352,7 +1371,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = endpointName } }, // Assign unique tag based on endpoint name
+            Tags = new List<OpenApiTag> { new() { Name = definition.SwaggerTag } }, // Use SwaggerTag for proper namespace grouping (consistent with other operations)
             Summary = GetOperationSummary("DELETE", endpointName, definition),
             Description = GetOperationDescription("DELETE", endpointName, definition),
             OperationId = $"op_{operationId}",
@@ -1560,7 +1579,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = endpointName } }, // Assign unique tag based on endpoint name
+            Tags = new List<OpenApiTag> { new() { Name = definition?.SwaggerTag ?? endpointName } }, // Use SwaggerTag for consistency
             Summary = definition != null ? GetOperationSummary(method, endpointName, definition) : $"{method} {endpointName}",
             Description = definition != null ? GetOperationDescription(method, endpointName, definition) : $"Proxy {method} request to {targetUrl}",
             OperationId = $"op_{operationId}",
@@ -1762,7 +1781,29 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             return customSummary;
         }
         
-        // Return default format
+        // Use Documentation.Summary if available for better descriptions
+        if (!string.IsNullOrWhiteSpace(definition.Documentation?.Summary))
+        {
+            var summary = definition.Documentation.Summary.Trim();
+            
+            // Check if summary already starts with an action verb - if so, use it as-is for GET
+            var startsWithActionVerb = summary.StartsWith("Retrieve", StringComparison.OrdinalIgnoreCase) ||
+                                     summary.StartsWith("Get", StringComparison.OrdinalIgnoreCase) ||
+                                     summary.StartsWith("Fetch", StringComparison.OrdinalIgnoreCase) ||
+                                     summary.StartsWith("Load", StringComparison.OrdinalIgnoreCase);
+            
+            return method.ToUpper() switch
+            {
+                "GET" => startsWithActionVerb ? summary : $"Retrieve {summary.ToLower()}",
+                "POST" => $"Create new {summary.ToLower()}",
+                "PUT" => $"Update {summary.ToLower()}",
+                "PATCH" => $"Partially update {summary.ToLower()}",
+                "DELETE" => $"Delete {summary.ToLower()}",
+                _ => $"{method} {summary}"
+            };
+        }
+        
+        // Return default format using DisplayName if available
         return $"{method} {endpointName}";
     }
     
@@ -1776,6 +1817,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             && !string.IsNullOrWhiteSpace(customDocumentation))
         {
             return customDocumentation;
+        }
+        
+        // Use Documentation.Description if available for better descriptions
+        if (!string.IsNullOrWhiteSpace(definition.Documentation?.Description))
+        {
+            return definition.Documentation.Description;
         }
         
         // Return default description based on endpoint type

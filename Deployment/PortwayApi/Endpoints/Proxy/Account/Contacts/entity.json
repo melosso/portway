@@ -1,0 +1,26 @@
+{ 
+    "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc/ContactPerson", 
+    "Methods": ["GET","PUT"],
+    "Namespace": "Account",
+    "NamespaceDisplayName": "Account",
+    "CustomProperties": {
+        "HttpMethodTranslation": "PUT:MERGE",
+        "HttpMethodAppendHeaders": "PUT:X-Custom-Original-Method={ORIGINAL_METHOD}"
+    },
+    "AllowedEnvironments": ["Synergy"],
+    "Documentation": {
+        "TagDescription": "**Contact Maintenance**\n\nYou'll be able to retrieve and update contact person records easily with this endpoint.",
+        "MethodDescriptions": {
+            "GET": "Retrieve contact records",
+            "POST": "Create a new contact",
+            "PUT": "Update an existing contact",
+            "DELETE": "Remove a contact"
+        },
+        "MethodDocumentation": {
+            "GET": "Retrieve contact person records including names, roles, and communication details.",
+            "PUT": "Modify existing contact information such as phone numbers, email addresses, or job titles.",
+            "POST": "Add new contact persons to your system with complete profile setup and validation.",
+            "DELETE": "Remove contact persons from the system. **Caution:** This action may affect related transactions and history."
+        }
+    }
+} 

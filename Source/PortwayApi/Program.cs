@@ -364,7 +364,8 @@ try
     app.UseStaticFilesWithFallback(app.Environment);
 
     // 8. Development request/response logging
-    if (builder.Environment.IsDevelopment())
+    var enableRequestLogging = builder.Configuration.GetValue<bool>("LogSettings:LogResponseToFile") || builder.Environment.IsDevelopment();
+    if (enableRequestLogging)
     {
         app.Use(async (context, next) =>
         {
