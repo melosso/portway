@@ -105,7 +105,7 @@ Authorization: Bearer <token>
   "event": "payment.success",
   "payment_id": "pay_123456",
   "amount": 99.99,
-  "currency": "USD",
+  "currency": "EUR",
   "customer": {
     "id": "cust_789",
     "email": "customer@example.com"
@@ -180,7 +180,7 @@ Content-Type: application/json
     "object": {
       "id": "ch_123456789",
       "amount": 2000,
-      "currency": "usd"
+      "currency": "eur"
     }
   }
 }

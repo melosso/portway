@@ -1,0 +1,17 @@
+{
+  "ContentType": "application/json",
+  "ContentFile": "costcenters-2025.json",
+  "EnableFiltering": true,
+  "Namespace": "Masterdata",
+  "NamespaceDisplayName": "Masterdata",  
+  "AllowedEnvironments": ["600", "700", "Synergy"],
+  "Documentation": {
+    "TagDescription": "**Masterdata**\n\nAccess all relevent masterdata, which may be used throughout the system.",
+    "MethodDescriptions": {
+      "GET": "Retrieve costcenters"
+    },
+    "MethodDocumentation": {
+      "GET": "Returns static cost center information for testing and development purposes. Supports OData filtering for flexible data retrieval.\n\n> [!TIP]\n> Supports OData filtering: Use `$filter`, `$select`, `$orderby`, `$top`, and `$skip` parameters for flexible data retrieval."
+    }
+  }
+}

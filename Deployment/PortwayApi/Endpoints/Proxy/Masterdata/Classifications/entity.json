@@ -1,0 +1,16 @@
+{ 
+    "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Classification", 
+    "Methods": ["GET"],
+    "AllowedEnvironments": ["600","700"],
+    "Namespace": "Masterdata",
+    "NamespaceDisplayName": "Masterdata",
+    "Documentation": {
+        "TagDescription": "**Masterdata**\n\nAccess all relevent masterdata, which may be used throughout the system.",
+        "MethodDescriptions": {
+            "GET": "Retrieve classifications"
+        },
+        "MethodDocumentation": {
+            "GET": "Access standard account categorization codes used for organizing customers and vendors into business segments."
+        }
+    }
+} 
