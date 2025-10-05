@@ -17,7 +17,7 @@
     "Documentation": {
         "TagDescription": "**Product Stock Information**\n\nAccess current stock levels and availability for products across warehouses. Retrieve essential inventory data for stock management and order fulfillment.\n\n> [!IMPORTANT]\n> This endpoint provides real-time stock information including available quantities and pending orders.",
         "MethodDescriptions": {
-            "GET": "Retrieve product stock information"
+            "GET": "Retrieve product stock"
         },
         "MethodDocumentation": {
             "GET": "You can retrieve **stock information** for products, including current quantities in stock, free stock available for orders, and quantities already committed to orders across different warehouses."

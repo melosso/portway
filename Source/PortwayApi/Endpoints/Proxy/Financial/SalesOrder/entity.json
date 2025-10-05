@@ -2,6 +2,8 @@
   "Type": "Composite",
   "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
   "Methods": ["POST"],
+  "Namespace": "Financial",
+  "NamespaceDisplayName": "Financial",
   "CompositeConfig": {
     "Name": "SalesOrder",
     "Description": "Creates a complete sales order with multiple order lines and a header",

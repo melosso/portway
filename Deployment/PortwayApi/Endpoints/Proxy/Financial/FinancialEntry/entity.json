@@ -2,6 +2,8 @@
   "Type": "Composite",
   "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
   "Methods": ["POST"],
+  "Namespace": "Financial",
+  "NamespaceDisplayName": "Financial",
   "CompositeConfig": {
     "Name": "FinancialEntry",
     "Description": "Creates a complete financial transaction (which requires a Header and one or more lines)",

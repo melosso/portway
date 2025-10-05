@@ -23,46 +23,40 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
     {
         try
         {
-            // Load composite endpoint definitions using the centralized EndpointHandler
-            var proxyEndpointMap = EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
-            var compositeEndpoints = EndpointHandler.GetCompositeDefinitions(proxyEndpointMap);
+            // Get proxy endpoints directly to access full namespace information
+            var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
             
-            // Add Composite tag to document if there are any composite endpoints
-            if (compositeEndpoints.Any())
-            {
-                // Initialize tags collection if it doesn't exist
-                swaggerDoc.Tags ??= new List<OpenApiTag>();
-                
-                // Add Composite tag if it doesn't already exist
-                if (!swaggerDoc.Tags.Any(t => t.Name.Equals("Composite", StringComparison.OrdinalIgnoreCase)))
-                {
-                    swaggerDoc.Tags.Add(new OpenApiTag
-                    {
-                        Name = "Composite",
-                        Description = "**Composite Operations**\n\nComplex multi-step operations that orchestrate endpoints to handle specific (business) logic."
-                    });
-                }
-            }
+            // Filter for composite endpoints only
+            var compositeEndpoints = proxyEndpoints
+                .Where(kvp => kvp.Value.IsComposite)
+                .ToList();
             
             // Get allowed environments for parameter description
             var allowedEnvironments = GetAllowedEnvironments();
+            
+            // Collect tags with descriptions for proper namespace grouping
+            var documentTags = new Dictionary<string, string>();
 
             // Sort composite endpoints by name to ensure alphabetical order in documentation
             var sortedCompositeEndpoints = compositeEndpoints
-                .OrderBy(ep => ep.Key, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             // Create paths for each composite endpoint
             foreach (var endpoint in sortedCompositeEndpoints)
             {
-                string endpointName = endpoint.Key;
+                string endpointKey = endpoint.Key;
                 var definition = endpoint.Value;
                 
-                // Load documentation from entity.json file
-                var documentation = LoadCompositeDocumentation(endpointName);
+                // Collect tag description if provided using the SwaggerTag for proper namespace grouping
+                if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) && 
+                    !documentTags.ContainsKey(definition.SwaggerTag))
+                {
+                    documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
+                }
                 
-                // Create a generic path with {env} parameter
-                string path = $"/api/{{env}}/composite/{endpointName}";
+                // Use the namespaced path from FullPath instead of hardcoded /composite/
+                string path = $"/api/{{env}}/{definition.FullPath}";
                 
                 // If the path doesn't exist yet, create it
                 if (!swaggerDoc.Paths.ContainsKey(path))
@@ -73,10 +67,10 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 // Create the POST operation for the composite endpoint
                 var operation = new OpenApiOperation
                 {
-                    Tags = new List<OpenApiTag> { new OpenApiTag { Name = "Composite" } },
-                    Summary = documentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? $"Execute {endpointName} endpoint",
-                    Description = documentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? definition.Description ?? $"Executes the {endpointName} composite process with multiple steps",
-                    OperationId = $"composite_{endpointName}".Replace(" ", "_"),
+                    Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
+                    Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? $"Execute {definition.EndpointName} composite endpoint",
+                    Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? definition.CompositeConfig?.Description ?? $"Executes the {definition.EndpointName} composite process with multiple steps",
+                    OperationId = $"composite_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
                     Parameters = new List<OpenApiParameter>()
                 };
 
@@ -112,15 +106,15 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 };
 
                 // Check if this is the SalesOrder endpoint to add specialized examples
-                if (string.Equals(endpointName, "SalesOrder", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(definition.EndpointName, "SalesOrder", StringComparison.OrdinalIgnoreCase))
                 {
                     // Add SalesOrder-specific example
                     AddSalesOrderExample(operation, requestSchema);
                 }
-                else
+                else if (definition.CompositeConfig?.Steps != null)
                 {
                     // Add generic examples based on steps for other composite endpoints
-                    foreach (var step in definition.Steps)
+                    foreach (var step in definition.CompositeConfig.Steps)
                     {
                         if (step.IsArray && !string.IsNullOrEmpty(step.ArrayProperty))
                         {
@@ -192,6 +186,26 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
 
                 // Add the operation to the path
                 swaggerDoc.Paths[path].Operations[OperationType.Post] = operation;
+            }
+            
+            // Add collected tags to the document
+            if (documentTags.Any())
+            {
+                // Initialize tags collection if it doesn't exist
+                swaggerDoc.Tags ??= new List<OpenApiTag>();
+                
+                foreach (var tag in documentTags)
+                {
+                    // Add tag if it doesn't already exist
+                    if (!swaggerDoc.Tags.Any(t => t.Name.Equals(tag.Key, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        swaggerDoc.Tags.Add(new OpenApiTag
+                        {
+                            Name = tag.Key,
+                            Description = tag.Value
+                        });
+                    }
+                }
             }
         }
         catch (Exception ex)
@@ -322,36 +336,5 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
     {
         public string ServerName { get; set; } = ".";
         public List<string> AllowedEnvironments { get; set; } = new List<string>();
-    }
-
-    /// <summary>
-    /// Load composite endpoint documentation from entity.json file
-    /// </summary>
-    private Documentation? LoadCompositeDocumentation(string endpointName)
-    {
-        try
-        {
-            string entityPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy", endpointName, "entity.json");
-            if (!File.Exists(entityPath))
-            {
-                _logger.LogWarning("⚠️ Composite endpoint entity.json not found at: {Path}", entityPath);
-                return null;
-            }
-
-            string json = File.ReadAllText(entityPath);
-            var entity = JsonSerializer.Deserialize<CompositeEntity>(json);
-            return entity?.Documentation;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ Error loading composite documentation for {EndpointName}", endpointName);
-            return null;
-        }
-    }
-
-    // Helper class for deserializing entity.json
-    private class CompositeEntity
-    {
-        public Documentation? Documentation { get; set; }
     }
 }

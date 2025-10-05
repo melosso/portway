@@ -48,7 +48,7 @@ public class StartupLogger : IHostedService
 
     private void LogApplicationStartup()
     {
-        Log.Information("✅ Portway has started successfully");
+        Log.Information("🦖 Application has started successfully");
     }  
 
     private void LogEnvironmentInfo()
@@ -56,18 +56,21 @@ public class StartupLogger : IHostedService
         try
         {
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
-            Log.Information("🌎 Environment: {Environment}", env);
-            Log.Debug("🖥️ Host: {MachineName}", Environment.MachineName);
-            Log.Debug("💾 Working Directory: {WorkingDirectory}", Directory.GetCurrentDirectory());
-            Log.Debug("⏰ Current Time: {Time}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-            Log.Debug("🔧 .NET Version: {DotNetVersion}", Environment.Version);
-            Log.Debug("💻 OS: {OS}", Environment.OSVersion);
+
+            Log.Information("🐳 Environment: {Environment}", env);
+            Log.Debug("│");
+            Log.Debug("├─ Host: {MachineName}", Environment.MachineName);
+            Log.Debug("├─ Working Directory: {WorkingDirectory}", Directory.GetCurrentDirectory());
+            Log.Debug("├─ Current Time: {Time}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+            Log.Debug("├─ .NET Version: {DotNetVersion}", Environment.Version);
+            Log.Debug("└─ OS: {OS}", Environment.OSVersion);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Unable to log complete environment information");
+            Log.Warning(ex, "Unable to log environment information");
         }
     }
+
 
     private void LogConfigurationInfo()
     {

@@ -71,6 +71,21 @@ Where-Object {
     (Test-Path "$($_.FullName)\Microsoft.Data.SqlClient.resources.dll" -ErrorAction SilentlyContinue)
 } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
+# Remove examples and definitions folders from Endpoints directory
+Write-Host "Removing examples and definitions folders from Endpoints..."
+$endpointsPath = Join-Path $deploymentPath "Endpoints"
+if (Test-Path $endpointsPath) {
+    # Remove all 'examples' folders
+    Get-ChildItem -Path $endpointsPath -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "examples" } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    
+    # Remove all 'definitions' folders
+    Get-ChildItem -Path $endpointsPath -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "definitions" } |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+}
+
 # Generate web.config
 $webConfigContent = @'
 <?xml version="1.0" encoding="utf-8"?>
