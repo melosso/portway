@@ -50,13 +50,16 @@ Generate tokens directly with parameters:
 # Basic token generation
 TokenGenerator.exe username
 
-# Token with specific scopes
+# Token with specific endpoint scopes
 TokenGenerator.exe username -s "Products,Orders,Customers"
+
+# Token with specific namespace scopes
+TokenGenerator.exe hr-system -s "Company/*"
 
 # Token with environment restrictions
 TokenGenerator.exe username -e "prod,dev"
 
-# Token with expiration
+# Token with expiration (in days)
 TokenGenerator.exe username --expires 90
 
 # Combined parameters
@@ -94,13 +97,13 @@ TokenGenerator.exe username -s "Products,Orders" -e "prod" --expires 30 --descri
 TokenGenerator.exe admin -s "*"
 
 # Specific endpoints
-TokenGenerator.exe frontend -s "Products,Orders,Customers"
+TokenGenerator.exe frontend -s "Products,Orders,Customer/*"
 
 # Pattern matching
 TokenGenerator.exe reporting -s "Report*,Export*"
 
-# Read-only access (GET endpoints)
-TokenGenerator.exe readonly -s "Products,Orders" --description "Read-only access"
+# Specific service access
+TokenGenerator.exe frontend -s "Products,Orders" --description "Frontend service access"
 ```
 
 ## Environment Restrictions
