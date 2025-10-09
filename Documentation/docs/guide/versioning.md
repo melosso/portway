@@ -11,20 +11,39 @@ Versioning relies on having multiple Portway installations in separate version-s
 - **Default Version**: Requests to the root URL are redirected to the default version (e.g., `v1`).
 - **Environment Variables**: You can use environment variables to dynamically configure the default version.
 
+### Key Concepts Visualization
+
+To better understand the key concepts of versioning in Portway, refer to the simplified diagram below:
+
+```mermaid
+graph TD
+    Client[External Client] -->|HTTP/HTTPS| IIS[IIS 8.0]
+    IIS -->|Redirects/Rules| Versions[Main website with redirection rules]
+    Versions -->|API v1| API_V1[Portway API v1]
+    Versions -->|API v2| API_V2[Portway API v2]
+    Versions -->|Development API| Dev_API[Portway API for Dev]
+
+    subgraph Versioned Instances 
+        API_V1 -->|BasePath: /v1/| DB1[(SQL Production Server)]
+        API_V2 -->|BasePath: /v2/| DB2[(SQL Production Server)]
+        Dev_API -->|BasePath: /dev/| DBDev[(SQL Development Server)]
+    end
+```
+
 ## Setting Up Versioning in IIS
 
 To enable versioning in IIS, follow these steps:
 
 ### 1. Add Version Folders
 
-1. Create separate folders for each version of Portway (e.g., `v1`, `v2`).
+1. Create separate folders for each version of Portway (e.g., `v1`, `v2`). E.g. `C:\path\to\your\PortwayApi\v1` and `C:\path\to\your\PortwayApi\v2`
 2. Add the folder to IIS and convert it to an application:
    - Open IIS Manager.
    - Right-click the folder (e.g., `v1`) and select **Convert to Application**.
 
 ### 2. Add Configuration Files
 
-In the root folder of your IIS site, add the following files:
+In the root folder of your IIS site, add the following files (e.g. `C:\path\to\your\PortwayApi`).
 
 #### `web.config`
 
@@ -32,33 +51,36 @@ In the root folder of your IIS site, add the following files:
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <system.webServer>
-    <rewrite>
-      <rules>
-        <!-- Allow /v1/ and /v2/ to pass through without any changes -->
-        <rule name="Allow v1 and v2" stopProcessing="true">
-          <match url="^(v1/|v2/).*" />
-          <action type="None" />
-        </rule>
+	<rewrite>
+	  <rules>
 
-        <!-- Redirect root (/) to /v1/ -->
-        <rule name="Redirect root to DEFAULT version" stopProcessing="true">
-          <match url="^$" />
-          <action type="Redirect" url="v1/" redirectType="Permanent" />
-        </rule>
+		<!-- Allow all versioned paths (v1, v2, dev) to pass through unchanged -->
+		<rule name="Allow versioned paths" stopProcessing="true">
+		  <match url="^(v1|v2|dev)(/.*)?$" />
+		  <action type="None" />
+		</rule>
 
-        <!-- Redirect index.html to /v1/ -->
-        <rule name="Redirect index.html to DEFAULT version" stopProcessing="true">
-          <match url="^index\.html$" />
-          <action type="Redirect" url="v1/" redirectType="Permanent" />
-        </rule>
+		<!-- Redirect root (/) to the default version -->
+		<rule name="Redirect root to default version" stopProcessing="true">
+		  <match url="^$" />
+		  <action type="Redirect" url="v1/" redirectType="Permanent" />
+		</rule>
 
-        <!-- For all other URLs that don't match /v1/ or /v2/, redirect permanently to /v1/ -->
-        <rule name="Redirect non-versioned requests to DEFAULT version" stopProcessing="true">
-          <match url="^(?!v1/|v2/).*" />
-          <action type="Redirect" url="v1/" redirectType="Permanent" />
-        </rule>
-      </rules>
-    </rewrite>
+		<!-- Redirect index.html to the default version -->
+		<rule name="Redirect index.html to default version" stopProcessing="true">
+		  <match url="^index\.html$" />
+		  <action type="Redirect" url="v1/" redirectType="Permanent" />
+		</rule>
+
+		<!-- Redirect any non-versioned request to the default version -->
+		<rule name="Redirect non-versioned requests to default version" stopProcessing="true">
+		  <match url="^(?!v1/|v2/|dev/).*" />
+		  <action type="Redirect" url="v1/" redirectType="Permanent" />
+		</rule>
+
+	  </rules>
+	</rewrite>
+
 
     <!-- Serve index.html as the default document -->
     <defaultDocument>
@@ -67,7 +89,7 @@ In the root folder of your IIS site, add the following files:
         <add value="index.html" />
       </files>
     </defaultDocument>
-
+	
     <httpProtocol>
       <customHeaders>
         <remove name="X-Powered-By" />
@@ -102,48 +124,14 @@ In the root folder of your IIS site, add the following files:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="0;url=v1/">
     <title>Redirecting...</title>
-    <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .container {
-            text-align: center;
-        }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        a {
-            color: white;
-            text-decoration: underline;
-        }
-    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h1>Redirecting</h1>
-        <p>If you are not redirected automatically, <a href="v1/">click here</a>.</p>
-    </div>
 </body>
 </html>
 ```
+
+> [!TIP]
+> This is just a configuration example, make sure to change the redirection rules based on your needs and requirements. 
 
 ### 3. Update `appsettings.json`
 
@@ -158,7 +146,12 @@ In each version folder, update the `PathBase` property in the `appsettings.json`
 
 This ensures that the application correctly identifies the base path for each version.
 
-### 4. Test the Setup
+
+### 4. Create Seperate Application Pools
+
+The same application pool can't be used twice for the same application. To circumvent this limitation, make sure to create seperate application pools for each version (e.g. `PortwayApi_v1` and `PortwayApi_v2`) and bind them to each site.
+
+### 5. Test the Setup
 
 1. Open a browser and navigate to the root URL of your site.
 2. Verify that requests are redirected to the default version (e.g., `/v1/`).

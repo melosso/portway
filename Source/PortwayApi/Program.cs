@@ -313,7 +313,7 @@ try
     {
         // Ensure path starts with /
         if (!pathBase.StartsWith("/"))
-        {
+        {   
             pathBase = "/" + pathBase;
         }
         
@@ -391,26 +391,28 @@ try
     app.UseDefaultFilesWithOptions();
     app.UseStaticFiles();
 
-    // 8. Custom root path handling middleware (AFTER static files)
+    // 8. Custom root path handling middleware
     app.Use(async (context, next) =>
     {
         var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
         var pathBase = context.Request.PathBase.Value ?? "";
         
+        Log.Debug("Incoming request: PathBase={PathBase}, Path={Path}", pathBase, path);
+
         // Handle root path redirect
-        if (path == "/")
+        if (path == "/" || path == "")
         {
-            Log.Information("🏠 Root path accessed (PathBase: {PathBase})", pathBase);
-            
+            Log.Debug("Root path accessed (PathBase: {PathBase})", pathBase);
+
             // Check if index.html exists in wwwroot
             var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var indexPath = Path.Combine(webRootPath, "index.html");
-            
+
             if (File.Exists(indexPath))
             {
                 // Check if the request accepts HTML (browser request)
                 var acceptHeader = context.Request.Headers.Accept.ToString();
-                
+
                 if (acceptHeader.Contains("text/html") || string.IsNullOrEmpty(acceptHeader))
                 {
                     // Redirect to index.html so static file middleware can serve it
