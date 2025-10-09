@@ -400,8 +400,7 @@ public class CompositeEndpointHandler
                                 var value = GetNestedValue(prevJson, propPath);
                                 if (value != null)
                                 {
-                                    // IMPORTANT: Extract the raw value and create a new JsonValue
-                                    // instead of trying to reuse the JsonNode which would have a parent
+                                    // Extract the raw value and create a new JsonValue to avoid parent issues
                                     object? rawValue = null;
                                     if (value is JsonValue jsonValue)
                                     {

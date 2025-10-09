@@ -158,10 +158,10 @@ public static class SwaggerConfiguration
                 // Add custom schema filter for recursive types
                 c.SchemaFilter<SwaggerSchemaFilter>();
                 
-                // Important fix: Handle complex parameters in the EndpointController
+                // Handle complex parameters in the EndpointController
                 c.ParameterFilter<ComplexParameterFilter>();
                 
-                // Important: Ignore controller actions to use document filters instead
+                // Ignore controller actions to use document filters instead
                 c.DocInclusionPredicate((docName, apiDesc) =>
                 {
                     var controller = apiDesc.ActionDescriptor.RouteValues.TryGetValue("controller", out var ctrl) ? ctrl : "Unknown";
@@ -228,42 +228,53 @@ public static class SwaggerConfiguration
         // Configure Swagger JSON endpoint
         app.UseSwagger(options => {
             options.RouteTemplate = "docs/openapi/{documentName}/openapi.json";
+            options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
+
             options.PreSerializeFilters.Add((swagger, httpReq) => {
-                // Use the actual request scheme instead of forcing a specific one
-                string scheme = httpReq.Scheme;
-                
-                // Only force HTTPS if explicitly configured AND in production
-                bool isProduction = !app.Environment.IsDevelopment();
-                bool forceHttps = swaggerSettings.ForceHttpsInProduction && isProduction;
-                
-                // Check if running on localhost or a development machine
-                string host = httpReq.Host.HasValue ? httpReq.Host.Value : "localhost";
-                bool isLocalhost = host.Contains("localhost") || host.Contains("127.0.0.1");
-                
-                // Only force HTTPS for production domains, not localhost
-                if (forceHttps && !isLocalhost) {
-                    scheme = "https";
-                    Log.Debug("🔒 Forcing HTTPS in API documentation: Environment={Env}, Host={Host}", 
-                        app.Environment.EnvironmentName, host);
-                }
-                
-                // Also check for standard HTTPS headers
-                if (httpReq.Headers.ContainsKey("X-Forwarded-Proto") && 
-                    httpReq.Headers["X-Forwarded-Proto"] == "https") {
-                    scheme = "https";
-                }
-                
-                swagger.Servers = new List<OpenApiServer> { 
-                    new OpenApiServer { Url = $"{scheme}://{host}{httpReq.PathBase}" } 
-                };
-            });
+                    // Build the correct base URL including PathBase
+                    string scheme = httpReq.Scheme;
+                    
+                    // Only force HTTPS if explicitly configured AND in production
+                    bool isProduction = !app.Environment.IsDevelopment();
+                    bool forceHttps = swaggerSettings.ForceHttpsInProduction && isProduction;
+                    
+                    // Check if running on localhost or a development machine
+                    string host = httpReq.Host.HasValue ? httpReq.Host.Value : "localhost";
+                    bool isLocalhost = host.Contains("localhost") || host.Contains("127.0.0.1");
+                    
+                    // Only force HTTPS for production domains, not localhost
+                    if (forceHttps && !isLocalhost) {
+                        scheme = "https";
+                    }
+                    
+                    // Also check for standard HTTPS headers
+                    if (httpReq.Headers.ContainsKey("X-Forwarded-Proto") && 
+                        httpReq.Headers["X-Forwarded-Proto"] == "https") {
+                        scheme = "https";
+                    }
+                    
+                    // Build server URL with PathBase support
+                    var pathBase = httpReq.PathBase.HasValue ? httpReq.PathBase.Value : "";
+                    var serverUrl = $"{scheme}://{host}{pathBase}";
+                    
+                    swagger.Servers = new List<OpenApiServer> { 
+                        new OpenApiServer { 
+                            Url = serverUrl,
+                            Description = "Current server"
+                        } 
+                    };
+                    
+                    Log.Debug("🔗 OpenAPI Server URL: {ServerUrl}", serverUrl);
+                });
         });
 
         // Configure unified documentation interface at /docs using Scalar
         if (swaggerSettings.EnableScalar)
         {
-            app.MapGet("/docs", () => 
-            {
+            app.MapGet("/docs", (HttpContext context) => 
+            {              
+                // Get the base path for URL construction
+                var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
                 var sidebarConfig = swaggerSettings.ScalarShowSidebar ? "true" : "false";
                 
                 // Debug logging
@@ -294,7 +305,7 @@ public static class SwaggerConfiguration
 <body>
     <script
         id=""api-reference""
-        data-url=""/docs/openapi/{swaggerSettings.Version}/openapi.json""
+        data-url=""{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json""
         data-configuration='{configJson}'>
     </script>
     <script
@@ -430,7 +441,10 @@ public static class SwaggerConfiguration
             // Fallback to basic Swagger UI if Scalar is disabled
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint($"/docs/openapi/{swaggerSettings.Version}/openapi.json", $"{swaggerSettings.Title} {swaggerSettings.Version}");
+                // Get basePath from appsettings.json
+                var pathBase = app.Configuration["PathBase"] ?? "";
+                
+                c.SwaggerEndpoint($"{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json", $"{swaggerSettings.Title} {swaggerSettings.Version}");
                 c.RoutePrefix = swaggerSettings.RoutePrefix ?? "docs";
                 
                 // Apply basic settings

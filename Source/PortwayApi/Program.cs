@@ -304,6 +304,34 @@ try
     // Build the application
     var app = builder.Build();
 
+
+    // Configure PathBase from environment variable or IIS
+    var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
+        ?? builder.Configuration["PathBase"];
+
+    if (!string.IsNullOrEmpty(pathBase))
+    {
+        // Ensure path starts with /
+        if (!pathBase.StartsWith("/"))
+        {
+            pathBase = "/" + pathBase;
+        }
+        
+        app.UsePathBase(pathBase);
+        Log.Information("🔧 Application configured with PathBase: {PathBase}", pathBase);
+        
+        // Add middleware to strip the path base from request path for internal routing
+        app.Use((context, next) =>
+        {
+            if (context.Request.PathBase.HasValue)
+            {
+                Log.Debug("📍 Request PathBase: {PathBase}, Path: {Path}", 
+                    context.Request.PathBase, context.Request.Path);
+            }
+            return next();
+        });
+    }
+
     // ================================
     // MIDDLEWARE PIPELINE CONFIGURATION
     // ================================
@@ -361,43 +389,78 @@ try
 
     // 7. Static Files Configuration - Use Extension Method (DRY principle)
     app.UseDefaultFilesWithOptions();
-    app.UseStaticFilesWithFallback(app.Environment);
+    app.UseStaticFiles();
 
-    // 8. Development request/response logging
-    var enableRequestLogging = builder.Configuration.GetValue<bool>("LogSettings:LogResponseToFile") || builder.Environment.IsDevelopment();
-    if (enableRequestLogging)
+    // 8. Custom root path handling middleware (AFTER static files)
+    app.Use(async (context, next) =>
     {
-        app.Use(async (context, next) =>
+        var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+        var pathBase = context.Request.PathBase.Value ?? "";
+        
+        // Handle root path redirect
+        if (path == "/")
         {
-            // Exclude swagger and docs paths from logging
-            var path = context.Request.Path.Value?.ToLowerInvariant();
-            var shouldLog = !string.IsNullOrEmpty(path) &&
-                           !path.Contains("/swagger") &&
-                           !path.Contains("/docs");
-
-            if (shouldLog)
+            Log.Information("🏠 Root path accessed (PathBase: {PathBase})", pathBase);
+            
+            // Check if index.html exists in wwwroot
+            var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var indexPath = Path.Combine(webRootPath, "index.html");
+            
+            if (File.Exists(indexPath))
             {
-                Log.Information("📥 Incoming request: {Method} {Path}{QueryString}",
-                    context.Request.Method,
-                    context.Request.Path,
-                    context.Request.QueryString);
+                // Check if the request accepts HTML (browser request)
+                var acceptHeader = context.Request.Headers.Accept.ToString();
+                
+                if (acceptHeader.Contains("text/html") || string.IsNullOrEmpty(acceptHeader))
+                {
+                    // Redirect to index.html so static file middleware can serve it
+                    var redirectPath = $"{pathBase}/index.html";
+                    Log.Information("📄 Redirecting to index.html");
+                    context.Response.Redirect(redirectPath, permanent: false);
+                    return;
+                }
+                else
+                {
+                    // For API requests to root, redirect to openapi JSON
+                    var redirectPath = $"{pathBase}/docs/openapi/v1/openapi.json";
+                    Log.Debug("🔗 API root request, redirecting to {Path}", redirectPath);
+                    context.Response.Redirect(redirectPath, permanent: false);
+                    return;
+                }
             }
-
-            var startTime = DateTime.UtcNow;
-            await next();
-            var duration = DateTime.UtcNow - startTime;
-
-            if (shouldLog)
+            else
             {
-                Log.Information("📤 Outgoing response: {StatusCode} for {Path} - Took {Duration}ms",
-                    context.Response.StatusCode,
-                    context.Request.Path,
-                    Math.Round(duration.TotalMilliseconds));
+                // No index.html exists, redirect directly to docs
+                var redirectPath = $"{pathBase}/docs";
+                Log.Information("📖 No index.html found, redirecting to {Path}", redirectPath);
+                context.Response.Redirect(redirectPath, permanent: false);
+                return;
             }
-        });
-    }
+        }
+        
+        // Handle swagger root redirect (legacy support)
+        if (path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
+        {
+            var redirectPath = $"{pathBase}/docs";
+            Log.Debug("📖 Legacy Swagger UI redirect to {Path}", redirectPath);
+            context.Response.Redirect(redirectPath, permanent: true);
+            return;
+        }
+        
+        // Handle documentation paths (logging only)
+        if (context.Request.Path.StartsWithSegments("/docs"))
+        {
+            Log.Debug("📖 Documentation accessed: PathBase={PathBase}, Path={Path}",
+                pathBase, context.Request.Path.Value);
+        }
+        
+        await next();
+    });
 
-    // 9. CORS (before authentication)
+    // 9. Request/response logging
+    var enableRequestLogging = builder.Configuration.GetValue<bool>("LogSettings:LogResponseToFile") || builder.Environment.IsDevelopment();
+
+    // 10. CORS (before authentication)
     if (!builder.Environment.IsDevelopment())
     {
         app.UseCors("AllowAllOrigins");
@@ -412,19 +475,19 @@ try
         });
     }
 
-    // 10. Rate limiting (before authentication to limit by IP)
+    // 11. Rate limiting (before authentication to limit by IP)
     PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app);
 
-    // 11. Authentication and authorization
+    // 12. Authentication and authorization
     app.UseTokenAuthentication();
     app.UseAuthorization();
 
-    // 12. Caching middleware (after auth)
+    // 13. Caching middleware (after auth)
     app.UseResponseCaching();
     app.UseAuthenticatedCaching();
     app.UseRequestTrafficLogging();
 
-    // 13. Routing
+    // 14. Routing
     app.UseRouting();
 
     // Initialize Database & Create Default Token if needed
@@ -511,7 +574,6 @@ try
             error = "Route not found",
             method = context.Request.Method,
             path = path,
-            suggestion = "Try visiting /docs for API documentation",
             timestamp = DateTime.UtcNow
         });
     });

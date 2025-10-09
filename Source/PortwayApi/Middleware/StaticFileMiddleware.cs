@@ -58,68 +58,73 @@ public static class StaticFilesMiddlewareExtensions
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-
+            var pathBase = context.Request.PathBase.Value ?? "";
+            
             // Handle root path redirect
             if (path == "/")
             {
-                Log.Information("📍 Root path accessed, checking for index.html or redirecting to swagger");
-
+                Log.Debug("Root path accessed (PathBase: {PathBase})", pathBase);
+                
                 // Check if index.html exists in wwwroot
                 var webRootPath = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 var indexPath = Path.Combine(webRootPath, "index.html");
-
+                
                 if (File.Exists(indexPath))
                 {
                     // Check if the request accepts HTML (browser request)
                     var acceptHeader = context.Request.Headers.Accept.ToString();
                     if (acceptHeader.Contains("text/html") || string.IsNullOrEmpty(acceptHeader))
                     {
-                        // For browser requests, serve the index.html file
+                        // For browser requests, serve the index.html file. The index.html should use relative paths (e.g., href="docs") to work with PathBase
                         context.Request.Path = "/index.html";
-                        Log.Debug("📄 Rewriting root request to /index.html");
+                        Log.Debug("Serving index.html from wwwroot");
                         await next();
                         return;
                     }
                     else
                     {
                         // For API requests to root, redirect to openapi JSON
-                        context.Response.Redirect("/docs/openapi/v1/openapi.json", permanent: false);
+                        var redirectPath = $"{pathBase}/docs/openapi/v1/openapi.json";
+                        Log.Debug("API root request, redirecting to {Path}", redirectPath);
+                        context.Response.Redirect(redirectPath, permanent: false);
                         return;
                     }
                 }
                 else
                 {
-                    // Direct redirect to docs if no index.html
-                    Log.Information("📖 No index.html found, redirecting to /docs");
-                    context.Response.Redirect("/docs", permanent: false);
+                    // No index.html exists, redirect directly to docs
+                    var redirectPath = $"{pathBase}/docs";
+                    Log.Information("No index.html found, redirecting to {Path}", redirectPath);
+                    context.Response.Redirect(redirectPath, permanent: false);
                     return;
                 }
             }
-
+            
             // Handle direct index.html requests
             if (path == "/index.html")
             {
-                Log.Debug("📄 Direct index.html request");
+                Log.Debug("Direct index.html request (PathBase: {PathBase})", pathBase);
             }
-
+            
             // Handle swagger root redirect (legacy support)
             if (path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
             {
-                Log.Debug("📖 Legacy Swagger UI redirect to new docs location");
-                context.Response.Redirect("/docs/swagger", permanent: true);
+                var redirectPath = $"{pathBase}/docs";
+                Log.Debug("Legacy Swagger UI redirect to {Path}", redirectPath);
+                context.Response.Redirect(redirectPath, permanent: true);
                 return;
             }
-
-            // Handle docs paths
-            if (path.StartsWith("/docs"))
+            
+            // Handle documentation paths (logging only)
+            if (context.Request.Path.StartsWithSegments("/docs"))
             {
-                Log.Debug("📖 Documentation accessed: {Path}", path);
+                Log.Debug("Documentation accessed: PathBase={PathBase}, Path={Path}",
+                    pathBase, context.Request.Path.Value);
             }
-
+            
             await next();
         });
-
-        Log.Debug("✅ Static files middleware configured with caching, security headers, and fallbacks");
+        Log.Debug("Static files middleware configured");
         
         return app;
     }
@@ -135,7 +140,7 @@ public static class StaticFilesMiddlewareExtensions
 
         app.UseDefaultFiles(defaultFilesOptions);
 
-        Log.Debug("✅ Default files configured (index.html)");
+        Log.Debug("Default files configured (index.html)");
         return app;
     }
 
@@ -145,7 +150,7 @@ public static class StaticFilesMiddlewareExtensions
     public static IApplicationBuilder UseBasicStaticFiles(this IApplicationBuilder app)
     {
         app.UseStaticFiles();
-        Log.Debug("✅ Basic static files configured");
+        Log.Debug("Basic static files configured");
         return app;
     }
 
@@ -185,7 +190,7 @@ public static class StaticFilesMiddlewareExtensions
         };
 
         app.UseStaticFiles(staticFileOptions);
-        Log.Debug("✅ Static files with caching configured");
+        Log.Debug("Static files with caching configured");
         return app;
     }
 }

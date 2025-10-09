@@ -51,6 +51,7 @@ export default withMermaid(
             { text: 'Environments', link: '/guide/environments' },
             { text: 'Security', link: '/guide/security' },
             { text: 'Rate Limiting', link: '/guide/rate-limiting' },
+            { text: 'Versioning', link: '/guide/versioning' },
             { text: 'Licensing', link: '/guide/licensing' }
 
           ]
