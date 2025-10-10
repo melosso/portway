@@ -964,7 +964,7 @@ public static class EndpointHandler
                 {
                     var errors = string.Join(", ", validationResults);
                     Log.Error("SQL endpoint validation failed: {Errors}", errors);
-                    throw new InvalidOperationException($"SQL endpoint configuration is invalid: {errors}");
+                    throw new InvalidOperationException($"Endpoint configuration is invalid: {errors}");
                 }
 
                 return new EndpointDefinition

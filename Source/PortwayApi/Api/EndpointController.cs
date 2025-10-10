@@ -207,24 +207,27 @@ public class EndpointController : ControllerBase
             switch (endpointType)
             {
                 case EndpointType.SQL:
-                    // For SQL endpoints, build the full key for lookup (same as static endpoints)
+                    // Build the full key for lookup
                     var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleSqlGetRequest(env, sqlKey, id, remainingPath, select, filter, orderby, top, skip);
                 case EndpointType.Proxy:
-                    // For proxy endpoints, build the full key for lookup
+                    // Build the full key for lookup
                     var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleProxyRequest(env, proxyKey, id, remainingPath, "GET");
                 case EndpointType.Static:
-                    // For static endpoints, build the full key for lookup
+                    // Build the full key for lookup
                     var staticKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleStaticGetRequest(env, staticKey, select, filter, orderby, top, skip);
                 case EndpointType.Composite:
+                    // Log warning and return 405
                     Log.Warning("❌ Composite endpoints don't support GET requests");
-                    return StatusCode(405, new { error = "Method not allowed for composite endpoints" });
+                    return StatusCode(405, new { error = "Method not allowed" });
                 case EndpointType.Webhook:
+                    // Log warning and return 405
                     Log.Warning("❌ Webhook endpoints don't support GET requests");
-                    return StatusCode(405, new { error = "Method not allowed for webhook endpoints" });
+                    return StatusCode(405, new { error = "Method not allowed" });
                 default:
+                    // Log warning and return 404
                     Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
                     return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
@@ -471,7 +474,7 @@ public class EndpointController : ControllerBase
             {
                 // Composite and Webhook endpoints don't support PUT
                 Log.Warning("❌ {Type} endpoints don't support PUT requests", endpointType);
-                return StatusCode(405, new { error = $"Method not allowed for {endpointType} endpoints" });
+                return StatusCode(405, new { error = $"Method not allowed" });
             }
         }
         catch (Exception ex)
@@ -540,11 +543,11 @@ public class EndpointController : ControllerBase
                     
                 case EndpointType.Composite:
                     Log.Warning("❌ Composite endpoints don't support DELETE requests");
-                    return StatusCode(405, new { error = "Method not allowed for composite endpoints" });
+                    return StatusCode(405, new { error = "Method not allowed" });
                     
                 case EndpointType.Webhook:
                     Log.Warning("❌ {Type} endpoints don't support DELETE requests", endpointType);
-                    return StatusCode(405, new { error = $"Method not allowed for {endpointType} endpoints" });
+                    return StatusCode(405, new { error = $"Method not allowed" });
                     
                 default:
                     Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
@@ -597,7 +600,7 @@ public class EndpointController : ControllerBase
             }
             
             Log.Warning("❌ {Type} endpoints don't support PATCH requests", endpointType);
-            return StatusCode(405, new { error = $"Method not allowed for {endpointType} endpoints" });
+            return StatusCode(405, new { error = $"Method not allowed" });
         }
         catch (Exception ex)
         {
@@ -681,7 +684,7 @@ public class EndpointController : ControllerBase
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"File endpoint '{endpointName}' not found" });
+                return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
             
             // Check environment restrictions
@@ -823,7 +826,7 @@ public class EndpointController : ControllerBase
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"File endpoint '{endpointName}' not found" });
+                return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
             
             // Check environment restrictions
@@ -885,7 +888,7 @@ public class EndpointController : ControllerBase
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"File endpoint '{endpointName}' not found" });
+                return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
             
             // Check environment restrictions
@@ -936,7 +939,7 @@ public class EndpointController : ControllerBase
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"File endpoint '{endpointName}' not found" });
+                return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
             
             // Check environment restrictions
@@ -2678,7 +2681,7 @@ public class EndpointController : ControllerBase
             var staticEndpoints = EndpointHandler.GetStaticEndpoints();
             if (!staticEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"Static endpoint '{endpointName}' not found" });
+                return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
 
             // Check environment restrictions
@@ -2879,7 +2882,7 @@ public class EndpointController : ControllerBase
             // Return error response
             var errorResponse = new
             {
-                error = "JSON filtering failed",
+                error = "Internal server error during filtering",
                 details = ex.Message,
                 originalDataAvailable = true
             };
@@ -2901,8 +2904,7 @@ public class EndpointController : ControllerBase
         {
             Log.Debug("🔍 Parsing filter: {Filter}", filter);
             
-            // Parse filter expression (simplified OData filter support)
-            // Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc.
+            // Parse filter expression (simplified OData filter support). Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc.
             var filterParts = filter.Split(' ');
             if (filterParts.Length >= 3)
             {
@@ -3425,7 +3427,7 @@ public class EndpointController : ControllerBase
                 }
                 
                 // Check content length
-                if (context.Request.ContentLength > 10_485_760) // 10MB limit
+                if (context.Request.ContentLength > 52_428_800) // 10MB limit
                 {
                     _logger.LogWarning("Request body too large: {ContentLength} bytes", context.Request.ContentLength);
                     
@@ -3435,7 +3437,7 @@ public class EndpointController : ControllerBase
                     await context.Response.WriteAsJsonAsync(new
                     {
                         error = "Payload Too Large",
-                        detail = "Request body exceeds maximum size of 10MB",
+                        detail = "Request body exceeds maximum size of 50MB",
                         success = false
                     });
                     
