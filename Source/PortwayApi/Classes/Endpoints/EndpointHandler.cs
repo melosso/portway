@@ -583,8 +583,9 @@ public static class EndpointHandler
                 return endpoints;
             }
 
-            // Get all JSON files in the endpoints directory and subdirectories
-            foreach (var file in Directory.GetFiles(endpointsDirectory, "*.json", SearchOption.AllDirectories))
+            // Load the single entity.json file directly from the Webhooks directory
+            var file = Path.Combine(endpointsDirectory, "entity.json");
+            if (File.Exists(file))
             {
                 try
                 {
@@ -594,17 +595,8 @@ public static class EndpointHandler
 
                     if (definition != null && !string.IsNullOrWhiteSpace(definition.DatabaseObjectName))
                     {
-                        // Extract endpoint name from directory name
-                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
-
-                        // Skip if no valid name could be extracted
-                        if (string.IsNullOrWhiteSpace(endpointName))
-                        {
-                            Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
-                            continue;
-                        }
-
-                        // Add the endpoint to the dictionary
+                        // Use a fixed key for the single webhook endpoint
+                        var endpointName = "webhook";
                         endpoints[endpointName] = definition;
 
                         Log.Debug($"📊 SQL Webhook Endpoint: {endpointName}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}");
@@ -618,6 +610,10 @@ public static class EndpointHandler
                 {
                     Log.Error(ex, "❌ Error parsing SQL webhook endpoint file: {File}", file);
                 }
+            }
+            else
+            {
+                Log.Warning("⚠️ No entity.json found in {Directory}", endpointsDirectory);
             }
 
             Log.Debug($"✅ Loaded {endpoints.Count} webhook endpoints from {endpointsDirectory}");

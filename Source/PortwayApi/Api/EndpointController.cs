@@ -82,13 +82,13 @@ public class EndpointController : ControllerBase
                 }
                 break;
                 
-            case EndpointType.Webhook:
-                var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
-                if (TryGetEndpoint(webhookEndpoints, namespaceName, endpointName, out var webhookEndpoint))
-                {
-                    allowedEnvironments = webhookEndpoint?.AllowedEnvironments;
-                }
-                break;
+                case EndpointType.Webhook:
+                    var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
+                    if (TryGetEndpoint(webhookEndpoints, namespaceName, endpointName, out var webhookEndpoint))
+                    {
+                        allowedEnvironments = webhookEndpoint?.AllowedEnvironments;
+                    }
+                    break;
                 
             case EndpointType.Static:
                 var staticEndpoints = EndpointHandler.GetStaticEndpoints();
@@ -1790,10 +1790,14 @@ public class EndpointController : ControllerBase
             var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
             if (!webhookEndpoints.TryGetValue(webhookEndpointKey, out var endpointConfig))
             {
-                return NotFound(new { 
-                    error = $"Webhook endpoint '{webhookEndpointKey}' is not configured properly.", 
-                    success = false 
+                Log.Warning("❌ Webhook endpoint not configured properly: {WebhookEndpoint}", webhookEndpointKey);
+
+                return NotFound(new
+                {
+                    error = $"Endpoint '{webhookEndpointKey}' is not configured properly.",
+                    success = false
                 });
+            
             }
 
             // Get table name and schema from the configuration
@@ -1827,7 +1831,7 @@ public class EndpointController : ControllerBase
                 ReceivedAt = DateTime.UtcNow
             });
 
-            Log.Information("✅ Webhook processed successfully: {WebhookId} (ID: {InsertedId})", 
+            Log.Debug("✅ Webhook processed successfully: {WebhookId} (ID: {InsertedId})", 
                 webhookId, insertedId);
 
             return Ok(new
