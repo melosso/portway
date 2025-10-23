@@ -13,7 +13,7 @@ using Serilog;
 namespace PortwayApi.Services;
 
 /// <summary>
-/// Configures and manages SQL connection pooling for improved performance
+/// Configures and manages SQL connection pooling
 /// </summary>
 public class SqlConnectionPoolService : IHostedService
 {
@@ -56,7 +56,7 @@ public class SqlConnectionPoolService : IHostedService
         // Configure default connection pooling parameters
         SqlConnection.ClearAllPools();
         
-        Log.Information("🔌 SQL Connection Pool Service initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, AppName: {AppName}",
+        Log.Information("Database Connection Pool initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, AppName: '{AppName}'",
             _minPoolSize, _maxPoolSize, _connectionTimeout, _applicationName);
     }
     
@@ -113,7 +113,7 @@ public class SqlConnectionPoolService : IHostedService
         
         try
         {
-            Log.Information("🔄 Prewarming connection pool for connection string...");
+            Log.Information("Prewarming connection pool for connection string...");
             
             // Create and open multiple connections to fill the minimum pool size
             var connections = new List<SqlConnection>();
@@ -142,11 +142,11 @@ public class SqlConnectionPoolService : IHostedService
                 await conn.DisposeAsync();
             }
             
-            Log.Information("✅ Connection pool prewarmed with {Count} connections", _minPoolSize);
+            Log.Information("Connection pool prewarmed with {Count} connections", _minPoolSize);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error prewarming connection pool");
+            Log.Error(ex, "Error prewarming connection pool");
         }
     }
     
@@ -169,7 +169,7 @@ public class SqlConnectionPoolService : IHostedService
                     {
                         // Try to reopen
                         await connection.OpenAsync();
-                        Log.Debug("🔄 Reopened maintenance connection for pool");
+                        Log.Debug("Reopened maintenance connection for pool");
                     }
                     
                     // Execute a simple query to keep the connection alive
@@ -180,7 +180,7 @@ public class SqlConnectionPoolService : IHostedService
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, "⚠️ Error with maintenance connection, recreating...");
+                    Log.Warning(ex, "Error with maintenance connection, recreating...");
                     
                     // Dispose old connection
                     try { await connection.DisposeAsync(); } catch { }
@@ -195,13 +195,13 @@ public class SqlConnectionPoolService : IHostedService
             // Get pool statistics every 10 minutes (occasional diagnostics)
             if (DateTime.UtcNow.Minute % 10 == 0 && DateTime.UtcNow.Second < 10)
             {
-                Log.Debug("📊 SQL Connection Pool Status: {Status}", 
+                Log.Debug("SQL Connection Pool Status: {Status}", 
                     "Connection pool statistics logging is not implemented.");
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error performing connection pool maintenance");
+            Log.Error(ex, "Error performing connection pool maintenance");
         }
     }
 
@@ -214,7 +214,7 @@ public class SqlConnectionPoolService : IHostedService
             TimeSpan.FromSeconds(30), // Start after 30 seconds
             _maintenanceInterval);
             
-        Log.Debug("✅ SQL Connection Pool Service started with maintenance interval: {Interval} minutes", 
+        Log.Debug("SQL Connection Pool Service started with maintenance interval: {Interval} minutes", 
             _maintenanceInterval.TotalMinutes);
             
         return Task.CompletedTask;

@@ -38,13 +38,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create necessary directories
-RUN mkdir -p /app/endpoints/SQL && \
-    mkdir -p /app/endpoints/Proxy && \
-    mkdir -p /app/endpoints/Webhooks && \
-    mkdir -p /app/environments/600 && \
-    mkdir -p /app/environments/700 && \
+RUN mkdir -p /app/endpoints/SQL/Product && \
     mkdir -p /app/tokens && \
-    mkdir -p /app/log
+    mkdir -p /app/log && \
+    mkdir -p /app/environments/prod
 
 # Set environment variables
 ENV ASPNETCORE_URLS=http://+:8080
@@ -56,13 +53,16 @@ COPY --from=build /app/tools/publish /app/tools
 
 # Copy configuration files
 COPY Source/PortwayApi/Environments/settings.json /app/environments/
-COPY Source/PortwayApi/Environments/600/settings.json /app/environments/600/
-COPY Source/PortwayApi/Environments/700/settings.json /app/environments/700/
+COPY Source/PortwayApi/Environments/600/settings.json /app/environments/prod/
 
-# Add sample endpoint definitions if they exist
-COPY Source/PortwayApi/Endpoints/SQL/**/entity.json /app/endpoints/SQL/
-COPY Source/PortwayApi/Endpoints/Proxy/**/entity.json /app/endpoints/Proxy/
-COPY Source/PortwayApi/Endpoints/Webhooks/**/entity.json /app/endpoints/Webhooks/
+# Fix environment names inside the JSON files
+RUN sed -i 's/600/prod/g' /app/environments/prod/settings.json && \
+    sed -i 's/600/prod/g' /app/environments/settings.json && \
+    sed -i 's/, "700"//g' /app/environments/settings.json && \
+    sed -i 's/, "Synergy"//g' /app/environments/settings.json
+
+# Add only SQL Product endpoint definitions
+COPY Source/PortwayApi/Endpoints/SQL/Product/** /app/endpoints/SQL/Product/
 
 # Set proper permissions
 RUN chmod -R 755 /app

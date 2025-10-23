@@ -42,7 +42,8 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             {
                 if (endpoint.IsPrivate)
                 {
-                    continue; // Skip private endpoints
+                    // Skip private endpoints
+                    continue;
                 }
                 
                 // Use "Files" as the main tag for all file endpoints (file endpoints don't use namespaces)

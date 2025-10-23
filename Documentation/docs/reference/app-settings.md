@@ -349,16 +349,6 @@ Configure which hosts can access the application:
 
 ## Security Settings
 
-### HTTPS Configuration
-
-Configure via environment variables:
-```
-ASPNETCORE_URLS=https://+:443;http://+:80
-ASPNETCORE_HTTPS_PORT=443
-ASPNETCORE_Kestrel__Certificates__Default__Path=/path/to/certificate.pfx
-ASPNETCORE_Kestrel__Certificates__Default__Password=certificate_password
-```
-
 ### CORS Configuration
 
 CORS is configured to allow all origins in the default configuration:

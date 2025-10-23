@@ -43,7 +43,7 @@ public class ProxyTrafficLoggerOptions
 }
 
 /// <summary>
-/// Utility for handling sensitive headers with improved performance
+/// Utility for handling sensitive headers
 /// </summary>
 public static class HeaderSanitizer
 {
@@ -82,7 +82,7 @@ public static class HeaderSanitizer
 }
 
 /// <summary>
-/// Enhanced log entry with improved serialization and validation
+/// Enhanced log entry
 /// </summary>
 public class ProxyTrafficLogEntry
 {
@@ -166,7 +166,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
             if (!Directory.Exists(_options.LogDirectory))
             {
                 Directory.CreateDirectory(_options.LogDirectory);
-                Serilog.Log.Information("✅ Created traffic log directory: {Directory}", _options.LogDirectory);
+                Serilog.Log.Information("Created traffic log directory: {Directory}", _options.LogDirectory);
             }
 
             // Check if the current log file exists and get its size
@@ -183,7 +183,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "❌ Error initializing file storage for traffic logs");
+            Serilog.Log.Error(ex, "Error initializing file storage for traffic logs");
             throw;
         }
     }
@@ -222,7 +222,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "❌ Error saving traffic logs to file");
+            Serilog.Log.Error(ex, "Error saving traffic logs to file");
             throw;
         }
     }
@@ -266,13 +266,13 @@ public class FileTrafficLogStorage : ITrafficLogStorage
                 foreach (var file in logFiles.Skip(_options.MaxFileCount))
                 {
                     File.Delete(file);
-                    Serilog.Log.Debug("🗑️ Deleted old traffic log file: {File}", file);
+                    Serilog.Log.Debug("Deleted old traffic log file: {File}", file);
                 }
             }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "❌ Error cleaning up old traffic log files");
+            Serilog.Log.Error(ex, "Error cleaning up old traffic log files");
         }
     }
 }
@@ -298,12 +298,13 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Serilog.Log.Debug("🔍 Proxy Traffic Logger Service started");
+        Serilog.Log.Debug("Proxy Traffic Logger Service started");
 
         try
         {
+            Serilog.Log.Warning($"Traffic tracing enabled with storage type: {_options.StorageType}. This comes with a significant performance overhead.");
+
             await _logStorage.InitializeAsync();
-            Serilog.Log.Information($"🔍 You've enabled traffic tracing with storage type: {_options.StorageType}!");
 
             var batch = new List<ProxyTrafficLogEntry>(_options.BatchSize);
             var flushInterval = TimeSpan.FromMilliseconds(_options.FlushIntervalMs);
@@ -330,7 +331,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                 if (batch.Count > 0)
                 {
                     await _logStorage.SaveLogsAsync(batch);
-                    Serilog.Log.Debug($"🔍 Processed {batch.Count} traffic log entries");
+                    Serilog.Log.Debug($"Processed {batch.Count} traffic log entries");
                     batch.Clear();
                     itemsProcessed = true;
                 }
@@ -360,11 +361,11 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "❌ Error in Proxy Traffic Logger Service");
+            Serilog.Log.Error(ex, "Error in Proxy Traffic Logger Service");
         }
         finally
         {
-            Serilog.Log.Information("🔍 Proxy Traffic Logger Service stopping...");
+            Serilog.Log.Information("Proxy Traffic Logger Service stopping...");
             
             // Flush any remaining logs before shutdown
             try
@@ -378,12 +379,12 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                 if (remainingLogs.Count > 0)
                 {
                     await _logStorage.SaveLogsAsync(remainingLogs);
-                    Serilog.Log.Information($"🔍 Flushed {remainingLogs.Count} remaining traffic log entries on shutdown");
+                    Serilog.Log.Information($"Flushed {remainingLogs.Count} remaining traffic log entries on shutdown");
                 }
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "❌ Error flushing traffic logs on shutdown");
+                Serilog.Log.Error(ex, "Error flushing traffic logs on shutdown");
             }
         }
     }
@@ -447,7 +448,7 @@ public class ProxyTrafficLoggerMiddleware
         logEntry.EndpointName = endpoint ?? string.Empty;
         
         // Log at debug level only
-        Serilog.Log.Debug($"🔍 [Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
+        Serilog.Log.Debug($"[Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
 
         // Extract target URL if available in Items
         if (context.Items.TryGetValue("TargetUrl", out var targetUrl) && targetUrl != null)
@@ -593,7 +594,7 @@ public class ProxyTrafficLoggerMiddleware
             // Log with Serilog for immediate visibility
             if (_options.EnableInfoLogging)
             {
-                Serilog.Log.Information($"🔍 [Trace: {traceId}] {logEntry.Method} {logEntry.Path} -> {logEntry.StatusCode} ({logEntry.DurationMs}ms)");
+                Serilog.Log.Information($"[Trace: {traceId}] {logEntry.Method} {logEntry.Path} -> {logEntry.StatusCode} ({logEntry.DurationMs}ms)");
             }
         }
         catch (Exception ex)
@@ -602,7 +603,7 @@ public class ProxyTrafficLoggerMiddleware
             logEntry.DurationMs = (int)stopwatch.ElapsedMilliseconds;
             logEntry.StatusCode = 500;  // Internal Server Error
             
-            Serilog.Log.Error(ex, $"❌ [Trace: {traceId}] Error during proxy request processing");
+            Serilog.Log.Error(ex, $"[Trace: {traceId}] Error during proxy request processing");
             
             // Re-throw the exception
             throw;
@@ -626,7 +627,7 @@ public class ProxyTrafficLoggerMiddleware
             // Try to add the log entry to the channel
             if (!_logChannel.Writer.TryWrite(logEntry))
             {
-                Serilog.Log.Warning($"❌ [Trace: {traceId}] Failed to write traffic log entry to channel - queue might be full");
+                Serilog.Log.Warning($"[Trace: {traceId}] Failed to write traffic log entry to channel - queue might be full");
             }
         }
     }
@@ -723,7 +724,7 @@ public class ProxyTrafficLoggerMiddleware
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, $"❌ [Trace: {logEntry.TraceId}] Error extracting username from token");
+            Serilog.Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error extracting username from token");
             logEntry.Username = "error-extracting-user";
         }
     }
@@ -759,7 +760,7 @@ public class ProxyTrafficLoggerMiddleware
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, $"❌ [Trace: {logEntry.TraceId}] Error capturing request headers");
+            Serilog.Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error capturing request headers");
         }
     }
 
@@ -805,7 +806,7 @@ public class SqliteTrafficLogStorage : ITrafficLogStorage
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
                 Directory.CreateDirectory(directory);
-                Log.Information("✅ Created SQLite log directory: {Directory}", directory);
+                Log.Information("Created SQLite log directory: {Directory}", directory);
             }
 
             // Create database and tables if they don't exist
@@ -845,11 +846,11 @@ public class SqliteTrafficLogStorage : ITrafficLogStorage
                 
             await createIndexCommand.ExecuteNonQueryAsync();
             
-            Log.Information("✅ SQLite traffic log database initialized: {DbPath}", _options.SqlitePath);
+            Log.Information("Traffic tracing database initialized: {DbPath}", _options.SqlitePath);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error initializing SQLite storage for traffic logs");
+            Log.Error(ex, "Error initializing SQLite storage for traffic logs");
             throw;
         }
     }
@@ -983,7 +984,7 @@ public class SqliteTrafficLogStorage : ITrafficLogStorage
                 
                 // Commit the transaction
                 await transaction.CommitAsync();
-                Log.Debug("✅ Successfully saved {Count} traffic logs to SQLite", logs.Count());
+                Log.Debug("Successfully saved {Count} traffic logs to SQLite", logs.Count());
             }
             catch (Exception ex)
             {
@@ -994,7 +995,7 @@ public class SqliteTrafficLogStorage : ITrafficLogStorage
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error saving traffic logs to SQLite");
+            Log.Error(ex, "Error saving traffic logs to SQLite");
             throw;
         }
     }
@@ -1020,7 +1021,7 @@ public static class TrafficLoggingExtensions
         // Only register services if enabled
         if (options.Enabled)
         {
-            Log.Information("🔍 Traffic logging initialized successfully, using {StorageType} storage", options.StorageType);
+            Log.Debug("Traffic logging will be initialized, using {StorageType} storage", options.StorageType);
             
             // Create bounded channel with specified capacity
             services.AddSingleton(_ => Channel.CreateBounded<ProxyTrafficLogEntry>(
@@ -1063,11 +1064,11 @@ public static class TrafficLoggingExtensions
             if (channel != null)
             {
                 app.UseMiddleware<ProxyTrafficLoggerMiddleware>();
-                Log.Debug("🔍 Proxy traffic logging middleware enabled");
+                Log.Debug("Proxy traffic logging middleware enabled");
             }
             else
             {
-                Log.Debug("⚠️ Proxy traffic logging middleware not enabled because required services are not registered");
+                Log.Debug("Proxy traffic logging middleware not enabled because required services are not registered");
             }
         }
         

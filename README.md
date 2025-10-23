@@ -31,6 +31,8 @@ Portway is built with flexibility and control in mind. Whether you're proxying s
 * **Comprehensive logging**: Request/response tracing, including live monitoring (configurable)
 * **Rate limiting**: Easy to configure; protects downstream systems
 
+In other words, Portway is an open-source API gateway that's easily configured, but is built with common application requirements in mind.
+
 ## ⚙️ Requirements
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
@@ -70,7 +72,7 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - ASPNETCORE_URLS=http://+:8080
 ```
 
@@ -211,7 +213,17 @@ Used for receiving and storing webhook payloads directly into your database.
 }
 ```
 
-### 4. Deploy
+### Prepare your Deployment
+
+If you're choosing to deploy the services on Windows, please make sure to prepare your environment: you'll need to safely store the application encryption key. On containerized environments, this can be done with the identically named PORTWAY_ENCRYPTION_KEY variable.
+
+```powershell
+# Immediately stores the encryption key to your System Environment Variables
+$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+```
+
+
+### 54. Deploy
 
 When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
 
@@ -225,8 +237,8 @@ When you're ready to host your application in IIS, there are a few important thi
 Portway uses a lightweight token-based system for authentication. Tokens are machine-bound and stored securely on disk.
 
 ```bash
-🗝️ Generated token for SERVER-1: <your-token>
-💾 Saved to /tokens/SERVER-1.txt
+Generated token for SERVER-1: <your-token>
+Saved to /tokens/SERVER-1.txt
 ```
 
 Include the token in request headers, with the Bearer prefix included:
@@ -378,7 +390,7 @@ Thanks to the open source tools that make Portway possible:
 
 Portway is available under two licensing models:
 
-* **Open Source (AGPL-3.0)** — Free for open source projects and personal use
+* **Open Source (AGPL-3.0)** — Free for open source projects and (personal) use
 * **Commercial License** — For commercial use with full transparency of the open source project
 
 A [commercial license](https://melosso.com/licensing/portway) is available for businesses and enterprises that require formal guarantees. This license includes features such as **priority support**, **guaranteed patches**, and **DTAP environment support**.

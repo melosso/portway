@@ -46,7 +46,7 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - ASPNETCORE_URLS=http://+:8080
 ```
 

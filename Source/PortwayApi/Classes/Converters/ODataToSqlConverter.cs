@@ -27,7 +27,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
         string entityName, 
         Dictionary<string, string> odataParams)
     {
-        Log.Debug("🔄 Converting OData to SQL for entity: {EntityName}", entityName);
+        Log.Debug("Converting OData to SQL for entity: {EntityName}", entityName);
         
         // Get the endpoint definition to retrieve schema and table info
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
@@ -39,7 +39,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
         {
             schema = endpoint.DatabaseSchema ?? "dbo";
             tableName = endpoint.DatabaseObjectName ?? entityName;
-            Log.Debug("📊 Found endpoint definition: Schema={Schema}, Table={Table}", schema, tableName);
+            Log.Debug("Found endpoint definition: Schema={Schema}, Table={Table}", schema, tableName);
         }
         else
         {
@@ -56,7 +56,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             {
                 tableName = CleanName(entityName);
             }
-            Log.Debug("⚠️ No endpoint definition found, using parsed values: Schema={Schema}, Table={Table}", schema, tableName);
+            Log.Debug("No endpoint definition found, using parsed values: Schema={Schema}, Table={Table}", schema, tableName);
         }
         
         // Let the library handle the bracketing - just provide clean schema.table format
@@ -67,27 +67,27 @@ public class ODataToSqlConverter : IODataToSqlConverter
             // Log the OData parameters for debugging
             if (odataParams.TryGetValue("select", out var select) && !string.IsNullOrWhiteSpace(select))
             {
-                Log.Debug("🔍 Applied $select: {Columns}", select);
+                Log.Debug("Applied $select: {Columns}", select);
             }
             
             if (odataParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
             {
-                Log.Debug("🔍 Applied $filter: {Filter}", filter);
+                Log.Debug("Applied $filter: {Filter}", filter);
             }
             
             if (odataParams.TryGetValue("orderby", out var orderby) && !string.IsNullOrWhiteSpace(orderby))
             {
-                Log.Debug("🔍 Applied $orderby: {OrderBy}", orderby);
+                Log.Debug("Applied $orderby: {OrderBy}", orderby);
             }
             
             if (odataParams.TryGetValue("top", out var topStr) && int.TryParse(topStr, out var top))
             {
-                Log.Debug("🔍 Applied $top: {Top}", top);
+                Log.Debug("Applied $top: {Top}", top);
             }
             
             if (odataParams.TryGetValue("skip", out var skipStr) && int.TryParse(skipStr, out var skip))
             {
-                Log.Debug("🔍 Applied $skip: {Skip}", skip);
+                Log.Debug("Applied $skip: {Skip}", skip);
             }
             
             // Use DynamicODataToSQL to convert the query
@@ -101,7 +101,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             // Ensure parameters are a Dictionary (not just IDictionary)
             var parameters = new Dictionary<string, object>(rawParams ?? new Dictionary<string, object>());
             
-            Log.Debug("✅ Successfully converted OData to SQL");
+            Log.Debug("Successfully converted OData to SQL");
             Log.Debug("SQL Query: {SqlQuery}", sqlQuery);
             
             if (parameters.Any())
@@ -114,7 +114,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error converting OData to SQL: {Message}", ex.Message);
+            Log.Error(ex, "Error converting OData to SQL: {Message}", ex.Message);
             throw new InvalidOperationException($"Failed to convert OData to SQL: {ex.Message}", ex);
         }
     }

@@ -410,7 +410,7 @@ public static class EndpointHandler
         {
             if (!Directory.Exists(endpointsDirectory))
             {
-                Log.Warning($"⚠️ Proxy endpoints directory not found: {endpointsDirectory}");
+                Log.Warning($"Proxy endpoints directory not found: {endpointsDirectory}");
                 Directory.CreateDirectory(endpointsDirectory);
                 return endpoints;
             }
@@ -438,7 +438,7 @@ public static class EndpointHandler
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
                         {
-                            Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
+                            Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
                         
@@ -446,7 +446,7 @@ public static class EndpointHandler
                         var validationErrors = definition.ValidateNamespace();
                         if (validationErrors.Any())
                         {
-                            Log.Warning("⚠️ Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
+                            Log.Warning("Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
                             continue;
                         }
 
@@ -464,20 +464,20 @@ public static class EndpointHandler
                     }
                     else
                     {
-                        Log.Warning("⚠️ Failed to load endpoint from {File}", file);
+                        Log.Warning("Failed to load endpoint from {File}", file);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "❌ Error parsing endpoint file: {File}", file);
+                    Log.Error(ex, "Error parsing endpoint file: {File}", file);
                 }
             }
 
-            Log.Debug($"✅ Loaded {endpoints.Count} proxy endpoints from {endpointsDirectory}");
+            Log.Debug($"Loaded {endpoints.Count} proxy endpoints from {endpointsDirectory}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error scanning proxy endpoints directory: {Directory}", endpointsDirectory);
+            Log.Error(ex, "Error scanning proxy endpoints directory: {Directory}", endpointsDirectory);
         }
 
         return endpoints;
@@ -494,7 +494,7 @@ public static class EndpointHandler
         {
             if (!Directory.Exists(endpointsDirectory))
             {
-                Log.Warning($"⚠️ SQL endpoints directory not found: {endpointsDirectory}");
+                Log.Warning($"SQL endpoints directory not found: {endpointsDirectory}");
                 Directory.CreateDirectory(endpointsDirectory);
                 return endpoints;
             }
@@ -522,7 +522,7 @@ public static class EndpointHandler
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
                         {
-                            Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
+                            Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
                         
@@ -530,7 +530,7 @@ public static class EndpointHandler
                         var validationErrors = definition.ValidateNamespace();
                         if (validationErrors.Any())
                         {
-                            Log.Warning("⚠️ Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
+                            Log.Warning("Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
                             continue;
                         }
 
@@ -544,24 +544,24 @@ public static class EndpointHandler
                         
                         endpoints[primaryKey] = definition;
 
-                        Log.Debug($"📊 SQL Endpoint: {primaryKey}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}; Namespace: {effectiveNamespace ?? "None"}");
+                        Log.Debug($"SQL Endpoint: {primaryKey}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}; Namespace: {effectiveNamespace ?? "None"}");
                     }
                     else
                     {
-                        Log.Warning("⚠️ Failed to load SQL endpoint from {File}", file);
+                        Log.Warning("Failed to load SQL endpoint from {File}", file);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "❌ Error parsing SQL endpoint file: {File}", file);
+                    Log.Error(ex, "Error parsing SQL endpoint file: {File}", file);
                 }
             }
 
-            Log.Debug($"✅ Loaded {endpoints.Count} SQL endpoints from {endpointsDirectory}");
+            Log.Debug($"Loaded {endpoints.Count} SQL endpoints from {endpointsDirectory}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error scanning SQL endpoints directory: {Directory}", endpointsDirectory);
+            Log.Error(ex, "Error scanning SQL endpoints directory: {Directory}", endpointsDirectory);
         }
 
         return endpoints;
@@ -578,7 +578,7 @@ public static class EndpointHandler
         {
             if (!Directory.Exists(endpointsDirectory))
             {
-                Log.Warning($"⚠️ SQL Webhook endpoints directory not found: {endpointsDirectory}");
+                Log.Warning($"SQL Webhook endpoints directory not found: {endpointsDirectory}");
                 Directory.CreateDirectory(endpointsDirectory);
                 return endpoints;
             }
@@ -599,28 +599,28 @@ public static class EndpointHandler
                         var endpointName = "webhook";
                         endpoints[endpointName] = definition;
 
-                        Log.Debug($"📊 SQL Webhook Endpoint: {endpointName}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}");
+                        Log.Debug($"SQL Webhook Endpoint: {endpointName}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}");
                     }
                     else
                     {
-                        Log.Warning("⚠️ Failed to load SQL webhook endpoint from {File}", file);
+                        Log.Warning("Failed to load SQL webhook endpoint from {File}", file);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "❌ Error parsing SQL webhook endpoint file: {File}", file);
+                    Log.Error(ex, "Error parsing SQL webhook endpoint file: {File}", file);
                 }
             }
             else
             {
-                Log.Warning("⚠️ No entity.json found in {Directory}", endpointsDirectory);
+                Log.Warning("No entity.json found in {Directory}", endpointsDirectory);
             }
 
-            Log.Debug($"✅ Loaded {endpoints.Count} webhook endpoints from {endpointsDirectory}");
+            Log.Debug($"Loaded {endpoints.Count} webhook endpoints from {endpointsDirectory}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error scanning SQL webhook endpoints directory: {Directory}", endpointsDirectory);
+            Log.Error(ex, "Error scanning SQL webhook endpoints directory: {Directory}", endpointsDirectory);
         }
 
         return endpoints;
@@ -637,7 +637,7 @@ public static class EndpointHandler
         {
             if (!Directory.Exists(endpointsDirectory))
             {
-                Log.Warning($"⚠️ File endpoints directory not found: {endpointsDirectory}");
+                Log.Warning($"File endpoints directory not found: {endpointsDirectory}");
                 Directory.CreateDirectory(endpointsDirectory);
                 return endpoints;
             }
@@ -659,7 +659,7 @@ public static class EndpointHandler
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
                         {
-                            Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
+                            Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
 
@@ -669,26 +669,26 @@ public static class EndpointHandler
                         // Add the endpoint to the dictionary
                         endpoints[endpointName] = definition;
 
-                        Log.Debug("📁 File Endpoint: {Name} ({IsPrivate})",
+                        Log.Debug("File Endpoint: {Name} ({IsPrivate})",
                             endpointName,
                             definition.IsPrivate ? "Private" : "Public");
                     }
                     else
                     {
-                        Log.Warning("⚠️ Failed to load file endpoint from {File}", file);
+                        Log.Warning("Failed to load file endpoint from {File}", file);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "❌ Error parsing file endpoint file: {File}", file);
+                    Log.Error(ex, "Error parsing file endpoint file: {File}", file);
                 }
             }
 
-            Log.Debug($"✅ Loaded {endpoints.Count} file endpoints from {endpointsDirectory}");
+            Log.Debug($"Loaded {endpoints.Count} file endpoints from {endpointsDirectory}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error scanning file endpoints directory: {Directory}", endpointsDirectory);
+            Log.Error(ex, "Error scanning file endpoints directory: {Directory}", endpointsDirectory);
         }
 
         return endpoints;
@@ -705,7 +705,7 @@ public static class EndpointHandler
         {
             if (!Directory.Exists(endpointsDirectory))
             {
-                Log.Warning($"⚠️ Static endpoints directory not found: {endpointsDirectory}");
+                Log.Warning($"Static endpoints directory not found: {endpointsDirectory}");
                 Directory.CreateDirectory(endpointsDirectory);
                 return endpoints;
             }
@@ -733,7 +733,7 @@ public static class EndpointHandler
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
                         {
-                            Log.Warning("⚠️ Could not determine endpoint name for {File}", file);
+                            Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
                         
@@ -741,7 +741,7 @@ public static class EndpointHandler
                         var validationErrors = definition.ValidateNamespace();
                         if (validationErrors.Any())
                         {
-                            Log.Warning("⚠️ Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
+                            Log.Warning("Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
                             continue;
                         }
 
@@ -755,7 +755,7 @@ public static class EndpointHandler
                         
                         endpoints[primaryKey] = definition;
 
-                        Log.Debug("📄 Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | SwaggerTag: {SwaggerTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
+                        Log.Debug("Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | SwaggerTag: {SwaggerTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
                             primaryKey,
                             definition.IsPrivate ? "Private" : "Public",
                             definition.Properties?.GetValueOrDefault("ContentType", "unknown"),
@@ -765,20 +765,20 @@ public static class EndpointHandler
                     }
                     else
                     {
-                        Log.Warning("⚠️ Failed to load static endpoint from {File}", file);
+                        Log.Warning("Failed to load static endpoint from {File}", file);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "❌ Error parsing static endpoint file: {File}", file);
+                    Log.Error(ex, "Error parsing static endpoint file: {File}", file);
                 }
             }
 
-            Log.Debug($"✅ Loaded {endpoints.Count} static endpoints from {endpointsDirectory}");
+            Log.Debug($"Loaded {endpoints.Count} static endpoints from {endpointsDirectory}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error scanning static endpoints directory: {Directory}", endpointsDirectory);
+            Log.Error(ex, "Error scanning static endpoints directory: {Directory}", endpointsDirectory);
         }
 
         return endpoints;
@@ -1086,15 +1086,15 @@ public static class EndpointHandler
     {
         if (definition.IsPrivate)
         {
-            Log.Debug("🔒 Loaded private endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded private endpoint: {Name} -> {Url}", endpointName, definition.Url);
         }
         else if (definition.IsComposite)
         {
-            Log.Debug("🧩 Loaded composite endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded composite endpoint: {Name} -> {Url}", endpointName, definition.Url);
         }
         else if (definition.IsSql)
         {
-            Log.Debug("📊 Loaded SQL endpoint: {Name} -> {ObjectName}", endpointName, definition.DatabaseObjectName);
+            Log.Debug("Loaded SQL endpoint: {Name} -> {ObjectName}", endpointName, definition.DatabaseObjectName);
         }
         else
         {
@@ -1158,11 +1158,11 @@ public static class EndpointHandler
                 _loadedSqlEndpoints = null;
             }
 
-            Log.Information("✅ Created sample endpoints in each endpoint directory");
+            Log.Information("Created sample endpoints in each endpoint directory");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error creating sample endpoint definitions");
+            Log.Error(ex, "Error creating sample endpoint definitions");
         }
     }
 
@@ -1188,7 +1188,7 @@ public static class EndpointHandler
 
             var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(samplePath, json);
-            Log.Information($"✅ Created sample SQL endpoint definition: {samplePath}");
+            Log.Information($"Created sample SQL endpoint definition: {samplePath}");
         }
     }
 
@@ -1213,7 +1213,7 @@ public static class EndpointHandler
 
             var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(samplePath, json);
-            Log.Information($"✅ Created sample proxy endpoint definition: {samplePath}");
+            Log.Information($"Created sample proxy endpoint definition: {samplePath}");
         }
     }
 
@@ -1266,7 +1266,7 @@ public static class EndpointHandler
 
             var json = JsonSerializer.Serialize(compositeSample, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(compositeSamplePath, json);
-            Log.Information($"✅ Created sample composite endpoint definition: {compositeSamplePath}");
+            Log.Information($"Created sample composite endpoint definition: {compositeSamplePath}");
         }
     }
 
@@ -1284,7 +1284,7 @@ public static class EndpointHandler
 
             var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(samplePath, json);
-            Log.Information($"✅ Created sample webhook endpoint definition: {samplePath}");
+            Log.Information($"Created sample webhook endpoint definition: {samplePath}");
         }
     }
     
@@ -1310,7 +1310,7 @@ public static class EndpointHandler
 
             var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(samplePath, json);
-            Log.Information($"✅ Created sample Files endpoint definition: {samplePath}");
+            Log.Information($"Created sample Files endpoint definition: {samplePath}");
         }
     }
 }

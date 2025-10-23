@@ -47,7 +47,7 @@ public static class EndpointSummaryHelper
                     string.Join(", ", shadowedTypes));
             }
             
-            Log.Information("ℹ️  Note: Endpoints in different namespaces (e.g., 'CRM/Accounts' vs 'Finance/Accounts') do not conflict.");
+            Log.Information(" Note: Endpoints in different namespaces (e.g., 'CRM/Accounts' vs 'Finance/Accounts') do not conflict.");
         }
     }
     
@@ -143,7 +143,7 @@ public static class EndpointSummaryHelper
         var separator = new string('─', 80);
         
         Log.Information(separator);
-        Log.Information("📋 Endpoint Configuration Summary");
+        Log.Information("Endpoint Configuration Summary");
         Log.Information(separator);
         
         // SQL endpoints
@@ -152,7 +152,7 @@ public static class EndpointSummaryHelper
             int publicSqlCount = sqlEndpoints.Count(e => !e.Value.IsPrivate);
             int privateSqlCount = sqlEndpoints.Count(e => e.Value.IsPrivate);
             
-            Log.Information("📊 SQL Endpoints ({Count})", sqlEndpoints.Count);
+            Log.Information("| SQL Endpoints ({Count})", sqlEndpoints.Count);
             
             // Public SQL endpoints
             var publicSqlEndpoints = sqlEndpoints
@@ -205,7 +205,7 @@ public static class EndpointSummaryHelper
             int publicProxyCount = allProxyEndpoints.Count(e => !e.Value.IsPrivate);
             int privateProxyCount = allProxyEndpoints.Count(e => e.Value.IsPrivate);
             
-            Log.Information("🌐 Proxy Endpoints ({Count})", allProxyEndpoints.Count);
+            Log.Information("| Proxy Endpoints ({Count})", allProxyEndpoints.Count);
             
             // Public proxy endpoints
             var publicProxyEndpoints = allProxyEndpoints
@@ -258,7 +258,7 @@ public static class EndpointSummaryHelper
             
         if (compositeEndpoints.Count > 0)
         {
-            Log.Information("🧩 Composite Endpoints ({Count})", compositeEndpoints.Count);
+            Log.Information("| Composite Endpoints ({Count})", compositeEndpoints.Count);
             Log.Information("│ ├── Public ({Count})", compositeEndpoints.Count);
             var lastCompositeKey = compositeEndpoints.Last().Key;
             foreach (var entry in compositeEndpoints)
@@ -277,7 +277,7 @@ public static class EndpointSummaryHelper
             int publicWebhookCount = webhookEndpoints.Count(e => !e.Value.IsPrivate);
             int privateWebhookCount = webhookEndpoints.Count(e => e.Value.IsPrivate);
             
-            Log.Information("🔔 Webhook Endpoints ({Count})", webhookEndpoints.Count);
+            Log.Information("| Webhook Endpoints ({Count})", webhookEndpoints.Count);
             
             // Public webhook endpoints
             var publicWebhookEndpoints = webhookEndpoints
@@ -338,7 +338,7 @@ public static class EndpointSummaryHelper
             int publicFileCount = fileEndpoints.Count(e => !e.Value.IsPrivate);
             int privateFileCount = fileEndpoints.Count(e => e.Value.IsPrivate);
             
-            Log.Information("📁 File Endpoints ({Count})", fileEndpoints.Count);
+            Log.Information("| File Endpoints ({Count})", fileEndpoints.Count);
             
             // Public file endpoints
             var publicFileEndpoints = fileEndpoints
@@ -401,7 +401,7 @@ public static class EndpointSummaryHelper
             int publicStaticCount = staticEndpoints.Count(e => !e.Value.IsPrivate);
             int privateStaticCount = staticEndpoints.Count(e => e.Value.IsPrivate);
             
-            Log.Information("📄 Static Endpoints ({Count})", staticEndpoints.Count);
+            Log.Information("| Static Endpoints ({Count})", staticEndpoints.Count);
             
             // Public static endpoints
             var publicStaticEndpoints = staticEndpoints
@@ -464,7 +464,7 @@ public static class EndpointSummaryHelper
                                 fileEndpoints.Count +
                                 staticEndpoints.Count;
                                 
-        Log.Information("🔢 Total Endpoints: {Count}", totalEndpoints);
+        Log.Information("Total Endpoints: {Count}", totalEndpoints);
         Log.Information(separator);
     }
 }

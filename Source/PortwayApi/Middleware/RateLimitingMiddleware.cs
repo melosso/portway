@@ -126,7 +126,7 @@ public class TokenBucket
         
         if (tokensToAdd > 0.01 && logger != null) // Only log meaningful refills
         {
-            logger.LogDebug("🔄 Refilling tokens for {BucketId}: +{TokensToAdd:F2} after {Elapsed:F2}s", 
+            logger.LogDebug("Refilling tokens for {BucketId}: +{TokensToAdd:F2} after {Elapsed:F2}s", 
                 _bucketId, tokensToAdd, elapsed);
         }
         
@@ -177,12 +177,12 @@ public class RateLimiter
         
         if (_settings.Enabled)
         {
-            _logger.LogInformation("🚦 Rate limiter {InstanceId} initialized - Enabled: {Enabled}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
+            _logger.LogInformation("Rate limiter {InstanceId} initialized - Enabled: {Enabled}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
             _instanceId, _settings.Enabled, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
         }
     }
 
-    // Improved token masking method
+    // Token masking method
     private string MaskToken(string token)
     {
         if (string.IsNullOrEmpty(token) || token.Length <= 8)
@@ -229,7 +229,7 @@ public class RateLimiter
                     
                     // Calculate remaining seconds
                     int remainingSeconds = (int)(blockInfo.BlockedUntil - now).TotalSeconds;
-                    Log.Information("🚫 IP {IP} still rate limited for {Seconds} more seconds", clientIp, remainingSeconds);
+                    Log.Information("IP {IP} still rate limited for {Seconds} more seconds", clientIp, remainingSeconds);
                 }
                 
                 // Always respond with 429, but don't always log
@@ -241,7 +241,7 @@ public class RateLimiter
             {
                 // No longer blocked, remove from dictionary
                 _blockedIps.TryRemove(clientIp, out _);
-                Log.Information("✅ Rate limit for IP {IP} has expired, allowing traffic", clientIp);
+                Log.Information("Rate limit for IP {IP} has expired, allowing traffic", clientIp);
             }
         }
         
@@ -257,7 +257,7 @@ public class RateLimiter
             var blockedUntil = now.Add(blockDuration);
             _blockedIps[clientIp] = (blockedUntil, now); // Log this first violation
             
-            Log.Warning("🚫 IP {IP} has exceeded rate limit, blocking for {Seconds}s", clientIp, _settings.IpWindow);
+            Log.Warning("IP {IP} has exceeded rate limit, blocking for {Seconds}s", clientIp, _settings.IpWindow);
             await RespondWithRateLimit(context, clientIp, _settings.IpWindow, true);
             return;
         }
@@ -278,7 +278,7 @@ public class RateLimiter
         {
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             context.Response.ContentType = "application/json";
-            Log.Warning("❌ Missing or invalid authentication header from IP: {IP}", clientIp);
+            Log.Warning("Missing or invalid authentication header from IP: {IP}", clientIp);
 
             await context.Response.WriteAsync(JsonSerializer.Serialize(new
             {
@@ -301,7 +301,7 @@ public class RateLimiter
                     // Token is still blocked
                     int remainingSeconds = (int)(currentBlockInfo.BlockedUntil - now).TotalSeconds;
                     
-                    Log.Warning("🚫 Token {MaskedToken} is blocked for {Seconds} more seconds", 
+                    Log.Warning("Token {MaskedToken} is blocked for {Seconds} more seconds", 
                         maskedToken, remainingSeconds);
                     
                     await RespondWithRateLimit(context, maskedToken, remainingSeconds, true);
@@ -334,7 +334,7 @@ public class RateLimiter
                 // Logging with different levels based on block attempts
                 if (localBlockInfo.ConsecutiveBlocks <= _maxConsecutiveBlocks)
                 {
-                    Log.Warning("🚫 Token rate limit exceeded for {MaskedToken} - Attempt {AttemptCount}", 
+                    Log.Warning("Token rate limit exceeded for {MaskedToken} - Attempt {AttemptCount}", 
                         maskedToken, localBlockInfo.ConsecutiveBlocks);
                 }
                 else
@@ -378,7 +378,7 @@ public class RateLimiter
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
 
-                Log.Debug("❌ Invalid token: {MaskedToken}", maskedToken);
+                Log.Debug("Invalid token: {MaskedToken}", maskedToken);
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(new
                 {
@@ -471,7 +471,7 @@ public class RateLimiter
 
         if (log)
         {
-            Log.Warning("🚫 Rate limit enforced for {Identifier}, retry after {Seconds}s (at {Time})", 
+            Log.Warning("Rate limit enforced for {Identifier}, retry after {Seconds}s (at {Time})", 
                 identifier, retryAfterSeconds, retryTime);
         }
 
@@ -543,7 +543,7 @@ public class RateLimiter
             return key.Substring(0, visibleChars) + new string(maskChar, key.Length - visibleChars);
         }
 
-        _logger.LogInformation("🔧 Created {Type} rate limit bucket for {Key} with limit: {Limit}/{Window}s",
+        _logger.LogInformation("Created {Type} rate limit bucket for {Key} with limit: {Limit}/{Window}s",
             type, displayKey, limit, windowSeconds);
             
         return new TokenBucket(

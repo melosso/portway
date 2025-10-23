@@ -6,10 +6,13 @@ using System.Text;
 
 namespace PortwayApi.Helpers
 {
-    public static class SettingsEncryptionHelper
+public static class SettingsEncryptionHelper
     {
         private const string EncryptedHeader = "PWENC:";
         private static string? _currentPublicKeyPem = null;
+        private const string PrivateKeyFileName = "recovery.binlz4";
+        private const string PublicKeyFileName = "snapshot_blob.bin";
+        private const string _fallbackKey = "$XTSI5gTEf1hawq3G2uOdWTsFUrgZ6mkCBGrdr0fsRTegXwis68HxGEoCsIBpgbPl5swwY9BQ0qiXG6CaeEPJzp3SPyGebl0ZyHL3jLACKIuSw7G1ufAZ5XATtetKatH0sr#";
 
         public static bool IsEncrypted(string content)
         {
@@ -24,7 +27,7 @@ namespace PortwayApi.Helpers
 
             // Try to read public key directly from file first
             var certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
-            var publicKeyPath = Path.Combine(certsPath, "key_a.pem");
+            var publicKeyPath = Path.Combine(certsPath, PublicKeyFileName);
             
             if (File.Exists(publicKeyPath))
             {
@@ -39,14 +42,16 @@ namespace PortwayApi.Helpers
                 }
             }
 
-            // Try to derive public key from private key in certs directory
-            var privateKeyPath = Path.Combine(certsPath, "key_b.pem");
+            // Try to derive public key from encrypted private key in certs directory
+            var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
             
             if (File.Exists(privateKeyPath))
             {
                 try
                 {
-                    var privateKeyPem = File.ReadAllText(privateKeyPath);
+                    var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
+                    var encryptionKey = LoadEncryptionKey();
+                    var privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
                     using var rsa = RSA.Create();
                     rsa.ImportFromPem(privateKeyPem);
                     var publicKeyPem = ExportPublicKeyPem(rsa);
@@ -66,6 +71,72 @@ namespace PortwayApi.Helpers
             // Fallback to hardcoded public key
             _currentPublicKeyPem = SettingsEncryptionKeys.PublicKeyPem;
             return _currentPublicKeyPem;
+        }
+
+    private static string LoadEncryptionKey()
+        {
+            // Priority 1: Check Windows environment variable
+            var envKey = Environment.GetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", EnvironmentVariableTarget.Machine);
+            if (!string.IsNullOrWhiteSpace(envKey))
+            {
+                return envKey;
+            }
+
+            // Priority 2: Check process environment variable
+            envKey = Environment.GetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", EnvironmentVariableTarget.Process);
+            if (!string.IsNullOrWhiteSpace(envKey))
+            {
+                return envKey;
+            }
+
+            // Priority 3: Check .env file (for Docker)
+            var projectRoot = Directory.GetCurrentDirectory();
+            var envFilePath = Path.Combine(projectRoot, ".env");
+            
+            if (File.Exists(envFilePath))
+            {
+                try
+                {
+                    var envLines = File.ReadAllLines(envFilePath);
+                    foreach (var line in envLines)
+                    {
+                        var trimmed = line.Trim();
+                        if (trimmed.StartsWith("#") || string.IsNullOrWhiteSpace(trimmed))
+                            continue;
+
+                        var parts = trimmed.Split('=', 2);
+                        if (parts.Length == 2 && parts[0].Trim() == "PORTWAY_ENCRYPTION_KEY")
+                        {
+                            var key = parts[1].Trim().Trim('"', '\'');
+                            if (!string.IsNullOrWhiteSpace(key))
+                            {
+                                return key;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Continue to fallback
+                }
+            }
+
+            // Priority 4: Fallback to hardcoded key
+            return _fallbackKey;
+        }
+
+        private static string DecryptPrivateKey(string encrypted, string encryptionKey)
+        {
+            var bytes = Convert.FromBase64String(encrypted);
+            using var ms = new MemoryStream(bytes);
+            var iv = new byte[16];
+            ms.Read(iv, 0, 16);
+            using var aes = Aes.Create();
+            aes.Key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32));
+            aes.IV = iv;
+            using var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
+            using var sr = new StreamReader(cs);
+            return sr.ReadToEnd();
         }
 
         private static string ExportPublicKeyPem(RSA rsa)

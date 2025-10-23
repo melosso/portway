@@ -51,7 +51,7 @@ public class AuthDbContext : DbContext
                     }
                 }
                 
-                Log.Debug("✅ All tables verified with correct schema");
+                Log.Debug("All tables verified with correct schema");
                 return;
             }
             
@@ -68,7 +68,7 @@ public class AuthDbContext : DbContext
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error ensuring tables are created");
+            Log.Error(ex, "Error ensuring tables are created");
         }
     }
 

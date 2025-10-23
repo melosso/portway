@@ -48,7 +48,7 @@ public class StartupLogger : IHostedService
 
     private void LogApplicationStartup()
     {
-        Log.Information("🦖 Application has started successfully");
+        Log.Information("Application has started successfully");
     }  
 
     private void LogEnvironmentInfo()
@@ -57,7 +57,11 @@ public class StartupLogger : IHostedService
         {
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
 
-            Log.Information("🐳 Environment: {Environment}", env);
+            // Log if not Production
+            if (env != "Production")
+            {
+                Log.Warning("Application Environment: {Environment}", env);
+            }
             Log.Debug("│");
             Log.Debug("├─ Host: {MachineName}", Environment.MachineName);
             Log.Debug("├─ Working Directory: {WorkingDirectory}", Directory.GetCurrentDirectory());
@@ -78,14 +82,14 @@ public class StartupLogger : IHostedService
         {
             // Log connection string providers (not the actual connection strings)
             var keyvaultConfigured = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("KEYVAULT_URI"));
-            Log.Information("🔐 Using Azure Key Vault: {IsConfigured}", keyvaultConfigured ? "Yes" : "No");
+            Log.Information("Using Azure Key Vault: {IsConfigured}", keyvaultConfigured ? "Yes" : "No");
 
             // Log allowed environments
             var environmentsSection = _configuration.GetSection("Environment:AllowedEnvironments");
             if (environmentsSection.Exists())
             {
                 var environments = environmentsSection.GetChildren().Select(c => c.Value).Where(v => v != null).ToList();
-                Log.Information("🌍 Allowed Environments: {Environments}", string.Join(", ", environments));
+                Log.Information("Allowed Environments: {Environments}", string.Join(", ", environments));
             }
 
             // Log rate limiting status
@@ -94,11 +98,11 @@ public class StartupLogger : IHostedService
             {
                 var ipLimit = _configuration.GetValue<int>("RateLimiting:IpLimit", 100);
                 var tokenLimit = _configuration.GetValue<int>("RateLimiting:TokenLimit", 1000);
-                Log.Information("🚦 Rate Limiting: Enabled (IP: {IpLimit}/min, Token: {TokenLimit}/min)", ipLimit, tokenLimit);
+                Log.Debug("Rate Limiting: Enabled (IP: {IpLimit}/min, Token: {TokenLimit}/min)", ipLimit, tokenLimit);
             }
             else
             {
-                Log.Information("🚦 Rate Limiting: Disabled");
+                Log.Information("Rate Limiting: Disabled");
             }
         }
         catch (Exception ex)

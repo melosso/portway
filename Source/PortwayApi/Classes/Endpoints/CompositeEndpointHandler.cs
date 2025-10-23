@@ -27,7 +27,7 @@ public class CompositeEndpointHandler
     }
     
     /// <summary>
-    /// Process a composite endpoint request with improved error handling
+    /// Process a composite endpoint request
     /// </summary>
     public async Task<IResult> ProcessCompositeEndpointAsync(
         HttpContext context, 
@@ -46,7 +46,7 @@ public class CompositeEndpointHandler
             // Check if composite endpoint exists
             if (!compositeDefinitions.TryGetValue(endpointName, out var compositeDefinition))
             {
-                Log.Warning("❌ Composite endpoint not found: {Endpoint}", endpointName);
+                Log.Warning("Composite endpoint not found: {Endpoint}", endpointName);
                 return Results.NotFound(new { error = $"Composite endpoint '{endpointName}' not found" });
             }
 
@@ -57,7 +57,7 @@ public class CompositeEndpointHandler
                 endpointDefinition.AllowedEnvironments.Count > 0 &&
                 !endpointDefinition.AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
             {
-                Log.Warning("❌ Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
+                Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
                 return Results.BadRequest(new { error = $"Environment '{env}' is not allowed for this endpoint." });
             }
 
@@ -73,7 +73,7 @@ public class CompositeEndpointHandler
             }
             catch (JsonException ex)
             {
-                Log.Warning(ex, "❌ Invalid JSON in request body for composite endpoint: {Endpoint}", endpointName);
+                Log.Warning(ex, "Invalid JSON in request body for composite endpoint: {Endpoint}", endpointName);
                 return Results.BadRequest(new { error = "Invalid request format", details = ex.Message });
             }
             
@@ -105,7 +105,7 @@ public class CompositeEndpointHandler
                     result.ErrorDetail = ex.ErrorDetail;
                     result.StatusCode = ex.StatusCode;
                     
-                    Log.Error("❌ Step {StepName} failed with status code {StatusCode}: {ErrorDetail}", 
+                    Log.Error("Step {StepName} failed with status code {StatusCode}: {ErrorDetail}", 
                         ex.StepName, ex.StatusCode, ex.ErrorDetail);
                         
                     int statusCode = ex.StatusCode >= 400 && ex.StatusCode < 600 ? ex.StatusCode : 500;
@@ -129,7 +129,7 @@ public class CompositeEndpointHandler
                     result.ErrorStep = step.Name;
                     result.ErrorMessage = ex.Message;
                     
-                    Log.Error(ex, "❌ Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}", 
+                    Log.Error(ex, "Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}", 
                         step.Name, endpointName, ex.Message);
                         
                     return Results.BadRequest(new
@@ -146,12 +146,12 @@ public class CompositeEndpointHandler
             // Process the result to rewrite URLs before returning
             RewriteUrlsInResult(result, context, env, endpointName);
             
-            Log.Information("✅ Successfully executed composite endpoint: {Endpoint}", endpointName);
+            Log.Information("Successfully executed composite endpoint: {Endpoint}", endpointName);
             return Results.Ok(result);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Unhandled error processing composite endpoint {Endpoint}: {ErrorMessage}", 
+            Log.Error(ex, "Unhandled error processing composite endpoint {Endpoint}: {ErrorMessage}", 
                 endpointName, ex.Message);
                 
             return Results.BadRequest(new
@@ -481,7 +481,7 @@ public class CompositeEndpointHandler
                     // Parse original URL parts for replacement
                     if (!Uri.TryCreate(endpoint.Value.Url, UriKind.Absolute, out var originalUri))
                     {
-                        Log.Warning("❌ Could not parse endpoint URL as URI: {Url}", endpoint.Value.Url);
+                        Log.Warning("Could not parse endpoint URL as URI: {Url}", endpoint.Value.Url);
                         continue;
                     }
 
@@ -520,7 +520,7 @@ public class CompositeEndpointHandler
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error rewriting URLs in composite result");
+            Log.Error(ex, "Error rewriting URLs in composite result");
         }
     }
 

@@ -15,12 +15,12 @@ services:
       - ./tokens:/app/tokens
       - ./log:/app/log
     environment:
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - ASPNETCORE_URLS=http://+:8080
       - USE_HTTPS=false
-      - ASPNETCORE_ENVIRONMENT=Production
-      - PROXY_USERNAME=serviceaccount
-      - PROXY_PASSWORD=password
-      - PROXY_DOMAIN=YOURDOMAIN
+      # - PROXY_USERNAME=serviceaccount
+      # - PROXY_PASSWORD=password
+      # - PROXY_DOMAIN=YOURDOMAIN
       # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
       # - AZURE_CLIENT_ID=your-client-id
       # - AZURE_TENANT_ID=your-tenant-id

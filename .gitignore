@@ -1,6 +1,11 @@
+Deployment/
 Deployment/PortwayApi/log/
 Deployment/PortwayApi/tokens/
 *.log
+*.tmp
+*.cache
+*.example
+*.db
 .venv/
 /logs/
 .git/# Ignore log files

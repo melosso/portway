@@ -1920,7 +1920,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             string webhookEntityPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks", "entity.json");
             if (!File.Exists(webhookEntityPath))
             {
-                _logger.LogWarning("⚠️ Webhook entity.json not found at: {Path}", webhookEntityPath);
+                _logger.LogWarning("Webhook entity.json not found at: {Path}", webhookEntityPath);
                 return null;
             }
 
@@ -1930,7 +1930,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error loading webhook documentation");
+            _logger.LogError(ex, "Error loading webhook documentation");
             return null;
         }
     }

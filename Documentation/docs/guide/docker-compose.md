@@ -26,7 +26,7 @@ We'll primarily be using [Docker Compose](https://docs.docker.com/compose/instal
          - ./log:/app/log
          - ./data:/app/data
        environment:
-         - ASPNETCORE_ENVIRONMENT=Production
+         - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
          - ASPNETCORE_URLS=http://+:8080
    ```
 
@@ -57,7 +57,7 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - ASPNETCORE_URLS=http://+:8080
       - USE_HTTPS=false
       - PROXY_USERNAME=serviceaccount
@@ -73,7 +73,7 @@ services:
 
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
-| `ASPNETCORE_ENVIRONMENT` | Application environment | `Production` |
+| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
 | `ASPNETCORE_URLS` | URL binding configuration | `http://+:8080` |
 | `USE_HTTPS` | Enable/disable HTTPS | `false` |
 

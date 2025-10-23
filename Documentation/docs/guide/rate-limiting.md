@@ -109,16 +109,16 @@ Rate limit responses include:
 Rate limit information is logged when limits are exceeded:
 
 ```log
-🚫 Rate limit reached for token_abc123: 0.25/100 tokens available, 1 required
+Rate limit reached for token_abc123: 0.25/100 tokens available, 1 required
 ```
 
 ### Common Log Messages
 
 | Message | Description |
 |---------|-------------|
-| `🚫 IP {IP} has exceeded rate limit` | IP-based limit reached |
-| `🚫 Token rate limit exceeded for {Token}` | Token-based limit reached |
-| `🛑 Persistent rate limit violations detected` | Multiple violations from same client |
+| `IP {IP} has exceeded rate limit` | IP-based limit reached |
+| `Token rate limit exceeded for {Token}` | Token-based limit reached |
+| `Persistent rate limit violations detected` | Multiple violations from same client |
 
 ## Advanced Configuration
 

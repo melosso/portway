@@ -170,14 +170,6 @@ Cache entries are automatically invalidated under the following conditions:
 - When a non-GET operation is performed on the same endpoint
 - When the application restarts (memory cache only)
 
-### Visualization
-Portway provides visibility into cache operations through detailed logging, helping you understand and troubleshoot cache behavior:
-
-```
-📋 Cache hit for proxy request: Products, URL: http://api.example.com/products
-🔍 Cache miss for proxy request: Orders, URL: http://api.example.com/orders
-💾 Cached proxy response for: Customers (300 seconds)
-```
 
 ### Statistics
 The health endpoint `/health/details` provides comprehensive cache statistics to help monitor performance:

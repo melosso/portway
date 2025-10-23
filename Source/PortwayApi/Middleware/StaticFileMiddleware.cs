@@ -27,7 +27,7 @@ public static class StaticFilesMiddlewareExtensions
                 {
                     // Short cache for HTML files to allow updates
                     context.Context.Response.Headers.CacheControl = "public, max-age=300"; // 5 minutes
-                    Log.Debug("📄 Serving HTML file: {Path}", path);
+                    Log.Debug("Serving HTML file: {Path}", path);
                 }
                 else if (path.EndsWith(".js") || path.EndsWith(".css"))
                 {

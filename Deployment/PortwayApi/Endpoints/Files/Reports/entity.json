@@ -1,7 +1,0 @@
-{
-  "StorageType": "Local",
-  "BaseDirectory": "reports",
-  "AllowedExtensions": [".pdf", ".xlsx", ".csv"],
-  "IsPrivate": false,
-  "AllowedEnvironments": ["600"]
-}

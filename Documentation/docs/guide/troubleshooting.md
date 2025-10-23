@@ -474,14 +474,13 @@ When troubleshooting issues, the specific error codes and messages you encounter
 
 ### Recognizing Log Message Patterns
 
-The gateway uses specific emoji and formatting patterns in its log messages to help you quickly identify different types of events:
+The gateway uses a familiar logging pattern to help you quickly identify different types of events:
 
 ```text
-🚫 Rate limit enforced for {Identifier} - Someone hit the rate limits
-❌ Error processing endpoint {EndpointName} - Backend service issue
-📥 SQL Query Request: {Url} - Database query being executed
-✅ Successfully processed query for {Endpoint} - Normal operation
-🔄 Converting OData to SQL for entity: {EntityName} - OData translation in progress
+[INF] Rate limit enforced for {Identifier} - Someone hit the rate limits 
+[WRN] okens detected in the tokens directory. Relocate them to a secure location - Warning, take action
+[ERR] Error processing endpoint {EndpointName} - Backend service issue
+[DBG] SQL Query Request: {Url} - Database query being executed
 ```
 
 These patterns help you quickly scan logs and identify the types of issues you're dealing with.

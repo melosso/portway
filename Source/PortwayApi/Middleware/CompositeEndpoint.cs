@@ -27,7 +27,7 @@ public class CompositeEndpoint
         string env,
         string endpointName)
     {
-        Log.Information("🧩 Received composite request: {Path} {Method}", 
+        Log.Information("Received composite request: {Path} {Method}", 
             context.Request.Path, context.Request.Method);
 
         try
@@ -35,7 +35,7 @@ public class CompositeEndpoint
             // Check environment
             if (!_environmentSettings.IsEnvironmentAllowed(env))
             {
-                Log.Warning("❌ Environment '{Env}' is not in the allowed list.", env);
+                Log.Warning("Environment '{Env}' is not in the allowed list.", env);
                 return Results.BadRequest(new { error = $"Environment '{env}' is not allowed." });
             }
 
@@ -51,7 +51,7 @@ public class CompositeEndpoint
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing composite endpoint: {Error}", ex.Message);
+            Log.Error(ex, "Error processing composite endpoint: {Error}", ex.Message);
             return Results.Problem(
                 detail: ex.Message,
                 title: "Internal Server Error",

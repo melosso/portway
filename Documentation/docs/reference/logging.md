@@ -65,24 +65,17 @@ log/
 
 ## Performance Logging
 
-### Connection Pool Monitoring
-```
-🔌 Created SQL SERVER rate limit bucket for pool
-🔄 Reopened maintenance connection for pool
-📊 SQL Connection Pool Status: Connection pool statistics logging
-```
-
 ### Request Timing
 ```
-📥 Incoming request: POST /api/600/Orders
-📤 Outgoing response: 200 for /api/600/Orders - Took 125ms
+[DBG] Incoming request: POST /api/600/Orders
+[DBG] Outgoing response: 200 for /api/600/Orders - Took 125ms
 ```
 
 ### Rate Limiting
 ```
-🚦 Rate limiter initialized - IP: 100/60s, Token: 1000/60s
-🚫 IP 192.168.1.100 has exceeded rate limit, blocking for 60s
-✅ Rate limit for IP 192.168.1.100 has expired, allowing traffic
+[INF] Rate limiter initialized - IP: 100/60s, Token: 1000/60s
+[INF] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
+[DBG] Rate limit for IP 192.168.1.100 has expired, allowing traffic
 ```
 
 ## Structured Logging

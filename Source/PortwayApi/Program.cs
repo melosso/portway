@@ -318,7 +318,7 @@ try
         }
         
         app.UsePathBase(pathBase);
-        Log.Information("🔧 Application configured with PathBase: {PathBase}", pathBase);
+        Log.Information("Application configured with path base: {PathBase}", pathBase);
         
         // Add middleware to strip the path base from request path for internal routing
         app.Use((context, next) =>
@@ -417,7 +417,7 @@ try
                 {
                     // Redirect to index.html so static file middleware can serve it
                     var redirectPath = $"{pathBase}/index.html";
-                    Log.Information("📄 Redirecting to index.html");
+                    Log.Debug("Redirecting to index.html");
                     context.Response.Redirect(redirectPath, permanent: false);
                     return;
                 }
@@ -425,7 +425,7 @@ try
                 {
                     // For API requests to root, redirect to openapi JSON
                     var redirectPath = $"{pathBase}/docs/openapi/v1/openapi.json";
-                    Log.Debug("🔗 API root request, redirecting to {Path}", redirectPath);
+                    Log.Debug("API root request, redirecting to {Path}", redirectPath);
                     context.Response.Redirect(redirectPath, permanent: false);
                     return;
                 }
@@ -434,7 +434,7 @@ try
             {
                 // No index.html exists, redirect directly to docs
                 var redirectPath = $"{pathBase}/docs";
-                Log.Information("📖 No index.html found, redirecting to {Path}", redirectPath);
+                Log.Information("No index.html found, redirecting to {Path}", redirectPath);
                 context.Response.Redirect(redirectPath, permanent: false);
                 return;
             }
@@ -444,7 +444,7 @@ try
         if (path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
         {
             var redirectPath = $"{pathBase}/docs";
-            Log.Debug("📖 Legacy Swagger UI redirect to {Path}", redirectPath);
+            Log.Debug("Legacy Swagger UI redirect to {Path}", redirectPath);
             context.Response.Redirect(redirectPath, permanent: true);
             return;
         }
@@ -452,7 +452,7 @@ try
         // Handle documentation paths (logging only)
         if (context.Request.Path.StartsWithSegments("/docs"))
         {
-            Log.Debug("📖 Documentation accessed: PathBase={PathBase}, Path={Path}",
+            Log.Debug("Documentation accessed: PathBase={PathBase}, Path={Path}",
                 pathBase, context.Request.Path.Value);
         }
         
@@ -509,17 +509,17 @@ try
             if (!activeTokens.Any())
             {
                 var token = await tokenService.GenerateTokenAsync(serverName);
-                Log.Information("📁 Token has been saved to tokens/{ServerName}.txt", serverName);
+                Log.Information("Token has been saved to tokens/{ServerName}.txt", serverName);
             }
             else
             {
-                Log.Information("🔐 Total active tokens: {Count}", activeTokens.Count());
-                Log.Warning("💥 Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this high security risk!");
+                Log.Information("Total active tokens: {Count}", activeTokens.Count());
+                Log.Warning("Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this high security risk!");
             }
         }
         catch (Exception ex)
         {
-            Log.Error("❌ Database initialization failed: {Message}", ex.Message);
+            Log.Error("Database initialization failed: {Message}", ex.Message);
         }
     }
 
@@ -529,12 +529,19 @@ try
         try
         {
             var cacheManager = scope.ServiceProvider.GetRequiredService<CacheManager>();
-            Log.Information("🧠 Cache configured with provider: {ProviderType}", cacheManager.ProviderType);
-            Log.Information("🔄 Cache connection status: {Status}", cacheManager.IsConnected ? "Connected" : "Disconnected");
+            Log.Information("Cache configured with provider: {ProviderType}", cacheManager.ProviderType);
+            if (cacheManager.IsConnected) 
+            {
+                Log.Debug("Cache connection successful");
+            }
+            else
+            {
+                Log.Warning("Cache is not connected. Caching functionality may be limited. Please enable Debug logs for more details.");
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error initializing cache manager");
+            Log.Error(ex, "Error initializing cache manager");
         }
     }
 
@@ -549,10 +556,6 @@ try
 
     EndpointSummaryHelper.LogEndpointSummary(sqlEndpoints, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 
-    // ================================
-    // ENDPOINT MAPPING
-    // ================================
-
     // Map controller routes
     app.MapControllers();
 
@@ -566,7 +569,7 @@ try
     app.MapFallback(async context =>
     {
         var path = context.Request.Path.Value;
-        Log.Warning("🔍 Unmatched route: {Method} {Path}", context.Request.Method, path);
+        Log.Warning("Unmatched route: {Method} {Path}", context.Request.Method, path);
 
         context.Response.StatusCode = 404;
         context.Response.ContentType = "application/json";
@@ -584,7 +587,7 @@ try
     var urls = app.Urls;
     if (urls != null && urls.Any())
     {
-        Log.Information("🌐 Application is hosted on the following URLs:");
+        Log.Information("Application is hosted on the following URLs:");
         foreach (var url in urls)
         {
             Log.Information("   {Url}", url);
@@ -593,7 +596,7 @@ try
     else if (builder.Environment.IsProduction() && Environment.GetEnvironmentVariable("ASPNETCORE_IIS_PHYSICAL_PATH") != null)
     {
         // We're running in IIS
-        Log.Debug("🌐 Application is hosted in IIS");
+        Log.Debug("Application is hosted in IIS");
     }
     else
     {
@@ -604,12 +607,13 @@ try
 
         // Add a space after each ; in serverUrls for better readability
         var formattedUrls = serverUrls.Replace(";", "; ");
-        Log.Information("🌐 Application is hosted on: {Urls}", formattedUrls);
+        Log.Information("Application is hosted on: {Urls}", formattedUrls);
     }
 
     // Register application shutdown handler
     app.Lifetime.ApplicationStopping.Register(() =>
     {
+        Log.Information("");
         Log.Information("Application shutting down...");
         Log.CloseAndFlush();
     });
@@ -619,6 +623,7 @@ try
 }
 catch (Exception ex)
 {
+    Log.Fatal("");
     Log.Fatal(ex, "Application failed to start.");
 }
 finally
@@ -628,18 +633,14 @@ finally
 
 void LogApplicationAscii()
 {
-    var logo = new StringBuilder();
-    logo.AppendLine(@"");
-    logo.AppendLine(@"  _____           _                        ");
-    logo.AppendLine(@" |  __ \         | |                       ");
-    logo.AppendLine(@" | |__) |__  _ __| |___      ____ _ _   _  ");
-    logo.AppendLine(@" |  ___/ _ \| '__| __\ \ /\ / / _` | | | | ");
-    logo.AppendLine(@" | |  | (_) | |  | |_ \ V  V / (_| | |_| | ");
-    logo.AppendLine(@" |_|   \___/|_|   \__| \_/\_/ \__,_|\__, | ");
-    logo.AppendLine(@"                                      _/ | ");
-    logo.AppendLine(@"                                     |___/ ");
-    logo.AppendLine(@"");
-    Log.Information(logo.ToString());
+    Log.Information("");
+    Log.Information(" ██████╗  ██████╗ ██████╗ ████████╗██╗    ██╗ █████╗ ██╗   ██╗");
+    Log.Information(" ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██║    ██║██╔══██╗╚██╗ ██╔╝");
+    Log.Information(" ██████╔╝██║   ██║██████╔╝   ██║   ██║ █╗ ██║███████║ ╚████╔╝ ");
+    Log.Information(" ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██║███╗██║██╔══██║  ╚██╔╝  ");
+    Log.Information(" ██║     ╚██████╔╝██║  ██║   ██║   ╚███╔███╔╝██║  ██║   ██║   ");
+    Log.Information(" ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   ");
+    Log.Information("");
 }
 
 // Extension method to configure rate limiting services

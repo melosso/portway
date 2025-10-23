@@ -47,11 +47,11 @@ public class MemoryCacheProvider : ICacheProvider
     {
         if (_cache.TryGetValue(key, out T? result))
         {
-            Log.Debug("📋 Cache hit for key: {Key}", key);
+            Log.Debug("Cache hit for key: {Key}", key);
             return Task.FromResult(result);
         }
 
-        Log.Debug("📋 Cache miss for key: {Key}", key);
+        Log.Debug("Cache miss for key: {Key}", key);
         return Task.FromResult<T?>(null);
     }
 
@@ -68,7 +68,7 @@ public class MemoryCacheProvider : ICacheProvider
         };
 
         _cache.Set(key, value, entryOptions);
-        Log.Debug("💾 Added item to memory cache: {Key}, expires in {Duration}s", key, expiration.TotalSeconds);
+        Log.Debug("Added item to memory cache: {Key}, expires in {Duration}s", key, expiration.TotalSeconds);
 
         return Task.CompletedTask;
     }
@@ -79,7 +79,7 @@ public class MemoryCacheProvider : ICacheProvider
     public Task RemoveAsync(string key)
     {
         _cache.Remove(key);
-        Log.Debug("🗑️ Removed item from memory cache: {Key}", key);
+        Log.Debug("Removed item from memory cache: {Key}", key);
         
         return Task.CompletedTask;
     }
@@ -108,7 +108,7 @@ public class MemoryCacheProvider : ICacheProvider
             };
 
             _cache.Set(key, value, entryOptions);
-            Log.Debug("🔄 Refreshed expiration for memory cache item: {Key}, new duration: {Duration}s", 
+            Log.Debug("Refreshed expiration for memory cache item: {Key}, new duration: {Duration}s", 
                 key, expiration.TotalSeconds);
             
             return Task.FromResult(true);
@@ -134,7 +134,7 @@ public class MemoryCacheProvider : ICacheProvider
         {
             if (await waitTask.ConfigureAwait(false))
             {
-                Log.Debug("🔒 Acquired memory lock for key: {LockKey}", actualLockKey);
+                Log.Debug("Acquired memory lock for key: {LockKey}", actualLockKey);
                 return new MemoryLockHandle(this, actualLockKey, expiryTime);
             }
             

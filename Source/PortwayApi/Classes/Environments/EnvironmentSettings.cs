@@ -43,8 +43,8 @@ public class EnvironmentSettings
                     _serverName = settings.Environment.ServerName;
                 }
 
-                Log.Information("✅ Loaded environments: {AllowedEnvironments}", string.Join(", ", _allowedEnvironments));
-                Log.Debug("✅ Using server: {ServerName}", _serverName);
+                Log.Information("Loaded environments: {AllowedEnvironments}", string.Join(", ", _allowedEnvironments));
+                Log.Debug("Using server: {ServerName}", _serverName);
             }
             else
             {
@@ -64,7 +64,7 @@ public class EnvironmentSettings
                 var json = JsonSerializer.Serialize(defaultSettings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
                 
-                Log.Warning("⚠️ settings.json not found. Created with defaults.");
+                Log.Warning("settings.json not found. Created with defaults.");
             }
         }
         catch (Exception ex)

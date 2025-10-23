@@ -1,7 +1,0 @@
-bin/
-obj/
-tokens/
-certs/
-log/
-*.pem
-*.log

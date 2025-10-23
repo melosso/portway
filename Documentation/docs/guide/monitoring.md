@@ -242,8 +242,8 @@ Monitor rate limiting activity:
 
 Rate limiting events are logged with detailed information:
 ```
-🚫 IP 192.168.1.100 has exceeded rate limit, blocking for 60s
-🚫 Token rate limit exceeded for user_123 - Attempt 3
+[INF] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
+[INF] Token rate limit exceeded for user_123 - Attempt 3
 ```
 
 ## Monitoring Architecture

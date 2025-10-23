@@ -17,12 +17,12 @@ public class EdmModelBuilder : IEdmModelBuilder
 
     public IEdmModel GetEdmModel(string entityName)
     {
-        Log.Debug("🔧 Building EDM model for entity: {EntityName}", entityName);
+        Log.Debug("Building EDM model for entity: {EntityName}", entityName);
         
         // Check if we already have the model in cache
         if (_modelCache.TryGetValue(entityName, out var cachedModel))
         {
-            Log.Debug("✅ Using cached EDM model for entity: {EntityName}", entityName);
+            Log.Debug("Using cached EDM model for entity: {EntityName}", entityName);
             return cachedModel;
         }
 
@@ -32,7 +32,7 @@ public class EdmModelBuilder : IEdmModelBuilder
         // Cache the model
         _modelCache[entityName] = model;
         
-        Log.Debug("✅ Successfully built and cached EDM model for: {EntityName}", entityName);
+        Log.Debug("Successfully built and cached EDM model for: {EntityName}", entityName);
         return model;
     }
     
@@ -99,14 +99,14 @@ public class EdmModelBuilder : IEdmModelBuilder
             // Log parsing errors
             foreach (var error in errors)
             {
-                Log.Error("❌ EDM parsing error: {ErrorMessage}", error.ErrorMessage);
+                Log.Error("EDM parsing error: {ErrorMessage}", error.ErrorMessage);
             }
             
             return null;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Failed to parse CSDL metadata");
+            Log.Error(ex, "Failed to parse CSDL metadata");
             return null;
         }
     }

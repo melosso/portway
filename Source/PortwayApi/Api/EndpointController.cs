@@ -50,7 +50,7 @@ public class EndpointController : ControllerBase
         // First check if environment is in the globally allowed list
         if (!_environmentSettings.IsEnvironmentAllowed(env))
         {
-            Log.Warning("❌ Environment '{Env}' is not in the global allowed list.", env);
+            Log.Warning("Environment '{Env}' is not in the global allowed list.", env);
             return (false, BadRequest(new { error = $"Environment '{env}' is not allowed." }));
         }
 
@@ -111,7 +111,7 @@ public class EndpointController : ControllerBase
             allowedEnvironments.Count > 0 &&
             !allowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
         {
-            Log.Warning("❌ Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
+            Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
             return (false, BadRequest(new { error = $"Environment '{env}' is not allowed for this endpoint." }));
         }
 
@@ -195,7 +195,7 @@ public class EndpointController : ControllerBase
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             var _allowedEnvironments = new List<string>();
-            Log.Debug("🔄 Processing {Type} endpoint: {Namespace}/{Name}", endpointType, namespaceName ?? "None", endpointName);
+            Log.Debug("Processing {Type} endpoint: {Namespace}/{Name}", endpointType, namespaceName ?? "None", endpointName);
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -220,21 +220,21 @@ public class EndpointController : ControllerBase
                     return await HandleStaticGetRequest(env, staticKey, select, filter, orderby, top, skip);
                 case EndpointType.Composite:
                     // Log warning and return 405
-                    Log.Warning("❌ Composite endpoints don't support GET requests");
+                    Log.Warning("Composite endpoints don't support GET requests");
                     return StatusCode(405, new { error = "Method not allowed" });
                 case EndpointType.Webhook:
                     // Log warning and return 405
-                    Log.Warning("❌ Webhook endpoints don't support GET requests");
+                    Log.Warning("Webhook endpoints don't support GET requests");
                     return StatusCode(405, new { error = "Method not allowed" });
                 default:
                     // Log warning and return 404
-                    Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
+                    Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
                     return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing GET request for {Path}", Request.Path);
+            Log.Error(ex, "Error processing GET request for {Path}", Request.Path);
             return Problem(
                 detail: $"Error processing. Please check the logs for more details.",
                 statusCode: StatusCodes.Status500InternalServerError,
@@ -267,7 +267,7 @@ public class EndpointController : ControllerBase
                 return StatusCode(405, new { error = "HEAD method is only supported for static endpoints" });
             }
 
-            Log.Debug("📄 HEAD request for static endpoint: {Name}", endpointName);
+            Log.Debug("HEAD request for static endpoint: {Name}", endpointName);
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -314,7 +314,7 @@ public class EndpointController : ControllerBase
             if (string.IsNullOrEmpty(contentType))
             {
                 contentType = GetContentTypeFromExtension(contentFile);
-                Log.Information("🔍 Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
+                Log.Information("Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
             }
             
             var fileInfo = new FileInfo(contentFilePath);
@@ -324,12 +324,12 @@ public class EndpointController : ControllerBase
             Response.Headers["Content-Length"] = fileInfo.Length.ToString();
             Response.Headers["Last-Modified"] = fileInfo.LastWriteTimeUtc.ToString("R");
 
-            Log.Information("✅ HEAD response for static content: {Endpoint} ({ContentType})", endpointName, contentType);
+            Log.Information("HEAD response for static content: {Endpoint} ({ContentType})", endpointName, contentType);
             return Ok();
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing HEAD request for {Path}", Request.Path);
+            Log.Error(ex, "Error processing HEAD request for {Path}", Request.Path);
             return StatusCode(500);
         }
     }
@@ -357,7 +357,7 @@ public class EndpointController : ControllerBase
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
-            Log.Debug("🔄 Processing {Type} endpoint: {Name} for POST", endpointType, endpointName);
+            Log.Debug("Processing {Type} endpoint: {Name} for POST", endpointType, endpointName);
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -403,13 +403,13 @@ public class EndpointController : ControllerBase
                     return await HandleWebhookRequest(env, webhookKey, webhookId, webhookData);
                     
                 default:
-                    Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
+                    Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
                     return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing POST request for {Path}", Request.Path);
+            Log.Error(ex, "Error processing POST request for {Path}", Request.Path);
             return Problem(
                 detail: $"Error processing. Please check the logs for more details.",
                 statusCode: StatusCodes.Status500InternalServerError,
@@ -441,7 +441,7 @@ public class EndpointController : ControllerBase
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
-            Log.Debug("🔄 Processing {Type} endpoint: {Name} for PUT", endpointType, endpointName);
+            Log.Debug("Processing {Type} endpoint: {Name} for PUT", endpointType, endpointName);
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -473,13 +473,13 @@ public class EndpointController : ControllerBase
             else
             {
                 // Composite and Webhook endpoints don't support PUT
-                Log.Warning("❌ {Type} endpoints don't support PUT requests", endpointType);
+                Log.Warning("{Type} endpoints don't support PUT requests", endpointType);
                 return StatusCode(405, new { error = $"Method not allowed" });
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing PUT request for {Path}", Request.Path);
+            Log.Error(ex, "Error processing PUT request for {Path}", Request.Path);
             return Problem(
                 detail: $"Error processing. Please check the logs for more details.",
                 statusCode: StatusCodes.Status500InternalServerError,
@@ -511,7 +511,7 @@ public class EndpointController : ControllerBase
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, parsedId, remainingPath) = ParseEndpoint(catchall);
             
-            Log.Debug("🔄 Processing {Type} endpoint: {Name} for DELETE", endpointType, endpointName);
+            Log.Debug("Processing {Type} endpoint: {Name} for DELETE", endpointType, endpointName);
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -542,21 +542,21 @@ public class EndpointController : ControllerBase
                     return await HandleProxyRequest(env, proxyKey, parsedId, remainingPath, "DELETE");
                     
                 case EndpointType.Composite:
-                    Log.Warning("❌ Composite endpoints don't support DELETE requests");
+                    Log.Warning("Composite endpoints don't support DELETE requests");
                     return StatusCode(405, new { error = "Method not allowed" });
                     
                 case EndpointType.Webhook:
-                    Log.Warning("❌ {Type} endpoints don't support DELETE requests", endpointType);
+                    Log.Warning("{Type} endpoints don't support DELETE requests", endpointType);
                     return StatusCode(405, new { error = $"Method not allowed" });
                     
                 default:
-                    Log.Warning("❌ Unknown endpoint type for {EndpointName}", endpointName);
+                    Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
                     return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing DELETE request for {Path}", Request.Path);
+            Log.Error(ex, "Error processing DELETE request for {Path}", Request.Path);
             return Problem(
                 detail: $"Error processing. Please check the logs for more details.",
                 statusCode: StatusCodes.Status500InternalServerError,
@@ -582,7 +582,7 @@ public class EndpointController : ControllerBase
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
             
-            Log.Debug("🔄 Processing {Type} endpoint: {Name} for PATCH", endpointType, endpointName);
+            Log.Debug("Processing {Type} endpoint: {Name} for PATCH", endpointType, endpointName);
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -599,12 +599,12 @@ public class EndpointController : ControllerBase
                 return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PATCH");
             }
             
-            Log.Warning("❌ {Type} endpoints don't support PATCH requests", endpointType);
+            Log.Warning("{Type} endpoints don't support PATCH requests", endpointType);
             return StatusCode(405, new { error = $"Method not allowed" });
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing PATCH request for {Path}", Request.Path);
+            Log.Error(ex, "Error processing PATCH request for {Path}", Request.Path);
             return Problem(
                 detail: $"Error processing. Please check the logs for more details.",
                 statusCode: StatusCodes.Status500InternalServerError,
@@ -788,7 +788,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error uploading file for {Path}", Request.Path);
+            Log.Error(ex, "Error uploading file for {Path}", Request.Path);
             return StatusCode(500, new { error = "An error occurred while uploading the file" });
         }
     }
@@ -852,7 +852,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error downloading file for {Path}", Request.Path);
+            Log.Error(ex, "Error downloading file for {Path}", Request.Path);
             return StatusCode(500, new { error = "An error occurred while downloading the file" });
         }
     }
@@ -913,7 +913,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error deleting file for {Path}", Request.Path);
+            Log.Error(ex, "Error deleting file for {Path}", Request.Path);
             return StatusCode(500, new { error = "An error occurred while deleting the file" });
         }
     }
@@ -994,7 +994,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error listing files for {Path}", Request.Path);
+            Log.Error(ex, "Error listing files for {Path}", Request.Path);
             return StatusCode(500, new { error = "An error occurred while listing files" });
         }
     }
@@ -1010,7 +1010,7 @@ public class EndpointController : ControllerBase
         if (segments.Length == 0)
             return (EndpointType.Standard, null, string.Empty, null, string.Empty);
 
-        Log.Debug("🔍 Parsing endpoint: Segments=[{Segments}]", string.Join(", ", segments));
+        Log.Debug("Parsing endpoint: Segments=[{Segments}]", string.Join(", ", segments));
 
         // Try to parse as namespaced endpoint first
         if (segments.Length >= 2)
@@ -1068,7 +1068,7 @@ public class EndpointController : ControllerBase
         string? fallbackId = null;
         string fallbackRemainingPath = segments.Length > 1 ? string.Join('/', segments.Skip(1)) : string.Empty;
 
-        Log.Debug("🔄 Fallback to traditional parsing: '{EndpointName}', RemainingPath='{RemainingPath}'", 
+        Log.Debug("Fallback to traditional parsing: '{EndpointName}', RemainingPath='{RemainingPath}'", 
             endpointName, fallbackRemainingPath);
 
         // Extract ID from endpoint name (legacy format)
@@ -1092,7 +1092,7 @@ public class EndpointController : ControllerBase
         // Determine endpoint type using pattern matching
         var fallbackEndpointType = DetermineEndpointType(endpointName);
 
-        Log.Debug("✅ Final parsed endpoint: Type={Type}, Name={Name}, ID={Id}", 
+        Log.Debug("Final parsed endpoint: Type={Type}, Name={Name}, ID={Id}", 
             fallbackEndpointType, endpointName, fallbackId);
 
         return (fallbackEndpointType, null, endpointName, fallbackId, fallbackRemainingPath);
@@ -1185,7 +1185,7 @@ public class EndpointController : ControllerBase
         string remainingPath,
         string method)
     {
-        Log.Debug("🌍 Handling proxy request: {Endpoint} {Method}", endpointName, method);
+        Log.Debug("Handling proxy request: {Endpoint} {Method}", endpointName, method);
 
         try
         {
@@ -1195,7 +1195,7 @@ public class EndpointController : ControllerBase
             // Find the endpoint configuration
             if (!proxyEndpoints.TryGetValue(endpointName, out var endpointDefinition))
             {
-                Log.Warning("❌ Endpoint not found: {EndpointName}", endpointName);
+                Log.Warning("Endpoint not found: {EndpointName}", endpointName);
                 return NotFound(new { error = $"Endpoint '{endpointName}' not found" });
             }
 
@@ -1205,14 +1205,14 @@ public class EndpointController : ControllerBase
             
             if (!originalMethod.Equals(translatedMethod, StringComparison.OrdinalIgnoreCase))
             {
-                Log.Debug("🔄 HTTP method translation: {OriginalMethod} -> {TranslatedMethod} for endpoint {EndpointName}", 
+                Log.Debug("HTTP method translation: {OriginalMethod} -> {TranslatedMethod} for endpoint {EndpointName}", 
                     originalMethod, translatedMethod, endpointName);
             }
             
             // Check if method is allowed (using original method for validation)
             if (!endpointDefinition.Methods.Contains(originalMethod))
             {
-                Log.Warning("❌ Method {Method} not allowed for endpoint {EndpointName}", 
+                Log.Warning("Method {Method} not allowed for endpoint {EndpointName}", 
                     originalMethod, endpointName);
                 return StatusCode(405);
             }
@@ -1220,7 +1220,7 @@ public class EndpointController : ControllerBase
             // Validate translated method
             if (!PortwayApi.Classes.Helpers.HttpMethodTranslator.IsValidHttpMethod(translatedMethod))
             {
-                Log.Warning("❌ Translated method {TranslatedMethod} is not valid for endpoint {EndpointName}", 
+                Log.Warning("Translated method {TranslatedMethod} is not valid for endpoint {EndpointName}", 
                     translatedMethod, endpointName);
                 return StatusCode(500, new { error = "Invalid translated HTTP method" });
             }
@@ -1236,16 +1236,16 @@ public class EndpointController : ControllerBase
             if (!string.IsNullOrEmpty(id))
             {
                 fullUrl += $"(guid'{id}')";
-                Log.Debug("🔧 Added GUID to URL: {Url} (ID: {Id})", fullUrl, id);
+                Log.Debug("Added GUID to URL: {Url} (ID: {Id})", fullUrl, id);
             }
             else if (!string.IsNullOrEmpty(remainingPath))
             {
                 fullUrl += $"/{remainingPath}";
-                Log.Debug("🔧 Added remaining path to URL: {Url} (Path: {RemainingPath})", fullUrl, remainingPath);
+                Log.Debug("Added remaining path to URL: {Url} (Path: {RemainingPath})", fullUrl, remainingPath);
             }
             else
             {
-                Log.Debug("🔧 No ID or remaining path found for URL: {Url}", fullUrl);
+                Log.Debug("No ID or remaining path found for URL: {Url}", fullUrl);
             }
 
             // Add query string
@@ -1258,7 +1258,7 @@ public class EndpointController : ControllerBase
             // Validate URL safety
             if (!_urlValidator.IsUrlSafe(fullUrl))
             {
-                Log.Warning("🚫 Blocked potentially unsafe URL: {Url}", fullUrl);
+                Log.Warning("Blocked potentially unsafe URL: {Url}", fullUrl);
                 return StatusCode(403);
             }
 
@@ -1287,7 +1287,7 @@ public class EndpointController : ControllerBase
                 
                 if (cacheEntry != null)
                 {
-                    Log.Debug("📋 Cache hit for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
+                    Log.Debug("Cache hit for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
                     
                     // Apply cached headers and status code
                     foreach (var header in cacheEntry.Headers)
@@ -1303,7 +1303,7 @@ public class EndpointController : ControllerBase
                     return new EmptyResult(); // Response already written
                 }
                 
-                Log.Debug("🔍 Cache miss for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
+                Log.Debug("Cache miss for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
                 
                 // Acquire a distributed lock to prevent duplicate requests
                 using var lockHandle = await _cacheManager.AcquireLockAsync(
@@ -1319,7 +1319,7 @@ public class EndpointController : ControllerBase
                     
                     if (cacheEntry != null)
                     {
-                        Log.Debug("📋 Cache hit after lock for proxy request: {Endpoint}", endpointName);
+                        Log.Debug("Cache hit after lock for proxy request: {Endpoint}", endpointName);
                         
                         // Apply cached headers and status code
                         foreach (var header in cacheEntry.Headers)
@@ -1362,7 +1362,7 @@ public class EndpointController : ControllerBase
                         
                         await _cacheManager.SetAsync(cacheKey, entry, cacheDuration);
                         
-                        Log.Debug("💾 Cached proxy response for: {Endpoint} ({Duration} seconds)", 
+                        Log.Debug("Cached proxy response for: {Endpoint} ({Duration} seconds)", 
                             endpointName, cacheDuration.TotalSeconds);
                     }
                 }
@@ -1384,7 +1384,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error during proxy request: {EndpointName}", endpointName);
+            Log.Error(ex, "Error during proxy request: {EndpointName}", endpointName);
 
             return Problem(
                 detail: $"Error processing endpoint {endpointName}: {ex.Message}",
@@ -1454,7 +1454,7 @@ public class EndpointController : ControllerBase
         );
 
         // Log the actual HTTP method being sent to backend
-        Log.Debug("🌐 Sending {Method} request to backend: {Url}", method, fullUrl);
+        Log.Debug("Sending {Method} request to backend: {Url}", method, fullUrl);
 
         // Copy request body for methods that can have body content
         if (HttpMethods.IsPost(method) ||
@@ -1666,7 +1666,7 @@ public class EndpointController : ControllerBase
             // URL rewriting with your existing code
             if (!Uri.TryCreate(endpointConfig.Url, UriKind.Absolute, out var originalUri))
             {
-                Log.Warning("❌ Could not parse endpoint URL as URI: {Url}", endpointConfig.Url);
+                Log.Warning("Could not parse endpoint URL as URI: {Url}", endpointConfig.Url);
                 Response.StatusCode = 500;
                 await Response.WriteAsync("Error processing request");
                 return (false, string.Empty, responseHeaders, 500, null);
@@ -1691,7 +1691,7 @@ public class EndpointController : ControllerBase
         // Write the content to the response
         await Response.WriteAsync(rewrittenContent);
 
-        Log.Debug("✅ Proxy request completed: {Method} {Path} -> {StatusCode}", 
+        Log.Debug("Proxy request completed: {Method} {Path} -> {StatusCode}", 
             method, Request.Path, response.StatusCode);
             
         return (
@@ -1713,7 +1713,7 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            Log.Information("🧩 Processing composite endpoint: {Endpoint}", endpointName);
+            Log.Information("Processing composite endpoint: {Endpoint}", endpointName);
             
             // Remove "composite/" prefix if present
             string compositeName = endpointName;
@@ -1751,7 +1751,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error during composite (proxy) request: {EndpointName}", endpointName);
+            Log.Error(ex, "Error during composite (proxy) request: {EndpointName}", endpointName);
             
             return Problem(
                 detail: $"Error processing endpoint {endpointName}: {ex.Message}",
@@ -1771,7 +1771,7 @@ public class EndpointController : ControllerBase
         JsonElement payload)
     {
         var requestUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        Log.Debug("📥 Webhook received: {Method} {Url}", Request.Method, requestUrl);
+        Log.Debug("Webhook received: {Method} {Url}", Request.Method, requestUrl);
 
         try
         {
@@ -1790,7 +1790,7 @@ public class EndpointController : ControllerBase
             var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
             if (!webhookEndpoints.TryGetValue(webhookEndpointKey, out var endpointConfig))
             {
-                Log.Warning("❌ Webhook endpoint not configured properly: {WebhookEndpoint}", webhookEndpointKey);
+                Log.Warning("Webhook endpoint not configured properly: {WebhookEndpoint}", webhookEndpointKey);
 
                 return NotFound(new
                 {
@@ -1831,7 +1831,7 @@ public class EndpointController : ControllerBase
                 ReceivedAt = DateTime.UtcNow
             });
 
-            Log.Debug("✅ Webhook processed successfully: {WebhookId} (ID: {InsertedId})", 
+            Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})", 
                 webhookId, insertedId);
 
             return Ok(new
@@ -1842,7 +1842,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error during webhook processing: {WebhookId}", webhookId);
+            Log.Error(ex, "Error during webhook processing: {WebhookId}", webhookId);
             
             return Problem(
                 detail: $"Error processing. Please check the logs for more details.",
@@ -1911,7 +1911,7 @@ public class EndpointController : ControllerBase
         int skip)
     {
         var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
-        Log.Debug("📥 SQL Query Request: {Url}", url);
+        Log.Debug("SQL Query Request: {Url}", url);
 
         try
         {
@@ -1942,7 +1942,7 @@ public class EndpointController : ControllerBase
             // Check if this is a Table Valued Function endpoint
             if (PortwayApi.Classes.Helpers.TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
-                Log.Debug("🔄 Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);
+                Log.Debug("Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);
                 
                 // Extract path segments for parameter values
                 var pathSegments = string.IsNullOrEmpty(remainingPath) 
@@ -2015,7 +2015,7 @@ public class EndpointController : ControllerBase
                         : BuildNextLink(env, endpointName, select, filter, orderby, top, skip)
                 };
 
-                Log.Debug("✅ Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
+                Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return Ok(tvfResponse);
             }
 
@@ -2158,7 +2158,7 @@ public class EndpointController : ControllerBase
                 
                 if (cachedResponse != null)
                 {
-                    Log.Debug("📋 Cache hit for SQL query: {Endpoint}", endpointName);
+                    Log.Debug("Cache hit for SQL query: {Endpoint}", endpointName);
                     return Ok(cachedResponse);
                 }
             }
@@ -2211,7 +2211,7 @@ public class EndpointController : ControllerBase
                 {
                     var cacheDuration = GetCacheDurationMinutes(endpoint);
                     await _cacheManager.SetAsync(cacheKey, singleItemResponse, TimeSpan.FromMinutes(cacheDuration));
-                    Log.Debug("📋 Cached SQL single item response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
+                    Log.Debug("Cached SQL single item response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
                 }
                 
                 return Ok(singleItemResponse);
@@ -2227,14 +2227,14 @@ public class EndpointController : ControllerBase
                     : BuildNextLink(env, endpointName, select, filter, orderby, top, skip)
             };
 
-            Log.Debug("✅ Successfully processed query for {Endpoint}", endpointName);
+            Log.Debug("Successfully processed query for {Endpoint}", endpointName);
             
             // Cache the response if caching is enabled
             if (cacheEnabled && !string.IsNullOrEmpty(cacheKey))
             {
                 var cacheDuration = GetCacheDurationMinutes(endpoint);
                 await _cacheManager.SetAsync(cacheKey, response, TimeSpan.FromMinutes(cacheDuration));
-                Log.Debug("📋 Cached SQL response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
+                Log.Debug("Cached SQL response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
             }
             
             return Ok(response);
@@ -2244,7 +2244,7 @@ public class EndpointController : ControllerBase
             // Handle SQL-specific exceptions with more detail
             // Generate a masked error reference for troubleshooting
             var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
-            Log.Error(sqlEx, "❌ SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
+            Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
                 errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
 
             // Provide only generic error messages for all SQL errors to avoid leaking database details
@@ -2273,7 +2273,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error during SQL query for endpoint: {EndpointName}. Exception Type: {ExceptionType}", 
+            Log.Error(ex, "Error during SQL query for endpoint: {EndpointName}. Exception Type: {ExceptionType}", 
                 endpointName, ex.GetType().Name);
             
             return Problem(
@@ -2367,7 +2367,7 @@ public class EndpointController : ControllerBase
 
             var resultList = result.ToList();
             
-            Log.Debug("✅ Successfully executed INSERT procedure for {Endpoint}", endpointName);
+            Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
             
             return Ok(new { 
                 success = true,
@@ -2529,7 +2529,7 @@ public class EndpointController : ControllerBase
             // Convert result to a list (could be empty if no rows returned)
             var resultList = result.ToList();
             
-            Log.Information("✅ Successfully executed UPDATE procedure for {Endpoint}", endpointName);
+            Log.Information("Successfully executed UPDATE procedure for {Endpoint}", endpointName);
             
             // Return the results, which typically includes the updated record
             return Ok(new { 
@@ -2540,7 +2540,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing UPDATE for {Endpoint}", endpointName);
+            Log.Error(ex, "Error processing UPDATE for {Endpoint}", endpointName);
             throw;
         }
     }
@@ -2647,7 +2647,7 @@ public class EndpointController : ControllerBase
             // Convert result to a list (could be empty if no rows returned)
             var resultList = result.ToList();
             
-            Log.Information("✅ Successfully executed DELETE procedure for {Endpoint}", endpointName);
+            Log.Information("Successfully executed DELETE procedure for {Endpoint}", endpointName);
             
             // Return the results, which typically includes deletion confirmation
             return Ok(new { 
@@ -2659,7 +2659,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error processing DELETE for {Endpoint}", endpointName);
+            Log.Error(ex, "Error processing DELETE for {Endpoint}", endpointName);
             throw;
         }
     }
@@ -2677,7 +2677,7 @@ public class EndpointController : ControllerBase
         int skip)
     {
         var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
-        Log.Debug("📄 Static Content Request: {Url}", url);
+        Log.Debug("Static Content Request: {Url}", url);
 
         try
         {
@@ -2714,7 +2714,7 @@ public class EndpointController : ControllerBase
 
             if (!System.IO.File.Exists(contentFilePath))
             {
-                Log.Warning("⚠️ Content file not found: {FilePath}", contentFilePath);
+                Log.Warning("Content file not found: {FilePath}", contentFilePath);
                 return NotFound(new { error = $"Content file not found: {contentFile}" });
             }
 
@@ -2725,7 +2725,7 @@ public class EndpointController : ControllerBase
             if (string.IsNullOrEmpty(contentType))
             {
                 contentType = GetContentTypeFromExtension(contentFile);
-                Log.Information("🔍 Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
+                Log.Information("Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
             }
             
             var enableFiltering = (bool)(endpoint.Properties.GetValueOrDefault("EnableFiltering", false));
@@ -2739,7 +2739,7 @@ public class EndpointController : ControllerBase
                 // Check if our content type is acceptable to the client
                 if (!acceptedTypes.Contains(contentType) && !acceptedTypes.Contains("*/*"))
                 {
-                    Log.Debug("⚠️ Content negotiation failed: Client accepts {AcceptHeader}, endpoint provides {ContentType}", 
+                    Log.Debug("Content negotiation failed: Client accepts {AcceptHeader}, endpoint provides {ContentType}", 
                         acceptHeader, contentType);
                     
                     return StatusCode(406, new 
@@ -2772,13 +2772,13 @@ public class EndpointController : ControllerBase
                 }
             }
 
-            Log.Debug("✅ Serving static content: {Endpoint} ({ContentType})", endpointName, contentType);
+            Log.Debug("Serving static content: {Endpoint} ({ContentType})", endpointName, contentType);
            
             return File(contentBytes, contentType);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error serving static content for {Endpoint}", endpointName);
+            Log.Error(ex, "Error serving static content for {Endpoint}", endpointName);
             return StatusCode(500, new { error = "Error serving static content" });
         }
     }
@@ -2819,7 +2819,7 @@ public class EndpointController : ControllerBase
                     if (data.TryGetProperty(prop, out var arrayElement) && arrayElement.ValueKind == JsonValueKind.Array)
                     {
                         items = arrayElement.EnumerateArray().ToList();
-                        Log.Debug("🔍 Found array property '{Property}' with {Count} items", prop, items.Count);
+                        Log.Debug("Found array property '{Property}' with {Count} items", prop, items.Count);
                         break;
                     }
                 }
@@ -2827,37 +2827,37 @@ public class EndpointController : ControllerBase
                 // If no array found, treat the object as a single item
                 if (items.Count == 0)
                 {
-                    Log.Debug("🔍 No array property found, treating root object as single item");
+                    Log.Debug("No array property found, treating root object as single item");
                     items.Add(data);
                 }
             }
             
-            Log.Debug("🔍 Applying OData filtering to {Count} items", items.Count);
+            Log.Debug("Applying OData filtering to {Count} items", items.Count);
             
             // Apply filtering
             if (!string.IsNullOrEmpty(filter))
             {
                 items = ApplyFilter(items, filter);
-                Log.Debug("🔍 After filter: {Count} items", items.Count);
+                Log.Debug("After filter: {Count} items", items.Count);
             }
             
             // Apply ordering
             if (!string.IsNullOrEmpty(orderby))
             {
                 items = ApplyOrderBy(items, orderby);
-                Log.Debug("🔍 After orderby: {Count} items", items.Count);
+                Log.Debug("After orderby: {Count} items", items.Count);
             }
             
             // Apply pagination (skip and top)
             var totalCount = items.Count;
             items = items.Skip(skip).Take(top).ToList();
-            Log.Debug("🔍 After pagination (skip:{Skip}, top:{Top}): {Count} items", skip, top, items.Count);
+            Log.Debug("After pagination (skip:{Skip}, top:{Top}): {Count} items", skip, top, items.Count);
             
             // Apply field selection
             if (!string.IsNullOrEmpty(select))
             {
                 items = ApplySelect(items, select);
-                Log.Debug("🔍 After select: field selection applied", items.Count);
+                Log.Debug("After select: field selection applied", items.Count);
             }
             
             // Build result in the correct API format
@@ -2871,7 +2871,7 @@ public class EndpointController : ControllerBase
             var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             var resultBytes = Encoding.UTF8.GetBytes(resultJson);
             
-            Log.Debug("✅ JSON filtering applied successfully: {Count} items returned", items.Count);
+            Log.Debug("JSON filtering applied successfully: {Count} items returned", items.Count);
 
             Response.Headers["X-Filtering-Status"] = "Applied";
             Response.Headers["X-Total-Count"] = totalCount.ToString();
@@ -2881,7 +2881,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error applying JSON filtering: {Message}", ex.Message);
+            Log.Error(ex, "Error applying JSON filtering: {Message}", ex.Message);
             
             // Return error response
             var errorResponse = new
@@ -2906,7 +2906,7 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            Log.Debug("🔍 Parsing filter: {Filter}", filter);
+            Log.Debug("Parsing filter: {Filter}", filter);
             
             // Parse filter expression (simplified OData filter support). Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc.
             var filterParts = filter.Split(' ');
@@ -2919,17 +2919,17 @@ public class EndpointController : ControllerBase
                 // Remove quotes from string values
                 value = value.Trim('\'', '"');
                 
-                Log.Debug("🔍 Filter components - Field: {Field}, Operation: {Operation}, Value: {Value}", field, operation, value);
+                Log.Debug("Filter components - Field: {Field}, Operation: {Operation}, Value: {Value}", field, operation, value);
                 
                 var filteredItems = items.Where(item =>
                 {
                     if (!item.TryGetProperty(field, out var fieldValue))
                     {
-                        Log.Debug("🔍 Field '{Field}' not found in item", field);
+                        Log.Debug("Field '{Field}' not found in item", field);
                         return false;
                     }
                     
-                    Log.Debug("🔍 Comparing field '{Field}' value '{FieldValue}' with '{TargetValue}' using operation '{Operation}'", 
+                    Log.Debug("Comparing field '{Field}' value '{FieldValue}' with '{TargetValue}' using operation '{Operation}'", 
                         field, fieldValue, value, operation);
                         
                     var result = operation switch
@@ -2946,20 +2946,20 @@ public class EndpointController : ControllerBase
                         _ => false
                     };
                     
-                    Log.Debug("🔍 Filter result for item: {Result}", result);
+                    Log.Debug("Filter result for item: {Result}", result);
                     return result;
                 }).ToList();
                 
-                Log.Debug("🔍 Filter matched {Count} items out of {TotalCount}", filteredItems.Count, items.Count);
+                Log.Debug("Filter matched {Count} items out of {TotalCount}", filteredItems.Count, items.Count);
                 return filteredItems;
             }
             
-            Log.Warning("⚠️ Filter expression could not be parsed: {Filter}", filter);
+            Log.Warning("Filter expression could not be parsed: {Filter}", filter);
             return items; // Return original if filter couldn't be parsed
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ Filter parsing failed, returning unfiltered data");
+            Log.Warning(ex, "Filter parsing failed, returning unfiltered data");
             return items;
         }
     }
@@ -2971,7 +2971,7 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            Log.Debug("🔍 CompareValues - FieldValue: {FieldValue} ({Type}), TargetValue: {TargetValue}, Operation: {Operation}", 
+            Log.Debug("CompareValues - FieldValue: {FieldValue} ({Type}), TargetValue: {TargetValue}, Operation: {Operation}", 
                 fieldValue, fieldValue.ValueKind, targetValue, operation);
             
             switch (fieldValue.ValueKind)
@@ -2988,7 +2988,7 @@ public class EndpointController : ControllerBase
                         "le" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) <= 0,
                         _ => false
                     };
-                    Log.Debug("🔍 String comparison result: {Result}", result);
+                    Log.Debug("String comparison result: {Result}", result);
                     return result;
                     
                 case JsonValueKind.Number:
@@ -3047,7 +3047,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ OrderBy parsing failed, returning original order");
+            Log.Warning(ex, "OrderBy parsing failed, returning original order");
             return items;
         }
     }
@@ -3101,7 +3101,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ Select parsing failed, returning all fields");
+            Log.Warning(ex, "Select parsing failed, returning all fields");
             return items;
         }
     }
@@ -3138,7 +3138,7 @@ public class EndpointController : ControllerBase
             {
                 // Multiple direct children - these are likely our main data items
                 items = directChildren;
-                Log.Debug("🔍 Found {Count} direct child elements under root '{RootName}'", items.Count, rootElement.Name.LocalName);
+                Log.Debug("Found {Count} direct child elements under root '{RootName}'", items.Count, rootElement.Name.LocalName);
             }
             else
             {
@@ -3153,52 +3153,52 @@ public class EndpointController : ControllerBase
                 {
                     // Found repeating elements - these are likely our data items
                     items = elementGroups.ToList();
-                    Log.Debug("🔍 Found {Count} repeating XML elements of type '{ElementName}'", items.Count, elementGroups.Key);
+                    Log.Debug("Found {Count} repeating XML elements of type '{ElementName}'", items.Count, elementGroups.Key);
                 }
                 else
                 {
                     // Fallback: treat root as single item
                     items = new List<XElement> { rootElement };
-                    Log.Debug("🔍 No repeating elements found, treating root as single item");
+                    Log.Debug("No repeating elements found, treating root as single item");
                 }
             }
 
             var totalCount = items.Count;
-            Log.Debug("🔍 Applying XML filtering to {Count} elements", totalCount);
+            Log.Debug("Applying XML filtering to {Count} elements", totalCount);
 
             // Apply filtering
             if (!string.IsNullOrEmpty(filter))
             {
                 items = ApplyXmlFilter(items, filter);
-                Log.Debug("🔍 After filter: {Count} items remaining", items.Count);
+                Log.Debug("After filter: {Count} items remaining", items.Count);
             }
 
             // Apply ordering
             if (!string.IsNullOrEmpty(orderby))
             {
                 items = ApplyXmlOrderBy(items, orderby);
-                Log.Debug("🔍 After orderby: items reordered");
+                Log.Debug("After orderby: items reordered");
             }
 
             // Apply skip
             if (skip > 0)
             {
                 items = items.Skip(skip).ToList();
-                Log.Debug("🔍 After skip: {Count} items remaining", items.Count);
+                Log.Debug("After skip: {Count} items remaining", items.Count);
             }
 
             // Apply top
             if (top > 0 && top < items.Count)
             {
                 items = items.Take(top).ToList();
-                Log.Debug("🔍 After top: {Count} items selected", items.Count);
+                Log.Debug("After top: {Count} items selected", items.Count);
             }
 
             // Apply select (field selection)
             if (!string.IsNullOrEmpty(select))
             {
                 items = ApplyXmlSelect(items, select);
-                Log.Debug("🔍 After select: field selection applied");
+                Log.Debug("After select: field selection applied");
             }
 
             // Rebuild XML with filtered items
@@ -3229,7 +3229,7 @@ public class EndpointController : ControllerBase
             var resultXml = resultDoc.ToString();
             var resultBytes = Encoding.UTF8.GetBytes(resultXml);
             
-            Log.Debug("✅ XML filtering applied successfully: {Count} items returned out of {Total}", items.Count, totalCount);
+            Log.Debug("XML filtering applied successfully: {Count} items returned out of {Total}", items.Count, totalCount);
 
             Response.Headers["X-Filtering-Status"] = "Applied";
             Response.Headers["X-Total-Count"] = totalCount.ToString();
@@ -3239,7 +3239,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error applying XML filtering: {Message}", ex.Message);
+            Log.Error(ex, "Error applying XML filtering: {Message}", ex.Message);
             
             // Fallback to original content
             Response.Headers["X-Filtering-Status"] = "Error";
@@ -3460,7 +3460,7 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            Log.Debug("🔍 Parsing XML filter: {Filter}", filter);
+            Log.Debug("Parsing XML filter: {Filter}", filter);
             
             // Simple filter implementations for common patterns
             if (filter.Contains(" eq "))
@@ -3510,12 +3510,12 @@ public class EndpointController : ControllerBase
                 }
             }
             
-            Log.Warning("⚠️ Unsupported XML filter pattern: {Filter}", filter);
+            Log.Warning("Unsupported XML filter pattern: {Filter}", filter);
             return items;
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ XML filter parsing failed: {Filter}, returning unfiltered results", filter);
+            Log.Warning(ex, "XML filter parsing failed: {Filter}, returning unfiltered results", filter);
             return items;
         }
     }
@@ -3527,7 +3527,7 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            Log.Debug("🔍 Parsing XML orderby: {OrderBy}", orderby);
+            Log.Debug("Parsing XML orderby: {OrderBy}", orderby);
             
             var parts = orderby.Split(' ');
             var fieldName = parts[0].Trim();
@@ -3552,7 +3552,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ XML orderby parsing failed: {OrderBy}, returning original order", orderby);
+            Log.Warning(ex, "XML orderby parsing failed: {OrderBy}, returning original order", orderby);
             return items;
         }
     }
@@ -3564,7 +3564,7 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            Log.Debug("🔍 Parsing XML select: {Select}", select);
+            Log.Debug("Parsing XML select: {Select}", select);
             
             var fields = select.Split(',').Select(f => f.Trim()).ToList();
             var selectedItems = new List<XElement>();
@@ -3600,7 +3600,7 @@ public class EndpointController : ControllerBase
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ XML select parsing failed: {Select}, returning all fields", select);
+            Log.Warning(ex, "XML select parsing failed: {Select}, returning all fields", select);
             return items;
         }
     }

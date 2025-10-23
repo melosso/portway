@@ -27,8 +27,8 @@ Tokens are:
 Initial token generation happens automatically on first run:
 
 ```
-🔑 Generated token for SERVER-NAME
-💾 Token saved to: /tokens/SERVER-NAME.txt
+Generated token for SERVER-NAME
+Token saved to: /tokens/SERVER-NAME.txt
 ```
 
 Token file format:
@@ -216,7 +216,7 @@ All security events are logged:
 ```
 🔒 Token authentication successful for user: api-service
 ❌ Invalid token attempted for endpoint: Products
-🚫 Rate limit exceeded for IP: 192.168.1.100
+Rate limit exceeded for IP: 192.168.1.100
 ⚠️ Unauthorized environment access: prod
 ```
 

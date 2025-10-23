@@ -19,7 +19,7 @@ public class TokenService
         if (!Directory.Exists(_tokenFolderPath))
         {
             Directory.CreateDirectory(_tokenFolderPath);
-            Log.Debug("✅ Created tokens directory: {Directory}", _tokenFolderPath);
+            Log.Debug("Created tokens directory: {Directory}", _tokenFolderPath);
         }
     }
 
@@ -44,7 +44,7 @@ public class TokenService
         string description = "", 
         int? expiresInDays = null)
     {
-        // Generate a random token with improved strength
+        // Generate a random token
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         string token = RandomNumberGenerator.GetString(chars, 128);
         
@@ -91,7 +91,7 @@ public class TokenService
         // Save token to file
         await SaveTokenToFileAsync(username, token, allowedScopes, allowedEnvironments, expiresAt, description);
         
-        Log.Information("🔑 Created new token (ID: {TokenId}) for user: {Username}", tokenEntry.Id, username);
+        Log.Information("Created new token (ID: {TokenId}) for user: {Username}", tokenEntry.Id, username);
         
         return token;
     }
@@ -310,11 +310,11 @@ public class TokenService
             string tokenJson = JsonSerializer.Serialize(tokenInfo, options);
             await File.WriteAllTextAsync(filePath, tokenJson);
             
-            Log.Debug("🔑 Token file saved to {FilePath}", filePath);
+            Log.Debug("Token file saved to {FilePath}", filePath);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Failed to save token file for user {Username}", username);
+            Log.Error(ex, "Failed to save token file for user {Username}", username);
             throw;
         }
     }
@@ -362,15 +362,15 @@ public class TokenService
                     File.Delete(revokedPath);
                     
                 File.Move(tokenFilePath, revokedPath);
-                Log.Information("✅ Marked token file as revoked: {FilePath}", revokedPath);
+                Log.Information("Marked token file as revoked: {FilePath}", revokedPath);
             }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "⚠️ Could not rename token file for revoked token");
+            Log.Warning(ex, "Could not rename token file for revoked token");
         }
         
-        Log.Information("🗑️ Revoked token ID: {TokenId} for user: {Username}", tokenId, token.Username);
+        Log.Information("Revoked token ID: {TokenId} for user: {Username}", tokenId, token.Username);
         return true;
     }
     

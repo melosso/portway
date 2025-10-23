@@ -31,12 +31,12 @@ public static class TableValuedFunctionSqlHandler
     {
         try
         {
-            Log.Debug("🔄 Processing TVF GET request for: {FunctionName}", endpoint.DatabaseObjectName);
+            Log.Debug("Processing TVF GET request for: {FunctionName}", endpoint.DatabaseObjectName);
 
             // Validate that this is actually a TVF endpoint
             if (!TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
-                Log.Warning("❌ Endpoint {Name} is not configured as a Table Valued Function", endpoint.DatabaseObjectName);
+                Log.Warning("Endpoint {Name} is not configured as a Table Valued Function", endpoint.DatabaseObjectName);
                 return (false, new BadRequestObjectResult(new { 
                     error = "This endpoint is not configured as a Table Valued Function",
                     success = false 
@@ -46,7 +46,7 @@ public static class TableValuedFunctionSqlHandler
             // Check if function parameters are defined
             if (endpoint.FunctionParameters == null || endpoint.FunctionParameters.Count == 0)
             {
-                Log.Warning("❌ TVF endpoint {Name} has no function parameters defined", endpoint.DatabaseObjectName);
+                Log.Warning("TVF endpoint {Name} has no function parameters defined", endpoint.DatabaseObjectName);
                 return (false, new BadRequestObjectResult(new { 
                     error = "Table Valued Function parameters are not configured",
                     success = false 
@@ -61,7 +61,7 @@ public static class TableValuedFunctionSqlHandler
 
             if (extractionErrors.Any())
             {
-                Log.Warning("❌ Parameter extraction errors for TVF {Name}: {Errors}", 
+                Log.Warning("Parameter extraction errors for TVF {Name}: {Errors}", 
                     endpoint.DatabaseObjectName, string.Join(", ", extractionErrors));
                 
                 return (false, new BadRequestObjectResult(new { 
@@ -94,7 +94,7 @@ public static class TableValuedFunctionSqlHandler
                 var odataConverter = httpContext.RequestServices.GetService(typeof(PortwayApi.Interfaces.IODataToSqlConverter)) as PortwayApi.Interfaces.IODataToSqlConverter;
                 if (odataConverter == null)
                 {
-                    Log.Error("❌ IODataToSqlConverter not available in DI");
+                    Log.Error("IODataToSqlConverter not available in DI");
                     return (false, new ObjectResult(new { error = "OData-to-SQL converter not available", success = false }) { StatusCode = 500 }, null);
                 }
 
@@ -168,13 +168,13 @@ public static class TableValuedFunctionSqlHandler
                 Log.Debug("Applied column alias transformations to {Count} TVF results", resultList.Count);
             }
 
-            Log.Debug("✅ TVF query executed successfully. Returned {Count} records", resultList.Count);
+            Log.Debug("TVF query executed successfully. Returned {Count} records", resultList.Count);
 
             return (true, null, resultList);
         }
         catch (SqlException sqlEx)
         {
-            Log.Error(sqlEx, "❌ SQL Error executing TVF {FunctionName}: {ErrorMessage}", 
+            Log.Error(sqlEx, "SQL Error executing TVF {FunctionName}: {ErrorMessage}", 
                 endpoint.DatabaseObjectName, sqlEx.Message);
 
             string errorMessage = sqlEx.Number switch
@@ -193,7 +193,7 @@ public static class TableValuedFunctionSqlHandler
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Unexpected error executing TVF {FunctionName}", endpoint.DatabaseObjectName);
+            Log.Error(ex, "Unexpected error executing TVF {FunctionName}", endpoint.DatabaseObjectName);
             
             return (false, new ObjectResult(new { 
                 error = "An unexpected error occurred while executing the table valued function",

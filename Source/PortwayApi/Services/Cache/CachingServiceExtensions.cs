@@ -31,7 +31,7 @@ public static class CachingServiceExtensions
         // Add Redis if configured
         if (cacheOptions.ProviderType == CacheProviderType.Redis)
         {
-            Log.Information("🔧 Configuring Redis cache provider with connection to {ConnectionString}", 
+            Log.Information("Configuring Redis cache provider with connection to {ConnectionString}", 
                 cacheOptions.Redis.ConnectionString);
             
             // Add StackExchange.Redis ConnectionMultiplexer
@@ -46,7 +46,7 @@ public static class CachingServiceExtensions
         }
         else
         {
-            Log.Information("🔧 Configuring Memory cache provider");
+            Log.Debug("Configuring Memory cache provider");
         }
 
         // Add the cache manager

@@ -37,7 +37,7 @@ public class TokenAuthMiddleware
         // Continue with authentication logic
         if (!context.Request.Headers.TryGetValue("Authorization", out var providedToken))
         {
-            Log.Warning("❌ Authorization header missing for {Path}", context.Request.Path);
+            Log.Warning("Authorization header missing for {Path}", context.Request.Path);
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new { error = "Authentication required", success = false });
@@ -60,7 +60,7 @@ public class TokenAuthMiddleware
 
         if (!isValid)
         {
-            Log.Warning("❌ Invalid or expired token used for {Path} from {RemoteIP}", 
+            Log.Warning("Invalid or expired token used for {Path} from {RemoteIP}", 
                 context.Request.Path, 
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
             
@@ -77,7 +77,7 @@ public class TokenAuthMiddleware
         var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
         if (tokenDetails == null)
         {
-            Log.Error("⚠️ Token verified but details could not be retrieved");
+            Log.Error("Token verified but details could not be retrieved");
             context.Response.StatusCode = 500;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new { error = "Authentication error", success = false });
@@ -93,7 +93,7 @@ public class TokenAuthMiddleware
             
             if (!hasEnvironmentAccess)
             {
-                Log.Warning("❌ Token lacks permission for environment {Environment}. Available environments: {Environments}", 
+                Log.Warning("Token lacks permission for environment {Environment}. Available environments: {Environments}", 
                     env, tokenDetails.AllowedEnvironments);
                 
                 // Log authorization failure in audit trail
@@ -118,7 +118,7 @@ public class TokenAuthMiddleware
             
             if (!hasEndpointAccess)
             {
-                Log.Warning("❌ Token lacks permission for endpoint {Endpoint}. Available scopes: {Scopes}", 
+                Log.Warning("Token lacks permission for endpoint {Endpoint}. Available scopes: {Scopes}", 
                     endpointName, tokenDetails.AllowedScopes);
                 
                 // Log authorization failure in audit trail
@@ -137,7 +137,7 @@ public class TokenAuthMiddleware
         }
 
         // Token is valid, has proper scopes, and access to the environment - proceed
-        Log.Debug("✅ Authorized {User} (Token ID: {TokenId}) for {Method} {Path}", 
+        Log.Debug("Authorized {User} (Token ID: {TokenId}) for {Method} {Path}", 
             tokenDetails.Username, tokenDetails.Id, context.Request.Method, context.Request.Path);
         await _next(context);
     }

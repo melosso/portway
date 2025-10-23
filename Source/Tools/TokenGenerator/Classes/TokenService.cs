@@ -47,7 +47,7 @@ public class TokenService
             string tokenFilePath = Path.Combine(_tokenFolderPath, $"{username}.txt");
             if (File.Exists(tokenFilePath))
             {
-                Log.Warning("⚠️ A token file for user '{Username}' already exists at '{Path}'", username, tokenFilePath);
+                Log.Warning("A token file for user '{Username}' already exists at '{Path}'", username, tokenFilePath);
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"WARNING: A token file for user '{username}' already exists.");

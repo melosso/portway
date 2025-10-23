@@ -54,7 +54,7 @@ public class UrlValidator
                 "169.254.0.0/16"
             };
 
-        Log.Information("🔒 Network traffic allowed for hosts: {Hosts}", 
+        Log.Information("Network traffic allowed for hosts: {Hosts}", 
             string.Join(", ", _allowedHosts));
     }
 
@@ -152,7 +152,7 @@ public class UrlValidator
             Log.Debug("🏠 Host to validate: {Host}", host);
             
             var addresses = Dns.GetHostAddresses(host);
-            Log.Debug("🌐 Resolved Addresses: {Addresses}", 
+            Log.Debug("Resolved Addresses: {Addresses}", 
                 string.Join(", ", addresses.Select(a => a.ToString())));
             
             // Track blocked IPs for detailed logging
@@ -173,8 +173,8 @@ public class UrlValidator
                 
             if (anyIpBlocked)
             {
-                Log.Warning("❌ Host {Host} blocked due to IP restrictions", host);
-                Log.Warning("🚫 Blocked IP Details: {BlockedIpDetails}", 
+                Log.Warning("Host {Host} blocked due to IP restrictions", host);
+                Log.Warning("Blocked IP Details: {BlockedIpDetails}", 
                     string.Join(", ", blockedIps));
                 return false;
             }
@@ -185,18 +185,18 @@ public class UrlValidator
                 
             if (!isHostAllowed)
             {
-                Log.Warning("❌ Host {Host} is NOT in allowed hosts", host);
-                Log.Warning("📋 Allowed Hosts: {AllowedHosts}", 
+                Log.Warning("Host {Host} is NOT in allowed hosts", host);
+                Log.Warning("Allowed Hosts: {AllowedHosts}", 
                     string.Join(", ", _allowedHosts));
                 return false;
             }
             
-            Log.Debug("✅ URL {Url} validated successfully", url);
+            Log.Debug("URL {Url} validated successfully", url);
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ URL Validation Error for {Url}", url);
+            Log.Error(ex, "URL Validation Error for {Url}", url);
             return false;
         }
     }
@@ -301,7 +301,7 @@ public class UrlValidator
 
         if (blockedBy.Any())
         {
-            Log.Warning("🚫 IP {IpAddress} is blocked by the following ranges: {BlockedRanges}", 
+            Log.Warning("IP {IpAddress} is blocked by the following ranges: {BlockedRanges}", 
                 ip, string.Join(", ", blockedBy));
             return false;
         }

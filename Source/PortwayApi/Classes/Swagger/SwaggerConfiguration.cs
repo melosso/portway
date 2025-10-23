@@ -24,7 +24,6 @@ public class SwaggerSettings
     public string Description { get; set; } = "A summary of the API documentation.";
     public ContactInfo Contact { get; set; } = new ContactInfo();
     public SecurityDefinitionInfo SecurityDefinition { get; set; } = new SecurityDefinitionInfo();
-    public string RoutePrefix { get; set; } = "docs";
     public string DocExpansion { get; set; } = "List";
     public int DefaultModelsExpandDepth { get; set; } = -1;
     public bool DisplayRequestDuration { get; set; } = true;
@@ -73,17 +72,17 @@ public static class SwaggerConfiguration
             if (section.Exists())
             {
                 section.Bind(swaggerSettings);
-                Log.Debug("✅ Swagger configuration loaded from appsettings.json");
+                Log.Debug("Swagger configuration loaded from appsettings.json");
             }
             else
             {
-                Log.Warning("⚠️ No 'Swagger' section found in configuration. Using default settings.");
+                Log.Warning("No 'Swagger' section found in configuration. Using default settings.");
             }
         }
         catch (Exception ex)
         {
             // Log error but continue with defaults
-            Log.Error(ex, "❌ Error loading Swagger configuration. Using default settings.");
+            Log.Error(ex, "Error loading Swagger configuration. Using default settings.");
         }
         
         // Ensure object references aren't null (defensive programming)
@@ -102,9 +101,6 @@ public static class SwaggerConfiguration
             
         if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Scheme))
             swaggerSettings.SecurityDefinition.Scheme = "Bearer";
-            
-        if (string.IsNullOrWhiteSpace(swaggerSettings.RoutePrefix))
-            swaggerSettings.RoutePrefix = "docs";
             
         if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarTheme))
             swaggerSettings.ScalarTheme = "purple";
@@ -210,11 +206,11 @@ public static class SwaggerConfiguration
             builder.Services.AddSingleton<DynamicEndpointOperationFilter>();
             builder.Services.AddSingleton<FileEndpointDocumentFilter>();
             
-            Log.Debug("✅ Swagger services registered successfully");
+            Log.Debug("Swagger services registered successfully");
         }
         else
         {
-            Log.Information("ℹ️ Swagger is disabled in configuration");
+            Log.Information("Swagger is disabled in configuration");
         }
         
         return swaggerSettings;
@@ -264,7 +260,7 @@ public static class SwaggerConfiguration
                         } 
                     };
                     
-                    Log.Debug("🔗 OpenAPI Server URL: {ServerUrl}", serverUrl);
+                    Log.Debug("OpenAPI Server URL: {ServerUrl}", serverUrl);
                 });
         });
 
@@ -278,7 +274,7 @@ public static class SwaggerConfiguration
                 var sidebarConfig = swaggerSettings.ScalarShowSidebar ? "true" : "false";
                 
                 // Debug logging
-                Log.Debug("🎨 Scalar configuration: Theme={Theme}, Layout={Layout}", 
+                Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}", 
                     swaggerSettings.ScalarTheme, swaggerSettings.ScalarLayout);
                 
                 var configJson = $@"{{
@@ -298,6 +294,7 @@ public static class SwaggerConfiguration
     <title>{swaggerSettings.Title}</title>
     <meta charset=""utf-8"" />
     <meta name=""viewport"" content=""width=device-width, initial-scale=1"" />
+    <link rel=""icon"" href=""favicon.ico"" type=""image/x-icon"">
     <style>
         body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
     </style>
@@ -434,7 +431,7 @@ public static class SwaggerConfiguration
                 return Results.Content(html, "text/html");
             });
             
-            Log.Information("📜 Documentation configured successfully; available at /docs/");
+            Log.Information("API Documentation is ready! Please visit /docs.");
         }
         else
         {
@@ -445,7 +442,7 @@ public static class SwaggerConfiguration
                 var pathBase = app.Configuration["PathBase"] ?? "";
                 
                 c.SwaggerEndpoint($"{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json", $"{swaggerSettings.Title} {swaggerSettings.Version}");
-                c.RoutePrefix = swaggerSettings.RoutePrefix ?? "docs";
+                c.RoutePrefix = "docs";
                 
                 // Apply basic settings
                 c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
@@ -458,7 +455,7 @@ public static class SwaggerConfiguration
                     c.DisplayRequestDuration();
             });
             
-            Log.Information("✅ API documentation configured successfully at /docs using Swagger UI");
+            Log.Information("API Documentation is ready! Please visit /docs (legacy)");
         }
     }
 

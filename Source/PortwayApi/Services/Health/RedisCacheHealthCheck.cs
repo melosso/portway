@@ -37,7 +37,7 @@ public class RedisCacheHealthCheck : IHealthCheck
             }
             catch (Exception ex)
             {
-                Log.Warning(ex, "❌ Failed to initialize Redis connection for health check");
+                Log.Warning(ex, "Failed to initialize Redis connection for health check");
             }
         }
     }
@@ -136,7 +136,7 @@ public class RedisCacheHealthCheck : IHealthCheck
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Redis health check failed");
+            Log.Error(ex, "Redis health check failed");
             return HealthCheckResult.Unhealthy("Redis health check failed", ex);
         }
     }

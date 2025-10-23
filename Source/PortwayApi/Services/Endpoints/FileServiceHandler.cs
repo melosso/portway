@@ -77,7 +77,7 @@ public class FileHandlerService : IDisposable
         if (!Directory.Exists(_options.StorageDirectory))
         {
             Directory.CreateDirectory(_options.StorageDirectory);
-            _logger.Information("✅ Created file storage directory: {Directory}", _options.StorageDirectory);
+            _logger.Information("Created file storage directory: {Directory}", _options.StorageDirectory);
         }
 
         // Initialize the file system index
@@ -167,7 +167,7 @@ public class FileHandlerService : IDisposable
             // Update current memory usage
             _currentMemoryUsage += memoryStream.Length;
 
-            Log.Debug("💾 File {Filename} stored in memory cache with ID {FileId}", safeFilename, fileId);
+            Log.Debug("File {Filename} stored in memory cache with ID {FileId}", safeFilename, fileId);
         }
         else
         {
@@ -177,7 +177,7 @@ public class FileHandlerService : IDisposable
                 await fileStream.CopyToAsync(fileStream2);
             }
 
-            Log.Debug("💾 File {Filename} saved directly to disk at {FilePath}", safeFilename, filePath);
+            Log.Debug("File {Filename} saved directly to disk at {FilePath}", safeFilename, filePath);
         }
 
         await _fileSystemIndex.UpdateIndexAsync(environment, safeFilename, new FileSystemIndex.FileMetadata
@@ -216,7 +216,7 @@ public class FileHandlerService : IDisposable
             await cachedStream.CopyToAsync(streamCopy);
             streamCopy.Position = 0;
 
-            Log.Debug("📤 File {Filename} retrieved from memory cache with ID {FileId}", filename, fileId);
+            Log.Debug("File {Filename} retrieved from memory cache with ID {FileId}", filename, fileId);
 
             return (streamCopy, filename, GetContentType(filename));
         }
@@ -263,10 +263,10 @@ public class FileHandlerService : IDisposable
             // Update current memory usage
             _currentMemoryUsage += cacheStream.Length;
 
-            Log.Debug("💾 File {Filename} loaded into memory cache with ID {FileId}", filename, fileId);
+            Log.Debug("File {Filename} loaded into memory cache with ID {FileId}", filename, fileId);
         }
 
-        Log.Debug("📤 File {Filename} retrieved from disk with ID {FileId}", filename, fileId);
+        Log.Debug("File {Filename} retrieved from disk with ID {FileId}", filename, fileId);
 
         return (fileStream, filename, GetContentType(filename));
     }
@@ -293,7 +293,7 @@ public class FileHandlerService : IDisposable
             _lastAccessTimes.TryRemove(fileId, out _);
             _dirtyFlags.TryRemove(fileId, out _);
 
-            Log.Debug("🗑️ File {Filename} removed from memory cache with ID {FileId}", filename, fileId);
+            Log.Debug("File {Filename} removed from memory cache with ID {FileId}", filename, fileId);
         }
 
         // Delete from disk if it exists
@@ -302,7 +302,7 @@ public class FileHandlerService : IDisposable
         if (File.Exists(filePath))
         {
             File.Delete(filePath);
-            Log.Debug("🗑️ File {Filename} deleted from disk at {FilePath}", filename, filePath);
+            Log.Debug("File {Filename} deleted from disk at {FilePath}", filename, filePath);
         }
         
         await _fileSystemIndex.UpdateIndexAsync(environment, filename, isDeleted: true);
@@ -368,7 +368,7 @@ public class FileHandlerService : IDisposable
         using var fileStreamWriter = new FileStream(fullPath, FileMode.Create);
         await fileStream.CopyToAsync(fileStreamWriter);
 
-        Log.Debug("💾 File saved to absolute path: {Path}", fullPath);
+        Log.Debug("File saved to absolute path: {Path}", fullPath);
         return fileId;
     }
 
@@ -400,7 +400,7 @@ public class FileHandlerService : IDisposable
             }
         }
 
-        Log.Information("✅ Flushed all dirty files from memory cache to disk");
+        Log.Information("Flushed all dirty files from memory cache to disk");
     }
 
     /// <summary>
@@ -422,7 +422,7 @@ public class FileHandlerService : IDisposable
         // Parse the file ID to get environment and filename
         if (!ParseFileId(fileId, out string environment, out string filename))
         {
-            Log.Warning("⚠️ Invalid file ID in memory cache: {FileId}", fileId);
+            Log.Warning("Invalid file ID in memory cache: {FileId}", fileId);
             return;
         }
 
@@ -445,11 +445,11 @@ public class FileHandlerService : IDisposable
             // Mark as not dirty
             _dirtyFlags[fileId] = false;
 
-            Log.Debug("💾 Flushed file {Filename} from memory to disk at {FilePath}", filename, filePath);
+            Log.Debug("Flushed file {Filename} from memory to disk at {FilePath}", filename, filePath);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error flushing file {Filename} to disk", filename);
+            Log.Error(ex, "Error flushing file {Filename} to disk", filename);
         }
     }
 
@@ -504,7 +504,7 @@ public class FileHandlerService : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "❌ Error flushing memory cache");
+            Log.Error(ex, "Error flushing memory cache");
         }
     }
 
@@ -832,7 +832,7 @@ public class FileSystemIndex
             if (isDeleted)
             {
                 index.Remove(fileName);
-                _logger.Debug("🗑️ Removed {FileName} from file index for {Environment}", fileName, environment);
+                _logger.Debug("Removed {FileName} from file index for {Environment}", fileName, environment);
             }
             else if (metadata != null)
             {
@@ -877,6 +877,6 @@ public class FileSystemIndex
             await GetDirectoryIndexAsync(environment, forceRefresh: true);
         }
         
-        _logger.Information("🔄 Refreshed all file indices");
+        _logger.Information("Refreshed all file indices");
     }
 }
