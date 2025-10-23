@@ -1,0 +1,1 @@
+This directory may contain the (next) release build.
