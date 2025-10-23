@@ -213,7 +213,7 @@ Used for receiving and storing webhook payloads directly into your database.
 }
 ```
 
-### Prepare your Deployment
+### 4. Prepare your Deployment
 
 If you're choosing to deploy the services on Windows, please make sure to prepare your environment: you'll need to safely store the application encryption key. On containerized environments, this can be done with the identically named PORTWAY_ENCRYPTION_KEY variable.
 
@@ -223,7 +223,7 @@ $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Cr
 ```
 
 
-### 54. Deploy
+### 5. Deploy
 
 When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
 
