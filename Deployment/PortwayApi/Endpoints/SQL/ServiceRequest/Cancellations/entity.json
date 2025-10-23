@@ -1,0 +1,24 @@
+{
+    "DatabaseObjectName": "ServiceCancellations", 
+    "DatabaseSchema": "dbo",
+    "Namespace": "ServiceRequest",
+    "NamespaceDisplayName": "Servicing",
+    "AllowedColumns": [
+      "RequestId",
+      "Status"
+    ],
+    "Procedure": "dbo.sp_ManageServiceRequests",
+    "AllowedMethods": ["GET","DELETE"],
+    "AllowedEnvironments": ["600"],
+    "Documentation": {
+        "TagDescription": "**Service Cancellations**\n\nManage service request cancellations and status updates. Handle customer cancellation requests and maintain audit trails for service modifications.",
+        "MethodDescriptions": {
+            "GET": "Retrieve service request cancellations",
+            "DELETE": "Process service request cancellation"
+        },
+        "MethodDocumentation": {
+            "GET": "Retrieves service cancellation records with status information and request details for tracking and reporting purposes.",
+            "DELETE": "> [!WARNING]\n> This performs a **soft delete** operation that marks data as deleted.\n\nRemoves service cancellation records from the system while maintaining audit trails for compliance."
+        }
+    }
+  }

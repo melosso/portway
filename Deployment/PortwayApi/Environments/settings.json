@@ -1,0 +1,6 @@
+{
+    "Environment": {
+      "ServerName": "localhost",
+      "AllowedEnvironments": ["600", "700", "Synergy"]
+    }
+}

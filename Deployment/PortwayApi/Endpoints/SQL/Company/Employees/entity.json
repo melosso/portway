@@ -1,0 +1,56 @@
+{
+  "DatabaseSchema": "Portway",
+  "DatabaseObjectName": "CompanyEmployees",
+  "Namespace": "Company",
+  "NamespaceDisplayName": "Company",
+  "IsPrivate": false,
+  "AllowedEnvironments": ["Synergy"],
+  "Documentation": {
+    "Summary": "Retrieve employee data",
+    "Description": "Access and manage employee records including personal details, job information, organizational assignments, and employment history. Useful for HR processes, payroll, performance tracking, and workforce management.",
+    "TagDescription": "Retrieve and manage company information and related organizational settings."
+  },
+  "Properties": {
+    "CacheEnabled": true,
+    "CacheDurationMinutes": 5,
+    "MaxPageSize": 50,
+    "DefaultSort": "LastName ASC, FirstName ASC"
+  },
+  "AllowedColumns": [
+    "EmployeeId",
+    "FirstName",
+    "LastName",
+    "FullName",
+    "Email",
+    "Phone",
+    "MobilePhone",
+    "JobTitle",
+    "DepartmentId",
+    "DepartmentName",
+    "DivisionId",
+    "DivisionName",
+    "ManagerId",
+    "ManagerName",
+    "HireDate",
+    "TerminationDate",
+    "EmploymentStatus",
+    "EmployeeType",
+    "Location",
+    "WorkAddress",
+    "BirthDate",
+    "LinkedInProfile",
+    "CreatedDate",
+    "ModifiedDate",
+    "IsActive",
+    "LastReviewDate",
+    "SalaryGrade",
+    "OwnerId"
+  ],
+  "RequiredColumns": [
+    "FirstName",
+    "LastName",
+    "Email",
+    "JobTitle",
+    "DepartmentId"
+  ]
+}

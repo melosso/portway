@@ -1,13 +1,15 @@
-Deployment/
 Deployment/PortwayApi/log/
 Deployment/PortwayApi/tokens/
+Deployment/PortwayApi/.core/
 *.log
 *.tmp
 *.cache
 *.example
+TrimmerRoots.xml
 *.db
 .venv/
 /logs/
+/.core/
 .git/# Ignore log files
 .fake# Ignore log files
 # Ignore log files
