@@ -142,6 +142,55 @@ if (Test-Path $licensePath) {
   Copy-Item -Path $licensePath -Destination $deploymentLicensePath -Force
 }
 
+# Create source file
+$sourceFilePath = Join-Path $licenseDir "source.txt"
+"https://github.com/melosso/portway" | Out-File -FilePath $sourceFilePath -Encoding UTF8 -Force
+
+# Generate and include third-party package licenses
+Write-Host "Collecting package licenses..."
+$packagesLicenseDir = Join-Path $licenseDir "packages"
+if (-not (Test-Path $packagesLicenseDir)) {
+  New-Item -Path $packagesLicenseDir -ItemType Directory -Force | Out-Null
+}
+
+# Install dotnet-project-licenses tool if not already installed
+$toolInstalled = dotnet tool list -g | Select-String "dotnet-project-licenses"
+if (-not $toolInstalled) {
+  Write-Host "Installing dotnet-project-licenses tool..."
+  dotnet tool install -g dotnet-project-licenses
+}
+
+# Generate package licenses
+$projectPath = Join-Path $sourceProjectPath "PortwayApi.csproj"
+try {
+  dotnet-project-licenses --input $projectPath --export-license-texts --output-directory $packagesLicenseDir
+  
+  # Remove Microsoft and Azure package license files
+  Get-ChildItem -Path $packagesLicenseDir -File -ErrorAction SilentlyContinue |
+  Where-Object {
+    $_.Name -like "Microsoft.*" -or
+    $_.Name -like "Azure.*" -or
+    $_.Name -like "OpenTelemetry.*" -or
+    $_.Name -like "SqlKata.Execution.*" -or
+    ( ($_.Name -like "Serilog.*") -and -not ($_.Name -like "Serilog.AspNetCore*") )
+  } |
+  Remove-Item -Force -ErrorAction SilentlyContinue
+
+  # Rename remaining files to remove version numbers
+  Get-ChildItem -Path $packagesLicenseDir -File -Filter "*.html" -ErrorAction SilentlyContinue |
+  ForEach-Object {
+    # Extract package name without version (everything before the last underscore)
+    if ($_.Name -match "^(.+)_[\d\.]+\.html$") {
+      $newName = $matches[1] + ".html"
+      Rename-Item -Path $_.FullName -NewName $newName -Force -ErrorAction SilentlyContinue
+    }
+  }
+  
+  Write-Host "Package licenses collected successfully (Microsoft and Azure packages excluded)."
+} catch {
+  Write-Host "Warning: Failed to collect package licenses - $_"
+}
+
 # Ensure .gitignore exists
 $gitignorePath = Join-Path $rootDir ".gitignore"
 $logIgnoreRules = @(
@@ -162,3 +211,4 @@ foreach ($rule in $logIgnoreRules) {
 Write-Host ".gitignore updated to exclude log files and /logs/ directory"
 Write-Host "Deployment complete. The application has been published to $deploymentPath"
 Write-Host "web.config file generated at $webConfigPath"
+Write-Host "Third-party package licenses collected in $packagesLicenseDir"
