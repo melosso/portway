@@ -144,42 +144,53 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             {
                 methods.Add("GET");
             }
-            
+
             // Add each allowed operation, but skip DELETE for the base path
             foreach (var method in methods)
             {
                 if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
                     continue;
                 var opType = GetOperationType(method);
-                if (opType == null) continue;
+
+                if (opType == null)
+                    continue;
+
                 var operation = CreateSqlOperation(
-                    endpointName, 
-                    method, 
-                    definition, 
-                    allowedEnvironments, 
+                    endpointName,
+                    method,
+                    definition,
+                    allowedEnvironments,
                     operationIdCounter++);
-                swaggerDoc.Paths[path].Operations[opType.Value] = operation;
+                    
+                if (opType.HasValue)
+                {
+                    swaggerDoc.Paths[path].Operations[opType.Value] = operation;
+                }
             }
             
             // Add specific delete endpoint with OData-style ID in path
             if (methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
                 // Use OData-style path: /api/{env}/{endpointName}({id})
-                var deletePath = $"/api/{{env}}/{endpointName}({{id}})";
+                var deletePath = $"/api/{{env}}/{definition.FullPath}({{id}})";
+                
                 // Create path item if it doesn't exist
                 if (!swaggerDoc.Paths.ContainsKey(deletePath))
                 {
                     swaggerDoc.Paths[deletePath] = new OpenApiPathItem();
                 }
+                
                 var deleteOperation = CreateSqlDeleteOperation(
                     endpointName,
                     definition,
                     allowedEnvironments,
                     operationIdCounter++);
+                
                 // Remove the query parameter for id, and add a path parameter instead
                 deleteOperation.Parameters = deleteOperation.Parameters
                     .Where(p => p.Name != "id")
                     .ToList();
+                
                 deleteOperation.Parameters.Add(new OpenApiParameter {
                     Name = "id",
                     In = ParameterLocation.Path,
@@ -187,50 +198,149 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     Schema = new OpenApiSchema { Type = "string" },
                     Description = "ID of the record to delete (OData-style: /endpointName(id))"
                 });
+                
                 swaggerDoc.Paths[deletePath].Operations[OperationType.Delete] = deleteOperation;
             }
         }
     }
-    
+
+    private void AddProxyDeleteOperation(
+        OpenApiDocument swaggerDoc,
+        string endpointName,
+        EndpointDefinition definition,
+        List<string> allowedEnvironments,
+        ref int operationIdCounter)
+    {
+        // Determine delete pattern (load from endpoint definition)
+        var deletePattern = GetDeletePatternForSwagger(definition);
+        
+        // Create path based on delete pattern
+        string deletePath = deletePattern.Style == "PathParameter" || 
+                            deletePattern.Style == "ODataGuid" || 
+                            deletePattern.Style == "ODataKey"
+            ? $"/api/{{env}}/{endpointName}/{{id}}"
+            : $"/api/{{env}}/{endpointName}";
+        
+        if (!swaggerDoc.Paths.ContainsKey(deletePath))
+        {
+            swaggerDoc.Paths[deletePath] = new OpenApiPathItem();
+        }
+        
+        var operation = new OpenApiOperation
+        {
+            Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
+            Summary = GetOperationSummary("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
+            Description = GetOperationDescription("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
+            OperationId = $"delete_{definition.FullPath}".Replace("/", "_"),
+            Parameters = new List<OpenApiParameter>()
+        };
+        
+        // Environment parameter
+        operation.Parameters.Add(new OpenApiParameter
+        {
+            Name = "env",
+            In = ParameterLocation.Path,
+            Required = true,
+            Schema = new OpenApiSchema 
+            { 
+                Type = "string",
+                Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+            },
+            Description = $"Target environment. Allowed values: {string.Join(", ", allowedEnvironments)}"
+        });
+        
+        // ID parameter based on pattern
+        if (deletePattern.Style == "PathParameter" || 
+            deletePattern.Style == "ODataGuid" || 
+            deletePattern.Style == "ODataKey")
+        {
+            operation.Parameters.Add(new OpenApiParameter
+            {
+                Name = "id",
+                In = ParameterLocation.Path,
+                Required = true,
+                Schema = new OpenApiSchema { Type = "string" },
+                Description = deletePattern.Description ?? "Resource ID to delete"
+            });
+        }
+        else if (deletePattern.Style == "QueryParameter")
+        {
+            operation.Parameters.Add(new OpenApiParameter
+            {
+                Name = deletePattern.Parameter ?? "id",
+                In = ParameterLocation.Query,
+                Required = true,
+                Schema = new OpenApiSchema { Type = "string" },
+                Description = deletePattern.Description ?? "Resource ID to delete"
+            });
+        }
+        
+        // Add responses
+        operation.Responses = new OpenApiResponses
+        {
+            ["200"] = new OpenApiResponse { Description = "Successfully deleted" },
+            ["204"] = new OpenApiResponse { Description = "Successfully deleted (no content)" },
+            ["400"] = new OpenApiResponse { Description = "Bad request" },
+            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
+            ["404"] = new OpenApiResponse { Description = "Resource not found" },
+            ["500"] = new OpenApiResponse { Description = "Server error" }
+        };
+        
+        swaggerDoc.Paths[deletePath].Operations[OperationType.Delete] = operation;
+        operationIdCounter++;
+    }
+
+    private DeletePattern GetDeletePatternForSwagger(EndpointDefinition definition)
+    {
+        if (definition.DeletePatterns?.Any() == true)
+        {
+            return definition.DeletePatterns.First();
+        }
+        
+        // Default fallback
+        return new DeletePattern
+        {
+            Style = "PathParameter",
+            Description = "Delete resource by ID in path"
+        };
+    }
+
     private void AddProxyEndpoints(OpenApiDocument swaggerDoc, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
-        // Get proxy endpoints using the new method
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
-        
-        // Sort endpoints by SwaggerTag to ensure alphabetical order in documentation
+
         var sortedProxyEndpoints = proxyEndpoints
             .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
             .ToList();
-            
+
         foreach (var endpoint in sortedProxyEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
-            
-            // Skip private or composite endpoints
+
             if (definition.IsPrivate || definition.IsComposite)
                 continue;
-            
-            // Collect tag description if provided using the SwaggerTag for proper namespace grouping
-            // Only set the description if we haven't seen this SwaggerTag before to avoid overwriting
-            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) && 
+
+            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
                 !documentTags.ContainsKey(definition.SwaggerTag))
             {
                 documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
             }
-                
-            // Path template for this endpoint
+
             string path = $"/api/{{env}}/{endpointName}";
-            
-            // Create path item if it doesn't exist
+
             if (!swaggerDoc.Paths.ContainsKey(path))
             {
                 swaggerDoc.Paths[path] = new OpenApiPathItem();
             }
-            
+
             // Add operations for each HTTP method
             foreach (var method in definition.Methods)
             {
+                // Skip DELETE - handle it separately
+                if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                    
                 var operation = new OpenApiOperation
                 {
                     Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
@@ -347,6 +457,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
 
                 // Add the operation to the path with the appropriate HTTP method
                 AddOperationToPath(swaggerDoc.Paths[path], method, operation);
+            }
+
+            // Special handling for DELETE
+            if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
+            {
+                AddProxyDeleteOperation(swaggerDoc, endpointName, definition, allowedEnvironments, ref operationIdCounter);
             }
         }
     }

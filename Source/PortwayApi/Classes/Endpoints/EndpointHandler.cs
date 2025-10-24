@@ -69,6 +69,9 @@ public class EndpointDefinition
     // Custom properties for extended functionality
     public Dictionary<string, object>? CustomProperties { get; set; }
 
+    // DELETE operation patterns
+    public List<DeletePattern>? DeletePatterns { get; set; }
+
     /// <summary>
     /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
     /// Takes precedence over folder-inferred namespace
@@ -150,14 +153,7 @@ public class EndpointDefinition
             return result;
         }
     }
-                              
-    // Helper method to get a consistent tuple format
-    public (string Url, HashSet<string> Methods, bool IsPrivate, string Type) ToTuple()
-    {
-        string typeString = this.Type.ToString();
-        return (Url, new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase), IsPrivate, typeString);
-    }
-    
+
     /// <summary>
     /// Creates URL patterns for routing (supports both namespaced and non-namespaced)
     /// </summary>
@@ -178,7 +174,7 @@ public class EndpointDefinition
         
         return patterns;
     }
-    
+
     /// <summary>
     /// Validates namespace naming conventions
     /// </summary>
@@ -186,7 +182,7 @@ public class EndpointDefinition
     {
         var errors = new List<string>();
         var namespaceToCheck = EffectiveNamespace;
-        
+
         if (!string.IsNullOrEmpty(namespaceToCheck))
         {
             // Check namespace naming rules
@@ -194,12 +190,12 @@ public class EndpointDefinition
             {
                 errors.Add("Namespace must start with a letter and contain only letters, numbers, and underscores");
             }
-            
+
             if (namespaceToCheck.Length > 50)
             {
                 errors.Add("Namespace cannot exceed 50 characters");
             }
-            
+
             // Reserved namespace names
             var reserved = new[] { "api", "docs", "swagger", "health", "admin", "system", "composite", "webhook", "files" };
             if (reserved.Contains(namespaceToCheck.ToLowerInvariant()))
@@ -207,8 +203,21 @@ public class EndpointDefinition
                 errors.Add($"'{namespaceToCheck}' is a reserved namespace name");
             }
         }
-        
+
         return errors;
+    }
+    
+    /// <summary>
+    /// Converts EndpointDefinition to legacy tuple format for backward compatibility
+    /// </summary>
+    public (string Url, HashSet<string> Methods, bool IsPrivate, string Type) ToTuple()
+    {
+        return (
+            Url, 
+            new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase), 
+            IsPrivate, 
+            Type.ToString()
+        );
     }
 }
 
@@ -898,11 +907,10 @@ public static class EndpointHandler
                     AllowedEnvironments = extendedEntity.AllowedEnvironments,
                     Documentation = extendedEntity.Documentation,
                     CustomProperties = extendedEntity.CustomProperties,
-
-                    // Copy namespace properties from entity
                     Namespace = extendedEntity.Namespace,
                     NamespaceDisplayName = extendedEntity.NamespaceDisplayName,
-                    DisplayName = extendedEntity.DisplayName
+                    DisplayName = extendedEntity.DisplayName,
+                    DeletePatterns = extendedEntity.DeletePatterns
                 };
             }
 
@@ -916,17 +924,16 @@ public static class EndpointHandler
                 {
                     Url = entity.Url,
                     Methods = entity.Methods,
-                    IsPrivate = false, // Legacy format doesn't support IsPrivate
+                    IsPrivate = false,
                     Type = EndpointType.Standard,
                     CompositeConfig = null,
                     AllowedEnvironments = entity.AllowedEnvironments,
                     Documentation = entity.Documentation,
                     CustomProperties = entity.CustomProperties,
-                    
-                    // Copy namespace properties from entity (fallback)
                     Namespace = entity.Namespace,
                     DisplayName = entity.DisplayName,
-                    NamespaceDisplayName = entity.NamespaceDisplayName
+                    NamespaceDisplayName = entity.NamespaceDisplayName,
+                    DeletePatterns = entity.DeletePatterns 
                 };
             }
         }
@@ -1086,11 +1093,11 @@ public static class EndpointHandler
     {
         if (definition.IsPrivate)
         {
-            Log.Debug("Loaded private endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded private proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
         }
         else if (definition.IsComposite)
         {
-            Log.Debug("Loaded composite endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded composite proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
         }
         else if (definition.IsSql)
         {
@@ -1098,7 +1105,7 @@ public static class EndpointHandler
         }
         else
         {
-            Log.Debug("♨️ Loaded standard endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
         }
     }
 

@@ -28,7 +28,7 @@ Entity configuration files are JSON files located in the endpoints directory str
           └── entity.json
 ```
 
-## SQL Entity Configuration
+## Endpoint: SQL
 
 SQL entities expose database tables or views through OData endpoints.
 
@@ -160,7 +160,7 @@ The `AllowedColumns` array supports semicolon-separated aliases for user-friendl
 - Backward compatible with existing configurations
 - Automatic conversion in all OData operations (`$select`, `$filter`, `$orderby`)
 
-## Proxy Entity Configuration
+## Endpoint: Proxy
 
 Proxy entities forward requests to internal web services.
 
@@ -236,7 +236,82 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
-## Static Entity Configuration
+### Configuring DELETE Operations
+
+Different internal services expect DELETE request IDs in different formats. Use `DeletePatterns` to tell the gateway how to format the ID when forwarding to your target service.
+
+#### Why Configure This?
+
+When you receive:
+```
+DELETE /api/prod/customers/a7f3c8e1-4b2d-4d91-8c5a-9e2b1f6d8a4c
+```
+
+The gateway needs to know whether your internal service expects:
+- `http://service/customers/a7f3c8e1...` (path style)
+- `http://service/customers?id=a7f3c8e1...` (query style)
+- `http://service/customers(guid'a7f3c8e1...')` (OData style)
+
+#### Available Styles
+
+| Style | Use Case | Example Output |
+|-------|----------|----------------|
+| **PathParameter** (default) | Standard REST APIs | `http://service/customers/a7f3c8e1...` |
+| **QueryParameter** | Legacy systems using query strings | `http://service/customers?id=a7f3c8e1...` |
+| **ODataGuid** | OData services with GUID keys | `http://service/customers(guid'a7f3c8e1...')` |
+| **ODataKey** | OData services with numeric keys | `http://service/orders(10248)` |
+
+**Configuration examples:**
+
+```json
+// PathParameter (or omit DeletePatterns entirely)
+{ "DeletePatterns": [{ "Style": "PathParameter" }] }
+
+// QueryParameter
+{ "DeletePatterns": [{ "Style": "QueryParameter", "Parameter": "id" }] }
+
+// ODataGuid
+{ "DeletePatterns": [{ "Style": "ODataGuid" }] }
+
+// ODataKey
+{ "DeletePatterns": [{ "Style": "ODataKey" }] }
+```
+
+#### Quick Examples
+
+**Modern REST microservice** (most common):
+```json
+{
+  "Url": "http://order-service.company.local/api/orders",
+  "Methods": ["GET", "POST", "PUT", "DELETE"]
+  // No DeletePatterns needed - PathParameter is the default
+}
+```
+
+**Legacy system with query parameters**:
+```json
+{
+  "Url": "http://crm-legacy.company.local/api/contacts",
+  "Methods": ["GET", "DELETE"],
+  "DeletePatterns": [{ 
+    "Style": "QueryParameter",
+    "Parameter": "contact_id"
+  }]
+}
+```
+
+**Internal OData service**:
+```json
+{
+  "Url": "http://inventory-api.company.local/api/products",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "DeletePatterns": [{ "Style": "ODataGuid" }]
+}
+```
+
+The gateway automatically recognizes IDs in any format (plain GUIDs, OData wrapped, numeric, string keys) and forwards them correctly to your service.
+
+## Endpoint: Static
 
 Static entities serve pre-defined content files with optional OData filtering capabilities.
 
@@ -288,9 +363,9 @@ Static entities serve pre-defined content files with optional OData filtering ca
 - **Text** (`text/plain`) - Raw file serving
 - **Images** (`image/*`) - Raw file serving
 
-## Composite Entity Configuration
+## Endpoint: Composite
 
-Composite entities orchestrate multiple operations in a single transaction.
+Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here).
 
 ### Sales Order Example
 
@@ -368,7 +443,7 @@ Composite entities orchestrate multiple operations in a single transaction.
 | `$prev.[step].[path]` | Previous step value | `$prev.CreateOrderLines.0.d.TransactionKey` |
 | `$context.[variable]` | Context variable | `$context.customerId` |
 
-## Webhook Entity Configuration
+## Endpoint: Webhook
 
 Webhook entities receive and store external webhook data.
 
@@ -393,7 +468,7 @@ Webhook entities receive and store external webhook data.
 | `DatabaseSchema` | string | No | Database schema |
 | `AllowedColumns` | array | Yes | Allowed webhook IDs |
 
-## File Entity Configuration
+## Endpoint: Files
 
 File entities enable storage and retrieval of files through dedicated endpoints.
 
@@ -443,7 +518,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 | `IsPrivate` | boolean | No | Whether endpoint is hidden from documentation (default: false) |
 | `AllowedEnvironments` | array | No | Environments that can access this endpoint |
 
-## Common Configuration Patterns
+## Basic Configuration
 
 ### Environment-Specific Access
 

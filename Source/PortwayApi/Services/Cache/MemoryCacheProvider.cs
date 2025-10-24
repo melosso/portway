@@ -158,7 +158,7 @@ public class MemoryCacheProvider : ICacheProvider
             try
             {
                 lockObj.Release();
-                Log.Debug("🔓 Released memory lock for key: {LockKey}", lockKey);
+                Log.Debug("Released memory lock for key: {LockKey}", lockKey);
             }
             catch (Exception ex)
             {

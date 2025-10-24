@@ -564,7 +564,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             
             if (success)
             {
-                Log.Debug("🔓 Released Redis lock for key: {LockKey}", lockKey);
+                Log.Debug("Released Redis lock for key: {LockKey}", lockKey);
             }
             
             return success;

@@ -1018,30 +1018,40 @@ public class EndpointController : ControllerBase
             var potentialNamespace = segments[0];
             var potentialEndpoint = segments[1];
             var namespacedKey = $"{potentialNamespace}/{potentialEndpoint}";
-            
+
             // Check if this namespaced endpoint exists
             if (NamespaceEndpointExists(namespacedKey))
             {
                 string? id = null;
                 string remainingPath = "";
-                
+
                 // Handle ID and remaining path for namespaced endpoints
                 if (segments.Length > 2)
                 {
                     // Check if third segment is an ID or part of remaining path
                     var thirdSegment = segments[2];
-                    
+
                     // Extract ID if it matches expected patterns
                     id = thirdSegment switch
                     {
-                        var segment when Regex.IsMatch(segment, @"^guid'([\w\-]+)'$") => 
+                        // Parenthesized formats
+                        var segment when Regex.IsMatch(segment, @"^\(guid'([\w\-]+)'\)$") =>
+                            Regex.Match(segment, @"^\(guid'([\w\-]+)'\)$").Groups[1].Value,
+                        var segment when Regex.IsMatch(segment, @"^\('([^']+)'\)$") =>
+                            Regex.Match(segment, @"^\('([^']+)'\)$").Groups[1].Value,
+                        var segment when Regex.IsMatch(segment, @"^\((\d+)\)$") =>
+                            Regex.Match(segment, @"^\((\d+)\)$").Groups[1].Value,
+                        
+                        // Non-parenthesized formats 
+                        var segment when Regex.IsMatch(segment, @"^guid'([\w\-]+)'$") =>
                             Regex.Match(segment, @"^guid'([\w\-]+)'$").Groups[1].Value,
-                        var segment when Regex.IsMatch(segment, @"^'([^']+)'$") => 
+                        var segment when Regex.IsMatch(segment, @"^'([^']+)'$") =>
                             Regex.Match(segment, @"^'([^']+)'$").Groups[1].Value,
+                        var segment when Guid.TryParse(segment, out _) => segment,
                         var segment when Regex.IsMatch(segment, @"^\d+$") => segment,
+                        
                         _ => null
                     };
-                    
                     // Set remaining path
                     if (id != null && segments.Length > 3)
                     {
@@ -1053,16 +1063,16 @@ public class EndpointController : ControllerBase
                         remainingPath = string.Join('/', segments.Skip(2));
                     }
                 }
-                
+
                 var endpointType = DetermineEndpointType(namespacedKey);
-                
-                Log.Debug("🎯 Namespaced endpoint found: {Namespace}/{Name}, Type={Type}, ID={Id}", 
+
+                Log.Debug("Namespaced endpoint found: {Namespace}/{Name}, Type={Type}, ID={Id}",
                     potentialNamespace, potentialEndpoint, endpointType, id);
-                
+
                 return (endpointType, potentialNamespace, potentialEndpoint, id, remainingPath);
             }
         }
-
+        
         // Fallback to traditional parsing (backward compatibility)
         string endpointName = segments[0];
         string? fallbackId = null;
@@ -1201,14 +1211,15 @@ public class EndpointController : ControllerBase
 
             // Translate HTTP method if configured
             var originalMethod = method;
-            var translatedMethod = PortwayApi.Classes.Helpers.HttpMethodTranslator.TranslateMethod(method, endpointDefinition.CustomProperties);
-            
-            if (!originalMethod.Equals(translatedMethod, StringComparison.OrdinalIgnoreCase))
+            var incomingMethod = Request?.Method ?? originalMethod;
+            var translatedMethod = PortwayApi.Classes.Helpers.HttpMethodTranslator.TranslateMethod(incomingMethod, endpointDefinition.CustomProperties);
+            originalMethod = incomingMethod;
+
+            if (!incomingMethod.Equals(translatedMethod, StringComparison.OrdinalIgnoreCase))
             {
-                Log.Debug("HTTP method translation: {OriginalMethod} -> {TranslatedMethod} for endpoint {EndpointName}", 
-                    originalMethod, translatedMethod, endpointName);
+                Log.Debug("Parsed HTTP method translation: {OriginalMethod} -> {TranslatedMethod} for endpoint {EndpointName}",
+                    incomingMethod, translatedMethod, endpointName);
             }
-            
             // Check if method is allowed (using original method for validation)
             if (!endpointDefinition.Methods.Contains(originalMethod))
             {
@@ -1229,31 +1240,80 @@ public class EndpointController : ControllerBase
             var endpointConfig = endpointDefinition.ToTuple();
 
             // Construct full URL
-            var queryString = Request.QueryString.Value ?? "";
+            var queryString = HttpContext?.Request?.QueryString.Value ?? string.Empty;
             var fullUrl = endpointConfig.Url;
 
-            // Rewrite URL for specific proxy pattern
-            if (!string.IsNullOrEmpty(id))
+            // Special handling for DELETE method based on DeletePattern
+            if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
             {
-                fullUrl += $"(guid'{id}')";
-                Log.Debug("Added GUID to URL: {Url} (ID: {Id})", fullUrl, id);
-            }
-            else if (!string.IsNullOrEmpty(remainingPath))
-            {
-                fullUrl += $"/{remainingPath}";
-                Log.Debug("Added remaining path to URL: {Url} (Path: {RemainingPath})", fullUrl, remainingPath);
+                var delEncodedId = Uri.EscapeDataString(id ?? string.Empty);
+                fullUrl = ConstructDeleteUrl(fullUrl, delEncodedId, remainingPath, endpointConfig, endpointName);
             }
             else
             {
-                Log.Debug("No ID or remaining path found for URL: {Url}", fullUrl);
+                // Normalize base URL to avoid double slashes when appending
+                fullUrl = fullUrl?.TrimEnd('/') ?? string.Empty;
+
+                // Smart ID handling:
+                if (!string.IsNullOrEmpty(id))
+                {
+                    // URL-encode id values (id is non-null here)
+                    var encodedId = Uri.EscapeDataString(id!);
+
+                    // If the base URL contains a {id} placeholder, replace it
+                    if (fullUrl.Contains("{id}", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fullUrl = fullUrl.Replace("{id}", encodedId, StringComparison.OrdinalIgnoreCase);
+                        Log.Debug("Replaced {id} placeholder in URL: {Url} (ID: {Id})", fullUrl, id);
+                    }
+                    else if (Guid.TryParse(id, out _))
+                    {
+                        // Prefer OData GUID format if GUID detected and base looks OData-ish (heuristic)
+                        fullUrl += $"(guid'{encodedId}')";
+                        Log.Debug("Appended OData GUID to URL: {Url} (ID: {Id})", fullUrl, id);
+                    }
+                    else if (long.TryParse(id, out _))
+                    {
+                        // Numeric key as OData key
+                        fullUrl += $"({encodedId})";
+                        Log.Debug("Appended numeric key to URL: {Url} (ID: {Id})", fullUrl, id);
+                    }
+                    else
+                    {
+                        // Fallback: append as path segment
+                        fullUrl += $"/{Uri.EscapeDataString(id!)}";
+                        Log.Debug("Appended ID as path segment to URL: {Url} (ID: {Id})", fullUrl, id);
+                    }
+                }
+                else if (!string.IsNullOrEmpty(remainingPath))
+                {
+                    // Normalize remainingPath and encode each segment to preserve slashes
+                    var segments = remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                                                .Select(s => Uri.EscapeDataString(s));
+                    fullUrl += "/" + string.Join('/', segments);
+                    Log.Debug("Added remaining path to URL: {Url} (Path: {RemainingPath})", fullUrl, remainingPath);
+                }
+                else
+                {
+                    Log.Debug("No ID or remaining path found for URL: {Url}", fullUrl);
+                }
             }
 
-            // Add query string
-            fullUrl += queryString;
-            Log.Debug("🎯 Final constructed URL: {Url}", fullUrl);
+            // Append query string safely (avoid double '?' and preserve existing query params)
+            if (!string.IsNullOrEmpty(queryString))
+            {
+                // Request.QueryString.Value begins with '?' when non-empty
+                var qs = queryString.StartsWith("?") ? queryString.Substring(1) : queryString;
+                fullUrl += fullUrl.Contains('?') ? "&" + qs : "?" + qs;
+            }
+
+            Log.Debug("Final constructed URL: {Url}", fullUrl);
 
             // Store the target URL in the context items for logging
-            HttpContext.Items["TargetUrl"] = fullUrl;
+            if (HttpContext != null)
+            {
+                HttpContext.Items["TargetUrl"] = fullUrl;
+            }
 
             // Validate URL safety
             if (!_urlValidator.IsUrlSafe(fullUrl))
@@ -1263,14 +1323,14 @@ public class EndpointController : ControllerBase
             }
 
             // Detect if this is likely a SOAP request
-            bool isSoapRequest = Request.ContentType?.Contains("text/xml") == true || 
-                                Request.ContentType?.Contains("application/soap+xml") == true ||
-                                (fullUrl.Contains(".svc") && !fullUrl.Contains("REST")) || 
-                                Request.Headers.ContainsKey("SOAPAction");
+            bool isSoapRequest = (Request?.ContentType?.Contains("text/xml") == true) ||
+                                 (Request?.ContentType?.Contains("application/soap+xml") == true) ||
+                                 (fullUrl.Contains(".svc") && !fullUrl.Contains("REST")) ||
+                                 (Request?.Headers?.ContainsKey("SOAPAction") == true);
 
             if (isSoapRequest)
             {
-                Log.Information("🧼 Detected SOAP request for endpoint: {Endpoint}", endpointName);
+                Log.Information("Detected SOAP request for endpoint: {Endpoint}", endpointName);
                 // SOAP requests generally shouldn't be cached, so bypass cache and execute directly
                 await ExecuteProxyRequest(translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                 return new EmptyResult(); // Response already written
@@ -1280,7 +1340,8 @@ public class EndpointController : ControllerBase
             if (originalMethod.Equals("GET", StringComparison.OrdinalIgnoreCase))
             {
                 // Create a cache key based on the request details
-                string cacheKey = CreateCacheKey(env, endpointName, remainingPath, queryString, Request.Headers);
+                var headers = Request?.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
+                string cacheKey = CreateCacheKey(env, endpointName, remainingPath ?? string.Empty, queryString, headers);
                 
                 // Try to get from cache first
                 var cacheEntry = await _cacheManager.GetAsync<Services.Caching.ProxyCacheEntry>(cacheKey);
@@ -1392,6 +1453,116 @@ public class EndpointController : ControllerBase
                 title: "Error"
             );
         }
+    }
+
+    /// <summary>
+    /// Constructs the DELETE URL based on configured DeletePattern
+    /// </summary>
+    private string ConstructDeleteUrl(
+        string baseUrl, 
+        string? id, 
+        string remainingPath, 
+        (string Url, HashSet<string> Methods, bool IsPrivate, string Type) endpointConfig,
+        string endpointName)
+    {
+        var deletePattern = GetDeletePatternForProxy(endpointName);
+        var style = deletePattern?.Style ?? string.Empty;
+
+        // Normalize baseUrl
+        baseUrl = baseUrl?.TrimEnd('/') ?? string.Empty;
+
+        // Known styles
+        var knownStyles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "PathParameter", "QueryParameter", "ODataGuid", "ODataKey" };
+
+        // Derive style if missing or unknown
+        if (string.IsNullOrWhiteSpace(style) || !knownStyles.Contains(style))
+        {
+            if (baseUrl.IndexOf("{id}", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                style = "PathParameter";
+            }
+            else if (!string.IsNullOrEmpty(id) && Guid.TryParse(id, out _))
+            {
+                style = "ODataGuid";
+            }
+            else if (!string.IsNullOrEmpty(id) && long.TryParse(id, out _))
+            {
+                style = "ODataKey";
+            }
+            else if (!string.IsNullOrEmpty(remainingPath))
+            {
+                style = "PathParameter";
+            }
+            else
+            {
+                style = "PathParameter";
+            }
+        }
+
+        // Safely encode id and remainingPath segments
+        var encodedId = string.IsNullOrEmpty(id) ? string.Empty : Uri.EscapeDataString(id);
+
+        switch (style)
+        {
+            case "PathParameter":
+                if (!string.IsNullOrEmpty(encodedId) && baseUrl.IndexOf("{id}", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    baseUrl = Regex.Replace(baseUrl, @"\{id\}", encodedId, RegexOptions.IgnoreCase);
+                    Log.Debug("DELETE using PathParameter (placeholder): {Url} (ID: {Id})", baseUrl, id);
+                }
+                else if (!string.IsNullOrEmpty(encodedId))
+                {
+                    baseUrl = $"{baseUrl}/{encodedId}";
+                    Log.Debug("DELETE using PathParameter: {Url} (ID: {Id})", baseUrl, id);
+                }
+                else if (!string.IsNullOrEmpty(remainingPath))
+                {
+                    var segments = remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                                               .Select(s => Uri.EscapeDataString(s));
+                    baseUrl = $"{baseUrl}/{string.Join('/', segments)}";
+                    Log.Debug("DELETE using PathParameter (remainingPath): {Url} (Path: {Path})", baseUrl, remainingPath);
+                }
+                break;
+
+            case "QueryParameter":
+                if (!string.IsNullOrEmpty(encodedId))
+                {
+                    baseUrl = baseUrl + (baseUrl.Contains('?') ? "&" : "?") + $"id={encodedId}";
+                    Log.Debug("DELETE using QueryParameter: {Url} (ID: {Id})", baseUrl, id);
+                }
+                else
+                {
+                    Log.Debug("DELETE using QueryParameter but no ID provided, leaving base URL unchanged: {Url}", baseUrl);
+                }
+                break;
+
+            case "ODataGuid":
+                if (!string.IsNullOrEmpty(encodedId))
+                {
+                    baseUrl = $"{baseUrl}(guid'{encodedId}')";
+                    Log.Debug("DELETE using ODataGuid: {Url} (ID: {Id})", baseUrl, id);
+                }
+                break;
+
+            case "ODataKey":
+                if (!string.IsNullOrEmpty(encodedId))
+                {
+                    baseUrl = $"{baseUrl}({encodedId})";
+                    Log.Debug("DELETE using ODataKey: {Url} (ID: {Id})", baseUrl, id);
+                }
+                break;
+
+            default:
+                if (!string.IsNullOrEmpty(encodedId))
+                {
+                    baseUrl = $"{baseUrl}/{encodedId}";
+                    Log.Debug("DELETE using fallback PathParameter: {Url} (ID: {Id})", baseUrl, id);
+                }
+                break;
+        }
+
+        return baseUrl;
     }
 
     /// <summary>
@@ -1745,7 +1916,11 @@ public class EndpointController : ControllerBase
             else
             {
                 // Default successful response
-                return Ok(new { success = true, message = "Composite request processed" });
+                return Ok(new
+                {
+                    success = true,
+                    message = "Record(s) created successfully", 
+                });
             }
         }
         catch (Exception ex)
@@ -3694,7 +3869,28 @@ public class EndpointController : ControllerBase
         return 5; // Default: 5 minutes
     }
 
-    #endregion
+    /// <summary>
+    /// Gets the DELETE pattern for a proxy endpoint (with default fallback)
+    /// </summary>
+    private DeletePattern GetDeletePatternForProxy(string endpointName)
+    {
+        var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
+        
+        if (proxyEndpoints.TryGetValue(endpointName, out var definition) 
+            && definition.DeletePatterns?.Any() == true)
+        {
+            return definition.DeletePatterns.First();
+        }
+        
+        // Default fallback
+        return new DeletePattern 
+        { 
+            Style = "PathParameter",
+            Description = "Delete by ID in path (default)"
+        };
+    }
 
-    #endregion
+#endregion
+
+#endregion
 }

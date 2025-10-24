@@ -88,14 +88,18 @@ export default withMermaid(
           ]
         },
         {
-          text: 'Configuration Files',
+          text: 'Configuration',
           items: [
-            { text: 'Entity Configuration', link: '/reference/entity-config' },
-            { text: 'Environment Configuration', link: '/reference/environment-settings' },
-            { text: 'Namespace Configuration', link: '/reference/namespaces' },
-            { text: 'Application Settings', link: '/reference/app-settings' },
-            { text: 'OpenAPI Settings', link: '/reference/openapi-settings' },
-
+            { text: 'Entity', link: '/reference/entity-config' },
+            { text: 'Environment', link: '/reference/environment-settings' },
+            { text: 'Namespaces', link: '/reference/namespaces' }
+          ]
+        },
+        {         
+          text: 'Settings',
+          items: [
+            { text: 'Application', link: '/reference/app-settings' },
+            { text: 'OpenAPI', link: '/reference/openapi-settings' },
           ]
         },
         {

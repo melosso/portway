@@ -313,6 +313,8 @@ Use consistent patterns across all endpoints:
 
 ## Troubleshooting
 
+This section may assist you in troubleshooting:
+
 ### Documentation Not Appearing
 
 1. Verify JSON syntax in entity.json

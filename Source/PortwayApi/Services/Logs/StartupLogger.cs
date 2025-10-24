@@ -62,7 +62,10 @@ public class StartupLogger : IHostedService
             {
                 Log.Warning("Application Environment: {Environment}", env);
             }
-            Log.Debug("│");
+            else
+            {
+                Log.Debug("| Application Environment: {Environment}", env);
+            }
             Log.Debug("├─ Host: {MachineName}", Environment.MachineName);
             Log.Debug("├─ Working Directory: {WorkingDirectory}", Directory.GetCurrentDirectory());
             Log.Debug("├─ Current Time: {Time}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));

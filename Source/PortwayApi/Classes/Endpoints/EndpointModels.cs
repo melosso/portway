@@ -65,6 +65,11 @@ public class ExtendedEndpointEntity
     /// Used as Swagger tag description and documentation grouping
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
+
+    /// <summary>
+    /// DELETE operation patterns
+    /// </summary>
+    public List<DeletePattern>? DeletePatterns { get; set; }
     
     public Documentation? Documentation { get; set; } // OpenAPI documentation settings
     public Dictionary<string, object>? CustomProperties { get; set; } // Custom properties for extended functionality
@@ -89,6 +94,7 @@ public class EndpointEntity
     // Proxy endpoint properties
     public string? Url { get; set; }
     public List<string>? Methods { get; set; }
+    public List<DeletePattern>? DeletePatterns { get; set; }
     
     // Shared properties
     public bool IsPrivate { get; set; } = false;
@@ -120,6 +126,32 @@ public class EndpointEntity
     
     // Custom properties for extended functionality
     public Dictionary<string, object>? CustomProperties { get; set; }
+}
+
+/// <summary>
+/// DELETE operation pattern configuration
+/// </summary>
+public class DeletePattern
+{
+    /// <summary>
+    /// Style of DELETE operation: PathParameter, QueryParameter, ODataGuid, ODataKey
+    /// </summary>
+    public string Style { get; set; } = "PathParameter";
+    
+    /// <summary>
+    /// Parameter name for QueryParameter style (default: "id")
+    /// </summary>
+    public string? Parameter { get; set; }
+    
+    /// <summary>
+    /// Path template for PathParameter style (default: "/{id}")
+    /// </summary>
+    public string? Path { get; set; }
+    
+    /// <summary>
+    /// Description for documentation
+    /// </summary>
+    public string? Description { get; set; }
 }
 
 /// <summary>

@@ -10,11 +10,11 @@ Environment configuration files are organized in the following structure:
 /environments/
   ├── [EnvironmentName]/             # Environment-specific folders
   │   └── settings.json              # Environment-specific settings
-  ├── settings.json                  # Global environment settings
+  ├── settings.json                  # Global settings
   └── network-access-policy.json     # Network security policy
 ```
 
-## Global Environment Settings
+## Global Settings
 
 The root `settings.json` file defines which environments are allowed:
 
@@ -111,7 +111,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 | `allowedHosts` | array | Whitelisted hostnames |
 | `blockedIpRanges` | array | Blocked IP ranges (CIDR notation) |
 
-## Environment Examples
+## Examples
 
 ### Production Environment
 
@@ -178,7 +178,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 | `Application Name` | Application identifier | "Portway API" |
 | `MultipleActiveResultSets` | Enable MARS | False |
 
-## Environment Variables
+## Variables
 
 Sensitive values can use environment variables:
 
@@ -300,17 +300,6 @@ Use consistent naming conventions:
    - Check if IP is in blocked ranges
    - Validate DNS resolution
    - Test with diagnostic tools
-
-## Environment Setup Checklist
-
-- [ ] Create environment folder
-- [ ] Add `settings.json` with connection details
-- [ ] Configure headers if needed
-- [ ] Add environment to `AllowedEnvironments`
-- [ ] Test database connectivity
-- [ ] Verify header application
-- [ ] Update network access policy if needed
-- [ ] Document environment-specific settings
 
 ## Related Topics
 

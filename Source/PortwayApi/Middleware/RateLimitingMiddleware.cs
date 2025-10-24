@@ -45,8 +45,8 @@ public class TokenBucket
         _lastRefill = DateTime.UtcNow;
         _bucketId = bucketId;
         
-        Log.Debug("🪣 Token bucket created for {BucketId}: Capacity={Capacity}, RefillTime={RefillTime}s", 
-            bucketId, capacity, refillTime.TotalSeconds);
+        Log.Debug("Token bucket created for a bucket: Capacity={Capacity}, RefillTime={RefillTime}s", 
+            capacity, refillTime.TotalSeconds);
     }
 
     public bool TryConsume(int tokenCount, Microsoft.Extensions.Logging.ILogger? logger)
@@ -62,7 +62,7 @@ public class TokenBucket
                 _tokens -= tokenCount;
                 if (logger != null)
                 {
-                    logger.LogDebug("Request #{RequestNum} for {BucketId} ALLOWED", requestNum, _bucketId);
+                    logger.LogDebug("Request #{RequestNum} for a bucket ALLOWED", requestNum);
                 }
                 return true;
             }
@@ -72,13 +72,13 @@ public class TokenBucket
             if (logger != null && (now - _lastLoggedBlockTime) >= _logSuppressDuration)
             {
                 logger.LogWarning(
-                    "Request #{RequestNum} for {BucketId} BLOCKED - Tokens: {Tokens:F2}/{Capacity} < {TokenCount}", 
-                    requestNum, _bucketId, _tokens, _capacity, tokenCount
+                    "Request #{RequestNum} for a bucket BLOCKED - Tokens: {Tokens:F2}/{Capacity} < {TokenCount}", 
+                    requestNum, _tokens, _capacity, tokenCount
                 );
                 
                 Log.Warning(
-                    "Rate limit reached for {BucketId}: {Tokens:F2}/{Capacity} tokens available, {TokenCount} required", 
-                    _bucketId, _tokens, _capacity, tokenCount
+                    "Rate limit reached for a bucket: {Tokens:F2}/{Capacity} tokens available, {TokenCount} required", 
+                    _tokens, _capacity, tokenCount
                 );
 
                 _lastLoggedBlockTime = now;
@@ -126,8 +126,8 @@ public class TokenBucket
         
         if (tokensToAdd > 0.01 && logger != null) // Only log meaningful refills
         {
-            logger.LogDebug("Refilling tokens for {BucketId}: +{TokensToAdd:F2} after {Elapsed:F2}s", 
-                _bucketId, tokensToAdd, elapsed);
+            logger.LogDebug("Refilling tokens for a bucket: +{TokensToAdd:F2} after {Elapsed:F2}s", 
+                tokensToAdd, elapsed);
         }
         
         _tokens = Math.Min(_capacity, _tokens + tokensToAdd);

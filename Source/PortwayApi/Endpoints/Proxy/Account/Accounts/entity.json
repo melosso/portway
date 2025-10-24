@@ -3,6 +3,12 @@
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Namespace": "Account",
     "NamespaceDisplayName": "Account",
+    "DeletePatterns": [
+        {
+            "Style": "ODataGuid",
+            "Description": "Delete account using OData GUID format"
+        }
+    ],
     "CustomProperties": {
         "HttpMethodTranslation": "PUT:MERGE",
         "HttpMethodAppendHeaders": "PUT:X-Custom-Original-Method={ORIGINAL_METHOD}"

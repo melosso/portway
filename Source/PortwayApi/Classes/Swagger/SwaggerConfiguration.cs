@@ -181,28 +181,30 @@ public static class SwaggerConfiguration
                             return false; // Exclude these controllers
                         }
                     }
-                    
+
                     // Also exclude by route patterns that shouldn't be documented
                     if (!string.IsNullOrEmpty(routeTemplate))
                     {
                         var excludedRoutePatterns = new[] { "portwayapi", "models", "swagger-docs", "/models" };
                         if (excludedRoutePatterns.Any(pattern => routeTemplate.Contains(pattern)))
                         {
-                            return false; // Exclude routes containing these patterns
+                            // Exclude routes containing these patterns
+                            return false;
                         }
                     }
                     
-                    return true; // Include all other controllers
+                    // Include all other controllers
+                    return true; 
                 });
                 
-                // Add filters in the correct order
+                // Add filters (order is critical here)
                 c.DocumentFilter<DynamicEndpointDocumentFilter>();
                 c.DocumentFilter<CompositeEndpointDocumentFilter>();
                 c.DocumentFilter<FileEndpointDocumentFilter>();
                 c.DocumentFilter<TagSorterDocumentFilter>();
                 c.OperationFilter<DynamicEndpointOperationFilter>();
-                
-                // Add this line to resolve conflicting actions
+
+                // Resolve conflicting actions by taking the first one
                 c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
             });
 

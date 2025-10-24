@@ -148,8 +148,8 @@ public class UrlValidator
             var uri = new Uri(url);
             string host = uri.Host.Split(':')[0];
             
-            Log.Debug("🕵️ Validating URL: {Url}", url);
-            Log.Debug("🏠 Host to validate: {Host}", host);
+            Log.Debug("Validating URL: {Url}", url);
+            Log.Debug("Host to validate: {Host}", host);
             
             var addresses = Dns.GetHostAddresses(host);
             Log.Debug("Resolved Addresses: {Addresses}", 

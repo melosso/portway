@@ -325,7 +325,7 @@ try
         {
             if (context.Request.PathBase.HasValue)
             {
-                Log.Debug("📍 Request PathBase: {PathBase}, Path: {Path}", 
+                Log.Debug("Request PathBase: {PathBase}, Path: {Path}", 
                     context.Request.PathBase, context.Request.Path);
             }
             return next();
