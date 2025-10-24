@@ -38,9 +38,8 @@ Authentication issues are the most common problems reported by API consumers. Th
 2. **Check token validity:**
    Use TokenGenerator to verify the token and associated user still exist:
    ```powershell
-   # Run TokenGenerator
-   cd tools\TokenGenerator
-   .\TokenGenerator.exe
+   # Run the Management Console
+   .\PortwayMgt.exe
    ```
 
 3. **Review authentication logs:**
@@ -50,9 +49,8 @@ Authentication issues are the most common problems reported by API consumers. Th
 
 - **Generate new token:** Create a fresh token for the user and ensure old tokens are properly revoked:
   ```powershell
-  # Run TokenGenerator
-  cd tools\TokenGenerator
-  .\TokenGenerator.exe
+  # Run the Management Console
+   .\PortwayMgt.exe
   ```
 
 - **User guidance:** Provide clear documentation on proper Authorization header format
@@ -96,11 +94,9 @@ Tokens are essentially API keys. Ensure users store them securely using environm
 
 **Solutions:**
 
-- **Update token scopes:** Use TokenGenerator to modify permissions:
+- **Update token scopes:** Use Management Console to modify permissions:
   ```powershell
-  # Using TokenGenerator
-  .\TokenGenerator.exe
-  # Select option 4: Update token scopes
+  .\PortwayMgt.exe # Select option 4: Update token scopes
   ```
 
 - **Review endpoint access:** Ensure endpoint configuration matches business requirements

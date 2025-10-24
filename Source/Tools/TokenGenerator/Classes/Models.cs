@@ -43,6 +43,7 @@ public class CommandLineOptions
     public int? ExpiresInDays { get; set; }
     public bool ShowHelp { get; set; }
     public bool Verbose { get; set; }
+    public bool NoAuth { get; set; } // Disable passphrase protection for Docker/container environments
 }
 
 public class AppConfig

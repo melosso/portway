@@ -1,26 +1,6 @@
-# Token Generator
+# Portway Management Console
 
-The Token Generator is a command-line utility for creating and managing authentication tokens for the Portway API. It provides fine-grained control over token permissions, including endpoint access and environment restrictions.
-
-## Installation
-
-### Prerequisites
-
-- .NET 9.0 Runtime (which is only available in the Hosting Bundle)
-- Access to the auth.db file
-- Write permissions to the tokens directory
-
-### Setup
-
-1. Navigate to the tools directory:
-```bash
-cd Deployment/PortwayApi/tools/TokenGenerator
-```
-
-2. Run the executable:
-```bash
-TokenGenerator.exe
-```
+The Portway Management Console is a command-line utility for creating and managing authentication tokens for the Portway API. It provides fine-grained control over token permissions, including endpoint access and environment restrictions.
 
 ## Usage Modes
 
@@ -29,7 +9,7 @@ TokenGenerator.exe
 Run without parameters to enter interactive mode:
 
 ```bash
-TokenGenerator.exe
+PortwayMgt.exe
 ```
 
 Interactive menu options:
@@ -40,6 +20,7 @@ Interactive menu options:
 5. Update token environments
 6. Update token expiration
 7. Rotate token
+8. Update passphrase
 0. Exit
 
 ### Command Line Mode
@@ -48,22 +29,22 @@ Generate tokens directly with parameters:
 
 ```bash
 # Basic token generation
-TokenGenerator.exe username
+PortwayMgt.exe username
 
 # Token with specific endpoint scopes
-TokenGenerator.exe username -s "Products,Orders,Customers"
+PortwayMgt.exe username -s "Products,Orders,Customers"
 
 # Token with specific namespace scopes
-TokenGenerator.exe hr-system -s "Company/*"
+PortwayMgt.exe hr-system -s "Company/*"
 
 # Token with environment restrictions
-TokenGenerator.exe username -e "prod,dev"
+PortwayMgt.exe username -e "prod,dev"
 
 # Token with expiration (in days)
-TokenGenerator.exe username --expires 90
+PortwayMgt.exe username --expires 90
 
 # Combined parameters
-TokenGenerator.exe username -s "Products,Orders" -e "prod" --expires 30 --description "Frontend API access"
+PortwayMgt.exe username -s "Products,Orders" -e "prod" --expires 30 --description "Frontend API access"
 ```
 
 **Note**: Token rotation is only available through interactive mode (menu option 7).
@@ -94,16 +75,16 @@ TokenGenerator.exe username -s "Products,Orders" -e "prod" --expires 30 --descri
 
 ```bash
 # Full access
-TokenGenerator.exe admin -s "*"
+PortwayMgt.exe admin -s "*"
 
 # Specific endpoints
-TokenGenerator.exe frontend -s "Products,Orders,Customer/*"
+PortwayMgt.exe frontend -s "Products,Orders,Customer/*"
 
 # Pattern matching
-TokenGenerator.exe reporting -s "Report*,Export*"
+PortwayMgt.exe reporting -s "Report*,Export*"
 
 # Specific service access
-TokenGenerator.exe frontend -s "Products,Orders" --description "Frontend service access"
+PortwayMgt.exe frontend -s "Products,Orders" --description "Frontend service access"
 ```
 
 ## Environment Restrictions
@@ -120,16 +101,16 @@ TokenGenerator.exe frontend -s "Products,Orders" --description "Frontend service
 
 ```bash
 # All environments
-TokenGenerator.exe admin -e "*"
+PortwayMgt.exe admin -e "*"
 
 # Production only
-TokenGenerator.exe prod-api -e "prod"
+PortwayMgt.exe prod-api -e "prod"
 
 # Test environments
-TokenGenerator.exe test-api -e "dev,Synergy"
+PortwayMgt.exe test-api -e "dev,Synergy"
 
 # Pattern matching
-TokenGenerator.exe staging -e "7*"
+PortwayMgt.exe staging -e "7*"
 ```
 
 ## Token Management
@@ -220,30 +201,30 @@ tokens/
 1. **Use descriptive usernames**
    ```bash
    # Good
-   TokenGenerator.exe frontend-app
-   TokenGenerator.exe reporting-service
+   PortwayMgt.exe frontend-app
+   PortwayMgt.exe reporting-service
    
    # Avoid
-   TokenGenerator.exe user1
-   TokenGenerator.exe test
+   PortwayMgt.exe user1
+   PortwayMgt.exe test
    ```
 
 2. **Apply principle of least privilege**
    ```bash
    # Good - specific access
-   TokenGenerator.exe orders-service -s "Orders,Customers" -e "prod"
+   PortwayMgt.exe orders-service -s "Orders,Customers" -e "prod"
    
    # Avoid - excessive access
-   TokenGenerator.exe orders-service -s "*" -e "*"
+   PortwayMgt.exe orders-service -s "*" -e "*"
    ```
 
 3. **Set expiration dates**
    ```bash
    # Good - time-limited tokens
-   TokenGenerator.exe api-client --expires 90
+   PortwayMgt.exe api-client --expires 90
    
    # Avoid - permanent tokens for temporary use
-   TokenGenerator.exe temp-access
+   PortwayMgt.exe temp-access
    ```
 
 ### Token Storage
@@ -281,23 +262,8 @@ $services = @(
 )
 
 foreach ($service in $services) {
-    .\TokenGenerator.exe $service.name -s $service.scopes -e $service.env --expires 90
+    .\PortwayMgt.exe $service.name -s $service.scopes -e $service.env --expires 90
 }
-```
-
-### Token Validation
-
-Verify token permissions programmatically:
-
-```csharp
-// Check if token has access to endpoint
-bool hasAccess = token.HasAccessToEndpoint("Products");
-
-// Check environment access
-bool canAccessEnv = token.HasAccessToEnvironment("prod");
-
-// Validate token is active
-bool isActive = token.IsActive;
 ```
 
 ### Custom Token Patterns
@@ -306,16 +272,16 @@ Examples of advanced scope patterns:
 
 ```bash
 # Read/Write separation
-TokenGenerator.exe read-api -s "Products,Orders,Customers"
-TokenGenerator.exe write-api -s "Products*,Orders*,Customers*"
+PortwayMgt.exe read-api -s "Products,Orders,Customers"
+PortwayMgt.exe write-api -s "Products*,Orders*,Customers*"
 
 # Service-specific tokens
-TokenGenerator.exe inventory -s "Products,StockLevels,Warehouses"
-TokenGenerator.exe sales -s "Orders,Invoices,Customers"
+PortwayMgt.exe inventory -s "Products,StockLevels,Warehouses"
+PortwayMgt.exe sales -s "Orders,Invoices,Customers"
 
 # Environment-specific access
-TokenGenerator.exe dev-tools -s "*" -e "test*,dev*"
-TokenGenerator.exe prod-monitoring -s "health,metrics" -e "prod*"
+PortwayMgt.exe dev-tools -s "*" -e "test*,dev*"
+PortwayMgt.exe prod-monitoring -s "health,metrics" -e "prod*"
 ```
 
 ## Troubleshooting
@@ -349,57 +315,29 @@ TokenGenerator.exe prod-monitoring -s "health,metrics" -e "prod*"
 | "Invalid scope format" | Syntax error in scopes | Check comma separation |
 | "Environment not allowed" | Invalid environment name | Verify environment exists |
 
-## Integration Examples
-
-### Using Generated Tokens
-
-```http
-# HTTP request with token
-GET /api/prod/Products
-Authorization: Bearer eyJhbGci...truncated...
-```
-
-```javascript
-// JavaScript example
-const response = await fetch('https://api.example.com/api/prod/Products', {
-  headers: {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  }
-});
-```
-
-```csharp
-// C# example
-var client = new HttpClient();
-client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-var response = await client.GetAsync("https://api.example.com/api/prod/Products");
-```
-
 ### Automation Scripts
 
 ```powershell
 # Automated token rotation
-$token = .\TokenGenerator.exe api-service --expires 30
+$token = .\PortwayMgt.exe api-service --expires 30
 $tokenInfo = Get-Content "tokens/api-service.txt" | ConvertFrom-Json
 
 # Store in secure location
 Set-AzKeyVaultSecret -VaultName "MyVault" -Name "api-token" -SecretValue $tokenInfo.Token
 ```
 
-## Audit Trail & Security Monitoring (NEW)
+## Audit Trail & Security Monitoring
 
-The Token Generator now includes comprehensive audit logging for all token operations, providing complete visibility into token lifecycle management.
+The Management Console includes comprehensive audit logging for all token operations, providing complete visibility into token lifecycle management.
 
 ### Audit Trail Features
 
-All token operations are automatically logged with detailed information:
+All token management operations are automatically logged with detailed information:
 
 - **Token Creation**: User, permissions, expiration details
 - **Token Rotation**: Old/new token hashes, timestamp, reason
 - **Token Revocation**: User, timestamp, reason
 - **Permission Updates**: Before/after values, modification details
-- **Failed Access Attempts**: Invalid tokens, authorization failures
 
 ### Viewing Audit Logs
 
@@ -419,12 +357,6 @@ FROM TokenAudits
 WHERE Operation LIKE '%Rotat%' 
 ORDER BY Timestamp DESC;
 
--- View security events (failed auth, authorization failures)
-SELECT Username, Operation, IpAddress, UserAgent, Timestamp 
-FROM TokenAudits 
-WHERE Operation IN ('FailedAuth', 'AuthorizationFailed') 
-ORDER BY Timestamp DESC;
-
 -- View recent activity (last 24 hours)
 SELECT * FROM TokenAudits 
 WHERE Timestamp > datetime('now', '-1 day') 
@@ -438,7 +370,7 @@ ORDER BY Timestamp DESC;
 | `Id` | Unique audit entry ID | `1547` |
 | `TokenId` | Associated token ID (if applicable) | `23` |
 | `Username` | Token owner username | `api-service` |
-| `Operation` | Type of operation | `Rotated`, `Created`, `FailedAuth` |
+| `Operation` | Type of operation | `Created`, `Rotated`, `Revoked`, `Updated` |
 | `OldTokenHash` | Previous token hash (for rotations) | `abc123...` |
 | `NewTokenHash` | New token hash (for rotations) | `xyz789...` |
 | `Timestamp` | When operation occurred | `2024-01-15 14:30:22` |
@@ -447,127 +379,23 @@ ORDER BY Timestamp DESC;
 | `IpAddress` | Client IP address (when available) | `192.168.1.100` |
 | `UserAgent` | Client user agent (when available) | `DESKTOP-ABC/user1` |
 
-### Security Monitoring
+### Monitoring Token Activity
 
-#### Failed Authentication Tracking
-
-The system automatically logs failed authentication attempts:
-
-```json
-{
-  "RequestPath": "/api/prod/Products",
-  "Method": "GET",
-  "TokenPrefix": "invalidtok...",
-  "UserAgent": "Mozilla/5.0...",
-  "Timestamp": "2024-01-15 14:30:22"
-}
-```
-
-#### Authorization Failure Tracking
-
-Access denied events are logged with full context:
-
-```json
-{
-  "ResourceType": "Environment",
-  "ResourceName": "prod",
-  "RequestPath": "/api/prod/Orders",
-  "Method": "POST",
-  "AvailableScopes": "Products,Customers",
-  "AvailableEnvironments": "dev,test",
-  "Timestamp": "2024-01-15 14:30:22"
-}
-```
-
-### Automated Monitoring Examples
-
-#### PowerShell Monitoring Script
+If you need to monitor token management activity, you can query the audit database directly:
 
 ```powershell
-# Check for suspicious activity in last hour
+# Check for frequent token rotations (possible security issue)
 $query = @"
-SELECT COUNT(*) as FailedAttempts, IpAddress 
+SELECT COUNT(*) as RotationCount, Username 
 FROM TokenAudits 
-WHERE Operation = 'FailedAuth' 
-AND Timestamp > datetime('now', '-1 hour')
-GROUP BY IpAddress
-HAVING COUNT(*) > 10
+WHERE Operation = 'Rotated' 
+AND Timestamp > datetime('now', '-1 day')
+GROUP BY Username
+HAVING COUNT(*) > 5
 "@
 
 $results = Invoke-SqliteQuery -Query $query -DataSource "auth.db"
 foreach ($result in $results) {
-    Write-Warning "Suspicious activity: $($result.FailedAttempts) failed attempts from $($result.IpAddress)"
+    Write-Warning "Unusual activity: $($result.RotationCount) token rotations for user: $($result.Username)"
 }
 ```
-
-#### Security Alert Integration
-
-```csharp
-// C# example for monitoring service
-public async Task CheckSecurityEvents()
-{
-    var recentFailures = await dbContext.TokenAudits
-        .Where(a => a.Operation == "FailedAuth" && 
-                   a.Timestamp > DateTime.UtcNow.AddMinutes(-15))
-        .GroupBy(a => a.IpAddress)
-        .Where(g => g.Count() > 5)
-        .ToListAsync();
-        
-    foreach (var group in recentFailures)
-    {
-        await alertService.SendSecurityAlert(
-            $"Multiple failed auth attempts from {group.Key}");
-    }
-}
-```
-
-## Security Considerations
-
-1. **Token Lifecycle Management**
-   - Set appropriate expiration times
-   - Revoke compromised tokens immediately
-   - **Use token rotation for regular security maintenance**
-   - Audit token usage regularly
-
-2. **Access Control**
-   - Limit token generation to authorized personnel
-   - Use separate tokens for different services
-   - Apply environment restrictions appropriately
-   - **Monitor audit logs for unauthorized access attempts**
-
-3. **Secure Storage**
-   - Encrypt token files at rest
-   - Use secure key management systems
-   - Never expose tokens in logs or error messages
-   - **Protect the audit database with appropriate access controls**
-
-4. **Monitoring and Auditing**
-   - Track token creation and revocation
-   - Monitor failed authentication attempts
-   - Set up alerts for suspicious activity
-   - **Review audit logs regularly for security compliance**
-   - **Use token rotation logs to track security maintenance**
-
-### Token Rotation Best Practices
-
-1. **Regular Rotation Schedule**
-   ```bash
-   # Rotate high-privilege tokens monthly
-   # Rotate service tokens quarterly
-   # Rotate temporary tokens after use
-   ```
-
-2. **Emergency Rotation**
-   ```bash
-   # Immediately rotate tokens when:
-   # - Security incident detected
-   # - Employee access changes
-   # - Suspected compromise
-   ```
-
-3. **Automated Rotation**
-   ```powershell
-   # Schedule regular rotations
-   # Monitor for tokens nearing expiration
-   # Alert on failed rotation attempts
-   ```

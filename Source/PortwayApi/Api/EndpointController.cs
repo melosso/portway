@@ -1663,7 +1663,6 @@ public class EndpointController : ControllerBase
         }
         else
         {
-            // URL rewriting with your existing code
             if (!Uri.TryCreate(endpointConfig.Url, UriKind.Absolute, out var originalUri))
             {
                 Log.Warning("Could not parse endpoint URL as URI: {Url}", endpointConfig.Url);

@@ -2,6 +2,7 @@
 $repoBase = "C:\Github\portway"
 $toolsDir = "$repoBase\Source\Tools\TokenGenerator"
 $deploymentDir = "$repoBase\Deployment\PortwayApi\tools\TokenGenerator"
+$finalDestination = (Split-Path -Path $deploymentDir -Parent | Split-Path -Parent)
 
 # First completely clear the deployment directory if it exists
 if (Test-Path -Path $deploymentDir) {
@@ -62,5 +63,16 @@ foreach ($pattern in $filesToRemove) {
 $exeFile = Get-ChildItem "$deploymentDir\TokenGenerator.exe"
 $sizeInMB = [math]::Round($exeFile.Length / 1MB, 2)
 
-Write-Host "✅ TokenGenerator published successfully to $deploymentDir" -ForegroundColor Green
+Write-Host "Success: TokenGenerator published successfully to $deploymentDir" -ForegroundColor Green
 Write-Host "   - Size: $sizeInMB MB" -ForegroundColor Green
+
+# Rename and move executable to parent directory
+$finalExePath = Join-Path $finalDestination "PortwayMgt.exe"
+Move-Item -Path $exeFile.FullName -Destination $finalExePath -Force
+Write-Host "Moved and renamed executable to $finalExePath" -ForegroundColor Cyan
+
+# Cleanup temporary deployment directory
+if (Test-Path -Path $deploymentDir) {
+    Remove-Item -Path $deploymentDir -Recurse -Force
+    Write-Host "Removed temporary deployment directory $deploymentDir" -ForegroundColor Yellow
+}

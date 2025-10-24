@@ -490,20 +490,6 @@ $response.Content | ConvertFrom-Json | Format-List
 
 ## Best Practices
 
-### 1. Authentication Strategy
-
-Create a seperate health token if necessary:
-
-```csharp
-// Create dedicated health check token
-TokenGenerator.exe health-monitor -s "health*" --expires 365
-
-// Use in monitoring systems
-$env:HEALTH_CHECK_TOKEN = "eyJhbGci..."
-```
-
-### 2. Performance Optimization
-
 Make sure to tweak the health settings for it to fit your requirements:
 
 ```json

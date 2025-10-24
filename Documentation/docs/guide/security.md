@@ -46,29 +46,29 @@ Token file format:
 
 ### Managing Tokens
 
-Use the Token Generator tool to manage access tokens.
+Use the Portway Management Console to manage access tokens.
 
 > [!CAUTION]
 > Any changes made through the program or command-line interface (CLI) take effect immediately.
 
 #### Running the program
 
-After navigating to the `tools/TokenGenerator/` folder, you can start the `TokenGenerator.exe`. The program will walk you through various options that'll allow you to manage the access to the API.
+You can start `PortwayMgt.exe` from the Portway root directory. The program will walk you through various options that'll allow you to manage access to the API.
 
 #### Using the CLI
 
 ```bash
 # Generate token with full access
-TokenGenerator.exe admin
+PortwayMgt.exe admin
 
 # Generate token with specific scopes
-TokenGenerator.exe api-user -s "Products,Orders"
+PortwayMgt.exe api-user -s "Products,Orders"
 
 # Generate token for specific environments
-TokenGenerator.exe deploy-bot -e "dev,test"
+PortwayMgt.exe deploy-bot -e "dev,test"
 
 # Generate token that expires
-TokenGenerator.exe temp-user --expires 30
+PortwayMgt.exe temp-user --expires 30
 ```
 
 ## Authorization
@@ -161,26 +161,7 @@ $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
 
 3. Portway automatically retrieves secrets:
 ```
-🔐 Azure Key Vault: Successfully connected
-✅ Retrieved secrets for environment: prod
-```
-
-### Connection String Security
-
-Never store passwords in configuration files:
-
-❌ **Insecure:**
-```json
-{
-  "ConnectionString": "Server=sql;User Id=admin;Password=MyPassword123!;"
-}
-```
-
-✅ **Secure:**
-```json
-{
-  "ConnectionString": "Server=sql;Integrated Security=True;"
-}
+[INF] Azure Key Vault: Successfully connected to ...
 ```
 
 Or use Azure Key Vault for credentials.
@@ -214,10 +195,8 @@ Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'
 All security events are logged:
 
 ```
-🔒 Token authentication successful for user: api-service
-❌ Invalid token attempted for endpoint: Products
-Rate limit exceeded for IP: 192.168.1.100
-⚠️ Unauthorized environment access: prod
+[DBG] Invalid token: {masked}
+[WRN] IP {IP} has exceeded rate limit, blocking for {period}
 ```
 
 ### Request Tracing
@@ -355,12 +334,12 @@ GO
 
 If a token is compromised, follow these steps immediately:
 
-1. **Revoke the token using Token Generator**
+1. **Revoke the token using the Management Console**
    
-   Run the Token Generator interactively:
+   Run the Portway Management Console from the root directory:
    ```powershell
-   cd C:\path\to\portway\tools
-   TokenGenerator.exe
+   cd C:\path\to\portway
+   PortwayMgt.exe
    ```
    
    Then follow these steps:
@@ -409,11 +388,11 @@ If a token is compromised, follow these steps immediately:
    Create a new token with restricted permissions:
    ```powershell
    # Option 1: Interactive mode
-   TokenGenerator.exe
+   PortwayMgt.exe
    # Then select option 2 and follow prompts
    
    # Option 2: Command line with specific restrictions
-   TokenGenerator.exe api-user -s "Products,Orders" -e "dev,test" --expires 30
+   PortwayMgt.exe api-user -s "Products,Orders" -e "dev,test" --expires 30
    ```
 
 5. **Update affected systems**
@@ -436,7 +415,7 @@ If a token is compromised, follow these steps immediately:
    ```
 
 ::: tip Quick Reference
-To quickly check active tokens, run TokenGenerator and select option 1. This shows all tokens that haven't been revoked or expired.
+To quickly check active tokens, run PortwayMgt.exe and select option 1. This shows all tokens that haven't been revoked or expired.
 :::
 
 ::: warning Important

@@ -208,7 +208,7 @@ Create a SQL endpoint by adding `endpoints/SQL/Products/entity.json`:
 ### Test Your API
 
 1. Restart the IIS Application Pool to load new configurations
-2. Open OpenAPI UI at http://localhost/docs
+2. Open OpenAPI UI at https://localhost/docs
 3. Click "Authorize" and enter your Bearer token
 4. Make your first API call:
 
@@ -216,15 +216,6 @@ Create a SQL endpoint by adding `endpoints/SQL/Products/entity.json`:
 GET /api/prod/Products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
-
-## Licensing
-
-Portway is available under two licensing models:
-
-* **Open Source (AGPL-3.0)** — Free for open source projects and personal use
-* **Commercial License** — For commercial use without open source requirements
-
-Professional features such as priority support and guaranteed patches require a [commercial license](https://melosso.com/licensing/portway). Feel free to contact us.
 
 ## Next Steps
 

@@ -13,7 +13,7 @@ COPY Source/Tools/TokenGenerator/TokenGenerator.csproj Source/Tools/TokenGenerat
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet restore "Source/PortwayApi/PortwayApi.csproj" && \
     dotnet restore "Source/Tools/TokenGenerator/TokenGenerator.csproj"
-
+    
 # Copy the rest of the source code
 COPY . .
 
@@ -74,5 +74,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Expose application port
 EXPOSE 8080
 
+# Create startup script that generates default token if needed
+RUN echo '#!/bin/sh\n\
+if [ ! -f /app/tokens/docker-default.txt ]; then\n\
+  echo "No tokens found. Generating default admin token..."\n\
+  dotnet /app/tools/TokenGenerator.dll --docker docker-default -s "*" -e "prod" --description "Auto-generated admin token" || echo "Token generation failed, continuing..."\n\
+  echo "Token generated at /app/tokens/docker-default.txt"\n\
+fi\n\
+exec dotnet PortwayApi.dll "$@"' > /app/start.sh && chmod +x /app/start.sh
+
 # Define entrypoint
-ENTRYPOINT ["dotnet", "PortwayApi.dll"]
+ENTRYPOINT ["/app/start.sh"]

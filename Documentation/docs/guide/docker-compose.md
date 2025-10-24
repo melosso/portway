@@ -185,7 +185,9 @@ services:
 
   token-tool:
     image: ghcr.io/melosso/portway:latest  
-    entrypoint: ["dotnet", "/app/tools/TokenGenerator.dll"]
+    entrypoint: ["dotnet", "/app/tools/TokenGenerator.dll", "--docker"]
+    stdin_open: true
+    tty: true
     volumes:
       - ./tokens:/app/tokens
       - ./data:/app/data

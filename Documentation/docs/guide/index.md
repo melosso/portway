@@ -4,13 +4,15 @@ Welcome to the Portway documentation! This guide will walk you through everythin
 
 ## Quick Links
 
+We've set-up some quick links to get you up-and-running in no time:
+
 - [Getting Started](./getting-started) - Install and configure your first endpoint
 - [Deployment](./deployment) - Production deployment with IIS
 - [Security](./security) - Authentication, authorization, and best practices
 
 ## What is Portway?
 
-Portway is a lightweight API gateway designed specifically for Windows environments. It provides a unified interface to:
+TLDR: Portway is a lightweight API gateway designed specifically for Windows environments. It provides a unified interface to:
 
 - **SQL Server databases** - Expose tables and stored procedures as REST APIs
 - **Internal services** - Proxy requests to internal web services with authentication
@@ -18,13 +20,16 @@ Portway is a lightweight API gateway designed specifically for Windows environme
 - **Webhook endpoints** - Receive and process webhooks from external systems
 - **Composite operations** - Chain multiple operations in a single request
 
+We've optimized the application to be running prodominantly in Windows-environments.
+
 ## Key Features
 
-We've built Portway in a way to include commonly requested features, such as:
+We've built Portway in a way to include commonly requested features, with security and flexibility in mind:
 
-#### Enterprise Security
+#### Security
 - Token-based authentication with scoped access
 - Environment-specific access controls
+- Always-on Encryption
 - Azure Key Vault integration for secrets
 - Rate limiting and request validation
 
@@ -49,9 +54,16 @@ We've built Portway in a way to include commonly requested features, such as:
 
 ## Getting Help
 
+We're here to help, but we may require your effort on polishing Portway.
+
 - **Issues**: [GitHub Issues](https://github.com/melosso/portway/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/melosso/portway/issues)
 
-## License
+## Licensing
 
-Portway is released under the Open Source (AGPL-3.0) license. See the [LICENSE](https://github.com/melosso/portway/blob/main/LICENSE) file for details.
+Portway is available under two licensing models:
+
+* **Open Source (AGPL-3.0)** — Free for open source projects and personal use
+* **Commercial License** — For commercial use without open source requirements
+
+Professional features such as priority support and guaranteed patches require a [commercial license](https://melosso.com/licensing/portway). Feel free to contact us.

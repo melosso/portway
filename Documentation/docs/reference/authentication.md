@@ -55,20 +55,20 @@ sequenceDiagram
 
 ## Token Generation
 
-Tokens are generated using the TokenGenerator tool:
+Tokens are generated using the Management Console:
 
 ```bash
 # Generate token with default settings
-TokenGenerator.exe username
+PortwayMgt.exe username
 
 # Generate token with specific scopes
-TokenGenerator.exe username -s "Products,Orders"
+PortwayMgt.exe username -s "Products,Orders"
 
 # Generate token with environment restrictions
-TokenGenerator.exe username -e "prod,staging"
+PortwayMgt.exe username -e "prod,staging"
 
 # Generate token with expiration
-TokenGenerator.exe username --expires 90
+PortwayMgt.exe username --expires 90
 ```
 
 ## Token File Format
@@ -161,25 +161,27 @@ Tokens are secured using PBKDF2 with SHA256:
 
 ## Token Management
 
-### Managing Tokens via TokenGenerator
+Tokens can be managed using the Management Console, available via the CLI or running it as a Program.
+
+### Managing Tokens via 
 
 ```bash
 # List all active tokens
-TokenGenerator.exe
+PortwayMgt.exe
 > Option 1
 
 # Revoke a token
-TokenGenerator.exe
+PortwayMgt.exe
 > Option 3
 > Enter token ID
 
 # Update token scopes
-TokenGenerator.exe
+PortwayMgt.exe
 > Option 4
 > Enter new scopes
 
 # Update token expiration
-TokenGenerator.exe
+PortwayMgt.exe
 > Option 6
 > Enter days until expiration
 ```
@@ -248,7 +250,7 @@ You may encounter issues with authentication. We've gathered some common issues 
 
 1. Check token validity:
    ```bash
-   TokenGenerator.exe
+   PortwayMgt.exe
    > Option 1 (List tokens)
    ```
 

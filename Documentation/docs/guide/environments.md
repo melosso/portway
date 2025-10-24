@@ -133,7 +133,7 @@ Access to environments is controlled through the Token Generator tool. When crea
 
 1. **Run the Token Generator**:
    ```batch
-   TokenGenerator.exe
+   PortwayMgt.exe
    ```
 
 2. **Create a token with specific environment access**:

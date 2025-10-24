@@ -151,7 +151,7 @@ public class EndpointDefinition
         }
     }
                               
-    // Helper method to get a consistent tuple format compatible with existing code
+    // Helper method to get a consistent tuple format
     public (string Url, HashSet<string> Methods, bool IsPrivate, string Type) ToTuple()
     {
         string typeString = this.Type.ToString();

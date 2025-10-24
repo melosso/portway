@@ -8,16 +8,19 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using TokenGenerator.Classes;
 
 namespace TokenGenerator.Classes;
 
+/// <summary>
+/// Database context for authentication and management operations
+/// </summary>
 public class AuthDbContext : DbContext
 {
     public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
 
     public DbSet<AuthToken> Tokens { get; set; }
     public DbSet<AuthTokenAudit> TokenAudits { get; set; }
+    public DbSet<Management> Management { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -35,7 +38,7 @@ public class AuthDbContext : DbContext
         optionsBuilder.EnableServiceProviderCaching();
         optionsBuilder.EnableDetailedErrors(false);
         
-        // Supress the EF Core logging
+        // Suppress the EF Core logging
         optionsBuilder.UseLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(builder => 
         {
             // Create a logger factory that discards all messages
@@ -47,6 +50,9 @@ public class AuthDbContext : DbContext
         optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ContextInitialized));
     }
 
+    /// <summary>
+    /// Ensures all required tables exist in the database
+    /// </summary>
     public async Task<bool> EnsureTablesCreatedAsync()
     {
         try
@@ -57,23 +63,39 @@ public class AuthDbContext : DbContext
             // Check if the tables exist
             bool tokensTableExists = await CheckTableExistsAsync("Tokens");
             bool auditsTableExists = await CheckTableExistsAsync("TokenAudits");
+            bool managementTableExists = await CheckTableExistsAsync("Management");
             
-            if (tokensTableExists && auditsTableExists)
+            // If all tables exist, verify schema
+            if (tokensTableExists && auditsTableExists && managementTableExists)
             {
-                // Verify schema and update if needed
-                bool hasCorrectSchema = await CheckSchemaAsync();
-                if (!hasCorrectSchema)
+                Log.Debug("All tables already exist, verifying schema...");
+                
+                // Check and add missing columns if needed
+                if (tokensTableExists)
                 {
-                    await UpdateSchemaAsync();
+                    await EnsureTokensColumnsExistAsync();
                 }
                 
                 Log.Debug("All tables verified with correct schema");
                 return true;
             }
             
-            // Create the tables with the complete schema
-            await CreateTableAsync();
-            Log.Information("Created new tables with complete schema");
+            // Create missing tables
+            if (!tokensTableExists)
+            {
+                await CreateTokensTableAsync();
+            }
+            
+            if (!auditsTableExists)
+            {
+                await CreateTokenAuditsTableAsync();
+            }
+            
+            if (!managementTableExists)
+            {
+                await CreateManagementTableAsync();
+            }
+            
             return true;
         }
         catch (Exception ex)
@@ -81,20 +103,22 @@ public class AuthDbContext : DbContext
             Log.Error(ex, "Error ensuring tables are created");
             return false;
         }
-        finally
-        {
-            await Database.CloseConnectionAsync();
-        }
     }
 
+    /// <summary>
+    /// Check if a table exists in the database
+    /// </summary>
     private async Task<bool> CheckTableExistsAsync(string tableName)
     {
         try
         {
-            using var command = Database.GetDbConnection().CreateCommand();
-            command.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
+            using var cmd = Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
             
-            var result = await command.ExecuteScalarAsync();
+            if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
+                await Database.GetDbConnection().OpenAsync();
+                
+            var result = await cmd.ExecuteScalarAsync();
             return Convert.ToInt32(result) > 0;
         }
         catch (Exception ex)
@@ -104,85 +128,43 @@ public class AuthDbContext : DbContext
         }
     }
 
-    private async Task<bool> CheckSchemaAsync()
+    /// <summary>
+    /// Ensure Tokens table has all required columns
+    /// </summary>
+    private async Task EnsureTokensColumnsExistAsync()
     {
         try
         {
-            using var command = Database.GetDbConnection().CreateCommand();
-            command.CommandText = @"
-                SELECT COUNT(*) FROM pragma_table_info('Tokens') 
-                WHERE name IN ('AllowedScopes', 'AllowedEnvironments', 'ExpiresAt', 'Description')";
-            
-            var result = await command.ExecuteScalarAsync();
-            return Convert.ToInt32(result) >= 4; // Should have at least 4 required columns
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error checking Tokens table schema");
-            return false;
-        }
-    }
-
-    private async Task UpdateSchemaAsync()
-    {
-        try
-        {
-            Log.Information("Updating database schema...");
-            
-            // Update Tokens table if needed
-            var tokensCommands = new[]
+            // Check if AllowedEnvironments column exists
+            bool hasEnvironmentColumn = false;
+            using (var cmd = Database.GetDbConnection().CreateCommand())
             {
-                "ALTER TABLE Tokens ADD COLUMN AllowedScopes TEXT NOT NULL DEFAULT '*'",
-                "ALTER TABLE Tokens ADD COLUMN AllowedEnvironments TEXT NOT NULL DEFAULT '*'",
-                "ALTER TABLE Tokens ADD COLUMN ExpiresAt DATETIME NULL",
-                "ALTER TABLE Tokens ADD COLUMN Description TEXT NOT NULL DEFAULT ''"
-            };
-
-            foreach (var sql in tokensCommands)
-            {
-                try
-                {
-                    await Database.ExecuteSqlRawAsync(sql);
-                }
-                catch (Exception ex) when (ex.Message.Contains("duplicate column"))
-                {
-                    // Column already exists, continue
-                    Log.Debug("Column already exists, skipping: {Sql}", sql);
-                }
-            }
-            
-            // Create TokenAudits table if it doesn't exist
-            bool auditsTableExists = await CheckTableExistsAsync("TokenAudits");
-            if (!auditsTableExists)
-            {
-                await Database.ExecuteSqlRawAsync(@"
-                    CREATE TABLE TokenAudits (
-                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        TokenId INTEGER NULL,
-                        Username TEXT NOT NULL DEFAULT '',
-                        Operation TEXT NOT NULL DEFAULT '',
-                        OldTokenHash TEXT NULL,
-                        NewTokenHash TEXT NULL,
-                        Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        Details TEXT NOT NULL DEFAULT '',
-                        Source TEXT NOT NULL DEFAULT 'TokenGenerator',
-                        IpAddress TEXT NULL,
-                        UserAgent TEXT NULL
-                    )");
+                cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Tokens') WHERE name='AllowedEnvironments'";
                 
-                Log.Information("Created TokenAudits table");
+                if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
+                    await Database.GetDbConnection().OpenAsync();
+                    
+                var result = await cmd.ExecuteScalarAsync();
+                hasEnvironmentColumn = Convert.ToInt32(result) > 0;
             }
             
-            Log.Information("Successfully updated database schema");
+            // Add the column if it doesn't exist
+            if (!hasEnvironmentColumn)
+            {
+                await Database.ExecuteSqlRawAsync("ALTER TABLE Tokens ADD COLUMN AllowedEnvironments TEXT NOT NULL DEFAULT '*'");
+                Log.Information("Added AllowedEnvironments column to Tokens table");
+            }
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error updating database schema");
-            throw;
+            Log.Error(ex, "Error ensuring Tokens columns exist");
         }
     }
 
-    private async Task CreateTableAsync()
+    /// <summary>
+    /// Create the Tokens table
+    /// </summary>
+    private async Task CreateTokensTableAsync()
     {
         try
         {
@@ -200,9 +182,24 @@ public class AuthDbContext : DbContext
                     Description TEXT NOT NULL DEFAULT ''
                 )");
             
-            // Create the TokenAudits table
+            Log.Debug("Created new Tokens table");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error creating Tokens table");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Create the TokenAudits table
+    /// </summary>
+    private async Task CreateTokenAuditsTableAsync()
+    {
+        try
+        {
             await Database.ExecuteSqlRawAsync(@"
-                CREATE TABLE IF NOT EXISTS TokenAudits (
+                CREATE TABLE TokenAudits (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     TokenId INTEGER NULL,
                     Username TEXT NOT NULL DEFAULT '',
@@ -215,14 +212,48 @@ public class AuthDbContext : DbContext
                     IpAddress TEXT NULL,
                     UserAgent TEXT NULL
                 )");
+            
+            Log.Debug("Created new TokenAudits table");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error creating Tokens table");
+            Log.Error(ex, "Error creating TokenAudits table");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Create the Management table for passphrase protection
+    /// </summary>
+    private async Task CreateManagementTableAsync()
+    {
+        try
+        {
+            await Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE Management (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    PassphraseHash TEXT NOT NULL DEFAULT '',
+                    PassphraseSalt TEXT NOT NULL DEFAULT '',
+                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UpdatedAt DATETIME NULL,
+                    FailedAttempts INTEGER NOT NULL DEFAULT 0,
+                    LastFailedAttempt DATETIME NULL,
+                    LockedUntil DATETIME NULL,
+                    Settings TEXT NOT NULL DEFAULT '{{}}'
+                )");
+            
+            Log.Information("Created new Management table for passphrase protection");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error creating Management table");
             throw;
         }
     }
     
+    /// <summary>
+    /// Validate that the database is accessible and properly configured
+    /// </summary>
     public async Task<bool> IsValidDatabaseAsync()
     {
         try
@@ -236,6 +267,9 @@ public class AuthDbContext : DbContext
         }
     }
 
+    /// <summary>
+    /// Configure entity models
+    /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -255,7 +289,7 @@ public class AuthDbContext : DbContext
             entity.Property(e => e.AllowedEnvironments).HasDefaultValue("*").HasMaxLength(1000);
             entity.Property(e => e.Description).HasDefaultValue("").HasMaxLength(500);
             
-            // Add index for performance
+            // Add indexes for performance
             entity.HasIndex(e => e.Username).IsUnique(false);
             entity.HasIndex(e => e.CreatedAt);
         });
@@ -281,6 +315,21 @@ public class AuthDbContext : DbContext
             entity.HasIndex(e => e.Username);
             entity.HasIndex(e => e.Operation);
             entity.HasIndex(e => e.Timestamp);
+        });
+        
+        // Configure the Management table
+        modelBuilder.Entity<Management>(entity =>
+        {
+            entity.ToTable("Management");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PassphraseHash).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.PassphraseSalt).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).IsRequired(false);
+            entity.Property(e => e.FailedAttempts).HasDefaultValue(0);
+            entity.Property(e => e.LastFailedAttempt).IsRequired(false);
+            entity.Property(e => e.LockedUntil).IsRequired(false);
+            entity.Property(e => e.Settings).HasDefaultValue("{}").HasMaxLength(2000);
         });
     }
 }

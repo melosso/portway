@@ -5,8 +5,23 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-  </PropertyGroup>
 
+    <!-- Assembly Information -->
+    <AssemblyTitle>Portway Management Console</AssemblyTitle>
+    <AssemblyDescription>A management console for POrtway. Generate and manage authentication.</AssemblyDescription>
+    <AssemblyProduct>Portway</AssemblyProduct>
+    <AssemblyCompany>Melosso</AssemblyCompany>
+    <AssemblyCopyright>Copyright © Melosso 2025</AssemblyCopyright>
+
+    <!-- Additional Metadata -->
+    <Authors>Melosso</Authors>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
+    <RepositoryUrl>https://github.com/melosso/portway</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+    <PackageProjectUrl>https://portway.melosso.com/</PackageProjectUrl>
+  </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.8" />
