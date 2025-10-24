@@ -92,6 +92,15 @@ Grant the application pool identity required permissions:
 icacls "C:\path\to\your\PortwayApi" /grant "IIS AppPool\PortwayApi:(OI)(CI)M" /T
 ```
 
+### Step 6: Prepare your Deployment
+
+If you're choosing to deploy the services on Windows, please make sure to prepare your environment: you'll need to safely store the application encryption key. On containerized environments, this can be done with the identically named PORTWAY_ENCRYPTION_KEY variable.
+
+```powershell
+# Immediately stores the encryption key to your System Environment Variables
+$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+```
+
 ## Configuration
 
 ### 1. Initial Startup

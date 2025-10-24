@@ -119,8 +119,7 @@ $webConfigContent = @'
         <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
         <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
         <add name="Permissions-Policy" value="geolocation=(), camera=(), microphone=(), payment=()" />
-        <add name="Content-Security-Policy" value="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://proxy.scalar.com; font-src 'self' https://fonts.scalar.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" />
-      </customHeaders>
+        <add name="Content-Security-Policy" value="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://proxy.scalar.com; font-src 'self' https://fonts.scalar.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" />      </customHeaders>
     </httpProtocol>
   </system.webServer>
 </configuration>

@@ -21,8 +21,7 @@ param(
 )
 
 # Available themes
-$ValidThemes = @('default', 'alternate', 'moon', 'purple', 'solarized', 'bluePlanet', 'saturn', 'kepler', 'mars', 'deepSpace', 'laserwave', 'none')
-
+$ValidThemes = @('default', 'alternate', 'moon', 'purple', 'solarized', 'bluePlanet', 'saturn', 'kepler', 'mars', 'deepSpace', 'elysiajs', 'fastify', 'laserwave', 'none')
 # Available layouts
 $ValidLayouts = @('modern', 'classic')
 

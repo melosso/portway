@@ -80,7 +80,6 @@ This will start Portway on port [8080](#) and mount your configuration folders. 
    - Select your Application Pool
    - Advanced Settings > Identity
    - Choose appropriate user account with network access
-
 6. Ensure the web.config exists with (a predefined) proper configuration:
 
 ```xml
@@ -96,6 +95,12 @@ This will start Portway on port [8080](#) and mount your configuration folders. 
   </location>
 </configuration>
 ```
+7. Secure your environment with an environment varriable `ORTWAY_ENCRYPTION_KEY`:
+
+```powershell
+# Stores the encryption key to your System Environment Variables
+$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+``` 
 
 You should now be ready for running Portway for the first time.
 

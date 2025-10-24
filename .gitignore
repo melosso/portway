@@ -10,6 +10,7 @@ TrimmerRoots.xml
 .venv/
 /logs/
 /.core/
-.git/# Ignore log files
-.fake# Ignore log files
+.git/
+.fake
+Source/PortwayApi/.core/
 # Ignore log files

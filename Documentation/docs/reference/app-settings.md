@@ -131,6 +131,11 @@ The documentation will be available at `/docs` (or your custom route) once confi
       "Name": "Jay Doe (Demo Company)",
       "Email": "support@democompany.local"
     },
+    "Footer": {
+      "Text": "Powered by Scalar",
+      "Target": "_blank",
+      "Url": "#"
+    },
     "SecurityDefinition": {
       "Name": "Bearer",
       "Description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
@@ -167,6 +172,7 @@ The documentation will be available at `/docs` (or your custom route) once confi
 | `Version` | string | `"v1"` | API version identifier |
 | `Description` | string | - | Main description (supports markdown) |
 | `Contact` | object | - | Contact information for API support |
+| `Footer` | object | - | Footer text shown in Scalar |
 | `SecurityDefinition` | object | - | Authentication method configuration |
 | `RoutePrefix` | string | `"docs"` | URL path for documentation (e.g., `/docs`) |
 | `DocExpansion` | string | `"List"` | Default expansion: `"List"`, `"Full"`, `"None"` |
@@ -415,8 +421,8 @@ For production, restrict to specific domains:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `ASPNETCORE_ENVIRONMENT` | Runtime environment | `Development`, `Production` |
-| `ASPNETCORE_URLS` | Listening URLs | `http://+:5000` |
+| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
+| `ASPNETCORE_URLS` | Listening URLs | `http://+:8080` |
 | `KEYVAULT_URI` | Azure Key Vault URI | `https://vault.azure.net` |
 | `PROXY_USERNAME` | Proxy authentication user | `domain\user` |
 | `PROXY_PASSWORD` | Proxy authentication password | `password` |

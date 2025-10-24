@@ -216,6 +216,8 @@ X-Request-ID: correlation-id
 
 ## Troubleshooting Authentication
 
+You may encounter issues with authentication. We've gathered some common issues related to this topic:
+
 ### Common Issues
 
 1. **"Missing or invalid authentication header"**
@@ -267,30 +269,14 @@ X-Request-ID: correlation-id
 
 ## Best Practices
 
+Please make sure to implement the following best practices:
+
 ### Token Rotation Strategy
 
 1. Set reasonable expiration periods
 2. Generate new tokens before expiry
-3. Overlap old and new tokens briefly
-4. Update services with new tokens
-5. Revoke old tokens after transition
-
-### Secure Token Storage
-
-:::warning Never Store Tokens In
-- Source code repositories
-- Client-side JavaScript
-- Public configuration files
-- Unencrypted databases
-- Log files
-:::
-
-:::tip Secure Storage Options
-- Environment variables
-- Secure key vaults
-- Encrypted configuration
-- CI/CD secrets management
-:::
+3. Update services with new tokens
+4. Revoke old tokens after transition
 
 ## Related Topics
 

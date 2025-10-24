@@ -88,10 +88,12 @@ echo 7. saturn
 echo 8. kepler
 echo 9. mars
 echo 10. deepSpace
-echo 11. laserwave
-echo 12. none
+echo 11. elysiajs
+echo 12. fastify
+echo 13. laserwave
+echo 14. none
 echo.
-set /p "THEME_CHOICE=Select theme (1-12): "
+set /p "THEME_CHOICE=Select theme (1-14): "
 
 set "NEW_THEME="
 if "%THEME_CHOICE%"=="1" set "NEW_THEME=default"
@@ -104,8 +106,10 @@ if "%THEME_CHOICE%"=="7" set "NEW_THEME=saturn"
 if "%THEME_CHOICE%"=="8" set "NEW_THEME=kepler"
 if "%THEME_CHOICE%"=="9" set "NEW_THEME=mars"
 if "%THEME_CHOICE%"=="10" set "NEW_THEME=deepSpace"
-if "%THEME_CHOICE%"=="11" set "NEW_THEME=laserwave"
-if "%THEME_CHOICE%"=="12" set "NEW_THEME=none"
+if "%THEME_CHOICE%"=="11" set "NEW_THEME=elysiajs"
+if "%THEME_CHOICE%"=="12" set "NEW_THEME=fastify"
+if "%THEME_CHOICE%"=="13" set "NEW_THEME=laserwave"
+if "%THEME_CHOICE%"=="14" set "NEW_THEME=none"
 
 if "%NEW_THEME%"=="" (
     echo Invalid theme choice.

@@ -75,7 +75,7 @@ export default withMermaid(
            text: 'Coding & API Reference', link: '/reference/' 
         },
         {
-          text: 'Plugins', link: '/reference/plugins/' 
+          text: 'Integrations', link: '/reference/integrations/' 
         }
       ],
       '/reference/': [
@@ -118,11 +118,11 @@ export default withMermaid(
           ]
         },
         {
-          text: 'Plugins',
+          text: 'Integrations',
           items: [
-            { text: 'Exact Globe+', link: '/reference/plugins/exact-globe' },
-            { text: 'Exact Synergy', link: '/reference/plugins/exact-synergy' },
-            { text: 'NAV Business Central', link: '/reference/plugins/nav-business-central' }
+            { text: 'Exact Globe+', link: '/reference/integrations/exact-globe' },
+            { text: 'Exact Synergy', link: '/reference/integrations/exact-synergy' },
+            { text: 'NAV Business Central', link: '/reference/integrations/nav-business-central' }
           ]
         }
       ]

@@ -33,6 +33,11 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
       "Name": "Your Name",
       "Email": "support@yourcompany.com"
     },
+    "Footer": {
+      "Text": "Powered by Scalar",
+      "Target": "_blank",
+      "Url": "#"
+    },
     "SecurityDefinition": {
       "Name": "Bearer",
       "Description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
@@ -58,6 +63,7 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
 
 ### Configuration Properties
 
+### Configuration Properties
 | Property | Type | Description |
 |----------|------|-------------|
 | `Enabled` | boolean | Enable/disable API documentation generation |
@@ -67,18 +73,29 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
 | `Description` | string | Main API description (supports markdown formatting) |
 | `Contact.Name` | string | Contact person or team name |
 | `Contact.Email` | string | Support email address |
-| `RoutePrefix` | string | URL path for documentation (e.g., "docs" → `/docs`) |
-| `DocExpansion` | string | Default expansion level ("List", "Full", "None") |
-| `DefaultModelsExpandDepth` | integer | Schema model expansion depth (-1 = collapsed) |
-| `DisplayRequestDuration` | boolean | Show request execution timing |
-| `EnableFilter` | boolean | Enable endpoint search and filtering |
-| `EnableDeepLinking` | boolean | Enable direct links to specific operations |
-| `EnableValidator` | boolean | Enable request/response validation |
-| `EnableScalar` | boolean | Use modern Scalar UI |
-| `ScalarTheme` | string | UI theme |
-| `ScalarShowSidebar` | boolean | Display navigation sidebar in Scalar UI |
-| `ScalarHideDownloadButton` | boolean | Hide OpenAPI specification download button |
-| `ScalarHideModels` | boolean | Hide data models/schemas section |
+| `Footer.Text` | string | Text displayed in the documentation footer |
+| `Footer.Target` | string | Link target behavior (`_blank` for new tab, `_self` for same tab) |
+| `Footer.Url` | string | URL for the footer link |
+| `SecurityDefinition.Name` | string | Name of the security scheme (e.g., "Bearer") |
+| `SecurityDefinition.Description` | string | Description of the authentication method |
+| `SecurityDefinition.In` | string | Location of the API key (`Header`, `Query`, `Cookie`) |
+| `SecurityDefinition.Type` | string | Type of security scheme (`ApiKey`, `Http`, `OAuth2`, `OpenIdConnect`) |
+| `SecurityDefinition.Scheme` | string | Authentication scheme (e.g., "Bearer", "Basic") |
+| `DocExpansion` | string | Default expansion state of documentation sections (`List`, `Full`, `None`) |
+| `DefaultModelsExpandDepth` | integer | Default depth for expanding models/schemas (-1 to hide) |
+| `DisplayRequestDuration` | boolean | Show request duration in UI |
+| `EnableFilter` | boolean | Enable API filtering in documentation |
+| `EnableDeepLinking` | boolean | Enable deep linking to specific operations |
+| `EnableValidator` | boolean | Enable schema validation in UI |
+| `ForceHttpsInProduction` | boolean | Force HTTPS URLs in production environments |
+| `EnableScalar` | boolean | Use Scalar UI instead of default Swagger UI |
+| `ScalarTheme` | string | Scalar UI color theme |
+| `ScalarLayout` | string | Scalar UI layout style (`modern`, `classic`) |
+| `ScalarShowSidebar` | boolean | Show/hide the navigation sidebar |
+| `ScalarHideDownloadButton` | boolean | Hide the OpenAPI spec download button |
+| `ScalarHideModels` | boolean | Hide the Models/Schemas section |
+| `ScalarHideClientButton` | boolean | Hide the client generation button |
+| `ScalarHideTestRequestButton` | boolean | Hide the test request button |
 
 ## Entity Documentation Configuration
 

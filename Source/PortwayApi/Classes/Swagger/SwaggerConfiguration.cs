@@ -32,7 +32,8 @@ public class SwaggerSettings
     public bool EnableValidator { get; set; } = true;
     public bool ForceHttpsInProduction { get; set; } = true; // Always use HTTPS in production environments
     
-    // Scalar-specific settings
+    // Scalar-specific 
+    public FooterInfo Footer { get; set; } = new FooterInfo();
     public bool EnableScalar { get; set; } = true;
     public string ScalarTheme { get; set; } = "purple"; // alternate, default, moon, purple, solarized, bluePlanet, saturn, kepler, mars, deepSpace
     public string ScalarLayout { get; set; } = "modern"; // modern, classic
@@ -47,6 +48,13 @@ public class ContactInfo
 {
     public string Name { get; set; } = "Support";
     public string Email { get; set; } = "support@yourcompany.com";
+}
+
+public class FooterInfo
+{
+    public string Text { get; set; } = "Powered by Scalar";
+    public string Target { get; set; } = "_blank";
+    public string Url { get; set; } = "#";
 }
 
 public class SecurityDefinitionInfo
@@ -84,9 +92,10 @@ public static class SwaggerConfiguration
             // Log error but continue with defaults
             Log.Error(ex, "Error loading Swagger configuration. Using default settings.");
         }
-        
+
         // Ensure object references aren't null (defensive programming)
         swaggerSettings.Contact ??= new ContactInfo();
+        swaggerSettings.Footer ??= new FooterInfo();
         swaggerSettings.SecurityDefinition ??= new SecurityDefinitionInfo();
         
         // Validate and fix critical values
@@ -426,6 +435,18 @@ public static class SwaggerConfiguration
             document.body.appendChild(iconsContainer);
         }});
     </script>
+    <script>
+        const observer = new MutationObserver(() => {{
+            const link = document.querySelector('a[href=""https://www.scalar.com""]');
+            if (link) {{
+                link.textContent = '{swaggerSettings.Footer.Text}';
+                link.href = '{swaggerSettings.Footer.Url}';
+                link.target = '{swaggerSettings.Footer.Target}';
+                observer.disconnect();
+            }}
+        }});
+        observer.observe(document.body, {{ childList: true, subtree: true }});
+    </script>
 </body>
 </html>";
                 return Results.Content(html, "text/html");
@@ -473,6 +494,8 @@ public static class SwaggerConfiguration
             "kepler" => "kepler",
             "mars" => "mars",
             "deepspace" => "deepSpace",
+            "elysiajs" => "elysiajs",
+            "fastify" => "fastify",
             "laserwave" => "laserwave",
             "none" => "none",
             _ => "purple"
