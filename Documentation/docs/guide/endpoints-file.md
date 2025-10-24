@@ -22,7 +22,7 @@ Create a configuration file for your endpoint (e.g., `Documents`):
   "BaseDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["prod", "test"]
 }
 ```
 
@@ -77,7 +77,7 @@ Store business documents like contracts, reports, and manuals.
   "StorageType": "Local",
   "BaseDirectory": "documents", 
   "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["prod", "test"]
 }
 ```
 
@@ -92,7 +92,7 @@ Store and serve product images, logos, and marketing materials.
   "StorageType": "Local",
   "BaseDirectory": "images",
   "AllowedExtensions": [".jpg", ".png", ".gif", ".svg"],
-  "AllowedEnvironments": ["600", "700"]  
+  "AllowedEnvironments": ["prod", "test"]  
 }
 ```
 
@@ -107,7 +107,7 @@ Import/export data files for business processes.
   "StorageType": "Local",
   "BaseDirectory": "data-import",
   "AllowedExtensions": [".csv", ".xlsx", ".json"],
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["prod", "test"]
 }
 ```
 
@@ -123,7 +123,7 @@ Store sensitive internal reports with restricted access.
   "BaseDirectory": "reports",
   "AllowedExtensions": [".pdf", ".xlsx"],
   "IsPrivate": true,
-  "AllowedEnvironments": ["600"]
+  "AllowedEnvironments": ["prod"]
 }
 ```
 
@@ -135,7 +135,7 @@ Store sensitive internal reports with restricted access.
 |---------|---------|---------|
 | `BaseDirectory` | Organize files in folders | `"documents"`, `"images/{env}"` |
 | `AllowedExtensions` | Security - control file types | `[".pdf", ".jpg", ".csv"]` |
-| `AllowedEnvironments` | Control which environments can access | `["600"]` for production only |
+| `AllowedEnvironments` | Control which environments can access | `["prod"]` for production only |
 | `IsPrivate` | Hide from public API documentation | `true` for internal endpoints |
 
 ### Smart Folder Organization
@@ -184,7 +184,7 @@ Common file types work automatically with proper browser handling:
 <!-- Note: This requires authentication headers to work -->
 <embed src="https://your-api.com/api/600/files/Documents/pdfFileId"
        type="application/pdf" 
-       width="800" height="600" />
+       width="800" height="prod" />
 <!-- For web apps, you'll need to handle authentication via JavaScript -->
 ```
 
@@ -228,7 +228,7 @@ Always specify allowed file types for security:
 Separate files by environment:
 - **Development/Testing:** Environment `700`
 - **Production:** Environment `600`
-- **Sensitive Data:** Restrict to `["600"]` only
+- **Sensitive Data:** Restrict to `["prod"]` only
 
 ### Size Limits
 - Default maximum file size: **50MB**
@@ -261,8 +261,8 @@ These dangerous file types are always blocked:
 
 ### 4. Use Environment Restrictions
 ```json
-"AllowedEnvironments": ["600"]         // ✓ Production-only for sensitive files
-"AllowedEnvironments": ["600", "700"]  // ✓ Both environments for general files
+"AllowedEnvironments": ["prod"]         // ✓ Production-only for sensitive files
+"AllowedEnvironments": ["prod", "test"]  // ✓ Both environments for general files
 ```
 
 ## Troubleshooting

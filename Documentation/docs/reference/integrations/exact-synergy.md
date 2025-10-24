@@ -26,10 +26,10 @@ Synergy Enterprise uses standard HTTP authentication and doesn't require special
 Each environment must be properly configured in the settings:
 
 ```json
-// environments/PROD/settings.json
+// environments/Synergy/settings.json
 {
   "ServerName": "YOUR-SERVER",
-  "ConnectionString": "Server=YOUR-SERVER;Database=SynergyProd;Trusted_Connection=True;",
+  "ConnectionString": "Server=YOUR-SERVER;Database=Synergy;Trusted_Connection=True;",
   "Headers": {
     "Origin": "Portway"
   }
@@ -48,30 +48,8 @@ You can selectively configure which Synergy endpoints to expose through proxy en
 {
   "Url": "http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account",
   "Methods": ["GET"],
-  "IsPrivate": true,
-  "AllowedEnvironments": ["PROD"]
-}
-```
-
-#### Items (Behind Firewall)
-
-```json
-{
-  "Url": "http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Item",
-  "Methods": ["GET", "POST", "PUT"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["PROD", "TEST"]
-}
-```
-
-#### Projects (Controlled Access)
-
-```json
-{
-  "Url": "http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Project",
-  "Methods": ["GET"],
-  "IsPrivate": true,
-  "AllowedEnvironments": ["PROD"]
+  "AllowedEnvironments": ["Synergy"]
 }
 ```
 
@@ -82,7 +60,7 @@ These endpoints handle complex operations that require multiple related Synergy 
 #### Project Creation with Resources
 
 ```http
-POST /api/PROD/composite/ProjectSetup
+POST /api/Synergy/composite/ProjectSetup
 Content-Type: application/json
 
 {
@@ -115,7 +93,7 @@ This composite endpoint:
 #### Binary Data Upload
 
 ```http
-POST /api/PROD/composite/BinaryUpload
+POST /api/Synergy/composite/BinaryUpload
 Content-Type: application/json
 
 {
@@ -161,7 +139,7 @@ Synergy specific error responses are preserved and forwarded:
 Portway automatically rewrites Synergy URLs in responses to maintain proxy routing:
 
 - Original: `http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account(guid'12345')`
-- Rewritten: `https://api.company.com/api/PROD/Account(guid'12345')`
+- Rewritten: `https://api.company.com/api/Synergy/Account(guid'12345')`
 
 This ensures that related links in responses continue to work through the proxy.
 
@@ -224,7 +202,7 @@ Composite endpoints ensure atomicity according to Synergy's transaction model:
 
 ```javascript
 try {
-  const response = await fetch('/api/PROD/composite/ProjectSetup', {
+  const response = await fetch('/api/Synergy/composite/ProjectSetup', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -300,7 +278,7 @@ For selective exposure:
 
 ```javascript
 async function createSynergyProject(projectData) {
-  const response = await fetch('/api/PROD/composite/ProjectSetup', {
+  const response = await fetch('/api/Synergy/composite/ProjectSetup', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -337,7 +315,7 @@ async function createSynergyProject(projectData) {
 async function getSynergyAccount(accountId, fieldsOnly = ['ID', 'Name', 'Code']) {
   const fields = fieldsOnly.join(',');
   const response = await fetch(
-    `/api/PROD/Account(guid'${accountId}')?$select=${fields}`,
+    `/api/Synergy/Account(guid'${accountId}')?$select=${fields}`,
     {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -360,7 +338,7 @@ async function getSynergyAccount(accountId, fieldsOnly = ['ID', 'Name', 'Code'])
 ```javascript
 async function getSynergyBinary(messageId) {
   const response = await fetch(
-    `/api/PROD/Binary?$filter=MessageID eq guid'${messageId}'`,
+    `/api/Synergy/Binary?$filter=MessageID eq guid'${messageId}'`,
     {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -396,7 +374,7 @@ async function batchSynergyOperations(operations) {
     }))
   };
 
-  const response = await fetch('/api/PROD/$batch', {
+  const response = await fetch('/api/Synergy/$batch', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -452,3 +430,6 @@ For organizations with multiple Synergy environments:
   }
 }
 ```
+
+> [!IMPORTANT]
+> If you choose to implement a single Portway instance, you will bypass best practices regarding environment separation. In this context, a system account is simply an account; however, it is still recommended to maintain separate accounts per environment (e.g., TEST, PROD) to ensure proper security isolation and prevent cross-environment issues.

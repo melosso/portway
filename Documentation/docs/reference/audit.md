@@ -116,7 +116,7 @@ Each traffic log entry contains:
   "Method": "GET",
   "Path": "/api/600/Products",
   "QueryString": "?$top=10",
-  "Environment": "600",
+  "Environment": "prod",
   "EndpointName": "Products",
   "TargetUrl": "http://localhost:8020/services/Exact.Entity.REST.EG/Product",
   "StatusCode": 200,
@@ -145,7 +145,7 @@ Each traffic log entry contains:
 | `Method` | HTTP method (GET, POST, etc.) |
 | `Path` | Request path |
 | `QueryString` | Query parameters |
-| `Environment` | Target environment (e.g., "600") |
+| `Environment` | Target environment (e.g., "prod") |
 | `EndpointName` | Name of the endpoint |
 | `TargetUrl` | Proxied URL (for proxy requests) |
 | `StatusCode` | HTTP response status |

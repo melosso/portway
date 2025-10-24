@@ -405,7 +405,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
   "BaseDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["prod", "dev"]
 }
 ```
 
@@ -417,7 +417,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
   "BaseDirectory": "customer-files/{env}",
   "AllowedExtensions": [".jpg", ".png", ".pdf", ".xlsx"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["prod", "dev"]
 }
 ```
 
@@ -429,7 +429,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
   "BaseDirectory": "secure-documents",
   "AllowedExtensions": [".pdf", ".xlsx"],
   "IsPrivate": true,
-  "AllowedEnvironments": ["600"]
+  "AllowedEnvironments": ["prod"]
 }
 ```
 
@@ -682,7 +682,7 @@ Configure allowed environments in `environments/settings.json`:
 {
   "Environment": {
     "ServerName": "localhost",
-    "AllowedEnvironments": ["600", "700", "Synergy"]
+    "AllowedEnvironments": ["prod", "dev"]
   }
 }
 ```

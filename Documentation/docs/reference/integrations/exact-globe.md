@@ -166,9 +166,10 @@ Composite endpoints ensure atomicity:
 
 ## Best Practices
 
+You may want to implement best practices:
+
 ### 1. Environment Management
 
-- Keep environment configurations synchronized
 - Test in non-production environments first
 - Use consistent naming conventions
 
