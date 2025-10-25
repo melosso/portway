@@ -1,14 +1,6 @@
 # Docker Installation
 
-This guide explains how to deploy Portway API using Docker Compose for quick development, testing and/or Home Lab environments.
-
-## Prerequisites
-
-Before you begin, ensure you have:
-
-- [Docker](https://www.docker.com/get-started) installed and running.
-
-We'll primarily be using [Docker Compose](https://docs.docker.com/compose/install/).
+This guide explains how to deploy Portway using Docker Compose for quick development, testing and/or Home Lab environments. Before you begin, ensure you have [Docker](https://www.docker.com/get-started) installed and running.
 
 ## Quick Start
 

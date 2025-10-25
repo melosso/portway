@@ -31,7 +31,7 @@ public class SwaggerSettings
     public bool EnableDeepLinking { get; set; } = true;
     public bool EnableValidator { get; set; } = true;
     public bool ForceHttpsInProduction { get; set; } = true; // Always use HTTPS in production environments
-    
+
     // Scalar-specific 
     public FooterInfo Footer { get; set; } = new FooterInfo();
     public bool EnableScalar { get; set; } = true;
@@ -55,6 +55,7 @@ public class FooterInfo
     public string Text { get; set; } = "Powered by Scalar";
     public string Target { get; set; } = "_blank";
     public string Url { get; set; } = "#";
+    public bool ShowSourceIcon { get; set; } = true;
 }
 
 public class SecurityDefinitionInfo
@@ -324,6 +325,7 @@ public static class SwaggerConfiguration
     <script src=""https://cdn.jsdelivr.net/npm/@scalar/api-reference""></script>
     <script>
         window.addEventListener('load', function() {{
+            {(swaggerSettings.Footer.ShowSourceIcon ? @"
             // Create icons container
             const iconsContainer = document.createElement('div');
             iconsContainer.style.cssText = `
@@ -435,6 +437,7 @@ public static class SwaggerConfiguration
             iconsContainer.appendChild(githubContainer);
             iconsContainer.appendChild(licenseContainer);
             document.body.appendChild(iconsContainer);
+            " : "")}
         }});
     </script>
     <script>

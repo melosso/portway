@@ -18,18 +18,21 @@ public class TokenAuthMiddleware
 
     public async Task InvokeAsync(HttpContext context, AuthDbContext dbContext, TokenService tokenService)
     {
-        // Extract path and environment from request
-        var path = context.Request.Path.Value?.ToLowerInvariant();
+        // Extract path
+        var path = context.Request.Path.Value?.ToLowerInvariant(); 
+        var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
         string env = ExtractEnvironmentFromPath(context.Request.Path);
         
         // Skip token validation for specific routes
-        if (path?.StartsWith("/swagger") == true || 
-            path?.StartsWith("/docs") == true ||
-            path == "/" ||
-            path == "/index.html" ||
-            path?.StartsWith("/health/live") == true ||
+        if (context.Request.Path.StartsWithSegments("/swagger") ||
+            context.Request.Path.StartsWithSegments("/docs") ||
+            context.Request.Path.StartsWithSegments("/health/live") ||
+            context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
+            context.Request.Path == "/" ||
+            context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))
         {
+            Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", path, pathBase);
             await _next(context);
             return;
         }
@@ -83,8 +86,6 @@ public class TokenAuthMiddleware
             await context.Response.WriteAsJsonAsync(new { error = "Authentication error", success = false });
             return;
         }
-
-
 
         // Check environment access
         if (!string.IsNullOrEmpty(env))

@@ -237,7 +237,7 @@ public class SqlConnectionPoolService : IHostedService
         
         _warmupConnections.Clear();
         
-        Log.Information("🛑 SQL Connection Pool Service stopped");
+        Log.Information("SQL Connection Pool Service stopped");
         return Task.CompletedTask;
     }
 }

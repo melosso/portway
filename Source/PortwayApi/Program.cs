@@ -232,7 +232,7 @@ try
     builder.Services.AddSingleton<Compiler, SqlServerCompiler>();
     builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
 
-    // Register Serilog logger for dependency injection (so Serilog.ILogger can be injected)
+    // Register Serilog logger for dependency injection 
     builder.Services.AddSingleton<Serilog.ILogger>(sp => Log.Logger);
 
     builder.Services.AddSingleton<FileHandlerService>();
@@ -402,8 +402,6 @@ try
         // Handle root path redirect
         if (path == "/" || path == "")
         {
-            Log.Debug("Root path accessed (PathBase: {PathBase})", pathBase);
-
             // Check if index.html exists in wwwroot
             var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var indexPath = Path.Combine(webRootPath, "index.html");

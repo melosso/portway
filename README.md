@@ -20,16 +20,17 @@ Portway is built with flexibility and control in mind. Whether you're proxying s
 
 * **Multiple endpoint types**: Endpoints can be set up easily for various purposes. They can also be grouped together or kept separate by using namespaces.
 
-  * **SQL Server (OData)** — direct CRUD access with schema-level control
+  * **SQL Server** — direct CRUD access with schema-level control
   * **Proxy** — forward to internal services; supports complex orchestration
   * **File System** — read/write from local storage or cache
   * **Webhook** — receive external calls and persist data to SQL
   * **Static** — read static files or set up a mock endpoint
+* **OData query support**: Filter, select, sort, and paginate data using standard OData v4 query parameters (`$filter`, `$select`, `$orderby`, `$top`, `$skip`)
 * **Auth system**: Token-based, with Azure Key Vault integration
 * **Environment-aware routing**: All your environments can be isolated and configured
 * **Built-in documentation**: Every endpoint is documented out of the box
 * **Comprehensive logging**: Request/response tracing, including live monitoring (configurable)
-* **Rate limiting**: Easy to configure; protects downstream systems
+* **Rate limiting**: Easy to configure, protects downstream systems
 
 In other words, Portway is an open-source API gateway that's easily configured, but is built with common application requirements in mind.
 

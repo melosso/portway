@@ -194,10 +194,17 @@ public class RateLimiter
     public async Task InvokeAsync(HttpContext context, AuthDbContext dbContext, TokenService tokenService)
     {
         var path = context.Request.Path.ToString().ToLower();
+        var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
 
-        // Skip rate limiting and auth for exempted paths
-        if (path.StartsWith("/swagger") || path.StartsWith("/docs") || path == "/index.html")
+        // Skip rate limiting and auth-context for exempted paths
+        if (context.Request.Path.StartsWithSegments("/swagger") ||
+            context.Request.Path.StartsWithSegments("/docs") ||
+            context.Request.Path.StartsWithSegments("/health/live") ||
+            context.Request.Path == "/" ||
+            context.Request.Path == "/index.html" ||
+            context.Request.Path.StartsWithSegments("/favicon.ico"))
         {
+            Log.Debug("Skipping rate limiting for for {Path} (basePath: {pathBase})", path, pathBase);
             await _next(context);
             return;
         }
@@ -339,7 +346,7 @@ public class RateLimiter
                 }
                 else
                 {
-                    Log.Error("🛑 Persistent rate limit violations detected for {MaskedToken} - Blocking for {Seconds}s", 
+                    Log.Error("Persistent rate limit violations detected for {MaskedToken} - Blocking for {Seconds}s", 
                         maskedToken, retryAfterSeconds);
                 }
 
