@@ -1,0 +1,37 @@
+{
+  "Header": {
+    "InvoiceCode": "60",
+    "OrderDebtor": "60091",
+    "OurReference": "INV-2025-1234",
+    "YourReference": "PO-2025-5678",
+    "CostCenter": "VERKOOP",
+    "FreeField1": "https://mijn-bestand-url.nl/entrykey/id",
+    "FreeField2": "mijn-unieke-id"
+  },
+  "Lines": [
+    {
+      "LineNumber": "1",
+      "ItemCode": "MCB0002",
+      "Quantity": 10,
+      "VATCode": "0",
+      "Price": 1200,
+      "LongDescription": "Executive Leadership Program - Module 1\n\n\nDeelnemer: John Smith"
+    },
+    {
+      "LineNumber": "2",
+      "ItemCode": "MCB0003",
+      "Quantity": 5,
+      "VATCode": "0",
+      "Price": 850,
+      "LongDescription": "Executive Leadership Program - Module 2\n\n\nDeelnemer: Jane Doe"
+    },
+    {
+      "LineNumber": "3",
+      "ItemCode": "MCB0004",
+      "Quantity": 15,
+      "VATCode": "2",
+      "Price": 45,
+      "LongDescription": "Course Materials and Workbooks\n\n\nDeelnemer: Various"
+    }
+  ]
+}
