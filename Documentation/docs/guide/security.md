@@ -251,7 +251,6 @@ Enable detailed request tracing for security analysis:
    - Use Windows Authentication
    - Implement least-privilege database users
    - Enable SQL Server auditing
-   - Use encrypted connections
 
 ### Monitoring and Alerts
 

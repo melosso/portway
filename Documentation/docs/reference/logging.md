@@ -151,20 +151,3 @@ Get-Content "log/portwayapi-*.log" | Select-String "Processing.*endpoint:" | Gro
 # Monitor log growth
 Get-ChildItem "log" -Filter "*.log" | Sort-Object LastWriteTime -Descending | Select-Object Name, Length
 ```
-
-## Security Considerations
-
-### Access Control
-- Log directory should be protected from web access
-- Restrict read permissions to authorized personnel
-- Implement log forwarding for centralized security
-
-### Compliance Requirements
-- Retain logs according to regulatory requirements
-- Ensure PII is properly handled
-- Implement audit trails for log access
-
-### Data Protection
-- Automatic redaction of sensitive headers
-- Configurable PII handling
-- Encrypted storage options available

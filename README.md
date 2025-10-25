@@ -261,15 +261,7 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 
 ### Protecting Secrets
 
-To keep your sensitive information (like passwords in connection strings) safe, Portway gives you simple tools to encrypt and decrypt all your environment settings files with a single command line utility. This way, only you can access your secrets even if your machine gets comprimised.
-
-**How to use:**
-
-1. Open a terminal in the `Source/Tools/Encrypt` folder.
-2. To lock your settings, run the command `.\encrypt.exe -e` or `--encrypt`
-3. To unlock your settings, run the command `.\encrypt.exe -d` or `--decrypt`
-
-The key pair will be stored safely in the `.core` folder.
+Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
 
 ## 📡 API Examples
 
