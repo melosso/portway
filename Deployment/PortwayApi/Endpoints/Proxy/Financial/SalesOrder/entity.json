@@ -31,7 +31,7 @@
   },
   "AllowedEnvironments": ["600","700"],
   "Documentation": {
-    "TagDescription": "**Sales Order Management**\n\nCreate complete sales orders with headers and multiple line items. Composite endpoint that orchestrates order creation workflow with automatic transaction key linking.",
+    "TagDescription": "**Sales Order Management**\n\nCreate complete sales orders with headers and multiple line items. Uses utomatic transaction key linking.",
     "MethodDescriptions": {
       "POST": "Create sales order"
     },

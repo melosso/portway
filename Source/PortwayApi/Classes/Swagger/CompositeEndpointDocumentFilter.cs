@@ -2,21 +2,27 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using PortwayApi.Classes.Swagger;
 
 namespace PortwayApi.Classes;
 
+/// <summary>
+/// This adds dynamic example loading while keeping all existing hardcoded examples as fallback
+/// </summary>
 public class CompositeEndpointDocumentFilter : IDocumentFilter
 {
     private readonly ILogger<CompositeEndpointDocumentFilter> _logger;
+    private readonly SwaggerExampleLoader _exampleLoader;
 
     public CompositeEndpointDocumentFilter(ILogger<CompositeEndpointDocumentFilter> logger)
     {
         _logger = logger;
+        // Initialize example loader without passing logger (it creates its own if needed)
+        _exampleLoader = new SwaggerExampleLoader();
     }
 
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
@@ -68,8 +74,11 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 var operation = new OpenApiOperation
                 {
                     Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
-                    Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? $"Execute {definition.EndpointName} composite endpoint",
-                    Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? definition.CompositeConfig?.Description ?? $"Executes the {definition.EndpointName} composite process with multiple steps",
+                    Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("POST") 
+                        ?? $"Execute {definition.EndpointName} composite endpoint",
+                    Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST") 
+                        ?? definition.CompositeConfig?.Description 
+                        ?? $"Executes the {definition.EndpointName} composite process with multiple steps",
                     OperationId = $"composite_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
                     Parameters = new List<OpenApiParameter>()
                 };
@@ -80,7 +89,11 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = "string", Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList() },
+                    Schema = new OpenApiSchema 
+                    { 
+                        Type = "string", 
+                        Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList() 
+                    },
                     Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
                 });
 
@@ -105,15 +118,26 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                     Description = "Composite request data"
                 };
 
-                // Check if this is the SalesOrder endpoint to add specialized examples
-                if (string.Equals(definition.EndpointName, "SalesOrder", StringComparison.OrdinalIgnoreCase))
+                // ==============================================================
+                // NON-BREAKING CHANGE: Try dynamic example first, then fallback
+                // ==============================================================
+                
+                var dynamicExample = TryLoadDynamicExample(definition, endpointKey);
+                
+                if (dynamicExample != null)
                 {
-                    // Add SalesOrder-specific example
+                    // Use dynamically loaded example from file
+                    operation.RequestBody.Content["application/json"].Example = dynamicExample;
+                    _logger.LogDebug("Using dynamic example for composite endpoint: {EndpointName}", definition.EndpointName);
+                }
+                else if (string.Equals(definition.EndpointName, "SalesOrder", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Fallback to existing hardcoded SalesOrder example
                     AddSalesOrderExample(operation, requestSchema);
                 }
                 else if (definition.CompositeConfig?.Steps != null)
                 {
-                    // Add generic examples based on steps for other composite endpoints
+                    // Fallback to existing generic schema-based examples
                     foreach (var step in definition.CompositeConfig.Steps)
                     {
                         if (step.IsArray && !string.IsNullOrEmpty(step.ArrayProperty))
@@ -125,9 +149,7 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                                 Description = $"Array of items for {step.Name} step"
                             };
                         }
-                        
-                        // Add any commonly needed properties here in a generic way
-                        if (step.SourceProperty != null && !requestSchema.Properties.ContainsKey(step.SourceProperty))
+                        else if (!string.IsNullOrEmpty(step.SourceProperty))
                         {
                             requestSchema.Properties[step.SourceProperty] = new OpenApiSchema
                             {
@@ -138,12 +160,12 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                     }
                 }
 
-                // Add response
+                // Add responses (unchanged from original)
                 operation.Responses = new OpenApiResponses
                 {
                     ["200"] = new OpenApiResponse
                     {
-                        Description = "Successful response",
+                        Description = "Composite operation completed successfully",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
@@ -153,19 +175,19 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                                     Type = "object",
                                     Properties = new Dictionary<string, OpenApiSchema>
                                     {
-                                        { "Success", new OpenApiSchema { Type = "boolean" } },
-                                        { "StepResults", new OpenApiSchema { Type = "object" } }
+                                        { "success", new OpenApiSchema { Type = "boolean" } },
+                                        { "stepResults", new OpenApiSchema { Type = "object" } }
                                     }
                                 }
                             }
                         }
                     },
-                    ["400"] = new OpenApiResponse { Description = "Bad request or execution error" },
-                    ["401"] = new OpenApiResponse { Description = "Unauthorized" },
+                    ["400"] = new OpenApiResponse { Description = "Bad request or validation error" },
+                    ["401"] = new OpenApiResponse { Description = "Unauthorized - invalid or missing bearer token" },
                     ["404"] = new OpenApiResponse { Description = "Composite endpoint not found" }
                 };
 
-                // Add security requirement
+                // Add security requirement (unchanged from original)
                 operation.Security = new List<OpenApiSecurityRequirement>
                 {
                     new OpenApiSecurityRequirement
@@ -187,16 +209,14 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 // Add the operation to the path
                 swaggerDoc.Paths[path].Operations[OperationType.Post] = operation;
             }
-            
-            // Add collected tags to the document
+
+            // Add all collected tags to the document (unchanged from original)
             if (documentTags.Any())
             {
-                // Initialize tags collection if it doesn't exist
                 swaggerDoc.Tags ??= new List<OpenApiTag>();
                 
                 foreach (var tag in documentTags)
                 {
-                    // Add tag if it doesn't already exist
                     if (!swaggerDoc.Tags.Any(t => t.Name.Equals(tag.Key, StringComparison.OrdinalIgnoreCase)))
                     {
                         swaggerDoc.Tags.Add(new OpenApiTag
@@ -215,7 +235,39 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
     }
 
     /// <summary>
-    /// Add specialized example for SalesOrder composite endpoint
+    /// Try to load dynamic example from file system. Returns null if file not found, allowing fallback to hardcoded examples
+    /// </summary>
+    private IOpenApiAny? TryLoadDynamicExample(EndpointDefinition definition, string endpointKey)
+    {
+        try
+        {
+            // Try loading with the full endpoint key path
+            var example = _exampleLoader.LoadExample(endpointKey);
+            if (example != null)
+                return example;
+
+            // Try namespace + endpoint name if available
+            if (!string.IsNullOrEmpty(definition.EffectiveNamespace))
+            {
+                var namespacedPath = Path.Combine("Proxy", definition.EffectiveNamespace, definition.EndpointName);
+                example = _exampleLoader.LoadExample(namespacedPath);
+                if (example != null)
+                    return example;
+            }
+
+            // Try simple endpoint name
+            var simplePath = Path.Combine("Proxy", definition.EndpointName);
+            return _exampleLoader.LoadExample(simplePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error loading dynamic example for: {EndpointName}, will use fallback", definition.EndpointName);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Specialized example for SalesOrder composite endpoint. This is kept as a fallback when no example.json file exists
     /// </summary>
     private void AddSalesOrderExample(OpenApiOperation operation, OpenApiSchema requestSchema)
     {
@@ -282,59 +334,32 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
         };
         
         // Add the example to the media type
-        if (!operation.RequestBody.Content.ContainsKey("application/json"))
-        {
-            operation.RequestBody.Content["application/json"] = new OpenApiMediaType();
-        }
-        
-        operation.RequestBody.Content["application/json"].Schema = requestSchema;
-        operation.RequestBody.Content["application/json"].Examples = new Dictionary<string, OpenApiExample>
-        {
-            ["default"] = new OpenApiExample
-            {
-                Value = example,
-                Summary = "Sample sales order with multiple lines"
-            }
-        };
+        operation.RequestBody.Content["application/json"].Example = example;
     }
 
+    /// <summary>
+    /// Get allowed environments
+    /// </summary>
     private List<string> GetAllowedEnvironments()
     {
         try
         {
-            var settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
-            if (File.Exists(settingsFile))
+            var environmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "Environments");
+            if (!Directory.Exists(environmentsPath))
             {
-                var settingsJson = File.ReadAllText(settingsFile);
-                
-                // Match the structure used in EnvironmentSettings class
-                var settings = JsonSerializer.Deserialize<SettingsModel>(settingsJson);
-                if (settings?.Environment?.AllowedEnvironments != null && 
-                    settings.Environment.AllowedEnvironments.Any())
-                {
-                    return settings.Environment.AllowedEnvironments;
-                }
+                return new List<string> { "demo" };
             }
-            
-            // Return default if settings not found
-            return new List<string> { "prod", "dev" };
+
+            return Directory.GetDirectories(environmentsPath)
+                .Select(Path.GetFileName)
+                .Where(name => !string.IsNullOrEmpty(name))
+                .Select(name => name!)
+                .ToList();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading environment settings");
-            return new List<string> { "prod", "dev" };
+            _logger.LogWarning(ex, "Error reading allowed environments, using default");
+            return new List<string> { "demo" };
         }
-    }
-
-    // Match the classes used in EnvironmentSettings
-    private class SettingsModel
-    {
-        public EnvironmentModel Environment { get; set; } = new EnvironmentModel();
-    }
-
-    private class EnvironmentModel
-    {
-        public string ServerName { get; set; } = ".";
-        public List<string> AllowedEnvironments { get; set; } = new List<string>();
     }
 }

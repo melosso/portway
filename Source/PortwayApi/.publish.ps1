@@ -71,10 +71,21 @@ Where-Object {
     (Test-Path "$($_.FullName)\Microsoft.Data.SqlClient.resources.dll" -ErrorAction SilentlyContinue)
 } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
-# Remove examples and definitions folders from Endpoints directory
-Write-Host "Removing examples and definitions folders from Endpoints..."
+# Move POST.txt from examples folders and remove examples/definitions folders from Endpoints directory
 $endpointsPath = Join-Path $deploymentPath "Endpoints"
 if (Test-Path $endpointsPath) {
+    # Find and move POST.txt files from examples folders
+    Get-ChildItem -Path $endpointsPath -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "examples" } |
+    ForEach-Object {
+        $postFile = Join-Path $_.FullName "POST.txt"
+        if (Test-Path $postFile) {
+            $parentFolder = Split-Path -Parent $_.FullName
+            $destinationFile = Join-Path $parentFolder "entity.example"
+            Copy-Item -Path $postFile -Destination $destinationFile -Force -ErrorAction SilentlyContinue
+        }
+    }
+    
     # Remove all 'examples' folders
     Get-ChildItem -Path $endpointsPath -Directory -Recurse -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -eq "examples" } |
