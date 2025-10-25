@@ -299,7 +299,7 @@ public static class SwaggerConfiguration
                     ""hideTestRequestButton"": {(swaggerSettings.ScalarHideTestRequestButton ? "true" : "false")}
                 }}";
                 
-            var html = $@"
+var html = $@"
 <!doctype html>
 <html>
 <head>
@@ -317,52 +317,48 @@ public static class SwaggerConfiguration
         data-url=""{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json""
         data-configuration='{configJson}'>
     </script>
-    <script
-        id=""foss-source""
-        >
+    <script id=""{Guid.NewGuid()}"">
         (function(){{console.log(atob('JWNAbWVsb3Nzby9wb3J0d2F5JWMuIExpY2Vuc2VkIHVuZGVyICVjQUdQTCAzLjAlYy4='), atob('Y29sb3I6ICM2ZjQyYzE7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJweDs='), atob('Y29sb3I6ICMyOGE3NDU7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJ4Ow==') );}})();
     </script>
     <script src=""https://cdn.jsdelivr.net/npm/@scalar/api-reference""></script>
     <script>
         window.addEventListener('load', function() {{
-            {(swaggerSettings.Footer.ShowSourceIcon ? @"
-            // Create icons container
-            const iconsContainer = document.createElement('div');
-            iconsContainer.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                z-index: 9999;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            `;
-
-            // Function to create tooltip
+            // Helper function to create tooltip
             function createTooltip(text) {{
                 const tooltip = document.createElement('div');
                 tooltip.textContent = text;
                 tooltip.style.cssText = `
                     position: absolute;
-                    bottom: 30px;
-                    right: 0;
-                    background: rgba(0, 0, 0, 0.8);
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%) translateY(5px);
+                    background: rgba(0, 0, 0, 0.9);
                     color: white;
-                    padding: 6px 10px;
-                    border-radius: 6px;
+                    padding: 4px 8px;
+                    border-radius: 4px;
                     font-size: 12px;
-                    font-weight: 500;
                     white-space: nowrap;
-                    opacity: 0;
                     pointer-events: none;
-                    transform: translateY(5px);
-                    transition: all 0.2s ease;
-                    backdrop-filter: blur(8px);
+                    opacity: 0;
+                    transition: opacity 0.2s ease, transform 0.2s ease;
+                    margin-bottom: 8px;
+                    z-index: 10000;
                 `;
                 return tooltip;
             }}
 
-            // GitHub
+            // Create container for icons
+            const iconsContainer = document.createElement('div');
+            iconsContainer.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                display: flex;
+                gap: 12px;
+                z-index: 9999;
+            `;
+
+            // GitHub Icon
             const githubContainer = document.createElement('div');
             githubContainer.style.position = 'relative';
             
@@ -387,7 +383,7 @@ public static class SwaggerConfiguration
             githubContainer.appendChild(githubLink);
             githubContainer.appendChild(githubTooltip);
 
-            // License
+            // License Icon
             const licenseContainer = document.createElement('div');
             licenseContainer.style.position = 'relative';
             
@@ -412,7 +408,7 @@ public static class SwaggerConfiguration
             licenseContainer.appendChild(licenseLink);
             licenseContainer.appendChild(licenseTooltip);
 
-            // Hover events
+            // Hover events for GitHub
             githubContainer.addEventListener('mouseenter', function() {{
                 githubLink.querySelector('svg').style.opacity = '1';
                 githubTooltip.style.opacity = '1';
@@ -423,6 +419,8 @@ public static class SwaggerConfiguration
                 githubTooltip.style.opacity = '0';
                 githubTooltip.style.transform = 'translateY(5px)';
             }});
+            
+            // Hover events for License
             licenseContainer.addEventListener('mouseenter', function() {{
                 licenseLink.querySelector('svg').style.opacity = '1';
                 licenseTooltip.style.opacity = '1';
@@ -434,10 +432,14 @@ public static class SwaggerConfiguration
                 licenseTooltip.style.transform = 'translateY(5px)';
             }});
 
-            iconsContainer.appendChild(githubContainer);
+            // Conditionally add GitHub icon
+            {(swaggerSettings.Footer.ShowSourceIcon ? "iconsContainer.appendChild(githubContainer);" : "")}
+            
+            // Always add License icon
             iconsContainer.appendChild(licenseContainer);
+            
+            // Add container to body
             document.body.appendChild(iconsContainer);
-            " : "")}
         }});
     </script>
     <script>
