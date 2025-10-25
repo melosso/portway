@@ -71,12 +71,14 @@ Where-Object {
     (Test-Path "$($_.FullName)\Microsoft.Data.SqlClient.resources.dll" -ErrorAction SilentlyContinue)
 } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
-# Move POST.txt from examples folders and remove examples/definitions folders from Endpoints directory
+# Move POST.txt from examples folders ONLY within Endpoints/Proxy and remove examples/definitions folders
 $endpointsPath = Join-Path $deploymentPath "Endpoints"
-if (Test-Path $endpointsPath) {
-    # Find and move POST.txt files from examples folders
-    Get-ChildItem -Path $endpointsPath -Directory -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -eq "examples" } |
+$proxyPath = Join-Path $endpointsPath "Proxy"
+
+if (Test-Path $proxyPath) {
+    # Find and move POST.txt files from examples folders inside Proxy only
+    Get-ChildItem -Path $proxyPath -Directory -Recurse -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -eq "examples" -or $_.Name -eq "example" } |
     ForEach-Object {
         $postFile = Join-Path $_.FullName "POST.txt"
         if (Test-Path $postFile) {
@@ -85,8 +87,7 @@ if (Test-Path $endpointsPath) {
             Copy-Item -Path $postFile -Destination $destinationFile -Force -ErrorAction SilentlyContinue
         }
     }
-    
-    # Remove all 'examples' folders
+
     Get-ChildItem -Path $endpointsPath -Directory -Recurse -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -eq "examples" } |
     Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
