@@ -328,14 +328,14 @@ public static class SwaggerConfiguration
                     return string.Concat("data-", sb.ToString().AsSpan(0, Math.Min(rndChars, sb.Length)));
                 }
 
-                var scriptId = RandomBase64UrlId(minBytes: 6, maxBytes: 18);
-                var attrName = RandomDataAttrName(6);
+                (string id, string attr) GenerateRandomElementIds() => 
+                    (RandomBase64UrlId(minBytes: 6, maxBytes: 18), RandomDataAttrName(6));
 
-                var openapiId = RandomBase64UrlId(minBytes: 6, maxBytes: 18);
-                var openapiAttr = RandomDataAttrName(6);
-
-                var overlayId = RandomBase64UrlId(minBytes: 6, maxBytes: 18);
-                var overlayAttr = RandomDataAttrName(6);
+                var (sourceId, sourceAttr) = GenerateRandomElementIds();
+                var frontAttr = RandomDataAttrName(6);
+                var (asyncId, asyncAttr) = GenerateRandomElementIds();
+                var (openapiId, openapiAttr) = GenerateRandomElementIds();
+                var (overlayId, overlayAttr) = GenerateRandomElementIds();
                 
 var html = $@"
 <!doctype html>
@@ -344,6 +344,7 @@ var html = $@"
     <title>{swaggerSettings.Title}</title>
     <meta charset=""utf-8"" />
     <meta name=""viewport"" content=""width=device-width, initial-scale=1"" />
+    <meta name=""referrer"" content=""no-referrer"">
     <link rel=""icon"" href=""favicon.ico"" type=""image/x-icon"">
     <style>
         body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
@@ -352,13 +353,14 @@ var html = $@"
 <body>
     <script
         id=""api-reference""
+        {frontAttr}=""""
         data-url=""{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json""
         data-configuration='{configJson}'
         >
     </script>
     <script 
-        id=""{scriptId}"" 
-        {attrName}=""""
+        id=""{sourceId}"" 
+        {sourceAttr}=""""
         >
         (function(){{console.log(atob('JWNAbWVsb3Nzby9wb3J0d2F5JWMuIExpY2Vuc2VkIHVuZGVyICVjQUdQTCAzLjAlYy4='), atob('Y29sb3I6ICM2ZjQyYzE7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJweDs='), atob('Y29sb3I6ICMyOGE3NDU7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJ4Ow==') );}})();
     </script>
@@ -493,7 +495,10 @@ var html = $@"
             document.body.appendChild(iconsContainer);
         }});
     </script>
-    <script>
+    <script 
+        id=""{asyncId}"" 
+        {asyncAttr}=""""
+        >
         const observer = new MutationObserver(() => {{
             const link = document.querySelector('a[href=""https://www.scalar.com""]');
             if (link) {{

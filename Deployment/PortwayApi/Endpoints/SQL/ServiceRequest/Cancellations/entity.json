@@ -4,7 +4,7 @@
     "Namespace": "ServiceRequest",
     "NamespaceDisplayName": "Servicing",
     "AllowedColumns": [
-      "RequestId",
+      "RequestId;Id",
       "Status"
     ],
     "Procedure": "dbo.sp_ManageServiceRequests",

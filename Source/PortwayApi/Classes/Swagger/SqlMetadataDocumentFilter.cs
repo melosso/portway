@@ -267,11 +267,8 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         };
     }
 
-    /// <summary>
-    /// Creates an example object from object metadata for POST responses
-    /// </summary>
     private IOpenApiAny CreateExampleObjectFromObjectMetadata(
-        List<Services.SqlMetadataService.ColumnMetadata>? metadata,  // Made nullable
+        List<Services.SqlMetadataService.ColumnMetadata>? metadata,
         EndpointDefinition definition)
     {
         if (metadata == null || !metadata.Any())
@@ -281,6 +278,12 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         foreach (var column in metadata)
         {
+            // CRITICAL FIX: Skip columns with empty or whitespace names
+            if (string.IsNullOrWhiteSpace(column.ColumnName))
+            {
+                continue;
+            }
+            
             obj[column.ColumnName] = GenerateExampleValue(column);
         }
 
@@ -649,9 +652,9 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
     {
         return method switch
         {
-            "POST" => "The object to create" + (definition.Procedure != null ? " (via stored procedure)" : ""),
-            "PUT" => "The updated object" + (definition.Procedure != null ? " (via stored procedure)" : ""),
-            "PATCH" => "The properties to update (partial)" + (definition.Procedure != null ? " (via stored procedure)" : ""),
+            "POST" => "The object to create" + (definition.Procedure != null ? "" : ""),
+            "PUT" => "The updated object" + (definition.Procedure != null ? "" : ""),
+            "PATCH" => "The properties to update (partial)" + (definition.Procedure != null ? "" : ""),
             _ => "The request body"
         };
     }
@@ -747,6 +750,12 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
             // Use the same ID field detection logic as EndpointController
             bool isIdField = IsIdField(propertyName);
 
+            // If field can't be mapped, don't return empty
+            if (string.IsNullOrWhiteSpace(propertyName))
+            {
+                continue;
+            }
+
             // Special handling for ID parameters - exclude for POST, include for others
             if (method == "POST" && isIdField)
             {
@@ -761,6 +770,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         {
             obj["exampleField"] = new OpenApiString("exampleValue");
         }
+
 
         return obj;
     }
@@ -935,6 +945,11 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         Services.SqlMetadataService.ParameterMetadata parameter,
         string propertyName)
     {
+        if (string.IsNullOrWhiteSpace(propertyName))
+        {
+            return new OpenApiNull();
+        }
+
         // Use property name for context-aware examples
         var propName = propertyName.ToLowerInvariant();
 

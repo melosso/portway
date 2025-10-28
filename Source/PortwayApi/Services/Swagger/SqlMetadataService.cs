@@ -200,14 +200,14 @@ public class SqlMetadataService
             }
 
             // Mark primary key and apply column filtering/aliasing
-            ProcessColumnMetadata(columns, definition, endpointName);
+            columns = ProcessColumnMetadata(columns, definition, endpointName);  // Assign the returned filtered list
 
             // Cache the object metadata
             lock (_cacheLock)
             {
-                _objectMetadataCache[endpointName] = columns;
+                _objectMetadataCache[endpointName] = columns;  // Now caching the FILTERED columns
             }
-
+            
             Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns", 
                 endpointName, columns.Count);
         }
@@ -275,7 +275,7 @@ public class SqlMetadataService
         return reservedParameters.Contains(parameterName.ToLowerInvariant());
     }
 
-    private void ProcessColumnMetadata(List<ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
+    private List<ColumnMetadata> ProcessColumnMetadata(List<ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
     {
         var primaryKey = definition.PrimaryKey;
         var allowedColumns = definition.AllowedColumns ?? new List<string>();
@@ -297,27 +297,67 @@ public class SqlMetadataService
             var (aliasToDatabase, databaseToAlias) = 
                 Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
-            var allowedDatabaseColumns = new HashSet<string>(
-                aliasToDatabase.Values, 
-                StringComparer.OrdinalIgnoreCase);
-
-            columns = columns.Where(c => 
-                allowedDatabaseColumns.Contains(c.DatabaseColumnName)).ToList();
-
-            // Apply translations (aliases) to column names
-            foreach (var column in columns)
+            // Build the set of allowed database column names
+            var allowedDatabaseColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            
+            // Add mapped columns from alias definitions
+            foreach (var dbColumn in aliasToDatabase.Values)
             {
-                if (databaseToAlias.TryGetValue(column.DatabaseColumnName, out var alias))
+                allowedDatabaseColumns.Add(dbColumn);
+            }
+            
+            // Add simple column names (without 'as' syntax)
+            foreach (var columnDef in allowedColumns)
+            {
+                if (!columnDef.Contains(" as ", StringComparison.OrdinalIgnoreCase))
                 {
-                    column.ColumnName = alias;
-                }
-                else
-                {
-                    column.ColumnName = column.DatabaseColumnName;
+                    var simpleColumn = columnDef.Trim();
+                    allowedDatabaseColumns.Add(simpleColumn);
+                    
+                    // Also ensure this simple column exists in databaseToAlias for mapping
+                    if (!databaseToAlias.ContainsKey(simpleColumn))
+                    {
+                        databaseToAlias[simpleColumn] = simpleColumn;
+                    }
                 }
             }
 
-            Log.Debug("Filtered to {Count} allowed columns for {EndpointName}", columns.Count, endpointName);
+            // Filter columns - only keep those in allowed columns
+            var filteredColumns = columns.Where(c => allowedDatabaseColumns.Contains(c.DatabaseColumnName)).ToList();
+
+            // Apply proper column names and ensure no empty names
+            foreach (var column in filteredColumns)
+            {
+                // Always start with the database column name as fallback
+                string finalColumnName = column.DatabaseColumnName;
+
+                // Try to get alias mapping
+                if (databaseToAlias.TryGetValue(column.DatabaseColumnName, out var alias))
+                {
+                    finalColumnName = alias;
+                }
+
+                // Ensure we never have an empty column name
+                if (string.IsNullOrWhiteSpace(finalColumnName))
+                {
+                    Log.Warning("Empty column name detected for database column {DatabaseColumn} in endpoint {EndpointName}",
+                        column.DatabaseColumnName, endpointName);
+                    finalColumnName = "UnknownColumn";
+                }
+
+                column.ColumnName = finalColumnName;
+            }
+
+            Log.Debug("Filtered to {Count} allowed columns for {EndpointName}", filteredColumns.Count, endpointName);
+            
+            // Debug: Log the final column names
+            foreach (var column in filteredColumns)
+            {
+                Log.Debug("Final column mapping: {DatabaseName} -> {ColumnName}", 
+                    column.DatabaseColumnName, column.ColumnName);
+            }
+
+            return filteredColumns;
         }
         else
         {
@@ -325,12 +365,14 @@ public class SqlMetadataService
             {
                 column.ColumnName = column.DatabaseColumnName;
             }
+            
+            return columns;
         }
     }
 
     private async Task<List<ParameterMetadata>> GetStoredProcedureParametersAsync(
-        SqlConnection connection, 
-        string schema, 
+        SqlConnection connection,
+        string schema,
         string procedureName,
         CancellationToken cancellationToken)
     {
@@ -359,9 +401,9 @@ public class SqlMetadataService
         await using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@Schema", schema);
         command.Parameters.AddWithValue("@ProcedureName", procedureName);
-        
+
         await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        
+
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             var parameter = new ParameterMetadata
@@ -369,14 +411,14 @@ public class SqlMetadataService
                 ParameterName = reader["PARAMETER_NAME"].ToString() ?? string.Empty,
                 DataType = reader["DATA_TYPE"].ToString() ?? string.Empty,
                 IsNullable = reader["IS_NULLABLE"] != DBNull.Value && Convert.ToBoolean(reader["IS_NULLABLE"]),
-                MaxLength = reader["MAX_LENGTH"] != DBNull.Value 
-                    ? Convert.ToInt32(reader["MAX_LENGTH"]) 
+                MaxLength = reader["MAX_LENGTH"] != DBNull.Value
+                    ? Convert.ToInt32(reader["MAX_LENGTH"])
                     : null,
-                NumericPrecision = reader["NUMERIC_PRECISION"] != DBNull.Value 
-                    ? Convert.ToInt32(reader["NUMERIC_PRECISION"]) 
+                NumericPrecision = reader["NUMERIC_PRECISION"] != DBNull.Value
+                    ? Convert.ToInt32(reader["NUMERIC_PRECISION"])
                     : null,
-                NumericScale = reader["NUMERIC_SCALE"] != DBNull.Value 
-                    ? Convert.ToInt32(reader["NUMERIC_SCALE"]) 
+                NumericScale = reader["NUMERIC_SCALE"] != DBNull.Value
+                    ? Convert.ToInt32(reader["NUMERIC_SCALE"])
                     : null,
                 IsOutput = reader["IS_OUTPUT"] != DBNull.Value && Convert.ToBoolean(reader["IS_OUTPUT"]),
                 HasDefaultValue = reader["HAS_DEFAULT_VALUE"] != DBNull.Value && Convert.ToBoolean(reader["HAS_DEFAULT_VALUE"]),
@@ -402,11 +444,21 @@ public class SqlMetadataService
         var restrictions = new[] { null, schema, tableName, null };
         var columnsTable = await connection.GetSchemaAsync("Columns", restrictions, cancellationToken);
 
+        // Log all columns found
+        Log.Debug("Found {Count} columns for {Schema}.{TableName}:", 
+            columnsTable.Rows.Count, schema, tableName);
+        
         foreach (DataRow row in columnsTable.Rows)
         {
+            var columnName = row["COLUMN_NAME"].ToString() ?? string.Empty;
+            Log.Debug("  - Column: '{ColumnName}', DataType: {DataType}, Nullable: {IsNullable}", 
+                columnName, 
+                row["DATA_TYPE"].ToString() ?? "unknown",
+                row["IS_NULLABLE"].ToString() ?? "unknown");
+                
             var column = new ColumnMetadata
             {
-                DatabaseColumnName = row["COLUMN_NAME"].ToString() ?? string.Empty,
+                DatabaseColumnName = columnName,
                 DataType = row["DATA_TYPE"].ToString() ?? string.Empty,
                 IsNullable = row["IS_NULLABLE"].ToString()?.Equals("YES", StringComparison.OrdinalIgnoreCase) ?? false,
                 MaxLength = row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value 
@@ -428,7 +480,6 @@ public class SqlMetadataService
 
         return columns;
     }
-
     private async Task<List<ColumnMetadata>> GetViewColumnsAsync(
         SqlConnection connection, 
         string schema, 
