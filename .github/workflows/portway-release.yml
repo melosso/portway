@@ -1,0 +1,125 @@
+name: Publish As Release
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    - name: Install semver
+      run: pip install semver
+    - name: Calculate new version
+      id: versioning
+      run: |
+        # Get the latest tag or default
+        LATEST_TAG=$(git tag --sort=-v:refname | head -n 1 || echo "$(date +%Y).0.0")
+        # Extract input
+        RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+        # Calculate new version
+        VERSION=$(python -c "
+        import semver
+        import datetime
+        input_type = '${{ github.event.inputs.release_type }}'
+        latest = '${LATEST_TAG}'
+        # handle first time
+        try:
+            v = semver.VersionInfo.parse(latest)
+        except:
+            v = semver.VersionInfo( datetime.datetime.now().year, 0, 0 )
+        current_year = datetime.datetime.now().year
+        if input_type == 'major':
+            # ensure year is at least current_year
+            new_major = max(current_year, v.major + 1)
+            new_version = semver.VersionInfo(new_major, 0, 0)
+        elif input_type == 'minor':
+            new_version = semver.VersionInfo(v.major, v.minor + 1, 0)
+        else:  # patch
+            new_version = semver.VersionInfo(v.major, v.minor, v.patch + 1)
+        print(new_version)
+        ")
+        echo "new_version=$VERSION" >> $GITHUB_OUTPUT
+    - name: Create and push new tag
+      run: |
+        NEW_TAG=${{ steps.versioning.outputs.new_version }}
+        
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git tag -f "$NEW_TAG"
+        git push origin --force "refs/tags/$NEW_TAG"
+    - name: Install jq for JSON processing
+      run: sudo apt-get update && sudo apt-get install -y jq
+    - name: Create version file and zip Deployment folder
+      run: |
+        NEW_TAG=${{ steps.versioning.outputs.new_version }}
+        # Create version file inside the Deployment/PortwayApi folder
+        echo "$NEW_TAG" > Deployment/PortwayApi/.version.txt
+        # Remove unwanted files from the Deployment folder
+        find Deployment -name "docker-compose.yml" -type f -delete
+        find Deployment -name ".gitignore" -type f -delete
+        find Deployment -name ".dockerignore" -type f -delete
+        
+        # Clean up Endpoints to only include Static/Example (renamed from Countries)
+        # First copy Countries to Example before removing anything
+        if [ -d "Deployment/PortwayApi/Endpoints/Static/Countries" ]; then
+          mkdir -p "Deployment/PortwayApi/Endpoints/Static/Example"
+          cp -r "Deployment/PortwayApi/Endpoints/Static/Countries/." "Deployment/PortwayApi/Endpoints/Static/Example/"
+        fi
+        # Remove any other directories inside Endpoints except Static/Example
+        find "Deployment/PortwayApi/Endpoints" -mindepth 1 -maxdepth 1 ! -name 'Static' -exec rm -rf {} +
+        find "Deployment/PortwayApi/Endpoints/Static" -mindepth 1 -maxdepth 1 ! -name 'Example' -exec rm -rf {} +
+        
+        # Only keep the prod environment, rename it to demo, and remove all references to 600
+        rm -rf "Deployment/PortwayApi/Environments/700" "Deployment/PortwayApi/Environments/Synergy"
+        if [ -d "Deployment/PortwayApi/Environments/600" ]; then
+          mv "Deployment/PortwayApi/Environments/600" "Deployment/PortwayApi/Environments/demo"
+        fi
+        # Remove any reference to 600, prod, 700, test, Synergy, web in DatabaseName and connection strings in JSON files, only keep demo
+        find Deployment -type f -name "*.json" -exec sed -i \
+          -e 's/"DatabaseName": "600"/"DatabaseName": "demo"/g' \
+          -e 's/"DatabaseName": "prod"/"DatabaseName": "demo"/g' \
+          -e 's/"DatabaseName": "700"//g' \
+          -e 's/"DatabaseName": "test"//g' \
+          -e 's/"DatabaseName": "Synergy"//g' \
+          -e 's/"DatabaseName": "web"//g' \
+          -e 's/Database=600/Database=demo/g' \
+          -e 's/Database=prod/Database=demo/g' \
+          -e 's/Database=700//g' \
+          -e 's/Database=test//g' \
+          -e 's/Database=.*_Synergy//g' \
+          -e 's/Database=web//g' \
+          {} \;
+        
+        # Zip the Deployment folder
+        # Update AllowedEnvironments in all JSON files: replace 600 with demo, remove 700 and Synergy
+        find Deployment -type f -name "*.json" -exec jq 'if .AllowedEnvironments then .AllowedEnvironments |= map(select(. != "700" and . != "Synergy")) | .AllowedEnvironments |= map(if . == "600" then "demo" else . end) elif .Environment?.AllowedEnvironments then .Environment.AllowedEnvironments |= map(select(. != "700" and . != "Synergy")) | .Environment.AllowedEnvironments |= map(if . == "600" then "demo" else . end) else . end' {} > tmp.json \; -exec mv tmp.json {} \;
+
+        zip -r "${NEW_TAG}-Deployment.zip" Deployment
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.versioning.outputs.new_version }}
+        files: |
+          ${{ steps.versioning.outputs.new_version }}-Deployment.zip
+        generate_release_notes: true
+    - name: Deploy to target environment
+      run: |
+        NEW_TAG=${{ steps.versioning.outputs.new_version }}
+        echo "Deploying version $NEW_TAG"
+        unzip -o "${NEW_TAG}-Deployment.zip"

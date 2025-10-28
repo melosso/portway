@@ -1,0 +1,18 @@
+{
+    "DatabaseObjectName": "WebhookData",
+    "DatabaseSchema": "dbo",
+    "AllowedColumns": [
+      "webhook1",
+      "webhook2"
+    ],
+    "AllowedMethods": ["POST"],
+    "Documentation": {
+        "TagDescription": "**Webhooks**\n\nStore event data and payloads received from external webhook sources for asynchronous processing within the system.",
+        "MethodDescriptions": {
+            "POST": "Store new payload"
+        },
+        "MethodDocumentation": {
+            "POST": "Store new webhook payloads and event data in the system for (asynchronous) processing."
+        }
+    }
+} 

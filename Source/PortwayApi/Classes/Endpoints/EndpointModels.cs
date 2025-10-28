@@ -1,0 +1,380 @@
+namespace PortwayApi.Classes;
+
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Serilog;
+
+/// <summary>
+/// OpenAPI documentation settings for an endpoint
+/// </summary>
+public class Documentation
+{
+    /// <summary>
+    /// Brief summary of what this endpoint does (e.g., "Get product details")
+    /// </summary>
+    public string? Summary { get; set; }
+    
+    /// <summary>
+    /// Detailed description of the endpoint functionality (supports Markdown)
+    /// </summary>
+    public string? Description { get; set; }
+    
+    /// <summary>
+    /// Description for the OpenAPI tag (supports Markdown)
+    /// </summary>
+    public string? TagDescription { get; set; }
+    
+    /// <summary>
+    /// Custom summaries per HTTP method for OpenAPI operation summaries (e.g., "GET": "Retrieve account data")
+    /// </summary>
+    public Dictionary<string, string>? MethodDescriptions { get; set; }
+    
+    /// <summary>
+    /// Custom detailed documentation per HTTP method for OpenAPI operation descriptions (e.g., "GET": "You can retrieve **all items** in the catalog...")
+    /// </summary>
+    public Dictionary<string, string>? MethodDocumentation { get; set; }
+}
+
+/// <summary>
+/// Represents an endpoint entity with extended support for composite operations
+/// </summary>
+public class ExtendedEndpointEntity
+{
+    public string Url { get; set; } = string.Empty;
+    public List<string> Methods { get; set; } = new List<string>();
+    public string Type { get; set; } = "Standard"; // "Standard" or "Composite"
+    public CompositeDefinition? CompositeConfig { get; set; }
+    public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
+    public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
+    
+    // Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related endpoints (e.g., "CRM", "External")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this specific endpoint (e.g., "Weather Service")
+    /// Used in OpenAPI documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "External Services")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+
+    /// <summary>
+    /// DELETE operation patterns
+    /// </summary>
+    public List<DeletePattern>? DeletePatterns { get; set; }
+    
+    public Documentation? Documentation { get; set; } // OpenAPI documentation settings
+    public Dictionary<string, object>? CustomProperties { get; set; } // Custom properties for extended functionality
+}
+
+/// <summary>
+/// Represents an endpoint entity with support for both proxy and SQL endpoints
+/// </summary>
+public class EndpointEntity
+{
+    // SQL endpoint properties
+    public string? DatabaseObjectName { get; set; }
+    public string? DatabaseSchema { get; set; }
+    public List<string>? AllowedColumns { get; set; }
+    public List<string>? RequiredColumns { get; set; }
+    public Dictionary<string, ColumnValidationRule>? ColumnValidation { get; set; }
+    public string? Procedure { get; set; }
+    public List<string>? AllowedMethods { get; set; }
+    public string? PrimaryKey { get; set; }
+    
+    public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
+    public List<TVFParameter>? FunctionParameters { get; set; }
+    
+    // Proxy endpoint properties
+    public string? Url { get; set; }
+    public List<string>? Methods { get; set; }
+    public List<DeletePattern>? DeletePatterns { get; set; }
+    
+    // Shared properties
+    public bool IsPrivate { get; set; } = false;
+    public string Type { get; set; } = "Standard"; // Standard, SQL, Composite
+    public CompositeDefinition? CompositeConfig { get; set; }
+    public List<string>? AllowedEnvironments { get; set; }
+    
+    // Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this specific endpoint (e.g., "Account Management")
+    /// Used in OpenAPI documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Customer Relationship Management")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+    
+    // OpenAPI documentation properties
+    public Documentation? Documentation { get; set; }
+    
+    // Custom properties for extended functionality
+    public Dictionary<string, object>? CustomProperties { get; set; }
+}
+
+/// <summary>
+/// DELETE operation pattern configuration
+/// </summary>
+public class DeletePattern
+{
+    /// <summary>
+    /// Style of DELETE operation: PathParameter, QueryParameter, ODataGuid, ODataKey
+    /// </summary>
+    public string Style { get; set; } = "PathParameter";
+    
+    /// <summary>
+    /// Parameter name for QueryParameter style (default: "id")
+    /// </summary>
+    public string? Parameter { get; set; }
+    
+    /// <summary>
+    /// Path template for PathParameter style (default: "/{id}")
+    /// </summary>
+    public string? Path { get; set; }
+    
+    /// <summary>
+    /// Description for documentation
+    /// </summary>
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Column validation rule configuration for input validation
+/// </summary>
+public class ColumnValidationRule
+{
+    /// <summary>
+    /// Regular expression pattern to validate against
+    /// </summary>
+    public string Regex { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Custom validation error message to display when validation fails
+    /// </summary>
+    public string ValidationMessage { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Defines the types of endpoints supported by the API
+/// </summary>
+public enum EndpointType
+{
+    /// <summary>
+    /// Standard endpoint (fallback)
+    /// </summary>
+    Standard,
+
+    /// <summary>
+    /// SQL database endpoint
+    /// </summary>
+    SQL,
+
+    /// <summary>
+    /// Proxy endpoint to forward requests to another service
+    /// </summary>
+    Proxy,
+
+    /// <summary>
+    /// Composite endpoint that combines multiple operations
+    /// </summary>
+    Composite,
+
+    /// <summary>
+    /// Webhook endpoint for receiving external events
+    /// </summary>
+    Webhook,
+
+    /// <summary>
+    /// Files endpoint for file storage and retrieval
+    /// </summary>
+    Files,
+
+    /// <summary>
+    /// Static endpoint for serving predefined content
+    /// </summary>
+    Static,
+
+    /// <summary>
+    /// Private endpoint (not publicly accessible)
+    /// </summary>
+    Private
+}
+
+/// <summary>
+/// Represents a File endpoint entity for local file handling
+/// </summary>
+public class FileEndpointEntity
+{
+    /// <summary>
+    /// Type of storage (Local, S3, etc.)
+    /// </summary>
+    public string StorageType { get; set; } = "Local";
+    
+    /// <summary>
+    /// Base directory for this endpoint (relative to the root storage directory)
+    /// </summary>
+    public string? BaseDirectory { get; set; }
+    
+    /// <summary>
+    /// List of allowed file extensions
+    /// </summary>
+    public List<string>? AllowedExtensions { get; set; }
+    
+    /// <summary>
+    /// Whether this endpoint is private (not accessible via API)
+    /// </summary>
+    public bool IsPrivate { get; set; } = false;
+    
+    /// <summary>
+    /// List of environments allowed to access this endpoint
+    /// </summary>
+    public List<string>? AllowedEnvironments { get; set; }
+    
+    // Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related file endpoints (e.g., "CRM", "HR")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this file endpoint (e.g., "Customer Documents")
+    /// Used in OpenAPI documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Customer Relationship Management")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+    
+    /// <summary>
+    /// OpenAPI documentation for this endpoint
+    /// </summary>
+    public Documentation? Documentation { get; set; }
+}
+
+/// <summary>
+/// Represents a Static endpoint entity for serving predefined content
+/// </summary>
+public class StaticEndpointEntity
+{
+    /// <summary>
+    /// MIME type for the response (application/json, text/plain, image/png, etc.)
+    /// </summary>
+    public string ContentType { get; set; } = "text/plain";
+    
+    /// <summary>
+    /// Filename containing the static content (relative to the endpoint directory)
+    /// </summary>
+    public string ContentFile { get; set; } = "content.txt";
+    
+    /// <summary>
+    /// Whether OData filtering ($filter, $select, etc.) is enabled for this endpoint
+    /// </summary>
+    public bool EnableFiltering { get; set; } = false;
+    
+    /// <summary>
+    /// Whether this endpoint is private (not accessible via API)
+    /// </summary>
+    public bool IsPrivate { get; set; } = false;
+    
+    /// <summary>
+    /// List of environments allowed to access this endpoint
+    /// </summary>
+    public List<string>? AllowedEnvironments { get; set; }
+    
+    // Namespace support properties
+    /// <summary>
+    /// Optional namespace for grouping related static endpoints (e.g., "Reports", "Templates")
+    /// If specified, overrides namespace inferred from folder structure
+    /// </summary>
+    public string? Namespace { get; set; }
+    
+    /// <summary>
+    /// Display name for this static endpoint (e.g., "Sales Report Template")
+    /// Used in OpenAPI documentation and UI displays
+    /// </summary>
+    public string? DisplayName { get; set; }
+    
+    /// <summary>
+    /// Display name for the namespace (e.g., "Reporting System")
+    /// Used as Swagger tag description and documentation grouping
+    /// </summary>
+    public string? NamespaceDisplayName { get; set; }
+    
+    /// <summary>
+    /// OpenAPI documentation for this endpoint
+    /// </summary>
+    public Documentation? Documentation { get; set; }
+}
+
+/// <summary>
+/// Represents a parameter for a Table Valued Function
+/// </summary>
+public class TVFParameter
+{
+    /// <summary>
+    /// Name of the parameter in the function (without @)
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// SQL data type (e.g., "NVARCHAR(20)", "INT", "DATETIME")
+    /// </summary>
+    public string SqlType { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Source of the parameter value: Path, Query, or Header
+    /// </summary>
+    public string Source { get; set; } = "Query"; // Path, Query, Header
+    
+    /// <summary>
+    /// Position in the URL path (for Path parameters)
+    /// </summary>
+    public int Position { get; set; } = 0;
+    
+    /// <summary>
+    /// Query parameter name (for Query parameters, defaults to Name if not specified)
+    /// </summary>
+    public string? QueryParameterName { get; set; }
+    
+    /// <summary>
+    /// Header name (for Header parameters)
+    /// </summary>
+    public string? HeaderName { get; set; }
+    
+    /// <summary>
+    /// Whether this parameter is required
+    /// </summary>
+    public bool Required { get; set; } = true;
+    
+    /// <summary>
+    /// Default value if parameter is not provided (SQL expression)
+    /// </summary>
+    public string? DefaultValue { get; set; }
+    
+    /// <summary>
+    /// Optional validation pattern (regex)
+    /// </summary>
+    public string? ValidationPattern { get; set; }
+}

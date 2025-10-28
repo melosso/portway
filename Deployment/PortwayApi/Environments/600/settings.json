@@ -1,0 +1,10 @@
+
+{
+  "ServerName": "localhost",
+  "ConnectionString": "Server=localhost;Database=600;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;",
+  "Headers": {
+    "DatabaseName": "600",
+    "ServerName": "localhost",
+    "Origin": "Portway"
+  }
+}

@@ -1,0 +1,38 @@
+name: portway-stack
+services:
+  portwayapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: portwayapi
+    ports:
+      - "9000:8080"
+    volumes:
+      # Mount these directories for persistence and configuration
+      - portwayapi-data:/app/auth.db
+      - ./endpoints:/app/endpoints
+      - ./environments:/app/environments
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+    environment:
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
+      - ASPNETCORE_URLS=http://+:8080
+      - USE_HTTPS=false
+      # - PROXY_USERNAME=serviceaccount
+      # - PROXY_PASSWORD=password
+      # - PROXY_DOMAIN=YOURDOMAIN
+      # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
+      # - AZURE_CLIENT_ID=your-client-id
+      # - AZURE_TENANT_ID=your-tenant-id
+      # - AZURE_CLIENT_SECRET=your-client-secret
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+volumes:
+  portwayapi-data:
+    name: portwayapi-data
+    driver: local

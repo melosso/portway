@@ -1,0 +1,18 @@
+{
+    "DatabaseObjectName": "OutstandingItems",
+    "DatabaseSchema": "dbo",
+    "AllowedEnvironments": ["600","700"],
+    "Namespace": "Finance",
+    "DisplayName": "Outstanding Items",
+    "NamespaceDisplayName": "Financial",
+    "Documentation": {
+        "TagDescription": "**Financial Management**\n\nRetrieve outstanding debtor information and payment tracking. Access financial data for accounts receivable management and cash flow analysis.",
+        "MethodDescriptions": {
+            "GET": "Retrieve outstanding balances"
+        },
+        "MethodDocumentation": {
+            "GET": "Access all outstanding customer balances and payment information within the Finance namespace. **Helpful for** cash flow analysis, debt collection processes, and financial reporting."
+        }
+    }
+}
+  

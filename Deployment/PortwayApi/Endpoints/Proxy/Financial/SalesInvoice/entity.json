@@ -1,0 +1,42 @@
+{
+  "Type": "Composite",
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
+  "Methods": ["POST"],
+  "Namespace": "Financial",
+  "NamespaceDisplayName": "Financial",
+  "CompositeConfig": {
+    "Name": "SalesInvoice",
+    "Description": "Creates a complete invoice (which requires a Header and one or more lines)",
+    "Steps": [
+      {
+        "Name": "CreateInvoiceLines",
+        "Endpoint": "InvoiceLine",
+        "Method": "POST",
+        "IsArray": true,
+        "ArrayProperty": "Lines",
+        "TemplateTransformations": {
+          "InvoiceID": "$guid"
+        }
+      },
+      {
+        "Name": "CreateInvoiceHeader",
+        "Endpoint": "InvoiceHeader",
+        "Method": "POST",
+        "SourceProperty": "Header",
+        "TemplateTransformations": {
+          "InvoiceID": "$prev.CreateInvoiceLines.0.d.InvoiceID"
+        }
+      }
+    ]
+  },
+  "AllowedEnvironments": ["600","700"],
+  "Documentation": {
+    "TagDescription": "**Invoice Management**\n\nCreate complete invoices with header and line items in one request. Uses automatic transaction key linking.",
+    "MethodDescriptions": {
+      "POST": "Create sales invoice"
+    },
+    "MethodDocumentation": {
+      "POST": "Process complete invoices that require both header information and multiple detailed line items. **Automatically handles** invoice linking and validation across all components."
+    }
+  }
+}

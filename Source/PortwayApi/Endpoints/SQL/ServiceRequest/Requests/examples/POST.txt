@@ -1,0 +1,11 @@
+{
+  "CustomerCode": "CUST001",
+  "Title": "Email server connectivity issues",
+  "Description": "Customer unable to connect to email server. Intermittent connection timeouts and authentication failures reported. Issue started this morning around 9:00 AM.",
+  "Priority": "High",
+  "Status": "Open",
+  "CategoryId": 1,
+  "AssignedTo": "tech.support@company.com",
+  "CreatedBy": "support.agent@company.com",
+  "DueDate": "2025-10-07T17:00:00Z"
+}

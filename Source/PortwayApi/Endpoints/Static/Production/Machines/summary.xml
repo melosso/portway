@@ -1,0 +1,58 @@
+<productionLine>
+  <machine>
+    <id>MILL-01</id>
+    <name>CNC Milling Machine</name>
+    <locationId>550e8400-e29b-41d4-a716-446655440000</locationId>
+    <capacity unit="kw">15</capacity>
+    <status>running</status>
+    <unitsProducedToday>120</unitsProducedToday>
+    <uptimeHours>5.3</uptimeHours>
+    <lastUpdated>2025-08-20T09:15:00Z</lastUpdated>
+    <sensors>
+      <sensor type="temperature" unit="C">42</sensor>
+      <sensor type="vibration" unit="mm/s">0.8</sensor>
+    </sensors>
+    <maintenance>
+      <intervalDays>90</intervalDays>
+      <lastService>2025-06-12</lastService>
+    </maintenance>
+  </machine>
+
+  <machine>
+    <id>PRESS-07</id>
+    <name>Hydraulic Press</name>
+    <locationId>550e8400-e29b-41d4-a716-446655440001</locationId>
+    <capacity unit="tons">150</capacity>
+    <status>idle</status>
+    <unitsProducedToday>0</unitsProducedToday>
+    <uptimeHours>4.1</uptimeHours>
+    <lastUpdated>2025-08-20T09:10:00Z</lastUpdated>
+    <sensors>
+      <sensor type="pressure" unit="bar">210</sensor>
+      <sensor type="temperature" unit="C">78</sensor>
+    </sensors>
+    <maintenance>
+      <intervalDays>180</intervalDays>
+      <lastService>2025-03-01</lastService>
+    </maintenance>
+  </machine>
+
+  <machine>
+    <id>WELD-22</id>
+    <name>Robotic Welder</name>
+    <locationId>550e8400-e29b-41d4-a716-446655440000</locationId>
+    <capacity unit="kw">10</capacity>
+    <status>maintenance</status>
+    <unitsProducedToday>0</unitsProducedToday>
+    <uptimeHours>0.0</uptimeHours>
+    <lastUpdated>2025-08-20T09:05:00Z</lastUpdated>
+    <sensors>
+      <sensor type="temperature" unit="C">35</sensor>
+      <sensor type="current" unit="A">12</sensor>
+    </sensors>
+    <maintenance>
+      <intervalDays>120</intervalDays>
+      <lastService>2025-05-15</lastService>
+    </maintenance>
+  </machine>
+</productionLine>

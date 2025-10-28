@@ -1,0 +1,42 @@
+{
+  "Type": "Composite",
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
+  "Methods": ["POST"],
+  "Namespace": "Financial",
+  "NamespaceDisplayName": "Financial",
+  "CompositeConfig": {
+    "Name": "SalesOrder",
+    "Description": "Creates a complete sales order with multiple order lines and a header",
+    "Steps": [
+      {
+        "Name": "CreateOrderLines",
+        "Endpoint": "SalesOrderLine",
+        "Method": "POST",
+        "IsArray": true,
+        "ArrayProperty": "Lines",
+        "TemplateTransformations": {
+          "TransactionKey": "$guid"
+        }
+      },
+      {
+        "Name": "CreateOrderHeader",
+        "Endpoint": "SalesOrderHeader",
+        "Method": "POST",
+        "SourceProperty": "Header",
+        "TemplateTransformations": {
+          "TransactionKey": "$prev.CreateOrderLines.0.d.TransactionKey"
+        }
+      }
+    ]
+  },
+  "AllowedEnvironments": ["600","700"],
+  "Documentation": {
+    "TagDescription": "**Sales Order Management**\n\nCreate complete sales orders with headers and multiple line items. Uses utomatic transaction key linking.",
+    "MethodDescriptions": {
+      "POST": "Create sales order"
+    },
+    "MethodDocumentation": {
+      "POST": "Creates complete sales orders by coordinating header and line item creation. Automatically manages transaction linking and ensures data consistency across the order workflow."
+    }
+  }
+}

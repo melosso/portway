@@ -1,0 +1,12 @@
+name: portway-page
+services:
+  portway-website:
+    container_name: portway-website
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8180:80"
+    environment:
+      - REPO_URL=https://github.com/melosso/portway.git
+      - REPO_BRANCH=main
