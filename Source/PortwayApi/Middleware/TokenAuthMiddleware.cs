@@ -1,0 +1,314 @@
+namespace PortwayApi.Middleware;
+
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using PortwayApi.Auth;
+using PortwayApi.Services;
+using Serilog;
+
+public class TokenAuthMiddleware
+{
+    private readonly RequestDelegate _next;
+
+    public TokenAuthMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context, AuthDbContext dbContext, TokenService tokenService)
+    {
+        // Extract path
+        var path = context.Request.Path.Value?.ToLowerInvariant(); 
+        var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
+        string env = ExtractEnvironmentFromPath(context.Request.Path);
+        
+        // Skip token validation for specific routes
+        if (context.Request.Path.StartsWithSegments("/swagger") ||
+            context.Request.Path.StartsWithSegments("/docs") ||
+            context.Request.Path.StartsWithSegments("/health/live") ||
+            context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
+            context.Request.Path == "/" ||
+            context.Request.Path == "/index.html" ||
+            context.Request.Path.StartsWithSegments("/favicon.ico"))
+        {
+            Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", path, pathBase);
+            await _next(context);
+            return;
+        }
+        
+        // Continue with authentication logic
+        if (!context.Request.Headers.TryGetValue("Authorization", out var providedToken))
+        {
+            Log.Warning("Authorization header missing for {Path}", context.Request.Path);
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { error = "Authentication required", success = false });
+            return;
+        }
+
+        string tokenString = providedToken.ToString();
+        
+        // Extract the token from "Bearer token"
+        if (tokenString.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            tokenString = tokenString.Substring("Bearer ".Length).Trim();
+        }
+
+        // Extract endpoint name from request path
+        string? endpointName = ExtractEndpointName(context.Request.Path);
+        
+        // First validate token existence and active status
+        bool isValid = await tokenService.VerifyTokenAsync(tokenString);
+
+        if (!isValid)
+        {
+            Log.Warning("Invalid or expired token used for {Path} from {RemoteIP}", 
+                context.Request.Path, 
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+            
+            // Log failed authentication attempt in audit trail
+            await LogFailedAuthAttemptAsync(dbContext, tokenString, context);
+            
+            context.Response.StatusCode = 401;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token", success = false });
+            return;
+        }
+        
+        // Get token details for context and scoped access check
+        var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
+        if (tokenDetails == null)
+        {
+            Log.Error("Token verified but details could not be retrieved");
+            context.Response.StatusCode = 500;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { error = "Authentication error", success = false });
+            return;
+        }
+
+        // Check environment access
+        if (!string.IsNullOrEmpty(env))
+        {
+            bool hasEnvironmentAccess = tokenDetails.HasAccessToEnvironment(env);
+            
+            if (!hasEnvironmentAccess)
+            {
+                Log.Warning("Token lacks permission for environment {Environment}. Available environments: {Environments}", 
+                    env, tokenDetails.AllowedEnvironments);
+                
+                // Log authorization failure in audit trail
+                await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Environment", env);
+                
+                context.Response.StatusCode = 403;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { 
+                    error = $"Access denied to environment '{env}'", 
+                    availableEnvironments = tokenDetails.AllowedEnvironments,
+                    requestedEnvironment = env,
+                    success = false 
+                });
+                return;
+            }
+        }
+        
+        // Check endpoint permissions if endpoint name was successfully extracted
+        if (!string.IsNullOrEmpty(endpointName))
+        {
+            bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName);
+            
+            if (!hasEndpointAccess)
+            {
+                Log.Warning("Token lacks permission for endpoint {Endpoint}. Available scopes: {Scopes}", 
+                    endpointName, tokenDetails.AllowedScopes);
+                
+                // Log authorization failure in audit trail
+                await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Endpoint", endpointName);
+                
+                context.Response.StatusCode = 403;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { 
+                    error = $"Access denied to endpoint '{endpointName}'", 
+                    availableScopes = tokenDetails.AllowedScopes,
+                    requestedEndpoint = endpointName,
+                    success = false 
+                });
+                return;
+            }
+        }
+
+        // Token is valid, has proper scopes, and access to the environment - proceed
+        Log.Debug("Authorized {User} (Token ID: {TokenId}) for {Method} {Path}", 
+            tokenDetails.Username, tokenDetails.Id, context.Request.Method, context.Request.Path);
+        await _next(context);
+    }
+
+    /// <summary>
+    /// Extract the endpoint name from the request path
+    /// </summary>
+    private string? ExtractEndpointName(PathString path)
+    {
+        // Parse patterns like:
+        // /api/{env}/{endpointName}
+        // /api/{env}/{namespace}/{endpointName}
+        // /api/{env}/{endpointName}/{id}
+        // /api/{env}/{namespace}/{endpointName}/{id}
+        // /api/{env}/composite/{endpointName}
+        // /webhook/{env}/{webhookId}
+        
+        var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments == null || segments.Length < 3)
+            return null;
+            
+        if (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase))
+        {
+            // For composite endpoints: /api/{env}/composite/{endpointName}
+            if (segments.Length >= 4 && segments[2].Equals("composite", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"composite/{segments[3]}";
+            }
+            
+            // For regular endpoints, check if this is a namespaced endpoint
+            // We need to determine if segments[2] is a namespace or an endpoint
+            // by checking against loaded endpoints
+            if (segments.Length >= 4)
+            {
+                // Try namespaced format first: /api/{env}/{namespace}/{endpoint}
+                string namespacedEndpoint = $"{segments[2]}/{segments[3]}";
+                
+                // Check if this namespaced endpoint exists
+                var sqlEndpoints = Classes.EndpointHandler.GetSqlEndpoints();
+                var proxyEndpoints = Classes.EndpointHandler.GetProxyEndpoints();
+                
+                if (sqlEndpoints.ContainsKey(namespacedEndpoint) || proxyEndpoints.ContainsKey(namespacedEndpoint))
+                {
+                    return namespacedEndpoint;
+                }
+            }
+            
+            // Fall back to non-namespaced format: /api/{env}/{endpointName}
+            if (segments.Length >= 3)
+            {
+                return segments[2];
+            }
+        }
+        else if (segments[0].Equals("webhook", StringComparison.OrdinalIgnoreCase))
+        {
+            // For webhook endpoints: /webhook/{env}/{webhookName}
+            if (segments.Length >= 3)
+            {
+                return $"webhook/{segments[2]}";
+            }
+        }
+        
+        return null;
+    }
+
+    /// <summary>
+    /// Extract the environment from the request path
+    /// </summary>
+    private string ExtractEnvironmentFromPath(PathString path)
+    {
+        var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments == null || segments.Length < 2)
+            return string.Empty;
+            
+        // For paths like /api/{env}/...
+        if (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase) && segments.Length >= 2)
+            return segments[1];
+            
+        // For paths like /webhook/{env}/...
+        if (segments[0].Equals("webhook", StringComparison.OrdinalIgnoreCase) && segments.Length >= 2)
+            return segments[1];
+            
+        return string.Empty;
+    }
+    
+    /// <summary>
+    /// Log failed authentication attempts for security auditing
+    /// </summary>
+    private static async Task LogFailedAuthAttemptAsync(AuthDbContext dbContext, string tokenString, HttpContext context)
+    {
+        try
+        {
+            var auditEntry = new AuthTokenAudit
+            {
+                TokenId = null, // No valid token found
+                Username = "Unknown",
+                Operation = "FailedAuth",
+                OldTokenHash = null,
+                NewTokenHash = null,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new 
+                { 
+                    RequestPath = context.Request.Path.Value,
+                    Method = context.Request.Method,
+                    TokenPrefix = tokenString.Length > 10 ? tokenString[..10] : tokenString,
+                    UserAgent = context.Request.Headers.UserAgent.ToString(),
+                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                }),
+                Source = "PortwayApi.Middleware",
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = context.Request.Headers.UserAgent.ToString()
+            };
+            
+            await dbContext.TokenAudits.AddAsync(auditEntry);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Don't throw exceptions from audit logging
+            Log.Error(ex, "Failed to log authentication attempt");
+        }
+    }
+    
+    /// <summary>
+    /// Log authorization failures for security auditing
+    /// </summary>
+    private static async Task LogAuthorizationFailureAsync(AuthDbContext dbContext, AuthToken tokenDetails, 
+        HttpContext context, string resourceType, string resourceName)
+    {
+        try
+        {
+            var auditEntry = new AuthTokenAudit
+            {
+                TokenId = tokenDetails.Id,
+                Username = tokenDetails.Username,
+                Operation = "AuthorizationFailed",
+                OldTokenHash = null,
+                NewTokenHash = null,
+                Timestamp = DateTime.UtcNow,
+                Details = JsonSerializer.Serialize(new 
+                { 
+                    ResourceType = resourceType, // "Environment" or "Endpoint"
+                    ResourceName = resourceName,
+                    RequestPath = context.Request.Path.Value,
+                    Method = context.Request.Method,
+                    AvailableScopes = tokenDetails.AllowedScopes,
+                    AvailableEnvironments = tokenDetails.AllowedEnvironments,
+                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                }),
+                Source = "PortwayApi.Middleware",
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = context.Request.Headers.UserAgent.ToString()
+            };
+            
+            await dbContext.TokenAudits.AddAsync(auditEntry);
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Don't throw exceptions from audit logging
+            Log.Error(ex, "Failed to log authorization failure");
+        }
+    }
+}
+
+// Extension method to make it easier to add the middleware to the pipeline
+public static class TokenAuthMiddlewareExtensions
+{
+    public static IApplicationBuilder UseTokenAuthentication(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<TokenAuthMiddleware>();
+    }
+}

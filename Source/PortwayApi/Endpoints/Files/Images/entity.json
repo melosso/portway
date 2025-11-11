@@ -1,0 +1,7 @@
+{
+  "StorageType": "Local",
+  "BaseDirectory": "images",
+  "AllowedExtensions": [".jpg", ".jpeg", ".png", ".gif", ".svg"],
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600", "700"]
+}

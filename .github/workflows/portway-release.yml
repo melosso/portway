@@ -1,0 +1,106 @@
+name: Publish As Release
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name (e.g. 2025.1.0)'
+        required: true
+        type: string
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Publish PortwayApi
+      run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -o ${{ github.workspace }}/publish
+
+    - name: Remove Debug Files
+      run: |
+        echo "Removing debug files..."
+        find ${{ github.workspace }}/publish -type f -name "*.pdb" -delete
+
+    - name: Remove Language Files
+      run: |
+        echo "Removing language resource files..."
+        cd ${{ github.workspace }}/publish
+        rm -rf cs de es fr it ja ko pl pt-BR ru tr zh-Hans zh-Hant
+
+    - name: Prune Endpoints
+      run: |
+        echo "Pruning endpoints to keep the package lightweight..."
+        cd ${{ github.workspace }}/publish/Endpoints
+        # Keep only SQL and Static at the top level
+        find . -mindepth 1 -maxdepth 1 -type d ! -name 'SQL' ! -name 'Static' -exec rm -rf {} +
+        # In SQL, keep only Product
+        find SQL -mindepth 1 -maxdepth 1 -type d ! -name 'Product' -exec rm -rf {} +
+        # In Static, keep only Masterdata
+        find Static -mindepth 1 -maxdepth 1 -type d ! -name 'Masterdata' -exec rm -rf {} +
+        # In Static/Masterdata, keep only Countries
+        find Static/Masterdata -mindepth 1 -maxdepth 1 -type d ! -name 'Countries' -exec rm -rf {} +
+
+    - name: Prune Environments
+      run: |
+        echo "Pruning environments..."
+        cd ${{ github.workspace }}/publish/Environments
+        rm -rf 600 700 Synergy
+
+    - name: Remove Meta Files
+      run: |
+        echo "Removing .gitignore files..."
+        find ${{ github.workspace }}/publish -type f -name ".gitignore" -delete
+
+    - name: Create Prod Environment
+      run: |
+        mkdir -p ${{ github.workspace }}/publish/Environments/prod
+        echo '{
+          "ServerName": "prod-server",
+          "ConnectionString": "Server=prod-server;Database=prod-db;User Id=user;Password=password;",
+          "Headers": {
+            "DatabaseName": "prod",
+            "ServerName": "prod-server",
+            "Origin": "Portway"
+          }
+        }' > ${{ github.workspace }}/publish/Environments/prod/settings.json
+
+    - name: Update AllowedEnvironments Globally
+      run: |
+        echo "Updating AllowedEnvironments in all json files to [\"prod\"]"
+        find ${{ github.workspace }}/publish -type f -name "*.json" -print0 | while IFS= read -r -d $'\0' file; do
+          if jq -e '.AllowedEnvironments' "$file" > /dev/null; then
+            jq '.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
+            echo "Updated .AllowedEnvironments in $file"
+          elif jq -e '.Environment.AllowedEnvironments' "$file" > /dev/null; then
+            jq '.Environment.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
+            echo "Updated .Environment.AllowedEnvironments in $file"
+          fi
+        done
+
+    - name: Configure Example Endpoint
+      run: |
+        # Rename Countries to Example
+        mv ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Countries ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Example
+        # Update entity.json to reference prod environment
+        jq '.TagDescription += "\n\nThis endpoint is configured for the prod environment."' ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Example/entity.json > tmp.json && mv tmp.json ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Example/entity.json
+
+    - name: Create Release Artifact
+      run: |
+        echo "${{ github.event.inputs.tag_name }}" > ${{ github.workspace }}/publish/.version.txt
+        cd ${{ github.workspace }}/publish
+        zip -r ../${{ github.event.inputs.tag_name }}-Deployment.zip .
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.event.inputs.tag_name }}
+        files: |
+          ${{ github.event.inputs.tag_name }}-Deployment.zip
+        generate_release_notes: true

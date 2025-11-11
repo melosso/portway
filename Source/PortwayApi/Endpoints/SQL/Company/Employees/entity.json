@@ -1,0 +1,85 @@
+{
+  "DatabaseSchema": "Portway",
+  "DatabaseObjectName": "CompanyEmployees",
+  "Namespace": "Company",
+  "NamespaceDisplayName": "Company",
+  "IsPrivate": false,
+  "AllowedEnvironments": ["Synergy"],
+  "AllowedMethods": ["GET", "POST", "PATCH"],
+  "Procedure": "Portway.usp_ManageCompanyEmployees",
+  "PrimaryKey": "EmployeeId",
+  "Documentation": {
+    "Summary": "Retrieve employee data",
+    "Description": "Access and manage employee records including personal details, job information, organizational assignments, and employment history. Useful for HR processes, payroll, performance tracking, and workforce management.",
+    "TagDescription": "Retrieve and manage company information and related organizational settings.",
+    "MethodDescriptions": {
+        "GET": "Retrieve employee records",
+        "POST": "Create a new employee",
+        "PUT": "Update an existing employee",
+        "PATCH": "Partially update an existing employee"
+    },
+    "MethodDocumentation": {
+        "GET": "Search and retrieve employee information including contact details, job titles, and department assignments.",
+        "POST": "Add new employees to your system with complete profile setup and validation.",
+        "PUT": "Modify existing employee information such as contact details, job titles, or department assignments.",
+        "PATCH": "Partially update existing employee information such as contact details, job titles, or department assignments."
+    }
+  },
+  "Properties": {
+    "CacheEnabled": true,
+    "CacheDurationMinutes": 5,
+    "MaxPageSize": 50,
+    "DefaultSort": "LastName ASC, FirstName ASC"
+  },
+  "AllowedColumns": [
+    "EmployeeId;ID",
+    "FirstName",
+    "LastName",
+    "FullName",
+    "Email",
+    "Phone",
+    "MobilePhone",
+    "JobTitle",
+    "DepartmentId",
+    "DepartmentName",
+    "DivisionId",
+    "DivisionName",
+    "ManagerId",
+    "ManagerName",
+    "HireDate",
+    "TerminationDate",
+    "EmploymentStatus",
+    "EmployeeType",
+    "Location",
+    "WorkAddress",
+    "BirthDate",
+    "LinkedInProfile",
+    "CreatedDate",
+    "ModifiedDate",
+    "IsActive",
+    "LastReviewDate",
+    "SalaryGrade",
+    "OwnerId"
+  ],
+  "RequiredColumns": [
+    "FirstName",
+    "LastName",
+    "Email",
+    "JobTitle",
+    "DepartmentId"
+  ],
+  "ColumnValidation": {
+    "Email": {
+      "regex": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+      "validationMessage": "Invalid email format"
+    },
+    "Phone": {
+      "regex": "^[+]?[(]?[0-9]{1,4}[)]?[-\\s\\.]?[(]?[0-9]{1,4}[)]?[-\\s\\.]?[0-9]{1,9}$",
+      "validationMessage": "Invalid phone number format"
+    },
+    "MobilePhone": {
+      "regex": "^[+]?[(]?[0-9]{1,4}[)]?[-\\s\\.]?[(]?[0-9]{1,4}[)]?[-\\s\\.]?[0-9]{1,9}$",
+      "validationMessage": "Invalid mobile phone number format"
+    }
+  }
+}

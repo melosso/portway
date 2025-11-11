@@ -1,0 +1,96 @@
+[
+  {
+    "name": "Acme Corporation",
+    "costCenters": [
+      {
+        "id": "CC001",
+        "name": "Research and Development",
+        "manager": "Alice Johnson",
+        "budget": 500000,
+        "currency": "EUR",
+        "expenses": [
+          {
+            "date": "2025-09-01",
+            "category": "Equipment",
+            "amount": 20000,
+            "description": "New lab equipment"
+          },
+          {
+            "date": "2025-09-05",
+            "category": "Salaries",
+            "amount": 120000,
+            "description": "Monthly payroll"
+          }
+        ]
+      },
+      {
+        "id": "CC002",
+        "name": "Marketing",
+        "manager": "Bob Smith",
+        "budget": 300000,
+        "currency": "EUR",
+        "expenses": [
+          {
+            "date": "2025-09-02",
+            "category": "Advertising",
+            "amount": 50000,
+            "description": "Social media campaign"
+          },
+          {
+            "date": "2025-09-10",
+            "category": "Travel",
+            "amount": 10000,
+            "description": "Conference attendance"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Beta Solutions",
+    "costCenters": [
+      {
+        "id": "CC101",
+        "name": "Customer Support",
+        "manager": "Dana Lee",
+        "budget": 150000,
+        "currency": "EUR",
+        "expenses": [
+          {
+            "date": "2025-09-03",
+            "category": "Salaries",
+            "amount": 60000,
+            "description": "Monthly payroll"
+          },
+          {
+            "date": "2025-09-07",
+            "category": "Training",
+            "amount": 5000,
+            "description": "Customer support training program"
+          }
+        ]
+      },
+      {
+        "id": "CC102",
+        "name": "Sales",
+        "manager": "Evan Roberts",
+        "budget": 250000,
+        "currency": "EUR",
+        "expenses": [
+          {
+            "date": "2025-09-04",
+            "category": "Travel",
+            "amount": 15000,
+            "description": "Client visits"
+          },
+          {
+            "date": "2025-09-08",
+            "category": "Marketing",
+            "amount": 20000,
+            "description": "Lead generation campaigns"
+          }
+        ]
+      }
+    ]
+  }
+]

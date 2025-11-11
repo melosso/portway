@@ -1,0 +1,23 @@
+{
+  "Header": {
+    "OrderDebtor": "60093",
+    "YourReference": "Connect async"
+  },
+  "Lines": [
+    {
+      "Itemcode": "ITEM-001",
+      "Quantity": 2,
+      "Price": 0.0
+    },
+    {
+      "Itemcode": "ITEM-002",
+      "Quantity": 4,
+      "Price": 0.0
+    },
+    {
+      "Itemcode": "ITEM-003",
+      "Quantity": 5,
+      "Price": 0.0
+    }
+  ]
+}
