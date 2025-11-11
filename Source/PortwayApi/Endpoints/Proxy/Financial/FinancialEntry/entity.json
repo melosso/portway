@@ -1,0 +1,42 @@
+{
+  "Type": "Composite",
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
+  "Methods": ["POST"],
+  "Namespace": "Financial",
+  "NamespaceDisplayName": "Financial",
+  "CompositeConfig": {
+    "Name": "FinancialEntry",
+    "Description": "Creates a complete financial transaction (which requires a Header and one or more lines)",
+    "Steps": [
+      {
+        "Name": "CreateFinancialLine",
+        "Endpoint": "FinancialLine",
+        "Method": "POST",
+        "IsArray": true,
+        "ArrayProperty": "Lines",
+        "TemplateTransformations": {
+          "TransactionKey": "$guid"
+        }
+      },
+      {
+        "Name": "CreateFinancialHeader",
+        "Endpoint": "FinancialHeader",
+        "Method": "POST",
+        "SourceProperty": "Header",
+        "TemplateTransformations": {
+          "TransactionKey": "$prev.CreateOrderLines.0.d.TransactionKey"
+        }
+      }
+    ]
+  },
+  "AllowedEnvironments": ["600","700"],
+  "Documentation": {
+    "TagDescription": "**Financial Entry Management**\n\nCreate complete financial transactions with headers and multiple line items. Composite endpoint that handles complex financial data entry workflows with automatic transaction key management.",
+    "MethodDescriptions": {
+      "POST": "Create financial entry"
+    },
+    "MethodDocumentation": {
+      "POST": "Process complex financial transactions that require both header information and multiple detailed line items. **Automatically handles** transaction linking and validation across all components."
+    }
+  }
+}

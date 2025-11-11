@@ -1,0 +1,24 @@
+{
+    "DatabaseObjectName": "Items",
+    "DatabaseSchema": "dbo",
+    "PrimaryKey": "ItemCode",
+    "Namespace": "Product",
+    "NamespaceDisplayName": "Product",
+    "AllowedColumns": [
+        "ItemCode;ProductNumber",
+        "Description;Description", 
+        "Assortment;AssortmentID",
+        "sysguid;InternalID"
+    ],
+    "AllowedMethods": ["GET"],
+    "AllowedEnvironments": ["600","700"],
+    "Documentation": {
+        "TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information. Query by assortment, search descriptions, and retrieve item details for integration with external systems.\n\n> [!IMPORTANT]\n> This endpoint doesn't and will never include complex price information.",
+        "MethodDescriptions": {
+            "GET": "Retrieve product catalog"
+        },
+        "MethodDocumentation": {
+            "GET": "You can retrieve **all items** in the `product catalog`, including their essential details. This includes current, archived, and upcoming product offerings."
+        }
+    }
+}

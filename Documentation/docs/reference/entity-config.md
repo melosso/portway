@@ -1,0 +1,771 @@
+# Entity Configuration
+
+Entity configuration files define how endpoints behave and what data they expose. Each endpoint type (SQL, Proxy, Static, Composite, Webhook, File) has specific configuration options.
+
+## File Structure
+
+Entity configuration files are JSON files located in the endpoints directory structure:
+
+```
+/endpoints/
+  ├── SQL/
+  │   └── [EntityName]/
+  │       └── entity.json
+  ├── Proxy/
+  │   └── [EntityName]/
+  │       └── entity.json
+  ├── Static/
+  │   └── [EntityName]/
+  │       ├── entity.json
+  │       └── [content-file]
+  ├── Composite/
+  │   └── [EntityName]/
+  │       └── entity.json
+  ├── Webhooks/
+  │   └── entity.json
+  └── Files/
+      └── [EntityName]/
+          └── entity.json
+```
+
+## Endpoint: SQL
+
+SQL entities expose database tables or views through OData endpoints.
+
+### Basic Structure
+
+```json
+{
+  "DatabaseObjectName": "Items",
+  "DatabaseSchema": "dbo",
+  "PrimaryKey": "ItemCode",
+  "AllowedColumns": [
+    "ItemCode",
+    "Description",
+    "Assortment",
+    "sysguid"
+  ],
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### With Stored Procedures
+
+```json
+{
+  "DatabaseObjectName": "ServiceRequests",
+  "DatabaseSchema": "dbo",
+  "AllowedColumns": [
+    "RequestId",
+    "CustomerCode",
+    "Title",
+    "Description",
+    "Priority",
+    "Status",
+    "CategoryId",
+    "AssignedTo",
+    "CreatedBy",
+    "CreatedDate",
+    "LastModifiedBy",
+    "LastModifiedDate",
+    "ResolvedDate",
+    "ClosedDate",
+    "DueDate"
+  ],
+  "Procedure": "dbo.sp_ManageServiceRequests",
+  "AllowedMethods": ["GET", "POST", "PUT"],
+  "AllowedEnvironments": ["prod"]
+}
+```
+
+### With Table-Valued Functions (TVF)
+
+Table-Valued Functions allow you to expose parameterized, read-only endpoints that return dynamic result sets. Use these for endpoints that should execute a SQL function with input parameters, rather than exposing a static table or view.
+
+```json
+{
+  "DatabaseObjectName": "GenerateSampleUsers",
+  "DatabaseSchema": "dbo",
+  "DatabaseObjectType": "TableValuedFunction",
+  "FunctionParameters": [
+    {
+      "Name": "DepartmentId",
+      "SqlType": "int",
+      "Source": "Path",
+      "Position": 1,
+      "Required": false,
+      "DefaultValue": "DEFAULT",
+      "ValidationPattern": "^[0-9]+$"
+    },
+    {
+      "Name": "UserCount",
+      "SqlType": "int",
+      "Source": "Query",
+      "Required": false,
+      "DefaultValue": "DEFAULT"
+    }
+  ],
+  "AllowedColumns": [
+    "user_id;UserId",
+    "first_name;FirstName",
+    "department_name;DepartmentName"
+  ],
+  "AllowedMethods": ["GET"],
+  "AllowedEnvironments": ["dev", "test"]
+}
+```
+
+**Key points:**
+- Set `DatabaseObjectType` to `"TableValuedFunction"`.
+- Use `FunctionParameters` to define the function's input parameters (with type, source, and validation).
+- TVF endpoints are always read-only (`AllowedMethods` should only include `GET`).
+- No `PrimaryKey` property is needed for TVFs.
+- Use column aliases in `AllowedColumns` as with regular endpoints.
+
+### Property Reference
+
+| Property              | Type    | Required | Description                                                                                  |
+|-----------------------|---------|----------|----------------------------------------------------------------------------------------------|
+| `DatabaseObjectName`  | string  | Yes      | Name of the table, view, or function                                                         |
+| `DatabaseSchema`      | string  | No       | Database schema (default: "dbo")                                                             |
+| `PrimaryKey`          | string  | No       | Primary key column (default: "Id"). Not used for TVF endpoints                               |
+| `DatabaseObjectType`  | string  | No*      | Set to `"TableValuedFunction"` for TVF endpoints only                                        |
+| `FunctionParameters`  | array   | No*      | List of input parameters for TVF endpoints only                                              |
+| `AllowedColumns`      | array   | Yes      | List of accessible columns (supports aliases)                                                |
+| `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
+| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"])                                                              |
+| `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
+
+\* Only required for Table-Valued Function (TVF) endpoints.
+
+### Column Aliases
+
+The `AllowedColumns` array supports semicolon-separated aliases for user-friendly column names:
+
+```json
+{
+  "AllowedColumns": [
+    "ItemCode;ProductNumber",     // Database column: ItemCode, API alias: ProductNumber
+    "Description;ProductName",    // Database column: Description, API alias: ProductName
+    "Assortment;Category",        // Database column: Assortment, API alias: Category
+    "sysguid;InternalID"          // Database column: sysguid, API alias: InternalID
+  ]
+}
+```
+
+**Format:** `"DatabaseColumn;Alias"`
+
+**Benefits:**
+- Create intuitive API column names while preserving database structure
+- Backward compatible with existing configurations
+- Automatic conversion in all OData operations (`$select`, `$filter`, `$orderby`)
+
+## Endpoint: Proxy
+
+Proxy entities forward requests to internal web services.
+
+### Basic Example
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET", "POST", "PUT", "DELETE", "MERGE"]
+}
+```
+
+### With Environment Restrictions
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Classification",
+  "Methods": ["GET"],
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### Private Endpoint
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/SalesOrderHeader",
+  "Methods": ["POST"],
+  "IsPrivate": true
+}
+```
+
+### With HTTP Method Translation
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "CustomProperties": {
+    "HttpMethodTranslation": "PUT:MERGE,POST:CREATE"
+  }
+}
+```
+```
+
+### Property Reference
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `Url` | string | Yes | Target service URL |
+| `Methods` | array | Yes | Allowed HTTP methods |
+| `IsPrivate` | boolean | No | Hide from API documentation |
+| `AllowedEnvironments` | array | No | Allowed environments |
+| `CustomProperties` | object | No | Extended functionality settings |
+
+#### CustomProperties Options
+
+| Property | Type | Description | Example |
+|----------|------|-------------|---------|
+| `HttpMethodTranslation` | string | Translate HTTP methods before proxying | `"PUT:MERGE,POST:CREATE"` |
+| `HttpMethodAppendHeaders` | string | Auto-append headers based on HTTP method | `"PUT:X-HTTP-Method={ORIGINAL_METHOD}"` |
+
+### With HTTP Method Translation and Header Appending
+
+```json
+{
+  "Url": "http://api.example.com/accounts",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "CustomProperties": {
+    "HttpMethodTranslation": "PUT:POST",
+    "HttpMethodAppendHeaders": "PUT:X-HTTP-Method={ORIGINAL_METHOD},Content-Type=application/merge-patch+json"
+  }
+}
+```
+
+### Configuring DELETE Operations
+
+Different internal services expect DELETE request IDs in different formats. Use `DeletePatterns` to tell the gateway how to format the ID when forwarding to your target service.
+
+#### Why Configure This?
+
+When you receive:
+```
+DELETE /api/prod/customers/a7f3c8e1-4b2d-4d91-8c5a-9e2b1f6d8a4c
+```
+
+The gateway needs to know whether your internal service expects:
+- `http://service/customers/a7f3c8e1...` (path style)
+- `http://service/customers?id=a7f3c8e1...` (query style)
+- `http://service/customers(guid'a7f3c8e1...')` (OData style)
+
+#### Available Styles
+
+| Style | Use Case | Example Output |
+|-------|----------|----------------|
+| **PathParameter** (default) | Standard REST APIs | `http://service/customers/a7f3c8e1...` |
+| **QueryParameter** | Legacy systems using query strings | `http://service/customers?id=a7f3c8e1...` |
+| **ODataGuid** | OData services with GUID keys | `http://service/customers(guid'a7f3c8e1...')` |
+| **ODataKey** | OData services with numeric keys | `http://service/orders(10248)` |
+
+**Configuration examples:**
+
+```json
+// PathParameter (or omit DeletePatterns entirely)
+{ "DeletePatterns": [{ "Style": "PathParameter" }] }
+
+// QueryParameter
+{ "DeletePatterns": [{ "Style": "QueryParameter", "Parameter": "id" }] }
+
+// ODataGuid
+{ "DeletePatterns": [{ "Style": "ODataGuid" }] }
+
+// ODataKey
+{ "DeletePatterns": [{ "Style": "ODataKey" }] }
+```
+
+#### Quick Examples
+
+**Modern REST microservice** (most common):
+```json
+{
+  "Url": "http://order-service.company.local/api/orders",
+  "Methods": ["GET", "POST", "PUT", "DELETE"]
+  // No DeletePatterns needed - PathParameter is the default
+}
+```
+
+**Legacy system with query parameters**:
+```json
+{
+  "Url": "http://crm-legacy.company.local/api/contacts",
+  "Methods": ["GET", "DELETE"],
+  "DeletePatterns": [{ 
+    "Style": "QueryParameter",
+    "Parameter": "contact_id"
+  }]
+}
+```
+
+**Internal OData service**:
+```json
+{
+  "Url": "http://inventory-api.company.local/api/products",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "DeletePatterns": [{ "Style": "ODataGuid" }]
+}
+```
+
+The gateway automatically recognizes IDs in any format (plain GUIDs, OData wrapped, numeric, string keys) and forwards them correctly to your service.
+
+## Endpoint: Static
+
+Static entities serve pre-defined content files with optional OData filtering capabilities.
+
+### Basic Example
+
+```json
+{
+  "ContentType": "application/xml",
+  "ContentFile": "summary.xml",
+  "EnableFiltering": true,
+  "IsPrivate": false,
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### With Documentation
+
+```json
+{
+  "ContentType": "application/json",
+  "ContentFile": "countries.json",
+  "EnableFiltering": true,
+  "AllowedEnvironments": ["prod", "dev"],
+  "Documentation": {
+    "TagDescription": "Country reference data for application forms and validation",
+    "MethodDescriptions": {
+      "GET": "Retrieve country list with optional filtering"
+    }
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `ContentType` | string | No | MIME type (auto-detected if not specified) |
+| `ContentFile` | string | Yes | Content filename relative to endpoint directory |
+| `EnableFiltering` | boolean | No | Enable OData query parameters (default: false) |
+| `IsPrivate` | boolean | No | Require authentication (default: false) |
+| `AllowedEnvironments` | array | Yes | Environments where endpoint is available |
+| `Documentation` | object | No | OpenAPI documentation metadata |
+
+### Supported Content Types
+
+- **JSON** (`application/json`) - With full OData filtering support
+- **XML** (`application/xml`) - With OData filtering support  
+- **CSV** (`text/csv`) - Raw file serving
+- **Text** (`text/plain`) - Raw file serving
+- **Images** (`image/*`) - Raw file serving
+
+## Endpoint: Composite
+
+Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here).
+
+### Sales Order Example
+
+```json
+{
+  "Type": "Composite",
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
+  "Methods": ["POST"],
+  "CompositeConfig": {
+    "Name": "SalesOrder",
+    "Description": "Creates a complete sales order with multiple order lines and a header",
+    "Steps": [
+      {
+        "Name": "CreateOrderLines",
+        "Endpoint": "SalesOrderLine",
+        "Method": "POST",
+        "IsArray": true,
+        "ArrayProperty": "Lines",
+        "TemplateTransformations": {
+          "TransactionKey": "$guid"
+        }
+      },
+      {
+        "Name": "CreateOrderHeader",
+        "Endpoint": "SalesOrderHeader",
+        "Method": "POST",
+        "SourceProperty": "Header",
+        "TemplateTransformations": {
+          "TransactionKey": "$prev.CreateOrderLines.0.d.TransactionKey"
+        }
+      }
+    ]
+  },
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### Property Reference
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `Type` | string | Yes | Must be "Composite" |
+| `Url` | string | Yes | Base URL for all steps |
+| `Methods` | array | Yes | Allowed HTTP methods |
+| `CompositeConfig` | object | Yes | Composite configuration |
+| `AllowedEnvironments` | array | No | Allowed environments |
+
+### CompositeConfig Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `Name` | string | Yes | Composite endpoint name |
+| `Description` | string | No | Endpoint description |
+| `Steps` | array | Yes | Execution steps |
+
+### Step Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `Name` | string | Yes | Step identifier |
+| `Endpoint` | string | Yes | Target endpoint |
+| `Method` | string | Yes | HTTP method |
+| `IsArray` | boolean | No | Process as array |
+| `ArrayProperty` | string | No | Array source property |
+| `SourceProperty` | string | No | Input data property |
+| `DependsOn` | string | No | Previous step dependency |
+| `TemplateTransformations` | object | No | Dynamic value mappings |
+
+### Template Transformation Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `$guid` | New GUID value | Generates fresh GUID |
+| `$requestid` | Request ID | Current request ID |
+| `$prev.[step].[path]` | Previous step value | `$prev.CreateOrderLines.0.d.TransactionKey` |
+| `$context.[variable]` | Context variable | `$context.customerId` |
+
+## Endpoint: Webhook
+
+Webhook entities receive and store external webhook data.
+
+### Example Configuration
+
+```json
+{
+  "DatabaseObjectName": "WebhookData",
+  "DatabaseSchema": "dbo",
+  "AllowedColumns": [
+    "webhook1",
+    "webhook2"
+  ]
+}
+```
+
+### Property Reference
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `DatabaseObjectName` | string | Yes | Target table name |
+| `DatabaseSchema` | string | No | Database schema |
+| `AllowedColumns` | array | Yes | Allowed webhook IDs |
+
+## Endpoint: Files
+
+File entities enable storage and retrieval of files through dedicated endpoints.
+
+### Basic Structure
+
+```json
+{
+  "StorageType": "Local",
+  "BaseDirectory": "documents",
+  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
+  "IsPrivate": false,
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### With Directory Organization
+
+```json
+{
+  "StorageType": "Local",
+  "BaseDirectory": "customer-files/{env}",
+  "AllowedExtensions": [".jpg", ".png", ".pdf", ".xlsx"],
+  "IsPrivate": false,
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+### Security-Restricted Endpoint
+
+```json
+{
+  "StorageType": "Local",
+  "BaseDirectory": "secure-documents",
+  "AllowedExtensions": [".pdf", ".xlsx"],
+  "IsPrivate": true,
+  "AllowedEnvironments": ["prod"]
+}
+```
+
+### Property Reference
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `StorageType` | string | Yes | Storage provider type (currently only "Local") |
+| `BaseDirectory` | string | No | Base directory for file storage (default: endpoint name) |
+| `AllowedExtensions` | array | No | List of allowed file extensions (empty = allow all) |
+| `IsPrivate` | boolean | No | Whether endpoint is hidden from documentation (default: false) |
+| `AllowedEnvironments` | array | No | Environments that can access this endpoint |
+
+## Basic Configuration
+
+### Environment-Specific Access
+
+Control which environments can access an endpoint:
+
+```json
+{
+  "AllowedEnvironments": ["prod", "dev", "test"]
+}
+```
+
+### Method Restrictions
+
+Limit HTTP methods for security:
+
+```json
+{
+  "AllowedMethods": ["GET", "POST"]
+}
+```
+
+### Private Endpoints
+
+Hide endpoints from API documentation:
+
+```json
+{
+  "IsPrivate": true
+}
+```
+
+### Stored Procedure Integration
+
+Use stored procedures for data operations:
+
+```json
+{
+  "Procedure": "dbo.sp_ManageServiceRequests",
+  "AllowedMethods": ["GET", "POST", "PUT", "DELETE"]
+}
+```
+
+### File Organization Patterns
+
+Organize files by environment and type:
+
+```json
+{
+  "BaseDirectory": "reports/{env}/monthly",
+  "AllowedExtensions": [".pdf", ".xlsx"]
+}
+```
+
+## Best Practices
+
+### 1. Column Security
+
+Only expose necessary columns:
+
+```json
+{
+  "AllowedColumns": [
+    "PublicId",
+    "DisplayName",
+    "PublicData"
+    // Exclude sensitive columns like passwords, internal IDs
+  ]
+}
+```
+
+### 2. Environment Restrictions
+
+Limit access by environment:
+
+```json
+{
+  "AllowedEnvironments": ["prod"],  // Production only
+  "AllowedEnvironments": ["dev", "test"]  // Non-production only
+}
+```
+
+### 3. Method Limitations
+
+Follow REST principles:
+
+```json
+{
+  // Read-only endpoint
+  "AllowedMethods": ["GET"],
+  
+  // Full CRUD
+  "AllowedMethods": ["GET", "POST", "PUT", "DELETE"],
+  
+  // Create-only
+  "AllowedMethods": ["POST"]
+}
+```
+
+### 4. Composite Transaction Safety
+
+Ensure atomic operations:
+
+```json
+{
+  "Steps": [
+    {
+      "Name": "ValidateData",
+      "Endpoint": "ValidationService",
+      "Method": "POST"
+    },
+    {
+      "Name": "CreateRecord",
+      "Endpoint": "MainService",
+      "Method": "POST",
+      "DependsOn": "ValidateData"
+    }
+  ]
+}
+```
+
+### 5. File Type Restrictions
+
+Restrict file types for security:
+
+```json
+{
+  "AllowedExtensions": [
+    ".pdf",      // ✓ Document format
+    ".xlsx",     // ✓ Spreadsheet
+    ".jpg",      // ✓ Image format
+    ".txt",      // ✓ Text format
+    // Avoid executable or script files
+  ]
+}
+```
+
+### 6. File Storage Segmentation
+
+Separate files by purpose:
+
+```json
+// Documents endpoint
+{
+  "BaseDirectory": "documents",
+  "AllowedExtensions": [".pdf", ".docx", ".txt"]
+}
+
+// Images endpoint
+{
+  "BaseDirectory": "images",
+  "AllowedExtensions": [".jpg", ".png", ".gif"]
+}
+
+// Data endpoint
+{
+  "BaseDirectory": "data",
+  "AllowedExtensions": [".csv", ".xlsx", ".json"]
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Endpoint Not Found**
+   - Verify file location: `/endpoints/[Type]/[EntityName]/entity.json`
+   - Check JSON syntax
+   - Ensure file permissions
+
+2. **Method Not Allowed**
+   - Check `AllowedMethods` array
+   - Verify method name spelling
+   - Consider environment restrictions
+
+3. **Environment Access Denied**
+   - Verify `AllowedEnvironments` includes target environment
+   - Check environment name spelling
+   - Ensure environment is configured in settings
+
+4. **Composite Step Failures**
+   - Verify endpoint names match exactly
+   - Check step dependencies
+   - Validate transformation syntax
+   - Review step order
+
+5. **File Upload Failures**
+   - Check file extension against `AllowedExtensions`
+   - Verify file size is within limits
+   - Ensure base directory exists and is writable
+   - Check disk space availability
+
+6. **File Download Issues**
+   - Validate file ID format
+   - Check file existence in storage
+   - Verify environment matches upload environment
+   - Ensure permissions on storage location
+
+### Validation Checklist
+
+- [ ] Valid JSON syntax
+- [ ] Required properties present
+- [ ] Endpoint names match folder names
+- [ ] URLs are accessible
+- [ ] Methods are properly capitalized
+- [ ] Environment names match configuration
+- [ ] Column names match database schema
+- [ ] Stored procedure exists in database
+- [ ] File extensions in correct format (e.g., ".pdf" not "pdf")
+- [ ] Storage directories exist and are writable
+
+## Server Configuration Options
+
+### File Storage Configuration
+
+Additional options can be set in the server's `appsettings.json`:
+
+```json
+"FileStorage": {
+  "StorageDirectory": "files",          // Root directory for all files
+  "MaxFileSizeBytes": 52428800,         // 50MB default
+  "UseMemoryCache": true,               // Enable memory caching
+  "MemoryCacheTimeSeconds": 60,         // Cache duration
+  "MaxTotalMemoryCacheMB": 200,         // Memory cache limit
+  "BlockedExtensions": [                // Globally blocked extensions
+    ".exe", ".dll", ".bat", ".sh", 
+    ".cmd", ".msi", ".vbs"
+  ]
+}
+```
+
+### Environment Configuration
+
+Configure allowed environments in `environments/settings.json`:
+
+```json
+{
+  "Environment": {
+    "ServerName": "localhost",
+    "AllowedEnvironments": ["prod", "dev"]
+  }
+}
+```
+
+## Related Topics
+
+- [Environment Settings](/reference/configuration/environment-settings) - Environment configuration
+- [API Overview](/reference/api/overview) - API endpoint patterns
+- [SQL Endpoints](/guide/endpoints/sql) - SQL endpoint guide
+- [Composite Endpoints](/guide/endpoints/composite) - Composite endpoint guide
+- [File Operations](/guide/endpoints/files) - File handling guide

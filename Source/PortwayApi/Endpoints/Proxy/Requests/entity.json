@@ -1,0 +1,14 @@
+{ 
+    "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc/Request", 
+    "Methods": ["GET"],
+    "AllowedEnvironments": ["Synergy"],
+    "Documentation": {
+        "TagDescription": "**External Requests**\n\nAccess workflow information. Retrieve request records and integration data for cross-system synchronization and reporting.",
+        "MethodDescriptions": {
+            "GET": "Query request data"
+        },
+        "MethodDocumentation": {
+            "GET": "Retrieve workflow records from the internal system. **Caution:** This operation may return a large dataset."
+        }
+    }
+} 

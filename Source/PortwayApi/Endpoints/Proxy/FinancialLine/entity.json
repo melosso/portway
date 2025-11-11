@@ -1,0 +1,11 @@
+{
+    "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/FinancialLine", 
+    "Methods": ["POST"],
+    "IsPrivate": true,
+    "Documentation": {
+        "TagDescription": "**Financial Lines**\n\nInternal endpoint for managing individual financial transaction line items. Handles account allocations, amounts, and transaction details for complex financial entries.",
+        "MethodDescriptions": {
+            "POST": "Create financial transaction line items with account allocations (internal use only)"
+        }
+    }
+}

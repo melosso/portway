@@ -1,0 +1,14 @@
+{
+    "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/SalesOrderHeader", 
+    "Methods": ["POST"],
+    "IsPrivate": true,
+    "Documentation": {
+        "TagDescription": "**Sales Order Headers**\n\nInternal endpoint for managing sales order header records. Contains customer information, order dates, and main order details used by composite order creation workflows.",
+        "MethodDescriptions": {
+            "POST": "Create sales order header records with customer and order information (internal use only)"
+        },
+        "MethodDocumentation": {
+            "POST": "Creates the main order record containing customer details, delivery information, and order metadata. **Internal component** used by complete order processing workflows."
+        }
+    }
+}

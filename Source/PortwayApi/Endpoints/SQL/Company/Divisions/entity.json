@@ -1,0 +1,41 @@
+{
+  "DatabaseSchema": "Portway",
+  "DatabaseObjectName": "CompanyDivisions",
+  "Namespace": "Company",
+  "NamespaceDisplayName": "Company",
+  "IsPrivate": false,
+  "AllowedEnvironments": ["600", "700", "Synergy"],
+  "Documentation": {
+    "Summary": "Retrieve division data",
+    "Description": "Access and manage company division records, including division details, management assignments, locations, and operational information. Useful for organizational structure, reporting, and business analysis.",
+    "TagDescription": "Retrieve and manage company information and related organizational settings."
+  },
+  "Properties": {
+    "CacheEnabled": true,
+    "CacheDurationMinutes": 5,
+    "MaxPageSize": 200,
+    "DefaultSort": "DivisionName ASC"
+  },
+  "AllowedColumns": [
+    "DivisionId",
+    "DivisionName",
+    "ParentDivisionId",
+    "DivisionHeadId",
+    "DivisionHeadName",
+    "DepartmentCount",
+    "EmployeeCount",
+    "Location",
+    "Region",
+    "Budget",
+    "CreatedDate",
+    "ModifiedDate",
+    "IsActive",
+    "LastReviewDate",
+    "StrategicFocus"
+  ],
+  "RequiredColumns": [
+    "DivisionName",
+    "DivisionHeadId",
+    "IsActive"
+  ]
+}

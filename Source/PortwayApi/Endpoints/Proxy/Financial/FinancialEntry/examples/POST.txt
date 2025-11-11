@@ -1,0 +1,50 @@
+{
+  "Header": {
+    "Journal": "70",
+    "Description": "Invoice Example May 2025",
+    "YourReference": "REF12345",
+    "EntryDateString": "2025-05-04",
+    "ReportingDateString": "2025-05-04",
+    "CreditorNumber": "C1001",
+    "PaymentCondition": "60",
+    "FulfillmentDateString": "2025-05-04",
+    "InvoiceDueDateString": "2025-07-03",
+    "CurrencyCode": "EUR",
+    "CurrencyRate": 1
+  },
+  "Lines": [
+    {
+      "GLAccount": "3550",
+      "EntryDateString": "2025-05-04",
+      "ReportingDateString": "2025-05-04",
+      "FulfillmentDateString": "2025-05-04",
+      "Amount": 0.05,
+      "Description": "VAT rounding adjustment",
+      "VATCode": "0",
+      "VATAmount": 0,
+      "CurrencyCode": "EUR"
+    },
+    {
+      "GLAccount": "3550",
+      "EntryDateString": "2025-05-04",
+      "ReportingDateString": "2025-05-04",
+      "FulfillmentDateString": "2025-05-04",
+      "Amount": 120.00,
+      "Description": "Service invoice (excl. VAT)",
+      "VATCode": "5",
+      "VATAmount": 25.20,
+      "CurrencyCode": "EUR"
+    },
+    {
+      "GLAccount": "8006",
+      "EntryDateString": "2025-05-04",
+      "ReportingDateString": "2025-05-04",
+      "FulfillmentDateString": "2025-05-04",
+      "Amount": 5.00,
+      "Description": "Admin fee (excl. VAT)",
+      "VATCode": "5",
+      "VATAmount": 1.05,
+      "CurrencyCode": "EUR"
+    }
+  ]
+}
