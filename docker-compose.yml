@@ -1,26 +1,27 @@
-name: portway-stack
 services:
-  portwayapi:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: portwayapi
+  portway:
+    image: ghcr.io/melosso/portway:latest
     ports:
-      - "9000:8080"
+      - "8080:8080"
     volumes:
-      # Mount these directories for persistence and configuration
-      - portwayapi-data:/app/auth.db
-      - ./endpoints:/app/endpoints
+      - portway_app:/app
       - ./environments:/app/environments
+      - ./endpoints:/app/endpoints
       - ./tokens:/app/tokens
       - ./log:/app/log
+      - ./data:/app/data
     environment:
+      # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - ASPNETCORE_URLS=http://+:8080
       - USE_HTTPS=false
+      
+      # Proxy settings for Kerberos/NTLM
       # - PROXY_USERNAME=serviceaccount
       # - PROXY_PASSWORD=password
       # - PROXY_DOMAIN=YOURDOMAIN
+      # Azure credentials
+      
       # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
       # - AZURE_CLIENT_ID=your-client-id
       # - AZURE_TENANT_ID=your-tenant-id
@@ -32,7 +33,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
 volumes:
-  portwayapi-data:
-    name: portwayapi-data
-    driver: local
+  portway_app:

@@ -3,7 +3,6 @@
 [![License](https://img.shields.io/badge/license-AGPL%203.0-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Sync-in/melosso/portway)
 
 **Portway** is a fast, lightweight API gateway optimized for Windows Server environments. It offers fine-grained access to SQL Server data and supports flexible service proxying, with full environment-awareness, secure authentication, and automatic (developer friendly) documentation.
 
@@ -13,7 +12,7 @@ Applications that benefit from Portway are businesses looking to unlock their SQ
 
 A quick example to give you an idea of what this is all about:
 
-![Screenshot of Portway](https://github.com/melosso/portway/blob/main/Source/example.png?raw=true)
+![Screenshot of Portway](https://github.com/melosso/portway/blob/main/.github/images/example.webp)
 
 ## 🧩 Key Features
 

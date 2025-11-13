@@ -54,19 +54,31 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
+      # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - ASPNETCORE_URLS=http://+:8080
       - USE_HTTPS=false
-      - PROXY_USERNAME=serviceaccount
-      - PROXY_PASSWORD=password
-      - PROXY_DOMAIN=YOURDOMAIN
+      
+      # Proxy settings for Kerberos/NTLM
+      # - PROXY_USERNAME=serviceaccount
+      # - PROXY_PASSWORD=password
+      # - PROXY_DOMAIN=YOURDOMAIN
+
+      # Azure credentials
       # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
       # - AZURE_CLIENT_ID=your-client-id
       # - AZURE_TENANT_ID=your-tenant-id
       # - AZURE_CLIENT_SECRET=your-client-secret
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
       
-  volumes:
-    portway_app:
+volumes:
+  portway_app:
 ```
 
 ### Core Settings
