@@ -88,7 +88,7 @@ Then run:
 docker compose pull && docker compose up -d
 ```
 
-This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment.
+This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment. Before you can start using the API, you'll have to configure your environment settings and endpoint configurations.
 
 ### 2. Configure Your Environments
 
