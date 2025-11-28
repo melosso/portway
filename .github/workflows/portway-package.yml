@@ -1,15 +1,13 @@
-name: Publish As Container Package
+name: Build And Push As Docker Image
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-  release:
-    types:
-      - published
-      - created
+    tags:    [ '[0-9][0-9][0-9][0-9].*' ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
 
 env:
   DOTNET_VERSION: '9.0'
