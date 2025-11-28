@@ -1,4 +1,5 @@
-name: Publish As Release
+name: Build and Push As Release
+
 on:
   workflow_dispatch:
     inputs:
@@ -6,6 +7,7 @@ on:
         description: 'Tag name (e.g. 2025.1.0)'
         required: true
         type: string
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
