@@ -4,9 +4,9 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-**Portway** is a fast, lightweight API gateway optimized for Windows Server environments. It offers fine-grained access to SQL Server data and supports flexible service proxying, with full environment-awareness, secure authentication, and automatic (developer friendly) documentation.
+**Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in OData support, handling critical requirements like environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting automatically.
 
-Applications that benefit from Portway are businesses looking to unlock their SQL Server data through modern APIs, companies modernizing legacy systems without costly rewrites, and organizations needing integration between internal services and external partners or software.
+Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through comprehensive logging and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
 > 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)  |   🧪 [Live Demo](https://portway-demo.melosso.com/)
 
@@ -14,43 +14,35 @@ A quick example to give you an idea of what this is all about:
 
 ![Screenshot of Portway](https://github.com/melosso/portway/blob/main/.github/images/example.webp)
 
-## Core Features
-
-Portway is built with flexibility and control in mind. Whether you're proxying services or exposing SQL endpoints, this API gateway adapts to your infrastructure with secure, high-performance routing. Configuration can be done quickly by setting up a minimum amount of configuration files.
-
-* **Multiple endpoint types**: Endpoints can be set up easily for various purposes. They can also be grouped together or kept separate by using namespaces.
-* **OData query support**: Filter, select, sort, and paginate data using standard OData v4 query parameters (`$filter`, `$select`, `$orderby`, `$top`, `$skip`)
-* **Auth system**: Token-based, with Azure Key Vault integration
-* **Environment-aware routing**: All your environments can be isolated and configured
-* **Built-in documentation**: Every endpoint is documented out of the box
-* **Comprehensive logging**: Request/response tracing, including live monitoring (configurable)
-* **Rate limiting**: Easy to configure (e.g. per IP or Token)
-
-In other words, Portway is an open-source API gateway that's easily configured, but is built with common application requirements in mind.
-
 ## Prerequisites
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
 * [.NET 9+ Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
-* IIS (production hosting) if hosting on Windows (preferred)
-* SQL Server access (for SQL endpoints)
-* Local filesystem access for configuring/running the application
+* If you're running on Windows: Internet Information Services (IIS)
+* SQL Server access (if you're using SQL endpoints)
 
 Ready to go? Then lets continue:
 
-## 🚀 Getting Started
+## Getting Started
 
 Follow these steps to get Portway up and running in your environment. Setup is fast and modular, making it easy to configure just what you need.
 
-
 ### 1. Download & Extract
 
-Grab the [latest release](https://github.com/melosso/portway/releases) and extract it to your deployment folder. It already includes a set of example environment and endpoint configurations.
+Grab the [latest release](https://github.com/melosso/portway/releases) and extract it to your deployment folder. This build already includes a set of example environment and endpoint configurations. 
+
+Note, before configuring the application in Internet Information Services, make sure to configure your environment-specific secret:
+
+```powershell
+$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+```
+
+On containerized environments, this can be done with the identically named `PORTWAY_ENCRYPTION_KEY` variable.
 
 ---
 
-#### **Alternative: Docker Compose (Recommended for Home Lab)**
+#### **Alternative: Docker Compose**
 
 You can quickly deploy Portway using Docker Compose and the official image:
 
@@ -83,9 +75,9 @@ docker compose pull && docker compose up -d
 
 This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment. Before you can start using the API, you'll have to configure your environment settings and endpoint configurations.
 
-### 2. Configure Your Environments
+### 2. Define Your Environments
 
-Define your server and environment settings to isolate dev/staging/prod as needed. These configs are used across endpoints and logging.
+Define your server and environment settings to isolate the various environments you may require (e.g. `prod` and `dev`). These configurations are used across the endpoints that you'll configure later on. First configure the allowed environments, after which the individual environment has to be defined:
 
 **`environments/settings.json`**
 
@@ -106,8 +98,6 @@ Define your server and environment settings to isolate dev/staging/prod as neede
   "ConnectionString": "Server=localhost;Database=prod;Trusted_Connection=True;Connection Timeout=5;TrustServerCertificate=true;"
 }
 ```
-
-Here’s your rewrite, keeping the same tone and structure style you used for the SQL section. Each endpoint type is wrapped in its own expandable block and the descriptions are rewritten so they read more like something you’d actually say to a coworker.
 
 ---
 
@@ -253,20 +243,16 @@ When an external service needs to push data into your system, this is the entry 
 
 </details>
 
-### 4. Prepare your Deployment
+ 
 
-If you're choosing to deploy the services on Windows, please make sure to prepare your environment: you'll need to safely store the application encryption key. On containerized environments, this can be done with the identically named PORTWAY_ENCRYPTION_KEY variable.
-
-```powershell
-$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
-```
-
-### 5. Deploy
+### 4. Deploy
 
 When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
 
 > [!TIP] 
 >  If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
+
+---
 
 ## Security
 
@@ -301,6 +287,8 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 ### Protecting Secrets
 
 Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
+
+---
 
 ## Examples
 
@@ -392,6 +380,8 @@ Content-Type: application/json
 
 You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
 
+---
+
 ## Documentation
 
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
@@ -401,6 +391,8 @@ The application uses [Scalar](https://github.com/scalar/scalar) to render your O
 
 ### Schema discovery
 Portway automatically generates API documentation by reading your database schema at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. If you're using Windows Authentication (`Trusted_Connection=True`), ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. With SQL Authentication, each environment uses its own credentials.
+
+---
 
 ## Credits
 
