@@ -165,15 +165,15 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             Type = "object",
             Properties = new Dictionary<string, OpenApiSchema>
             {
-                ["success"] = new OpenApiSchema { Type = "boolean" },
-                ["files"] = new OpenApiSchema
+                ["Success"] = new OpenApiSchema { Type = "boolean" },
+                ["Count"] = new OpenApiSchema { Type = "integer" },
+                ["Value"] = new OpenApiSchema
                 {
                     Type = "array",
                     Items = new OpenApiSchema { Reference = new OpenApiReference { Type = ReferenceType.Schema, Id = "FileInfo" } }
-                },
-                ["count"] = new OpenApiSchema { Type = "integer" }
+                }
             },
-            Required = new HashSet<string> { "success", "files", "count" }
+            Required = new HashSet<string> { "Success", "Count", "Value" }
         };
     }
 
@@ -262,9 +262,17 @@ public class FileEndpointDocumentFilter : IDocumentFilter
         // Success response
         operation.Responses = new OpenApiResponses
         {
-            ["200"] = new OpenApiResponse
+            ["201"] = new OpenApiResponse
             {
-                Description = "Successful response",
+                Description = "Created - File successfully uploaded",
+                Headers = new Dictionary<string, OpenApiHeader>
+                {
+                    ["Location"] = new OpenApiHeader
+                    {
+                        Description = "URL of the newly uploaded file",
+                        Schema = new OpenApiSchema { Type = "string" }
+                    }
+                },
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
@@ -288,7 +296,32 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             ["400"] = new OpenApiResponse { Description = "Bad request - invalid file or request" },
             ["401"] = new OpenApiResponse { Description = "Unauthorized" },
             ["403"] = new OpenApiResponse { Description = "Forbidden - file type not allowed" },
-            ["413"] = new OpenApiResponse { Description = "Payload Too Large - file exceeds size limit" }
+            ["409"] = new OpenApiResponse { Description = "Conflict - file already exists (when overwrite is false)" },
+            ["413"] = new OpenApiResponse { Description = "Payload Too Large - file exceeds size limit" },
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["success"] = new OpenApiSchema { Type = "boolean" },
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["success"] = new OpenApiBoolean(false),
+                            ["error"] = new OpenApiString("An error occurred while uploading the file")
+                        }
+                    }
+                }
+            }
         };
 
         // Add file endpoint properties info
@@ -374,7 +407,31 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             },
             ["400"] = new OpenApiResponse { Description = "Bad request - invalid file ID" },
             ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "File not found" }
+            ["404"] = new OpenApiResponse { Description = "File not found" },
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["success"] = new OpenApiSchema { Type = "boolean" },
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["success"] = new OpenApiBoolean(false),
+                            ["error"] = new OpenApiString("An error occurred while downloading the file")
+                        }
+                    }
+                }
+            }
         };
 
         // Add file endpoint properties info
@@ -464,7 +521,31 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             },
             ["400"] = new OpenApiResponse { Description = "Bad request - invalid file ID" },
             ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "File not found" }
+            ["404"] = new OpenApiResponse { Description = "File not found" },
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["success"] = new OpenApiSchema { Type = "boolean" },
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["success"] = new OpenApiBoolean(false),
+                            ["error"] = new OpenApiString("An error occurred while deleting the file")
+                        }
+                    }
+                }
+            }
         };
 
         // Add examples
@@ -539,6 +620,24 @@ public class FileEndpointDocumentFilter : IDocumentFilter
             ["200"] = new OpenApiResponse
             {
                 Description = "Successful response",
+                Headers = new Dictionary<string, OpenApiHeader>
+                {
+                    ["X-Total-Count"] = new OpenApiHeader
+                    {
+                        Description = "Total number of files available (when $count=true)",
+                        Schema = new OpenApiSchema { Type = "integer" }
+                    },
+                    ["X-Returned-Count"] = new OpenApiHeader
+                    {
+                        Description = "Number of files returned in this response",
+                        Schema = new OpenApiSchema { Type = "integer" }
+                    },
+                    ["X-Has-More-Results"] = new OpenApiHeader
+                    {
+                        Description = "Indicates if more files are available (true/false)",
+                        Schema = new OpenApiSchema { Type = "boolean" }
+                    }
+                },
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
@@ -548,8 +647,9 @@ public class FileEndpointDocumentFilter : IDocumentFilter
                             Type = "object",
                             Properties = new Dictionary<string, OpenApiSchema>
                             {
-                                ["success"] = new OpenApiSchema { Type = "boolean" },
-                                ["files"] = new OpenApiSchema
+                                ["Success"] = new OpenApiSchema { Type = "boolean" },
+                                ["Count"] = new OpenApiSchema { Type = "integer" },
+                                ["Value"] = new OpenApiSchema
                                 {
                                     Type = "array",
                                     Items = new OpenApiSchema
@@ -565,15 +665,38 @@ public class FileEndpointDocumentFilter : IDocumentFilter
                                             ["url"] = new OpenApiSchema { Type = "string" }
                                         }
                                     }
-                                },
-                                ["count"] = new OpenApiSchema { Type = "integer" }
+                                }
                             }
                         }
                     }
                 }
             },
             ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "Endpoint not found" }
+            ["404"] = new OpenApiResponse { Description = "Endpoint not found" },
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["success"] = new OpenApiSchema { Type = "boolean" },
+                                ["error"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["success"] = new OpenApiBoolean(false),
+                            ["error"] = new OpenApiString("An error occurred while listing files")
+                        }
+                    }
+                }
+            }
         };
 
         // Add examples

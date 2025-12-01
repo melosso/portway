@@ -1,69 +1,97 @@
 # Guide
 
-Welcome to the Portway documentation! This guide will walk you through everything you need to know to set up, configure, and use Portway API Gateway effectively.
+Here’s where you get the practical context before setting up your first endpoint. If you’re new to Portway, this page gives you the high-level picture so you know what to expect as you move through the docs.
 
 ## Quick Links
 
-We've set-up some quick links to get you up-and-running in no time:
+Most people start with installation, deployment, or security configuration, so these shortcuts take you straight there.
 
-- [Getting Started](./getting-started) - Install and configure your first endpoint
-- [Deployment](./deployment) - Production deployment with IIS
-- [Security](./security) - Authentication, authorization, and best practices
+* [Getting Started](./getting-started)
+* [Deployment](./deployment)
+* [Security](./security)
 
-## What is Portway?
+## What Is Portway?
 
-TLDR: Portway is a lightweight API gateway designed specifically for Windows environments. It provides a unified interface to:
+Portway is an API gateway built for Windows environments. It sits in front of SQL Server, internal services, and static content, and exposes them through a consistent REST interface. If you’re running a mix of legacy systems and new services, Portway gives you a way to surface them without rewriting anything.
 
-- **SQL Server databases** - Expose tables and stored procedures as REST APIs
-- **Internal services** - Proxy requests to internal web services with authentication
-- **Static content** - Serve JSON, XML, CSV files with optional OData filtering
-- **Webhook endpoints** - Receive and process webhooks from external systems
-- **Composite operations** - Chain multiple operations in a single request
+It works with:
 
-We've optimized the application to be running prodominantly in Windows-environments.
+* SQL Server tables and stored procedures
+* Internal web services that need authentication
+* JSON, XML, and CSV files
+* Incoming webhooks
+* Multi-step composite operations
 
-## Key Features
+---
 
-We've built Portway in a way to include commonly requested features, with security and flexibility in mind:
+# Core Concepts
 
-#### Security
-- Token-based authentication with scoped access
-- Environment-specific access controls
-- Always-on Encryption
-- Azure Key Vault integration for secrets
-- Rate limiting and request validation
+These are the ideas that shape how Portway works. You’ll see each one referenced throughout the documentation, so a quick overview here helps when you’re configuring endpoints later.
 
-#### Environment Awareness
-- Route requests to different environments (dev, test, prod)
-- Environment-specific configurations
-- Isolated connection strings and headers
+## Security
 
-#### Developer Experience
-- Automatic API documentation
-- Comprehensive logging and tracing
-- Health check endpoints
-- Simple JSON-based configuration
+Portway includes built-in mechanisms to control who can access what and how requests move between environments.
 
-#### Flexible Endpoint Types
-- SQL endpoints with OData query support
-- Proxy endpoints for service forwarding
-- Composite endpoints for multi-step operations
-- File endpoints for document storage and retrieval
-- Webhook endpoints for external integrations
-- Static endpoints for serving content files
+<details>
+<summary>Show details</summary>
 
-## Getting Help
+* Token authentication
+* Scoped permissions
+* Environment-aware controls
+* Encryption
+* Azure Key Vault integration
+* Rate limiting and request validation
 
-We're here to help, but we may require your effort on polishing Portway.
+</details>
 
-- **Issues**: [GitHub Issues](https://github.com/melosso/portway/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/melosso/portway/issues)
+## Environment Awareness
 
-## Licensing
+Environments are treated as independent spaces. This keeps configuration clean and avoids cross-contamination between dev, test, and production.
 
-Portway is available under two licensing models:
+<details>
+<summary>Show details</summary>
 
-* **Open Source (AGPL-3.0)** — Free for open source projects and personal use
-* **Commercial License** — For commercial use without open source requirements
+* Routing based on environment
+* Environment-specific configuration
+* Isolated headers and connection strings
 
-Professional features such as priority support and guaranteed patches require a [commercial license](https://melosso.com/licensing/portway). Feel free to contact us.
+</details>
+
+## Developer Experience
+
+A few tools are included so you can understand what’s happening at runtime and debug issues without extra setup.
+
+<details>
+<summary>Show details</summary>
+
+* Auto-generated API documentation
+* Logging and tracing
+* Health endpoints
+* JSON-based configuration
+
+</details>
+
+## Endpoint Types
+
+Everything Portway exposes fits into a small set of endpoint categories. Knowing these helps you decide which one matches your use case.
+
+<details>
+<summary>Show details</summary>
+
+* SQL endpoints with OData query support
+* Proxy endpoints for forwarding requests
+* Composite endpoints for multi-step workflows
+* File endpoints for storage and retrieval
+* Webhook receivers
+* Static file endpoints
+
+</details>
+
+---
+
+# What’s Next?
+
+If you’re ready to dig deeper, the next sections walk through installation, configuring endpoints, and deploying to production. If you run into something unexpected, the GitHub links are the fastest way to get help or report an issue.
+
+* **Issues:** [https://github.com/melosso/portway/issues](https://github.com/melosso/portway/issues)
+* **Discussions:** [https://github.com/melosso/portway/discussions](https://github.com/melosso/portway/discussions)

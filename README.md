@@ -14,27 +14,21 @@ A quick example to give you an idea of what this is all about:
 
 ![Screenshot of Portway](https://github.com/melosso/portway/blob/main/.github/images/example.webp)
 
-## 🧩 Key Features
+## Core Features
 
 Portway is built with flexibility and control in mind. Whether you're proxying services or exposing SQL endpoints, this API gateway adapts to your infrastructure with secure, high-performance routing. Configuration can be done quickly by setting up a minimum amount of configuration files.
 
 * **Multiple endpoint types**: Endpoints can be set up easily for various purposes. They can also be grouped together or kept separate by using namespaces.
-
-  * **SQL Server** — direct CRUD access with schema-level control and documentation
-  * **Proxy** — forward to internal services; supports complex orchestration
-  * **File System** — read/write from local storage or cache
-  * **Webhook** — receive external calls and persist data to SQL
-  * **Static** — read static files or set up a mock endpoint
 * **OData query support**: Filter, select, sort, and paginate data using standard OData v4 query parameters (`$filter`, `$select`, `$orderby`, `$top`, `$skip`)
 * **Auth system**: Token-based, with Azure Key Vault integration
 * **Environment-aware routing**: All your environments can be isolated and configured
 * **Built-in documentation**: Every endpoint is documented out of the box
 * **Comprehensive logging**: Request/response tracing, including live monitoring (configurable)
-* **Rate limiting**: Easy to configure, protects downstream systems
+* **Rate limiting**: Easy to configure (e.g. per IP or Token)
 
 In other words, Portway is an open-source API gateway that's easily configured, but is built with common application requirements in mind.
 
-## ⚙️ Requirements
+## Prerequisites
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
@@ -113,27 +107,50 @@ Define your server and environment settings to isolate dev/staging/prod as neede
 }
 ```
 
+Here’s your rewrite, keeping the same tone and structure style you used for the SQL section. Each endpoint type is wrapped in its own expandable block and the descriptions are rewritten so they read more like something you’d actually say to a coworker.
+
+---
+
 ### 3. Define Your Endpoints
 
-Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend.
+Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our [documentation page](https://portway-docs.melosso.com/). There are various types that Portway supports:
 
-#### SQL Endpoint — `endpoints/SQL/Products/entity.json`
+* **SQL Server**: Direct CRUD access with schema-level control and documentation
+* **Proxy**: Forward to internal services; supports complex orchestration
+* **File System**: Read/write from local storage or cache (In memory and/or Redis)
+* **Webhook**: Receive external calls and persist data to SQL
+* **Static**: read static files or set up a mock endpoint
 
-Exposes a SQL table with restricted columns and CRUD operations. Use column aliasing (> 2025.10.0) to prevent exposing sensitive field names.
+These are handled seperately below:
+
+<details>
+<summary>SQL Endpoints</summary>
+These point straight at your database tables. You choose which columns get exposed and what their public names should be. It keeps the surface area clean and lets you hide internal schemas or naming quirks.
+
+#### Example — `endpoints/SQL/Products/entity.json`
 
 ```json
 {
   "DatabaseObjectName": "Items",
   "DatabaseSchema": "dbo",
   "PrimaryKey": "ItemCode",
-  "AllowedColumns": ["ItemCode;ProductNumber", "LongDescription;Description", "Assortment;AssortmentCode", "sysguid;InternalID"],
+  "AllowedColumns": [
+    "ItemCode;ProductNumber",
+    "LongDescription;Description",
+    "Assortment;AssortmentCode",
+    "sysguid;InternalID"
+  ],
   "AllowedEnvironments": ["prod", "dev"]
 }
 ```
 
-#### Proxy Endpoint — `endpoints/Proxy/Accounts/entity.json`
+</details>
+<br>
+<details>
+<summary>Proxy Endpoints</summary>
+These just pass the call through to another service. It’s basically a small reverse proxy where you decide which HTTP verbs you want to support.
 
-Acts as a reverse proxy for internal services with full method control.
+#### Example — `endpoints/Proxy/Accounts/entity.json`
 
 ```json
 {
@@ -143,9 +160,13 @@ Acts as a reverse proxy for internal services with full method control.
 }
 ```
 
-#### Composite Endpoint — `endpoints/Proxy/SalesOrder/entity.json`
+</details>
+<br>
+<details>
+<summary>Composite Endpoints</summary>
+These help when a single logical action actually means “call a bunch of other endpoints in a specific order.” Think of creating an order with multiple lines and a header. You wire the steps together and the engine handles the sequencing.
 
-Combines multiple calls into a single logical transaction for APIs requiring sequential or nested operations.
+#### Example — `endpoints/Proxy/SalesOrder/entity.json`
 
 ```json
 {
@@ -180,9 +201,13 @@ Combines multiple calls into a single logical transaction for APIs requiring seq
 }
 ```
 
-#### Static Endpoint — `endpoints/Static/ProductionMachine/entity.json`
+</details>
+<br>
+<details>
+<summary>Static Endpoints</summary>
+Sometimes you just want to serve a file. JSON, XML, CSV, whatever. These endpoints expose static content and can still use OData filtering if you turn it on.
 
-Serves static content (JSON, XML, CSV, etc.) with optional OData filtering support.
+#### Example — `endpoints/Static/ProductionMachine/entity.json`
 
 ```json
 {
@@ -193,9 +218,13 @@ Serves static content (JSON, XML, CSV, etc.) with optional OData filtering suppo
 }
 ```
 
-#### Files Endpoint — `endpoints/Files/Documents/entity.json`
+</details>
+<br>
+<details>
+<summary>Files Endpoints</summary>
+This is for storing or retrieving actual files rather than rows or JSON. Handy for documents, images, exports.
 
-Stores and serves files such as documents, images, or data files.
+#### Example — `endpoints/Files/Documents/entity.json`
 
 ```json
 {
@@ -206,9 +235,13 @@ Stores and serves files such as documents, images, or data files.
 }
 ```
 
-#### Webhook Endpoint — `endpoints/Webhooks/entity.json`
+</details>
+<br>
+<details>
+<summary>Webhook Endpoints</summary>
+When an external service needs to push data into your system, this is the entry point. The payload goes straight into your table of choice.
 
-Used for receiving and storing webhook payloads directly into your database.
+#### Example — `endpoints/Webhooks/entity.json`
 
 ```json
 {
@@ -218,12 +251,13 @@ Used for receiving and storing webhook payloads directly into your database.
 }
 ```
 
+</details>
+
 ### 4. Prepare your Deployment
 
 If you're choosing to deploy the services on Windows, please make sure to prepare your environment: you'll need to safely store the application encryption key. On containerized environments, this can be done with the identically named PORTWAY_ENCRYPTION_KEY variable.
 
 ```powershell
-# Immediately stores the encryption key to your System Environment Variables
 $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
 ```
 
@@ -234,7 +268,7 @@ When you're ready to host your application in IIS, there are a few important thi
 > [!TIP] 
 >  If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
 
-## 🔐 Auth & Security
+## Security
 
 ### Token-Based Authentication
 
@@ -247,7 +281,7 @@ Saved to /tokens/SERVER-1.txt
 
 Include the token in request headers, with the Bearer prefix included:
 
-```http
+```bash
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
@@ -268,7 +302,7 @@ Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 
 Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
 
-## 📡 API Examples
+## Examples
 
 Here are some common requests you'll make using Portway's endpoints.
 
@@ -276,7 +310,7 @@ Here are some common requests you'll make using Portway's endpoints.
 
 Query specific data with full OData support:
 
-```http
+```bash
 GET /api/prod/Products?$filter=Assortment eq 'Books'&$select=ItemCode,Description
 ```
 
@@ -284,7 +318,7 @@ GET /api/prod/Products?$filter=Assortment eq 'Books'&$select=ItemCode,Descriptio
 
 Forward calls to internal REST services:
 
-```http
+```bash
 GET /api/prod/Accounts
 POST /api/prod/Accounts
 ```
@@ -293,7 +327,7 @@ POST /api/prod/Accounts
 
 Chain together multiple operations into one:
 
-```http
+```bash
 POST /api/prod/composite/SalesOrder
 Content-Type: application/json
 {
@@ -312,7 +346,7 @@ Content-Type: application/json
 
 Serve static content with the (optional) OData filtering:
 
-```http
+```bash
 GET /api/prod/ProductionMachine?$top=1&$filter=status eq 'running'
 Accept: application/xml
 ```
@@ -321,7 +355,7 @@ Accept: application/xml
 
 Depending on your configuration, you could upload, list, and download files.
 
-```http
+```bash
 POST /api/prod/files/Documents
 Authorization: Bearer YOUR_TOKEN
 Content-Type: multipart/form-data
@@ -329,13 +363,13 @@ file=@report.pdf
 ```
 
 List files:
-```http
+```bash
 GET /api/prod/files/Documents/list
 Authorization: Bearer YOUR_TOKEN
 ```
 
 Download a file:
-```http
+```bash
 GET /api/prod/files/Documents/abc123fileId
 Authorization: Bearer YOUR_TOKEN
 ```
@@ -344,7 +378,7 @@ Authorization: Bearer YOUR_TOKEN
 
 Receive data from external services:
 
-```http
+```bash
 POST /api/prod/webhook/webhook1
 Content-Type: application/json
 {
@@ -358,7 +392,7 @@ Content-Type: application/json
 
 You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
 
-## 📔 Documentation
+## Documentation
 
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
 
@@ -368,21 +402,7 @@ The application uses [Scalar](https://github.com/scalar/scalar) to render your O
 ### Schema discovery
 Portway automatically generates API documentation by reading your database schema at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. If you're using Windows Authentication (`Trusted_Connection=True`), ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. With SQL Authentication, each environment uses its own credentials.
 
-## 📊 Logging & Monitoring
-
-Portway provides visibility into its operations with detailed logs and health check endpoints.
-
-* Logs stored under `/log` with daily rotation
-* Auth logs included for auditing
-* Health endpoints:
-
-  ```http
-  GET /health
-  GET /health/live
-  GET /health/details
-  ```
-
-## 🤝 Credits
+## Credits
 
 Thanks to the open source tools that make Portway possible:
 
@@ -394,14 +414,7 @@ Thanks to the open source tools that make Portway possible:
 
 ## License
 
-Portway is available under two licensing models:
-
-* **Open Source (AGPL-3.0)** — Free for open source projects and (personal) use
-* **Commercial License** — For commercial use with full transparency of the open source project
-
-A [commercial license](https://melosso.com/licensing/portway) is available for businesses and enterprises that require formal guarantees. This license includes features such as **priority support**, **guaranteed patches**, and **DTAP environment support**.
-
-[Get your license →](https://melosso.com/licensing/portway)
+Free for open source projects and personal use under the **AGPL 3.0** license. For more information, please see the [license](LICENSE) file.
 
 ## Contribution 
 

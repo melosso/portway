@@ -345,7 +345,10 @@ try
     // 3. Security headers (early security)
     app.UseSecurityHeaders();
 
-    // 4. HTTPS redirection and forwarded headers (before static files)
+    // 4. Content negotiation (validates Content-Type, ensures response headers)
+    app.UseContentNegotiation();
+
+    // 5. HTTPS redirection and forwarded headers (before static files)
     var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor |
@@ -357,6 +360,7 @@ try
     forwardedHeadersOptions.KnownNetworks.Clear();
     forwardedHeadersOptions.KnownProxies.Clear();
     app.UseForwardedHeaders(forwardedHeadersOptions);
+
 
     // 5. Cloudflare-specific middleware
     app.Use((context, next) =>

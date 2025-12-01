@@ -114,19 +114,25 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
                 Type = "object",
                 Properties = new Dictionary<string, OpenApiSchema>
                 {
-                    ["count"] = new OpenApiSchema
+                    ["Success"] = new OpenApiSchema
+                    {
+                        Type = "boolean",
+                        Description = "Indicates if the request was successful",
+                        Example = new OpenApiBoolean(true)
+                    },
+                    ["Count"] = new OpenApiSchema
                     {
                         Type = "integer",
                         Description = "Total number of records returned",
                         Example = new OpenApiInteger(5)
                     },
-                    ["value"] = new OpenApiSchema
+                    ["Value"] = new OpenApiSchema
                     {
                         Type = "array",
                         Items = responseSchema,
                         Description = "Array of records"
                     },
-                    ["nextLink"] = new OpenApiSchema
+                    ["NextLink"] = new OpenApiSchema
                     {
                         Type = "string",
                         Nullable = true,
@@ -134,7 +140,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
                         Example = new OpenApiNull()
                     }
                 },
-                Required = new HashSet<string> { "count", "value" }
+                Required = new HashSet<string> { "Success", "Count", "Value" }
             };
 
             response.Content = new Dictionary<string, OpenApiMediaType>

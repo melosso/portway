@@ -462,7 +462,7 @@ var html = $@"
                 display: block;
             `;
 
-            const licenseTooltip = createTooltip('AGPL 3.0 License');
+            const licenseTooltip = createTooltip('Licensed under AGPL 3.0');
             licenseContainer.appendChild(licenseLink);
             licenseContainer.appendChild(licenseTooltip);
 
