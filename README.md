@@ -14,6 +14,8 @@ A quick example to give you an idea of what this is all about:
 
 ![Screenshot of Portway](https://github.com/melosso/portway/blob/main/.github/images/example.webp)
 
+---
+
 ## Prerequisites
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
@@ -29,6 +31,8 @@ Ready to go? Then lets continue:
 Follow these steps to get Portway up and running in your environment. Setup is fast and modular, making it easy to configure just what you need.
 
 ### 1. Download & Extract
+
+#### Windows Server (Recommended)
 
 Grab the [latest release](https://github.com/melosso/portway/releases) and extract it to your deployment folder. This build already includes a set of example environment and endpoint configurations. 
 
@@ -99,8 +103,6 @@ Define your server and environment settings to isolate the various environments 
 }
 ```
 
----
-
 ### 3. Define Your Endpoints
 
 Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our [documentation page](https://portway-docs.melosso.com/). There are various types that Portway supports:
@@ -111,7 +113,9 @@ Endpoints are configured as JSON files. Each type has its own directory and form
 * **Webhook**: Receive external calls and persist data to SQL
 * **Static**: read static files or set up a mock endpoint
 
-These are handled seperately below:
+These are handled seperately below: 
+
+<br>
 
 <details>
 <summary>SQL Endpoints</summary>
@@ -250,7 +254,7 @@ When an external service needs to push data into your system, this is the entry 
 When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
 
 > [!TIP] 
->  If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
+> It's worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For your primary source of general best practices, consider visiting [this post](https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577) on the [Microsoft Community Hub](https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577). For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
 
 ---
 
@@ -284,6 +288,10 @@ $env:KEYVAULT_URI = "https://your-keyvault-name.vault.azure.net/"
 
 Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
 
+### Application Identity
+
+If you're pointing a **Proxy** endpoint at something inside your network, you’ll want to double-check what identity the application will be running under. If the upstream service expects Windows Authentication (NTLM) and you haven't changed the application identity, the call may fail or authenticate as the wrong user. In setups where NTLM is unavoidable, assign the Application Pool to a domain account based on the principle of least privilege.
+
 ### Protecting Secrets
 
 Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
@@ -294,15 +302,21 @@ Portway automatically encrypts sensitive data in your environment settings files
 
 Here are some common requests you'll make using Portway's endpoints.
 
-### SQL
+<details>
+<summary>SQL</summary>
 
 Query specific data with full OData support:
 
 ```bash
 GET /api/prod/Products?$filter=Assortment eq 'Books'&$select=ItemCode,Description
-```
+````
 
-### Proxy
+</details>
+
+<details>
+<summary>Proxy</summary>
+
+<br>
 
 Forward calls to internal REST services:
 
@@ -311,7 +325,15 @@ GET /api/prod/Accounts
 POST /api/prod/Accounts
 ```
 
-### Composite
+> [!TIP] 
+>  If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. 
+
+</details>
+
+<details>
+<summary>Composite</summary>
+
+<br>
 
 Chain together multiple operations into one:
 
@@ -330,18 +352,24 @@ Content-Type: application/json
 }
 ```
 
-### Static
+</details>
 
-Serve static content with the (optional) OData filtering:
+<details>
+<summary>Static</summary>
+
+Serve static content with optional OData filtering:
 
 ```bash
 GET /api/prod/ProductionMachine?$top=1&$filter=status eq 'running'
 Accept: application/xml
 ```
 
-### Files
+</details>
 
-Depending on your configuration, you could upload, list, and download files.
+<details>
+<summary>Files</summary>
+
+Upload a file:
 
 ```bash
 POST /api/prod/files/Documents
@@ -351,18 +379,23 @@ file=@report.pdf
 ```
 
 List files:
+
 ```bash
 GET /api/prod/files/Documents/list
 Authorization: Bearer YOUR_TOKEN
 ```
 
 Download a file:
+
 ```bash
 GET /api/prod/files/Documents/abc123fileId
 Authorization: Bearer YOUR_TOKEN
 ```
 
-### Webhooks
+</details>
+
+<details>
+<summary>Webhooks</summary>
 
 Receive data from external services:
 
@@ -378,21 +411,19 @@ Content-Type: application/json
 }
 ```
 
-You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
+</details>
 
----
+You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
 
 ## Documentation
 
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
 
 ### Interactive documentation
-The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations. If necessary, the (deprecated) `/Swagger` route is also available (after configuration).
+The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations. If necessary, the `/Swagger` (deprecated) route is also available (but only after configuration).
 
 ### Schema discovery
 Portway automatically generates API documentation by reading your database schema at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. If you're using Windows Authentication (`Trusted_Connection=True`), ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. With SQL Authentication, each environment uses its own credentials.
-
----
 
 ## Credits
 
