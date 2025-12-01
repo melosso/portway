@@ -790,12 +790,12 @@ public class EndpointController : ControllerBase
         catch (InvalidOperationException ex)
         {
             // File already exists errors
-            return Conflict(new { error = ex.Message, code = "FILE_ALREADY_EXISTS" });
+            return Conflict(new { success = false, error = ex.Message, code = "FILE_ALREADY_EXISTS" });
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error uploading file for {Path}", Request.Path);
-            return StatusCode(500, new { error = "An error occurred while uploading the file" });
+            return StatusCode(500, new { success = false, error = "An error occurred while uploading the file" });
         }
     }
 
@@ -859,7 +859,7 @@ public class EndpointController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "Error downloading file for {Path}", Request.Path);
-            return StatusCode(500, new { error = "An error occurred while downloading the file" });
+            return StatusCode(500, new { success = false, error = "An error occurred while downloading the file" });
         }
     }
 
@@ -920,7 +920,7 @@ public class EndpointController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "Error deleting file for {Path}", Request.Path);
-            return StatusCode(500, new { error = "An error occurred while deleting the file" });
+            return StatusCode(500, new { success = false, error = "An error occurred while deleting the file" });
         }
     }
 
@@ -989,19 +989,22 @@ public class EndpointController : ControllerBase
                 lastModified = f.LastModified,
                 url = $"/api/{env}/files/{endpointName}/{f.FileId}",
                 isInMemoryOnly = f.IsInMemoryOnly
-            });
+            }).ToList();
+            
+            // Set pagination headers for consistency with other endpoints
+            SetPaginationHeaders(filesWithUrls.Count, filesWithUrls.Count, false);
             
             // Return the list
             return Ok(new { 
-                success = true, 
-                files = filesWithUrls,
-                count = filesWithUrls.Count() 
+                Success = true, 
+                Count = filesWithUrls.Count,
+                Value = filesWithUrls
             });
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error listing files for {Path}", Request.Path);
-            return StatusCode(500, new { error = "An error occurred while listing files" });
+            return StatusCode(500, new { success = false, error = "An error occurred while listing files" });
         }
     }
 
@@ -2059,8 +2062,11 @@ public class EndpointController : ControllerBase
             Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})", 
                 webhookId, insertedId);
 
-            return Ok(new
+            // Return 201 Created with location header for consistency
+            var locationUrl = $"/api/{env}/webhook/{webhookId}/{insertedId}";
+            return Created(locationUrl, new
             {
+                success = true,
                 message = "Webhook processed successfully.",
                 id = insertedId
             });
@@ -2069,11 +2075,11 @@ public class EndpointController : ControllerBase
         {
             Log.Error(ex, "Error during webhook processing: {WebhookId}", webhookId);
             
-            return Problem(
-                detail: $"Error processing. Please check the logs for more details.",
-                statusCode: StatusCodes.Status500InternalServerError,
-                title: "Error"
-            );
+            return StatusCode(500, new
+            {
+                success = false,
+                error = "Error processing webhook. Please check the logs for more details."
+            });
         }
     }
 
@@ -2101,6 +2107,33 @@ public class EndpointController : ControllerBase
             nextLink += $"&$orderby={Uri.EscapeDataString(orderby)}";
 
         return nextLink;
+    }
+
+    /// <summary>
+    /// Sets standard pagination headers on the response for consistency across endpoint types.
+    /// </summary>
+    /// <param name="totalCount">Total number of items before pagination (if known)</param>
+    /// <param name="returnedCount">Number of items being returned in this response</param>
+    /// <param name="hasMore">Whether there are more items available</param>
+    private void SetPaginationHeaders(int? totalCount, int returnedCount, bool hasMore = false)
+    {
+        if (totalCount.HasValue)
+        {
+            Response.Headers["X-Total-Count"] = totalCount.Value.ToString();
+        }
+        Response.Headers["X-Returned-Count"] = returnedCount.ToString();
+        Response.Headers["X-Has-More"] = hasMore.ToString().ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Sets Cache-Control header for GET responses.
+    /// </summary>
+    /// <param name="maxAgeSeconds">Cache duration in seconds (default: 300 = 5 minutes)</param>
+    /// <param name="isPublic">Whether the cache is public or private (default: public)</param>
+    private void SetCacheControlHeader(int maxAgeSeconds = 300, bool isPublic = true)
+    {
+        var cacheType = isPublic ? "public" : "private";
+        Response.Headers["Cache-Control"] = $"{cacheType}, max-age={maxAgeSeconds}";
     }
 
     /// <summary>
@@ -2144,7 +2177,7 @@ public class EndpointController : ControllerBase
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             if (!sqlEndpoints.ContainsKey(endpointName))
             {
-                return NotFound();
+                return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
             }
 
             // Step 1: Validate environment
@@ -2152,8 +2185,8 @@ public class EndpointController : ControllerBase
             if (string.IsNullOrEmpty(connectionString))
             {
                 return BadRequest(new { 
-                    error = $"Invalid or missing environment: {env}", 
-                    success = false 
+                    success = false,
+                    error = $"Invalid or missing environment: {env}"
                 });
             }
 
@@ -2216,23 +2249,33 @@ public class EndpointController : ControllerBase
                     tvfResultList.RemoveAt(tvfResultList.Count - 1);
                 }
 
-                // For ID-based requests (if applicable to TVF), return single item
+                // For ID-based requests (if applicable to TVF), return single item directly (OData convention)
                 if (!string.IsNullOrEmpty(id))
                 {
                     if (tvfResultList.Count == 0)
                     {
                         return NotFound(new {
-                            error = $"No record found with specified parameters",
-                            success = false
+                            success = false,
+                            error = $"No record found with specified parameters"
                         });
                     }
                     
                     return Ok(tvfResultList.FirstOrDefault());
                 }
 
-                // Return collection response
+                // Return collection response with pagination headers
+                SetPaginationHeaders(null, tvfResultList.Count, !tvfIsLastPage);
+                
+                // Only set Cache-Control header if caching is enabled for this endpoint
+                if (IsCacheEnabled(endpoint))
+                {
+                    var tvfCacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
+                    SetCacheControlHeader(tvfCacheDurationSeconds);
+                }
+                
                 var tvfResponse = new
                 {
+                    Success = true,
                     Count = tvfResultList.Count,
                     Value = tvfResultList,
                     NextLink = tvfIsLastPage 
@@ -2415,19 +2458,19 @@ public class EndpointController : ControllerBase
                 transformedResults.RemoveAt(transformedResults.Count - 1);
             }
 
-            // For ID-based requests, return the single item directly
+            // For ID-based requests, return the single item directly (OData convention)
             if (!string.IsNullOrEmpty(id))
             {
                 // Return 404 if no results found
                 if (transformedResults.Count == 0)
                 {
                     return NotFound(new {
-                        error = $"No record found with {primaryKey} = {id}",
-                        success = false
+                        success = false,
+                        error = $"No record found with {primaryKey} = {id}"
                     });
                 }
                 
-                // Return the single item directly (without wrapping in a collection)
+                // Return the single item directly (OData convention - no wrapper)
                 var singleItemResponse = transformedResults.FirstOrDefault();
                 
                 // Cache the single item response if caching is enabled
@@ -2441,9 +2484,19 @@ public class EndpointController : ControllerBase
                 return Ok(singleItemResponse);
             }
 
-            // Step 10: Prepare response for collection requests
+            // Step 10: Prepare response for collection requests with pagination headers
+            SetPaginationHeaders(null, transformedResults.Count, !isLastPage);
+            
+            // Only set Cache-Control header if caching is enabled for this endpoint
+            if (cacheEnabled)
+            {
+                var cacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
+                SetCacheControlHeader(cacheDurationSeconds);
+            }
+            
             var response = new
             {
+                Success = true,
                 Count = transformedResults.Count,
                 Value = transformedResults,
                 NextLink = isLastPage 
@@ -2608,7 +2661,7 @@ public class EndpointController : ControllerBase
 				
 				Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
 				
-				return Ok(new { 
+				return StatusCode(StatusCodes.Status201Created, new { 
 					success = true,
 					message = "Record created successfully", 
 					result = resultList.FirstOrDefault() 
@@ -2702,7 +2755,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             if (!sqlEndpoints.ContainsKey(endpointName))
             {
-                return NotFound();
+                return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
             }
 
             // Step 1: Validate environment
@@ -2711,8 +2764,8 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             {
                 return BadRequest(new
                 {
-                    error = $"Invalid or missing environment: {env}",
-                    success = false
+                    success = false,
+                    error = $"Invalid or missing environment: {env}"
                 });
             }
 
@@ -2865,7 +2918,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 			var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
 			if (!sqlEndpoints.ContainsKey(endpointName))
 			{
-				return NotFound();
+				return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
 			}
 
 			// Step 2: Validate environment
@@ -2874,8 +2927,8 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 			{
 				return BadRequest(new
 				{
-					error = $"Invalid or missing environment: {env}",
-					success = false
+					success = false,
+					error = $"Invalid or missing environment: {env}"
 				});
 			}
 
@@ -3030,7 +3083,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             if (!sqlEndpoints.ContainsKey(endpointName))
             {
-                return NotFound();
+                return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
             }
 
             // Validate environment
@@ -3040,7 +3093,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 return BadRequest(new
                 {
                     success = false,
-                    error = $"Invalid or missing environment: {env}"                    
+                    error = $"Invalid or missing environment: {env}"
                 });
             }
 
@@ -3132,7 +3185,6 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 {
                     success = true,
                     message = "Record deleted successfully",
-                    id = id,
                     result = resultList.FirstOrDefault()
                 });
             }
@@ -3245,6 +3297,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 
                     return StatusCode(406, new
                     {
+                        success = false,
                         error = "Not Acceptable",
                         detail = $"Endpoint provides '{contentType}' but client accepts '{acceptHeader}'",
                         availableContentType = contentType
@@ -3280,7 +3333,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         catch (Exception ex)
         {
             Log.Error(ex, "Error serving static content for {Endpoint}", endpointName);
-            return StatusCode(500, new { error = "Error serving static content" });
+            return StatusCode(500, new { success = false, error = "Error serving static content" });
         }
     }
 
@@ -3364,9 +3417,10 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             // Build result in the correct API format
             var result = new
             {
-                count = items.Count,
-                value = items.Select(SerializeJsonElement).ToArray(),
-                nextLink = (string?)null  // Static endpoints don't support pagination links
+                Success = true,
+                Count = items.Count,
+                Value = items.Select(SerializeJsonElement).ToArray(),
+                NextLink = (string?)null  // Static endpoints don't support pagination links
             };
             
             var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
@@ -3387,6 +3441,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             // Return error response
             var errorResponse = new
             {
+                success = false,
                 error = "Internal server error during filtering",
                 details = ex.Message,
                 originalDataAvailable = true
@@ -3959,66 +4014,6 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     {
         public string Field { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
-    }
-
-    public class RequestValidationMiddleware
-    {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<RequestValidationMiddleware> _logger;
-
-        public RequestValidationMiddleware(RequestDelegate next, ILogger<RequestValidationMiddleware> logger)
-        {
-            _next = next;
-            _logger = logger;
-        }
-
-        public async Task InvokeAsync(HttpContext context)
-        {
-            // Check content type for POST/PUT/PATCH
-            if (HttpMethods.IsPost(context.Request.Method) || 
-                HttpMethods.IsPut(context.Request.Method) || 
-                HttpMethods.IsPatch(context.Request.Method))
-            {
-                string? contentType = context.Request.ContentType;
-                
-                if (string.IsNullOrEmpty(contentType) || !contentType.Contains("application/json"))
-                {
-                    _logger.LogWarning("Invalid content type: {ContentType}", contentType);
-                    
-                    context.Response.StatusCode = StatusCodes.Status415UnsupportedMediaType;
-                    context.Response.ContentType = "application/json";
-                    
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        error = "Unsupported Media Type",
-                        detail = "Request must use application/json content type",
-                        success = false
-                    });
-                    
-                    return;
-                }
-                
-                // Check content length
-                if (context.Request.ContentLength > 52_428_800) // 10MB limit
-                {
-                    _logger.LogWarning("Request body too large: {ContentLength} bytes", context.Request.ContentLength);
-                    
-                    context.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
-                    context.Response.ContentType = "application/json";
-                    
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        error = "Payload Too Large",
-                        detail = "Request body exceeds maximum size of 50MB",
-                        success = false
-                    });
-                    
-                    return;
-                }
-            }
-
-            await _next(context);
-        }
     }
 
     /// <summary>

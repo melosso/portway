@@ -19,15 +19,9 @@ Before you begin, make sure you have:
 
 We offer two methods, beginning with installation on Windows Server.
 
-### Download and Extract
-
-1. Go to the [Releases page](https://github.com/melosso/portway/releases/)
-2. Download the latest `*-Deployment.zip` file
-3. Extract it to your IIS directory (e.g., `C:\path\to\your\PortwayApi`)
-
 ---
 
-### Alternative: Docker Compose (Recommended for Home Lab Users)
+### Docker Compose (Recommended)
 
 You can quickly deploy Portway using Docker Compose. For a complete setup guide with detailed configuration options, see our [Docker Installation Guide](docker-compose.md).
 
@@ -62,70 +56,53 @@ docker compose pull && docker compose up -d
 
 This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment. 
 
-### Configure IIS
+### Configure on Windows Server 
 
 > [!IMPORTANT]
 > This guide assumes you have basic knowledge of IIS configuration and data source connectivity. While we cover the essential steps, some details may require your existing expertise.
+
+Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
+
+1. **Install .NET 9 Runtime:**
+```powershell
+   winget install --id Microsoft.DotNet.HostingBundle.9 -e
+```
+
+2. **Set encryption key:**
+```powershell
+   $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+```
+
+3. **Install Portway:**
+Extract the application to your IIS directory (e.g., C:\Portway).
+
+4. **Configure Internet Information Services**:
+Configure the webserver accordingly:
 
 1. Open IIS Manager
 2. Create a new Application Pool:
    - Name: `PortwayAppPool`
    - .NET CLR version: `No Managed Code`
    - Managed pipeline mode: `Integrated`
-   - User: `Running as a priviledged (NT) user`
+   - Optional: User: `Running as a priviledged (NT) user` (if you're going to use NTLM as passthrough)
 3. Create a new TLS/SSL certificate or use an existing one (unless you disable TLS/SSL)
 4. Create a new Website or Application:
    - Name: `Portway`
    - Application pool: `PortwayAppPool`
-   - Physical path: `C:\path\to\your\PortwayApi`
+   - Physical path: `C:\Portway`
    - Binding: https://localhost:443 (or your preferred port)
    - Certificate: The certificate you created
 5. Set Application Pool Identity (for proxy endpoints):
    - Select your Application Pool
    - Advanced Settings > Identity
    - Choose appropriate user account with network access
-6. Ensure the web.config exists with (a predefined) proper configuration:
 
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <location path="." inheritInChildApplications="false">
-    <system.webServer>
-      <handlers>
-        <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
-      </handlers>
-      <aspNetCore processPath="dotnet" arguments=".\PortwayApi.dll" stdoutLogEnabled="false" stdoutLogFile=".\logs\stdout" hostingModel="inprocess" />
-    </system.webServer>
-  </location>
-</configuration>
-```
-7. Secure your environment with an environment varriable `ORTWAY_ENCRYPTION_KEY`:
-
-```powershell
-# Stores the encryption key to your System Environment Variables
-$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
-``` 
-
-You should now be ready for running Portway for the first time.
-
-### First Run
-
-1. Browse to your configured URL (e.g., https://localhost)
-2. On first run, Portway will:
-   - Create required directories (`log`, `tokens`, `endpoints`, `environments`)
-   - Initialize the authentication database (`auth.db`)
-   - Generate a default access token for your machine
-
-### Verify Installation
-
-Open your browser and navigate to:
-```
-https://localhost
-```
-
-You should see the OpenAPI UI interface with the Portway API documentation.
+You should now be ready for running Portway for the first time. Just open your browser on **http://localhost:8080**.
 
 ## Initial Configuration
+
+> [!CAUTION]
+> On first run, a token file is generated. This contains a secret and poses a significant security risk if left on disk. **Remove this file immediately after securely saving your token elsewhere.** Unauthorized access to this file can comprimise your environment.
 
 ### Access Token
 
@@ -147,9 +124,6 @@ This JSON file contains your Bearer token for API authentication:
   "Usage": "Use this token in the Authorization header as: Bearer your-bearer-token-here"
 }
 ```
-
-> [!CAUTION]
-> The generated token files are highly sensitive and pose a significant security risk if left on disk. **Remove these files immediately after securely saving your token elsewhere.** Unauthorized access to these files can compromise your environment.
 
 ### Configure Environments
 
@@ -220,6 +194,8 @@ Create a SQL endpoint by adding `endpoints/SQL/Products/entity.json`:
 GET /api/prod/Products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
+
+You'll be all set now!
 
 ## Next Steps
 

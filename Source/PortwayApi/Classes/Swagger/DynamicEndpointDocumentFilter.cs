@@ -283,7 +283,34 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             ["400"] = new OpenApiResponse { Description = "Bad request" },
             ["401"] = new OpenApiResponse { Description = "Unauthorized" },
             ["404"] = new OpenApiResponse { Description = "Resource not found" },
-            ["500"] = new OpenApiResponse { Description = "Server error" }
+            ["500"] = new OpenApiResponse 
+            { 
+                Description = "Internal Server Error",
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["type"] = new OpenApiSchema { Type = "string" },
+                                ["title"] = new OpenApiSchema { Type = "string" },
+                                ["status"] = new OpenApiSchema { Type = "integer" },
+                                ["detail"] = new OpenApiSchema { Type = "string" }
+                            }
+                        },
+                        Example = new OpenApiObject
+                        {
+                            ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                            ["title"] = new OpenApiString("Error"),
+                            ["status"] = new OpenApiInteger(500),
+                            ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                        }
+                    }
+                }
+            }
         };
         
         swaggerDoc.Paths[deletePath].Operations[OperationType.Delete] = operation;
@@ -452,7 +479,34 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     ["401"] = new OpenApiResponse { Description = "Unauthorized - Missing or invalid authentication token" },
                     ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
                     ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
-                    ["500"] = new OpenApiResponse { Description = "Internal Server Error" }
+                    ["500"] = new OpenApiResponse 
+                    { 
+                        Description = "Internal Server Error",
+                        Content = new Dictionary<string, OpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = "object",
+                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    {
+                                        ["type"] = new OpenApiSchema { Type = "string" },
+                                        ["title"] = new OpenApiSchema { Type = "string" },
+                                        ["status"] = new OpenApiSchema { Type = "integer" },
+                                        ["detail"] = new OpenApiSchema { Type = "string" }
+                                    }
+                                },
+                                Example = new OpenApiObject
+                                {
+                                    ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                    ["title"] = new OpenApiString("Error"),
+                                    ["status"] = new OpenApiInteger(500),
+                                    ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                                }
+                            }
+                        }
+                    }
                 };
 
                 // Add the operation to the path with the appropriate HTTP method
@@ -534,9 +588,17 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             },
             Responses = new OpenApiResponses
             {
-                ["200"] = new OpenApiResponse 
+                ["201"] = new OpenApiResponse 
                 { 
-                    Description = "Successful response",
+                    Description = "Created - Resource successfully created",
+                    Headers = new Dictionary<string, OpenApiHeader>
+                    {
+                        ["Location"] = new OpenApiHeader
+                        {
+                            Description = "URL of the newly created resource",
+                            Schema = new OpenApiSchema { Type = "string" }
+                        }
+                    },
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
@@ -960,12 +1022,18 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                                     Type = "object",
                                     Properties = new Dictionary<string, OpenApiSchema>
                                     {
-                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                        ["type"] = new OpenApiSchema { Type = "string" },
+                                        ["title"] = new OpenApiSchema { Type = "string" },
+                                        ["status"] = new OpenApiSchema { Type = "integer" },
+                                        ["detail"] = new OpenApiSchema { Type = "string" }
                                     }
                                 },
                                 Example = new OpenApiObject
                                 {
-                                    ["error"] = new OpenApiString("Error serving content")
+                                    ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                    ["title"] = new OpenApiString("Error"),
+                                    ["status"] = new OpenApiInteger(500),
+                                    ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
                                 }
                             }
                         }
@@ -1137,19 +1205,81 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         }
         
         // Add comprehensive responses with detailed schemas and examples  
-        operation.Responses = new OpenApiResponses
+        operation.Responses = new OpenApiResponses();
+        
+        // For POST, use 201 Created with Location header
+        if (method.Equals("POST", StringComparison.OrdinalIgnoreCase))
         {
-            ["200"] = new OpenApiResponse 
+            operation.Responses["201"] = new OpenApiResponse 
+            { 
+                Description = "Created - Resource successfully created",
+                Headers = new Dictionary<string, OpenApiHeader>
+                {
+                    ["Location"] = new OpenApiHeader
+                    {
+                        Description = "URL of the newly created resource",
+                        Schema = new OpenApiSchema { Type = "string" }
+                    }
+                },
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = "object",
+                            Properties = new Dictionary<string, OpenApiSchema>
+                            {
+                                ["success"] = new OpenApiSchema { Type = "boolean" },
+                                ["message"] = new OpenApiSchema { Type = "string" },
+                                ["result"] = new OpenApiSchema 
+                                { 
+                                    Type = "array",
+                                    Items = new OpenApiSchema { Type = "object" }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        else
+        {
+            // For GET, PUT, MERGE, DELETE use 200 OK
+            operation.Responses["200"] = new OpenApiResponse 
             { 
                 Description = method switch
                 {
                     "GET" => "Successful response",
-                    "POST" => "Successful response",
                     "PUT" => "Successful response",
                     "MERGE" => "Successful response",
                     "DELETE" => "Successful response",
                     _ => "Successful response"
                 },
+                // Add pagination headers for GET responses
+                Headers = method.Equals("GET", StringComparison.OrdinalIgnoreCase) ? new Dictionary<string, OpenApiHeader>
+                {
+                    ["X-Total-Count"] = new OpenApiHeader
+                    {
+                        Description = "Total number of records available (when $count=true)",
+                        Schema = new OpenApiSchema { Type = "integer" }
+                    },
+                    ["X-Returned-Count"] = new OpenApiHeader
+                    {
+                        Description = "Number of records returned in this response",
+                        Schema = new OpenApiSchema { Type = "integer" }
+                    },
+                    ["X-Has-More-Results"] = new OpenApiHeader
+                    {
+                        Description = "Indicates if more results are available (true/false)",
+                        Schema = new OpenApiSchema { Type = "boolean" }
+                    },
+                    ["Cache-Control"] = new OpenApiHeader
+                    {
+                        Description = "Caching directive (when caching is enabled for the endpoint)",
+                        Schema = new OpenApiSchema { Type = "string" }
+                    }
+                } : null,
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
@@ -1161,17 +1291,17 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                                 Type = "object",
                                 Properties = new Dictionary<string, OpenApiSchema>
                                 {
-                                    ["count"] = new OpenApiSchema { Type = "integer" },
-                                    ["value"] = new OpenApiSchema 
+                                    ["Success"] = new OpenApiSchema { Type = "boolean" },
+                                    ["Count"] = new OpenApiSchema { Type = "integer" },
+                                    ["Value"] = new OpenApiSchema 
                                     { 
                                         Type = "array",
                                         Items = new OpenApiSchema { Type = "object" }
                                     },
-                                    ["nextLink"] = new OpenApiSchema { Type = "string" }
+                                    ["NextLink"] = new OpenApiSchema { Type = "string" }
                                 }
                             },
-                            "POST" or "PUT" or "MERGE" => new OpenApiSchema
-
+                            "PUT" or "MERGE" => new OpenApiSchema
                             {
                                 Type = "object",
                                 Properties = new Dictionary<string, OpenApiSchema>
@@ -1196,21 +1326,22 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                                     Summary = "Successful data retrieval",
                                     Value = new OpenApiObject
                                     {
-                                        ["count"] = new OpenApiInteger(0),
-                                        ["value"] = new OpenApiArray(),
-                                        ["nextLink"] = new OpenApiString($"/api/{endpointName}?$top=10&$skip=0")
+                                        ["Success"] = new OpenApiBoolean(true),
+                                        ["Count"] = new OpenApiInteger(0),
+                                        ["Value"] = new OpenApiArray(),
+                                        ["NextLink"] = new OpenApiString($"/api/{endpointName}?$$top=10&$$skip=0")
                                     }
                                 }
                             },
-                            "POST" or "PUT" or "MERGE" => new Dictionary<string, OpenApiExample>
+                            "PUT" or "MERGE" => new Dictionary<string, OpenApiExample>
                             {
                                 ["success"] = new OpenApiExample
                                 {
-                                    Summary = "Successful creation",
+                                    Summary = "Successful update",
                                     Value = new OpenApiObject
                                     {
                                         ["success"] = new OpenApiBoolean(true),
-                                        ["message"] = new OpenApiString("Record created successfully"),
+                                        ["message"] = new OpenApiString("Record updated successfully"),
                                         ["result"] = new OpenApiArray
                                         {
                                             new OpenApiObject
@@ -1225,8 +1356,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["400"] = new OpenApiResponse 
+            };
+            operation.Responses["400"] = new OpenApiResponse 
             { 
                 Description = "Bad Request - Invalid request",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1268,8 +1399,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["401"] = new OpenApiResponse 
+            };
+            operation.Responses["401"] = new OpenApiResponse 
             { 
                 Description = "Unauthorized - Missing or invalid authentication token",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1291,8 +1422,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["403"] = new OpenApiResponse 
+            };
+            operation.Responses["403"] = new OpenApiResponse 
             { 
                 Description = "Forbidden - Insufficient permissions",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1329,8 +1460,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["404"] = new OpenApiResponse 
+            };
+            operation.Responses["404"] = new OpenApiResponse 
             { 
                 Description = "Not Found - Resource not found",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1366,8 +1497,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["409"] = new OpenApiResponse 
+            };
+            operation.Responses["409"] = new OpenApiResponse 
             { 
                 Description = "Conflict - Duplicate key violation or business rule conflict",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1392,8 +1523,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["422"] = new OpenApiResponse 
+            };
+            operation.Responses["422"] = new OpenApiResponse 
             { 
                 Description = "Unprocessable Entity - Validation errors or business rule violations",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1440,8 +1571,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            },
-            ["500"] = new OpenApiResponse 
+            };
+            operation.Responses["500"] = new OpenApiResponse 
             { 
                 Description = "Internal Server Error",
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1470,7 +1601,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         }
                     }
                 }
-            }
+            };
         };
         
         return operation;
