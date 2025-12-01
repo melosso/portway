@@ -3,7 +3,7 @@
 Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from a previous version.
 
 > [!IMPORTANT]
-> **Portway can be subject to data and database changes between versions.** Staying up to date with the release notes, especially for major version upgrades, is adviced to avoid data loss or compatibility issues. Please make sure to validate no such breaking changes have been made before upgrading.
+> **Portway can be subject to data and database changes between versions.** \n Staying up to date with the release notes, especially for major version upgrades, is adviced to avoid data loss or compatibility issues. Please make sure to validate no such breaking changes have been made before upgrading.
 
 1. **Read the Release Notes**
    - Review the [release notes](https://github.com/melosso/portway/releases/) for important changes or migration steps.

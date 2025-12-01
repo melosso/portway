@@ -1,10 +1,6 @@
-# Open Source License
+# Licensing
 
-Portway is now completely **open source** and **free to use** for all purposes, including commercial use.
-
-## License Information
-
-Portway is released under the **GNU Affero General Public License (AGPL) v3**, which means:
+Portway is completely **open source** and **free to use** for all purposes, including commercial use. It's released under the **GNU Affero General Public License (AGPL) v3**, which means:
 
 - **Free to use** - No cost for any use case
 - **Commercial use permitted** - Use in commercial projects without restrictions
@@ -22,7 +18,7 @@ The AGPL v3 license has simple requirements. If you modify Portway and distribut
 
 We welcome contributions from the community including bug fixes, feature improvements, documentation updates, example configurations, and testing feedback. See our contributing guidelines in the repository for details.
 
-## Commercial Use
+### Commercial Use
 
 Portway can be used commercially under the AGPL v3 license:
 

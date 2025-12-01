@@ -1,56 +1,68 @@
 # Caching
 
-Portway implements a flexible caching system that supports both in-memory and Redis distributed caching. This provides improved performance, reduced load on backend systems, and enhanced scalability for high-traffic deployments. The caching system seamlessly handles responses from proxied endpoints, SQL queries, and other operations.
+Portway implements a flexible caching system that supports both `in-memory` and `Redis` distributed caching. This provides improved performance, reduced load on backend systems, and enhanced scalability for high-traffic deployments. The caching system seamlessly handles responses from proxied endpoints, SQL queries, and other operations.
 
 ## Caching Flow
 
 The diagram below illustrates the decision flow for caching in Portway, showing how requests are processed, when caching is applied, and how cache providers are selected:
 
 ```mermaid
-graph TD
+flowchart TD
+    %% MAIN REQUEST FLOW (VERTICAL SPINE)
     A[Client Request] --> B{Cache Enabled?}
-    B -->|Yes| C{Is GET Request?}
-    B -->|No| G[Execute Request Directly]
-    
-    C -->|Yes| D{Check Cache}
+    B -->|No| G[Execute Request]
+    B -->|Yes| C{GET Request?}
+
     C -->|No| G
-    
-    D -->|Cache Hit| E[Return Cached Response]
-    D -->|Cache Miss| F[Execute Request]
-    
+    C -->|Yes| D{Cache Hit?}
+
+    D -->|Yes| E[Return Cached Response]
+    D -->|No| F[Execute Request]
+
     F --> H{Successful Response?}
-    H -->|Yes| I{Cacheable Content Type?}
     H -->|No| K[Return Response]
-    
-    I -->|Yes| J[Store in Cache]
+    H -->|Yes| I{Cacheable Content?}
+
     I -->|No| K
-    
+    I -->|Yes| J[Store in Cache]
     J --> K
-    G --> K
-    
+
+    %% CHAIN THE AUXILIARY LOGIC UNDER THE MAIN FLOW
+    K --> L{{Select Cache Provider}}
+
+    %% CACHE PROVIDER (VERTICAL)
     subgraph "Cache Provider Selection"
-        L{Provider Type?}
-        L -->|Memory| M[In-Memory Cache]
-        L -->|Redis| N[Redis Distributed Cache]
-        N -->|Connection Failure| O{Fallback Enabled?}
-        O -->|Yes| M
-        O -->|No| P[No Caching]
+        direction TB
+        L --> L1{Provider Type?}
+        L1 -->|Memory| M[In-Memory Cache]
+        L1 -->|Redis| N[Redis Cache]
+
+        N --> O{Redis OK?}
+        O -->|Yes| NOK[Use Redis]
+        O -->|No & Fallback| M
+        O -->|No & No Fallback| P[No Caching]
     end
-    
+
+    %% CACHE KEY GENERATION (VERTICAL SEQUENCE)
+    M & NOK --> Q[Build Cache Key]
+
     subgraph "Cache Key Generation"
-        Q[Generate Key Based On:]
-        Q --> R[URL & Query Parameters]
-        Q --> S[Environment & Endpoint]
-        Q --> T[Hashed Auth Context]
-        Q --> U[Accept-Language Header]
+        direction TB
+        Q --> R[Start: URL + Query]
+        R --> S[+ Env + Endpoint]
+        S --> T[+ Auth Context Hash]
+        T --> U[+ Accept-Language]
     end
-    
+
+    %% CACHE DURATION (VERTICAL)
+    U --> V{Cache-Control Header?}
+
     subgraph "Cache Duration Determination"
-        V{Response Has Cache-Control?}
-        V -->|Yes| W[Use max-age Value]
-        V -->|No| X{Endpoint-Specific Duration?}
-        X -->|Yes| Y[Use Endpoint Duration]
-        X -->|No| Z[Use Default Duration]
+        direction TB
+        V -->|Yes| W[Use max-age]
+        V -->|No| X{Endpoint Rule?}
+        X -->|Yes| Y[Use Endpoint TTL]
+        X -->|No| Z[Use Default TTL]
     end
 ```
 
