@@ -6,7 +6,7 @@
 
 **Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in OData support, handling critical requirements like environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting automatically.
 
-Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through comprehensive logging and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
+Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
 > 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)  |   🧪 [Live Demo](https://portway-demo.melosso.com/)
 
@@ -305,6 +305,8 @@ Here are some common requests you'll make using Portway's endpoints.
 <details>
 <summary>SQL</summary>
 
+<br>
+
 Query specific data with full OData support:
 
 ```bash
@@ -324,9 +326,6 @@ Forward calls to internal REST services:
 GET /api/prod/Accounts
 POST /api/prod/Accounts
 ```
-
-> [!TIP] 
->  If you're using a **Proxy** setup, make sure you explicitly change the Application Identity. It's also worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. 
 
 </details>
 
@@ -356,6 +355,8 @@ Content-Type: application/json
 
 <details>
 <summary>Static</summary>
+
+<br>
 
 Serve static content with optional OData filtering:
 
@@ -397,6 +398,8 @@ Authorization: Bearer YOUR_TOKEN
 <details>
 <summary>Webhooks</summary>
 
+<br>
+
 Receive data from external services:
 
 ```bash
@@ -420,20 +423,14 @@ You'll find comprehensive configuration examples in our [documentation page](htt
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
 
 ### Interactive documentation
-The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations. If necessary, the `/Swagger` (deprecated) route is also available (but only after configuration).
+The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations. If necessary, the `/Swagger` (deprecated) route is also available (requires configuration).
 
 ### Schema discovery
-Portway automatically generates API documentation by reading your database schema at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. If you're using Windows Authentication (`Trusted_Connection=True`), ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. With SQL Authentication, each environment uses its own credentials.
+Portway automatically generates API documentation by reading your **database objects** at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. 
+If you're using Windows Authentication with `Trusted_Connection=True`, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. This isn't necessary when you use SQL Authentication, but make sure each environment uses its own credentials.
 
-## Credits
-
-Thanks to the open source tools that make Portway possible:
-
-* [ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/)
-* [DynamicODataToSQL](https://github.com/DynamicODataToSQL/DynamicODataToSQL)
-* [Scalar](https://github.com/ScalaR/ScalaR)
-* [Serilog](https://serilog.net/)
-* [SQLite](https://www.sqlite.org/index.html)
+### Walkthrough
+Our [documentation page](https://portway-docs.melosso.com/) will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
 
 ## License
 
