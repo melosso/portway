@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using PortwayApi.Classes.Swagger;
@@ -71,60 +72,54 @@ public class SecurityDefinitionInfo
 
 public static class SwaggerConfiguration
 {
-    public static SwaggerSettings ConfigureSwagger(WebApplicationBuilder builder)
+    public static void ConfigureSwagger(WebApplicationBuilder builder)
     {
-        // Create default settings
+        // Register SwaggerSettings with IOptionsMonitor for dynamic reload
+        builder.Services.Configure<SwaggerSettings>(builder.Configuration.GetSection("Swagger"));
+
+        // Register post-configuration to apply defaults and validation
+        builder.Services.PostConfigure<SwaggerSettings>(swaggerSettings =>
+        {
+            // Ensure object references aren't null (defensive programming)
+            swaggerSettings.Contact ??= new ContactInfo();
+            swaggerSettings.Footer ??= new FooterInfo();
+            swaggerSettings.SecurityDefinition ??= new SecurityDefinitionInfo();
+
+            // Validate and fix critical values
+            if (string.IsNullOrWhiteSpace(swaggerSettings.Title))
+                swaggerSettings.Title = "PortwayAPI";
+
+            if (string.IsNullOrWhiteSpace(swaggerSettings.Version))
+                swaggerSettings.Version = "v1";
+
+            if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Name))
+                swaggerSettings.SecurityDefinition.Name = "Bearer";
+
+            if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Scheme))
+                swaggerSettings.SecurityDefinition.Scheme = "Bearer";
+
+            if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarTheme))
+                swaggerSettings.ScalarTheme = "purple";
+
+            if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarLayout))
+                swaggerSettings.ScalarLayout = "modern";
+        });
+
+        // Get initial settings to register Swagger services
         var swaggerSettings = new SwaggerSettings();
-        
-        try
+        var section = builder.Configuration.GetSection("Swagger");
+        if (section.Exists())
         {
-            // Attempt to bind from configuration
-            var section = builder.Configuration.GetSection("Swagger");
-            if (section.Exists())
-            {
-                section.Bind(swaggerSettings);
-                Log.Debug("Swagger configuration loaded from appsettings.json");
-            }
-            else
-            {
-                Log.Warning("No 'Swagger' section found in configuration. Using default settings.");
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log error but continue with defaults
-            Log.Error(ex, "Error loading Swagger configuration. Using default settings.");
+            section.Bind(swaggerSettings);
+            Log.Debug("Swagger configuration loaded from appsettings.json");
         }
 
-        // Ensure object references aren't null (defensive programming)
-        swaggerSettings.Contact ??= new ContactInfo();
-        swaggerSettings.Footer ??= new FooterInfo();
-        swaggerSettings.SecurityDefinition ??= new SecurityDefinitionInfo();
-        
-        // Validate and fix critical values
-        if (string.IsNullOrWhiteSpace(swaggerSettings.Title))
-            swaggerSettings.Title = "PortwayAPI";
-            
-        if (string.IsNullOrWhiteSpace(swaggerSettings.Version))
-            swaggerSettings.Version = "v1";
-            
-        if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Name))
-            swaggerSettings.SecurityDefinition.Name = "Bearer";
-            
-        if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Scheme))
-            swaggerSettings.SecurityDefinition.Scheme = "Bearer";
-            
-        if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarTheme))
-            swaggerSettings.ScalarTheme = "purple";
-            
-        if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarLayout))
-            swaggerSettings.ScalarLayout = "modern";
-            
         // Register Swagger services if enabled
         if (swaggerSettings.Enabled)
         {
             builder.Services.AddSwaggerGen(c =>
             {
+                // Initial values (will be overridden by DynamicSwaggerDocumentFilter on each request)
                 c.SwaggerDoc(swaggerSettings.Version, new OpenApiInfo
                 {
                     Title = swaggerSettings.Title,
@@ -136,6 +131,9 @@ public static class SwaggerConfiguration
                         Email = swaggerSettings.Contact.Email
                     }
                 });
+
+                // Add document filter for dynamic configuration reload
+                c.DocumentFilter<DynamicSwaggerDocumentFilter>();
                 
                 // Add security definition for Bearer token
                 c.AddSecurityDefinition(swaggerSettings.SecurityDefinition.Name, new OpenApiSecurityScheme
@@ -228,14 +226,17 @@ public static class SwaggerConfiguration
         {
             Log.Information("Swagger is disabled in configuration");
         }
-        
-        return swaggerSettings;
     }
 
-    public static void ConfigureDocs(WebApplication app, SwaggerSettings swaggerSettings)
+    public static void ConfigureDocs(WebApplication app, IOptionsMonitor<SwaggerSettings> swaggerMonitor)
     {
-        if (!swaggerSettings.Enabled)
+        // Check if Swagger is enabled at startup
+        var initialSettings = swaggerMonitor.CurrentValue;
+        if (!initialSettings.Enabled)
+        {
+            Log.Information("Swagger is disabled in configuration");
             return;
+        }
                 
         // Configure Swagger JSON endpoint
         app.UseSwagger(options => {
@@ -243,9 +244,12 @@ public static class SwaggerConfiguration
             options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
 
             options.PreSerializeFilters.Add((swagger, httpReq) => {
+                    // Read current configuration for dynamic reload
+                    var swaggerSettings = swaggerMonitor.CurrentValue;
+
                     // Build the correct base URL including PathBase
                     string scheme = httpReq.Scheme;
-                    
+
                     // Only force HTTPS if explicitly configured AND in production
                     bool isProduction = !app.Environment.IsDevelopment();
                     bool forceHttps = swaggerSettings.ForceHttpsInProduction && isProduction;
@@ -281,16 +285,19 @@ public static class SwaggerConfiguration
         });
 
         // Configure unified documentation interface at /docs using Scalar
-        if (swaggerSettings.EnableScalar)
+        if (initialSettings.EnableScalar)
         {
-            app.MapGet("/docs", (HttpContext context) => 
-            {              
+            app.MapGet("/docs", (HttpContext context) =>
+            {
+                // Read current configuration on each request for dynamic reload
+                var swaggerSettings = swaggerMonitor.CurrentValue;
+
                 // Get the base path for URL construction
                 var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
                 var sidebarConfig = swaggerSettings.ScalarShowSidebar ? "true" : "false";
-                
+
                 // Debug logging
-                Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}", 
+                Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
                     swaggerSettings.ScalarTheme, swaggerSettings.ScalarLayout);
 
                 var configJson = $@"{{
@@ -522,19 +529,22 @@ var html = $@"
             // Fallback to basic Swagger UI if Scalar is disabled
             app.UseSwaggerUI(c =>
             {
+                // Read current configuration for dynamic reload
+                var swaggerSettings = swaggerMonitor.CurrentValue;
+
                 // Get basePath from appsettings.json
                 var pathBase = app.Configuration["PathBase"] ?? "";
-                
+
                 c.SwaggerEndpoint($"{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json", $"{swaggerSettings.Title} {swaggerSettings.Version}");
                 c.RoutePrefix = "docs";
-                
+
                 // Apply basic settings
                 c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
                 c.DefaultModelsExpandDepth(swaggerSettings.DefaultModelsExpandDepth);
-                
+
                 // Enable alphabetical sorting of tags
                 c.ConfigObject.AdditionalItems["tagsSorter"] = "alpha";
-                
+
                 if (swaggerSettings.DisplayRequestDuration)
                     c.DisplayRequestDuration();
             });

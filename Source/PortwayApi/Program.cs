@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Instrumentation.AspNetCore;
@@ -183,6 +184,15 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddHostedService<LogFlusher>();
 
+    // Register configuration reload services for dynamic config updates
+    builder.Services.AddHostedService<PortwayApi.Services.Configuration.ConfigurationReloadService>();
+    builder.Services.AddHostedService<PortwayApi.Services.Configuration.EnvironmentFileWatcher>();
+    builder.Services.AddHostedService<PortwayApi.Services.Configuration.EndpointFileWatcher>();
+
+    // Register EndpointReloading options for feature flag support
+    builder.Services.Configure<PortwayApi.Classes.Configuration.EndpointReloadingOptions>(
+        builder.Configuration.GetSection("EndpointReloading"));
+
     // Register route constraint for ProxyConstraint
     builder.Services.Configure<RouteOptions>(options =>
     {
@@ -285,22 +295,20 @@ try
     // Configure Health Checks
     builder.Services.AddHealthChecks();
 
-    // Register HealthCheckService wrapper with all dependencies
+    // Register HealthCheckService wrapper with all dependencies (uses lazy endpoint lookup)
     builder.Services.AddSingleton<PortwayApi.Services.HealthCheckService>(sp =>
     {
         var healthCheckService = sp.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
         var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-        var endpointMap = EndpointHandler.GetEndpoints(proxyEndpointsDirectory);
 
         return new PortwayApi.Services.HealthCheckService(
             healthCheckService,
             TimeSpan.FromSeconds(30),
-            httpClientFactory,
-            endpointMap);
+            httpClientFactory);
     });
 
-    // Configure Swagger using our centralized configuration
-    var swaggerSettings = SwaggerConfiguration.ConfigureSwagger(builder);
+    // Configure Swagger using our centralized configuration (now returns void and registers with IOptionsMonitor)
+    SwaggerConfiguration.ConfigureSwagger(builder);
 
     // Build the application
     var app = builder.Build();
@@ -388,8 +396,9 @@ try
         return next();
     });
 
-    // 6. Configure unified documentation at /docs
-    SwaggerConfiguration.ConfigureDocs(app, swaggerSettings);
+    // 6. Configure unified documentation at /docs (uses IOptionsMonitor for dynamic reload)
+    var swaggerMonitor = app.Services.GetRequiredService<IOptionsMonitor<SwaggerSettings>>();
+    SwaggerConfiguration.ConfigureDocs(app, swaggerMonitor);
 
     // 7. Static Files Configuration - Use Extension Method (DRY principle)
     app.UseDefaultFilesWithOptions();

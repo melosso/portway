@@ -56,7 +56,7 @@ public class FileStorageOptions
 /// </summary>
 public class FileHandlerService : IDisposable
 {
-    private readonly FileStorageOptions _options;
+    private readonly IOptionsMonitor<FileStorageOptions> _optionsMonitor;
     private readonly CacheManager _cacheManager;
     private readonly ConcurrentDictionary<string, MemoryStream> _memoryCache = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastAccessTimes = new();
@@ -67,22 +67,23 @@ public class FileHandlerService : IDisposable
     private long _currentMemoryUsage = 0;
     private bool _disposed = false;
 
-    public FileHandlerService(IOptions<FileStorageOptions> options, CacheManager cacheManager, Serilog.ILogger logger)
+    public FileHandlerService(IOptionsMonitor<FileStorageOptions> optionsMonitor, CacheManager cacheManager, Serilog.ILogger logger)
     {
-        _options = options.Value;
+        _optionsMonitor = optionsMonitor;
+        var options = optionsMonitor.CurrentValue;
         _cacheManager = cacheManager;
         _logger = Serilog.Log.Logger; // Use Serilog's static logger
 
         // Create the storage directory if it doesn't exist
-        if (!Directory.Exists(_options.StorageDirectory))
+        if (!Directory.Exists(_optionsMonitor.CurrentValue.StorageDirectory))
         {
-            Directory.CreateDirectory(_options.StorageDirectory);
-            _logger.Information("Created file storage directory: {Directory}", _options.StorageDirectory);
+            Directory.CreateDirectory(_optionsMonitor.CurrentValue.StorageDirectory);
+            _logger.Information("Created file storage directory: {Directory}", _optionsMonitor.CurrentValue.StorageDirectory);
         }
 
         // Initialize the file system index
         _fileSystemIndex = new FileSystemIndex(
-            _options.StorageDirectory,
+            _optionsMonitor.CurrentValue.StorageDirectory,
             _cacheManager,
             _logger,
             GenerateFileId,
@@ -107,22 +108,22 @@ public class FileHandlerService : IDisposable
             throw new ArgumentException("File is empty", nameof(fileStream));
         }
 
-        if (fileStream.Length > _options.MaxFileSizeBytes)
+        if (fileStream.Length > _optionsMonitor.CurrentValue.MaxFileSizeBytes)
         {
-            throw new ArgumentException($"File size exceeds the maximum allowed size ({_options.MaxFileSizeBytes / 1024 / 1024}MB)", nameof(fileStream));
+            throw new ArgumentException($"File size exceeds the maximum allowed size ({_optionsMonitor.CurrentValue.MaxFileSizeBytes / 1024 / 1024}MB)", nameof(fileStream));
         }
 
         // Validate file extension
         string extension = Path.GetExtension(filename).ToLowerInvariant();
 
-        if (_options.BlockedExtensions.Contains(extension))
+        if (_optionsMonitor.CurrentValue.BlockedExtensions.Contains(extension))
         {
             throw new ArgumentException($"Files with extension {extension} are not allowed", nameof(filename));
         }
 
-        if (_options.AllowedExtensions.Count > 0 && !_options.AllowedExtensions.Contains(extension))
+        if (_optionsMonitor.CurrentValue.AllowedExtensions.Count > 0 && !_optionsMonitor.CurrentValue.AllowedExtensions.Contains(extension))
         {
-            throw new ArgumentException($"Only files with extensions {string.Join(", ", _options.AllowedExtensions)} are allowed", nameof(filename));
+            throw new ArgumentException($"Only files with extensions {string.Join(", ", _optionsMonitor.CurrentValue.AllowedExtensions)} are allowed", nameof(filename));
         }
 
         // Sanitize filename to prevent path traversal attacks
@@ -132,7 +133,7 @@ public class FileHandlerService : IDisposable
         string fileId = GenerateFileId(environment, safeFilename);
 
         // Create the environment directory if it doesn't exist
-        string environmentDir = Path.Combine(_options.StorageDirectory, environment);
+        string environmentDir = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment);
         Directory.CreateDirectory(environmentDir);
 
         // Determine the file path
@@ -145,13 +146,13 @@ public class FileHandlerService : IDisposable
         }
 
         // Determine whether to use memory cache
-        if (_options.UseMemoryCache)
+        if (_optionsMonitor.CurrentValue.UseMemoryCache)
         {
             // Check if adding this file would exceed memory limits
-            if (_currentMemoryUsage + fileStream.Length > _options.MaxTotalMemoryCacheMB * 1024 * 1024)
+            if (_currentMemoryUsage + fileStream.Length > _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024)
             {
                 // Memory cache is full, flush old files
-                await FlushOldestFilesAsync(_currentMemoryUsage + fileStream.Length - _options.MaxTotalMemoryCacheMB * 1024 * 1024);
+                await FlushOldestFilesAsync(_currentMemoryUsage + fileStream.Length - _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024);
             }
 
             // Store in memory first
@@ -187,7 +188,7 @@ public class FileHandlerService : IDisposable
             ContentType = GetContentType(safeFilename),
             Size = fileStream.Length,
             LastModified = DateTime.UtcNow,
-            IsInMemoryOnly = _options.UseMemoryCache
+            IsInMemoryOnly = _optionsMonitor.CurrentValue.UseMemoryCache
         });
         
         return fileId;
@@ -222,7 +223,7 @@ public class FileHandlerService : IDisposable
         }
 
         // File not in memory, check on disk
-        string filePath = Path.Combine(_options.StorageDirectory, environment, filename);
+        string filePath = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename);
 
         if (!File.Exists(filePath))
         {
@@ -239,13 +240,13 @@ public class FileHandlerService : IDisposable
         fileStream.Position = 0;
 
         // If memory caching is enabled, store in cache for next time
-        if (_options.UseMemoryCache && fileStream.Length <= _options.MaxFileSizeBytes)
+        if (_optionsMonitor.CurrentValue.UseMemoryCache && fileStream.Length <= _optionsMonitor.CurrentValue.MaxFileSizeBytes)
         {
             // Check if adding this file would exceed memory limits
-            if (_currentMemoryUsage + fileStream.Length > _options.MaxTotalMemoryCacheMB * 1024 * 1024)
+            if (_currentMemoryUsage + fileStream.Length > _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024)
             {
                 // Memory cache is full, flush old files
-                await FlushOldestFilesAsync(_currentMemoryUsage + fileStream.Length - _options.MaxTotalMemoryCacheMB * 1024 * 1024);
+                await FlushOldestFilesAsync(_currentMemoryUsage + fileStream.Length - _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024);
             }
 
             // Create a copy for the cache
@@ -297,7 +298,7 @@ public class FileHandlerService : IDisposable
         }
 
         // Delete from disk if it exists
-        string filePath = Path.Combine(_options.StorageDirectory, environment, filename);
+        string filePath = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename);
 
         if (File.Exists(filePath))
         {
@@ -343,7 +344,7 @@ public class FileHandlerService : IDisposable
         if (fileStream == null || fileStream.Length == 0)
             throw new ArgumentException("File is empty", nameof(fileStream));
 
-        if (fileStream.Length > _options.MaxFileSizeBytes)
+        if (fileStream.Length > _optionsMonitor.CurrentValue.MaxFileSizeBytes)
             throw new ArgumentException($"File size exceeds maximum allowed size", nameof(fileStream));
 
         // Sanitize the filename part only
@@ -427,7 +428,7 @@ public class FileHandlerService : IDisposable
         }
 
         // Create the environment directory if it doesn't exist
-        string environmentDir = Path.Combine(_options.StorageDirectory, environment);
+        string environmentDir = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment);
         Directory.CreateDirectory(environmentDir);
 
         // Determine the file path
@@ -473,7 +474,7 @@ public class FileHandlerService : IDisposable
 
             // Find old files to remove from memory
             var filesToRemove = _lastAccessTimes
-                .Where(kv => (DateTime.UtcNow - kv.Value).TotalSeconds > _options.MemoryCacheTimeSeconds)
+                .Where(kv => (DateTime.UtcNow - kv.Value).TotalSeconds > _optionsMonitor.CurrentValue.MemoryCacheTimeSeconds)
                 .Select(kv => kv.Key)
                 .ToList();
 

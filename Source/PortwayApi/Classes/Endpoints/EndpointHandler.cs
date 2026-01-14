@@ -234,11 +234,22 @@ public static class EndpointHandler
     private static readonly object _loadLock = new object();
 
     /// <summary>
+    /// Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility
+    /// </summary>
+    private static string GetEndpointsBasePath()
+    {
+        var baseDir = Directory.GetCurrentDirectory();
+        return Directory.Exists(Path.Combine(baseDir, "Endpoints"))
+            ? Path.Combine(baseDir, "Endpoints")
+            : Path.Combine(baseDir, "endpoints");
+    }
+
+    /// <summary>
     /// Gets SQL endpoints from the /endpoints/SQL directory
     /// </summary>
     public static Dictionary<string, EndpointDefinition> GetSqlEndpoints()
     {
-        string sqlEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "SQL");
+        string sqlEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "SQL");
         LoadSqlEndpointsIfNeeded(sqlEndpointsDirectory);
         return _loadedSqlEndpoints!;
     }
@@ -248,7 +259,7 @@ public static class EndpointHandler
     /// </summary>
     public static Dictionary<string, EndpointDefinition> GetSqlWebhookEndpoints()
     {
-        string sqlWebhookEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks");
+        string sqlWebhookEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Webhooks");
         LoadSqlWebhookEndpointsIfNeeded(sqlWebhookEndpointsDirectory);
         return _loadedSqlWebhookEndpoints!;
     }
@@ -258,7 +269,7 @@ public static class EndpointHandler
     /// </summary>
     public static Dictionary<string, EndpointDefinition> GetProxyEndpoints()
     {
-        string proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
+        string proxyEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Proxy");
         LoadProxyEndpointsIfNeeded(proxyEndpointsDirectory);
         return _loadedProxyEndpoints!;
     }
@@ -274,7 +285,7 @@ public static class EndpointHandler
         // If proxy endpoints haven't been loaded yet, load them
         if (_loadedProxyEndpoints == null)
         {
-            string proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
+            string proxyEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Proxy");
             LoadProxyEndpointsIfNeeded(proxyEndpointsDirectory);
         }
 
@@ -871,7 +882,7 @@ public static class EndpointHandler
 
     public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
     {
-        string fileEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Files");
+        string fileEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Files");
         LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
         return _loadedFileEndpoints!;
     }
@@ -881,7 +892,7 @@ public static class EndpointHandler
     /// </summary>
     public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
     {
-        string staticEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static");
+        string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
         LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
         return _loadedStaticEndpoints!;
     }
@@ -1321,5 +1332,84 @@ public static class EndpointHandler
             File.WriteAllText(samplePath, json);
             Log.Information($"Created sample Files endpoint definition: {samplePath}");
         }
+    }
+
+    /// <summary>
+    /// Reloads all endpoint definitions from disk
+    /// </summary>
+    public static void ReloadAllEndpoints()
+    {
+        lock (_loadLock)
+        {
+            _loadedProxyEndpoints = null;
+            _loadedSqlEndpoints = null;
+            _loadedSqlWebhookEndpoints = null;
+            _loadedFileEndpoints = null;
+            _loadedStaticEndpoints = null;
+
+            Log.Information("All endpoint caches cleared, will reload on next access");
+        }
+    }
+
+    /// <summary>
+    /// Reloads a specific endpoint type
+    /// </summary>
+    public static void ReloadEndpointType(EndpointType type)
+    {
+        lock (_loadLock)
+        {
+            switch (type)
+            {
+                case EndpointType.SQL:
+                    _loadedSqlEndpoints = null;
+                    _loadedSqlWebhookEndpoints = null; // Webhooks are SQL-based
+                    Log.Information("SQL endpoint cache cleared, will reload on next access");
+                    break;
+                case EndpointType.Proxy:
+                case EndpointType.Composite:
+                    _loadedProxyEndpoints = null;
+                    Log.Information("Proxy endpoint cache cleared, will reload on next access");
+                    break;
+                case EndpointType.Files:
+                    _loadedFileEndpoints = null;
+                    Log.Information("File endpoint cache cleared, will reload on next access");
+                    break;
+                case EndpointType.Static:
+                    _loadedStaticEndpoints = null;
+                    Log.Information("Static endpoint cache cleared, will reload on next access");
+                    break;
+                default:
+                    Log.Warning("Unknown endpoint type for reload: {Type}", type);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts endpoint type from file path
+    /// </summary>
+    public static EndpointType? GetEndpointTypeFromPath(string filePath)
+    {
+        if (filePath.Contains("endpoints/SQL", StringComparison.OrdinalIgnoreCase) ||
+            filePath.Contains("endpoints\\SQL", StringComparison.OrdinalIgnoreCase))
+            return EndpointType.SQL;
+
+        if (filePath.Contains("endpoints/Proxy", StringComparison.OrdinalIgnoreCase) ||
+            filePath.Contains("endpoints\\Proxy", StringComparison.OrdinalIgnoreCase))
+            return EndpointType.Proxy;
+
+        if (filePath.Contains("endpoints/Webhooks", StringComparison.OrdinalIgnoreCase) ||
+            filePath.Contains("endpoints\\Webhooks", StringComparison.OrdinalIgnoreCase))
+            return EndpointType.SQL; // Webhooks are SQL endpoints
+
+        if (filePath.Contains("endpoints/Files", StringComparison.OrdinalIgnoreCase) ||
+            filePath.Contains("endpoints\\Files", StringComparison.OrdinalIgnoreCase))
+            return EndpointType.Files;
+
+        if (filePath.Contains("endpoints/Static", StringComparison.OrdinalIgnoreCase) ||
+            filePath.Contains("endpoints\\Static", StringComparison.OrdinalIgnoreCase))
+            return EndpointType.Static;
+
+        return null;
     }
 }

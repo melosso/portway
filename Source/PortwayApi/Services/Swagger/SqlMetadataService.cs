@@ -100,7 +100,9 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "One or more metadata initialization tasks failed");
+            var errorMessage = ex.Message;
+            Log.Error(ex, "One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
+                ex.GetType().Name, errorMessage);
         }
         
         lock (_cacheLock)
@@ -145,7 +147,10 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to initialize metadata for endpoint {EndpointName}", endpointName);
+            // Get the most relevant error message
+            var errorMessage = ex.Message;
+            Log.Error(ex, "Failed to initialize metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
+                endpointName, ex.GetType().Name, errorMessage);
         }
     }
 
@@ -213,7 +218,9 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error loading object metadata for endpoint {EndpointName}", endpointName);
+            var errorMessage = ex.Message;
+            Log.Error(ex, "Error loading object metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
+                endpointName, ex.GetType().Name, errorMessage);
             throw;
         }
     }
@@ -264,7 +271,9 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error loading procedure metadata for endpoint {EndpointName}", endpointName);
+            var errorMessage = ex.Message;
+            Log.Error(ex, "Error loading procedure metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
+                endpointName, ex.GetType().Name, errorMessage);
             throw;
         }
     }
@@ -642,5 +651,49 @@ public class SqlMetadataService
             "xml" => "System.String",
             _ => "System.Object"
         };
+    }
+
+    /// <summary>
+    /// Clears all cached metadata - forces lazy reload on next access
+    /// </summary>
+    public void ClearAllMetadata()
+    {
+        lock (_cacheLock)
+        {
+            _objectMetadataCache.Clear();
+            _procedureMetadataCache.Clear();
+        }
+
+        Log.Information("All SQL metadata cache cleared, will reload lazily on next request");
+    }
+
+    /// <summary>
+    /// Clears metadata for a specific endpoint - forces lazy reload on next access
+    /// </summary>
+    public void ClearEndpointMetadata(string endpointName)
+    {
+        lock (_cacheLock)
+        {
+            var objectKeysToRemove = _objectMetadataCache.Keys
+                .Where(k => k.StartsWith($"{endpointName}:"))
+                .ToList();
+
+            var procedureKeysToRemove = _procedureMetadataCache.Keys
+                .Where(k => k.StartsWith($"{endpointName}:"))
+                .ToList();
+
+            foreach (var key in objectKeysToRemove)
+            {
+                _objectMetadataCache.Remove(key);
+            }
+
+            foreach (var key in procedureKeysToRemove)
+            {
+                _procedureMetadataCache.Remove(key);
+            }
+
+            Log.Debug("SQL metadata cache cleared for endpoint: {Endpoint} (Objects: {ObjectCount}, Procedures: {ProcedureCount})",
+                endpointName, objectKeysToRemove.Count, procedureKeysToRemove.Count);
+        }
     }
 }

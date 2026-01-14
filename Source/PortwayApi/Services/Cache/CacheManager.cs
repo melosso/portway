@@ -11,20 +11,21 @@ namespace PortwayApi.Services.Caching;
 public class CacheManager : ICacheProvider
 {
     private readonly ICacheProvider _provider;
-    private readonly CacheOptions _options;
+    private readonly IOptionsMonitor<CacheOptions> _optionsMonitor;
 
     public CacheManager(
-        IOptions<CacheOptions> options,
+        IOptionsMonitor<CacheOptions> optionsMonitor,
         MemoryCacheProvider memoryCacheProvider,
         RedisCacheProvider? redisCacheProvider = null)
     {
-        _options = options.Value;
+        _optionsMonitor = optionsMonitor;
+        var options = optionsMonitor.CurrentValue;
 
         // Select the appropriate provider based on configuration
-        _provider = _options.ProviderType switch
+        _provider = options.ProviderType switch
         {
             CacheProviderType.Redis when redisCacheProvider != null && redisCacheProvider.IsConnected => redisCacheProvider,
-            CacheProviderType.Redis when redisCacheProvider != null && _options.Redis.FallbackToMemoryCache => memoryCacheProvider,
+            CacheProviderType.Redis when redisCacheProvider != null && options.Redis.FallbackToMemoryCache => memoryCacheProvider,
             _ => memoryCacheProvider
         };
 
@@ -46,7 +47,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task<T?> GetAsync<T>(string key) where T : class
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult<T?>(null);
         }
@@ -59,7 +60,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.CompletedTask;
         }
@@ -72,7 +73,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task SetAsync<T>(string key, T value, string endpointName) where T : class
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.CompletedTask;
         }
@@ -86,7 +87,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task RemoveAsync(string key)
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.CompletedTask;
         }
@@ -99,7 +100,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task<bool> ExistsAsync(string key)
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult(false);
         }
@@ -112,7 +113,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration)
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult(false);
         }
@@ -125,7 +126,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task<bool> RefreshExpirationAsync(string key, string endpointName)
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult(false);
         }
@@ -139,7 +140,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime)
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult<IDisposable?>(null);
         }
@@ -152,7 +153,7 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public Task<IDisposable?> AcquireLockAsync(string lockKey)
     {
-        if (!_options.Enabled)
+        if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult<IDisposable?>(null);
         }
@@ -169,13 +170,13 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public bool ShouldCacheResponse(string? contentType)
     {
-        if (!_options.Enabled || string.IsNullOrEmpty(contentType))
+        if (!_optionsMonitor.CurrentValue.Enabled || string.IsNullOrEmpty(contentType))
         {
             return false;
         }
 
         // Check against list of cacheable content types
-        foreach (var allowedType in _options.CacheableContentTypes)
+        foreach (var allowedType in _optionsMonitor.CurrentValue.CacheableContentTypes)
         {
             if (contentType.Contains(allowedType, StringComparison.OrdinalIgnoreCase))
             {
@@ -191,6 +192,6 @@ public class CacheManager : ICacheProvider
     /// </summary>
     public TimeSpan GetCacheDurationForEndpoint(string endpointName)
     {
-        return _options.GetCacheDurationForEndpoint(endpointName);
+        return _optionsMonitor.CurrentValue.GetCacheDurationForEndpoint(endpointName);
     }
 }
