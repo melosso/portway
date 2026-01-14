@@ -20,7 +20,11 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
     public EnvironmentSettingsProvider()
     {
-        _basePath = Path.Combine(Directory.GetCurrentDirectory(), "environments");
+        // Support both lowercase and uppercase folder names for cross-platform compatibility
+        var baseDir = Directory.GetCurrentDirectory();
+        _basePath = Directory.Exists(Path.Combine(baseDir, "Environments"))
+            ? Path.Combine(baseDir, "Environments")
+            : Path.Combine(baseDir, "environments");
         _keyVaultUri = Environment.GetEnvironmentVariable("KEYVAULT_URI");
         _certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
         

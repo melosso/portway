@@ -85,7 +85,7 @@ public class StartupLogger : IHostedService
         {
             // Log connection string providers (not the actual connection strings)
             var keyvaultConfigured = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("KEYVAULT_URI"));
-            Log.Information("Using Azure Key Vault: {IsConfigured}", keyvaultConfigured ? "Yes" : "No");
+            Log.Information("Using Azure Key Vault: {IsConfigured}", keyvaultConfigured ? "True" : "False");
 
             // Log allowed environments
             var environmentsSection = _configuration.GetSection("Environment:AllowedEnvironments");

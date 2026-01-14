@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using PortwayApi.Classes;
 using Serilog;
 
 namespace PortwayApi.Services;
@@ -21,18 +22,15 @@ public class HealthCheckService
     private HealthReport? _cachedReport;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly IHttpClientFactory? _httpClientFactory;
-    private readonly Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)>? _endpointMap;
 
     public HealthCheckService(
-        Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService, 
-        TimeSpan cacheTime, 
-        IHttpClientFactory? httpClientFactory = null, 
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)>? endpointMap = null)
+        Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService,
+        TimeSpan cacheTime,
+        IHttpClientFactory? httpClientFactory = null)
     {
         _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));
         _cacheTime = cacheTime;
         _httpClientFactory = httpClientFactory;
-        _endpointMap = endpointMap;
     }
 
     /// <summary>
@@ -59,7 +57,7 @@ public class HealthCheckService
                 ["Diskspace"] = CheckDiskSpace()
             };
 
-            if (_httpClientFactory != null && _endpointMap != null)
+            if (_httpClientFactory != null)
             {
                 entries["ProxyEndpoints"] = await CheckProxyEndpointsAsync(cancellationToken);
             }
@@ -172,10 +170,15 @@ public class HealthCheckService
 
         try
         {
-            var endpointsToCheck = _endpointMap!
+            // Lazy load endpoints - ensures we always check current endpoint definitions
+            var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
+            var endpointsToCheck = proxyEndpoints
                 .Where(e => !e.Value.IsPrivate && e.Value.Methods.Contains("GET"))
                 .OrderBy(_ => Guid.NewGuid())
                 .Take(3)
+                .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)>(
+                    e.Key,
+                    (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.IsPrivate, e.Value.Type.ToString())))
                 .ToList();
 
             Log.Debug("Checking proxy endpoints: {Endpoints}", 

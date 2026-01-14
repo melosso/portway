@@ -177,7 +177,7 @@ public class RateLimiter
         
         if (_settings.Enabled)
         {
-            _logger.LogInformation("Rate limiter {InstanceId} initialized - Enabled: {Enabled}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
+            _logger.LogInformation("Rate limiter {InstanceId} initialized. Enabled: {Enabled}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
             _instanceId, _settings.Enabled, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
         }
     }
