@@ -8,7 +8,7 @@
 
 Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
-> 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)  |   🧪 [Live Demo](https://portway-demo.melosso.com/)
+> 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)
 
 A quick example to give you an idea of what this is all about:
 
