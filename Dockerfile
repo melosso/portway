@@ -2,7 +2,7 @@
 # Enable BuildKit features for better performance
 
 # Stage 1: Build the application
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies
@@ -28,7 +28,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish "Source/Tools/TokenGenerator/TokenGenerator.csproj" -c Release -o /app/tools/publish /p:UseAppHost=false
 
 # Stage 2: Runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-bookworm-slim AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-bookworm-slim AS final
 WORKDIR /app
 
 # Install SQLite and curl for healthchecks
