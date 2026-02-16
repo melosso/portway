@@ -423,7 +423,7 @@ You'll find comprehensive configuration examples in our [documentation page](htt
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
 
 ### Interactive documentation
-The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations. If necessary, the `/Swagger` (deprecated) route is also available (requires configuration).
+The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations.
 
 ### Schema discovery
 Portway automatically generates API documentation by reading your **database objects** at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. 

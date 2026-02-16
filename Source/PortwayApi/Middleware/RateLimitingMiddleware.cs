@@ -197,7 +197,7 @@ public class RateLimiter
         var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
 
         // Skip rate limiting and auth-context for exempted paths
-        if (context.Request.Path.StartsWithSegments("/swagger") ||
+        if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health/live") ||
             context.Request.Path == "/" ||

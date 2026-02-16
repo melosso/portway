@@ -1,67 +1,45 @@
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using Serilog;
 
 namespace PortwayApi.Classes;
 
 /// <summary>
-/// Custom schema filter to handle recursive types in Swagger
-/// </summary>
-public class SwaggerSchemaFilter : ISchemaFilter
-{
-    public void Apply(OpenApiSchema schema, SchemaFilterContext context)
-    {
-        // Put schema filter logic here if needed
-        // For example, you can modify the schema based on the type
-        // if (context.Type == typeof(YourRecursiveType))
-        // {
-        //     schema.Properties["yourProperty"].Description = "Custom description for recursive type";
-        // }
-        // This is a placeholder for any custom logic you might want to add
-        // to handle recursive types or other specific cases.
-        // For now, we are not modifying the schema, so this is empty.
-    }
-}
-
-/// <summary>
-/// Document filter that ensures endpoints are sorted alphabetically by path
+/// Document transformer that ensures endpoints are sorted alphabetically by path
 /// rather than grouped by tag
 /// </summary>
-public class AlphabeticalEndpointSorter : IDocumentFilter
+public class AlphabeticalEndpointSorter : IOpenApiDocumentTransformer
 {
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        var paths = swaggerDoc.Paths.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
-        
-        swaggerDoc.Paths.Clear();
+        var paths = document.Paths.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
+
+        document.Paths.Clear();
         foreach (var path in paths)
         {
-            swaggerDoc.Paths.Add(path.Key, path.Value);
+            document.Paths.Add(path.Key, path.Value);
         }
-        
+
+        return Task.CompletedTask;
     }
 }
 
 /// <summary>
 /// Helps fix issues with catch-all route parameters in OpenAPI documentation
 /// </summary>
-public class SwaggerDocumentFilter : IDocumentFilter
+public class OpenApiDocumentFilter : IOpenApiDocumentTransformer
 {
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         // Remove any catch-all route paths that can cause conflicts
-        var paths = swaggerDoc.Paths.Keys.Where(p => p.Contains("{**")).ToList();
+        var paths = document.Paths.Keys.Where(p => p.Contains("{**")).ToList();
         foreach (var path in paths)
         {
-            swaggerDoc.Paths.Remove(path);
+            document.Paths.Remove(path);
         }
 
         // Remove any duplicate paths that might exist
-        var duplicateKeys = swaggerDoc.Paths.Keys
+        var duplicateKeys = document.Paths.Keys
             .GroupBy(path => path)
             .Where(group => group.Count() > 1)
             .Select(group => group.Key)
@@ -69,98 +47,46 @@ public class SwaggerDocumentFilter : IDocumentFilter
 
         foreach (var key in duplicateKeys)
         {
-            swaggerDoc.Paths.Remove(key);
+            document.Paths.Remove(key);
         }
+
+        return Task.CompletedTask;
     }
 }
 
 /// <summary>
-/// Extends SwaggerGenOptions with custom configuration
+/// Custom document transformer to properly handle catchall parameters
 /// </summary>
-public static class SwaggerExtensions
+public class OpenApiCatchAllParameterFilter : IOpenApiDocumentTransformer
 {
-    /// <summary>
-    /// Configures Swagger generation to properly handle all API routes
-    /// </summary>
-    public static void ConfigureSwaggerGenWithCustomFilters(this SwaggerGenOptions options)
-    {
-        // Add document filter to handle catch-all routes
-        options.DocumentFilter<SwaggerDocumentFilter>();
-        options.DocumentFilter<SwaggerCatchAllParameterFilter>();
-        options.OperationFilter<SwaggerOperationFilter>();
-        
-        // Add schema filter to handle recursive types
-        options.SchemaFilter<SwaggerSchemaFilter>();
-        
-        // Handle conflicting routes by prioritizing the most specific ones
-        options.ResolveConflictingActions(apiDescriptions => 
-            apiDescriptions.OrderByDescending(apiDesc => GetRouteTemplateSpecificity(apiDesc)).First());
-    }
-    
-    /// <summary>
-    /// Calculate route template specificity to prioritize more specific routes
-    /// </summary>
-    private static int GetRouteTemplateSpecificity(ApiDescription apiDesc)
-    {
-        if (apiDesc.ActionDescriptor is not ControllerActionDescriptor actionDescriptor)
-            return 0;
-            
-        // Calculate specificity based on:
-        // 1. Number of literal segments
-        // 2. Number of constrained parameter segments
-        // 3. Penalize catch-all parameters
-        var template = actionDescriptor.AttributeRouteInfo?.Template ?? string.Empty;
-        
-        // Count literal segments
-        var literalSegments = template.Split('/')
-            .Where(segment => !segment.StartsWith("{") && !string.IsNullOrEmpty(segment))
-            .Count();
-            
-        // Count parameter segments
-        var parameterSegments = template.Split('/')
-            .Where(segment => segment.StartsWith("{") && !segment.Contains("**"))
-            .Count();
-            
-        // Penalize routes with catch-all parameters
-        var hasCatchAll = template.Contains("{**");
-        
-        // Calculate final score
-        int score = (literalSegments * 10) + (parameterSegments * 5) - (hasCatchAll ? 100 : 0);
-        
-        return score;
-    }
-}
-/// <summary>
-/// Custom document filter to properly handle catchall parameters in Swagger
-/// </summary>
-public class SwaggerCatchAllParameterFilter : IDocumentFilter
-{
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         // Find and remove any path with {**catchall} in it, as these are causing conflicts
-        var pathsToRemove = swaggerDoc.Paths.Keys
+        var pathsToRemove = document.Paths.Keys
             .Where(p => p.Contains("{**catchall}"))
             .ToList();
 
         foreach (var path in pathsToRemove)
         {
-            Log.Debug($"Removing catchall path from Swagger: {path}");
-            swaggerDoc.Paths.Remove(path);
+            Log.Debug($"Removing catchall path from OpenAPI docs: {path}");
+            document.Paths.Remove(path);
         }
+
+        return Task.CompletedTask;
     }
 }
 
 /// <summary>
-/// Custom operation filter to add security requirements to all operations
+/// Custom operation transformer to add security requirements to all operations
 /// </summary>
-public class SwaggerOperationFilter : IOperationFilter
+public class OpenApiOperationFilter : IOpenApiOperationTransformer
 {
-    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
-        // Skip if this is a swagger operation
-        if (context.ApiDescription.RelativePath?.StartsWith("swagger") == true)
+        // Skip if this is an OpenAPI docs operation
+        if (context.Description.RelativePath?.StartsWith("openapi-docs") == true)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         // Add security requirements to all operations
@@ -168,28 +94,23 @@ public class SwaggerOperationFilter : IOperationFilter
         operation.Security.Add(new OpenApiSecurityRequirement
         {
             {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                new string[] { }
+                new OpenApiSecuritySchemeReference("Bearer"),
+                new List<string>()
             }
         });
 
         // Add standard response codes
         operation.Responses ??= new OpenApiResponses();
-        
+
         if (!operation.Responses.ContainsKey("401"))
             operation.Responses.Add("401", new OpenApiResponse { Description = "Unauthorized" });
-            
+
         if (!operation.Responses.ContainsKey("403"))
             operation.Responses.Add("403", new OpenApiResponse { Description = "Forbidden" });
-            
+
         if (!operation.Responses.ContainsKey("500"))
             operation.Responses.Add("500", new OpenApiResponse { Description = "Server Error" });
+
+        return Task.CompletedTask;
     }
 }

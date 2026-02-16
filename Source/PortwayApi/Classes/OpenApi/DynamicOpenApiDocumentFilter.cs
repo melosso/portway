@@ -1,38 +1,40 @@
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.OpenApi;
 
-namespace PortwayApi.Classes.Swagger;
+namespace PortwayApi.Classes.OpenApi;
 
 /// <summary>
-/// Document filter that injects dynamic configuration values into the OpenAPI document
+/// Document transformer that injects dynamic configuration values into the OpenAPI document
 /// </summary>
-public class DynamicSwaggerDocumentFilter : IDocumentFilter
+public class DynamicOpenApiDocumentFilter : IOpenApiDocumentTransformer
 {
-    private readonly IOptionsMonitor<SwaggerSettings> _swaggerMonitor;
+    private readonly IOptionsMonitor<OpenApiSettings> _openApiMonitor;
 
-    public DynamicSwaggerDocumentFilter(IOptionsMonitor<SwaggerSettings> swaggerMonitor)
+    public DynamicOpenApiDocumentFilter(IOptionsMonitor<OpenApiSettings> openApiMonitor)
     {
-        _swaggerMonitor = swaggerMonitor;
+        _openApiMonitor = openApiMonitor;
     }
 
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         // Read current configuration values on each request
-        var settings = _swaggerMonitor.CurrentValue;
+        var settings = _openApiMonitor.CurrentValue;
 
         // Update OpenAPI document metadata with current values
-        swaggerDoc.Info.Title = settings.Title;
-        swaggerDoc.Info.Version = settings.Version;
-        swaggerDoc.Info.Description = settings.Description;
+        document.Info.Title = settings.Title;
+        document.Info.Version = settings.Version;
+        document.Info.Description = settings.Description;
 
         if (settings.Contact != null)
         {
-            swaggerDoc.Info.Contact = new OpenApiContact
+            document.Info.Contact = new OpenApiContact
             {
                 Name = settings.Contact.Name,
                 Email = settings.Contact.Email
             };
         }
+
+        return Task.CompletedTask;
     }
 }

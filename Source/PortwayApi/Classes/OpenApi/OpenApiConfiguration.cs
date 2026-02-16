@@ -5,20 +5,19 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
-using PortwayApi.Classes.Swagger;
+using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
 using Scalar.AspNetCore;
 using Serilog;
-using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace PortwayApi.Classes;
 
-public class SwaggerSettings
+public class OpenApiSettings
 {
     public bool Enabled { get; set; } = true;
     public string? BaseProtocol { get; set; } = "https";
@@ -35,9 +34,8 @@ public class SwaggerSettings
     public bool EnableValidator { get; set; } = true;
     public bool ForceHttpsInProduction { get; set; } = true; // Always use HTTPS in production environments
 
-    // Scalar-specific 
+    // Scalar-specific
     public FooterInfo Footer { get; set; } = new FooterInfo();
-    public bool EnableScalar { get; set; } = true;
     public string ScalarTheme { get; set; } = "purple"; // alternate, default, moon, purple, solarized, bluePlanet, saturn, kepler, mars, deepSpace
     public string ScalarLayout { get; set; } = "modern"; // modern, classic
     public bool ScalarShowSidebar { get; set; } = true;
@@ -70,285 +68,229 @@ public class SecurityDefinitionInfo
     public string Scheme { get; set; } = "Bearer";
 }
 
-public static class SwaggerConfiguration
+public static class OpenApiConfiguration
 {
-    public static void ConfigureSwagger(WebApplicationBuilder builder)
+    public static void ConfigureOpenApi(WebApplicationBuilder builder)
     {
-        // Register SwaggerSettings with IOptionsMonitor for dynamic reload
-        builder.Services.Configure<SwaggerSettings>(builder.Configuration.GetSection("Swagger"));
+        // Register OpenApiSettings with IOptionsMonitor for dynamic reload
+        builder.Services.Configure<OpenApiSettings>(builder.Configuration.GetSection("OpenApi"));
 
         // Register post-configuration to apply defaults and validation
-        builder.Services.PostConfigure<SwaggerSettings>(swaggerSettings =>
+        builder.Services.PostConfigure<OpenApiSettings>(openApiSettings =>
         {
             // Ensure object references aren't null (defensive programming)
-            swaggerSettings.Contact ??= new ContactInfo();
-            swaggerSettings.Footer ??= new FooterInfo();
-            swaggerSettings.SecurityDefinition ??= new SecurityDefinitionInfo();
+            openApiSettings.Contact ??= new ContactInfo();
+            openApiSettings.Footer ??= new FooterInfo();
+            openApiSettings.SecurityDefinition ??= new SecurityDefinitionInfo();
 
             // Validate and fix critical values
-            if (string.IsNullOrWhiteSpace(swaggerSettings.Title))
-                swaggerSettings.Title = "PortwayAPI";
+            if (string.IsNullOrWhiteSpace(openApiSettings.Title))
+                openApiSettings.Title = "PortwayAPI";
 
-            if (string.IsNullOrWhiteSpace(swaggerSettings.Version))
-                swaggerSettings.Version = "v1";
+            if (string.IsNullOrWhiteSpace(openApiSettings.Version))
+                openApiSettings.Version = "v1";
 
-            if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Name))
-                swaggerSettings.SecurityDefinition.Name = "Bearer";
+            if (string.IsNullOrWhiteSpace(openApiSettings.SecurityDefinition.Name))
+                openApiSettings.SecurityDefinition.Name = "Bearer";
 
-            if (string.IsNullOrWhiteSpace(swaggerSettings.SecurityDefinition.Scheme))
-                swaggerSettings.SecurityDefinition.Scheme = "Bearer";
+            if (string.IsNullOrWhiteSpace(openApiSettings.SecurityDefinition.Scheme))
+                openApiSettings.SecurityDefinition.Scheme = "Bearer";
 
-            if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarTheme))
-                swaggerSettings.ScalarTheme = "purple";
+            if (string.IsNullOrWhiteSpace(openApiSettings.ScalarTheme))
+                openApiSettings.ScalarTheme = "purple";
 
-            if (string.IsNullOrWhiteSpace(swaggerSettings.ScalarLayout))
-                swaggerSettings.ScalarLayout = "modern";
+            if (string.IsNullOrWhiteSpace(openApiSettings.ScalarLayout))
+                openApiSettings.ScalarLayout = "modern";
         });
 
-        // Get initial settings to register Swagger services
-        var swaggerSettings = new SwaggerSettings();
-        var section = builder.Configuration.GetSection("Swagger");
+        // Get initial settings to register OpenAPI services
+        var openApiSettings = new OpenApiSettings();
+        var section = builder.Configuration.GetSection("OpenApi");
         if (section.Exists())
         {
-            section.Bind(swaggerSettings);
-            Log.Debug("Swagger configuration loaded from appsettings.json");
+            section.Bind(openApiSettings);
+            Log.Debug("OpenAPI configuration loaded from appsettings.json");
         }
 
-        // Register Swagger services if enabled
-        if (swaggerSettings.Enabled)
+        // Register OpenAPI services if enabled
+        if (openApiSettings.Enabled)
         {
-            builder.Services.AddSwaggerGen(c =>
+            builder.Services.AddOpenApi(openApiSettings.Version, options =>
             {
-                // Initial values (will be overridden by DynamicSwaggerDocumentFilter on each request)
-                c.SwaggerDoc(swaggerSettings.Version, new OpenApiInfo
+                // Exclude controller-discovered endpoints; all docs are generated by document transformers
+                options.ShouldInclude = (description) =>
                 {
-                    Title = swaggerSettings.Title,
-                    Version = swaggerSettings.Version,
-                    Description = swaggerSettings.Description ?? "API Documentation",
-                    Contact = new OpenApiContact
-                    {
-                        Name = swaggerSettings.Contact.Name,
-                        Email = swaggerSettings.Contact.Email
-                    }
-                });
+                    var controller = description.ActionDescriptor.RouteValues.TryGetValue("controller", out var ctrl) ? ctrl : "Unknown";
+                    var routeTemplate = description.RelativePath?.ToLowerInvariant() ?? "Unknown";
 
-                // Add document filter for dynamic configuration reload
-                c.DocumentFilter<DynamicSwaggerDocumentFilter>();
-                
-                // Add security definition for Bearer token
-                c.AddSecurityDefinition(swaggerSettings.SecurityDefinition.Name, new OpenApiSecurityScheme
-                {
-                    Description = swaggerSettings.SecurityDefinition.Description,
-                    Name = "Authorization",
-                    In = ParseEnum<ParameterLocation>(swaggerSettings.SecurityDefinition.In, ParameterLocation.Header),
-                    Type = ParseEnum<SecuritySchemeType>(swaggerSettings.SecurityDefinition.Type, SecuritySchemeType.ApiKey),
-                    Scheme = swaggerSettings.SecurityDefinition.Scheme
-                });
-                
-                // Add security requirement
-                c.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
-                    {
-                        new OpenApiSecurityScheme
-                        {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = swaggerSettings.SecurityDefinition.Name
-                            }
-                        },
-                        new string[] { }
-                    }
-                });
-
-                // Add custom schema filter for recursive types
-                c.SchemaFilter<SwaggerSchemaFilter>();
-                
-                // Handle complex parameters in the EndpointController
-                c.ParameterFilter<ComplexParameterFilter>();
-                
-                // Ignore controller actions to use document filters instead
-                c.DocInclusionPredicate((docName, apiDesc) =>
-                {
-                    var controller = apiDesc.ActionDescriptor.RouteValues.TryGetValue("controller", out var ctrl) ? ctrl : "Unknown";
-                    var routeTemplate = apiDesc.RelativePath?.ToLowerInvariant() ?? "Unknown";
-                    
                     if (!string.IsNullOrEmpty(controller))
                     {
-                        // Exclude specific controllers from appearing in documentation
-                        var excludedControllers = new[] { "Endpoint", "PortwayApi", "Models", "SwaggerDocs" };
+                        var excludedControllers = new[] { "Endpoint", "PortwayApi", "Models", "OpenApiDocs" };
                         if (excludedControllers.Contains(controller, StringComparer.OrdinalIgnoreCase))
-                        {
-                            return false; // Exclude these controllers
-                        }
+                            return false;
                     }
 
-                    // Also exclude by route patterns that shouldn't be documented
                     if (!string.IsNullOrEmpty(routeTemplate))
                     {
-                        var excludedRoutePatterns = new[] { "portwayapi", "models", "swagger-docs", "/models" };
+                        var excludedRoutePatterns = new[] { "portwayapi", "models", "openapi-docs", "/models" };
                         if (excludedRoutePatterns.Any(pattern => routeTemplate.Contains(pattern)))
-                        {
-                            // Exclude routes containing these patterns
                             return false;
-                        }
                     }
-                    
-                    // Include all other controllers
-                    return true; 
+
+                    return true;
+                };
+
+                // Add security scheme via document transformer
+                options.AddDocumentTransformer((document, context, ct) =>
+                {
+                    document.Components ??= new OpenApiComponents();
+                    document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                    document.Components.SecuritySchemes[openApiSettings.SecurityDefinition.Name] = new OpenApiSecurityScheme
+                    {
+                        Description = openApiSettings.SecurityDefinition.Description,
+                        Name = "Authorization",
+                        In = ParseEnum<ParameterLocation>(openApiSettings.SecurityDefinition.In, ParameterLocation.Header),
+                        Type = ParseEnum<SecuritySchemeType>(openApiSettings.SecurityDefinition.Type, SecuritySchemeType.ApiKey),
+                        Scheme = openApiSettings.SecurityDefinition.Scheme
+                    };
+                    return Task.CompletedTask;
                 });
 
-                // Add filters (order is critical here)
-                c.DocumentFilter<DynamicEndpointDocumentFilter>();
-                c.DocumentFilter<CompositeEndpointDocumentFilter>();
-                c.DocumentFilter<FileEndpointDocumentFilter>();
-                c.DocumentFilter<SqlMetadataDocumentFilter>();
-                c.DocumentFilter<TagSorterDocumentFilter>();
-                c.OperationFilter<DynamicEndpointOperationFilter>();
+                // Add server URL transformer (replaces PreSerializeFilters)
+                options.AddDocumentTransformer((document, context, ct) =>
+                {
+                    var httpContextAccessor = context.ApplicationServices.GetService<IHttpContextAccessor>();
+                    var httpReq = httpContextAccessor?.HttpContext?.Request;
+                    if (httpReq != null)
+                    {
+                        var currentSettings = context.ApplicationServices
+                            .GetRequiredService<IOptionsMonitor<OpenApiSettings>>().CurrentValue;
 
-                // Resolve conflicting actions by taking the first one
-                c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+                        string scheme = httpReq.Scheme;
+                        bool isProduction = !string.Equals(
+                            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                            "Development", StringComparison.OrdinalIgnoreCase);
+                        bool forceHttps = currentSettings.ForceHttpsInProduction && isProduction;
+
+                        string host = httpReq.Host.HasValue ? httpReq.Host.Value : "localhost";
+                        bool isLocalhost = host.Contains("localhost") || host.Contains("127.0.0.1");
+
+                        if (forceHttps && !isLocalhost)
+                            scheme = "https";
+
+                        if (httpReq.Headers.ContainsKey("X-Forwarded-Proto") &&
+                            httpReq.Headers["X-Forwarded-Proto"] == "https")
+                            scheme = "https";
+
+                        var pathBase = httpReq.PathBase.HasValue ? httpReq.PathBase.Value : "";
+                        var serverUrl = $"{scheme}://{host}{pathBase}";
+
+                        document.Servers = new List<OpenApiServer>
+                        {
+                            new OpenApiServer { Url = serverUrl, Description = "Current server" }
+                        };
+
+                        Log.Debug("OpenAPI Server URL: {ServerUrl}", serverUrl);
+                    }
+                    return Task.CompletedTask;
+                });
+
+                // Add document transformers (order is critical)
+                options.AddDocumentTransformer<DynamicOpenApiDocumentFilter>();
+                options.AddDocumentTransformer<DynamicEndpointDocumentFilter>();
+                options.AddDocumentTransformer<CompositeEndpointDocumentFilter>();
+                options.AddDocumentTransformer<FileEndpointDocumentFilter>();
+                options.AddDocumentTransformer<SqlMetadataDocumentFilter>();
+                options.AddDocumentTransformer<TagSorterDocumentFilter>();
+
+                // Add operation transformers
+                options.AddOperationTransformer<DynamicEndpointOperationFilter>();
             });
 
-            // Register the parameter filter for complex parameters
-            builder.Services.AddSingleton<ComplexParameterFilter>();
-
-            // Register the document filters
-            builder.Services.AddSingleton<DynamicEndpointDocumentFilter>();
-            builder.Services.AddSingleton<CompositeEndpointDocumentFilter>();
-            builder.Services.AddSingleton<DynamicEndpointOperationFilter>();
-            builder.Services.AddSingleton<FileEndpointDocumentFilter>();
-            builder.Services.AddSingleton<SqlMetadataDocumentFilter>();
-            
-            Log.Debug("Swagger services registered successfully");
+            Log.Debug("OpenAPI services registered successfully");
         }
         else
         {
-            Log.Information("Swagger is disabled in configuration");
+            Log.Information("OpenAPI documentation is disabled in configuration");
         }
     }
 
-    public static void ConfigureDocs(WebApplication app, IOptionsMonitor<SwaggerSettings> swaggerMonitor)
+    public static void ConfigureDocs(WebApplication app, IOptionsMonitor<OpenApiSettings> openApiMonitor)
     {
-        // Check if Swagger is enabled at startup
-        var initialSettings = swaggerMonitor.CurrentValue;
+        // Check if OpenAPI is enabled at startup
+        var initialSettings = openApiMonitor.CurrentValue;
         if (!initialSettings.Enabled)
         {
-            Log.Information("Swagger is disabled in configuration");
+            Log.Information("OpenAPI documentation is disabled in configuration");
             return;
         }
-                
-        // Configure Swagger JSON endpoint
-        app.UseSwagger(options => {
-            options.RouteTemplate = "docs/openapi/{documentName}/openapi.json";
-            options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
 
-            options.PreSerializeFilters.Add((swagger, httpReq) => {
-                    // Read current configuration for dynamic reload
-                    var swaggerSettings = swaggerMonitor.CurrentValue;
-
-                    // Build the correct base URL including PathBase
-                    string scheme = httpReq.Scheme;
-
-                    // Only force HTTPS if explicitly configured AND in production
-                    bool isProduction = !app.Environment.IsDevelopment();
-                    bool forceHttps = swaggerSettings.ForceHttpsInProduction && isProduction;
-                    
-                    // Check if running on localhost or a development machine
-                    string host = httpReq.Host.HasValue ? httpReq.Host.Value : "localhost";
-                    bool isLocalhost = host.Contains("localhost") || host.Contains("127.0.0.1");
-                    
-                    // Only force HTTPS for production domains, not localhost
-                    if (forceHttps && !isLocalhost) {
-                        scheme = "https";
-                    }
-                    
-                    // Also check for standard HTTPS headers
-                    if (httpReq.Headers.ContainsKey("X-Forwarded-Proto") && 
-                        httpReq.Headers["X-Forwarded-Proto"] == "https") {
-                        scheme = "https";
-                    }
-                    
-                    // Build server URL with PathBase support
-                    var pathBase = httpReq.PathBase.HasValue ? httpReq.PathBase.Value : "";
-                    var serverUrl = $"{scheme}://{host}{pathBase}";
-                    
-                    swagger.Servers = new List<OpenApiServer> { 
-                        new OpenApiServer { 
-                            Url = serverUrl,
-                            Description = "Current server"
-                        } 
-                    };
-                    
-                    Log.Debug("OpenAPI Server URL: {ServerUrl}", serverUrl);
-                });
-        });
+        // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
+        app.MapOpenApi("/docs/openapi/{documentName}/openapi.json");
 
         // Configure unified documentation interface at /docs using Scalar
-        if (initialSettings.EnableScalar)
+        app.MapGet("/docs", (HttpContext context) =>
         {
-            app.MapGet("/docs", (HttpContext context) =>
-            {
-                // Read current configuration on each request for dynamic reload
-                var swaggerSettings = swaggerMonitor.CurrentValue;
+            // Read current configuration on each request for dynamic reload
+            var openApiSettings = openApiMonitor.CurrentValue;
 
-                // Get the base path for URL construction
-                var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
-                var sidebarConfig = swaggerSettings.ScalarShowSidebar ? "true" : "false";
+            // Get the base path for URL construction
+            var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
+            var sidebarConfig = openApiSettings.ScalarShowSidebar ? "true" : "false";
 
-                // Debug logging
-                Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
-                    swaggerSettings.ScalarTheme, swaggerSettings.ScalarLayout);
+            // Debug logging
+            Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
+                openApiSettings.ScalarTheme, openApiSettings.ScalarLayout);
 
-                var configJson = $@"{{
-                    ""theme"": ""{GetScalarThemeName(swaggerSettings.ScalarTheme)}"",
-                    ""layout"": ""{GetScalarLayoutName(swaggerSettings.ScalarLayout)}"",
+            var configJson = $@"{{
+                    ""theme"": ""{GetScalarThemeName(openApiSettings.ScalarTheme)}"",
+                    ""layout"": ""{GetScalarLayoutName(openApiSettings.ScalarLayout)}"",
                     ""sidebar"": {sidebarConfig},
-                    ""documentDownloadType"": ""{(swaggerSettings.ScalarHideDownloadButton ? "none" : "both")}"",
-                    ""hideModels"": {(swaggerSettings.ScalarHideModels ? "true" : "false")},
-                    ""hideClientButton"": {(swaggerSettings.ScalarHideClientButton ? "true" : "false")},
-                    ""hideTestRequestButton"": {(swaggerSettings.ScalarHideTestRequestButton ? "true" : "false")}
+                    ""documentDownloadType"": ""{(openApiSettings.ScalarHideDownloadButton ? "none" : "both")}"",
+                    ""hideModels"": {(openApiSettings.ScalarHideModels ? "true" : "false")},
+                    ""hideClientButton"": {(openApiSettings.ScalarHideClientButton ? "true" : "false")},
+                    ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")}
                 }}";
-                
-                string Base64Url(byte[] input)
-                {
-                    var s = Convert.ToBase64String(input);
-                    return s.TrimEnd('=').Replace('+', '-').Replace('/', '_');
-                }
 
-                string RandomBase64UrlId(int minBytes = 8, int maxBytes = 20)
-                {
-                    if (minBytes < 1) minBytes = 1;
-                    if (maxBytes < minBytes) maxBytes = minBytes;
-                    int bytes = RandomNumberGenerator.GetInt32(minBytes, maxBytes + 1);
-                    var b = new byte[bytes];
-                    RandomNumberGenerator.Fill(b);
-                    return Base64Url(b);
-                }
+            string Base64Url(byte[] input)
+            {
+                var s = Convert.ToBase64String(input);
+                return s.TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            }
 
-                string RandomDataAttrName(int rndChars = 8)
-                {
-                    var b = new byte[rndChars];
-                    RandomNumberGenerator.Fill(b);
-                    var sb = new StringBuilder(rndChars * 2);
-                    foreach (var vb in b) sb.Append(vb.ToString("x2"));
-                    return string.Concat("data-", sb.ToString().AsSpan(0, Math.Min(rndChars, sb.Length)));
-                }
+            string RandomBase64UrlId(int minBytes = 8, int maxBytes = 20)
+            {
+                if (minBytes < 1) minBytes = 1;
+                if (maxBytes < minBytes) maxBytes = minBytes;
+                int bytes = RandomNumberGenerator.GetInt32(minBytes, maxBytes + 1);
+                var b = new byte[bytes];
+                RandomNumberGenerator.Fill(b);
+                return Base64Url(b);
+            }
 
-                (string id, string attr) GenerateRandomElementIds() => 
-                    (RandomBase64UrlId(minBytes: 6, maxBytes: 18), RandomDataAttrName(6));
+            string RandomDataAttrName(int rndChars = 8)
+            {
+                var b = new byte[rndChars];
+                RandomNumberGenerator.Fill(b);
+                var sb = new StringBuilder(rndChars * 2);
+                foreach (var vb in b) sb.Append(vb.ToString("x2"));
+                return string.Concat("data-", sb.ToString().AsSpan(0, Math.Min(rndChars, sb.Length)));
+            }
 
-                var (sourceId, sourceAttr) = GenerateRandomElementIds();
-                var frontAttr = RandomDataAttrName(6);
-                var (asyncId, asyncAttr) = GenerateRandomElementIds();
-                var (openapiId, openapiAttr) = GenerateRandomElementIds();
-                var (overlayId, overlayAttr) = GenerateRandomElementIds();
-                
+            (string id, string attr) GenerateRandomElementIds() =>
+                (RandomBase64UrlId(minBytes: 6, maxBytes: 18), RandomDataAttrName(6));
+
+            var (sourceId, sourceAttr) = GenerateRandomElementIds();
+            var frontAttr = RandomDataAttrName(6);
+            var (asyncId, asyncAttr) = GenerateRandomElementIds();
+            var (openapiId, openapiAttr) = GenerateRandomElementIds();
+            var (overlayId, overlayAttr) = GenerateRandomElementIds();
+
 var html = $@"
 <!doctype html>
 <html>
 <head>
-    <title>{swaggerSettings.Title}</title>
+    <title>{openApiSettings.Title}</title>
     <meta charset=""utf-8"" />
     <meta name=""viewport"" content=""width=device-width, initial-scale=1"" />
     <meta name=""referrer"" content=""no-referrer"">
@@ -361,30 +303,30 @@ var html = $@"
     <script
         id=""api-reference""
         {frontAttr}=""""
-        data-url=""{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json""
+        data-url=""{pathBase}/docs/openapi/{openApiSettings.Version}/openapi.json""
         data-configuration='{configJson}'
         >
     </script>
-    <script 
-        id=""{sourceId}"" 
+    <script
+        id=""{sourceId}""
         {sourceAttr}=""""
         >
         (function(){{console.log(atob('JWNAbWVsb3Nzby9wb3J0d2F5JWMuIExpY2Vuc2VkIHVuZGVyICVjQUdQTCAzLjAlYy4='), atob('Y29sb3I6ICM2ZjQyYzE7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJweDs='), atob('Y29sb3I6ICMyOGE3NDU7IGZvbnQtd2VpZ2h0OiBib2xkOyBmb250LXNpemU6IDEycHg7'), atob('Y29sb3I6ICMzMzM7IGZvbnQtc2l6ZTogMTJ4Ow==') );}})();
     </script>
-    <script 
-        id=""{openapiId}"" 
+    <script
+        id=""{openapiId}""
         {openapiAttr}=""""
         >
         console.log(
-            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json',
+            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi/{openApiSettings.Version}/openapi.json',
             'color: #6f42c1; font-weight: bold; font-size: 12px;',
             'color: #333; font-size: 12px;',
             'color: #dcaf34ff; font-weight: bold; font-size: 12px;'
         );
     </script>
     <script src=""https://cdn.jsdelivr.net/npm/@scalar/api-reference""></script>
-    <script 
-        id=""{overlayId}"" 
+    <script
+        id=""{overlayId}""
         {overlayAttr}=""""
         >
         window.addEventListener('load', function() {{
@@ -426,7 +368,7 @@ var html = $@"
             // GitHub
             const githubContainer = document.createElement('div');
             githubContainer.style.position = 'relative';
-            
+
             const githubLink = document.createElement('a');
             githubLink.href = 'https://github.com/melosso/portway';
             githubLink.target = '_blank';
@@ -451,7 +393,7 @@ var html = $@"
             // License
             const licenseContainer = document.createElement('div');
             licenseContainer.style.position = 'relative';
-            
+
             const licenseLink = document.createElement('a');
             licenseLink.href = 'https://github.com/melosso/portway/blob/main/LICENSE';
             licenseLink.target = '_blank';
@@ -495,23 +437,23 @@ var html = $@"
                 licenseTooltip.style.transform = 'translateY(5px)';
             }});
 
-            {(swaggerSettings.Footer.ShowSourceIcon ? "// Conditionally add GitHub icon" : "")}
-            {(swaggerSettings.Footer.ShowSourceIcon ? "iconsContainer.appendChild(githubContainer);" : "")}
-            
+            {(openApiSettings.Footer.ShowSourceIcon ? "// Conditionally add GitHub icon" : "")}
+            {(openApiSettings.Footer.ShowSourceIcon ? "iconsContainer.appendChild(githubContainer);" : "")}
+
             iconsContainer.appendChild(licenseContainer);
             document.body.appendChild(iconsContainer);
         }});
     </script>
-    <script 
-        id=""{asyncId}"" 
+    <script
+        id=""{asyncId}""
         {asyncAttr}=""""
         >
         const observer = new MutationObserver(() => {{
             const link = document.querySelector('a[href=""https://www.scalar.com""]');
             if (link) {{
-                link.textContent = '{swaggerSettings.Footer.Text}';
-                link.href = '{swaggerSettings.Footer.Url}';
-                link.target = '{swaggerSettings.Footer.Target}';
+                link.textContent = '{openApiSettings.Footer.Text}';
+                link.href = '{openApiSettings.Footer.Url}';
+                link.target = '{openApiSettings.Footer.Target}';
                 observer.disconnect();
             }}
         }});
@@ -519,38 +461,10 @@ var html = $@"
     </script>
 </body>
 </html>";
-                return Results.Content(html, "text/html");
-            });
-            
-            Log.Information("API Documentation is ready! Please visit /docs.");
-        }
-        else
-        {
-            // Fallback to basic Swagger UI if Scalar is disabled
-            app.UseSwaggerUI(c =>
-            {
-                // Read current configuration for dynamic reload
-                var swaggerSettings = swaggerMonitor.CurrentValue;
+            return Results.Content(html, "text/html");
+        });
 
-                // Get basePath from appsettings.json
-                var pathBase = app.Configuration["PathBase"] ?? "";
-
-                c.SwaggerEndpoint($"{pathBase}/docs/openapi/{swaggerSettings.Version}/openapi.json", $"{swaggerSettings.Title} {swaggerSettings.Version}");
-                c.RoutePrefix = "docs";
-
-                // Apply basic settings
-                c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
-                c.DefaultModelsExpandDepth(swaggerSettings.DefaultModelsExpandDepth);
-
-                // Enable alphabetical sorting of tags
-                c.ConfigObject.AdditionalItems["tagsSorter"] = "alpha";
-
-                if (swaggerSettings.DisplayRequestDuration)
-                    c.DisplayRequestDuration();
-            });
-            
-            Log.Information("API Documentation is ready! Please visit /docs (legacy)");
-        }
+        Log.Information("API Documentation is ready! Please visit /docs.");
     }
 
     private static string GetScalarThemeName(string theme)
@@ -593,23 +507,5 @@ var html = $@"
             return defaultValue;
         }
         return result;
-    }
-}
-
-// New filter to handle complex parameters in the EndpointController
-public class ComplexParameterFilter : IParameterFilter
-{
-    public void Apply(OpenApiParameter parameter, ParameterFilterContext context)
-    {
-        if (parameter.Name == "catchall")
-        {
-            parameter.Description = "API endpoint path (e.g., 'endpoint/resource')";
-            parameter.Required = true;
-        }
-        else if (parameter.Name == "env")
-        {
-            parameter.Description = "Target environment";
-            parameter.Required = true;
-        }
     }
 }

@@ -2,50 +2,50 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
-using Swashbuckle.AspNetCore.SwaggerGen;
-using PortwayApi.Classes.Swagger;
+using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
 
 namespace PortwayApi.Classes;
 
 /// <summary>
 /// This adds dynamic example loading while keeping all existing hardcoded examples as fallback
 /// </summary>
-public class CompositeEndpointDocumentFilter : IDocumentFilter
+public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<CompositeEndpointDocumentFilter> _logger;
-    private readonly SwaggerExampleLoader _exampleLoader;
+    private readonly OpenApiExampleLoader _exampleLoader;
 
     public CompositeEndpointDocumentFilter(ILogger<CompositeEndpointDocumentFilter> logger)
     {
         _logger = logger;
         // Initialize example loader without passing logger (it creates its own if needed)
-        _exampleLoader = new SwaggerExampleLoader();
+        _exampleLoader = new OpenApiExampleLoader();
     }
 
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         try
         {
             // Get proxy endpoints directly to access full namespace information
             var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
-            
+
             // Filter for composite endpoints only
             var compositeEndpoints = proxyEndpoints
                 .Where(kvp => kvp.Value.IsComposite)
                 .ToList();
-            
+
             // Get allowed environments for parameter description
             var allowedEnvironments = GetAllowedEnvironments();
-            
+
             // Collect tags with descriptions for proper namespace grouping
             var documentTags = new Dictionary<string, string>();
 
             // Sort composite endpoints by name to ensure alphabetical order in documentation
             var sortedCompositeEndpoints = compositeEndpoints
-                .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             // Create paths for each composite endpoint
@@ -53,34 +53,34 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
             {
                 string endpointKey = endpoint.Key;
                 var definition = endpoint.Value;
-                
-                // Collect tag description if provided using the SwaggerTag for proper namespace grouping
-                if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) && 
-                    !documentTags.ContainsKey(definition.SwaggerTag))
+
+                // Collect tag description if provided using the DocumentationTag for proper namespace grouping
+                if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
+                    !documentTags.ContainsKey(definition.DocumentationTag))
                 {
-                    documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
+                    documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
                 }
-                
+
                 // Use the namespaced path from FullPath instead of hardcoded /composite/
                 string path = $"/api/{{env}}/{definition.FullPath}";
-                
+
                 // If the path doesn't exist yet, create it
-                if (!swaggerDoc.Paths.ContainsKey(path))
+                if (!document.Paths.ContainsKey(path))
                 {
-                    swaggerDoc.Paths.Add(path, new OpenApiPathItem());
+                    document.Paths.Add(path, new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() });
                 }
 
                 // Create the POST operation for the composite endpoint
                 var operation = new OpenApiOperation
                 {
-                    Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
-                    Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("POST") 
+                    Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(definition.DocumentationTag) },
+                    Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("POST")
                         ?? $"Execute {definition.EndpointName} composite endpoint",
-                    Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST") 
-                        ?? definition.CompositeConfig?.Description 
+                    Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST")
+                        ?? definition.CompositeConfig?.Description
                         ?? $"Executes the {definition.EndpointName} composite process with multiple steps",
                     OperationId = $"composite_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
-                    Parameters = new List<OpenApiParameter>()
+                    Parameters = new List<IOpenApiParameter>()
                 };
 
                 // Add environment parameter
@@ -89,10 +89,10 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema 
-                    { 
-                        Type = "string", 
-                        Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList() 
+                    Schema = new OpenApiSchema
+                    {
+                        Type = JsonSchemaType.String,
+                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).ToList()
                     },
                     Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
                 });
@@ -100,8 +100,8 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 // Create request body schema
                 var requestSchema = new OpenApiSchema
                 {
-                    Type = "object",
-                    Properties = new Dictionary<string, OpenApiSchema>()
+                    Type = JsonSchemaType.Object,
+                    Properties = new Dictionary<string, IOpenApiSchema>()
                 };
 
                 // Add request body
@@ -121,9 +121,9 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                 // ==============================================================
                 // NON-BREAKING CHANGE: Try dynamic example first, then fallback
                 // ==============================================================
-                
+
                 var dynamicExample = TryLoadDynamicExample(definition, endpointKey);
-                
+
                 if (dynamicExample != null)
                 {
                     // Use dynamically loaded example from file
@@ -144,8 +144,8 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                         {
                             requestSchema.Properties[step.ArrayProperty] = new OpenApiSchema
                             {
-                                Type = "array",
-                                Items = new OpenApiSchema { Type = "object" },
+                                Type = JsonSchemaType.Array,
+                                Items = new OpenApiSchema { Type = JsonSchemaType.Object },
                                 Description = $"Array of items for {step.Name} step"
                             };
                         }
@@ -153,7 +153,7 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                         {
                             requestSchema.Properties[step.SourceProperty] = new OpenApiSchema
                             {
-                                Type = "object",
+                                Type = JsonSchemaType.Object,
                                 Description = $"Data for {step.Name} step"
                             };
                         }
@@ -172,11 +172,11 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        { "success", new OpenApiSchema { Type = "boolean" } },
-                                        { "stepResults", new OpenApiSchema { Type = "object" } }
+                                        { "success", new OpenApiSchema { Type = JsonSchemaType.Boolean } },
+                                        { "stepResults", new OpenApiSchema { Type = JsonSchemaType.Object } }
                                     }
                                 }
                             }
@@ -193,33 +193,26 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
                     new OpenApiSecurityRequirement
                     {
                         {
-                            new OpenApiSecurityScheme
-                            {
-                                Reference = new OpenApiReference
-                                {
-                                    Type = ReferenceType.SecurityScheme,
-                                    Id = "Bearer"
-                                }
-                            },
-                            new string[] { }
+                            new OpenApiSecuritySchemeReference("Bearer"),
+                            new List<string>()
                         }
                     }
                 };
 
                 // Add the operation to the path
-                swaggerDoc.Paths[path].Operations[OperationType.Post] = operation;
+                document.Paths[path].Operations[HttpMethod.Post] = operation;
             }
 
             // Add all collected tags to the document (unchanged from original)
             if (documentTags.Any())
             {
-                swaggerDoc.Tags ??= new List<OpenApiTag>();
-                
+                document.Tags ??= new HashSet<OpenApiTag>();
+
                 foreach (var tag in documentTags)
                 {
-                    if (!swaggerDoc.Tags.Any(t => t.Name.Equals(tag.Key, StringComparison.OrdinalIgnoreCase)))
+                    if (!document.Tags.Any(t => t.Name.Equals(tag.Key, StringComparison.OrdinalIgnoreCase)))
                     {
-                        swaggerDoc.Tags.Add(new OpenApiTag
+                        document.Tags.Add(new OpenApiTag
                         {
                             Name = tag.Key,
                             Description = tag.Value
@@ -232,12 +225,14 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
         {
             _logger.LogError(ex, "Error generating OpenAPI documentation for composite endpoints");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Try to load dynamic example from file system. Returns null if file not found, allowing fallback to hardcoded examples
     /// </summary>
-    private IOpenApiAny? TryLoadDynamicExample(EndpointDefinition definition, string endpointKey)
+    private JsonNode? TryLoadDynamicExample(EndpointDefinition definition, string endpointKey)
     {
         try
         {
@@ -274,65 +269,65 @@ public class CompositeEndpointDocumentFilter : IDocumentFilter
         // Add Header property
         requestSchema.Properties["Header"] = new OpenApiSchema
         {
-            Type = "object",
-            Properties = new Dictionary<string, OpenApiSchema>
+            Type = JsonSchemaType.Object,
+            Properties = new Dictionary<string, IOpenApiSchema>
             {
-                { "OrderDebtor", new OpenApiSchema { Type = "string", Example = new OpenApiString("60093") } },
-                { "YourReference", new OpenApiSchema { Type = "string", Example = new OpenApiString("Connect async") } }
+                { "OrderDebtor", new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("60093") } },
+                { "YourReference", new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("Connect async") } }
             },
             Description = "Header information for the sales order"
         };
-        
+
         // Add Lines property with item examples
         var linesSchema = new OpenApiSchema
         {
-            Type = "array",
+            Type = JsonSchemaType.Array,
             Description = "Array of order lines",
             Items = new OpenApiSchema
             {
-                Type = "object",
-                Properties = new Dictionary<string, OpenApiSchema>
+                Type = JsonSchemaType.Object,
+                Properties = new Dictionary<string, IOpenApiSchema>
                 {
-                    { "Itemcode", new OpenApiSchema { Type = "string", Example = new OpenApiString("ITEM-001") } },
-                    { "Quantity", new OpenApiSchema { Type = "number", Format = "float", Example = new OpenApiFloat(2.0f) } },
-                    { "Price", new OpenApiSchema { Type = "number", Format = "float", Example = new OpenApiFloat(0.0f) } }
+                    { "Itemcode", new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("ITEM-001") } },
+                    { "Quantity", new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", Example = JsonValue.Create(2.0f) } },
+                    { "Price", new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", Example = JsonValue.Create(0.0f) } }
                 }
             }
         };
-        
+
         requestSchema.Properties["Lines"] = linesSchema;
-        
+
         // Add an example for the entire request
-        var example = new OpenApiObject
+        var example = new JsonObject
         {
-            ["Header"] = new OpenApiObject
+            ["Header"] = new JsonObject
             {
-                ["OrderDebtor"] = new OpenApiString("60093"),
-                ["YourReference"] = new OpenApiString("Connect async")
+                ["OrderDebtor"] = "60093",
+                ["YourReference"] = "Connect async"
             },
-            ["Lines"] = new OpenApiArray
+            ["Lines"] = new JsonArray
             {
-                new OpenApiObject
+                new JsonObject
                 {
-                    ["Itemcode"] = new OpenApiString("ITEM-001"),
-                    ["Quantity"] = new OpenApiInteger(2),
-                    ["Price"] = new OpenApiFloat(0.0f)
+                    ["Itemcode"] = "ITEM-001",
+                    ["Quantity"] = 2,
+                    ["Price"] = 0.0f
                 },
-                new OpenApiObject
+                new JsonObject
                 {
-                    ["Itemcode"] = new OpenApiString("ITEM-002"),
-                    ["Quantity"] = new OpenApiInteger(4),
-                    ["Price"] = new OpenApiFloat(0.0f)
+                    ["Itemcode"] = "ITEM-002",
+                    ["Quantity"] = 4,
+                    ["Price"] = 0.0f
                 },
-                new OpenApiObject
+                new JsonObject
                 {
-                    ["Itemcode"] = new OpenApiString("ITEM-003"),
-                    ["Quantity"] = new OpenApiInteger(5),
-                    ["Price"] = new OpenApiFloat(0.0f)
+                    ["Itemcode"] = "ITEM-003",
+                    ["Quantity"] = 5,
+                    ["Price"] = 0.0f
                 }
             }
         };
-        
+
         // Add the example to the media type
         operation.RequestBody.Content["application/json"].Example = example;
     }

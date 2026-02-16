@@ -62,7 +62,7 @@ public class ExtendedEndpointEntity
     
     /// <summary>
     /// Display name for the namespace (e.g., "External Services")
-    /// Used as Swagger tag description and documentation grouping
+    /// Used as documentation tag description and grouping
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
 
@@ -119,7 +119,7 @@ public class EndpointEntity
     
     /// <summary>
     /// Display name for the namespace (e.g., "Customer Relationship Management")
-    /// Used as Swagger tag description and documentation grouping
+    /// Used as documentation tag description and grouping
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
     
@@ -263,7 +263,7 @@ public class FileEndpointEntity
     
     /// <summary>
     /// Display name for the namespace (e.g., "Customer Relationship Management")
-    /// Used as Swagger tag description and documentation grouping
+    /// Used as documentation tag description and grouping
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
     
@@ -318,7 +318,7 @@ public class StaticEndpointEntity
     
     /// <summary>
     /// Display name for the namespace (e.g., "Reporting System")
-    /// Used as Swagger tag description and documentation grouping
+    /// Used as documentation tag description and grouping
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
     

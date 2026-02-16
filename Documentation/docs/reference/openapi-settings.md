@@ -1,6 +1,6 @@
 # OpenAPI Documentation Settings
 
-This guide focuses on configuring OpenAPI documentation for entities and tags in Portway. All endpoints automatically generate OpenAPI documentation based on their configuration, which is then exposed through the Swagger UI.
+This guide focuses on configuring OpenAPI documentation for entities and tags in Portway. All endpoints automatically generate OpenAPI documentation based on their configuration, which is then exposed through the Scalar documentation UI.
 
 ## Overview
 
@@ -24,7 +24,7 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
 
 ```json
 {
-  "Swagger": {
+  "OpenApi": {
     "Enabled": true,
     "BaseProtocol": "https",
     "Title": "Portway: API Gateway",
@@ -53,7 +53,6 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
     "EnableFilter": false,
     "EnableDeepLinking": false,
     "EnableValidator": true,
-    "EnableScalar": true,
     "ScalarTheme": "default",
     "ScalarShowSidebar": true,
     "ScalarHideDownloadButton": true,
@@ -89,7 +88,6 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
 | `EnableDeepLinking` | boolean | Enable deep linking to specific operations |
 | `EnableValidator` | boolean | Enable schema validation in UI |
 | `ForceHttpsInProduction` | boolean | Force HTTPS URLs in production environments |
-| `EnableScalar` | boolean | Use Scalar UI instead of default Swagger UI |
 | `ScalarTheme` | string | Scalar UI color theme |
 | `ScalarLayout` | string | Scalar UI layout style (`modern`, `classic`) |
 | `ScalarShowSidebar` | boolean | Show/hide the navigation sidebar |
