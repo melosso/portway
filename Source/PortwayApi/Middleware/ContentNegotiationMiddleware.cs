@@ -17,7 +17,7 @@ public class ContentNegotiationMiddleware
         "/files",
         "/health",
         "/docs",
-        "/swagger"
+        "/openapi-docs"
     };
     
     // Paths that are passthrough and should not enforce content negotiation

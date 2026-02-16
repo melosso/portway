@@ -3,18 +3,20 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Serilog;
-using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace PortwayApi.Classes;
 
-public class DynamicEndpointDocumentFilter : IDocumentFilter
+public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<DynamicEndpointDocumentFilter> _logger;
 
@@ -23,50 +25,52 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         _logger = logger;
     }
 
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         _logger.LogDebug("DynamicEndpointDocumentFilter called");
-        
+
         try {
             // Remove any controller-discovered paths that we'll be replacing
-            RemoveConflictingPaths(swaggerDoc);
-            
+            RemoveConflictingPaths(document);
+
             // Generate unique operation IDs
             int operationIdCounter = 1;
-            
+
             // Get allowed environments for parameter description
             var allowedEnvironments = GetAllowedEnvironments();
-            
+
             // Collect all tags with descriptions for the document
             var documentTags = new Dictionary<string, string>();
-            
+
             // Add documentation for each endpoint type
-            AddSqlEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter, documentTags);
-            AddProxyEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter, documentTags);
-            AddWebhookEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter);
-            AddStaticEndpoints(swaggerDoc, allowedEnvironments, ref operationIdCounter, documentTags);
-            
+            AddSqlEndpoints(document, allowedEnvironments, ref operationIdCounter, documentTags);
+            AddProxyEndpoints(document, allowedEnvironments, ref operationIdCounter, documentTags);
+            AddWebhookEndpoints(document, allowedEnvironments, ref operationIdCounter);
+            AddStaticEndpoints(document, allowedEnvironments, ref operationIdCounter, documentTags);
+
             // Collect file endpoint tags (but don't create operations since they're handled by EndpointController)
             CollectFileEndpointTags(documentTags);
-            
+
             // Add all collected tags to the document with descriptions
-            AddTagsToDocument(swaggerDoc, documentTags);
-            
+            AddTagsToDocument(document, documentTags);
+
 
             // Ensure application/json is added automatically to all operations with request bodies
-            foreach (var path in swaggerDoc.Paths)
+            foreach (var path in document.Paths)
             {
+                if (path.Value.Operations == null) continue;
                 foreach (var operation in path.Value.Operations)
                 {
                     if (operation.Value.RequestBody != null && !operation.Value.RequestBody.Content.ContainsKey("application/json"))
                     {
                         operation.Value.RequestBody.Content["application/json"] = new OpenApiMediaType
                         {
-                            Schema = new OpenApiSchema { Type = "object" }
+                            Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
                         };
                     }
-                    
+
                     // Add Accept header for all operations (GET and POST)
+                    operation.Value.Parameters ??= new List<IOpenApiParameter>();
                     if (!operation.Value.Parameters.Any(p => p.Name == "Accept"))
                     {
                         operation.Value.Parameters.Add(new OpenApiParameter
@@ -76,69 +80,72 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             Required = false,
                             Schema = new OpenApiSchema
                             {
-                                Type = "string",
-                                Default = new OpenApiString("application/json")
+                                Type = JsonSchemaType.String,
+                                Default = JsonValue.Create("application/json")
                             },
                             Description = "Specifies the media type of the response (default is application/json)"
                         });
                     }
-                    
+
                     // Note: Content-Type header is automatically added by OpenAPI/Scalar based on RequestBody content
                     // so we don't need to add it explicitly as it would cause duplicates
                 }
             }
+
+            return Task.CompletedTask;
         }
         catch (Exception ex) {
             _logger.LogError(ex, "Error applying document filter");
+            return Task.CompletedTask;
         }
     }
-    
-    private void RemoveConflictingPaths(OpenApiDocument swaggerDoc)
+
+    private void RemoveConflictingPaths(OpenApiDocument document)
     {
-        var pathsToRemove = swaggerDoc.Paths
+        var pathsToRemove = document.Paths
             .Where(p => p.Key.Contains("{catchall}") || p.Key.Contains("api/{env}"))
             .Select(p => p.Key)
             .ToList();
-            
+
         foreach (var path in pathsToRemove)
         {
-            swaggerDoc.Paths.Remove(path);
+            document.Paths.Remove(path);
         }
     }
-    
-    private void AddSqlEndpoints(OpenApiDocument swaggerDoc, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+
+    private void AddSqlEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         // Get SQL endpoints
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-        
-        // Sort endpoints by SwaggerTag to ensure alphabetical order in documentation
+
+        // Sort endpoints by DocumentationTag to ensure alphabetical order in documentation
         var sortedSqlEndpoints = sqlEndpoints
-            .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        
+
         foreach (var endpoint in sortedSqlEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
-            
+
             // Collect tag description if provided
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
             {
-                documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
+                documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
             }
-            
+
             // Path template for this endpoint (use FullPath to include namespace if present)
             string path = $"/api/{{env}}/{definition.FullPath}";
-            
+
             // Create path item if it doesn't exist
-            if (!swaggerDoc.Paths.ContainsKey(path))
+            if (!document.Paths.ContainsKey(path))
             {
-                swaggerDoc.Paths[path] = new OpenApiPathItem();
+                document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
-            
+
             // Add operations based on allowed methods
             var methods = definition.Methods;
-            
+
             // Ensure GET is always included (even if not specified)
             if (!methods.Contains("GET", StringComparer.OrdinalIgnoreCase))
             {
@@ -161,97 +168,97 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     definition,
                     allowedEnvironments,
                     operationIdCounter++);
-                    
-                if (opType.HasValue)
+
+                if (opType != null)
                 {
-                    swaggerDoc.Paths[path].Operations[opType.Value] = operation;
+                    document.Paths[path].Operations[opType] = operation;
                 }
             }
-            
+
             // Add specific delete endpoint with OData-style ID in path
             if (methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
                 // Use OData-style path: /api/{env}/{endpointName}({id})
                 var deletePath = $"/api/{{env}}/{definition.FullPath}({{id}})";
-                
+
                 // Create path item if it doesn't exist
-                if (!swaggerDoc.Paths.ContainsKey(deletePath))
+                if (!document.Paths.ContainsKey(deletePath))
                 {
-                    swaggerDoc.Paths[deletePath] = new OpenApiPathItem();
+                    document.Paths[deletePath] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
                 }
-                
+
                 var deleteOperation = CreateSqlDeleteOperation(
                     endpointName,
                     definition,
                     allowedEnvironments,
                     operationIdCounter++);
-                
+
                 // Remove the query parameter for id, and add a path parameter instead
                 deleteOperation.Parameters = deleteOperation.Parameters
                     .Where(p => p.Name != "id")
                     .ToList();
-                
+
                 deleteOperation.Parameters.Add(new OpenApiParameter {
                     Name = "id",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "ID of the record to delete (OData-style: /endpointName(id))"
                 });
-                
-                swaggerDoc.Paths[deletePath].Operations[OperationType.Delete] = deleteOperation;
+
+                document.Paths[deletePath].Operations[HttpMethod.Delete] = deleteOperation;
             }
         }
     }
 
     private void AddProxyDeleteOperation(
-        OpenApiDocument swaggerDoc,
+        OpenApiDocument document,
         string endpointName,
         EndpointDefinition definition,
         List<string> allowedEnvironments,
         ref int operationIdCounter)
     {
         // Determine delete pattern (load from endpoint definition)
-        var deletePattern = GetDeletePatternForSwagger(definition);
-        
+        var deletePattern = GetDeletePatternForDocs(definition);
+
         // Create path based on delete pattern
-        string deletePath = deletePattern.Style == "PathParameter" || 
-                            deletePattern.Style == "ODataGuid" || 
+        string deletePath = deletePattern.Style == "PathParameter" ||
+                            deletePattern.Style == "ODataGuid" ||
                             deletePattern.Style == "ODataKey"
             ? $"/api/{{env}}/{endpointName}/{{id}}"
             : $"/api/{{env}}/{endpointName}";
-        
-        if (!swaggerDoc.Paths.ContainsKey(deletePath))
+
+        if (!document.Paths.ContainsKey(deletePath))
         {
-            swaggerDoc.Paths[deletePath] = new OpenApiPathItem();
+            document.Paths[deletePath] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
         }
-        
+
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
+            Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(definition.DocumentationTag) },
             Summary = GetOperationSummary("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             Description = GetOperationDescription("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             OperationId = $"delete_{definition.FullPath}".Replace("/", "_"),
-            Parameters = new List<OpenApiParameter>()
+            Parameters = new List<IOpenApiParameter>()
         };
-        
+
         // Environment parameter
         operation.Parameters.Add(new OpenApiParameter
         {
             Name = "env",
             In = ParameterLocation.Path,
             Required = true,
-            Schema = new OpenApiSchema 
-            { 
-                Type = "string",
-                Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+            Schema = new OpenApiSchema
+            {
+                Type = JsonSchemaType.String,
+                Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
             },
             Description = $"Target environment. Allowed values: {string.Join(", ", allowedEnvironments)}"
         });
-        
+
         // ID parameter based on pattern
-        if (deletePattern.Style == "PathParameter" || 
-            deletePattern.Style == "ODataGuid" || 
+        if (deletePattern.Style == "PathParameter" ||
+            deletePattern.Style == "ODataGuid" ||
             deletePattern.Style == "ODataKey")
         {
             operation.Parameters.Add(new OpenApiParameter
@@ -259,7 +266,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 Name = "id",
                 In = ParameterLocation.Path,
                 Required = true,
-                Schema = new OpenApiSchema { Type = "string" },
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                 Description = deletePattern.Description ?? "Resource ID to delete"
             });
         }
@@ -270,11 +277,11 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 Name = deletePattern.Parameter ?? "id",
                 In = ParameterLocation.Query,
                 Required = true,
-                Schema = new OpenApiSchema { Type = "string" },
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                 Description = deletePattern.Description ?? "Resource ID to delete"
             });
         }
-        
+
         // Add responses
         operation.Responses = new OpenApiResponses
         {
@@ -283,8 +290,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             ["400"] = new OpenApiResponse { Description = "Bad request" },
             ["401"] = new OpenApiResponse { Description = "Unauthorized" },
             ["404"] = new OpenApiResponse { Description = "Resource not found" },
-            ["500"] = new OpenApiResponse 
-            { 
+            ["500"] = new OpenApiResponse
+            {
                 Description = "Internal Server Error",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -292,38 +299,38 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["type"] = new OpenApiSchema { Type = "string" },
-                                ["title"] = new OpenApiSchema { Type = "string" },
-                                ["status"] = new OpenApiSchema { Type = "integer" },
-                                ["detail"] = new OpenApiSchema { Type = "string" }
+                                ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Example = new OpenApiObject
+                        Example = new JsonObject
                         {
-                            ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                            ["title"] = new OpenApiString("Error"),
-                            ["status"] = new OpenApiInteger(500),
-                            ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                            ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                            ["title"] = JsonValue.Create("Error"),
+                            ["status"] = JsonValue.Create(500),
+                            ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
                         }
                     }
                 }
             }
         };
-        
-        swaggerDoc.Paths[deletePath].Operations[OperationType.Delete] = operation;
+
+        document.Paths[deletePath].Operations[HttpMethod.Delete] = operation;
         operationIdCounter++;
     }
 
-    private DeletePattern GetDeletePatternForSwagger(EndpointDefinition definition)
+    private DeletePattern GetDeletePatternForDocs(EndpointDefinition definition)
     {
         if (definition.DeletePatterns?.Any() == true)
         {
             return definition.DeletePatterns.First();
         }
-        
+
         // Default fallback
         return new DeletePattern
         {
@@ -332,12 +339,12 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         };
     }
 
-    private void AddProxyEndpoints(OpenApiDocument swaggerDoc, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddProxyEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
 
         var sortedProxyEndpoints = proxyEndpoints
-            .OrderBy(ep => ep.Value.SwaggerTag, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         foreach (var endpoint in sortedProxyEndpoints)
@@ -349,16 +356,16 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 continue;
 
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
-                !documentTags.ContainsKey(definition.SwaggerTag))
+                !documentTags.ContainsKey(definition.DocumentationTag))
             {
-                documentTags[definition.SwaggerTag] = definition.Documentation.TagDescription;
+                documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
             }
 
             string path = $"/api/{{env}}/{endpointName}";
 
-            if (!swaggerDoc.Paths.ContainsKey(path))
+            if (!document.Paths.ContainsKey(path))
             {
-                swaggerDoc.Paths[path] = new OpenApiPathItem();
+                document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
 
             // Add operations for each HTTP method
@@ -367,14 +374,14 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 // Skip DELETE - handle it separately
                 if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
                     continue;
-                    
+
                 var operation = new OpenApiOperation
                 {
-                    Tags = new List<OpenApiTag> { new OpenApiTag { Name = definition.SwaggerTag } },
+                    Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(definition.DocumentationTag) },
                     Summary = GetOperationSummary(method, definition.DisplayName ?? definition.EndpointName, definition),
                     Description = GetOperationDescription(method, definition.DisplayName ?? definition.EndpointName, definition),
                     OperationId = $"{method.ToLower()}_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
-                    Parameters = new List<OpenApiParameter>()
+                    Parameters = new List<IOpenApiParameter>()
                 };
 
                 // Add environment parameter
@@ -383,7 +390,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = "string", Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList() },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList() },
                     Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
                 });
 
@@ -396,7 +403,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         Name = "$select",
                         In = ParameterLocation.Query,
                         Required = false,
-                        Schema = new OpenApiSchema { Type = "string" },
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                         Description = "Select specific fields (comma-separated list of property names)"
                     });
 
@@ -406,11 +413,11 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         Name = "$top",
                         In = ParameterLocation.Query,
                         Required = false,
-                        Schema = new OpenApiSchema { 
-                            Type = "integer", 
-                            Default = new OpenApiInteger(10),
-                            Minimum = 1,
-                            Maximum = 1000
+                        Schema = new OpenApiSchema {
+                            Type = JsonSchemaType.Integer,
+                            Default = JsonValue.Create(10),
+                            Minimum = "1",
+                            Maximum = "1000"
                         },
                         Description = "Limit the number of results returned (default: 10, max: 1000)"
                     });
@@ -421,13 +428,13 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         Name = "$filter",
                         In = ParameterLocation.Query,
                         Required = false,
-                        Schema = new OpenApiSchema { Type = "string" },
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                         Description = "Filter the results based on a condition (e.g., Name eq 'Value')"
                     });
                 }
-                
+
                 // Add request body for methods that support it
-                if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) || 
+                if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) ||
                     method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
                     method.Equals("PATCH", StringComparison.OrdinalIgnoreCase) ||
                     method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
@@ -439,23 +446,23 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "object" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
                             },
                             ["text/xml"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "string" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                             },
                             ["application/soap+xml"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "string" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                             },
                             ["application/xml"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "string" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                             },
                             ["text/plain"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "string" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         }
                     };
@@ -464,14 +471,14 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 // Add example response
                 operation.Responses = new OpenApiResponses
                 {
-                    ["200"] = new OpenApiResponse 
-                    { 
+                    ["200"] = new OpenApiResponse
+                    {
                         Description = "Successful response",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = "object" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
                             }
                         }
                     },
@@ -479,8 +486,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     ["401"] = new OpenApiResponse { Description = "Unauthorized - Missing or invalid authentication token" },
                     ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
                     ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
-                    ["500"] = new OpenApiResponse 
-                    { 
+                    ["500"] = new OpenApiResponse
+                    {
                         Description = "Internal Server Error",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
@@ -488,21 +495,21 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["type"] = new OpenApiSchema { Type = "string" },
-                                        ["title"] = new OpenApiSchema { Type = "string" },
-                                        ["status"] = new OpenApiSchema { Type = "integer" },
-                                        ["detail"] = new OpenApiSchema { Type = "string" }
+                                        ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                        ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 },
-                                Example = new OpenApiObject
+                                Example = new JsonObject
                                 {
-                                    ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                                    ["title"] = new OpenApiString("Error"),
-                                    ["status"] = new OpenApiInteger(500),
-                                    ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                                    ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                    ["title"] = JsonValue.Create("Error"),
+                                    ["status"] = JsonValue.Create(500),
+                                    ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
                                 }
                             }
                         }
@@ -510,18 +517,18 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 };
 
                 // Add the operation to the path with the appropriate HTTP method
-                AddOperationToPath(swaggerDoc.Paths[path], method, operation);
+                AddOperationToPath(document.Paths[path], method, operation);
             }
 
             // Special handling for DELETE
             if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
-                AddProxyDeleteOperation(swaggerDoc, endpointName, definition, allowedEnvironments, ref operationIdCounter);
+                AddProxyDeleteOperation(document, endpointName, definition, allowedEnvironments, ref operationIdCounter);
             }
         }
     }
-    
-    private void AddWebhookEndpoints(OpenApiDocument swaggerDoc, List<string> allowedEnvironments, ref int operationIdCounter)
+
+    private void AddWebhookEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter)
     {
         // Add webhook endpoint with correct path pattern
         string path = "/api/{env}/webhook/{webhookId}";
@@ -529,45 +536,45 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
         if (webhookEndpoints == null || webhookEndpoints.Count == 0)
         {
-            return; // Skip adding webhook endpoints to Swagger if none exist
+            return; // Skip adding webhook endpoints to docs if none exist
         }
-        
+
         // Load webhook documentation from entity.json
         var webhookDocumentation = LoadWebhookDocumentation();
-        
+
         // Create path item if it doesn't exist
-        if (!swaggerDoc.Paths.ContainsKey(path))
+        if (!document.Paths.ContainsKey(path))
         {
-            swaggerDoc.Paths[path] = new OpenApiPathItem();
+            document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
         }
-        
+
         // Create webhook POST operation
         var webhookOperation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = "Webhook" } },
+            Tags = new HashSet<OpenApiTagReference> { new("Webhook") },
             Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
             Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
             OperationId = $"op_{operationIdCounter++}",
-            Parameters = new List<OpenApiParameter>
+            Parameters = new List<IOpenApiParameter>
             {
-                new()
+                new OpenApiParameter()
                 {
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
                     Schema = new OpenApiSchema
                     {
-                        Type = "string",
-                        Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+                        Type = JsonSchemaType.String,
+                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 },
-                new()
+                new OpenApiParameter()
                 {
                     Name = "webhookId",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "Webhook identifier"
                 }
             },
@@ -581,22 +588,22 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object"
+                            Type = JsonSchemaType.Object
                         }
                     }
                 }
             },
             Responses = new OpenApiResponses
             {
-                ["201"] = new OpenApiResponse 
-                { 
+                ["201"] = new OpenApiResponse
+                {
                     Description = "Created - Resource successfully created",
-                    Headers = new Dictionary<string, OpenApiHeader>
+                    Headers = new Dictionary<string, IOpenApiHeader>
                     {
                         ["Location"] = new OpenApiHeader
                         {
                             Description = "URL of the newly created resource",
-                            Schema = new OpenApiSchema { Type = "string" }
+                            Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                         }
                     },
                     Content = new Dictionary<string, OpenApiMediaType>
@@ -605,23 +612,23 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["message"] = new OpenApiSchema { Type = "string", Example = new OpenApiString("Request processed successfully.") },
-                                    ["id"] = new OpenApiSchema { Type = "integer", Example = new OpenApiInteger(12345) }
+                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("Request processed successfully.") },
+                                    ["id"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Example = JsonValue.Create(12345) }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["message"] = new OpenApiString("Webhook processed successfully."),
-                                ["id"] = new OpenApiInteger(12345)
+                                ["message"] = JsonValue.Create("Webhook processed successfully."),
+                                ["id"] = JsonValue.Create(12345)
                             }
                         }
                     }
                 },
-                ["400"] = new OpenApiResponse 
-                { 
+                ["400"] = new OpenApiResponse
+                {
                     Description = "Bad Request - Invalid request",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -629,23 +636,23 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" },
-                                    ["success"] = new OpenApiSchema { Type = "boolean", Example = new OpenApiBoolean(false) }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Example = JsonValue.Create(false) }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("Environment is not configured properly."),
-                                ["success"] = new OpenApiBoolean(false)
+                                ["error"] = JsonValue.Create("Environment is not configured properly."),
+                                ["success"] = JsonValue.Create(false)
                             }
                         }
                     }
                 },
-                ["401"] = new OpenApiResponse 
-                { 
+                ["401"] = new OpenApiResponse
+                {
                     Description = "Unauthorized - Missing or invalid authentication token",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -653,22 +660,22 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("Unauthorized access. Valid authentication token required."),
-                                ["success"] = new OpenApiBoolean(false)
+                                ["error"] = JsonValue.Create("Unauthorized access. Valid authentication token required."),
+                                ["success"] = JsonValue.Create(false)
                             }
                         }
                     }
                 },
-                ["403"] = new OpenApiResponse 
-                { 
+                ["403"] = new OpenApiResponse
+                {
                     Description = "Forbidden - Token valid but insufficient permissions",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -676,22 +683,22 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("Environment 'production' is not allowed."),
-                                ["success"] = new OpenApiBoolean(false)
+                                ["error"] = JsonValue.Create("Environment 'production' is not allowed."),
+                                ["success"] = JsonValue.Create(false)
                             }
                         }
                     }
                 },
-                ["404"] = new OpenApiResponse 
-                { 
+                ["404"] = new OpenApiResponse
+                {
                     Description = "Not Found - Resource not found or not configured",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -699,23 +706,23 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" },
-                                    ["success"] = new OpenApiSchema { Type = "boolean", Example = new OpenApiBoolean(false) }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Example = JsonValue.Create(false) }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("Webhook ID 'unknown_webhook' is not configured."),
-                                ["success"] = new OpenApiBoolean(false)
+                                ["error"] = JsonValue.Create("Webhook ID 'unknown_webhook' is not configured."),
+                                ["success"] = JsonValue.Create(false)
                             }
                         }
                     }
                 },
-                ["500"] = new OpenApiResponse 
-                { 
+                ["500"] = new OpenApiResponse
+                {
                     Description = "Internal Server Error",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -723,31 +730,31 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["type"] = new OpenApiSchema { Type = "string" },
-                                    ["title"] = new OpenApiSchema { Type = "string" },
-                                    ["status"] = new OpenApiSchema { Type = "integer" },
-                                    ["detail"] = new OpenApiSchema { Type = "string" }
+                                    ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                    ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                                ["title"] = new OpenApiString("Error"),
-                                ["status"] = new OpenApiInteger(500),
-                                ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                                ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                ["title"] = JsonValue.Create("Error"),
+                                ["status"] = JsonValue.Create(500),
+                                ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
                             }
                         }
                     }
                 }
             }
         };
-        
-        swaggerDoc.Paths[path].Operations[OperationType.Post] = webhookOperation;
+
+        document.Paths[path].Operations[HttpMethod.Post] = webhookOperation;
     }
-    
+
     /// <summary>
     /// Collects file endpoint tags for documentation (operations are handled by EndpointController)
     /// </summary>
@@ -755,16 +762,16 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         // Get file endpoints and collect their tag descriptions
         var fileEndpoints = EndpointHandler.GetFileEndpoints();
-        
+
         foreach (var endpoint in fileEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
-            
+
             // Skip private endpoints
             if (definition.IsPrivate)
                 continue;
-            
+
             // Collect tag description if provided
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
             {
@@ -772,55 +779,55 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             }
         }
     }
-    
+
     /// <summary>
     /// Adds static endpoints to the OpenAPI document
     /// </summary>
-    private void AddStaticEndpoints(OpenApiDocument swaggerDoc, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddStaticEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         var staticEndpoints = EndpointHandler.GetStaticEndpoints();
-        
+
         // Sort endpoints by endpoint name to ensure alphabetical order in documentation
         var sortedStaticEndpoints = staticEndpoints
             .OrderBy(ep => ep.Key, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        
+
         foreach (var endpoint in sortedStaticEndpoints)
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
-            
+
             // Skip private endpoints
             if (definition.IsPrivate)
                 continue;
-            
-            // Collect tag description using the SwaggerTag for proper namespace grouping
-            string swaggerTag = definition.SwaggerTag;
+
+            // Collect tag description using the DocumentationTag for proper namespace grouping
+            string documentationTag = definition.DocumentationTag;
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
             {
-                documentTags[swaggerTag] = definition.Documentation.TagDescription;
+                documentTags[documentationTag] = definition.Documentation.TagDescription;
             }
-            
+
             // Get content type and filtering capability
             var contentType = definition.Properties?.GetValueOrDefault("ContentType", "text/plain")?.ToString() ?? "text/plain";
             var enableFiltering = (bool)(definition.Properties?.GetValueOrDefault("EnableFiltering", false) ?? false);
-            
+
             // Create single OpenAPI path with environment parameter (use FullPath to include namespace if present)
             string path = $"/api/{{env}}/{definition.FullPath}";
-            
-            if (!swaggerDoc.Paths.ContainsKey(path))
+
+            if (!document.Paths.ContainsKey(path))
             {
-                swaggerDoc.Paths[path] = new OpenApiPathItem();
+                document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
-                
+
             // Add GET operation
             var getOperation = new OpenApiOperation
             {
                 OperationId = $"get{endpointName}Static{operationIdCounter++}",
                 Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("GET") ?? $"Get content from {endpointName}",
                 Description = GetStaticOperationDescription("GET", endpointName, definition, contentType),
-                Tags = new List<OpenApiTag> { new OpenApiTag { Name = swaggerTag } },
-                Parameters = new List<OpenApiParameter>
+                Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(documentationTag) },
+                Parameters = new List<IOpenApiParameter>
                 {
                     // Environment parameter
                     new OpenApiParameter
@@ -830,8 +837,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         Required = true,
                         Schema = new OpenApiSchema
                         {
-                            Type = "string",
-                            Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+                            Type = JsonSchemaType.String,
+                            Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                         },
                         Description = "Environment identifier"
                     },
@@ -843,8 +850,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         Required = false,
                         Schema = new OpenApiSchema
                         {
-                            Type = "string",
-                            Default = new OpenApiString(contentType)
+                            Type = JsonSchemaType.String,
+                            Default = JsonValue.Create(contentType)
                         },
                         Description = $"Specifies the media type of the response (default is {contentType})"
                     }
@@ -858,27 +865,27 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             [contentType] = new OpenApiMediaType
                             {
-                                Schema = contentType.Contains("json") 
-                                    ? new OpenApiSchema { Type = "object", Description = "JSON content" }
-                                    : new OpenApiSchema { Type = "string", Description = "Content" },
-                                Examples = contentType.Contains("json") 
-                                    ? new Dictionary<string, OpenApiExample>
+                                Schema = contentType.Contains("json")
+                                    ? new OpenApiSchema { Type = JsonSchemaType.Object, Description = "JSON content" }
+                                    : new OpenApiSchema { Type = JsonSchemaType.String, Description = "Content" },
+                                Examples = contentType.Contains("json")
+                                    ? new Dictionary<string, IOpenApiExample>
                                     {
                                         ["sample_data"] = new OpenApiExample
                                         {
                                             Summary = "Sample JSON data",
-                                            Value = new OpenApiArray
+                                            Value = new JsonArray
                                             {
-                                                new OpenApiObject()
+                                                new JsonObject()
                                             }
                                         }
                                     }
-                                    : new Dictionary<string, OpenApiExample>
+                                    : new Dictionary<string, IOpenApiExample>
                                     {
                                         ["sample_text"] = new OpenApiExample
                                         {
                                             Summary = "Sample text content",
-                                            Value = new OpenApiString("Hello world")
+                                            Value = JsonValue.Create("Hello world")
                                         }
                                     }
                             }
@@ -887,17 +894,17 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     ["304"] = new OpenApiResponse
                     {
                         Description = "Not Modified - Content has not changed since last request",
-                        Headers = new Dictionary<string, OpenApiHeader>
+                        Headers = new Dictionary<string, IOpenApiHeader>
                         {
                             ["Last-Modified"] = new OpenApiHeader
                             {
                                 Description = "Date when the content was last modified",
-                                Schema = new OpenApiSchema { Type = "string", Format = "date-time" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" }
                             },
                             ["ETag"] = new OpenApiHeader
                             {
                                 Description = "Entity tag for the current version of the content",
-                                Schema = new OpenApiSchema { Type = "string" }
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         }
                     },
@@ -910,16 +917,16 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 },
-                                Example = new OpenApiObject
+                                Example = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString("Unauthorized access. Valid Bearer token required."),
-                                    ["success"] = new OpenApiBoolean(false)
+                                    ["error"] = JsonValue.Create("Unauthorized access. Valid Bearer token required."),
+                                    ["success"] = JsonValue.Create(false)
                                 }
                             }
                         }
@@ -933,16 +940,16 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 },
-                                Example = new OpenApiObject
+                                Example = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString("Environment 'production' is not allowed for this endpoint"),
-                                    ["success"] = new OpenApiBoolean(false)
+                                    ["error"] = JsonValue.Create("Environment 'production' is not allowed for this endpoint"),
+                                    ["success"] = JsonValue.Create(false)
                                 }
                             }
                         }
@@ -956,28 +963,28 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["error"] = new OpenApiSchema { Type = "string" }
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 },
-                                Examples = new Dictionary<string, OpenApiExample>
+                                Examples = new Dictionary<string, IOpenApiExample>
                                 {
                                     ["endpoint_not_found"] = new OpenApiExample
                                     {
                                         Summary = "Endpoint not found",
-                                        Value = new OpenApiObject
+                                        Value = new JsonObject
                                         {
-                                            ["error"] = new OpenApiString($"Endpoint '{endpointName}' not found")
+                                            ["error"] = JsonValue.Create($"Endpoint '{endpointName}' not found")
                                         }
                                     },
                                     ["content_not_found"] = new OpenApiExample
                                     {
                                         Summary = "Content not found",
-                                        Value = new OpenApiObject
+                                        Value = new JsonObject
                                         {
-                                            ["error"] = new OpenApiString("Content not found")
+                                            ["error"] = JsonValue.Create("Content not found")
                                         }
                                     }
                                 }
@@ -993,19 +1000,19 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["error"] = new OpenApiSchema { Type = "string" },
-                                        ["detail"] = new OpenApiSchema { Type = "string" },
-                                        ["availableContentType"] = new OpenApiSchema { Type = "string" }
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["availableContentType"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 },
-                                Example = new OpenApiObject
+                                Example = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString("Not Acceptable"),
-                                    ["detail"] = new OpenApiString($"Endpoint provides '{contentType}' but client accepts 'text/html'"),
-                                    ["availableContentType"] = new OpenApiString(contentType)
+                                    ["error"] = JsonValue.Create("Not Acceptable"),
+                                    ["detail"] = JsonValue.Create($"Endpoint provides '{contentType}' but client accepts 'text/html'"),
+                                    ["availableContentType"] = JsonValue.Create(contentType)
                                 }
                             }
                         }
@@ -1019,28 +1026,28 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                             {
                                 Schema = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["type"] = new OpenApiSchema { Type = "string" },
-                                        ["title"] = new OpenApiSchema { Type = "string" },
-                                        ["status"] = new OpenApiSchema { Type = "integer" },
-                                        ["detail"] = new OpenApiSchema { Type = "string" }
+                                        ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                        ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 },
-                                Example = new OpenApiObject
+                                Example = new JsonObject
                                 {
-                                    ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                                    ["title"] = new OpenApiString("Error"),
-                                    ["status"] = new OpenApiInteger(500),
-                                    ["detail"] = new OpenApiString("Error processing. Please check the logs for more details.")
+                                    ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                    ["title"] = JsonValue.Create("Error"),
+                                    ["status"] = JsonValue.Create(500),
+                                    ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
                                 }
                             }
                         }
                     }
                 }
             };
-            
+
             // Add OData parameters if filtering is enabled and content supports filtering
             if (enableFiltering && (contentType.Contains("json") || contentType.Contains("xml")))
             {
@@ -1049,131 +1056,131 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     Name = "$select",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "Select specific fields (OData $select)"
                 });
-                
+
                 getOperation.Parameters.Add(new OpenApiParameter
                 {
                     Name = "$filter",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "Filter results (OData $filter)"
                 });
-                
+
                 getOperation.Parameters.Add(new OpenApiParameter
                 {
                     Name = "$orderby",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "Sort results (OData $orderby)"
                 });
-                
+
                 getOperation.Parameters.Add(new OpenApiParameter
                 {
                     Name = "$top",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "integer", Default = new OpenApiInteger(10) },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(10) },
                     Description = "Maximum number of results (OData $top)"
                 });
-                
+
                 getOperation.Parameters.Add(new OpenApiParameter
                 {
                     Name = "$skip",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "integer", Default = new OpenApiInteger(0) },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(0) },
                     Description = "Number of results to skip (OData $skip)"
                 });
             }
-            
-            swaggerDoc.Paths[path].Operations[OperationType.Get] = getOperation;
+
+            document.Paths[path].Operations[HttpMethod.Get] = getOperation;
         }
     }
-    
+
     private OpenApiOperation CreateSqlOperation(
-        string endpointName, 
-        string method, 
+        string endpointName,
+        string method,
         EndpointDefinition definition,
         List<string> allowedEnvironments,
         int operationId)
     {
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = definition.SwaggerTag } }, // Use SwaggerTag for proper namespace grouping
+            Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) }, // Use DocumentationTag for proper namespace grouping
             Summary = GetOperationSummary(method, endpointName, definition),
             Description = GetOperationDescription(method, endpointName, definition),
             OperationId = $"op_{operationId}",
-            Parameters = new List<OpenApiParameter>
+            Parameters = new List<IOpenApiParameter>
             {
                 // Environment parameter
-                new()
+                new OpenApiParameter()
                 {
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
                     Schema = new OpenApiSchema
                     {
-                        Type = "string",
-                        Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+                        Type = JsonSchemaType.String,
+                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 }
             }
         };
-        
+
         // Add method-specific parameters and request body
         if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
         {
             // Add GET-specific parameters
-            foreach (var parameter in new List<OpenApiParameter>
+            foreach (var parameter in new List<IOpenApiParameter>
             {
-                new()
+                new OpenApiParameter()
                 {
                     Name = "$select",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "Select specific fields (comma-separated list of property names)"
                 },
-                new()
+                new OpenApiParameter()
                 {
                     Name = "$filter",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "OData $filter expression"
                 },
-                new()
+                new OpenApiParameter()
                 {
                     Name = "$orderby",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "OData $orderby expression"
                 },
-                new()
+                new OpenApiParameter()
                 {
                     Name = "$top",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { 
-                        Type = "integer", 
-                        Default = new OpenApiInteger(10) 
+                    Schema = new OpenApiSchema {
+                        Type = JsonSchemaType.Integer,
+                        Default = JsonValue.Create(10)
                     },
                     Description = "Maximum number of records to return"
                 },
-                new()
+                new OpenApiParameter()
                 {
                     Name = "$skip",
                     In = ParameterLocation.Query,
                     Required = false,
-                    Schema = new OpenApiSchema { 
-                        Type = "integer", 
-                        Default = new OpenApiInteger(0) 
+                    Schema = new OpenApiSchema {
+                        Type = JsonSchemaType.Integer,
+                        Default = JsonValue.Create(0)
                     },
                     Description = "Number of records to skip"
                 }
@@ -1182,7 +1189,7 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 operation.Parameters.Add(parameter);
             }
         }
-        else if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) || 
+        else if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
         {
@@ -1197,28 +1204,28 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object"
+                            Type = JsonSchemaType.Object
                         }
                     }
                 }
             };
         }
-        
-        // Add comprehensive responses with detailed schemas and examples  
+
+        // Add comprehensive responses with detailed schemas and examples
         operation.Responses = new OpenApiResponses();
-        
+
         // For POST, use 201 Created with Location header
         if (method.Equals("POST", StringComparison.OrdinalIgnoreCase))
         {
-            operation.Responses["201"] = new OpenApiResponse 
-            { 
+            operation.Responses["201"] = new OpenApiResponse
+            {
                 Description = "Created - Resource successfully created",
-                Headers = new Dictionary<string, OpenApiHeader>
+                Headers = new Dictionary<string, IOpenApiHeader>
                 {
                     ["Location"] = new OpenApiHeader
                     {
                         Description = "URL of the newly created resource",
-                        Schema = new OpenApiSchema { Type = "string" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 },
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1227,15 +1234,15 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["success"] = new OpenApiSchema { Type = "boolean" },
-                                ["message"] = new OpenApiSchema { Type = "string" },
-                                ["result"] = new OpenApiSchema 
-                                { 
-                                    Type = "array",
-                                    Items = new OpenApiSchema { Type = "object" }
+                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["result"] = new OpenApiSchema
+                                {
+                                    Type = JsonSchemaType.Array,
+                                    Items = new OpenApiSchema { Type = JsonSchemaType.Object }
                                 }
                             }
                         }
@@ -1246,8 +1253,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
         else
         {
             // For GET, PUT, MERGE, DELETE use 200 OK
-            operation.Responses["200"] = new OpenApiResponse 
-            { 
+            operation.Responses["200"] = new OpenApiResponse
+            {
                 Description = method switch
                 {
                     "GET" => "Successful response",
@@ -1257,27 +1264,27 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     _ => "Successful response"
                 },
                 // Add pagination headers for GET responses
-                Headers = method.Equals("GET", StringComparison.OrdinalIgnoreCase) ? new Dictionary<string, OpenApiHeader>
+                Headers = method.Equals("GET", StringComparison.OrdinalIgnoreCase) ? new Dictionary<string, IOpenApiHeader>
                 {
                     ["X-Total-Count"] = new OpenApiHeader
                     {
                         Description = "Total number of records available (when $count=true)",
-                        Schema = new OpenApiSchema { Type = "integer" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
                     },
                     ["X-Returned-Count"] = new OpenApiHeader
                     {
                         Description = "Number of records returned in this response",
-                        Schema = new OpenApiSchema { Type = "integer" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
                     },
                     ["X-Has-More-Results"] = new OpenApiHeader
                     {
                         Description = "Indicates if more results are available (true/false)",
-                        Schema = new OpenApiSchema { Type = "boolean" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.Boolean }
                     },
                     ["Cache-Control"] = new OpenApiHeader
                     {
                         Description = "Caching directive (when caching is enabled for the endpoint)",
-                        Schema = new OpenApiSchema { Type = "string" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 } : null,
                 Content = new Dictionary<string, OpenApiMediaType>
@@ -1288,77 +1295,77 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             "GET" => new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["Success"] = new OpenApiSchema { Type = "boolean" },
-                                    ["Count"] = new OpenApiSchema { Type = "integer" },
-                                    ["Value"] = new OpenApiSchema 
-                                    { 
-                                        Type = "array",
-                                        Items = new OpenApiSchema { Type = "object" }
+                                    ["Success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                    ["Count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                    ["Value"] = new OpenApiSchema
+                                    {
+                                        Type = JsonSchemaType.Array,
+                                        Items = new OpenApiSchema { Type = JsonSchemaType.Object }
                                     },
-                                    ["NextLink"] = new OpenApiSchema { Type = "string" }
+                                    ["NextLink"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
                             "PUT" or "MERGE" => new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["success"] = new OpenApiSchema { Type = "boolean" },
-                                    ["message"] = new OpenApiSchema { Type = "string" },
-                                    ["result"] = new OpenApiSchema 
-                                    { 
-                                        Type = "array",
-                                        Items = new OpenApiSchema { Type = "object" }
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["result"] = new OpenApiSchema
+                                    {
+                                        Type = JsonSchemaType.Array,
+                                        Items = new OpenApiSchema { Type = JsonSchemaType.Object }
                                     }
                                 }
                             },
-                            _ => new OpenApiSchema { Type = "object" }
+                            _ => new OpenApiSchema { Type = JsonSchemaType.Object }
                         },
                         Examples = method switch
                         {
-                            "GET" => new Dictionary<string, OpenApiExample>
+                            "GET" => new Dictionary<string, IOpenApiExample>
                             {
                                 ["success"] = new OpenApiExample
                                 {
                                     Summary = "Successful data retrieval",
-                                    Value = new OpenApiObject
+                                    Value = new JsonObject
                                     {
-                                        ["Success"] = new OpenApiBoolean(true),
-                                        ["Count"] = new OpenApiInteger(0),
-                                        ["Value"] = new OpenApiArray(),
-                                        ["NextLink"] = new OpenApiString($"/api/{endpointName}?$$top=10&$$skip=0")
+                                        ["Success"] = JsonValue.Create(true),
+                                        ["Count"] = JsonValue.Create(0),
+                                        ["Value"] = new JsonArray(),
+                                        ["NextLink"] = JsonValue.Create($"/api/{endpointName}?$$top=10&$$skip=0")
                                     }
                                 }
                             },
-                            "PUT" or "MERGE" => new Dictionary<string, OpenApiExample>
+                            "PUT" or "MERGE" => new Dictionary<string, IOpenApiExample>
                             {
                                 ["success"] = new OpenApiExample
                                 {
                                     Summary = "Successful update",
-                                    Value = new OpenApiObject
+                                    Value = new JsonObject
                                     {
-                                        ["success"] = new OpenApiBoolean(true),
-                                        ["message"] = new OpenApiString("Record updated successfully"),
-                                        ["result"] = new OpenApiArray
+                                        ["success"] = JsonValue.Create(true),
+                                        ["message"] = JsonValue.Create("Record updated successfully"),
+                                        ["result"] = new JsonArray
                                         {
-                                            new OpenApiObject
+                                            new JsonObject
                                             {
-                                                ["result"] = new OpenApiString("array")
+                                                ["result"] = JsonValue.Create("array")
                                             }
                                         }
                                     }
                                 }
                             },
-                            _ => new Dictionary<string, OpenApiExample>()
+                            _ => new Dictionary<string, IOpenApiExample>()
                         }
                     }
                 }
             };
-            operation.Responses["400"] = new OpenApiResponse 
-            { 
+            operation.Responses["400"] = new OpenApiResponse
+            {
                 Description = "Bad Request - Invalid request",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1366,42 +1373,42 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" },
-                                ["details"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["details"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Examples = new Dictionary<string, OpenApiExample>
+                        Examples = new Dictionary<string, IOpenApiExample>
                         {
                             ["invalid_odata"] = new OpenApiExample
                             {
                                 Summary = "Invalid OData syntax",
-                                Value = new OpenApiObject
+                                Value = new JsonObject
                                 {
-                                    ["success"] = new OpenApiBoolean(false),
-                                    ["error"] = new OpenApiString("Invalid OData filter syntax"),
-                                    ["details"] = new OpenApiString("Syntax error in $filter expression near 'invalidField'")
-                                    
+                                    ["success"] = JsonValue.Create(false),
+                                    ["error"] = JsonValue.Create("Invalid OData filter syntax"),
+                                    ["details"] = JsonValue.Create("Syntax error in $filter expression near 'invalidField'")
+
                                 }
                             },
                             ["missing_required"] = new OpenApiExample
                             {
                                 Summary = "Missing required field",
-                                Value = new OpenApiObject
+                                Value = new JsonObject
                                 {
-                                    ["success"] = new OpenApiBoolean(false),
-                                    ["error"] = new OpenApiString("Required field 'name' is missing"),
-                                    ["details"] = new OpenApiString("POST request must include 'name' field in request body")
+                                    ["success"] = JsonValue.Create(false),
+                                    ["error"] = JsonValue.Create("Required field 'name' is missing"),
+                                    ["details"] = JsonValue.Create("POST request must include 'name' field in request body")
                                 }
                             }
                         }
                     }
                 }
             };
-            operation.Responses["401"] = new OpenApiResponse 
-            { 
+            operation.Responses["401"] = new OpenApiResponse
+            {
                 Description = "Unauthorized - Missing or invalid authentication token",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1409,22 +1416,22 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Example = new OpenApiObject
+                        Example = new JsonObject
                         {
-                            ["error"] = new OpenApiString("Unauthorized access. Valid Bearer token required."),
-                            ["success"] = new OpenApiBoolean(false)
+                            ["error"] = JsonValue.Create("Unauthorized access. Valid Bearer token required."),
+                            ["success"] = JsonValue.Create(false)
                         }
                     }
                 }
             };
-            operation.Responses["403"] = new OpenApiResponse 
-            { 
+            operation.Responses["403"] = new OpenApiResponse
+            {
                 Description = "Forbidden - Insufficient permissions",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1432,37 +1439,37 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Examples = new Dictionary<string, OpenApiExample>
+                        Examples = new Dictionary<string, IOpenApiExample>
                         {
                             ["environment_restricted"] = new OpenApiExample
                             {
                                 Summary = "Environment access denied",
-                                Value = new OpenApiObject
+                                Value = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString("Environment 'production' is not allowed for this endpoint"),
-                                    ["success"] = new OpenApiBoolean(false)
+                                    ["error"] = JsonValue.Create("Environment 'production' is not allowed for this endpoint"),
+                                    ["success"] = JsonValue.Create(false)
                                 }
                             },
                             ["method_not_allowed"] = new OpenApiExample
                             {
                                 Summary = "Method not allowed",
-                                Value = new OpenApiObject
+                                Value = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString("DELETE method is not allowed for this endpoint")
+                                    ["error"] = JsonValue.Create("DELETE method is not allowed for this endpoint")
                                 }
                             }
                         }
                     }
                 }
             };
-            operation.Responses["404"] = new OpenApiResponse 
-            { 
+            operation.Responses["404"] = new OpenApiResponse
+            {
                 Description = "Not Found - Resource not found",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1470,36 +1477,36 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Examples = new Dictionary<string, OpenApiExample>
+                        Examples = new Dictionary<string, IOpenApiExample>
                         {
                             ["endpoint_not_found"] = new OpenApiExample
                             {
                                 Summary = "Endpoint not found",
-                                Value = new OpenApiObject
+                                Value = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString($"Endpoint '{endpointName}' not found")
+                                    ["error"] = JsonValue.Create($"Endpoint '{endpointName}' not found")
                                 }
                             },
                             ["record_not_found"] = new OpenApiExample
                             {
                                 Summary = "Record not found",
-                                Value = new OpenApiObject
+                                Value = new JsonObject
                                 {
-                                    ["error"] = new OpenApiString("Record with specified ID not found")
+                                    ["error"] = JsonValue.Create("Record with specified ID not found")
                                 }
                             }
                         }
                     }
                 }
             };
-            operation.Responses["409"] = new OpenApiResponse 
-            { 
+            operation.Responses["409"] = new OpenApiResponse
+            {
                 Description = "Conflict - Duplicate key violation or business rule conflict",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1507,25 +1514,25 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" },
-                                ["conflictType"] = new OpenApiSchema { Type = "string" },
-                                ["details"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["conflictType"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["details"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Example = new OpenApiObject
+                        Example = new JsonObject
                         {
-                            ["error"] = new OpenApiString("Record with this identifier already exists"),
-                            ["conflictType"] = new OpenApiString("CONSTRAINT_VIOLATION"),
-                            ["details"] = new OpenApiString("Violation of the constraint 'UK_Name'")
+                            ["error"] = JsonValue.Create("Record with this identifier already exists"),
+                            ["conflictType"] = JsonValue.Create("CONSTRAINT_VIOLATION"),
+                            ["details"] = JsonValue.Create("Violation of the constraint 'UK_Name'")
                         }
                     }
                 }
             };
-            operation.Responses["422"] = new OpenApiResponse 
-            { 
+            operation.Responses["422"] = new OpenApiResponse
+            {
                 Description = "Unprocessable Entity - Validation errors or business rule violations",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1533,47 +1540,47 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" },
-                                ["validationErrors"] = new OpenApiSchema 
-                                { 
-                                    Type = "array",
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["validationErrors"] = new OpenApiSchema
+                                {
+                                    Type = JsonSchemaType.Array,
                                     Items = new OpenApiSchema
                                     {
-                                        Type = "object",
-                                        Properties = new Dictionary<string, OpenApiSchema>
+                                        Type = JsonSchemaType.Object,
+                                        Properties = new Dictionary<string, IOpenApiSchema>
                                         {
-                                            ["field"] = new OpenApiSchema { Type = "string" },
-                                            ["message"] = new OpenApiSchema { Type = "string" }
+                                            ["field"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                         }
                                     }
                                 }
                             }
                         },
-                        Example = new OpenApiObject
+                        Example = new JsonObject
                         {
-                            ["error"] = new OpenApiString("Validation failed"),
-                            ["validationErrors"] = new OpenApiArray
+                            ["error"] = JsonValue.Create("Validation failed"),
+                            ["validationErrors"] = new JsonArray
                             {
-                                new OpenApiObject
+                                new JsonObject
                                 {
-                                    ["field"] = new OpenApiString("email"),
-                                    ["message"] = new OpenApiString("Invalid email format")
+                                    ["field"] = JsonValue.Create("email"),
+                                    ["message"] = JsonValue.Create("Invalid email format")
                                 },
-                                new OpenApiObject
+                                new JsonObject
                                 {
-                                    ["field"] = new OpenApiString("age"),
-                                    ["message"] = new OpenApiString("Age must be between 18 and 120")
+                                    ["field"] = JsonValue.Create("age"),
+                                    ["message"] = JsonValue.Create("Age must be between 18 and 120")
                                 }
                             }
                         }
                     }
                 }
             };
-            operation.Responses["500"] = new OpenApiResponse 
-            { 
+            operation.Responses["500"] = new OpenApiResponse
+            {
                 Description = "Internal Server Error",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1581,73 +1588,73 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["type"] = new OpenApiSchema { Type = "string" },
-                                ["title"] = new OpenApiSchema { Type = "string" },
-                                ["status"] = new OpenApiSchema { Type = "integer" },
-                                ["detail"] = new OpenApiSchema { Type = "string" },
-                                ["traceId"] = new OpenApiSchema { Type = "string" }
+                                ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["traceId"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         },
-                        Example = new OpenApiObject
+                        Example = new JsonObject
                         {
-                            ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                            ["title"] = new OpenApiString("Internal Server Error"),
-                            ["status"] = new OpenApiInteger(500),
-                            ["detail"] = new OpenApiString("An internal error occurred. Please check the logs for more details."),
-                            ["traceId"] = new OpenApiString("value")
+                            ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                            ["title"] = JsonValue.Create("Internal Server Error"),
+                            ["status"] = JsonValue.Create(500),
+                            ["detail"] = JsonValue.Create("An internal error occurred. Please check the logs for more details."),
+                            ["traceId"] = JsonValue.Create("value")
                         }
                     }
                 }
             };
         };
-        
+
         return operation;
     }
-    
+
     private OpenApiOperation CreateSqlDeleteOperation(
-        string endpointName, 
+        string endpointName,
         EndpointDefinition definition,
         List<string> allowedEnvironments,
         int operationId)
     {
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = definition.SwaggerTag } }, // Use SwaggerTag for proper namespace grouping (consistent with other operations)
+            Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) }, // Use DocumentationTag for proper namespace grouping (consistent with other operations)
             Summary = GetOperationSummary("DELETE", endpointName, definition),
             Description = GetOperationDescription("DELETE", endpointName, definition),
             OperationId = $"op_{operationId}",
-            Parameters = new List<OpenApiParameter>
+            Parameters = new List<IOpenApiParameter>
             {
                 // Environment parameter
-                new()
+                new OpenApiParameter()
                 {
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
                     Schema = new OpenApiSchema
                     {
-                        Type = "string",
-                        Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+                        Type = JsonSchemaType.String,
+                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 },
                 // ID parameter
-                new()
+                new OpenApiParameter()
                 {
                     Name = "id",
                     In = ParameterLocation.Query,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = "string" },
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                     Description = "ID of the record to delete"
                 }
             },
             Responses = new OpenApiResponses
             {
-                ["200"] = new OpenApiResponse 
-                { 
+                ["200"] = new OpenApiResponse
+                {
                     Description = "Successful response",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -1655,27 +1662,26 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["success"] = new OpenApiSchema { Type = "boolean" },
-                                    ["message"] = new OpenApiSchema { Type = "string" },
-                                    ["id"] = new OpenApiSchema { Type = "string" },
-                                    ["result"] = new OpenApiSchema { Type = "object", Nullable = true }
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["id"] = new OpenApiSchema { Type = JsonSchemaType.String },
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["success"] = new OpenApiBoolean(true),
-                                ["message"] = new OpenApiString("Record deleted successfully"),
-                                ["id"] = new OpenApiString("744276DE-4918-4B56-AF75-16901371983B"),
-                                ["result"] = new OpenApiObject() // leave blank
+                                ["success"] = JsonValue.Create(true),
+                                ["message"] = JsonValue.Create("Record deleted successfully"),
+                                ["id"] = JsonValue.Create("744276DE-4918-4B56-AF75-16901371983B"),
+                                ["result"] = new JsonObject() // leave blank
                             }
                         }
                     }
                 },
-                ["400"] = new OpenApiResponse 
-                { 
+                ["400"] = new OpenApiResponse
+                {
                     Description = "Bad Request - Invalid request",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -1683,21 +1689,21 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("ID parameter is required for delete operation")
+                                ["error"] = JsonValue.Create("ID parameter is required for delete operation")
                             }
                         }
                     }
                 },
-                ["401"] = new OpenApiResponse 
-                { 
+                ["401"] = new OpenApiResponse
+                {
                     Description = "Unauthorized - Missing or invalid authentication token",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -1705,21 +1711,21 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("Unauthorized access. Valid Bearer token required.")
+                                ["error"] = JsonValue.Create("Unauthorized access. Valid Bearer token required.")
                             }
                         }
                     }
                 },
-                ["403"] = new OpenApiResponse 
-                { 
+                ["403"] = new OpenApiResponse
+                {
                     Description = "Forbidden - Insufficient permissions",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -1727,21 +1733,21 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["error"] = new OpenApiString("DELETE method is not allowed for this endpoint")
+                                ["error"] = JsonValue.Create("DELETE method is not allowed for this endpoint")
                             }
                         }
                     }
                 },
-                ["404"] = new OpenApiResponse 
-                { 
+                ["404"] = new OpenApiResponse
+                {
                     Description = "Not Found - Resource not found",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -1749,36 +1755,36 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["error"] = new OpenApiSchema { Type = "string" }
+                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Examples = new Dictionary<string, OpenApiExample>
+                            Examples = new Dictionary<string, IOpenApiExample>
                             {
                                 ["endpoint_not_found"] = new OpenApiExample
                                 {
                                     Summary = "Endpoint not found",
-                                    Value = new OpenApiObject
+                                    Value = new JsonObject
                                     {
-                                        ["error"] = new OpenApiString($"Endpoint '{endpointName}' not found")
+                                        ["error"] = JsonValue.Create($"Endpoint '{endpointName}' not found")
                                     }
                                 },
                                 ["record_not_found"] = new OpenApiExample
                                 {
                                     Summary = "Record not found",
-                                    Value = new OpenApiObject
+                                    Value = new JsonObject
                                     {
-                                        ["error"] = new OpenApiString("Record with specified ID not found")
+                                        ["error"] = JsonValue.Create("Record with specified ID not found")
                                     }
                                 }
                             }
                         }
                     }
                 },
-                ["500"] = new OpenApiResponse 
-                { 
+                ["500"] = new OpenApiResponse
+                {
                     Description = "Internal Server Error",
                     Content = new Dictionary<string, OpenApiMediaType>
                     {
@@ -1786,36 +1792,36 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                         {
                             Schema = new OpenApiSchema
                             {
-                                Type = "object",
-                                Properties = new Dictionary<string, OpenApiSchema>
+                                Type = JsonSchemaType.Object,
+                                Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["type"] = new OpenApiSchema { Type = "string" },
-                                    ["title"] = new OpenApiSchema { Type = "string" },
-                                    ["status"] = new OpenApiSchema { Type = "integer" },
-                                    ["detail"] = new OpenApiSchema { Type = "string" },
-                                    ["traceId"] = new OpenApiSchema { Type = "string" }
+                                    ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                    ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["traceId"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
-                            Example = new OpenApiObject
+                            Example = new JsonObject
                             {
-                                ["type"] = new OpenApiString("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                                ["title"] = new OpenApiString("Internal Server Error"),
-                                ["status"] = new OpenApiInteger(500),
-                                ["detail"] = new OpenApiString("An internal error occurred. Please check the logs for more details."),
-                                ["traceId"] = new OpenApiString("value")
+                                ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                ["title"] = JsonValue.Create("Internal Server Error"),
+                                ["status"] = JsonValue.Create(500),
+                                ["detail"] = JsonValue.Create("An internal error occurred. Please check the logs for more details."),
+                                ["traceId"] = JsonValue.Create("value")
                             }
                         }
                     }
                 }
             }
         };
-        
+
         return operation;
     }
-    
+
     private OpenApiOperation CreateProxyOperation(
-        string endpointName, 
-        string method, 
+        string endpointName,
+        string method,
         string targetUrl,
         List<string> allowedEnvironments,
         int operationId,
@@ -1823,28 +1829,28 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
     {
         var operation = new OpenApiOperation
         {
-            Tags = new List<OpenApiTag> { new() { Name = definition?.SwaggerTag ?? endpointName } }, // Use SwaggerTag for consistency
+            Tags = new HashSet<OpenApiTagReference> { new(definition?.DocumentationTag ?? endpointName) }, // Use DocumentationTag for consistency
             Summary = definition != null ? GetOperationSummary(method, endpointName, definition) : $"{method} {endpointName}",
             Description = definition != null ? GetOperationDescription(method, endpointName, definition) : $"Proxy {method} request to {targetUrl}",
             OperationId = $"op_{operationId}",
-            Parameters = new List<OpenApiParameter>
+            Parameters = new List<IOpenApiParameter>
             {
                 // Environment parameter
-                new()
+                new OpenApiParameter()
                 {
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
                     Schema = new OpenApiSchema
                     {
-                        Type = "string",
-                        Enum = allowedEnvironments.Select(e => new OpenApiString(e)).Cast<IOpenApiAny>().ToList()
+                        Type = JsonSchemaType.String,
+                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 }
             }
         };
-        
+
         // Add method-specific parameters and request body
         if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
         {
@@ -1854,11 +1860,11 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 Name = "$filter",
                 In = ParameterLocation.Query,
                 Required = false,
-                Schema = new OpenApiSchema { Type = "string" },
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String },
                 Description = "Filter expression"
             });
-            
-            // Add default $top=10 to the parameters for Proxy GET requests in Swagger
+
+            // Add default $top=10 to the parameters for Proxy GET requests in documentation
             operation.Parameters.Add(new OpenApiParameter
             {
                 Name = "$top",
@@ -1866,13 +1872,13 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 Required = false,
                 Schema = new OpenApiSchema
                 {
-                    Type = "integer",
-                    Default = new OpenApiInteger(10)
+                    Type = JsonSchemaType.Integer,
+                    Default = JsonValue.Create(10)
                 },
                 Description = "Maximum number of records to return (default is 10)"
             });
         }
-        else if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) || 
+        else if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("PATCH", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
@@ -1888,36 +1894,36 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object"
+                            Type = JsonSchemaType.Object
                         }
                     },
                     ["text/xml"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchema { Type = "string" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     },
                     ["application/soap+xml"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchema { Type = "string" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     },
                     ["application/xml"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchema { Type = "string" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     },
                     ["text/plain"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchema { Type = "string" }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 }
             };
         }
-        
+
         // Add standard responses
         operation.Responses = new OpenApiResponses
         {
             ["200"] = new OpenApiResponse { Description = "Successful response" },
             ["400"] = new OpenApiResponse { Description = "Bad Request - Invalid request" },
-            ["401"] = new OpenApiResponse 
-            { 
+            ["401"] = new OpenApiResponse
+            {
                 Description = "Unauthorized - Missing or invalid authentication token",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1925,10 +1931,10 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         }
                     }
@@ -1936,8 +1942,8 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             },
             ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
             ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
-            ["500"] = new OpenApiResponse 
-            { 
+            ["500"] = new OpenApiResponse
+            {
                 Description = "Internal Server Error",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
@@ -1945,21 +1951,21 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                     {
                         Schema = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["error"] = new OpenApiSchema { Type = "string" },
-                                ["message"] = new OpenApiSchema { Type = "string" }
+                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
                             }
                         }
                     }
                 }
             }
         };
-        
+
         return operation;
     }
-    
+
     private List<string> GetAllowedEnvironments()
     {
         try
@@ -1968,16 +1974,16 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             if (File.Exists(settingsFile))
             {
                 var settingsJson = File.ReadAllText(settingsFile);
-                
+
                 // Match the structure used in EnvironmentSettings class
                 var settings = JsonSerializer.Deserialize<SettingsModel>(settingsJson);
-                if (settings?.Environment?.AllowedEnvironments != null && 
+                if (settings?.Environment?.AllowedEnvironments != null &&
                     settings.Environment.AllowedEnvironments.Any())
                 {
                     return settings.Environment.AllowedEnvironments;
                 }
             }
-            
+
             // Return default if settings not found
             return new List<string> { "prod", "dev" };
         }
@@ -1987,55 +1993,55 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             return new List<string> { "prod", "dev" };
         }
     }
-    
-    private OperationType? GetOperationType(string method)
+
+    private HttpMethod GetOperationType(string method)
     {
         return method.ToUpperInvariant() switch
         {
-            "GET" => OperationType.Get,
-            "POST" => OperationType.Post,
-            "PUT" => OperationType.Put,
-            "DELETE" => OperationType.Delete,
-            "PATCH" => OperationType.Patch,
-            "OPTIONS" => OperationType.Options,
-            "HEAD" => OperationType.Head,
-            "MERGE" => OperationType.Patch, // Map MERGE to PATCH as they're semantically similar
+            "GET" => HttpMethod.Get,
+            "POST" => HttpMethod.Post,
+            "PUT" => HttpMethod.Put,
+            "DELETE" => HttpMethod.Delete,
+            "PATCH" => HttpMethod.Patch,
+            "OPTIONS" => HttpMethod.Options,
+            "HEAD" => HttpMethod.Head,
+            "MERGE" => HttpMethod.Patch, // Map MERGE to PATCH as they're semantically similar
             _ => null
         };
     }
-    
-    private void AddOperationToPath(OpenApiPathItem pathItem, string method, OpenApiOperation operation)
+
+    private void AddOperationToPath(IOpenApiPathItem pathItem, string method, OpenApiOperation operation)
     {
         var operationType = GetOperationType(method);
-        if (operationType.HasValue)
+        if (operationType != null)
         {
-            pathItem.Operations[operationType.Value] = operation;
+            pathItem.Operations[operationType] = operation;
         }
     }
-    
+
     /// <summary>
     /// Gets the operation summary, using custom summary if available or default format
     /// </summary>
     private string GetOperationSummary(string method, string endpointName, EndpointDefinition definition)
     {
         // Check if there's a custom summary for this method in MethodDescriptions
-        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customSummary) == true 
+        if (definition.Documentation?.MethodDescriptions?.TryGetValue(method.ToUpper(), out var customSummary) == true
             && !string.IsNullOrWhiteSpace(customSummary))
         {
             return customSummary;
         }
-        
+
         // Use Documentation.Summary if available for better descriptions
         if (!string.IsNullOrWhiteSpace(definition.Documentation?.Summary))
         {
             var summary = definition.Documentation.Summary.Trim();
-            
+
             // Check if summary already starts with an action verb - if so, use it as-is for GET
             var startsWithActionVerb = summary.StartsWith("Retrieve", StringComparison.OrdinalIgnoreCase) ||
                                      summary.StartsWith("Get", StringComparison.OrdinalIgnoreCase) ||
                                      summary.StartsWith("Fetch", StringComparison.OrdinalIgnoreCase) ||
                                      summary.StartsWith("Load", StringComparison.OrdinalIgnoreCase);
-            
+
             return method.ToUpper() switch
             {
                 "GET" => startsWithActionVerb ? summary : $"Retrieve {summary.ToLower()}",
@@ -2046,29 +2052,29 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 _ => $"{method} {summary}"
             };
         }
-        
+
         // Return default format using DisplayName if available
         return $"{method} {endpointName}";
     }
-    
+
     /// <summary>
     /// Gets the operation description, using custom description if available or default format
     /// </summary>
     private string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
     {
         // Check if there's a custom detailed description for this method in MethodDocumentation
-        if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDocumentation) == true 
+        if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDocumentation) == true
             && !string.IsNullOrWhiteSpace(customDocumentation))
         {
             return customDocumentation;
         }
-        
+
         // Use Documentation.Description if available for better descriptions
         if (!string.IsNullOrWhiteSpace(definition.Documentation?.Description))
         {
             return definition.Documentation.Description;
         }
-        
+
         // Return default description based on endpoint type
         if (definition.IsSql)
         {
@@ -2088,38 +2094,38 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
             return $"Proxies {method} requests to an internal webservice.";
         }
     }
-    
+
     /// <summary>
     /// Gets the operation description for static endpoints, using custom description if available or default format
     /// </summary>
     private string GetStaticOperationDescription(string method, string endpointName, EndpointDefinition definition, string contentType)
     {
         // Check if there's a custom description for this method
-        if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDescription) == true 
+        if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDescription) == true
             && !string.IsNullOrWhiteSpace(customDescription))
         {
             return customDescription;
         }
-        
+
         // Return default description for static endpoints
         return $"Returns {contentType} content from the {endpointName} endpoint.";
     }
-    
+
     /// <summary>
     /// Adds all collected tags with descriptions to the OpenAPI document
     /// </summary>
-    private void AddTagsToDocument(OpenApiDocument swaggerDoc, Dictionary<string, string> documentTags)
+    private void AddTagsToDocument(OpenApiDocument document, Dictionary<string, string> documentTags)
     {
         // Initialize tags collection if it doesn't exist
-        swaggerDoc.Tags ??= new List<OpenApiTag>();
-        
+        document.Tags ??= new HashSet<OpenApiTag>();
+
         // Add each tag with its description (sorting will be handled by AlphabeticalEndpointSorter)
         foreach (var tagEntry in documentTags)
         {
-            var existingTag = swaggerDoc.Tags.FirstOrDefault(t => t.Name.Equals(tagEntry.Key, StringComparison.OrdinalIgnoreCase));
+            var existingTag = document.Tags.FirstOrDefault(t => t.Name.Equals(tagEntry.Key, StringComparison.OrdinalIgnoreCase));
             if (existingTag == null)
             {
-                swaggerDoc.Tags.Add(new OpenApiTag
+                document.Tags.Add(new OpenApiTag
                 {
                     Name = tagEntry.Key,
                     Description = tagEntry.Value
@@ -2134,26 +2140,26 @@ public class DynamicEndpointDocumentFilter : IDocumentFilter
                 }
             }
         }
-        
+
         // Add Webhook tag if webhooks exist (load description from entity.json)
-        if (swaggerDoc.Paths.Any(p => p.Key.Contains("/webhook/")))
+        if (document.Paths.Any(p => p.Key.Contains("/webhook/")))
         {
-            var webhookTag = swaggerDoc.Tags.FirstOrDefault(t => t.Name.Equals("Webhook", StringComparison.OrdinalIgnoreCase));
+            var webhookTag = document.Tags.FirstOrDefault(t => t.Name.Equals("Webhook", StringComparison.OrdinalIgnoreCase));
             if (webhookTag == null)
             {
                 var webhookDocumentation = LoadWebhookDocumentation();
-                swaggerDoc.Tags.Add(new OpenApiTag
+                document.Tags.Add(new OpenApiTag
                 {
                     Name = "Webhook",
                     Description = webhookDocumentation?.TagDescription ?? "Endpoints for receiving and processing external webhook events"
                 });
             }
         }
-        
+
         // Sort all tags alphabetically
-        swaggerDoc.Tags = swaggerDoc.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        document.Tags = new HashSet<OpenApiTag>(document.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase));
     }
-    
+
     /// <summary>
     /// Load webhook documentation from entity.json file
     /// </summary>

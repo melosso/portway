@@ -297,7 +297,7 @@ The following namespace names are reserved and cannot be used:
 
 - `api`
 - `docs`
-- `swagger`
+- `openapi`
 - `health`
 - `admin`
 - `system`
@@ -307,9 +307,9 @@ The following namespace names are reserved and cannot be used:
 
 ## OpenAPI Documentation
 
-### Swagger Tag Organization
+### Documentation Tag Organization
 
-Namespaces automatically organize endpoints in the Swagger UI using tags:
+Namespaces automatically organize endpoints in the documentation UI using tags:
 
 - **With NamespaceDisplayName**: `"Customer Relationship Management"`
 - **With Namespace only**: `"CRM"`
@@ -446,7 +446,7 @@ During migration, both URL patterns work:
 }
 ```
 
-#### 4. Missing Endpoints in Swagger
+#### 4. Missing Endpoints in Documentation
 
 **Issue**: Namespaced endpoints not appearing in documentation
 
@@ -454,7 +454,7 @@ During migration, both URL patterns work:
 ```json
 {
   "Namespace": "Account",
-  "NamespaceDisplayName": "Account Management"  // Required for Swagger tags
+  "NamespaceDisplayName": "Account Management"  // Required for documentation tags
 }
 ```
 

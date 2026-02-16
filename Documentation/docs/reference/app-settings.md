@@ -22,7 +22,7 @@ Application settings control the core behavior of Portway, including logging, se
     }
   },
   "AllowedHosts": "*",
-  "Swagger": { ... },
+  "OpenApi": { ... },
   "RateLimiting": { ... },
   "RequestTrafficLogging": { ... },
   "SqlConnectionPooling": { ... }
@@ -121,7 +121,7 @@ The documentation will be available at `/docs` (or your custom route) once confi
 
 ```json
 {
-  "Swagger": {
+  "OpenApi": {
     "Enabled": true,
     "BaseProtocol": "https",
     "Title": "Portway: API Gateway",
@@ -150,7 +150,6 @@ The documentation will be available at `/docs` (or your custom route) once confi
     "EnableFilter": false,
     "EnableDeepLinking": false,
     "EnableValidator": true,
-    "EnableScalar": true,
     "ScalarTheme": "default",
     "ScalarLayout": "modern",
     "ScalarShowSidebar": true,
@@ -181,7 +180,6 @@ The documentation will be available at `/docs` (or your custom route) once confi
 | `EnableFilter` | boolean | `false` | Enable endpoint search/filtering |
 | `EnableDeepLinking` | boolean | `false` | Enable direct links to operations |
 | `EnableValidator` | boolean | `true` | Enable request/response validation |
-| `EnableScalar` | boolean | `true` | Use Scalar UI instead of default Swagger UI |
 | `ScalarTheme` | string | `"default"` | Scalar theme: `"default"`, `"alternate"`, `"moon"`, `"purple"`, `"solarized"` |
 | `ScalarLayout` | string | `"modern"` | Scalar layout: `"modern"`, `"classic"` |
 | `ScalarShowSidebar` | boolean | `true` | Display navigation sidebar |
@@ -468,7 +466,7 @@ For production, restrict to specific domains:
 
 ```json
 {
-  "Swagger": {
+  "OpenApi": {
     "DisplayRequestDuration": true
   },
   "RequestTrafficLogging": {
@@ -495,7 +493,7 @@ For production, restrict to specific domains:
     "IncludeRequestBodies": false,
     "IncludeResponseBodies": false
   },
-  "Swagger": {
+  "OpenApi": {
     "Enabled": false
   }
 }
@@ -612,7 +610,7 @@ echo %ASPNETCORE_ENVIRONMENT%
     }
   },
   "AllowedHosts": "api.company.com",
-  "Swagger": {
+  "OpenApi": {
     "Enabled": true,
     "BaseProtocol": "https",
     "Title": "Company API Gateway",

@@ -24,7 +24,7 @@ public class TokenAuthMiddleware
         string env = ExtractEnvironmentFromPath(context.Request.Path);
         
         // Skip token validation for specific routes
-        if (context.Request.Path.StartsWithSegments("/swagger") ||
+        if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health/live") ||
             context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
