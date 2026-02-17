@@ -61,7 +61,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 if (path.Value.Operations == null) continue;
                 foreach (var operation in path.Value.Operations)
                 {
-                    if (operation.Value.RequestBody != null && !operation.Value.RequestBody.Content.ContainsKey("application/json"))
+                    if (operation.Value.RequestBody?.Content != null && !operation.Value.RequestBody.Content.ContainsKey("application/json"))
                     {
                         operation.Value.RequestBody.Content["application/json"] = new OpenApiMediaType
                         {
@@ -171,7 +171,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 
                 if (opType != null)
                 {
-                    document.Paths[path].Operations[opType] = operation;
+                    document.Paths[path].Operations![opType] = operation;
                 }
             }
 
@@ -194,7 +194,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     operationIdCounter++);
 
                 // Remove the query parameter for id, and add a path parameter instead
-                deleteOperation.Parameters = deleteOperation.Parameters
+                deleteOperation.Parameters = (deleteOperation.Parameters ?? new List<IOpenApiParameter>())
                     .Where(p => p.Name != "id")
                     .ToList();
 
@@ -206,7 +206,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Description = "ID of the record to delete (OData-style: /endpointName(id))"
                 });
 
-                document.Paths[deletePath].Operations[HttpMethod.Delete] = deleteOperation;
+                document.Paths[deletePath].Operations![HttpMethod.Delete] = deleteOperation;
             }
         }
     }
@@ -320,7 +320,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             }
         };
 
-        document.Paths[deletePath].Operations[HttpMethod.Delete] = operation;
+        document.Paths[deletePath].Operations![HttpMethod.Delete] = operation;
         operationIdCounter++;
     }
 
@@ -752,7 +752,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             }
         };
 
-        document.Paths[path].Operations[HttpMethod.Post] = webhookOperation;
+        document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
     }
 
     /// <summary>
@@ -1097,7 +1097,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 });
             }
 
-            document.Paths[path].Operations[HttpMethod.Get] = getOperation;
+            document.Paths[path].Operations![HttpMethod.Get] = getOperation;
         }
     }
 
@@ -1994,7 +1994,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    private HttpMethod GetOperationType(string method)
+    private HttpMethod? GetOperationType(string method)
     {
         return method.ToUpperInvariant() switch
         {
@@ -2013,7 +2013,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
     private void AddOperationToPath(IOpenApiPathItem pathItem, string method, OpenApiOperation operation)
     {
         var operationType = GetOperationType(method);
-        if (operationType != null)
+        if (operationType != null && pathItem.Operations != null)
         {
             pathItem.Operations[operationType] = operation;
         }
@@ -2122,7 +2122,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Add each tag with its description (sorting will be handled by AlphabeticalEndpointSorter)
         foreach (var tagEntry in documentTags)
         {
-            var existingTag = document.Tags.FirstOrDefault(t => t.Name.Equals(tagEntry.Key, StringComparison.OrdinalIgnoreCase));
+            var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, tagEntry.Key, StringComparison.OrdinalIgnoreCase));
             if (existingTag == null)
             {
                 document.Tags.Add(new OpenApiTag
@@ -2144,7 +2144,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Add Webhook tag if webhooks exist (load description from entity.json)
         if (document.Paths.Any(p => p.Key.Contains("/webhook/")))
         {
-            var webhookTag = document.Tags.FirstOrDefault(t => t.Name.Equals("Webhook", StringComparison.OrdinalIgnoreCase));
+            var webhookTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, "Webhook", StringComparison.OrdinalIgnoreCase));
             if (webhookTag == null)
             {
                 var webhookDocumentation = LoadWebhookDocumentation();

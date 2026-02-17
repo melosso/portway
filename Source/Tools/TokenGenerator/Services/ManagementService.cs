@@ -240,13 +240,13 @@ public class ManagementService
     private static string HashPassphrase(string passphrase, string salt)
     {
         var saltBytes = Convert.FromBase64String(salt);
-        using var pbkdf2 = new Rfc2898DeriveBytes(
+        var hash = Rfc2898DeriveBytes.Pbkdf2(
             passphrase,
             saltBytes,
-            iterations: 310000, // OWASP recommendation for PBKDF2-SHA256
-            HashAlgorithmName.SHA256
+            310000, // OWASP recommendation for PBKDF2-SHA256
+            HashAlgorithmName.SHA256,
+            32
         );
-        var hash = pbkdf2.GetBytes(32);
         return Convert.ToBase64String(hash);
     }
 

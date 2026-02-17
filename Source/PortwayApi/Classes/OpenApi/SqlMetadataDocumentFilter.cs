@@ -110,7 +110,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         var responseSchema = CreateSchemaFromObjectMetadata(metadata, excludePrimaryKey: false, endpoint: definition);
 
         // Update response to include OData-compliant schema
-        if (operation.Responses.TryGetValue("200", out var response))
+        if (operation.Responses?.TryGetValue("200", out var response) == true)
         {
             var odataSchema = new OpenApiSchema
             {
@@ -145,10 +145,13 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                 Required = new HashSet<string> { "Success", "Count", "Value" }
             };
 
-            response.Content["application/json"] = new OpenApiMediaType
+            if (response!.Content != null)
             {
-                Schema = odataSchema
-            };
+                response.Content["application/json"] = new OpenApiMediaType
+                {
+                    Schema = odataSchema
+                };
+            }
         }
 
         Log.Debug("Enriched GET operation for {EndpointName} with {ColumnCount} columns",
@@ -229,7 +232,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         // Update response schema
         var successStatus = method == "POST" ? "201" : "200";
-        if (operation.Responses.TryGetValue(successStatus, out var response))
+        if (operation.Responses?.TryGetValue(successStatus, out var response) == true && response!.Content != null)
         {
             response.Content["application/json"] = new OpenApiMediaType
             {
@@ -241,7 +244,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         }
 
         // Add 422 response for validation errors
-        if (!operation.Responses.ContainsKey("422"))
+        if (operation.Responses != null && !operation.Responses.ContainsKey("422"))
         {
             operation.Responses["422"] = CreateValidationErrorResponse();
         }

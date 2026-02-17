@@ -259,11 +259,8 @@ public class TokenService
     /// </summary>
     private string HashToken(string token, byte[] salt)
     {
-        using (var pbkdf2 = new Rfc2898DeriveBytes(token, salt, 10000, HashAlgorithmName.SHA256))
-        {
-            byte[] hash = pbkdf2.GetBytes(32); // 256 bits
-            return Convert.ToBase64String(hash);
-        }
+        byte[] hash = Rfc2898DeriveBytes.Pbkdf2(token, salt, 10000, HashAlgorithmName.SHA256, 32);
+        return Convert.ToBase64String(hash);
     }
     
     /// <summary>

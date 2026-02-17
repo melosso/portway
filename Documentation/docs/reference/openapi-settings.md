@@ -46,12 +46,7 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
       "Type": "ApiKey",
       "Scheme": "Bearer"
     },
-    "RoutePrefix": "docs",
-    "DocExpansion": "List",
-    "DefaultModelsExpandDepth": -1,
-    "DisplayRequestDuration": true,
     "EnableFilter": false,
-    "EnableDeepLinking": false,
     "EnableValidator": true,
     "ScalarTheme": "default",
     "ScalarShowSidebar": true,
@@ -81,12 +76,6 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
 | `SecurityDefinition.In` | string | Location of the API key (`Header`, `Query`, `Cookie`) |
 | `SecurityDefinition.Type` | string | Type of security scheme (`ApiKey`, `Http`, `OAuth2`, `OpenIdConnect`) |
 | `SecurityDefinition.Scheme` | string | Authentication scheme (e.g., "Bearer", "Basic") |
-| `DocExpansion` | string | Default expansion state of documentation sections (`List`, `Full`, `None`) |
-| `DefaultModelsExpandDepth` | integer | Default depth for expanding models/schemas (-1 to hide) |
-| `DisplayRequestDuration` | boolean | Show request duration in UI |
-| `EnableFilter` | boolean | Enable API filtering in documentation |
-| `EnableDeepLinking` | boolean | Enable deep linking to specific operations |
-| `EnableValidator` | boolean | Enable schema validation in UI |
 | `ForceHttpsInProduction` | boolean | Force HTTPS URLs in production environments |
 | `ScalarTheme` | string | Scalar UI color theme |
 | `ScalarLayout` | string | Scalar UI layout style (`modern`, `classic`) |

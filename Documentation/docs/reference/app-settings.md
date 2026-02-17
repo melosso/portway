@@ -143,13 +143,6 @@ The documentation will be available at `/docs` (or your custom route) once confi
       "Type": "ApiKey",
       "Scheme": "Bearer"
     },
-    "RoutePrefix": "docs",
-    "DocExpansion": "List",
-    "DefaultModelsExpandDepth": -1,
-    "DisplayRequestDuration": true,
-    "EnableFilter": false,
-    "EnableDeepLinking": false,
-    "EnableValidator": true,
     "ScalarTheme": "default",
     "ScalarLayout": "modern",
     "ScalarShowSidebar": true,
@@ -173,13 +166,6 @@ The documentation will be available at `/docs` (or your custom route) once confi
 | `Contact` | object | - | Contact information for API support |
 | `Footer` | object | - | Footer text shown in Scalar |
 | `SecurityDefinition` | object | - | Authentication method configuration |
-| `RoutePrefix` | string | `"docs"` | URL path for documentation (e.g., `/docs`) |
-| `DocExpansion` | string | `"List"` | Default expansion: `"List"`, `"Full"`, `"None"` |
-| `DefaultModelsExpandDepth` | integer | `-1` | Schema model expansion depth (-1 = collapsed) |
-| `DisplayRequestDuration` | boolean | `true` | Show request execution time |
-| `EnableFilter` | boolean | `false` | Enable endpoint search/filtering |
-| `EnableDeepLinking` | boolean | `false` | Enable direct links to operations |
-| `EnableValidator` | boolean | `true` | Enable request/response validation |
 | `ScalarTheme` | string | `"default"` | Scalar theme: `"default"`, `"alternate"`, `"moon"`, `"purple"`, `"solarized"` |
 | `ScalarLayout` | string | `"modern"` | Scalar layout: `"modern"`, `"classic"` |
 | `ScalarShowSidebar` | boolean | `true` | Display navigation sidebar |
@@ -466,9 +452,6 @@ For production, restrict to specific domains:
 
 ```json
 {
-  "OpenApi": {
-    "DisplayRequestDuration": true
-  },
   "RequestTrafficLogging": {
     "EnableInfoLogging": true
   }

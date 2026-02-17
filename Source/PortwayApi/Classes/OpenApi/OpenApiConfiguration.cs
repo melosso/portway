@@ -26,12 +26,6 @@ public class OpenApiSettings
     public string Description { get; set; } = "A summary of the API documentation.";
     public ContactInfo Contact { get; set; } = new ContactInfo();
     public SecurityDefinitionInfo SecurityDefinition { get; set; } = new SecurityDefinitionInfo();
-    public string DocExpansion { get; set; } = "List";
-    public int DefaultModelsExpandDepth { get; set; } = -1;
-    public bool DisplayRequestDuration { get; set; } = true;
-    public bool EnableFilter { get; set; } = true;
-    public bool EnableDeepLinking { get; set; } = true;
-    public bool EnableValidator { get; set; } = true;
     public bool ForceHttpsInProduction { get; set; } = true; // Always use HTTPS in production environments
 
     // Scalar-specific

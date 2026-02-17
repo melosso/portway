@@ -271,7 +271,6 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             {
                 ExcludeEnvironmentCredential = false,
                 ExcludeManagedIdentityCredential = false,
-                ExcludeSharedTokenCacheCredential = false,
                 ExcludeVisualStudioCredential = false,
                 ExcludeAzureCliCredential = false,
                 ExcludeInteractiveBrowserCredential = true
