@@ -251,14 +251,14 @@ set "VALUE=%~2"
 :: Use PowerShell to update the JSON file
 powershell -Command ^
     "$json = Get-Content '%TARGET_FILE%' | ConvertFrom-Json; " ^
-    "if ($json.Swagger.%PROPERTY% -ne $null) { " ^
+    "if ($json.OpenApi.%PROPERTY% -ne $null) { " ^
         "if ('%VALUE%' -eq 'true' -or '%VALUE%' -eq 'false') { " ^
-            "$json.Swagger.%PROPERTY% = [bool]'%VALUE%'; " ^
+            "$json.OpenApi.%PROPERTY% = [bool]'%VALUE%'; " ^
         "} else { " ^
-            "$json.Swagger.%PROPERTY% = '%VALUE%'; " ^
+            "$json.OpenApi.%PROPERTY% = '%VALUE%'; " ^
         "} " ^
     "} else { " ^
-        "Write-Host 'Property %PROPERTY% not found in Swagger configuration'; " ^
+        "Write-Host 'Property %PROPERTY% not found in OpenApi configuration'; " ^
     "} " ^
     "$json | ConvertTo-Json -Depth 10 | Set-Content '%TARGET_FILE%'"
 
@@ -274,8 +274,8 @@ set "PROPERTY=%~1"
 
 for /f "delims=" %%i in ('powershell -Command ^
     "$json = Get-Content '%TARGET_FILE%' | ConvertFrom-Json; " ^
-    "if ($json.Swagger.%PROPERTY% -ne $null) { " ^
-        "$json.Swagger.%PROPERTY% " ^
+    "if ($json.OpenApi.%PROPERTY% -ne $null) { " ^
+        "$json.OpenApi.%PROPERTY% " ^
     "} else { " ^
         "'not found' " ^
     "}"') do set "CURRENT_VALUE=%%i"

@@ -98,7 +98,7 @@ namespace PortwayApi.Tests.Helpers
         {
             // Act & Assert
             Assert.False(HttpMethodHeaderAppender.IsValidHeaderName(""));
-            Assert.False(HttpMethodHeaderAppender.IsValidHeaderName(null));
+            Assert.False(HttpMethodHeaderAppender.IsValidHeaderName(null!));
             Assert.False(HttpMethodHeaderAppender.IsValidHeaderName("Invalid Header"));
             Assert.False(HttpMethodHeaderAppender.IsValidHeaderName("Header:Value"));
         }

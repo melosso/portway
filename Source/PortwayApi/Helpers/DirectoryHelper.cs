@@ -105,7 +105,7 @@ public static class DirectoryHelper
         }
         
         // Reserved namespace names
-        var reserved = new[] { "api", "docs", "swagger", "health", "admin", "system", "composite", "webhook", "files" };
+        var reserved = new[] { "api", "docs", "openapi", "health", "admin", "system", "composite", "webhook", "files" };
         if (reserved.Contains(namespaceName.ToLowerInvariant()))
         {
             errors.Add($"'{namespaceName}' is a reserved namespace name");

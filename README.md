@@ -20,7 +20,7 @@ A quick example to give you an idea of what this is all about:
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
-* [.NET 9+ Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
+* [.NET 10 Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 * If you're running on Windows: Internet Information Services (IIS)
 * SQL Server access (if you're using SQL endpoints)
 
@@ -423,7 +423,7 @@ You'll find comprehensive configuration examples in our [documentation page](htt
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
 
 ### Interactive documentation
-The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations. If necessary, the `/Swagger` (deprecated) route is also available (requires configuration).
+The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations.
 
 ### Schema discovery
 Portway automatically generates API documentation by reading your **database objects** at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. 

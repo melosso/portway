@@ -38,7 +38,7 @@ try
         .ReadFrom.Configuration(builder.Configuration)
         .Filter.ByExcluding(logEvent =>
             logEvent.Properties.ContainsKey("RequestPath") &&
-            (logEvent.Properties["RequestPath"].ToString().Contains("/swagger") ||
+            (logEvent.Properties["RequestPath"].ToString().Contains("/docs") ||
                 logEvent.Properties["RequestPath"].ToString().Contains("/index.html")))
         .CreateLogger();
 
@@ -307,8 +307,8 @@ try
             httpClientFactory);
     });
 
-    // Configure Swagger using our centralized configuration (now returns void and registers with IOptionsMonitor)
-    SwaggerConfiguration.ConfigureSwagger(builder);
+    // Configure OpenAPI using our centralized configuration (now returns void and registers with IOptionsMonitor)
+    OpenApiConfiguration.ConfigureOpenApi(builder);
 
     // Build the application
     var app = builder.Build();
@@ -365,7 +365,7 @@ try
         RequireHeaderSymmetry = false,
         ForwardLimit = null
     };
-    forwardedHeadersOptions.KnownNetworks.Clear();
+    forwardedHeadersOptions.KnownIPNetworks.Clear();
     forwardedHeadersOptions.KnownProxies.Clear();
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
@@ -397,8 +397,8 @@ try
     });
 
     // 6. Configure unified documentation at /docs (uses IOptionsMonitor for dynamic reload)
-    var swaggerMonitor = app.Services.GetRequiredService<IOptionsMonitor<SwaggerSettings>>();
-    SwaggerConfiguration.ConfigureDocs(app, swaggerMonitor);
+    var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
+    OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
 
     // 7. Static Files Configuration - Use Extension Method (DRY principle)
     app.UseDefaultFilesWithOptions();
@@ -451,11 +451,11 @@ try
             }
         }
         
-        // Handle swagger root redirect (legacy support)
+        // Handle now removed /swagger redirect (backward compatibility)
         if (path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
         {
             var redirectPath = $"{pathBase}/docs";
-            Log.Debug("Legacy Swagger UI redirect to {Path}", redirectPath);
+            Log.Debug("Legacy /swagger redirect to {Path}", redirectPath);
             context.Response.Redirect(redirectPath, permanent: true);
             return;
         }
@@ -525,7 +525,7 @@ try
             else
             {
                 Log.Information("Total active tokens: {Count}", activeTokens.Count());
-                Log.Warning("Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this high security risk!");
+                Log.Warning("Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this security risk.");
             }
         }
         catch (Exception ex)

@@ -2,21 +2,21 @@ using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
-using Microsoft.OpenApi.Any;
 
-namespace PortwayApi.Classes.Swagger;
+namespace PortwayApi.Classes.OpenApi;
 
 /// <summary>
-/// Loads and caches Swagger examples from JSON files
+/// Loads and caches OpenAPI examples from JSON files
 /// </summary>
-public class SwaggerExampleLoader
+public class OpenApiExampleLoader
 {
-    private static readonly ConcurrentDictionary<string, IOpenApiAny> _exampleCache = new();
+    private static readonly ConcurrentDictionary<string, JsonNode> _exampleCache = new();
     private readonly string _examplesBasePath;
-    private readonly ILogger<SwaggerExampleLoader>? _logger;
+    private readonly ILogger<OpenApiExampleLoader>? _logger;
 
-    public SwaggerExampleLoader(string? examplesBasePath = null)
+    public OpenApiExampleLoader(string? examplesBasePath = null)
     {
         _examplesBasePath = examplesBasePath ?? Path.Combine(Directory.GetCurrentDirectory(), "Endpoints");
         _logger = null; // Logger is optional
@@ -28,7 +28,7 @@ public class SwaggerExampleLoader
     /// <param name="endpointPath">The path to the endpoint (e.g., "Proxy/SalesOrder" or "Proxy/Financial/SalesOrder")</param>
     /// <param name="forceReload">Force reload from disk, bypassing cache</param>
     /// <returns>The parsed OpenAPI example or null if not found</returns>
-    public IOpenApiAny? LoadExample(string endpointPath, bool forceReload = false)
+    public JsonNode? LoadExample(string endpointPath, bool forceReload = false)
     {
         var cacheKey = endpointPath.ToLowerInvariant();
 
@@ -65,7 +65,7 @@ public class SwaggerExampleLoader
                 try
                 {
                     var jsonContent = File.ReadAllText(resolved);
-                    var example = ConvertJsonToOpenApiAny(jsonContent);
+                    var example = ConvertJsonToJsonNode(jsonContent);
 
                     if (example != null)
                     {
@@ -91,7 +91,7 @@ public class SwaggerExampleLoader
     /// <param name="compositeEndpointName">Name of the composite endpoint (e.g., "SalesOrder")</param>
     /// <param name="namespacePath">Optional namespace path (e.g., "Financial")</param>
     /// <returns>The parsed OpenAPI example or null if not found</returns>
-    public IOpenApiAny? LoadCompositeExample(string compositeEndpointName, string? namespacePath = null)
+    public JsonNode? LoadCompositeExample(string compositeEndpointName, string? namespacePath = null)
     {
         // Build the full path
         var endpointPath = string.IsNullOrEmpty(namespacePath)
@@ -102,71 +102,21 @@ public class SwaggerExampleLoader
     }
 
     /// <summary>
-    /// Convert JSON string to OpenApiAny object
+    /// Convert JSON string to JsonNode object
     /// </summary>
-    private IOpenApiAny? ConvertJsonToOpenApiAny(string jsonContent)
+    private JsonNode? ConvertJsonToJsonNode(string jsonContent)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
             return null;
 
         try
         {
-            using var document = JsonDocument.Parse(jsonContent);
-            return ConvertJsonElementToOpenApiAny(document.RootElement);
+            return JsonNode.Parse(jsonContent);
         }
         catch (JsonException ex)
         {
             _logger?.LogError(ex, "Invalid JSON in example file");
             return null;
-        }
-    }
-
-    /// <summary>
-    /// Recursively convert JsonElement to OpenApiAny
-    /// </summary>
-    private IOpenApiAny ConvertJsonElementToOpenApiAny(JsonElement element)
-    {
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.Object:
-                var obj = new OpenApiObject();
-                foreach (var property in element.EnumerateObject())
-                {
-                    obj[property.Name] = ConvertJsonElementToOpenApiAny(property.Value);
-                }
-                return obj;
-
-            case JsonValueKind.Array:
-                var array = new OpenApiArray();
-                foreach (var item in element.EnumerateArray())
-                {
-                    array.Add(ConvertJsonElementToOpenApiAny(item));
-                }
-                return array;
-
-            case JsonValueKind.String:
-                return new OpenApiString(element.GetString());
-
-            case JsonValueKind.Number:
-                if (element.TryGetInt32(out var intValue))
-                    return new OpenApiInteger(intValue);
-                if (element.TryGetInt64(out var longValue))
-                    return new OpenApiLong(longValue);
-                if (element.TryGetDouble(out var doubleValue))
-                    return new OpenApiDouble(doubleValue);
-                return new OpenApiDouble(element.GetDouble());
-
-            case JsonValueKind.True:
-                return new OpenApiBoolean(true);
-
-            case JsonValueKind.False:
-                return new OpenApiBoolean(false);
-
-            case JsonValueKind.Null:
-                return new OpenApiNull();
-
-            default:
-                return new OpenApiString(element.ToString());
         }
     }
 
