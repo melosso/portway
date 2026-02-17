@@ -11,10 +11,10 @@ This guide explains how to deploy the Portway API on a Windows Server using Inte
 Before you begin, ensure you have:
 - Windows Server with IIS installed
 - Administrator access
-- [ASP.NET Core 9.0 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [ASP.NET Core 10.0 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/10.0)
 
 > [!WARNING]
-> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core 9.0** provides. Make sure to choose the last option ("Hosting Bundle").
+> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core 10.0** provides. Make sure to choose the last option ("Hosting Bundle").
 
 > [!IMPORTANT]
 > This guide assumes you have basic knowledge of IIS configuration and data source connectivity. While we cover the essential steps, some details may require your existing expertise.
@@ -48,7 +48,7 @@ Ensure your deployment package contains:
 ## Installation
 
 ### Step 1: Install ASP.NET Core Runtime
-1. Download and install the ASP.NET Core 9.0 Hosting Bundle
+1. Download and install the ASP.NET Core 10.0 Hosting Bundle
 2. Restart IIS to activate the changes:
    ```cmd
    iisreset
