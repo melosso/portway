@@ -451,7 +451,7 @@ try
             }
         }
         
-        // Handle legacy /swagger redirect (backward compatibility)
+        // Handle now removed /swagger redirect (backward compatibility)
         if (path == "/swagger" && !context.Request.Path.Value!.Contains("/swagger.json"))
         {
             var redirectPath = $"{pathBase}/docs";
