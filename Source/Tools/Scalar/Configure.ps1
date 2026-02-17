@@ -81,8 +81,8 @@ function Get-ScalarConfig {
     
     try {
         $Config = Get-Content $ConfigPath | ConvertFrom-Json
-        if (-not $Config.Swagger) {
-            Write-Host "Error: Swagger configuration not found in file" -ForegroundColor Red
+        if (-not $Config.OpenApi) {
+            Write-Host "Error: OpenApi configuration not found in file" -ForegroundColor Red
             return $null
         }
         return $Config
@@ -113,13 +113,13 @@ function Show-CurrentConfig {
     Write-Host
     Write-Host "Current Scalar Configuration:" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
-    Write-Host "Theme: $($Config.Swagger.ScalarTheme)" -ForegroundColor White
-    Write-Host "Layout: $($Config.Swagger.ScalarLayout)" -ForegroundColor White
-    Write-Host "Show Sidebar: $($Config.Swagger.ScalarShowSidebar)" -ForegroundColor White
-    Write-Host "Hide Download Button: $($Config.Swagger.ScalarHideDownloadButton)" -ForegroundColor White
-    Write-Host "Hide Models: $($Config.Swagger.ScalarHideModels)" -ForegroundColor White
-    Write-Host "Hide Client Button: $($Config.Swagger.ScalarHideClientButton)" -ForegroundColor White
-    Write-Host "Hide Test Request Button: $($Config.Swagger.ScalarHideTestRequestButton)" -ForegroundColor White
+    Write-Host "Theme: $($Config.OpenApi.ScalarTheme)" -ForegroundColor White
+    Write-Host "Layout: $($Config.OpenApi.ScalarLayout)" -ForegroundColor White
+    Write-Host "Show Sidebar: $($Config.OpenApi.ScalarShowSidebar)" -ForegroundColor White
+    Write-Host "Hide Download Button: $($Config.OpenApi.ScalarHideDownloadButton)" -ForegroundColor White
+    Write-Host "Hide Models: $($Config.OpenApi.ScalarHideModels)" -ForegroundColor White
+    Write-Host "Hide Client Button: $($Config.OpenApi.ScalarHideClientButton)" -ForegroundColor White
+    Write-Host "Hide Test Request Button: $($Config.OpenApi.ScalarHideTestRequestButton)" -ForegroundColor White
     Write-Host
 }
 
@@ -161,13 +161,13 @@ function Show-ThemeMenu {
 function Reset-ToDefaults {
     param([object]$Config)
     
-    $Config.Swagger.ScalarTheme = "default"
-    $Config.Swagger.ScalarLayout = "modern"
-    $Config.Swagger.ScalarShowSidebar = $true
-    $Config.Swagger.ScalarHideDownloadButton = $true
-    $Config.Swagger.ScalarHideModels = $true
-    $Config.Swagger.ScalarHideClientButton = $true
-    $Config.Swagger.ScalarHideTestRequestButton = $false
+    $Config.OpenApi.ScalarTheme = "default"
+    $Config.OpenApi.ScalarLayout = "modern"
+    $Config.OpenApi.ScalarShowSidebar = $true
+    $Config.OpenApi.ScalarHideDownloadButton = $true
+    $Config.OpenApi.ScalarHideModels = $true
+    $Config.OpenApi.ScalarHideClientButton = $true
+    $Config.OpenApi.ScalarHideTestRequestButton = $false
     
     Write-Host "All Scalar settings have been reset to defaults." -ForegroundColor Green
     return $Config
@@ -186,7 +186,7 @@ function Start-InteractiveMode {
                 $ThemeChoice = Read-Host "Select theme (1-$($ValidThemes.Count))"
                 $ThemeIndex = [int]$ThemeChoice - 1
                 if ($ThemeIndex -ge 0 -and $ThemeIndex -lt $ValidThemes.Count) {
-                    $Config.Swagger.ScalarTheme = $ValidThemes[$ThemeIndex]
+                    $Config.OpenApi.ScalarTheme = $ValidThemes[$ThemeIndex]
                     Write-Host "Theme updated to: $($ValidThemes[$ThemeIndex])" -ForegroundColor Green
                     Save-ScalarConfig $Config $ConfigPath | Out-Null
                 } else {
@@ -199,7 +199,7 @@ function Start-InteractiveMode {
                 $LayoutChoice = Read-Host "Select layout (1-$($ValidLayouts.Count))"
                 $LayoutIndex = [int]$LayoutChoice - 1
                 if ($LayoutIndex -ge 0 -and $LayoutIndex -lt $ValidLayouts.Count) {
-                    $Config.Swagger.ScalarLayout = $ValidLayouts[$LayoutIndex]
+                    $Config.OpenApi.ScalarLayout = $ValidLayouts[$LayoutIndex]
                     Write-Host "Layout updated to: $($ValidLayouts[$LayoutIndex])" -ForegroundColor Green
                     Save-ScalarConfig $Config $ConfigPath | Out-Null
                 } else {
@@ -208,35 +208,35 @@ function Start-InteractiveMode {
                 Write-Host
             }
             "3" {
-                $Config.Swagger.ScalarShowSidebar = -not $Config.Swagger.ScalarShowSidebar
-                Write-Host "Sidebar visibility set to: $($Config.Swagger.ScalarShowSidebar)" -ForegroundColor Green
+                $Config.OpenApi.ScalarShowSidebar = -not $Config.OpenApi.ScalarShowSidebar
+                Write-Host "Sidebar visibility set to: $($Config.OpenApi.ScalarShowSidebar)" -ForegroundColor Green
                 Save-ScalarConfig $Config $ConfigPath | Out-Null
                 Write-Host
             }
             "4" {
-                $Config.Swagger.ScalarHideDownloadButton = -not $Config.Swagger.ScalarHideDownloadButton
-                $Status = if ($Config.Swagger.ScalarHideDownloadButton) { "hidden" } else { "visible" }
+                $Config.OpenApi.ScalarHideDownloadButton = -not $Config.OpenApi.ScalarHideDownloadButton
+                $Status = if ($Config.OpenApi.ScalarHideDownloadButton) { "hidden" } else { "visible" }
                 Write-Host "Download button is now: $Status" -ForegroundColor Green
                 Save-ScalarConfig $Config $ConfigPath | Out-Null
                 Write-Host
             }
             "5" {
-                $Config.Swagger.ScalarHideModels = -not $Config.Swagger.ScalarHideModels
-                $Status = if ($Config.Swagger.ScalarHideModels) { "hidden" } else { "visible" }
+                $Config.OpenApi.ScalarHideModels = -not $Config.OpenApi.ScalarHideModels
+                $Status = if ($Config.OpenApi.ScalarHideModels) { "hidden" } else { "visible" }
                 Write-Host "Models section is now: $Status" -ForegroundColor Green
                 Save-ScalarConfig $Config $ConfigPath | Out-Null
                 Write-Host
             }
             "6" {
-                $Config.Swagger.ScalarHideClientButton = -not $Config.Swagger.ScalarHideClientButton
-                $Status = if ($Config.Swagger.ScalarHideClientButton) { "hidden" } else { "visible" }
+                $Config.OpenApi.ScalarHideClientButton = -not $Config.OpenApi.ScalarHideClientButton
+                $Status = if ($Config.OpenApi.ScalarHideClientButton) { "hidden" } else { "visible" }
                 Write-Host "Client button is now: $Status" -ForegroundColor Green
                 Save-ScalarConfig $Config $ConfigPath | Out-Null
                 Write-Host
             }
             "7" {
-                $Config.Swagger.ScalarHideTestRequestButton = -not $Config.Swagger.ScalarHideTestRequestButton
-                $Status = if ($Config.Swagger.ScalarHideTestRequestButton) { "hidden" } else { "visible" }
+                $Config.OpenApi.ScalarHideTestRequestButton = -not $Config.OpenApi.ScalarHideTestRequestButton
+                $Status = if ($Config.OpenApi.ScalarHideTestRequestButton) { "hidden" } else { "visible" }
                 Write-Host "Test Request button is now: $Status" -ForegroundColor Green
                 Save-ScalarConfig $Config $ConfigPath | Out-Null
                 Write-Host
@@ -284,7 +284,7 @@ $Changes = $false
 
 if ($Theme) {
     if ($ValidThemes -contains $Theme) {
-        $Config.Swagger.ScalarTheme = $Theme
+        $Config.OpenApi.ScalarTheme = $Theme
         Write-Host "Theme set to: $Theme" -ForegroundColor Green
         $Changes = $true
     } else {
@@ -295,7 +295,7 @@ if ($Theme) {
 
 if ($Layout) {
     if ($ValidLayouts -contains $Layout) {
-        $Config.Swagger.ScalarLayout = $Layout
+        $Config.OpenApi.ScalarLayout = $Layout
         Write-Host "Layout set to: $Layout" -ForegroundColor Green
         $Changes = $true
     } else {
@@ -305,61 +305,61 @@ if ($Layout) {
 }
 
 if ($ShowSidebar) {
-    $Config.Swagger.ScalarShowSidebar = $true
+    $Config.OpenApi.ScalarShowSidebar = $true
     Write-Host "Sidebar visibility set to: true" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($HideSidebar) {
-    $Config.Swagger.ScalarShowSidebar = $false
+    $Config.OpenApi.ScalarShowSidebar = $false
     Write-Host "Sidebar visibility set to: false" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($ShowDownloadButton) {
-    $Config.Swagger.ScalarHideDownloadButton = $false
+    $Config.OpenApi.ScalarHideDownloadButton = $false
     Write-Host "Download button is now: visible" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($HideDownloadButton) {
-    $Config.Swagger.ScalarHideDownloadButton = $true
+    $Config.OpenApi.ScalarHideDownloadButton = $true
     Write-Host "Download button is now: hidden" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($ShowModels) {
-    $Config.Swagger.ScalarHideModels = $false
+    $Config.OpenApi.ScalarHideModels = $false
     Write-Host "Models section is now: visible" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($HideModels) {
-    $Config.Swagger.ScalarHideModels = $true
+    $Config.OpenApi.ScalarHideModels = $true
     Write-Host "Models section is now: hidden" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($ShowClientButton) {
-    $Config.Swagger.ScalarHideClientButton = $false
+    $Config.OpenApi.ScalarHideClientButton = $false
     Write-Host "Client button is now: visible" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($HideClientButton) {
-    $Config.Swagger.ScalarHideClientButton = $true
+    $Config.OpenApi.ScalarHideClientButton = $true
     Write-Host "Client button is now: hidden" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($ShowTestRequestButton) {
-    $Config.Swagger.ScalarHideTestRequestButton = $false
+    $Config.OpenApi.ScalarHideTestRequestButton = $false
     Write-Host "Test Request button is now: visible" -ForegroundColor Green
     $Changes = $true
 }
 
 if ($HideTestRequestButton) {
-    $Config.Swagger.ScalarHideTestRequestButton = $true
+    $Config.OpenApi.ScalarHideTestRequestButton = $true
     Write-Host "Test Request button is now: hidden" -ForegroundColor Green
     $Changes = $true
 }
