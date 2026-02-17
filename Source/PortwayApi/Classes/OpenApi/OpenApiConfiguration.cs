@@ -477,7 +477,7 @@ var html = $@"
             return Results.Content(html, "text/html");
         });
 
-        Log.Information("API Documentation is ready! Please visit /docs.");
+        Log.Information("OpenAPI documentation is enabled and available at '/docs'.");
     }
 
     private static string GetScalarThemeName(string theme)

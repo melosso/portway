@@ -68,27 +68,6 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                             Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
                         };
                     }
-
-                    // Add Accept header for all operations (GET and POST)
-                    operation.Value.Parameters ??= new List<IOpenApiParameter>();
-                    if (!operation.Value.Parameters.Any(p => p.Name == "Accept"))
-                    {
-                        operation.Value.Parameters.Add(new OpenApiParameter
-                        {
-                            Name = "Accept",
-                            In = ParameterLocation.Header,
-                            Required = false,
-                            Schema = new OpenApiSchema
-                            {
-                                Type = JsonSchemaType.String,
-                                Default = JsonValue.Create("application/json")
-                            },
-                            Description = "Specifies the media type of the response (default is application/json)"
-                        });
-                    }
-
-                    // Note: Content-Type header is automatically added by OpenAPI/Scalar based on RequestBody content
-                    // so we don't need to add it explicitly as it would cause duplicates
                 }
             }
 
@@ -368,6 +347,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
 
+            // Determine content type from CustomProperties or default to application/json
+            var acceptContentType = definition.CustomProperties?.GetValueOrDefault("ContentType")?.ToString() ?? "application/json";
+
             // Add operations for each HTTP method
             foreach (var method in definition.Methods)
             {
@@ -439,32 +421,33 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     method.Equals("PATCH", StringComparison.OrdinalIgnoreCase) ||
                     method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
                 {
+                    var requestContent = new Dictionary<string, OpenApiMediaType>();
+
+                    // If a specific ContentType is configured, use it as the primary content type
+                    if (acceptContentType != "application/json")
+                    {
+                        requestContent[acceptContentType] = new OpenApiMediaType
+                        {
+                            Schema = GetSchemaForContentType(acceptContentType)
+                        };
+                    }
+
+                    // Always include standard content types as alternatives
+                    foreach (var ct in new[] { "application/json", "text/xml", "application/soap+xml", "application/xml", "text/plain" })
+                    {
+                        if (!requestContent.ContainsKey(ct))
+                        {
+                            requestContent[ct] = new OpenApiMediaType
+                            {
+                                Schema = GetSchemaForContentType(ct)
+                            };
+                        }
+                    }
+
                     operation.RequestBody = new OpenApiRequestBody
                     {
                         Required = true,
-                        Content = new Dictionary<string, OpenApiMediaType>
-                        {
-                            ["application/json"] = new OpenApiMediaType
-                            {
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
-                            },
-                            ["text/xml"] = new OpenApiMediaType
-                            {
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                            },
-                            ["application/soap+xml"] = new OpenApiMediaType
-                            {
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                            },
-                            ["application/xml"] = new OpenApiMediaType
-                            {
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                            },
-                            ["text/plain"] = new OpenApiMediaType
-                            {
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        }
+                        Content = requestContent
                     };
                 }
 
@@ -476,9 +459,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Description = "Successful response",
                         Content = new Dictionary<string, OpenApiMediaType>
                         {
-                            ["application/json"] = new OpenApiMediaType
+                            [acceptContentType] = new OpenApiMediaType
                             {
-                                Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
+                                Schema = GetSchemaForContentType(acceptContentType)
                             }
                         }
                     },
@@ -841,19 +824,6 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                             Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                         },
                         Description = "Environment identifier"
-                    },
-                    // Accept header parameter with the correct content type
-                    new OpenApiParameter
-                    {
-                        Name = "Accept",
-                        In = ParameterLocation.Header,
-                        Required = false,
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.String,
-                            Default = JsonValue.Create(contentType)
-                        },
-                        Description = $"Specifies the media type of the response (default is {contentType})"
                     }
                 },
                 Responses = new OpenApiResponses
@@ -1108,6 +1078,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         List<string> allowedEnvironments,
         int operationId)
     {
+        // Determine Accept content type from CustomProperties or default to application/json
+        var acceptContentType = definition.CustomProperties?.GetValueOrDefault("ContentType")?.ToString() ?? "application/json";
+
         var operation = new OpenApiOperation
         {
             Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) }, // Use DocumentationTag for proper namespace grouping
@@ -1193,21 +1166,29 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                  method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
         {
-            // Add request body for POST and PUT
+            // Add request body for POST and PUT, using configured ContentType as primary
+            var requestContent = new Dictionary<string, OpenApiMediaType>
+            {
+                [acceptContentType] = new OpenApiMediaType
+                {
+                    Schema = GetSchemaForContentType(acceptContentType)
+                }
+            };
+
+            // Always include application/json as an alternative if not already the primary
+            if (acceptContentType != "application/json")
+            {
+                requestContent["application/json"] = new OpenApiMediaType
+                {
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
+                };
+            }
+
             operation.RequestBody = new OpenApiRequestBody
             {
                 Description = method.Equals("POST") ? "Data for new record" : "Data for updated record",
                 Required = true,
-                Content = new Dictionary<string, OpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object
-                        }
-                    }
-                }
+                Content = requestContent
             };
         }
 
@@ -1230,7 +1211,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 },
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
-                    ["application/json"] = new OpenApiMediaType
+                    [acceptContentType] = new OpenApiMediaType
                     {
                         Schema = new OpenApiSchema
                         {
@@ -1289,7 +1270,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 } : null,
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
-                    ["application/json"] = new OpenApiMediaType
+                    [acceptContentType] = new OpenApiMediaType
                     {
                         Schema = method switch
                         {
@@ -1620,6 +1601,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         List<string> allowedEnvironments,
         int operationId)
     {
+        // Determine Accept content type from CustomProperties or default to application/json
+        var acceptContentType = definition.CustomProperties?.GetValueOrDefault("ContentType")?.ToString() ?? "application/json";
+
         var operation = new OpenApiOperation
         {
             Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) }, // Use DocumentationTag for proper namespace grouping (consistent with other operations)
@@ -2017,6 +2001,17 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             pathItem.Operations[operationType] = operation;
         }
+    }
+
+    /// <summary>
+    /// Gets the appropriate OpenAPI schema type for a given content type
+    /// </summary>
+    private static OpenApiSchema GetSchemaForContentType(string contentType)
+    {
+        if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
+            return new OpenApiSchema { Type = JsonSchemaType.Object };
+
+        return new OpenApiSchema { Type = JsonSchemaType.String };
     }
 
     /// <summary>
