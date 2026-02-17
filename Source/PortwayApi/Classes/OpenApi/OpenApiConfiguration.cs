@@ -147,6 +147,7 @@ public static class OpenApiConfiguration
                         Type = ParseEnum<SecuritySchemeType>(openApiSettings.SecurityDefinition.Type, SecuritySchemeType.ApiKey),
                         Scheme = openApiSettings.SecurityDefinition.Scheme
                     };
+
                     return Task.CompletedTask;
                 });
 
@@ -196,6 +197,24 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<FileEndpointDocumentFilter>();
                 options.AddDocumentTransformer<SqlMetadataDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();
+
+                // Apply global security requirement to all operations (runs after all endpoints are added)
+                options.AddDocumentTransformer((document, context, ct) =>
+                {
+                    foreach (var pathItem in document.Paths.Values)
+                    {
+                        if (pathItem.Operations == null) continue;
+                        foreach (var operation in pathItem.Operations.Values)
+                        {
+                            operation.Security ??= new List<OpenApiSecurityRequirement>();
+                            operation.Security.Add(new OpenApiSecurityRequirement
+                            {
+                                [new OpenApiSecuritySchemeReference(openApiSettings.SecurityDefinition.Name, document)] = new List<string>()
+                            });
+                        }
+                    }
+                    return Task.CompletedTask;
+                });
 
                 // Add operation transformers
                 options.AddOperationTransformer<DynamicEndpointOperationFilter>();

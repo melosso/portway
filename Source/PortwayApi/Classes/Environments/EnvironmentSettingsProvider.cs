@@ -444,7 +444,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             
             if (hasUserID || hasPassword)
             {
-                Log.Warning("Connection string contains hardcoded credentials. Consider encrypting the connection string.");
+                Log.Debug("Connection string contains hardcoded credentials, this will later be encrypted.");
                 
                 if (hasPassword)
                 {
