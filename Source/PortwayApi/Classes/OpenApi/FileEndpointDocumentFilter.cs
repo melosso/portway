@@ -222,20 +222,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Description = "Set to true to overwrite existing files with the same name"
         });
 
-        // Add Accept header for consistency with other endpoints
-        operation.Parameters.Add(new OpenApiParameter
-        {
-            Name = "Accept",
-            In = ParameterLocation.Header,
-            Required = false,
-            Schema = new OpenApiSchema
-            {
-                Type = JsonSchemaType.String,
-                Default = JsonValue.Create("application/json")
-            },
-            Description = "Specifies the media type of the response (default is application/json)"
-        });
-
         // File parameter
         operation.RequestBody = new OpenApiRequestBody
         {
@@ -377,20 +363,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Description = "ID of the file to download"
         });
 
-        // Add Accept header for consistency with other endpoints
-        operation.Parameters.Add(new OpenApiParameter
-        {
-            Name = "Accept",
-            In = ParameterLocation.Header,
-            Required = false,
-            Schema = new OpenApiSchema
-            {
-                Type = JsonSchemaType.String,
-                Default = JsonValue.Create("*/*")
-            },
-            Description = "Specifies the media type of the response"
-        });
-
         // Success response
         operation.Responses = new OpenApiResponses
         {
@@ -399,7 +371,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 Description = "Successful response",
                 Content = new Dictionary<string, OpenApiMediaType>
                 {
-                    ["*/*"] = new OpenApiMediaType
+                    ["application/octet-stream"] = new OpenApiMediaType
                     {
                         Schema = new OpenApiSchema
                         {
@@ -486,20 +458,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Required = true,
             Schema = new OpenApiSchema { Type = JsonSchemaType.String },
             Description = "ID of the file to delete"
-        });
-
-        // Add Accept header for consistency with other endpoints
-        operation.Parameters.Add(new OpenApiParameter
-        {
-            Name = "Accept",
-            In = ParameterLocation.Header,
-            Required = false,
-            Schema = new OpenApiSchema
-            {
-                Type = JsonSchemaType.String,
-                Default = JsonValue.Create("application/json")
-            },
-            Description = "Specifies the media type of the response (default is application/json)"
         });
 
         // Success response
@@ -604,20 +562,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Required = false,
             Schema = new OpenApiSchema { Type = JsonSchemaType.String },
             Description = "Filter files by prefix"
-        });
-
-        // Add Accept header for consistency with other endpoints
-        operation.Parameters.Add(new OpenApiParameter
-        {
-            Name = "Accept",
-            In = ParameterLocation.Header,
-            Required = false,
-            Schema = new OpenApiSchema
-            {
-                Type = JsonSchemaType.String,
-                Default = JsonValue.Create("application/json")
-            },
-            Description = "Specifies the media type of the response (default is application/json)"
         });
 
         // Success response
