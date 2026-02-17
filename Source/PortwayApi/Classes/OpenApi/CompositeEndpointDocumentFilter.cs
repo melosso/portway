@@ -92,7 +92,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Schema = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String,
-                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).ToList()
+                        Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
                     },
                     Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
                 });
@@ -124,7 +124,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 
                 var dynamicExample = TryLoadDynamicExample(definition, endpointKey);
 
-                if (dynamicExample != null)
+                if (dynamicExample != null && operation.RequestBody?.Content?.ContainsKey("application/json") == true)
                 {
                     // Use dynamically loaded example from file
                     operation.RequestBody.Content["application/json"].Example = dynamicExample;
@@ -200,7 +200,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 };
 
                 // Add the operation to the path
-                document.Paths[path].Operations[HttpMethod.Post] = operation;
+                document.Paths[path].Operations![HttpMethod.Post] = operation;
             }
 
             // Add all collected tags to the document (unchanged from original)
@@ -210,7 +210,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 
                 foreach (var tag in documentTags)
                 {
-                    if (!document.Tags.Any(t => t.Name.Equals(tag.Key, StringComparison.OrdinalIgnoreCase)))
+                    if (!document.Tags.Any(t => string.Equals(t.Name, tag.Key, StringComparison.OrdinalIgnoreCase)))
                     {
                         document.Tags.Add(new OpenApiTag
                         {
@@ -267,6 +267,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
     private void AddSalesOrderExample(OpenApiOperation operation, OpenApiSchema requestSchema)
     {
         // Add Header property
+        requestSchema.Properties ??= new Dictionary<string, IOpenApiSchema>();
         requestSchema.Properties["Header"] = new OpenApiSchema
         {
             Type = JsonSchemaType.Object,
@@ -329,7 +330,8 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
         };
 
         // Add the example to the media type
-        operation.RequestBody.Content["application/json"].Example = example;
+        if (operation.RequestBody?.Content?.ContainsKey("application/json") == true)
+            operation.RequestBody.Content["application/json"].Example = example;
     }
 
     /// <summary>

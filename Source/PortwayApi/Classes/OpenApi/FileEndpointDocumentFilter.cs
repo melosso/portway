@@ -89,7 +89,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Add each file endpoint tag with its description (sorting will be handled by AlphabeticalEndpointSorter)
         foreach (var tagEntry in documentTags)
         {
-            var existingTag = document.Tags.FirstOrDefault(t => t.Name.Equals(tagEntry.Key, StringComparison.OrdinalIgnoreCase));
+            var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, tagEntry.Key, StringComparison.OrdinalIgnoreCase));
             if (existingTag == null)
             {
                 document.Tags.Add(new OpenApiTag
@@ -207,7 +207,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).ToList()
+                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
             Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
         });
@@ -331,7 +331,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "upload");
 
         // Add the upload operation
-        document.Paths[path].Operations[HttpMethod.Post] = operation;
+        document.Paths[path].Operations![HttpMethod.Post] = operation;
     }
 
     private void AddFileDownloadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
@@ -362,7 +362,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).ToList()
+                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
             Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
         });
@@ -442,7 +442,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "download");
 
         // Add the download operation
-        document.Paths[path].Operations[HttpMethod.Get] = operation;
+        document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
     private void AddFileDeleteOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
@@ -473,7 +473,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).ToList()
+                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
             Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
         });
@@ -560,7 +560,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "delete");
 
         // Add the delete operation
-        document.Paths[path].Operations[HttpMethod.Delete] = operation;
+        document.Paths[path].Operations![HttpMethod.Delete] = operation;
     }
 
     private void AddFileListOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
@@ -591,7 +591,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).ToList()
+                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
             Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
         });
@@ -712,7 +712,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "list");
 
         // Add the list operation
-        document.Paths[path].Operations[HttpMethod.Get] = operation;
+        document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
     private void AddExamples(OpenApiOperation operation, string operationType, string endpointName)
@@ -727,9 +727,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
         else if (operationType == "delete")
         {
-            if (operation.Responses["200"].Content.ContainsKey("application/json"))
+            if (operation.Responses?["200"]?.Content?.ContainsKey("application/json") == true)
             {
-                operation.Responses["200"].Content["application/json"].Examples = new Dictionary<string, IOpenApiExample>
+                operation.Responses["200"].Content!["application/json"].Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["success"] = new OpenApiExample
                     {
@@ -745,9 +745,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
         else if (operationType == "list")
         {
-            if (operation.Responses["200"].Content.ContainsKey("application/json"))
+            if (operation.Responses?["200"]?.Content?.ContainsKey("application/json") == true)
             {
-                operation.Responses["200"].Content["application/json"].Examples = new Dictionary<string, IOpenApiExample>
+                operation.Responses["200"].Content!["application/json"].Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["fileList"] = new OpenApiExample
                     {
