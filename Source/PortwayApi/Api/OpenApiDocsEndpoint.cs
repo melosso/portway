@@ -4,24 +4,24 @@ using Serilog;
 namespace PortwayApi.Api;
 
 /// <summary>
-/// Controller to provide Swagger metadata only, not for actual request handling
+/// Controller to provide OpenAPI metadata only, not for actual request handling
 /// </summary>
 [ApiController]
-[Route("api/swagger-docs")]
+[Route("api/openapi-docs")]
 [ApiExplorerSettings(IgnoreApi = true)]
-public class SwaggerDocsController : ControllerBase
+public class OpenApiDocsController : ControllerBase
 {
     /// <summary>
-    /// This controller doesn't actually handle requests, but only exists to provide  properly formatted Swagger metadata for the API explorer.
-    /// The real implementation is in EndpointController, but this helps Swagger populate the API structure.
+    /// This controller doesn't actually handle requests, but only exists to provide properly formatted OpenAPI metadata for the API explorer.
+    /// The real implementation is in EndpointController, but this helps populate the API structure.
     /// </summary>
     [HttpGet]
     [Route("info")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     public IActionResult GetApiInfo()
     {
-        // Just return the basic info - this endpoint is only for Swagger docs
-        return Ok(new { 
+        // Just return the basic info, this endpoint is only for documentation
+        return Ok(new {
             message = "This is a documentation-only endpoint. Use the actual endpoints for API calls.",
             endpoints = new {
                 sql = "/api/{env}/{endpointName}",

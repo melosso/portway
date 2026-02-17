@@ -45,7 +45,7 @@ public class AuthDbContext : DbContext
             builder.AddFilter((category, level) => false);
         }));
         
-        // Additional safeguards for .NET 9.0
+        // Additional safeguards for .NET 10.0
         optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.CommandExecuted));
         optionsBuilder.ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.CoreEventId.ContextInitialized));
     }

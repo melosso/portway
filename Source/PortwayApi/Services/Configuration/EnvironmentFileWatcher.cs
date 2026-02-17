@@ -134,7 +134,7 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
             // Invalidate cache entries related to this environment
             await InvalidateEnvironmentCacheAsync(environmentName);
 
-            Log.Information("Environment '{Environment}' settings changed - will reload on next request", environmentName);
+            Log.Information("Environment '{Environment}' settings changed, definition will reload on next request", environmentName);
         }
         catch (Exception ex)
         {

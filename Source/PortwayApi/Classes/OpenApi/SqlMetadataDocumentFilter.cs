@@ -1,14 +1,14 @@
-using Microsoft.OpenApi.Any;
-using Microsoft.OpenApi.Models;
+using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 using Serilog;
-using Swashbuckle.AspNetCore.SwaggerGen;
 
-namespace PortwayApi.Classes.Swagger;
+namespace PortwayApi.Classes.OpenApi;
 
 /// <summary>
-/// Swagger document filter that enriches SQL endpoint documentation with database column metadata
+/// Document filter that enriches SQL endpoint documentation with database column metadata
 /// </summary>
-public class SqlMetadataDocumentFilter : IDocumentFilter
+public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly Services.SqlMetadataService _metadataService;
 
@@ -17,22 +17,24 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         _metadataService = metadataService;
     }
 
-    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         try
         {
-            EnrichSqlEndpointsWithMetadata(swaggerDoc);
+            EnrichSqlEndpointsWithMetadata(document);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error applying SQL metadata to OpenAPI documentation");
         }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Enriches SQL endpoints in the Swagger document with column metadata
+    /// Enriches SQL endpoints in the OpenAPI document with column metadata
     /// </summary>
-    private void EnrichSqlEndpointsWithMetadata(OpenApiDocument swaggerDoc)
+    private void EnrichSqlEndpointsWithMetadata(OpenApiDocument document)
     {
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
 
@@ -45,42 +47,43 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
             if (definition.IsPrivate)
                 continue;
 
-            // Find the path in swagger doc
+            // Find the path in OpenAPI document
             var path = $"/api/{{env}}/{endpointName}";
-            if (!swaggerDoc.Paths.ContainsKey(path))
+            if (!document.Paths.ContainsKey(path))
             {
-                Log.Debug("Path {Path} not found in Swagger document", path);
+                Log.Debug("Path {Path} not found in OpenAPI document", path);
                 continue;
             }
 
-            var pathItem = swaggerDoc.Paths[path];
+            var pathItem = document.Paths[path];
+            if (pathItem.Operations == null) continue;
 
             // Enrich GET operation with object metadata
-            if (pathItem.Operations.TryGetValue(OperationType.Get, out var getOperation))
+            if (pathItem.Operations.TryGetValue(HttpMethod.Get, out var getOperation))
             {
                 EnrichGetOperationWithObjectMetadata(getOperation, endpointName, definition);
             }
 
             // Enrich POST operation with procedure metadata
-            if (pathItem.Operations.TryGetValue(OperationType.Post, out var postOperation))
+            if (pathItem.Operations.TryGetValue(HttpMethod.Post, out var postOperation))
             {
                 EnrichModificationOperationWithProcedureMetadata(postOperation, endpointName, definition, "POST");
             }
 
             // Enrich PUT operation with procedure metadata
-            if (pathItem.Operations.TryGetValue(OperationType.Put, out var putOperation))
+            if (pathItem.Operations.TryGetValue(HttpMethod.Put, out var putOperation))
             {
                 EnrichModificationOperationWithProcedureMetadata(putOperation, endpointName, definition, "PUT");
             }
 
             // Enrich PATCH operation with procedure metadata
-            if (pathItem.Operations.TryGetValue(OperationType.Patch, out var patchOperation))
+            if (pathItem.Operations.TryGetValue(HttpMethod.Patch, out var patchOperation))
             {
                 EnrichModificationOperationWithProcedureMetadata(patchOperation, endpointName, definition, "PATCH");
             }
 
             // Enrich DELETE operation with object metadata (for primary key info)
-            if (pathItem.Operations.TryGetValue(OperationType.Delete, out var deleteOperation))
+            if (pathItem.Operations.TryGetValue(HttpMethod.Delete, out var deleteOperation))
             {
                 EnrichDeleteOperationWithObjectMetadata(deleteOperation, endpointName, definition);
             }
@@ -107,52 +110,51 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         var responseSchema = CreateSchemaFromObjectMetadata(metadata, excludePrimaryKey: false, endpoint: definition);
 
         // Update response to include OData-compliant schema
-        if (operation.Responses.TryGetValue("200", out var response))
+        if (operation.Responses?.TryGetValue("200", out var response) == true)
         {
             var odataSchema = new OpenApiSchema
             {
-                Type = "object",
-                Properties = new Dictionary<string, OpenApiSchema>
+                Type = JsonSchemaType.Object,
+                Properties = new Dictionary<string, IOpenApiSchema>
                 {
                     ["Success"] = new OpenApiSchema
                     {
-                        Type = "boolean",
+                        Type = JsonSchemaType.Boolean,
                         Description = "Indicates if the request was successful",
-                        Example = new OpenApiBoolean(true)
+                        Example = JsonValue.Create(true)
                     },
                     ["Count"] = new OpenApiSchema
                     {
-                        Type = "integer",
+                        Type = JsonSchemaType.Integer,
                         Description = "Total number of records returned",
-                        Example = new OpenApiInteger(5)
+                        Example = JsonValue.Create(5)
                     },
                     ["Value"] = new OpenApiSchema
                     {
-                        Type = "array",
+                        Type = JsonSchemaType.Array,
                         Items = responseSchema,
                         Description = "Array of records"
                     },
                     ["NextLink"] = new OpenApiSchema
                     {
-                        Type = "string",
-                        Nullable = true,
+                        Type = JsonSchemaType.String | JsonSchemaType.Null,
                         Description = "URL for pagination (null if no more pages)",
-                        Example = new OpenApiNull()
+                        Example = null
                     }
                 },
                 Required = new HashSet<string> { "Success", "Count", "Value" }
             };
 
-            response.Content = new Dictionary<string, OpenApiMediaType>
+            if (response!.Content != null)
             {
-                ["application/json"] = new OpenApiMediaType
+                response.Content["application/json"] = new OpenApiMediaType
                 {
                     Schema = odataSchema
-                }
-            };
+                };
+            }
         }
 
-        Log.Debug("Enriched GET operation for {EndpointName} with {ColumnCount} columns", 
+        Log.Debug("Enriched GET operation for {EndpointName} with {ColumnCount} columns",
             endpointName, metadata.Count);
     }
 
@@ -168,44 +170,44 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         var parameters = _metadataService.GetProcedureMetadata(endpointName);
         if (parameters == null || !parameters.Any())
         {
-            Log.Debug("No procedure metadata available for {Method} endpoint {EndpointName}", 
+            Log.Debug("No procedure metadata available for {Method} endpoint {EndpointName}",
                 method, endpointName);
             return;
         }
 
         var requestSchema = CreateSchemaFromProcedureMetadata(parameters, definition, method);
-        
+
         // For POST response, we should return the created record (not wrapped)
         // For PUT/PATCH, return success message with affected record count
         var objectMetadata = _metadataService.GetObjectMetadata(endpointName);
         OpenApiSchema responseSchema;
-        
+
         if (method == "POST")
         {
             // POST should return the created record directly (not wrapped)
-            responseSchema = objectMetadata != null && objectMetadata.Any() 
+            responseSchema = objectMetadata != null && objectMetadata.Any()
                 ? CreateSchemaFromObjectMetadata(objectMetadata, excludePrimaryKey: false, endpoint: definition)
-                : new OpenApiSchema { Type = "object" };
+                : new OpenApiSchema { Type = JsonSchemaType.Object };
         }
         else
         {
             // PUT/PATCH return success response
             responseSchema = new OpenApiSchema
             {
-                Type = "object",
-                Properties = new Dictionary<string, OpenApiSchema>
+                Type = JsonSchemaType.Object,
+                Properties = new Dictionary<string, IOpenApiSchema>
                 {
-                    ["success"] = new OpenApiSchema { Type = "boolean" },
-                    ["message"] = new OpenApiSchema { Type = "string" },
+                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
                     ["result"] = new OpenApiSchema
                     {
-                        Type = "array",
+                        Type = JsonSchemaType.Array,
                         Items = new OpenApiSchema
                         {
-                            Type = "object",
-                            Properties = new Dictionary<string, OpenApiSchema>
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["Id"] = new OpenApiSchema { Type = "string", Example = new OpenApiString("12345") }
+                                ["Id"] = new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("12345") }
                             }
                         }
                     }
@@ -230,57 +232,54 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         // Update response schema
         var successStatus = method == "POST" ? "201" : "200";
-        if (operation.Responses.TryGetValue(successStatus, out var response))
+        if (operation.Responses?.TryGetValue(successStatus, out var response) == true && response!.Content != null)
         {
-            response.Content = new Dictionary<string, OpenApiMediaType>
+            response.Content["application/json"] = new OpenApiMediaType
             {
-                ["application/json"] = new OpenApiMediaType
-                {
-                    Schema = responseSchema,
-                    Example = method == "POST" 
-                        ? CreateExampleObjectFromObjectMetadata(objectMetadata, definition)
-                        : CreateSuccessResponseExample(method)
-                }
+                Schema = responseSchema,
+                Example = method == "POST"
+                    ? CreateExampleObjectFromObjectMetadata(objectMetadata, definition)
+                    : CreateSuccessResponseExample(method)
             };
         }
 
         // Add 422 response for validation errors
-        if (!operation.Responses.ContainsKey("422"))
+        if (operation.Responses != null && !operation.Responses.ContainsKey("422"))
         {
             operation.Responses["422"] = CreateValidationErrorResponse();
         }
 
-        Log.Debug("Enriched {Method} operation for {EndpointName} with {ParameterCount} parameters", 
+        Log.Debug("Enriched {Method} operation for {EndpointName} with {ParameterCount} parameters",
             method, endpointName, parameters.Count);
     }
 
     /// <summary>
     /// Creates an example success response for PUT/PATCH operations
     /// </summary>
-    private IOpenApiAny CreateSuccessResponseExample(string method)
+    private JsonNode? CreateSuccessResponseExample(string method)
     {
-        return new OpenApiObject
+        return new JsonObject
         {
-            ["success"] = new OpenApiBoolean(true),
-            ["message"] = new OpenApiString($"Record updated successfully"),
-            ["result"] = new OpenApiArray
+            ["success"] = true,
+            ["message"] = "Record updated successfully",
+            ["result"] = new JsonArray
             {
-                new OpenApiObject
+                new JsonObject
                 {
-                    ["result"] = new OpenApiString("array")
+                    ["result"] = "array"
                 }
             }
         };
     }
 
-    private IOpenApiAny CreateExampleObjectFromObjectMetadata(
+    private JsonNode? CreateExampleObjectFromObjectMetadata(
         List<Services.SqlMetadataService.ColumnMetadata>? metadata,
         EndpointDefinition definition)
     {
         if (metadata == null || !metadata.Any())
-            return new OpenApiObject();
+            return new JsonObject();
 
-        var obj = new OpenApiObject();
+        var obj = new JsonObject();
 
         foreach (var column in metadata)
         {
@@ -289,7 +288,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
             {
                 continue;
             }
-            
+
             obj[column.ColumnName] = GenerateExampleValue(column);
         }
 
@@ -313,11 +312,11 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         // Use the same ID field detection as the controller
         var idFields = metadata.Where(m => IsIdField(m.ColumnName)).ToList();
-        
+
         if (idFields.Any())
         {
             var idField = idFields.First();
-            operation.Description = (operation.Description ?? "") + 
+            operation.Description = (operation.Description ?? "") +
                 $"\n\n**Primary Key:** `{idField.ColumnName}` ({idField.DataType})";
         }
 
@@ -337,7 +336,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         EndpointDefinition? endpoint = null,
         bool isRequest = false)
     {
-        var properties = new Dictionary<string, OpenApiSchema>();
+        var properties = new Dictionary<string, IOpenApiSchema>();
         var required = new List<string>();
 
         // Get required columns from endpoint definition (for POST requests)
@@ -358,7 +357,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         var schema = new OpenApiSchema
         {
-            Type = "object",
+            Type = JsonSchemaType.Object,
             Properties = properties
         };
 
@@ -379,12 +378,12 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         EndpointDefinition endpoint,
         string method)
     {
-        var properties = new Dictionary<string, OpenApiSchema>();
+        var properties = new Dictionary<string, IOpenApiSchema>();
         var required = new List<string>();
 
         // Parse column mappings to understand aliases
         var allowedColumns = endpoint.AllowedColumns ?? new List<string>();
-        var (aliasToDatabase, databaseToAlias) = 
+        var (aliasToDatabase, databaseToAlias) =
             Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
         // Add required columns from endpoint definition
@@ -400,10 +399,10 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
                 continue;
 
             var parameterSchema = CreateParameterSchema(parameter, endpoint);
-            
+
             // Remove @ from parameter name for JSON property and map to column name
-            var parameterNameWithoutAt = parameter.ParameterName.StartsWith('@') 
-                ? parameter.ParameterName.Substring(1) 
+            var parameterNameWithoutAt = parameter.ParameterName.StartsWith('@')
+                ? parameter.ParameterName.Substring(1)
                 : parameter.ParameterName;
 
             // Skip reserved parameters
@@ -426,7 +425,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
             }
 
             properties[propertyName] = parameterSchema;
-            
+
             // For PUT operations, primary key should be required
             if (method == "PUT" && propertyName.Equals(endpoint.PrimaryKey, StringComparison.OrdinalIgnoreCase))
             {
@@ -444,7 +443,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         var schema = new OpenApiSchema
         {
-            Type = "object",
+            Type = JsonSchemaType.Object,
             Properties = properties,
             Description = GetSchemaDescription(method, parameters.Count)
         };
@@ -467,9 +466,10 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
     {
         var columnSchema = new OpenApiSchema
         {
-            Type = MapClrTypeToOpenApiType(column.ClrType),
-            Description = BuildColumnDescription(column, endpoint),
-            Nullable = column.IsNullable
+            Type = column.IsNullable
+                ? MapClrTypeToOpenApiType(column.ClrType) | JsonSchemaType.Null
+                : MapClrTypeToOpenApiType(column.ClrType),
+            Description = BuildColumnDescription(column, endpoint)
         };
 
         // Add format for specific types
@@ -519,15 +519,16 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         EndpointDefinition endpoint)
     {
         // Remove @ from parameter name for JSON property
-        var parameterNameWithoutAt = parameter.ParameterName.StartsWith('@') 
-            ? parameter.ParameterName.Substring(1) 
+        var parameterNameWithoutAt = parameter.ParameterName.StartsWith('@')
+            ? parameter.ParameterName.Substring(1)
             : parameter.ParameterName;
 
         var parameterSchema = new OpenApiSchema
         {
-            Type = MapClrTypeToOpenApiType(parameter.ClrType),
-            Description = BuildParameterDescription(parameter),
-            Nullable = parameter.IsNullable || parameter.HasDefaultValue
+            Type = (parameter.IsNullable || parameter.HasDefaultValue)
+                ? MapClrTypeToOpenApiType(parameter.ClrType) | JsonSchemaType.Null
+                : MapClrTypeToOpenApiType(parameter.ClrType),
+            Description = BuildParameterDescription(parameter)
         };
 
         // Add format for specific types
@@ -551,11 +552,11 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         }
 
         // Add regex pattern validation if defined in endpoint for this parameter
-        if (endpoint.ColumnValidation?.TryGetValue(parameterNameWithoutAt, out var validation) == true 
+        if (endpoint.ColumnValidation?.TryGetValue(parameterNameWithoutAt, out var validation) == true
             && !string.IsNullOrEmpty(validation.Regex))
         {
             parameterSchema.Pattern = validation.Regex;
-            
+
             if (!string.IsNullOrEmpty(validation.ValidationMessage))
             {
                 parameterSchema.Description += $"\n\n**Validation:** {validation.ValidationMessage}";
@@ -693,20 +694,20 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
                 {
                     Schema = new OpenApiSchema
                     {
-                        Type = "object",
-                        Properties = new Dictionary<string, OpenApiSchema>
+                        Type = JsonSchemaType.Object,
+                        Properties = new Dictionary<string, IOpenApiSchema>
                         {
-                            ["error"] = new OpenApiSchema { Type = "string" },
+                            ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
                             ["details"] = new OpenApiSchema
                             {
-                                Type = "array",
+                                Type = JsonSchemaType.Array,
                                 Items = new OpenApiSchema
                                 {
-                                    Type = "object",
-                                    Properties = new Dictionary<string, OpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
                                     {
-                                        ["field"] = new OpenApiSchema { Type = "string" },
-                                        ["message"] = new OpenApiSchema { Type = "string" }
+                                        ["field"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                     }
                                 }
                             }
@@ -720,12 +721,12 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
     /// <summary>
     /// Creates an example object from procedure parameters
     /// </summary>
-    private IOpenApiAny CreateExampleObjectFromProcedure(
+    private JsonNode? CreateExampleObjectFromProcedure(
         List<Services.SqlMetadataService.ParameterMetadata> parameters,
         string method,
         EndpointDefinition definition)
     {
-        var obj = new OpenApiObject();
+        var obj = new JsonObject();
 
         // Parse column mappings
         var allowedColumns = definition.AllowedColumns ?? new List<string>();
@@ -772,11 +773,10 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         }
 
         // If no properties were added, add some basic examples
-        if (!obj.Any())
+        if (obj.Count == 0)
         {
-            obj["exampleField"] = new OpenApiString("exampleValue");
+            obj["exampleField"] = "exampleValue";
         }
-
 
         return obj;
     }
@@ -785,7 +785,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
     /// Maps a parameter name to a JSON property name using column mappings
     /// </summary>
     private string? MapParameterToPropertyName(
-        string parameterName, 
+        string parameterName,
         Dictionary<string, string> databaseToAlias,
         Dictionary<string, string> aliasToDatabase,
         EndpointDefinition definition)
@@ -799,7 +799,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
             {
                 return definition.PrimaryKey;
             }
-            
+
             // If parameter name is "id" and primary key is something like "RequestId"
             if (parameterName.Equals("id", StringComparison.OrdinalIgnoreCase))
             {
@@ -817,19 +817,19 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
         {
             return columnAlias;
         }
-        
+
         // If parameter is an alias that maps to a database column, use the parameter name
         if (aliasToDatabase.ContainsKey(parameterName))
         {
             return parameterName;
         }
-        
+
         // For parameters that don't map to columns, use the parameter name
         if (string.IsNullOrWhiteSpace(parameterName))
         {
             return null;
         }
-        
+
         return parameterName;
     }
 
@@ -846,7 +846,7 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         return idParameters.Contains(parameterName, StringComparer.OrdinalIgnoreCase);
     }
-    
+
     /// <summary>
     /// Checks if a parameter name is reserved and should be excluded
     /// </summary>
@@ -859,21 +859,21 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
     /// <summary>
     /// Generates an example value based on column metadata
     /// </summary>
-    private IOpenApiAny GenerateExampleValue(Services.SqlMetadataService.ColumnMetadata column)
+    private JsonNode? GenerateExampleValue(Services.SqlMetadataService.ColumnMetadata column)
     {
         if (column.IsNullable)
-            return new OpenApiNull();
+            return null;
 
         return column.ClrType switch
         {
-            "System.String" => new OpenApiString(column.IsPrimaryKey ? "ABC123" : "example"),
-            "System.Int32" => new OpenApiInteger(column.IsPrimaryKey ? 1 : 42),
-            "System.Int64" => new OpenApiLong(column.IsPrimaryKey ? 1L : 42L),
-            "System.Boolean" => new OpenApiBoolean(true),
-            "System.Decimal" or "System.Double" => new OpenApiDouble(99.99),
-            "System.DateTime" => new OpenApiString(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid" => new OpenApiString(Guid.NewGuid().ToString()),
-            _ => new OpenApiString("value")
+            "System.String" => JsonValue.Create(column.IsPrimaryKey ? "ABC123" : "example"),
+            "System.Int32" => JsonValue.Create(column.IsPrimaryKey ? 1 : 42),
+            "System.Int64" => JsonValue.Create(column.IsPrimaryKey ? 1L : 42L),
+            "System.Boolean" => JsonValue.Create(true),
+            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
+            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
+            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
+            _ => JsonValue.Create("value")
         };
     }
 
@@ -889,71 +889,71 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
             "internalId", "InternalId", "InternalID", "internalid",
             "recordId", "RecordId"
         };
-        
+
         return idFieldNames.Contains(fieldName, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
     /// Generates an example value based on parameter metadata (without property name)
     /// </summary>
-    private IOpenApiAny GenerateExampleValueFromParameter(Services.SqlMetadataService.ParameterMetadata parameter)
+    private JsonNode? GenerateExampleValueFromParameter(Services.SqlMetadataService.ParameterMetadata parameter)
     {
         // Use parameter name for context-aware examples
         var paramName = parameter.ParameterName.ToLowerInvariant().Replace("@", "");
 
         if (paramName.Contains("id") && parameter.ClrType == "System.Guid")
         {
-            return new OpenApiString(Guid.NewGuid().ToString());
+            return JsonValue.Create(Guid.NewGuid().ToString());
         }
         else if (paramName.Contains("id") && parameter.ClrType.Contains("Int"))
         {
-            return new OpenApiInteger(1);
+            return JsonValue.Create(1);
         }
         else if (paramName.Contains("name") || paramName.Contains("title"))
         {
-            return new OpenApiString($"Example {paramName}");
+            return JsonValue.Create($"Example {paramName}");
         }
         else if (paramName.Contains("email"))
         {
-            return new OpenApiString("user@example.com");
+            return JsonValue.Create("user@example.com");
         }
         else if (paramName.Contains("date") || paramName.Contains("time"))
         {
-            return new OpenApiString(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
+            return JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
         }
         else if (paramName.StartsWith("is") || paramName.StartsWith("has") || paramName.Contains("active"))
         {
-            return new OpenApiBoolean(true);
+            return JsonValue.Create(true);
         }
         else if (paramName.Contains("amount") || paramName.Contains("price") || paramName.Contains("cost"))
         {
-            return new OpenApiDouble(99.99);
+            return JsonValue.Create(99.99);
         }
 
         // Fallback to type-based examples
         return parameter.ClrType switch
         {
-            "System.String" => new OpenApiString($"example {paramName}"),
-            "System.Int32" => new OpenApiInteger(42),
-            "System.Int64" => new OpenApiLong(42L),
-            "System.Boolean" => new OpenApiBoolean(true),
-            "System.Decimal" or "System.Double" => new OpenApiDouble(99.99),
-            "System.DateTime" => new OpenApiString(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid" => new OpenApiString(Guid.NewGuid().ToString()),
-            _ => parameter.IsNullable || parameter.HasDefaultValue ? new OpenApiNull() : new OpenApiString("value")
+            "System.String" => JsonValue.Create($"example {paramName}"),
+            "System.Int32" => JsonValue.Create(42),
+            "System.Int64" => JsonValue.Create(42L),
+            "System.Boolean" => JsonValue.Create(true),
+            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
+            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
+            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
+            _ => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
         };
     }
 
     /// <summary>
     /// Generates an example value based on parameter metadata and property name
     /// </summary>
-    private IOpenApiAny GenerateExampleValueFromParameter(
+    private JsonNode? GenerateExampleValueFromParameter(
         Services.SqlMetadataService.ParameterMetadata parameter,
         string propertyName)
     {
         if (string.IsNullOrWhiteSpace(propertyName))
         {
-            return new OpenApiNull();
+            return null;
         }
 
         // Use property name for context-aware examples
@@ -961,55 +961,55 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
 
         if (propName.Contains("id") && parameter.ClrType == "System.Guid")
         {
-            return new OpenApiString(Guid.NewGuid().ToString());
+            return JsonValue.Create(Guid.NewGuid().ToString());
         }
         else if (propName.Contains("id") && parameter.ClrType.Contains("Int"))
         {
-            return new OpenApiInteger(1);
+            return JsonValue.Create(1);
         }
         else if (propName.Contains("name") || propName.Contains("title"))
         {
-            return new OpenApiString($"Example {propertyName}");
+            return JsonValue.Create($"Example {propertyName}");
         }
         else if (propName.Contains("email"))
         {
-            return new OpenApiString("user@example.com");
+            return JsonValue.Create("user@example.com");
         }
         else if (propName.Contains("date") || propName.Contains("time"))
         {
-            return new OpenApiString(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
+            return JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
         }
         else if (propName.StartsWith("is") || propName.StartsWith("has") || propName.Contains("active"))
         {
-            return new OpenApiBoolean(true);
+            return JsonValue.Create(true);
         }
         else if (propName.Contains("amount") || propName.Contains("price") || propName.Contains("cost"))
         {
-            return new OpenApiDouble(99.99);
+            return JsonValue.Create(99.99);
         }
 
         // Fallback to type-based examples
         return parameter.ClrType switch
         {
-            "System.String" => new OpenApiString($"example {propertyName}"),
-            "System.Int32" => new OpenApiInteger(42),
-            "System.Int64" => new OpenApiLong(42L),
-            "System.Boolean" => new OpenApiBoolean(true),
-            "System.Decimal" or "System.Double" => new OpenApiDouble(99.99),
-            "System.DateTime" => new OpenApiString(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid" => new OpenApiString(Guid.NewGuid().ToString()),
-            _ => parameter.IsNullable || parameter.HasDefaultValue ? new OpenApiNull() : new OpenApiString("value")
+            "System.String" => JsonValue.Create($"example {propertyName}"),
+            "System.Int32" => JsonValue.Create(42),
+            "System.Int64" => JsonValue.Create(42L),
+            "System.Boolean" => JsonValue.Create(true),
+            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
+            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
+            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
+            _ => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
         };
     }
 
     /// <summary>
     /// Creates an example object from metadata
     /// </summary>
-    private IOpenApiAny CreateExampleObject(
+    private JsonNode? CreateExampleObject(
         List<Services.SqlMetadataService.ColumnMetadata> metadata,
         bool excludePrimaryKey = false)
     {
-        var obj = new OpenApiObject();
+        var obj = new JsonObject();
 
         foreach (var column in metadata)
         {
@@ -1025,19 +1025,19 @@ public class SqlMetadataDocumentFilter : IDocumentFilter
     /// <summary>
     /// Maps CLR type to OpenAPI type
     /// </summary>
-    private string MapClrTypeToOpenApiType(string clrType)
+    private JsonSchemaType MapClrTypeToOpenApiType(string clrType)
     {
         return clrType switch
         {
-            "System.String" => "string",
-            "System.Int16" or "System.Int32" or "System.Int64" or "System.Byte" => "integer",
-            "System.Decimal" or "System.Double" or "System.Single" => "number",
-            "System.Boolean" => "boolean",
-            "System.DateTime" or "System.DateTimeOffset" => "string",
-            "System.Guid" => "string",
-            "System.TimeSpan" => "string",
-            "System.Byte[]" => "string",
-            _ => "object"
+            "System.String" => JsonSchemaType.String,
+            "System.Int16" or "System.Int32" or "System.Int64" or "System.Byte" => JsonSchemaType.Integer,
+            "System.Decimal" or "System.Double" or "System.Single" => JsonSchemaType.Number,
+            "System.Boolean" => JsonSchemaType.Boolean,
+            "System.DateTime" or "System.DateTimeOffset" => JsonSchemaType.String,
+            "System.Guid" => JsonSchemaType.String,
+            "System.TimeSpan" => JsonSchemaType.String,
+            "System.Byte[]" => JsonSchemaType.String,
+            _ => JsonSchemaType.Object
         };
     }
 

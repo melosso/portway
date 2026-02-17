@@ -220,6 +220,7 @@ Proxy entities forward requests to internal web services.
 
 | Property | Type | Description | Example |
 |----------|------|-------------|---------|
+| `ContentType` | string | Sets the primary Content-Type for requests and Accept header for responses. Overrides the default `application/json` | `"application/xml"` |
 | `HttpMethodTranslation` | string | Translate HTTP methods before proxying | `"PUT:MERGE,POST:CREATE"` |
 | `HttpMethodAppendHeaders` | string | Auto-append headers based on HTTP method | `"PUT:X-HTTP-Method={ORIGINAL_METHOD}"` |
 

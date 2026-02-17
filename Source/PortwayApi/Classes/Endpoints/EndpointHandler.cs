@@ -88,13 +88,13 @@ public class EndpointDefinition
     
     /// <summary>
     /// Display name for the namespace (e.g., "Customer Relationship Management")
-    /// Used as Swagger tag description and documentation grouping
+    /// Used as documentation tag description and documentation grouping
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
-    
+
     /// <summary>
     /// Folder name where the endpoint definition is located (for backward compatibility)
-    /// Used as fallback for SwaggerTag when DisplayName is not specified
+    /// Used as fallback for DocumentationTag when DisplayName is not specified
     /// </summary>
     public string? FolderName { get; set; }
     
@@ -139,19 +139,18 @@ public class EndpointDefinition
         : DisplayName ?? EndpointName;
     
     /// <summary>
-    /// Gets the appropriate Swagger tag name
+    /// Gets the appropriate documentation tag name for OpenAPI grouping
     /// </summary>
-    public string SwaggerTag
+    public string DocumentationTag
     {
         get
         {
-            // Debug logging to trace the issue
-            var result = !string.IsNullOrEmpty(Namespace) ? (NamespaceDisplayName ?? Namespace) 
-                       : HasNamespace ? (NamespaceDisplayName ?? EffectiveNamespace!) 
+            var result = !string.IsNullOrEmpty(Namespace) ? (NamespaceDisplayName ?? Namespace)
+                       : HasNamespace ? (NamespaceDisplayName ?? EffectiveNamespace!)
                        : (DisplayName ?? FolderName ?? EndpointName);
-            
-            System.Diagnostics.Debug.WriteLine($"SwaggerTag Debug - Namespace: '{Namespace}', InferredNamespace: '{InferredNamespace}', EffectiveNamespace: '{EffectiveNamespace}', Result: '{result}'");
-            
+
+            System.Diagnostics.Debug.WriteLine($"DocumentationTag Debug - Namespace: '{Namespace}', InferredNamespace: '{InferredNamespace}', EffectiveNamespace: '{EffectiveNamespace}', Result: '{result}'");
+
             return result;
         }
     }
@@ -199,7 +198,7 @@ public class EndpointDefinition
             }
 
             // Reserved namespace names
-            var reserved = new[] { "api", "docs", "swagger", "health", "admin", "system", "composite", "webhook", "files" };
+            var reserved = new[] { "api", "docs", "openapi", "health", "admin", "system", "composite", "webhook", "files" };
             if (reserved.Contains(namespaceToCheck.ToLowerInvariant()))
             {
                 errors.Add($"'{namespaceToCheck}' is a reserved namespace name");
@@ -454,7 +453,7 @@ public static class EndpointHandler
                         // Set inferred namespace (entity.json namespace takes precedence)
                         definition.InferredNamespace = inferredNamespace;
                         
-                        // Set folder name for backward compatibility with SwaggerTag logic
+                        // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
 
                         // Skip if no valid name could be extracted
@@ -538,7 +537,7 @@ public static class EndpointHandler
                         // Set inferred namespace (entity.json namespace takes precedence)
                         definition.InferredNamespace = inferredNamespace;
                         
-                        // Set folder name for backward compatibility with SwaggerTag logic
+                        // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
                         
                         // Skip if no valid name could be extracted
@@ -685,7 +684,7 @@ public static class EndpointHandler
                             continue;
                         }
 
-                        // Set folder name for backward compatibility with SwaggerTag logic
+                        // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
 
                         // Add the endpoint to the dictionary
@@ -749,7 +748,7 @@ public static class EndpointHandler
                         // Set inferred namespace (entity.json namespace takes precedence)
                         definition.InferredNamespace = inferredNamespace;
                         
-                        // Set folder name for backward compatibility with SwaggerTag logic
+                        // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
 
                         // Skip if no valid name could be extracted
@@ -777,11 +776,11 @@ public static class EndpointHandler
                         
                         endpoints[primaryKey] = definition;
 
-                        Log.Debug("Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | SwaggerTag: {SwaggerTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
+                        Log.Debug("Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | DocumentationTag: {DocumentationTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
                             primaryKey,
                             definition.IsPrivate ? "Private" : "Public",
                             definition.Properties?.GetValueOrDefault("ContentType", "unknown"),
-                            definition.SwaggerTag,
+                            definition.DocumentationTag,
                             definition.Namespace ?? "null",
                             definition.InferredNamespace ?? "null");
                     }

@@ -638,7 +638,7 @@ public class ProxyTrafficLoggerMiddleware
         return path != null && 
                 (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) ||
                 path.StartsWith("/webhook/", StringComparison.OrdinalIgnoreCase)) && 
-                !path.Contains("/swagger", StringComparison.OrdinalIgnoreCase) && 
+                !path.Contains("/openapi-docs", StringComparison.OrdinalIgnoreCase) &&
                 !path.Contains("/docs", StringComparison.OrdinalIgnoreCase) &&
                 !path.Contains("index.html", StringComparison.OrdinalIgnoreCase);
     }

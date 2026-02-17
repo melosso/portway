@@ -149,8 +149,8 @@ public class SqlMetadataService
         {
             // Get the most relevant error message
             var errorMessage = ex.Message;
-            Log.Error(ex, "Failed to initialize metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
-                endpointName, ex.GetType().Name, errorMessage);
+            Log.Error(ex, "Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorType} - {ErrorMessage}",
+                endpointName, environment, ex.GetType().Name, errorMessage);
         }
     }
 
