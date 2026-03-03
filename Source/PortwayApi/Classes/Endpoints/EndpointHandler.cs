@@ -238,9 +238,7 @@ public static class EndpointHandler
     private static string GetEndpointsBasePath()
     {
         var baseDir = Directory.GetCurrentDirectory();
-        return Directory.Exists(Path.Combine(baseDir, "Endpoints"))
-            ? Path.Combine(baseDir, "Endpoints")
-            : Path.Combine(baseDir, "endpoints");
+        return Path.Combine(baseDir, "endpoints");
     }
 
     /// <summary>
