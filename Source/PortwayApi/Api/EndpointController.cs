@@ -290,7 +290,7 @@ public class EndpointController : ControllerBase
             if (endpoint.HasNamespace)
             {
                 // For namespaced endpoints, use the full namespace/endpoint structure
-                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", 
+                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static",
                     endpoint.EffectiveNamespace!, endpoint.FolderName ?? endpointName);
             }
             else

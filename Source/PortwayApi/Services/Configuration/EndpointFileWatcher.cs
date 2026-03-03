@@ -24,10 +24,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         IOptionsMonitor<EndpointReloadingOptions> optionsMonitor)
     {
         var baseDir = Directory.GetCurrentDirectory();
-        // Support both lowercase and uppercase folder names for cross-platform compatibility
-        _endpointsPath = Directory.Exists(Path.Combine(baseDir, "Endpoints"))
-            ? Path.Combine(baseDir, "Endpoints")
-            : Path.Combine(baseDir, "endpoints");
+        _endpointsPath = Path.Combine(baseDir, "endpoints");
         _sqlMetadataService = sqlMetadataService;
         _optionsMonitor = optionsMonitor;
     }

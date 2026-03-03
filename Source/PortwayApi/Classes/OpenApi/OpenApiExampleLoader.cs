@@ -18,7 +18,7 @@ public class OpenApiExampleLoader
 
     public OpenApiExampleLoader(string? examplesBasePath = null)
     {
-        _examplesBasePath = examplesBasePath ?? Path.Combine(Directory.GetCurrentDirectory(), "Endpoints");
+        _examplesBasePath = examplesBasePath ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints");
         _logger = null; // Logger is optional
     }
 

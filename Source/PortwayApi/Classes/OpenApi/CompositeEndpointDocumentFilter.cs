@@ -341,7 +341,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
     {
         try
         {
-            var environmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "Environments");
+            var environmentsPath = Path.Combine(Directory.GetCurrentDirectory(), "environments");
             if (!Directory.Exists(environmentsPath))
             {
                 return new List<string> { "demo" };

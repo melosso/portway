@@ -52,8 +52,8 @@ COPY --from=build /app/publish .
 COPY --from=build /app/tools/publish /app/tools
 
 # Copy configuration files
-COPY Source/PortwayApi/Environments/settings.json /app/environments/
-COPY Source/PortwayApi/Environments/600/settings.json /app/environments/prod/
+COPY Source/PortwayApi/environments/settings.json /app/environments/
+COPY Source/PortwayApi/environments/600/settings.json /app/environments/prod/
 
 # Fix environment names inside the JSON files
 RUN sed -i 's/600/prod/g' /app/environments/prod/settings.json && \
@@ -62,7 +62,7 @@ RUN sed -i 's/600/prod/g' /app/environments/prod/settings.json && \
     sed -i 's/, "Synergy"//g' /app/environments/settings.json
 
 # Add only SQL Product endpoint definitions
-COPY Source/PortwayApi/Endpoints/SQL/Product/** /app/endpoints/SQL/Product/
+COPY Source/PortwayApi/endpoints/SQL/Product/** /app/endpoints/SQL/Product/
 
 # Set proper permissions
 RUN chmod -R 755 /app
