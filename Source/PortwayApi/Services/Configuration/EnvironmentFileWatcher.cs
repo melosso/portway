@@ -23,10 +23,7 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
         IEnvironmentSettingsProvider environmentSettingsProvider)
     {
         var baseDir = Directory.GetCurrentDirectory();
-        // Support both lowercase and uppercase folder names for cross-platform compatibility
-        _environmentsPath = Directory.Exists(Path.Combine(baseDir, "Environments"))
-            ? Path.Combine(baseDir, "Environments")
-            : Path.Combine(baseDir, "environments");
+        _environmentsPath = Path.Combine(baseDir, "environments");
         _cacheManager = cacheManager;
         _environmentSettingsProvider = environmentSettingsProvider;
     }

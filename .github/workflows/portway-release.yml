@@ -38,8 +38,8 @@ jobs:
 
     - name: Prune Endpoints
       run: |
-        echo "Pruning endpoints to keep the package lightweight..."
-        cd ${{ github.workspace }}/publish/Endpoints
+        echo "Pruning endpoints..."
+        cd ${{ github.workspace }}/publish/endpoints
         # Keep only SQL and Static at the top level
         find . -mindepth 1 -maxdepth 1 -type d ! -name 'SQL' ! -name 'Static' -exec rm -rf {} +
         # In SQL, keep only Product
@@ -52,7 +52,7 @@ jobs:
     - name: Prune Environments
       run: |
         echo "Pruning environments..."
-        cd ${{ github.workspace }}/publish/Environments
+        cd ${{ github.workspace }}/publish/environments
         rm -rf 600 700 Synergy
 
     - name: Remove Meta Files
@@ -62,7 +62,7 @@ jobs:
 
     - name: Create Prod Environment
       run: |
-        mkdir -p ${{ github.workspace }}/publish/Environments/prod
+        mkdir -p ${{ github.workspace }}/publish/environments/prod
         echo '{
           "ServerName": "prod-server",
           "ConnectionString": "Server=prod-server;Database=prod-db;User Id=user;Password=password;",
@@ -71,7 +71,7 @@ jobs:
             "ServerName": "prod-server",
             "Origin": "Portway"
           }
-        }' > ${{ github.workspace }}/publish/Environments/prod/settings.json
+        }' > ${{ github.workspace }}/publish/environments/prod/settings.json
 
     - name: Update AllowedEnvironments Globally
       run: |
@@ -89,9 +89,9 @@ jobs:
     - name: Configure Example Endpoint
       run: |
         # Rename Countries to Example
-        mv ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Countries ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Example
+        mv ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Countries ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Example
         # Update entity.json to reference prod environment
-        jq '.TagDescription += "\n\nThis endpoint is configured for the prod environment."' ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Example/entity.json > tmp.json && mv tmp.json ${{ github.workspace }}/publish/Endpoints/Static/Masterdata/Example/entity.json
+        jq '.TagDescription += "\n\nThis endpoint is configured for the prod environment."' ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Example/entity.json > tmp.json && mv tmp.json ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Example/entity.json
 
     - name: Create Release Artifact
       run: |
