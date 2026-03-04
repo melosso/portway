@@ -9,7 +9,6 @@ keywords: [API Gateway, Windows, SQL Server, REST, OData]
 
 This page provides the practical context you need before setting up your first Portway endpoint. If you’re new to Portway, this guide gives you the high-level picture so you know what to expect as you move through the documentation.
 
----
 
 ## Quick Links
 
@@ -19,7 +18,6 @@ Most users start with installation, deployment, or security configuration. Use t
 - [Deployment](./deployment)
 - [Security](./security)
 
----
 
 ## What Is Portway?
 
@@ -32,13 +30,11 @@ Portway works with:
 - Incoming webhooks
 - Multi-step composite operations
 
----
+There are some foundations you do need to know before continuing:
 
 ## Core Concepts
 
 These are the foundational ideas that shape how Portway works. Understanding these concepts will help you as you configure endpoints later.
-
----
 
 ### Security
 
@@ -52,8 +48,6 @@ Portway includes built-in mechanisms to control access and manage how requests m
 - **Azure Key Vault Integration**: Securely manage secrets.
 - **Rate Limiting and Request Validation**: Prevent abuse and ensure valid requests.
 
----
-
 ### Environment Awareness
 
 Portway treats environments as independent spaces, keeping configurations clean and preventing cross-contamination between development, testing, and production.
@@ -62,8 +56,6 @@ Portway treats environments as independent spaces, keeping configurations clean 
 - **Routing Based on Environment**: Direct requests based on the environment.
 - **Environment-Specific Configuration**: Customize settings for each environment.
 - **Isolated Headers and Connection Strings**: Ensure environment-specific configurations remain separate.
-
----
 
 ### Developer Experience
 
@@ -74,8 +66,6 @@ Portway includes tools to help you understand what’s happening at runtime and 
 - **Logging and Tracing**: Track and debug requests.
 - **Health Endpoints**: Monitor the status of your gateway.
 - **JSON-Based Configuration**: Easy-to-manage configuration files.
-
----
 
 ### Endpoint Types
 
@@ -89,11 +79,11 @@ Portway exposes a variety of endpoint types. Knowing these will help you choose 
 - **Webhook Receivers**: Process incoming webhooks.
 - **Static File Endpoints**: Serve static content.
 
----
-
 ## What’s next?
 
 If you’re ready to dive deeper, the following sections will guide you through installation, endpoint configuration, and deployment to production. If you encounter any issues, the GitHub links below are the fastest way to get help or report a problem.
 
 - **Issues**: [GitHub Issues](https://github.com/melosso/portway/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/melosso/portway/discussions)
+
+Star the project on GitHub to show your support, stay updated with new releases, and help the maintainers grow their community!
