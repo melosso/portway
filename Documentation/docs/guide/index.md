@@ -1,97 +1,99 @@
+---
+title: Portway Overview
+description: A high-level guide to Portway, its core concepts, and how to get started.
+outline: [2, 3]
+keywords: [API Gateway, Windows, SQL Server, REST, OData]
+---
+
 # Guide
 
-Here’s where you get the practical context before setting up your first endpoint. If you’re new to Portway, this page gives you the high-level picture so you know what to expect as you move through the docs.
+This page provides the practical context you need before setting up your first Portway endpoint. If you’re new to Portway, this guide gives you the high-level picture so you know what to expect as you move through the documentation.
+
+---
 
 ## Quick Links
 
-Most people start with installation, deployment, or security configuration, so these shortcuts take you straight there.
+Most users start with installation, deployment, or security configuration. Use these shortcuts to jump straight to the relevant sections:
 
-* [Getting Started](./getting-started)
-* [Deployment](./deployment)
-* [Security](./security)
+- [Getting Started](./getting-started)
+- [Deployment](./deployment)
+- [Security](./security)
+
+---
 
 ## What Is Portway?
 
-Portway is an API gateway built for Windows environments. It sits in front of SQL Server, internal services, and static content, and exposes them through a consistent REST interface. If you’re running a mix of legacy systems and new services, Portway gives you a way to surface them without rewriting anything.
+Portway is an **API gateway built for Windows environments**. It sits in front of SQL Server, internal services, and static content, exposing them through a consistent REST interface. If you’re running a mix of legacy systems and new services, Portway allows you to surface them **without rewriting anything**.
 
-It works with:
-
-* SQL Server tables and stored procedures
-* Internal web services that need authentication
-* JSON, XML, and CSV files
-* Incoming webhooks
-* Multi-step composite operations
-
----
-
-# Core Concepts
-
-These are the ideas that shape how Portway works. You’ll see each one referenced throughout the documentation, so a quick overview here helps when you’re configuring endpoints later.
-
-## Security
-
-Portway includes built-in mechanisms to control who can access what and how requests move between environments.
-
-<details>
-<summary>Show details</summary>
-
-* Token authentication
-* Scoped permissions
-* Environment-aware controls
-* Encryption
-* Azure Key Vault integration
-* Rate limiting and request validation
-
-</details>
-
-## Environment Awareness
-
-Environments are treated as independent spaces. This keeps configuration clean and avoids cross-contamination between dev, test, and production.
-
-<details>
-<summary>Show details</summary>
-
-* Routing based on environment
-* Environment-specific configuration
-* Isolated headers and connection strings
-
-</details>
-
-## Developer Experience
-
-A few tools are included so you can understand what’s happening at runtime and debug issues without extra setup.
-
-<details>
-<summary>Show details</summary>
-
-* Auto-generated API documentation
-* Logging and tracing
-* Health endpoints
-* JSON-based configuration
-
-</details>
-
-## Endpoint Types
-
-Everything Portway exposes fits into a small set of endpoint categories. Knowing these helps you decide which one matches your use case.
-
-<details>
-<summary>Show details</summary>
-
-* SQL endpoints with OData query support
-* Proxy endpoints for forwarding requests
-* Composite endpoints for multi-step workflows
-* File endpoints for storage and retrieval
-* Webhook receivers
-* Static file endpoints
-
-</details>
+Portway works with:
+- SQL Server tables and stored procedures
+- Internal web services that require authentication
+- JSON, XML, and CSV files
+- Incoming webhooks
+- Multi-step composite operations
 
 ---
 
-# What’s Next?
+## Core Concepts
 
-If you’re ready to dig deeper, the next sections walk through installation, configuring endpoints, and deploying to production. If you run into something unexpected, the GitHub links are the fastest way to get help or report an issue.
+These are the foundational ideas that shape how Portway works. Understanding these concepts will help you as you configure endpoints later.
 
-* **Issues:** [https://github.com/melosso/portway/issues](https://github.com/melosso/portway/issues)
-* **Discussions:** [https://github.com/melosso/portway/discussions](https://github.com/melosso/portway/discussions)
+---
+
+### Security
+
+Portway includes built-in mechanisms to control access and manage how requests move between environments.
+
+**Security Features:**
+- **Token Authentication**: Secure your endpoints with tokens.
+- **Scoped Permissions**: Define granular access control.
+- **Environment-Aware Controls**: Manage access based on environment.
+- **Encryption**: Protect sensitive data.
+- **Azure Key Vault Integration**: Securely manage secrets.
+- **Rate Limiting and Request Validation**: Prevent abuse and ensure valid requests.
+
+---
+
+### Environment Awareness
+
+Portway treats environments as independent spaces, keeping configurations clean and preventing cross-contamination between development, testing, and production.
+
+**Environment Awareness Features:**
+- **Routing Based on Environment**: Direct requests based on the environment.
+- **Environment-Specific Configuration**: Customize settings for each environment.
+- **Isolated Headers and Connection Strings**: Ensure environment-specific configurations remain separate.
+
+---
+
+### Developer Experience
+
+Portway includes tools to help you understand what’s happening at runtime and debug issues without additional setup.
+
+**Developer Tools:**
+- **Auto-Generated API Documentation**: Always up-to-date documentation.
+- **Logging and Tracing**: Track and debug requests.
+- **Health Endpoints**: Monitor the status of your gateway.
+- **JSON-Based Configuration**: Easy-to-manage configuration files.
+
+---
+
+### Endpoint Types
+
+Portway exposes a variety of endpoint types. Knowing these will help you choose the right one for your use case.
+
+**Endpoint Types:**
+- **SQL Endpoints**: Support OData queries for SQL Server.
+- **Proxy Endpoints**: Forward requests to internal services.
+- **Composite Endpoints**: Handle multi-step workflows.
+- **File Endpoints**: Manage storage and retrieval of files.
+- **Webhook Receivers**: Process incoming webhooks.
+- **Static File Endpoints**: Serve static content.
+
+---
+
+## What’s next?
+
+If you’re ready to dive deeper, the following sections will guide you through installation, endpoint configuration, and deployment to production. If you encounter any issues, the GitHub links below are the fastest way to get help or report a problem.
+
+- **Issues**: [GitHub Issues](https://github.com/melosso/portway/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/melosso/portway/discussions)
