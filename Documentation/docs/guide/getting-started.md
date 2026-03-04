@@ -7,7 +7,7 @@ This guide will help you set up your first API gateway and configure endpoints t
 Before you begin, make sure you have:
 
 - Windows Server (or Windows 11 for development)
-- [.NET 10+ ASP.NET Core Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/1.0)
+- [.NET 10+ ASP.NET Core Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 - Internet Information Services (IIS) with ASP.NET Core Hosting Bundle
 - SQL Server database access (for SQL endpoints)
 - Administrative access to configure IIS
