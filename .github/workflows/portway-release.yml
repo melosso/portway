@@ -22,87 +22,150 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Publish PortwayApi
-      run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -o ${{ github.workspace }}/publish
+    - name: Publish PortwayApi (Windows x64)
+      run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r win-x64 --self-contained false -o ${{ github.workspace }}/publish_win
+
+    - name: Publish PortwayApi (Linux x64)
+      run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r linux-x64 --self-contained false -o ${{ github.workspace }}/publish_lin
 
     - name: Remove Debug Files
       run: |
         echo "Removing debug files..."
-        find ${{ github.workspace }}/publish -type f -name "*.pdb" -delete
+        for dir in publish_win publish_lin; do
+          find ${{ github.workspace }}/$dir -type f -name "*.pdb" -delete
+        done
 
     - name: Remove Language Files
       run: |
         echo "Removing language resource files..."
-        cd ${{ github.workspace }}/publish
-        rm -rf cs de es fr it ja ko pl pt-BR ru tr zh-Hans zh-Hant
+        for dir in publish_win publish_lin; do
+          rm -rf ${{ github.workspace }}/$dir/{cs,de,es,fr,it,ja,ko,pl,pt-BR,ru,tr,zh-Hans,zh-Hant}
+        done
 
     - name: Prune Endpoints
       run: |
         echo "Pruning endpoints..."
-        cd ${{ github.workspace }}/publish/endpoints
-        # Keep only SQL and Static at the top level
-        find . -mindepth 1 -maxdepth 1 -type d ! -name 'SQL' ! -name 'Static' -exec rm -rf {} +
-        # In SQL, keep only Product
-        find SQL -mindepth 1 -maxdepth 1 -type d ! -name 'Product' -exec rm -rf {} +
-        # In Static, keep only Masterdata
-        find Static -mindepth 1 -maxdepth 1 -type d ! -name 'Masterdata' -exec rm -rf {} +
-        # In Static/Masterdata, keep only Countries
-        find Static/Masterdata -mindepth 1 -maxdepth 1 -type d ! -name 'Countries' -exec rm -rf {} +
+        for dir in publish_win publish_lin; do
+          ENDPOINTS=${{ github.workspace }}/$dir/endpoints
+          # Keep only SQL and Static at the top level
+          find $ENDPOINTS -mindepth 1 -maxdepth 1 -type d ! -name 'SQL' ! -name 'Static' -exec rm -rf {} +
+          # In SQL, keep only Product
+          find $ENDPOINTS/SQL -mindepth 1 -maxdepth 1 -type d ! -name 'Product' -exec rm -rf {} +
+          # In Static, keep only Masterdata
+          find $ENDPOINTS/Static -mindepth 1 -maxdepth 1 -type d ! -name 'Masterdata' -exec rm -rf {} +
+          # In Static/Masterdata, keep only Countries
+          find $ENDPOINTS/Static/Masterdata -mindepth 1 -maxdepth 1 -type d ! -name 'Countries' -exec rm -rf {} +
+        done
 
     - name: Prune Environments
       run: |
         echo "Pruning environments..."
-        cd ${{ github.workspace }}/publish/environments
-        rm -rf 600 700 Synergy
+        for dir in publish_win publish_lin; do
+          rm -rf ${{ github.workspace }}/$dir/environments/{600,700,Synergy}
+        done
 
     - name: Remove Meta Files
       run: |
         echo "Removing .gitignore files..."
-        find ${{ github.workspace }}/publish -type f -name ".gitignore" -delete
+        for dir in publish_win publish_lin; do
+          find ${{ github.workspace }}/$dir -type f -name ".gitignore" -delete
+        done
 
     - name: Create Prod Environment
       run: |
-        mkdir -p ${{ github.workspace }}/publish/environments/prod
-        echo '{
-          "ServerName": "prod-server",
-          "ConnectionString": "Server=prod-server;Database=prod-db;User Id=user;Password=password;",
-          "Headers": {
-            "DatabaseName": "prod",
+        for dir in publish_win publish_lin; do
+          mkdir -p ${{ github.workspace }}/$dir/environments/prod
+          echo '{
             "ServerName": "prod-server",
-            "Origin": "Portway"
-          }
-        }' > ${{ github.workspace }}/publish/environments/prod/settings.json
+            "ConnectionString": "Server=prod-server;Database=prod-db;User Id=user;Password=password;",
+            "Headers": {
+              "DatabaseName": "prod",
+              "ServerName": "prod-server",
+              "Origin": "Portway"
+            }
+          }' > ${{ github.workspace }}/$dir/environments/prod/settings.json
+        done
 
     - name: Update AllowedEnvironments Globally
       run: |
         echo "Updating AllowedEnvironments in all json files to [\"prod\"]"
-        find ${{ github.workspace }}/publish -type f -name "*.json" -print0 | while IFS= read -r -d $'\0' file; do
-          if jq -e '.AllowedEnvironments' "$file" > /dev/null; then
-            jq '.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
-            echo "Updated .AllowedEnvironments in $file"
-          elif jq -e '.Environment.AllowedEnvironments' "$file" > /dev/null; then
-            jq '.Environment.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
-            echo "Updated .Environment.AllowedEnvironments in $file"
-          fi
+        for dir in publish_win publish_lin; do
+          find ${{ github.workspace }}/$dir -type f -name "*.json" -print0 | while IFS= read -r -d $'\0' file; do
+            if jq -e '.AllowedEnvironments' "$file" > /dev/null; then
+              jq '.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
+              echo "Updated .AllowedEnvironments in $file"
+            elif jq -e '.Environment.AllowedEnvironments' "$file" > /dev/null; then
+              jq '.Environment.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
+              echo "Updated .Environment.AllowedEnvironments in $file"
+            fi
+          done
         done
 
     - name: Configure Example Endpoint
       run: |
-        # Rename Countries to Example
-        mv ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Countries ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Example
-        # Update entity.json to reference prod environment
-        jq '.TagDescription += "\n\nThis endpoint is configured for the prod environment."' ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Example/entity.json > tmp.json && mv tmp.json ${{ github.workspace }}/publish/endpoints/Static/Masterdata/Example/entity.json
+        for dir in publish_win publish_lin; do
+          MASTERDATA=${{ github.workspace }}/$dir/endpoints/Static/Masterdata
+          # Rename Countries to Example
+          mv $MASTERDATA/Countries $MASTERDATA/Example
+          # Update entity.json to reference prod environment
+          jq '.TagDescription += "\n\nThis endpoint is configured for the prod environment."' \
+            $MASTERDATA/Example/entity.json > tmp.json && mv tmp.json $MASTERDATA/Example/entity.json
+        done
 
-    - name: Create Release Artifact
+    - name: Add web.config (Windows only)
       run: |
-        echo "${{ github.event.inputs.tag_name }}" > ${{ github.workspace }}/publish/.version.txt
-        cd ${{ github.workspace }}/publish
-        zip -r ../${{ github.event.inputs.tag_name }}-Deployment.zip .
+        cat > ${{ github.workspace }}/publish_win/web.config <<'XML'
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <location path="." inheritInChildApplications="false">
+            <system.webServer>
+              <handlers>
+                <add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" />
+              </handlers>
+              <aspNetCore processPath="dotnet" arguments=".\PortwayApi.dll" stdoutLogEnabled="false" stdoutLogFile=".\logs\stdout" hostingModel="inprocess" />
+            </system.webServer>
+          </location>
+          <system.webServer>
+            <defaultDocument>
+              <files>
+                <clear />
+                <add value="index.html" />
+              </files>
+            </defaultDocument>
+            <httpProtocol>
+              <customHeaders>
+                <remove name="X-Powered-By" />
+                <remove name="X-Content-Type-Options" />
+                <remove name="X-Frame-Options" />
+                <remove name="Strict-Transport-Security" />
+                <remove name="Referrer-Policy" />
+                <remove name="Permissions-Policy" />
+                <remove name="Content-Security-Policy" />
+                <add name="X-Content-Type-Options" value="nosniff" />
+                <add name="X-Frame-Options" value="DENY" />
+                <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
+                <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+                <add name="Permissions-Policy" value="geolocation=(), camera=(), microphone=(), payment=()" />
+                <add name="Content-Security-Policy" value="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://proxy.scalar.com; font-src 'self' https://fonts.scalar.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" />
+              </customHeaders>
+            </httpProtocol>
+          </system.webServer>
+        </configuration>
+        XML
+
+    - name: Create Release Artifacts
+      run: |
+        TAG=${{ github.event.inputs.tag_name }}
+        echo "$TAG" > ${{ github.workspace }}/publish_win/.version.txt
+        echo "$TAG" > ${{ github.workspace }}/publish_lin/.version.txt
+        cd ${{ github.workspace }}/publish_win && zip -r ../$TAG-Windows_x64.zip .
+        cd ${{ github.workspace }}/publish_lin && zip -r ../$TAG-Linux_x64.zip .
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.event.inputs.tag_name }}
         files: |
-          ${{ github.event.inputs.tag_name }}-Deployment.zip
+          ${{ github.event.inputs.tag_name }}-Windows_x64.zip
+          ${{ github.event.inputs.tag_name }}-Linux_x64.zip
         generate_release_notes: true
