@@ -59,7 +59,6 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         _fileWatcher.Deleted += OnFileChanged;
         _fileWatcher.Renamed += OnFileRenamed;
 
-        Log.Information("Configuration reload enabled: Monitoring `/endpoints` folder for changes");
         Log.Debug("Endpoint file watcher initialized at path: {Path}", _endpointsPath);
 
         // WORKAROUND: Detect drvfs mount and use polling fallback for WSL2 compatibility

@@ -268,7 +268,7 @@ public static class WebUiEndpointExtensions
             }
         })).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/logs", (HttpRequest request) =>
+        app.MapGet("/ui/api/logs", async (HttpRequest request) =>
         {
             var limit       = int.TryParse(request.Query["limit"], out var l) ? Math.Min(l, 2000) : 200;
             var offset      = int.TryParse(request.Query["offset"], out var o) ? Math.Max(0, o) : 0;
@@ -280,52 +280,82 @@ public static class WebUiEndpointExtensions
                     return Results.Json(new { file = "", lines = Array.Empty<object>(), total = 0, has_more = false });
 
                 var logFiles = Directory.GetFiles(logDir, "portwayapi-*.log")
-                    .OrderByDescending(f => f).ToList();
+                    .OrderByDescending(f => new FileInfo(f).LastWriteTime)
+                    .Take(3)
+                    .ToList();
 
                 if (logFiles.Count == 0)
                     return Results.Json(new { file = "", lines = Array.Empty<object>(), total = 0, has_more = false });
 
-                var latestFile = logFiles[0];
-                var allLines   = File.ReadAllLines(latestFile);
-                var totalLines = allLines.Length;
-                
-                // Filter lines first, then reverse to get newest first
-                var filtered = allLines
-                    .Where(line => !string.IsNullOrWhiteSpace(line) && !line.Contains("████"))
-                    .Select(line => {
-                        var ts = ""; var lvl = "INF"; var msg = line;
-                        if (line.Length > 12 && line[0] == '[')
+                // Serilog default file output template:
+                // {Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}
+                var logPattern = new System.Text.RegularExpressions.Regex(
+                    @"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) \[(\w{3,})\] (.*)$");
+
+                var allEntries = new List<(string Timestamp, string Level, string Message)>();
+                string? latestFile = null;
+
+                foreach (var file in logFiles)
+                {
+                    try
+                    {
+                        string content;
+                        // FileShare.ReadWrite so reads succeed while Serilog has the file open (buffered sink)
+                        using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        using (var sr = new StreamReader(stream))
+                            content = await sr.ReadToEndAsync();
+
+                        var rawLines = content.Split('\n');
+                        string? ts = null, lvl = null;
+                        var msgParts = new List<string>();
+
+                        foreach (var rawLine in rawLines)
                         {
-                            var closeBracket = line.IndexOf(']');
-                            if (closeBracket > 0)
+                            var m = logPattern.Match(rawLine);
+                            if (m.Success)
                             {
-                                var header = line[1..closeBracket];
-                                var parts  = header.Split(' ', 2);
-                                if (parts.Length == 2) { ts = parts[0]; lvl = parts[1].Trim(); }
-                                msg = closeBracket + 2 < line.Length ? line[(closeBracket + 2)..].Trim() : "";
+                                if (ts != null)
+                                    allEntries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
+                                ts       = m.Groups[1].Value;
+                                lvl      = m.Groups[2].Value.ToUpperInvariant();
+                                msgParts = [m.Groups[3].Value];
+                            }
+                            else if (ts != null && !string.IsNullOrWhiteSpace(rawLine))
+                            {
+                                msgParts.Add(rawLine.TrimEnd());
                             }
                         }
-                        if (!string.IsNullOrEmpty(filterLevel) && filterLevel != "ALL" &&
-                            !lvl.StartsWith(filterLevel[..Math.Min(3, filterLevel.Length)], StringComparison.OrdinalIgnoreCase))
-                            return null;
-                        return new { timestamp = ts, level = lvl, message = msg };
-                    })
-                    .Where(x => x != null)
-                    .Reverse()  // Newest first
-                    .ToList();
+                        if (ts != null)
+                            allEntries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
+
+                        latestFile ??= file;
+                        if (allEntries.Count >= limit * 5) break;
+                    }
+                    catch { /* skip inaccessible files */ }
+                }
+
+                // Newest first — sort by timestamp string (ISO format is lexicographically comparable)
+                allEntries.Sort((a, b) => string.CompareOrdinal(b.Timestamp, a.Timestamp));
+
+                var filtered = string.IsNullOrEmpty(filterLevel) || filterLevel == "ALL"
+                    ? allEntries
+                    : allEntries.Where(e => e.Level.StartsWith(
+                        filterLevel[..Math.Min(3, filterLevel.Length)],
+                        StringComparison.OrdinalIgnoreCase)).ToList();
 
                 var hasMore = offset + limit < filtered.Count;
-                var paged = filtered.Skip(offset).Take(limit).ToList();
+                var paged   = filtered.Skip(offset).Take(limit)
+                    .Select(e => new { timestamp = e.Timestamp, level = e.Level, message = e.Message });
 
-                return Results.Json(new { file = Path.GetFileName(latestFile), lines = paged, total = filtered.Count, has_more = hasMore });
+                return Results.Json(new { file = latestFile != null ? Path.GetFileName(latestFile) : "", lines = paged, total = filtered.Count, has_more = hasMore });
             }
             catch (Exception ex)
             {
                 return Results.Json(new
                 {
-                    file  = "",
-                    lines = new[] { new { timestamp = "", level = "ERR", message = ex.Message } },
-                    total = 0,
+                    file     = "",
+                    lines    = new[] { new { timestamp = "", level = "ERR", message = ex.Message } },
+                    total    = 0,
                     has_more = false
                 });
             }

@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="/css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
 </head>
 <body>
 
@@ -188,7 +189,8 @@ async function load(append = false) {
       return;
     }
 
-    viewer.innerHTML = currentLogs.map(line => {
+    // Render oldest→newest (top→bottom) so multi-line tree structures read naturally
+    viewer.innerHTML = [...currentLogs].reverse().map(line => {
       const lvl = (line.level ?? 'INF').substring(0, 3).toUpperCase();
       const ts = esc(line.timestamp ?? '');
       const msg = esc(line.message ?? '');
@@ -198,6 +200,8 @@ async function load(append = false) {
         `<span class="log-msg">${msg}</span>` +
         `</div>`;
     }).join('');
+    // On first load (not "load more"), scroll to bottom so newest entries are visible
+    if (!append) viewer.scrollTop = viewer.scrollHeight;
   } catch(e) {
     document.getElementById('logViewer').innerHTML =
       `<div class="log-line"><span class="log-lvl-ERR">[ERR]</span> <span class="log-msg">Failed to load logs: ${esc(e.message)}</span></div>`;

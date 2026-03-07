@@ -100,8 +100,8 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            var errorMessage = ex.Message;
-            Log.Error(ex, "One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
+            var errorMessage = ex.InnerException?.Message ?? ex.Message;
+            Log.Error("One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
                 ex.GetType().Name, errorMessage);
         }
         
@@ -147,9 +147,8 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            // Get the most relevant error message
-            var errorMessage = ex.Message;
-            Log.Error(ex, "Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorType} - {ErrorMessage}",
+            var errorMessage = ex.InnerException?.Message ?? ex.Message;
+            Log.Error("Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorType} - {ErrorMessage}",
                 endpointName, environment, ex.GetType().Name, errorMessage);
         }
     }
@@ -218,8 +217,8 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            var errorMessage = ex.Message;
-            Log.Error(ex, "Error loading object metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
+            var errorMessage = ex.InnerException?.Message ?? ex.Message;
+            Log.Error("Error loading object metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
                 endpointName, ex.GetType().Name, errorMessage);
             throw;
         }
@@ -271,8 +270,8 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            var errorMessage = ex.Message;
-            Log.Error(ex, "Error loading procedure metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
+            var errorMessage = ex.InnerException?.Message ?? ex.Message;
+            Log.Error("Error loading procedure metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
                 endpointName, ex.GetType().Name, errorMessage);
             throw;
         }

@@ -50,7 +50,6 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
         _fileWatcher.Deleted += OnFileChanged;
         _fileWatcher.Renamed += OnFileRenamed;
 
-        Log.Information("Configuration reload enabled: Monitoring `/environments` folder for changes");
         Log.Debug("Environment file watcher initialized at path: {Path}", _environmentsPath);
 
         // WORKAROUND: Detect drvfs mount and use polling fallback for WSL2 compatibility
