@@ -26,8 +26,9 @@ public class TokenAuthMiddleware
         // Skip token validation for specific routes
         if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
-            context.Request.Path.StartsWithSegments("/health/live") ||
-            context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
+            context.Request.Path.StartsWithSegments("/health") ||
+            context.Request.Path.StartsWithSegments(pathBase + "/health") ||
+            context.Request.Path.StartsWithSegments("/ui") ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))

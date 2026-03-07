@@ -818,6 +818,7 @@ public static class EndpointHandler
                 return new EndpointDefinition
                 {
                     Type = EndpointType.Files,
+                    Methods = new List<string> { "GET", "POST", "DELETE" },
                     AllowedEnvironments = entity.AllowedEnvironments,
                     IsPrivate = entity.IsPrivate,
                     // Store file-specific properties in Properties dictionary
@@ -853,6 +854,7 @@ public static class EndpointHandler
                 return new EndpointDefinition
                 {
                     Type = EndpointType.Static,
+                    Methods = new List<string> { "GET" },
                     AllowedEnvironments = entity.AllowedEnvironments,
                     IsPrivate = entity.IsPrivate,
                     Documentation = entity.Documentation,

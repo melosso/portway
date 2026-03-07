@@ -196,10 +196,11 @@ public class RateLimiter
         var path = context.Request.Path.ToString().ToLower();
         var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
 
-        // Skip rate limiting and auth-context for exempted paths
+        // Skip rate limiting for exempted paths
         if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
-            context.Request.Path.StartsWithSegments("/health/live") ||
+            context.Request.Path.StartsWithSegments("/health") ||
+            context.Request.Path.StartsWithSegments("/ui") ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))
@@ -269,34 +270,17 @@ public class RateLimiter
             return;
         }
         
-        bool requiresAuth = true;
-        bool authenticated = false;
+        // Extract token for per-token rate limiting (if present).
+        // Auth enforcement is handled exclusively by TokenAuthMiddleware.
         string? token = null;
         TokenBucket? tokenBucket = null;
-        
-        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) && 
+        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) &&
             authHeader.ToString().StartsWith("Bearer "))
         {
             token = authHeader.ToString().Substring("Bearer ".Length).Trim();
-            authenticated = !string.IsNullOrEmpty(token);
         }
-        
-        if (!authenticated && requiresAuth)
-        {
-            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            context.Response.ContentType = "application/json";
-            
-            Log.Debug("Missing or invalid authentication header from IP: {IP}", clientIp);
 
-            await context.Response.WriteAsync(JsonSerializer.Serialize(new
-            {
-                error = "Authentication required",
-                success = false
-            }));
-            return;
-        }
-        
-        if (authenticated && token != null)
+        if (token != null)
         {
             var maskedToken = MaskToken(token);
             string tokenKey = $"token:{token}";

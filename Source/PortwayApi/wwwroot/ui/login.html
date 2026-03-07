@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign In · Portway</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/css/site.css" rel="stylesheet" />
+</head>
+<body>
+
+<div class="auth-overlay">
+  <div style="display:flex;flex-direction:column;align-items:center">
+
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.25rem">
+      <div class="brand-avatar" style="width:28px;height:28px">
+        <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-avatar-bg" aria-hidden="true">
+          <g clip-path="url(#portway-login-clip)">
+            <rect width="20" height="20" fill="#000" rx="5.5"/>
+            <rect width="20" height="20" fill="url(#portway-login-grad)" fill-opacity="0.2" rx="5.5"/>
+            <g filter="url(#portway-login-blur-1)" opacity="0.3"><circle cx="16" cy="17" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
+            <g filter="url(#portway-login-blur-2)" opacity="0.1"><circle cx="16" cy="16" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
+            <g filter="url(#portway-login-blur-3)" opacity="0.4"><circle cx="17" cy="19" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
+            <rect width="20" height="20" fill="#FF64B4" fill-opacity="0.15" rx="5.5"/>
+            <g style="mix-blend-mode:hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
+          </g>
+          <rect width="19" height="19" x="0.5" y="0.5" stroke="#FDFDFD" stroke-opacity="0.1" rx="5"/>
+          <defs>
+            <filter id="portway-login-blur-1" width="32" height="32" x="0" y="1" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+              <feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="5"/>
+            </filter>
+            <filter id="portway-login-blur-2" width="22" height="22" x="5" y="5" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+              <feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="2.5"/>
+            </filter>
+            <filter id="portway-login-blur-3" width="22" height="22" x="6" y="8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+              <feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="2.5"/>
+            </filter>
+            <linearGradient id="portway-login-grad" x1="10" x2="10" y1="0" y2="20" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#FDFDFD"/><stop offset="1" stop-color="#FDFDFD" stop-opacity="0"/>
+            </linearGradient>
+            <clipPath id="portway-login-clip"><rect width="20" height="20" fill="#FDFDFD" rx="5.5"/></clipPath>
+          </defs>
+        </svg>
+        <svg class="brand-avatar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FDFDFD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </div>
+      <span class="select-none" style="font-size:1.1rem;font-weight:600;letter-spacing:-0.02em">Portway</span>
+    </div>
+
+    <div class="auth-box select-none">
+      <h2>Sign In</h2>
+      <p>Enter your admin API key to access the dashboard.</p>
+      <input type="password" id="apiKeyInput" placeholder="Admin API key" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')signIn()">
+      <div class="auth-error" id="authError">Invalid API key</div>
+      <button class="btn btn-primary" id="signInBtn" style="width:100%;justify-content:center" onclick="signIn()">
+        <span class="btn-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>
+          Sign In
+        </span>
+        <span class="btn-spinner"></span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+async function signIn() {
+  const key = document.getElementById('apiKeyInput').value;
+  const btn = document.getElementById('signInBtn');
+  const err = document.getElementById('authError');
+  err.style.display = 'none';
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/ui/api/auth', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKey: key })
+    });
+    if (r.ok) {
+      window.location.href = '/ui/dashboard';
+    } else {
+      err.style.display = 'block';
+      btn.classList.remove('is-loading');
+      btn.disabled = false;
+      document.getElementById('apiKeyInput').focus();
+    }
+  } catch(e) {
+    err.textContent = 'Connection error. Is the server running?';
+    err.style.display = 'block';
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
