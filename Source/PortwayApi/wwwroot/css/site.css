@@ -823,6 +823,7 @@ select:focus { border-color: hsl(var(--primary)); }
 
 .btn.is-loading .btn-spinner { display: inline-block; }
 .btn.is-loading .btn-label { display: none; }
+.btn-label { display: inline-flex; align-items: center; gap: 0.375rem; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 

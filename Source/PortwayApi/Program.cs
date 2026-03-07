@@ -315,7 +315,7 @@ try
     var app = builder.Build();
 
     // ── Web UI Administration ─────────────────────────────────
-    var adminApiKey = builder.Configuration.GetValue<string>("Portway:AdminApiKey", "") ?? "";
+    var adminApiKey = builder.Configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
 
     // Configure PathBase from environment variable or IIS
     var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
@@ -344,23 +344,13 @@ try
         });
     }
 
-    // ================================
-    // MIDDLEWARE PIPELINE CONFIGURATION
-    // ================================
-
-    // 1. Response compression (early in pipeline)
+    // Middleware configuration
     app.UseResponseCompression();
-
-    // 2. Exception handling (must be first for error handling)
     app.UseExceptionHandlingMiddleware();
-
-    // 3. Security headers (early security)
     app.UseSecurityHeaders();
-
-    // 4. Content negotiation (validates Content-Type, ensures response headers)
     app.UseContentNegotiation();
 
-    // 5. HTTPS redirection and forwarded headers (before static files)
+    // 5. HTTPS redirection and forwarded headers
     var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor |
@@ -374,10 +364,10 @@ try
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
 
-    // 5. Cloudflare-specific middleware
+    // 5. Proxy-specific middleware
     app.Use((context, next) =>
     {
-        // Check for Cloudflare headers
+        // Check for CF headers
         if (context.Request.Headers.TryGetValue("CF-Visitor", out var cfVisitor))
         {
             if (cfVisitor.ToString().Contains("\"scheme\":\"https\""))
@@ -386,10 +376,10 @@ try
             }
         }
 
-        // Also check for Cloudflare connecting protocol
+        // Also check for CF connecting protocol
         if (context.Request.Headers.TryGetValue("CF-Connecting-IP", out var _))
         {
-            // We're behind Cloudflare, so trust the X-Forwarded-Proto header
+            // We're behind CF, so trust the X-Forwarded-Proto header
             if (context.Request.Headers.TryGetValue("X-Forwarded-Proto", out var proto) &&
                 proto == "https")
             {
@@ -400,18 +390,16 @@ try
         return next();
     });
 
-    // 6. Configure unified documentation at /docs (uses IOptionsMonitor for dynamic reload)
+    // Configure unified documentation
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
 
-    // 7. Web UI auth + local-network-only middleware (before static files)
-    app.UseWebUiAuth(adminApiKey);
-
-    // Static Files Configuration - Use Extension Method (DRY principle)
+    if (!string.IsNullOrEmpty(adminApiKey))
+        app.UseWebUiAuth(adminApiKey);
     app.UseDefaultFilesWithOptions();
     app.UseStaticFiles();
 
-    // 8. Custom root path handling middleware
+    // Root path handling middleware
     app.Use(async (context, next) =>
     {
         var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
@@ -422,37 +410,41 @@ try
         // Handle root path redirect
         if (path == "/" || path == "")
         {
-            // Check if index.html exists in wwwroot
-            var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            var indexPath = Path.Combine(webRootPath, "index.html");
+            var acceptHeader = context.Request.Headers.Accept.ToString();
+            var isHtmlRequest = acceptHeader.Contains("text/html") || string.IsNullOrEmpty(acceptHeader);
 
-            if (File.Exists(indexPath))
+            if (!isHtmlRequest)
             {
-                // Check if the request accepts HTML (browser request)
-                var acceptHeader = context.Request.Headers.Accept.ToString();
+                // Non-browser requests always get the OpenAPI JSON
+                var redirectPath = $"{pathBase}/docs/openapi/v1/openapi.json";
+                Log.Debug("API root request, redirecting to {Path}", redirectPath);
+                context.Response.Redirect(redirectPath, permanent: false);
+                return;
+            }
 
-                if (acceptHeader.Contains("text/html") || string.IsNullOrEmpty(acceptHeader))
+            // Browser request: only show the landing page selector on the local network
+            // when the Web UI is enabled. External clients always go straight to docs.
+            var remoteIp = context.Connection.RemoteIpAddress;
+            var urlValidator = context.RequestServices.GetRequiredService<UrlValidator>();
+            var isLocalClient = remoteIp != null && urlValidator.IsClientIpAllowed(
+                remoteIp.IsIPv4MappedToIPv6 ? remoteIp.MapToIPv4() : remoteIp);
+
+            if (isLocalClient && !string.IsNullOrEmpty(adminApiKey))
+            {
+                var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var indexPath = Path.Combine(webRootPath, "index.html");
+                if (File.Exists(indexPath))
                 {
-                    // Redirect to index.html so static file middleware can serve it
-                    var redirectPath = $"{pathBase}/index.html";
-                    Log.Debug("Redirecting to index.html");
-                    context.Response.Redirect(redirectPath, permanent: false);
-                    return;
-                }
-                else
-                {
-                    // For API requests to root, redirect to openapi JSON
-                    var redirectPath = $"{pathBase}/docs/openapi/v1/openapi.json";
-                    Log.Debug("API root request, redirecting to {Path}", redirectPath);
-                    context.Response.Redirect(redirectPath, permanent: false);
+                    Log.Debug("Local client at root, serving landing page");
+                    context.Response.Redirect($"{pathBase}/index.html", permanent: false);
                     return;
                 }
             }
-            else
+
+            // External client or no landing page — redirect to docs
             {
-                // No index.html exists, redirect directly to docs
                 var redirectPath = $"{pathBase}/docs";
-                Log.Information("No index.html found, redirecting to {Path}", redirectPath);
+                Log.Debug("Redirecting root to {Path}", redirectPath);
                 context.Response.Redirect(redirectPath, permanent: false);
                 return;
             }
@@ -619,7 +611,8 @@ try
     PortwayApi.Endpoints.HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
 
     // ── Web UI Routes & API ────────────────────────────────────
-    app.MapWebUiEndpoints(adminApiKey);
+    if (!string.IsNullOrEmpty(adminApiKey))
+        app.MapWebUiEndpoints(adminApiKey);
 
     // Fallback for unmatched routes (helpful for debugging)
     app.MapFallback(async context =>
@@ -665,7 +658,7 @@ try
         Log.Information("Application is hosted on: {Urls}", formattedUrls);
     }
 
-    var webUiAuthStatus = string.IsNullOrEmpty(adminApiKey) ? "enabled (no auth)" : "enabled (auth protected)";
+    var webUiAuthStatus = string.IsNullOrEmpty(adminApiKey) ? "disabled" : "enabled";
     Log.Information("Web UI: {Status}", webUiAuthStatus);
 
     var endpointReloadEnabled = builder.Configuration.GetValue<bool>("EndpointReloading:Enabled", true);
