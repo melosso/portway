@@ -291,11 +291,13 @@ public class HealthCheckService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error checking endpoint {Endpoint}. URL: {Url}", endpoint.Key, endpoint.Value.Url);
-            results[endpoint.Key] = new 
-            { 
-                Status = "Unhealthy", 
-                Error = ex.Message 
+            var errorMsg = ex.InnerException?.Message ?? ex.Message;
+            Log.Error("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
+                endpoint.Key, ex.GetType().Name, errorMsg, endpoint.Value.Url);
+            results[endpoint.Key] = new
+            {
+                Status = "Unhealthy",
+                Error = errorMsg
             };
             unhealthyEndpoints.Add(endpoint.Key);
         }

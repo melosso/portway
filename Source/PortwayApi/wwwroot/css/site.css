@@ -404,7 +404,8 @@ select {
     border: 1px solid hsl(var(--border));
     color: hsl(var(--foreground));
     border-radius: var(--radius);
-    padding: 0.25rem 0.5rem;
+    height: 2.125rem;
+    padding: 0 0.5rem;
     font-size: 0.8125rem;
     font-family: inherit;
     outline: none;
@@ -901,7 +902,8 @@ input[type="text"], input[type="search"] {
     border: 1px solid hsl(var(--border));
     color: hsl(var(--foreground));
     border-radius: var(--radius);
-    padding: 0.35rem 0.625rem;
+    height: 2.125rem;
+    padding: 0 0.625rem;
     font-size: 0.8125rem;
     font-family: inherit;
     outline: none;

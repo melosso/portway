@@ -661,10 +661,16 @@ try
             ?? builder.Configuration["urls"]
             ?? "http://localhost:5000";
 
-        // Add a space after each ; in serverUrls for better readability
         var formattedUrls = serverUrls.Replace(";", "; ");
         Log.Information("Application is hosted on: {Urls}", formattedUrls);
     }
+
+    var webUiAuthStatus = string.IsNullOrEmpty(adminApiKey) ? "enabled (no auth)" : "enabled (auth protected)";
+    Log.Information("Web UI: {Status}", webUiAuthStatus);
+
+    var endpointReloadEnabled = builder.Configuration.GetValue<bool>("EndpointReloading:Enabled", true);
+    if (endpointReloadEnabled)
+        Log.Information("Configuration reload enabled: appsettings.json, /endpoints, /environments");
 
     // Register application shutdown handler
     app.Lifetime.ApplicationStopping.Register(() =>
