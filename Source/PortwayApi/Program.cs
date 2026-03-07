@@ -25,6 +25,7 @@ using PortwayApi.Services.Files;
 using System.Text;
 using System.Text.Json;
 using System.Net;
+using System.Reflection;
 
 // Create log directory
 Directory.CreateDirectory("log");
@@ -313,6 +314,9 @@ try
     // Build the application
     var app = builder.Build();
 
+    // ── Web UI Administration ─────────────────────────────────
+    var adminApiKey = builder.Configuration.GetValue<string>("Portway:AdminApiKey", "") ?? "";
+
     // Configure PathBase from environment variable or IIS
     var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
         ?? builder.Configuration["PathBase"];
@@ -400,7 +404,10 @@ try
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
 
-    // 7. Static Files Configuration - Use Extension Method (DRY principle)
+    // 7. Web UI auth + local-network-only middleware (before static files)
+    app.UseWebUiAuth(adminApiKey);
+
+    // Static Files Configuration - Use Extension Method (DRY principle)
     app.UseDefaultFilesWithOptions();
     app.UseStaticFiles();
 
@@ -524,7 +531,7 @@ try
             }
             else
             {
-                Log.Information("Total active tokens: {Count}", activeTokens.Count());
+                Log.Debug("Total active tokens: {Count}", activeTokens.Count());
                 Log.Warning("Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this security risk.");
             }
         }
@@ -610,6 +617,9 @@ try
 
     // Map health check endpoints
     PortwayApi.Endpoints.HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
+
+    // ── Web UI Routes & API ────────────────────────────────────
+    app.MapWebUiEndpoints(adminApiKey);
 
     // Fallback for unmatched routes (helpful for debugging)
     app.MapFallback(async context =>

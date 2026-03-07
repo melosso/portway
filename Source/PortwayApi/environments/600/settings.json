@@ -1,7 +1,7 @@
 
 {
   "ServerName": "localhost",
-  "ConnectionString": "Server=localhost;Database=600;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;",
+  "ConnectionString": "Server=localhost;Database=600;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
   "Headers": {
     "DatabaseName": "600",
     "ServerName": "localhost",
