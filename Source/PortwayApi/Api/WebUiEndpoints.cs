@@ -37,12 +37,20 @@ public static class WebUiEndpointExtensions
             // Restrict the UI to the local machine and allowed network hosts only.
             var remoteIp = context.Connection.RemoteIpAddress;
             var validator = context.RequestServices.GetRequiredService<UrlValidator>();
+
             if (remoteIp == null || !validator.IsClientIpAllowed(remoteIp))
             {
                 context.Response.StatusCode = 403;
-                context.Response.ContentType = "text/plain";
-                await context.Response.WriteAsync(
-                    "The administration UI is only accessible from the local network.");
+                context.Response.ContentType = "application/json";
+                
+                await context.Response.WriteAsJsonAsync(new 
+                { 
+                    error = "Access denied.",
+                    clientIp = remoteIp?.ToString() ?? "Unknown",
+                    requestedPath = context.Request.Path.Value,
+                    success = false 
+                });
+                
                 return;
             }
 
