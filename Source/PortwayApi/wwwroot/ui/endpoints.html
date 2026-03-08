@@ -36,7 +36,6 @@
       </button>
       <button class="btn btn-primary" onclick="openCreateDrawer()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Endpoint
       </button>
     </div>
   </div>
@@ -72,6 +71,24 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- Alert Dialog -->
+<div class="alert-dialog-overlay" id="alertDialogOverlay" onclick="if(event.target===this)hideAlertDialog()">
+  <div class="alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="alertDialogTitle">
+    <div class="alert-dialog-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <div>
+      <div class="alert-dialog-title" id="alertDialogTitle"></div>
+      <div class="alert-dialog-description" id="alertDialogDescription" style="margin-top:0.375rem"></div>
+    </div>
+    <div class="alert-dialog-extra" id="alertDialogExtra" style="display:none"></div>
+    <div class="alert-dialog-footer">
+      <button class="btn btn-outline" onclick="hideAlertDialog()">Cancel</button>
+      <button class="btn btn-destructive" id="alertDialogAction" onclick="confirmAlertDialog()">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Create Drawer -->
 <div class="drawer-backdrop" id="createBackdrop" onclick="closeCreateDrawer()"></div>
 <div class="drawer" id="createDrawer">
@@ -95,7 +112,7 @@
 </div>
 
 <script>
-// ── Config ────────────────────────────────────────────────
+// Config ────────────────────────────────────────────────
 const ENDPOINT_TYPES = [
   {
     key: 'sql', label: 'SQL', dotClass: 'dot-sql',
@@ -129,7 +146,7 @@ const ENDPOINT_TYPES = [
   }
 ];
 
-// ── State ─────────────────────────────────────────────────
+// State 
 let _allData = {};        // { sql: [...], proxy: [...], ... }
 let _activeTab = 'all';   // tab key or 'all'
 let _selected = null;     // { type, name }
@@ -140,7 +157,7 @@ let _renaming = false;
 let _createType = 'sql';
 let _confirmingDelete = false;
 
-// ── Init ──────────────────────────────────────────────────
+// Init 
 async function refreshAll() {
   try {
     const d = await fetch('/ui/api/endpoints').then(r => r.json());
@@ -160,7 +177,7 @@ async function refreshAll() {
   }
 }
 
-// ── Tabs ──────────────────────────────────────────────────
+// Tabs 
 function renderTabs() {
   const total = Object.values(_allData).reduce((s, a) => s + a.length, 0);
   const tabs = [{ key: 'all', label: 'All', count: total }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label, count: (_allData[t.key] ?? []).length }))];
@@ -177,7 +194,7 @@ function switchTab(key) {
   renderList();
 }
 
-// ── List ──────────────────────────────────────────────────
+// List
 function getFilteredItems() {
   const q = (document.getElementById('epSearch')?.value ?? '').toLowerCase();
   const types = _activeTab === 'all' ? ENDPOINT_TYPES.map(t => t.key) : [_activeTab];
@@ -231,7 +248,7 @@ function filterList() {
   renderList();
 }
 
-// ── Detail ────────────────────────────────────────────────
+// Detail
 async function selectEndpoint(type, name, scroll = true) {
   _selected = { type, name };
   _confirmingDelete = false;
@@ -284,14 +301,6 @@ function renderDetail() {
         </button>`}
       </div>`}
     </div>
-    <div id="epDeleteConfirm" style="display:none;padding:0.5rem 1rem 0">
-      <div class="ep-confirm-delete">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Delete <strong>${esc(name)}</strong>? This cannot be undone.
-        <button class="btn btn-sm" style="background:hsl(var(--destructive));color:#fff;margin-left:auto" onclick="confirmDelete()">Delete</button>
-        <button class="btn btn-outline btn-sm" onclick="cancelDelete()">Cancel</button>
-      </div>
-    </div>
     <div class="ep-detail-body" id="epDetailBody">
       ${_rawMode ? renderRawForm(raw) : renderStructuredForm(type, content)}
     </div>
@@ -324,7 +333,7 @@ function renderStructuredForm(type, content) {
   }
 }
 
-// ── Field helpers ─────────────────────────────────────────
+// Field helpers ─────────────────────────────────────────
 
 function fieldText(id, label, value) {
   return `<div class="ep-field">
@@ -343,7 +352,7 @@ function fieldSelect(id, label, value, options) {
 
 function fieldMethods(selected, id = 'methodPicker') {
   const all = ['GET','POST','PUT','PATCH','DELETE'];
-  const sel = Array.isArray(selected) ? selected : [];
+  const sel = [].concat(selected ?? ['GET']);   // normalise: string → [string], null/undefined → ['GET']
   return `<div class="ep-field">
     <label>Methods</label>
     <div class="method-picker" id="${id}">
@@ -360,11 +369,44 @@ function fieldKV(id, label, obj) {
   const rows = Object.entries(obj ?? {}).map(([k, v]) => kvRow(k, v)).join('');
   return `<div class="ep-field">
     <label>${label}</label>
-    <div class="ep-kv-editor" id="${id}">
-      ${rows}
-    </div>
-    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.375rem;font-size:0.75rem" onclick="addKvRow('${id}')">+ Add row</button>
+    <div class="ep-kv-editor" id="${id}">${rows}</div>
+    <button type="button" class="ep-add-row" onclick="addKvRow('${id}')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add row
+    </button>
   </div>`;
+}
+
+function fieldTextarea(id, label, value, minHeight = '80px', isCode = false) {
+  return `<div class="ep-field">
+    <label for="${id}">${label}</label>
+    <textarea id="${id}" class="ep-textarea${isCode ? ' ep-textarea-code' : ''}" style="min-height:${minHeight}">${esc(value ?? '')}</textarea>
+  </div>`;
+}
+
+function fieldDocumentation(c) {
+  const doc = c.Documentation ?? {};
+  return `<div class="ep-section">
+    <div class="ep-section-title">Documentation</div>
+    ${fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true)}
+    ${fieldTextarea('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions ? JSON.stringify(doc.MethodDescriptions, null, 2) : '', '72px', true)}
+    ${fieldTextarea('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation ? JSON.stringify(doc.MethodDocumentation, null, 2) : '', '100px', true)}
+  </div>`;
+}
+
+function readDocumentation(c) {
+  const tag  = document.getElementById('docTagDescription')?.value?.trim() ?? '';
+  const descsRaw = document.getElementById('docMethodDescriptions')?.value?.trim() ?? '';
+  const docsRaw  = document.getElementById('docMethodDocumentation')?.value?.trim() ?? '';
+  let descs = null, docs = null;
+  try { if (descsRaw) descs = JSON.parse(descsRaw); } catch {}
+  try { if (docsRaw)  docs  = JSON.parse(docsRaw);  } catch {}
+  if (!tag && !descs && !docs) return null;
+  return {
+    ...(tag   ? { TagDescription: tag }        : {}),
+    ...(descs ? { MethodDescriptions: descs }  : {}),
+    ...(docs  ? { MethodDocumentation: docs }  : {}),
+  };
 }
 
 function kvRow(k = '', v = '') {
@@ -395,7 +437,10 @@ function fieldColumns(id, label, arr) {
   return `<div class="ep-field">
     <label>${label}</label>
     <div class="ep-col-list" id="${id}">${rows}</div>
-    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.375rem;font-size:0.75rem" onclick="addColRow('${id}')">+ Add column</button>
+    <button type="button" class="ep-add-row" onclick="addColRow('${id}')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add column
+    </button>
   </div>`;
 }
 
@@ -422,17 +467,21 @@ function readMethods(id = 'methodPicker') {
 }
 
 function fieldToggle(id, label, checked) {
-  return `<div class="ep-field" style="flex-direction:row;align-items:center;gap:0.5rem">
-    <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} style="width:auto">
-    <label for="${id}" style="margin:0;cursor:pointer">${label}</label>
-  </div>`;
+  // Single wrapping label — clicking anywhere toggles once (no double-toggle from nested labels)
+  return `<label class="ep-field-switch">
+    <span>${esc(label)}</span>
+    <span class="switch" aria-hidden="true">
+      <input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>
+      <span class="slider"></span>
+    </span>
+  </label>`;
 }
 
 function fieldAllowedEnvs(value) {
   return fieldText('allowedEnvironments', 'Environments', Array.isArray(value) ? value.join(', ') : (value ?? '*'));
 }
 
-// ── Structured forms per type ─────────────────────────────
+// Structured forms per type ─────────────────────────────
 
 function renderSqlForm(c) {
   return `
@@ -450,7 +499,13 @@ function renderSqlForm(c) {
       ${fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
-    </div>`;
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Metadata</div>
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+    </div>
+    ${fieldDocumentation(c)}`;
 }
 
 function renderProxyForm(c) {
@@ -465,7 +520,8 @@ function renderProxyForm(c) {
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
-    </div>`;
+    </div>
+    ${fieldDocumentation(c)}`;
 }
 
 function renderCompositeForm(c) {
@@ -480,11 +536,9 @@ function renderCompositeForm(c) {
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Steps</div>
-      <div class="ep-field">
-        <label for="compositeSteps">Steps Array (JSON)</label>
-        <textarea id="compositeSteps" style="min-height:160px;font-family:monospace;font-size:0.8rem">${esc(JSON.stringify(steps, null, 2))}</textarea>
-      </div>
-    </div>`;
+      ${fieldTextarea('compositeSteps', 'Steps Array (JSON)', JSON.stringify(steps, null, 2), '160px', true)}
+    </div>
+    ${fieldDocumentation(c)}`;
 }
 
 function renderFileForm(c) {
@@ -530,15 +584,23 @@ function renderWebhookForm(c) {
       ${fieldMethods(c.AllowedMethods)}
       ${fieldColumns('allowedCols', 'Allowed Tables', c.AllowedColumns)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
-    </div>`;
+    </div>
+    ${fieldDocumentation(c)}`;
 }
 
-// ── Validation ────────────────────────────────────────────
+// Validation ────────────────────────────────────────────
 
 function readEnvs() {
   const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
   const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
   return envs.length === 1 && envs[0] === '*' ? '*' : envs;
+}
+
+function validateDocFields(errors) {
+  const descsRaw = document.getElementById('docMethodDescriptions')?.value?.trim() ?? '';
+  const docsRaw  = document.getElementById('docMethodDocumentation')?.value?.trim() ?? '';
+  if (descsRaw) { try { JSON.parse(descsRaw); } catch { errors.push('Method Descriptions must be valid JSON'); } }
+  if (docsRaw)  { try { JSON.parse(docsRaw);  } catch { errors.push('Method Documentation must be valid JSON'); } }
 }
 
 function validateForm(type) {
@@ -550,15 +612,18 @@ function validateForm(type) {
       if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
       if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
       if (!methods.length) errors.push('At least one method must be selected');
+      validateDocFields(errors);
       break;
     case 'proxy':
       if (!document.getElementById('url')?.value?.trim()) errors.push('URL is required');
       if (!methods.length) errors.push('At least one method must be selected');
+      validateDocFields(errors);
       break;
     case 'composite':
       if (!methods.length) errors.push('At least one method must be selected');
       try { JSON.parse(document.getElementById('compositeSteps')?.value ?? '[]'); }
       catch { errors.push('Steps must be valid JSON'); }
+      validateDocFields(errors);
       break;
     case 'file':
       if (!document.getElementById('baseDirectory')?.value?.trim()) errors.push('Base Directory is required');
@@ -571,12 +636,13 @@ function validateForm(type) {
       if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
       if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
       if (!methods.length) errors.push('At least one method must be selected');
+      validateDocFields(errors);
       break;
   }
   return errors;
 }
 
-// ── Collect form → JSON object ────────────────────────────
+// Collect form → JSON object ────────────────────────────
 
 function collectFormConfig(type, existingContent) {
   const c = existingContent ?? {};
@@ -588,38 +654,45 @@ function collectFormConfig(type, existingContent) {
       const cols = readColumns('allowedCols');
       const procedure = document.getElementById('procedure')?.value?.trim();
       const namespace = document.getElementById('namespace')?.value?.trim();
+      const displayName = document.getElementById('displayName')?.value?.trim();
+      const nsDisplayName = document.getElementById('namespaceDisplayName')?.value?.trim();
+      const doc = readDocumentation(c);
       return {
-        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
         DatabaseObjectName: document.getElementById('objectName')?.value?.trim() ?? '',
         DatabaseSchema: document.getElementById('schema')?.value?.trim() ?? 'dbo',
         DatabaseObjectType: document.getElementById('objectType')?.value ?? 'Table',
         ...(namespace ? { Namespace: namespace } : {}),
         ...(procedure ? { Procedure: procedure } : {}),
+        ...(displayName ? { DisplayName: displayName } : {}),
+        ...(nsDisplayName ? { NamespaceDisplayName: nsDisplayName } : {}),
         AllowedMethods: methods,
         ...(cols.length ? { AllowedColumns: cols } : {}),
         AllowedEnvironments: envs,
         IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+        ...(doc ? { Documentation: doc } : {}),
       };
     }
     case 'proxy': {
+      const doc = readDocumentation(c);
       return {
-        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
         Url: document.getElementById('url')?.value?.trim() ?? '',
         Methods: methods,
         AllowedEnvironments: envs,
         IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+        ...(doc ? { Documentation: doc } : {}),
       };
     }
     case 'composite': {
       let steps = [];
       try { steps = JSON.parse(document.getElementById('compositeSteps')?.value ?? '[]'); } catch {}
+      const doc = readDocumentation(c);
       return {
-        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
         Type: 'Composite',
         Methods: methods,
         AllowedEnvironments: envs,
         IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
         CompositeConfig: { Steps: steps },
+        ...(doc ? { Documentation: doc } : {}),
       };
     }
     case 'file': {
@@ -646,20 +719,21 @@ function collectFormConfig(type, existingContent) {
     }
     case 'webhook': {
       const cols = readColumns('allowedCols');
+      const doc = readDocumentation(c);
       return {
-        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
         DatabaseObjectName: document.getElementById('objectName')?.value?.trim() ?? '',
         DatabaseSchema: document.getElementById('schema')?.value?.trim() ?? 'dbo',
         AllowedMethods: methods,
         ...(cols.length ? { AllowedColumns: cols } : {}),
         IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+        ...(doc ? { Documentation: doc } : {}),
       };
     }
   }
   return {};
 }
 
-// ── Save ──────────────────────────────────────────────────
+// Save 
 
 async function saveEndpoint() {
   if (!_selected || !_detailData) return;
@@ -703,16 +777,44 @@ async function reloadDetail() {
   if (_selected) await selectEndpoint(_selected.type, _selected.name, false);
 }
 
-// ── Delete ────────────────────────────────────────────────
+// Alert Dialog ──────────────────────────────────────────
 
-function startDelete() {
-  const el = document.getElementById('epDeleteConfirm');
-  if (el) el.style.display = '';
+let _alertOnConfirm = null;
+
+function showAlertDialog({ title, description, actionLabel = 'Confirm', onConfirm, extraHtml = '' }) {
+  _alertOnConfirm = onConfirm;
+  document.getElementById('alertDialogTitle').textContent = title;
+  document.getElementById('alertDialogDescription').textContent = description;
+  const btn = document.getElementById('alertDialogAction');
+  btn.textContent = actionLabel;
+  const extra = document.getElementById('alertDialogExtra');
+  extra.innerHTML = extraHtml;
+  extra.style.display = extraHtml ? '' : 'none';
+  document.getElementById('alertDialogOverlay').classList.add('open');
 }
 
-function cancelDelete() {
-  const el = document.getElementById('epDeleteConfirm');
-  if (el) el.style.display = 'none';
+function hideAlertDialog() {
+  document.getElementById('alertDialogOverlay').classList.remove('open');
+  _alertOnConfirm = null;
+}
+
+function confirmAlertDialog() {
+  const cb = _alertOnConfirm;
+  hideAlertDialog();
+  if (cb) cb();
+}
+
+// Delete ────────────────────────────────────────────────
+
+function startDelete() {
+  if (!_selected) return;
+  const { name } = _selected;
+  showAlertDialog({
+    title: `Delete "${name}"?`,
+    description: 'This action cannot be undone. The endpoint files will be permanently removed.',
+    actionLabel: 'Delete',
+    onConfirm: confirmDelete
+  });
 }
 
 async function confirmDelete() {
@@ -735,7 +837,40 @@ async function confirmDelete() {
   }
 }
 
-// ── Create Drawer ─────────────────────────────────────────
+// Rename ────────────────────────────────────────────────
+
+function startRename() {
+  _renaming = true;
+  renderDetail();
+}
+
+function cancelRename() {
+  _renaming = false;
+  renderDetail();
+}
+
+async function confirmRename() {
+  const newName = document.getElementById('renameInput')?.value?.trim() ?? '';
+  if (!newName) { showToast('Name is required', 'error'); return; }
+  if (!/^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*$/.test(newName)) {
+    showToast('Name may only contain letters, numbers, hyphens, underscores, or forward slashes', 'error'); return;
+  }
+  const { type, name } = _selected;
+  try {
+    const r = await fetch(`/ui/api/endpoints/${type}/${name}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_name: newName })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error ?? r.statusText);
+    showToast('Renamed successfully', 'success');
+    _renaming = false;
+    await refreshAll();
+    selectEndpoint(type, newName);
+  } catch(e) { showToast('Rename failed: ' + e.message, 'error'); }
+}
+
+// Create Drawer ─────────────────────────────────────────
 
 function openCreateDrawer() {
   _createType = 'sql';
@@ -780,11 +915,17 @@ function renderCreateForm() {
         ${fieldSelect('createObjectType', 'Type', 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       </div>
       <div class="ep-section">
+        <div class="ep-section-title">Metadata</div>
+        ${fieldText('createDisplayName', 'Display Name', '')}
+        ${fieldText('createNamespaceDisplayName', 'Namespace Label', '')}
+      </div>
+      <div class="ep-section">
         <div class="ep-section-title">Access</div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createIsPrivate', 'Private', false)}
-      </div>`;
+      </div>
+      ${fieldDocumentation({})}`;
       break;
     case 'proxy':
       html += `<div class="ep-section">
@@ -796,7 +937,8 @@ function renderCreateForm() {
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createIsPrivate', 'Private', false)}
-      </div>`;
+      </div>
+      ${fieldDocumentation({})}`;
       break;
     case 'composite':
       html += `<div class="ep-section">
@@ -807,11 +949,9 @@ function renderCreateForm() {
       </div>
       <div class="ep-section">
         <div class="ep-section-title">Steps (JSON)</div>
-        <div class="ep-field">
-          <label for="createSteps">Steps Array</label>
-          <textarea id="createSteps" style="min-height:100px;font-family:monospace;font-size:0.8rem">[]</textarea>
-        </div>
-      </div>`;
+        ${fieldTextarea('createSteps', 'Steps Array', '[]', '100px', true)}
+      </div>
+      ${fieldDocumentation({})}`;
       break;
     case 'file':
       html += `<div class="ep-section">
@@ -859,35 +999,54 @@ async function submitCreate() {
       const objectName = document.getElementById('createObjectName')?.value?.trim();
       if (!objectName) { validationErr = 'Object Name is required'; break; }
       if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
+      const createDisplayName = document.getElementById('createDisplayName')?.value?.trim();
+      const createNsDisplayName = document.getElementById('createNamespaceDisplayName')?.value?.trim();
+      const createDoc = readDocumentation({});
+      const errors = [];
+      validateDocFields(errors);
+      if (errors.length) { validationErr = errors[0]; break; }
       content = {
         DatabaseObjectName: objectName,
         DatabaseSchema: document.getElementById('createSchema')?.value?.trim() ?? 'dbo',
         DatabaseObjectType: document.getElementById('createObjectType')?.value ?? 'Table',
         AllowedMethods: methods,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
+        ...(createDisplayName ? { DisplayName: createDisplayName } : {}),
+        ...(createNsDisplayName ? { NamespaceDisplayName: createNsDisplayName } : {}),
+        ...(createDoc ? { Documentation: createDoc } : {})
       }; break; }
     case 'proxy': {
       const url = document.getElementById('createUrl')?.value?.trim();
       if (!url) { validationErr = 'URL is required'; break; }
       if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
+      const createProxyDoc = readDocumentation({});
+      const proxyErrors = [];
+      validateDocFields(proxyErrors);
+      if (proxyErrors.length) { validationErr = proxyErrors[0]; break; }
       content = {
         Url: url,
         Methods: methods,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
+        ...(createProxyDoc ? { Documentation: createProxyDoc } : {})
       }; break; }
     case 'composite': {
       if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
       let steps = [];
       try { steps = JSON.parse(document.getElementById('createSteps')?.value ?? '[]'); }
       catch { validationErr = 'Steps must be valid JSON'; break; }
+      const createCompDoc = readDocumentation({});
+      const compErrors = [];
+      validateDocFields(compErrors);
+      if (compErrors.length) { validationErr = compErrors[0]; break; }
       content = {
         Type: 'Composite',
         Methods: methods,
         AllowedEnvironments: envs,
         IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
-        CompositeConfig: { Steps: steps }
+        CompositeConfig: { Steps: steps },
+        ...(createCompDoc ? { Documentation: createCompDoc } : {})
       }; break; }
     case 'file': {
       const baseDir = document.getElementById('createBaseDir')?.value?.trim();
@@ -935,10 +1094,10 @@ async function submitCreate() {
   }
 }
 
-// ── Toast helper ──────────────────────────────────────────
+// Toast helper ──────────────────────────────────────────
 function showToast(msg, type = 'success') { toast(msg, type); }
 
-// ── Bootstrap ─────────────────────────────────────────────
+// Bootstrap ─────────────────────────────────────────────
 refreshAll();
 </script>
 </body>

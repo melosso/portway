@@ -1,4 +1,4 @@
-// ── Theme + sidebar init (runs synchronously before body paint) ─
+// Theme + sidebar init (runs synchronously before body paint) ─
 (function () {
   try {
     var s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
@@ -144,13 +144,34 @@ function renderSidebar() {
     <button class="btn-logout" onclick="logout()">Log Out</button>
   </div>`;
 
-  // Populate version
+  // Populate version + OpenAPI icon
   fetch('/ui/api/overview')
     .then(r => r.json())
     .then(d => {
       const v = (d.version ?? '').split('+')[0];
       const el = document.getElementById('sidebarVersion');
       if (el) el.textContent = v ? `v${v}` : '';
+
+      if (d.openapi_enabled) {
+        const meta = document.querySelector('.sidebar-footer-meta');
+        if (meta) {
+          const link = document.createElement('span');
+          link.className = 'tooltip-wrapper';
+          link.innerHTML = `<a href="/docs" target="_blank" rel="noopener" class="github-link" aria-label="API Documentation">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </a>
+          <span class="tooltip tooltip-above tooltip-right">API Documentation</span>`;
+          // Insert before the GitHub link wrapper
+          const githubWrapper = meta.querySelector('.tooltip-wrapper');
+          meta.insertBefore(link, githubWrapper);
+        }
+      }
     })
     .catch(() => {});
 }
@@ -160,11 +181,11 @@ function logout() {
     .finally(() => { window.location.href = '/ui/login'; });
 }
 
-// ── Sidebar collapse ──────────────────────────────────────
+// Sidebar collapse 
 function toggleSidebar() {
   const collapsed = document.body.classList.contains('sidebar-collapsed');
   if (collapsed) {
-    // Expanding: apply blur during transition
+    // Thisw'l apply blur during transition
     document.body.classList.add('sidebar-expanding');
     document.body.classList.remove('sidebar-collapsed');
     setTimeout(() => document.body.classList.remove('sidebar-expanding'), 240);
@@ -178,7 +199,7 @@ function toggleSidebar() {
   } catch {}
 }
 
-// ── Theme ─────────────────────────────────────────────────
+// Theme 
 function _getTheme() {
   try { return JSON.parse(localStorage.getItem('beacon_settings') || '{}').theme || 'system'; } catch { return 'system'; }
 }

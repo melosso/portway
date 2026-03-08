@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
@@ -22,7 +23,7 @@ public static class WebUiEndpointExtensions
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
 
     /// <summary>
-    /// Registers the UI author. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
+    /// Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
     /// </summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
     {
@@ -130,7 +131,7 @@ public static class WebUiEndpointExtensions
         }
 
         // Data endpoints
-        app.MapGet("/ui/api/overview", () =>
+        app.MapGet("/ui/api/overview", (IOptionsMonitor<OpenApiSettings> openApiMonitor) =>
         {
             var sqlEps        = EndpointHandler.GetSqlEndpoints();
             var proxyEps      = EndpointHandler.GetProxyEndpoints();
@@ -157,7 +158,8 @@ public static class WebUiEndpointExtensions
                     total     = sqlEps.Count + proxyCount + compositeCount
                                 + fileEps.Count + staticEps.Count + webhookEps.Count
                 },
-                environments = envSettings.AllowedEnvironments.Count
+                environments    = envSettings.AllowedEnvironments.Count,
+                openapi_enabled = openApiMonitor.CurrentValue.Enabled
             });
         }).ExcludeFromDescription();
 
