@@ -45,7 +45,7 @@ public static class WebUiEndpointExtensions
                 
                 await context.Response.WriteAsJsonAsync(new 
                 { 
-                    error = "Access denied.",
+                    error = "Access denied",
                     clientIp = remoteIp?.ToString() ?? "Unknown",
                     requestedPath = context.Request.Path.Value,
                     success = false 
