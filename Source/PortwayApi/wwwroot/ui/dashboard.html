@@ -20,7 +20,6 @@
   <div class="page-header">
     <div class="page-title">
       <h1 class="select-none">Dashboard</h1>
-      <span class="page-subtitle" id="versionLabel"></span>
     </div>
     <div class="header-actions">
       <button class="btn btn-outline" onclick="load()">
@@ -89,7 +88,6 @@ async function load() {
     document.getElementById('statEnvs').textContent = d.environments ?? '—';
 
     const v = (d.version ?? '').split('+')[0];
-    document.getElementById('versionLabel').textContent = v ? `v${v}` : '';
     document.getElementById('healthVersion').textContent = v || '—';
     document.getElementById('healthUptime').textContent = d.uptime ?? '—';
 
