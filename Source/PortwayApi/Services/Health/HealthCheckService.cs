@@ -5,8 +5,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PortwayApi.Classes;
+using PortwayApi.Interfaces;
 using Serilog;
 
 namespace PortwayApi.Services;
@@ -22,15 +24,21 @@ public class HealthCheckService
     private HealthReport? _cachedReport;
     private readonly SemaphoreSlim _lock = new SemaphoreSlim(1, 1);
     private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly IEnvironmentSettingsProvider? _environmentSettingsProvider;
+    private readonly EnvironmentSettings? _environmentSettings;
 
     public HealthCheckService(
         Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService,
         TimeSpan cacheTime,
-        IHttpClientFactory? httpClientFactory = null)
+        IHttpClientFactory? httpClientFactory = null,
+        IEnvironmentSettingsProvider? environmentSettingsProvider = null,
+        EnvironmentSettings? environmentSettings = null)
     {
         _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));
         _cacheTime = cacheTime;
         _httpClientFactory = httpClientFactory;
+        _environmentSettingsProvider = environmentSettingsProvider;
+        _environmentSettings = environmentSettings;
     }
 
     /// <summary>
@@ -43,7 +51,13 @@ public class HealthCheckService
             return _cachedReport!;
         }
 
-        await _lock.WaitAsync(cancellationToken);
+        // Non-blocking try: if a background refresh is already holding the lock, return the
+        // stale cache immediately so the caller (and the UI) is never blocked.
+        if (!await _lock.WaitAsync(0, cancellationToken))
+        {
+            return _cachedReport ?? CreateCheckingReport();
+        }
+
         try
         {
             if (IsCacheValid())
@@ -62,6 +76,11 @@ public class HealthCheckService
                 entries["ProxyEndpoints"] = await CheckProxyEndpointsAsync(cancellationToken);
             }
 
+            if (_environmentSettingsProvider != null && _environmentSettings != null)
+            {
+                entries["SqlConnectivity"] = await CheckSqlConnectivityAsync(cancellationToken);
+            }
+
             var status = DetermineOverallStatus(entries.Values);
             _cachedReport = new HealthReport(entries, status, baseReport.TotalDuration);
             _lastCheckTime = DateTime.UtcNow;
@@ -75,6 +94,14 @@ public class HealthCheckService
             _lock.Release();
         }
     }
+
+    private static HealthReport CreateCheckingReport() => new(
+        new Dictionary<string, HealthReportEntry>
+        {
+            ["Status"] = new(HealthStatus.Healthy, "Health check initialising…", TimeSpan.Zero, null, null)
+        },
+        HealthStatus.Healthy,
+        TimeSpan.Zero);
 
     private bool IsCacheValid()
     {
@@ -304,19 +331,86 @@ public class HealthCheckService
     }
 
     private HealthReportEntry CreateHealthReportEntry(
-        HealthStatus status, 
-        string description, 
-        DateTime startTime, 
-        Dictionary<string, object> results, 
+        HealthStatus status,
+        string description,
+        DateTime startTime,
+        Dictionary<string, object> results,
         Exception? exception = null)
     {
         return new HealthReportEntry(
-            status, 
-            description, 
-            DateTime.UtcNow - startTime, 
-            exception, 
-            results, 
+            status,
+            description,
+            DateTime.UtcNow - startTime,
+            exception,
+            results,
             new[] { "proxies", "external", "readiness" }
+        );
+    }
+
+    private async Task<HealthReportEntry> CheckSqlConnectivityAsync(CancellationToken cancellationToken)
+    {
+        var startTime = DateTime.UtcNow;
+        var results = new Dictionary<string, object>();
+        var unhealthyEnvironments = new List<string>();
+
+        var environments = _environmentSettings!.AllowedEnvironments;
+
+        if (!environments.Any())
+        {
+            return new HealthReportEntry(
+                HealthStatus.Healthy,
+                "No SQL environments configured",
+                DateTime.UtcNow - startTime,
+                null,
+                results,
+                new[] { "sql", "database", "readiness" }
+            );
+        }
+
+        await Task.WhenAll(environments.Select(async env =>
+        {
+            try
+            {
+                var (connectionString, _, _) = await _environmentSettingsProvider!.LoadEnvironmentOrThrowAsync(env);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
+
+                using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync(linkedCts.Token);
+
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = "SELECT 1";
+                cmd.CommandTimeout = 5;
+                await cmd.ExecuteScalarAsync(linkedCts.Token);
+
+                lock (results) results[env] = new { Status = "Healthy" };
+                Log.Debug("SQL connectivity check passed for environment: {Environment}", env);
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = ex.InnerException?.Message ?? ex.Message;
+                Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
+                lock (results) results[env] = new { Status = "Unhealthy", Error = errorMsg };
+                lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);
+            }
+        }));
+
+        var status = unhealthyEnvironments.Any() ? HealthStatus.Unhealthy : HealthStatus.Healthy;
+        var description = status == HealthStatus.Healthy
+            ? "All SQL environments are reachable"
+            : $"SQL connectivity failed for: {string.Join(", ", unhealthyEnvironments)}";
+
+        if (unhealthyEnvironments.Any())
+            Log.Warning("Unhealthy SQL environments: {Environments}", string.Join(", ", unhealthyEnvironments));
+
+        return new HealthReportEntry(
+            status,
+            description,
+            DateTime.UtcNow - startTime,
+            null,
+            results,
+            new[] { "sql", "database", "readiness" }
         );
     }
 }

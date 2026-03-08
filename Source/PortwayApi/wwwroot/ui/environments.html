@@ -9,148 +9,748 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="/css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="/js/sidebar.js"></script>
+  <script src="/js/shared.js"></script>
+  <script src="/js/kv-editor.js"></script>
+  <style>
+    main { display: flex; flex-direction: column; }
+    .page-body-fill { flex: 1; display: flex; flex-direction: column; }
+  </style>
 </head>
 <body>
 
-<aside>
-  <div class="brand select-none">
-    <div class="brand-avatar">
-      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-avatar-bg" aria-hidden="true">
-        <g clip-path="url(#portway-clip)">
-          <rect width="20" height="20" fill="#000" rx="5.5"/>
-          <rect width="20" height="20" fill="url(#portway-grad)" fill-opacity="0.2" rx="5.5"/>
-          <g filter="url(#portway-blur-1)" opacity="0.3"><circle cx="16" cy="17" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
-          <g filter="url(#portway-blur-2)" opacity="0.1"><circle cx="16" cy="16" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
-          <g filter="url(#portway-blur-3)" opacity="0.4"><circle cx="17" cy="19" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
-          <rect width="20" height="20" fill="#FF64B4" fill-opacity="0.15" rx="5.5"/>
-          <g style="mix-blend-mode:hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
-        </g>
-        <rect width="19" height="19" x="0.5" y="0.5" stroke="#FDFDFD" stroke-opacity="0.1" rx="5"/>
-        <defs>
-          <filter id="portway-blur-1" width="32" height="32" x="0" y="1" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="5"/></filter>
-          <filter id="portway-blur-2" width="22" height="22" x="5" y="5" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="2.5"/></filter>
-          <filter id="portway-blur-3" width="22" height="22" x="6" y="8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="2.5"/></filter>
-          <linearGradient id="portway-grad" x1="10" x2="10" y1="0" y2="20" gradientUnits="userSpaceOnUse"><stop stop-color="#FDFDFD"/><stop offset="1" stop-color="#FDFDFD" stop-opacity="0"/></linearGradient>
-          <clipPath id="portway-clip"><rect width="20" height="20" fill="#FDFDFD" rx="5.5"/></clipPath>
-        </defs>
-      </svg>
-      <svg class="brand-avatar-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FDFDFD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
-    </div>
-    <span class="brand-name">Portway</span>
-  </div>
-
-  <div class="nav-group">
-    <div class="nav-label">Navigation</div>
-    <a href="/ui/dashboard" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      Dashboard
-    </a>
-    <a href="/ui/endpoints" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Endpoints
-    </a>
-    <a href="/ui/environments" class="nav-item active">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-      Environments
-    </a>
-    <a href="/ui/settings" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
-    </a>
-    <a href="/ui/logs" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Logs
-    </a>
-  </div>
-
-  <div class="sidebar-footer">
-    <div class="sidebar-footer-meta">
-      <div class="sidebar-version" id="sidebarVersion"></div>
-      <span class="tooltip-wrapper">
-        <a href="https://github.com/melosso/portway" target="_blank" rel="noopener" class="github-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-        </a>
-        <span class="tooltip tooltip-above tooltip-right">View on GitHub</span>
-      </span>
-    </div>
-    <button class="btn-logout" onclick="logout()">Log Out</button>
-  </div>
-</aside>
+<aside></aside>
 
 <main>
   <div class="page-header">
     <div class="page-title">
       <h1 class="select-none">Environments</h1>
-      <span class="badge badge-muted" id="envCount"></span>
     </div>
     <div class="header-actions">
-      <button class="btn btn-outline" onclick="load()">
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="envSearchInput" placeholder="Search..." oninput="filterEnvList()">
+      </div>
+      <button class="btn btn-outline" onclick="refreshAll()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
+      </button>
+      <button class="btn btn-primary" onclick="openCreateDrawer()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Environment
       </button>
     </div>
   </div>
 
-  <div class="page-body">
+  <!-- Tab strip -->
+  <div class="ep-tabs" id="envTabs"></div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
-      <div class="card">
-        <div class="card-header"><span class="card-title">Server</span></div>
-        <div class="card-body">
-          <div class="kv-grid">
-            <span class="kv-key">Server Name</span>
-            <span class="kv-val" id="serverName">—</span>
-          </div>
+  <div class="page-body-fill" style="padding:0.75rem;padding-top:0.5rem;">
+    <div class="ep-split">
+
+      <!-- Left: list -->
+      <div class="ep-list">
+        <div class="ep-list-scroll" id="envListScroll">
+          <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+        </div>
+        <div class="ep-list-footer">
+          <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Environment
+          </button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Allowed Environments</span>
-          <span class="badge badge-muted" id="envCount2"></span>
-        </div>
-        <div class="card-body" id="envList">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
+      <!-- Right: detail -->
+      <div class="ep-detail" id="envDetail">
+        <div class="ep-empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="1"/></svg>
+          Loading…
         </div>
       </div>
+
     </div>
-
   </div>
 </main>
 
+<!-- ── Create Environment Drawer ──────────────────────────── -->
+<div class="drawer-backdrop" id="createBackdrop" onclick="closeCreateDrawer()"></div>
+<div class="drawer" id="createDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title">Add Environment</span>
+    <button class="btn-icon" onclick="closeCreateDrawer()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-field">
+      <label>Name <span style="color:hsl(var(--destructive))">*</span></label>
+      <input type="text" id="createName" placeholder="e.g. prod, staging"
+        style="width:100%;padding:0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:inherit;font-size:0.8125rem;outline:none;"
+        oninput="validateCreateName(this); syncDatabaseNameFromEnvName(this.value)">
+      <div id="createNameErr" style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;display:none"></div>
+    </div>
+    <div class="drawer-field">
+      <label>Server Name</label>
+      <div style="font-size:0.72rem;color:hsl(var(--muted-foreground));margin-bottom:0.375rem;">SQL server address for this environment. Overrides the global server name.</div>
+      <input type="text" id="createServerName" placeholder="localhost"
+        style="width:100%;padding:0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:inherit;font-size:0.8125rem;outline:none;">
+    </div>
+    <div class="drawer-field">
+      <label>Connection String <span style="color:hsl(var(--destructive))">*</span></label>
+      <div style="position:relative;">
+        <input type="password" id="createConnStr" placeholder="Server=...;Database=...;User Id=...;Password=...;"
+          style="width:100%;padding:0.5rem 2rem 0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-monospace,monospace;font-size:0.75rem;outline:none;">
+        <button type="button" onclick="togglePasswordVis('createConnStr', this)"
+          style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;" title="Show / hide">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div style="font-size:0.72rem;color:hsl(var(--muted-foreground));margin-top:0.25rem;">Stored encrypted, never written to disk in plaintext.</div>
+    </div>
+    <div class="drawer-field">
+      <label>Headers</label>
+      <div style="font-size:0.72rem;color:hsl(var(--muted-foreground));margin-bottom:0.375rem;">HTTP headers forwarded with every request for this environment.</div>
+      <div class="kv-editor" id="createHeaders"></div>
+      <button class="btn btn-ghost kv-editor-add" onclick="addCreateHeader()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add header
+      </button>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-outline" onclick="closeCreateDrawer()">Cancel</button>
+    <button class="btn btn-primary" onclick="submitCreate()" style="margin-left:auto">
+      <span class="btn-label">Create</span>
+      <span class="btn-spinner"></span>
+    </button>
+  </div>
+</div>
+
+<!-- ── Toast container ────────────────────────────────────── -->
+<div class="toast-container" id="toastContainer"></div>
+
 <script>
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+// ── State ─────────────────────────────────────────────────
+let state = {
+  globalData: null,
+  envData: {},
+  selected: '__global__',
+  rawMode: false,
+  pollTimer: null,
+  polledLastMod: null,
+  isDirty: false,
+};
+
+function markDirty() { state.isDirty = true; }
+
+function confirmNavigate() {
+  if (!state.isDirty) return true;
+  return confirm('You have unsaved changes. Leave without saving?');
 }
 
-async function load() {
-  try {
-    const d = await fetch('/ui/api/environments').then(r => r.json());
-    const envs = d.allowed_environments ?? [];
-    document.getElementById('serverName').textContent = d.server_name ?? '—';
-    document.getElementById('envCount').textContent = `${envs.length} environment${envs.length !== 1 ? 's' : ''}`;
-    document.getElementById('envCount2').textContent = `${envs.length}`;
-    document.getElementById('envList').innerHTML = envs.length
-      ? '<div class="pill-list">' + envs.map(e => `<span class="pill">${esc(e)}</span>`).join('') + '</div>'
-      : '<span class="muted" style="font-size:0.8rem">No environments configured</span>';
-  } catch(e) {
-    document.getElementById('envList').innerHTML = `<span class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</span>`;
+window.addEventListener('beforeunload', e => {
+  if (state.isDirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ── Tabs ──────────────────────────────────────────────────
+function renderTabs(envs) {
+  const total = envs.length;
+  const missing = Object.values(state.envData).filter(d => !d.exists).length;
+  const tabs = [
+    { key: 'all',     label: 'All',            count: total },
+    { key: 'ok',      label: 'Configured',     count: total - missing },
+    { key: 'missing', label: 'Missing Config',  count: missing },
+  ];
+  document.getElementById('envTabs').innerHTML = tabs.map(t => `
+    <button class="ep-tab ${_activeTab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">
+      ${esc(t.label)}
+      <span class="ep-tab-badge">${t.count}</span>
+    </button>`).join('');
+}
+
+let _activeTab = 'all';
+
+function switchTab(key) {
+  _activeTab = key;
+  const envs = state.globalData?.allowed_environments ?? [];
+  renderTabs(envs);
+  applyTabFilter();
+}
+
+function applyTabFilter() {
+  document.querySelectorAll('#envListScroll .ep-list-item[data-env]').forEach(el => {
+    const name = el.dataset.env;
+    const d = state.envData[name];
+    let show = true;
+    if (_activeTab === 'ok')      show = d ? d.exists : true;
+    if (_activeTab === 'missing') show = d ? !d.exists : false;
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+// ── List filter ───────────────────────────────────────────
+function filterEnvList() {
+  const q = (document.getElementById('envSearchInput')?.value ?? '').toLowerCase();
+  document.querySelectorAll('#envListScroll .ep-list-item[data-env]').forEach(el => {
+    const name = (el.dataset.env ?? '').toLowerCase();
+    const d = state.envData[el.dataset.env];
+    let tabOk = true;
+    if (_activeTab === 'ok')      tabOk = d ? d.exists : true;
+    if (_activeTab === 'missing') tabOk = d ? !d.exists : false;
+    el.style.display = (tabOk && (!q || name.includes(q))) ? '' : 'none';
+  });
+}
+
+// ── Load global list ──────────────────────────────────────
+async function loadGlobal() {
+  const d = await fetch('/ui/api/environments').then(r => r.json());
+  state.globalData = d;
+  const envs = d.allowed_environments ?? [];
+  renderList(envs);
+  return d;
+}
+
+function renderList(envs) {
+  renderTabs(envs);
+  const scroll = document.getElementById('envListScroll');
+
+  const globalActive = state.selected === '__global__';
+  let html = `<div class="ep-list-group">Global</div>
+    <div class="ep-list-item ${globalActive ? 'active' : ''}" id="item-__global__" onclick="trySelect('__global__')">
+      <span class="ep-type-dot" style="background:hsl(var(--muted-foreground))"></span>
+      <span class="ep-list-name">Global Settings</span>
+    </div>`;
+
+  if (envs.length) {
+    html += `<div class="ep-list-group">Environments</div>`;
+    html += envs.map(name => {
+      const isActive = state.selected === name;
+      return `<div class="ep-list-item ${isActive ? 'active' : ''}" id="item-${esc(name)}" data-env="${esc(name)}" onclick="trySelect('${esc(name)}')">
+        <span class="ep-type-dot dot-static" id="dot-${esc(name)}"></span>
+        <span class="ep-list-name">${esc(name)}</span>
+        <span id="badge-${esc(name)}"></span>
+      </div>`;
+    }).join('');
   }
 
-  try {
-    const d = await fetch('/ui/api/overview').then(r => r.json());
-    const v = (d.version ?? '').split('+')[0];
-    document.getElementById('sidebarVersion').textContent = v ? `v${v}` : '';
-  } catch(_) {}
+  scroll.innerHTML = html;
+
+  // Async status badges: fetch all, then refresh tab counts
+  Promise.all(envs.map(async name => {
+    try {
+      const d = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`).then(r => r.json());
+      state.envData[name] = d;
+      const dot = document.getElementById(`dot-${name}`);
+      if (dot) {
+        if (!d.exists) {
+          dot.style.background = 'hsl(var(--destructive))';
+          const badge = document.getElementById(`badge-${name}`);
+          if (badge) badge.innerHTML = `<svg width="7" height="7" viewBox="0 0 8 8" style="fill:hsl(var(--destructive));flex-shrink:0" aria-label="Missing config"><circle cx="4" cy="4" r="4"/></svg>`;
+        } else {
+          dot.style.background = 'hsl(142 70% 45%)';
+        }
+      }
+    } catch(_) {}
+  })).then(() => {
+    renderTabs(envs);
+    applyTabFilter();
+  });
 }
 
-load();
+function setActiveItem(id) {
+  document.querySelectorAll('#envListScroll .ep-list-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`item-${id}`);
+  if (el) el.classList.add('active');
+}
+
+// ── Navigation ────────────────────────────────────────────
+function trySelect(target) {
+  if (state.selected === target) return;
+  if (!confirmNavigate()) return;
+  state.isDirty = false;
+  if (target === '__global__') selectGlobal();
+  else selectEnv(target);
+}
+
+function selectGlobal() {
+  state.selected = '__global__';
+  state.rawMode  = false;
+  stopPoll();
+  setActiveItem('__global__');
+  renderGlobalDetail();
+}
+
+async function selectEnv(name) {
+  state.selected = name;
+  state.rawMode  = false;
+  setActiveItem(name);
+  stopPoll();
+  await renderEnvDetail(name);
+  startPoll(name);
+}
+
+// ── Global Settings Detail ────────────────────────────────
+function renderGlobalDetail() {
+  const d = state.globalData;
+  document.getElementById('envDetail').innerHTML = `
+    <div class="ep-detail-header">
+      <span class="ep-type-dot" style="background:hsl(var(--muted-foreground))"></span>
+      <h2>Global Settings</h2>
+    </div>
+    <div class="ep-detail-body">
+      <div class="ep-section">
+        <div class="ep-section-title">Server Name</div>
+        <div class="ep-field">
+          <label for="gServerName">Default SQL Server</label>
+          <input type="text" id="gServerName" value="${esc(d?.server_name ?? '')}" placeholder="." oninput="markDirty()">
+          <div class="ep-field-hint">Used when an environment has no server name of its own.</div>
+        </div>
+      </div>
+      <div class="ep-section">
+        <div class="ep-section-title">Allowed Environments</div>
+        <div class="pill-list">
+          ${(d?.allowed_environments ?? []).map(e => `<span class="pill">${esc(e)}</span>`).join('')}
+        </div>
+        <div class="ep-field-hint">Manage environments using the Add / Remove controls.</div>
+      </div>
+    </div>
+    <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
+      <button class="btn btn-outline btn-sm" onclick="selectGlobal()">Discard</button>
+      <button class="btn btn-primary btn-sm" onclick="saveGlobal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
+    </div>`;
+}
+
+async function saveGlobal() {
+  const serverName = document.getElementById('gServerName')?.value?.trim() ?? '';
+  try {
+    const r = await fetch('/ui/api/environments/settings', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ server_name: serverName, allowed_environments: state.globalData?.allowed_environments ?? [] })
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
+    state.isDirty = false;
+    toast('Global settings saved');
+    await loadGlobal();
+    renderGlobalDetail();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Per-environment Detail ────────────────────────────────
+async function renderEnvDetail(name) {
+  const detail = document.getElementById('envDetail');
+  detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
+  let d;
+  try {
+    d = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    state.envData[name] = d;
+    state.polledLastMod = d.last_modified;
+  } catch(e) {
+    detail.innerHTML = `<div class="ep-empty"><span style="color:hsl(var(--destructive))">Error: ${esc(e.message)}</span></div>`;
+    return;
+  }
+  paintEnvDetail(name, d, false);
+}
+
+function paintEnvDetail(name, d, rawMode) {
+  const headersHtml = buildKvEditor(d.headers ?? {});
+  document.getElementById('envDetail').innerHTML = `
+    <div id="changeBanner" style="display:none;padding:0.5rem 1rem;background:hsl(43 96% 56% / 0.1);border-bottom:1px solid hsl(43 96% 56% / 0.3);flex-shrink:0;display:none;align-items:center;gap:0.5rem;font-size:0.8125rem;color:hsl(43 85% 45%)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      File changed externally.
+      <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="reloadEnv('${esc(name)}')">Reload</button>
+    </div>
+    <div class="ep-detail-header">
+      <span class="ep-type-dot dot-static"></span>
+      <h2>${esc(name)}</h2>
+      <div class="actions">
+        <button class="btn btn-outline btn-sm" onclick="toggleRaw('${esc(name)}')" ${rawMode ? 'style="background:hsl(var(--muted))"' : ''}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          ${rawMode ? 'Form view' : 'Raw JSON'}
+        </button>
+        <button class="btn btn-outline btn-sm" id="removeBtn" onclick="startRemove('${esc(name)}')" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Remove
+        </button>
+      </div>
+    </div>
+    <div id="removeConfirm" style="display:none;padding:0.5rem 1rem 0;flex-shrink:0">
+      <div class="ep-confirm-delete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Remove <strong>${esc(name)}</strong> from allowed environments?
+        <label style="display:flex;align-items:center;gap:0.375rem;font-size:0.8rem;font-weight:400;margin-left:auto;cursor:pointer;color:hsl(var(--foreground))">
+          <input type="checkbox" id="deleteFilesChk" style="width:auto">
+          Also delete files
+        </label>
+        <button class="btn btn-sm" style="background:hsl(var(--destructive));color:#fff" onclick="doRemove('${esc(name)}')">Remove</button>
+        <button class="btn btn-outline btn-sm" onclick="cancelRemove()">Cancel</button>
+      </div>
+    </div>
+    <div class="ep-detail-body" id="envDetailBody">
+      ${rawMode ? buildRawView(name, d) : buildFormView(name, d, headersHtml)}
+    </div>
+    <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
+      <button class="btn btn-outline btn-sm" onclick="reloadEnv('${esc(name)}')">Discard</button>
+      ${rawMode
+        ? `<button class="btn btn-outline btn-sm" onclick="validateRaw(true)">Validate</button>
+           <button class="btn btn-primary btn-sm" onclick="saveRaw('${esc(name)}')">
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+             Save JSON
+           </button>`
+        : `<button class="btn btn-primary btn-sm" onclick="saveEnv('${esc(name)}')">
+             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+             Save
+           </button>`}
+    </div>`;
+}
+
+function buildFormView(name, d, headersHtml) {
+  const notExists = !d.exists;
+  return `
+    ${notExists ? `<div style="padding:0.5rem 0.75rem;background:hsl(43 96% 56% / 0.1);border:1px solid hsl(43 96% 56% / 0.3);border-radius:var(--radius);font-size:0.8rem;color:hsl(43 85% 45%);display:flex;align-items:center;gap:0.5rem">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      No settings.json found, saving will create it.
+    </div>` : ''}
+    <div class="ep-section">
+      <div class="ep-section-title">Server</div>
+      <div class="ep-field">
+        <label for="editServerName">Server Name</label>
+        <input type="text" id="editServerName" value="${esc(d.server_name ?? '')}" placeholder="localhost" oninput="markDirty()">
+        <div class="ep-field-hint">Overrides the global server name for this environment.</div>
+      </div>
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Connection String</div>
+      ${d.connection_string_encrypted
+        ? `<div style="display:flex;align-items:center;gap:0.625rem;flex-wrap:wrap;margin-bottom:0.375rem;">
+             <span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.8rem;color:hsl(var(--muted-foreground));">
+               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+               Encrypted
+             </span>
+             <button class="btn btn-outline btn-sm" onclick="toggleReplaceCs()">Replace</button>
+             <button class="btn btn-outline btn-sm" id="testBtn" onclick="testConnection('${esc(name)}')">
+               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+               Test
+             </button>
+           </div>
+           <div id="testResult" style="display:none;font-size:0.78rem;margin-bottom:0.375rem;"></div>
+           <div id="replaceCs" style="display:none;">
+             <div style="position:relative;">
+               <input type="password" id="editConnStr" placeholder="New plaintext connection string, will be encrypted on save"
+                 style="width:100%;padding:0.5rem 2rem 0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-monospace,monospace;font-size:0.75rem;outline:none;" oninput="markDirty()">
+               <button type="button" onclick="togglePasswordVis('editConnStr', this)"
+                 style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+               </button>
+             </div>
+             <div class="ep-field-hint" style="margin-top:0.25rem">Will be encrypted before saving.</div>
+           </div>`
+        : `<div style="position:relative;">
+             <input type="password" id="editConnStr" value="${esc(d.connection_string ?? '')}" placeholder="Server=...;Database=...;"
+               style="width:100%;padding:0.5rem 2rem 0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-monospace,monospace;font-size:0.78rem;outline:none;" oninput="markDirty()">
+             <button type="button" onclick="togglePasswordVis('editConnStr', this)"
+               style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+             </button>
+           </div>`
+      }
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Headers</div>
+      <div class="ep-field-hint" style="margin-bottom:0.375rem">HTTP headers forwarded with every request for this environment.</div>
+      <div class="kv-editor" id="editHeadersContainer">${headersHtml}</div>
+      <button class="btn btn-ghost kv-editor-add" onclick="addEditHeader()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add header
+      </button>
+    </div>`;
+}
+
+function buildRawView(name, d) {
+  return `
+    <div class="ep-field-hint" style="padding-bottom:0.5rem;border-bottom:1px solid hsl(var(--border));margin-bottom:0.75rem">
+      Editing <code style="font-family:ui-monospace,monospace">environments/${esc(name)}/settings.json</code> directly.
+      Any plaintext <code style="font-family:ui-monospace,monospace">ConnectionString</code> will be automatically encrypted on save.
+    </div>
+    <div class="ep-raw-editor" style="flex:1;display:flex;flex-direction:column;">
+      <textarea id="rawTextarea" spellcheck="false" oninput="validateRaw(); markDirty();" style="flex:1;min-height:260px;">${esc(d._rawContent ?? '')}</textarea>
+      <div id="rawError" style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;"></div>
+    </div>`;
+}
+
+function addEditHeader() { addKvRow('editHeadersContainer'); }
+
+function toggleReplaceCs() {
+  const el = document.getElementById('replaceCs');
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ── Test connection ───────────────────────────────────────
+async function testConnection(name) {
+  const btn = document.getElementById('testBtn');
+  const result = document.getElementById('testResult');
+  if (!btn || !result) return;
+  btn.disabled = true;
+  btn.textContent = 'Testing…';
+  result.style.display = 'none';
+  try {
+    const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}/test`, { method: 'POST' });
+    const d = await r.json();
+    result.style.display = 'block';
+    if (d.ok) {
+      result.style.color = 'hsl(var(--success))';
+      result.textContent = '✓ Connection successful';
+    } else {
+      result.style.color = 'hsl(var(--destructive))';
+      result.textContent = `✗ ${d.error ?? 'Connection failed'}`;
+    }
+  } catch(e) {
+    result.style.display = 'block';
+    result.style.color = 'hsl(var(--destructive))';
+    result.textContent = `✗ ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Test`;
+  }
+}
+
+// ── Save form ─────────────────────────────────────────────
+async function saveEnv(name) {
+  const serverName = document.getElementById('editServerName')?.value?.trim() ?? null;
+  const csEl = document.getElementById('editConnStr');
+  const connStr = csEl?.value?.trim() ?? '';
+  const headerErr = validateHeaders('editHeadersContainer');
+  if (headerErr) { toast(headerErr, 'error'); return; }
+  const headers = collectHeaders('editHeadersContainer');
+
+  const body = { server_name: serverName, headers };
+  if (connStr) body.connection_string = connStr;
+
+  try {
+    const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
+    const result = await r.json();
+    state.polledLastMod = result.last_modified;
+    state.isDirty = false;
+    toast(`Saved ${name}`);
+    hideBanner();
+    const dot = document.getElementById(`dot-${name}`);
+    if (dot) dot.style.background = 'hsl(142 70% 45%)';
+    const badge = document.getElementById(`badge-${name}`);
+    if (badge) badge.innerHTML = '';
+    const d = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`).then(r => r.json());
+    state.envData[name] = d;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Raw JSON mode ─────────────────────────────────────────
+async function toggleRaw(name) {
+  if (state.isDirty && !confirmNavigate()) return;
+  state.rawMode = !state.rawMode;
+  state.isDirty = false;
+  const d = state.envData[name] ?? {};
+  if (state.rawMode) {
+    try {
+      const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}/raw`).then(r => r.json());
+      d._rawContent = r.content;
+      state.polledLastMod = r.last_modified;
+    } catch(_) {
+      d._rawContent = JSON.stringify({ ConnectionString: '', ServerName: d.server_name ?? '', Headers: d.headers ?? {} }, null, 2);
+    }
+    state.envData[name] = d;
+  }
+  paintEnvDetail(name, d, state.rawMode);
+}
+
+function validateRaw(showMsg = false) {
+  const ta  = document.getElementById('rawTextarea');
+  const err = document.getElementById('rawError');
+  if (!ta || !err) return true;
+  try {
+    const parsed = JSON.parse(ta.value);
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Must be a JSON object');
+    err.textContent = '';
+    if (showMsg) toast('JSON is valid', 'success');
+    return true;
+  } catch(e) {
+    err.textContent = e.message;
+    if (showMsg) toast(e.message, 'error');
+    return false;
+  }
+}
+
+async function saveRaw(name) {
+  if (!validateRaw(true)) return;
+  const content = document.getElementById('rawTextarea')?.value ?? '';
+  try {
+    const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}/raw`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
+    const result = await r.json();
+    state.polledLastMod = result.last_modified;
+    state.isDirty = false;
+    hideBanner();
+    toast(`Saved ${name}`);
+    const d = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`).then(r => r.json());
+    d._rawContent = content;
+    state.envData[name] = d;
+    const dot = document.getElementById(`dot-${name}`);
+    if (dot) dot.style.background = 'hsl(142 70% 45%)';
+    const badge = document.getElementById(`badge-${name}`);
+    if (badge) badge.innerHTML = '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Hot-update polling ────────────────────────────────────
+function startPoll(name) {
+  stopPoll();
+  state.pollTimer = setInterval(async () => {
+    if (state.selected !== name) return stopPoll();
+    try {
+      const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`).then(r => r.json());
+      if (r.last_modified && r.last_modified !== state.polledLastMod) {
+        state.polledLastMod = r.last_modified;
+        showBanner();
+      }
+    } catch(_) {}
+  }, 5000);
+}
+
+function stopPoll()  { if (state.pollTimer) { clearInterval(state.pollTimer); state.pollTimer = null; } }
+function showBanner(){ const b = document.getElementById('changeBanner'); if (b) b.style.display = 'flex'; }
+function hideBanner(){ const b = document.getElementById('changeBanner'); if (b) b.style.display = 'none'; }
+
+async function reloadEnv(name) {
+  if (state.isDirty && !confirmNavigate()) return;
+  state.isDirty = false;
+  state.rawMode = false;
+  hideBanner();
+  await renderEnvDetail(name);
+}
+
+// ── Remove environment ────────────────────────────────────
+function startRemove(name) {
+  document.getElementById('removeConfirm').style.display = 'block';
+}
+
+function cancelRemove() {
+  document.getElementById('removeConfirm').style.display = 'none';
+}
+
+async function doRemove(name) {
+  const deleteFiles = document.getElementById('deleteFilesChk')?.checked ?? false;
+  try {
+    const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}?delete_files=${deleteFiles}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
+    toast(`Removed ${name}`, 'warning');
+    stopPoll();
+    state.selected = '__global__';
+    state.rawMode  = false;
+    state.isDirty  = false;
+    await loadGlobal();
+    setActiveItem('__global__');
+    renderGlobalDetail();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Create environment drawer ─────────────────────────────
+function openCreateDrawer() {
+  document.getElementById('createName').value       = '';
+  document.getElementById('createServerName').value = state.globalData?.server_name ?? '';
+  document.getElementById('createConnStr').value    = '';
+  document.getElementById('createNameErr').style.display = 'none';
+  document.getElementById('createHeaders').innerHTML = buildKvEditor({ DatabaseName: '', Origin: 'Portway' });
+  document.getElementById('createBackdrop').classList.add('open');
+  document.getElementById('createDrawer').classList.add('open');
+  setTimeout(() => document.getElementById('createName').focus(), 150);
+}
+
+function closeCreateDrawer() {
+  document.getElementById('createBackdrop').classList.remove('open');
+  document.getElementById('createDrawer').classList.remove('open');
+}
+
+function syncDatabaseNameFromEnvName(value) {
+  document.querySelectorAll('#createHeaders .kv-row').forEach(row => {
+    const keyInput = row.querySelector('.kv-key-input');
+    const valInput = row.querySelector('.kv-val-input');
+    if (keyInput?.value?.trim() === 'DatabaseName' && valInput && !valInput.dataset.userEdited)
+      valInput.value = value;
+  });
+}
+
+function addCreateHeader() {
+  addKvRow('createHeaders', { onValueInput: e => { e.target.dataset.userEdited = '1'; } });
+}
+
+function validateCreateName(input) {
+  const err = document.getElementById('createNameErr');
+  const ok  = /^[a-zA-Z0-9_-]*$/.test(input.value);
+  err.textContent   = ok ? '' : 'Only letters, numbers, hyphens, and underscores allowed.';
+  err.style.display = ok ? 'none' : 'block';
+}
+
+async function submitCreate() {
+  const name       = document.getElementById('createName').value.trim();
+  const serverName = document.getElementById('createServerName').value.trim();
+  const connStr    = document.getElementById('createConnStr').value.trim();
+
+  if (!name)                            { toast('Name is required', 'error'); return; }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) { toast('Invalid name format', 'error'); return; }
+  if (!connStr)                         { toast('Connection string is required', 'error'); return; }
+  const headerErr = validateHeaders('createHeaders');
+  if (headerErr)                        { toast(headerErr, 'error'); return; }
+
+  const headers = collectHeaders('createHeaders');
+  const btn = document.querySelector('#createDrawer .btn-primary');
+  btn?.classList.add('is-loading');
+  try {
+    const r = await fetch('/ui/api/environments', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, server_name: serverName, connection_string: connStr, headers })
+    });
+    if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
+    toast(`Environment "${name}" created`, 'success');
+    closeCreateDrawer();
+    await loadGlobal();
+    selectEnv(name);
+  } catch(e) { toast(e.message, 'error'); }
+  finally { btn?.classList.remove('is-loading'); }
+}
+
+// ── Init ──────────────────────────────────────────────────
+async function refreshAll() {
+  const prev = state.selected;
+  if (!confirmNavigate()) return;
+  state.isDirty = false;
+  await loadGlobal();
+  if (prev === '__global__') renderGlobalDetail();
+  else { await renderEnvDetail(prev); startPoll(prev); }
+}
+
+async function init() {
+  try {
+    await loadGlobal();
+    selectGlobal();
+  } catch(e) {
+    document.getElementById('envDetail').innerHTML =
+      `<div class="ep-empty" style="color:hsl(var(--destructive))">Failed to load: ${esc(e.message)}</div>`;
+  }
+}
+
+init();
 
 function logout() {
+  if (state.isDirty && !confirmNavigate()) return;
   fetch('/ui/api/auth/logout', { method: 'POST', credentials: 'include' })
     .finally(() => { window.location.href = '/ui/login'; });
 }
