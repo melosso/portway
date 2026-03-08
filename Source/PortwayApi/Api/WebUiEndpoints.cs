@@ -6,20 +6,23 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Interfaces;
 using PortwayApi.Services;
 
 public static class WebUiEndpointExtensions
 {
     private const string CookieName = "portway_auth";
-    private const int TokenExpiryHours = 24;
+    private const int TokenExpiryHours = 12;
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
 
     /// <summary>
-    /// Registers the Web UI auth + local-network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
+    /// Registers the UI author. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
     /// </summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
     {
@@ -72,7 +75,7 @@ public static class WebUiEndpointExtensions
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0";
 
-        // ── Login ─────────────────────────────────────────────
+        // Login
         app.MapGet("/ui/login", () =>
             uiAuthEnabled
                 ? Results.File(Path.Combine(wwwroot, "login.html"), "text/html")
@@ -81,7 +84,7 @@ public static class WebUiEndpointExtensions
         app.MapGet("/ui/login.html", () => Results.Redirect("/ui/login"))
             .ExcludeFromDescription();
 
-        // ── Auth endpoints ────────────────────────────────────
+        // Auth endpoints
         app.MapPost("/ui/api/auth", async (HttpContext context) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
@@ -114,11 +117,11 @@ public static class WebUiEndpointExtensions
             return Results.Ok();
         }).ExcludeFromDescription();
 
-        // ── Page routes ───────────────────────────────────────
+        // Page routes
         app.MapGet("/ui", () => Results.Redirect("/ui/dashboard"))
             .ExcludeFromDescription();
 
-        foreach (var page in new[] { "dashboard", "endpoints", "environments", "settings", "logs" })
+        foreach (var page in new[] { "dashboard", "endpoints", "environments", "tokens", "settings", "logs" })
         {
             var p        = page;
             var filePath = Path.Combine(wwwroot, $"{p}.html");
@@ -126,7 +129,7 @@ public static class WebUiEndpointExtensions
             app.MapGet($"/ui/{p}.html", () => Results.Redirect($"/ui/{p}")).ExcludeFromDescription();
         }
 
-        // ── Data endpoints ────────────────────────────────────
+        // Data endpoints
         app.MapGet("/ui/api/overview", () =>
         {
             var sqlEps        = EndpointHandler.GetSqlEndpoints();
@@ -214,12 +217,312 @@ public static class WebUiEndpointExtensions
 
         app.MapGet("/ui/api/environments", () =>
         {
-            var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
+            var envSettings  = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath   = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var lastModified = File.Exists(globalPath)
+                ? new DateTimeOffset(File.GetLastWriteTimeUtc(globalPath), TimeSpan.Zero).ToUnixTimeSeconds()
+                : 0L;
             return Results.Json(new
             {
                 server_name          = envSettings.ServerName,
-                allowed_environments = envSettings.AllowedEnvironments
+                allowed_environments = envSettings.AllowedEnvironments,
+                last_modified        = lastModified
             });
+        }).ExcludeFromDescription();
+
+        // Environment CRUD
+        app.MapPut("/ui/api/environments/settings", async (HttpContext context) =>
+        {
+            var body        = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath  = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+
+            var serverName  = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
+                ? sn.GetString() ?? envSettings.ServerName : envSettings.ServerName;
+            var allowedEnvs = body.TryGetProperty("allowed_environments", out var ae) && ae.ValueKind == JsonValueKind.Array
+                ? ae.EnumerateArray().Select(e => e.GetString() ?? "").Where(e => !string.IsNullOrEmpty(e)).ToList()
+                : envSettings.AllowedEnvironments;
+
+            var model = new { Environment = new { ServerName = serverName, AllowedEnvironments = allowedEnvs } };
+            await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }));
+            envSettings.Reload();
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
+        app.MapGet("/ui/api/environments/{name}", (string name) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+
+            var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
+            if (!File.Exists(envPath))
+                return Results.Json(new
+                {
+                    name, exists = false, server_name = (string?)null,
+                    connection_string = (string?)null, connection_string_encrypted = false,
+                    headers = new Dictionary<string, string>(), last_modified = 0L
+                });
+
+            try
+            {
+                var json  = File.ReadAllText(envPath);
+                using var doc = JsonDocument.Parse(json);
+                var root  = doc.RootElement;
+                var cs    = root.TryGetProperty("ConnectionString", out var csEl) ? csEl.GetString() : null;
+                var sn    = root.TryGetProperty("ServerName",       out var snEl) ? snEl.GetString() : null;
+                var hdrs  = new Dictionary<string, string>();
+                if (root.TryGetProperty("Headers", out var hEl) && hEl.ValueKind == JsonValueKind.Object)
+                    foreach (var h in hEl.EnumerateObject())
+                        hdrs[h.Name] = h.Value.GetString() ?? "";
+                var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
+                var isEncrypted = cs != null && cs.StartsWith("PWENC:");
+                return Results.Json(new
+                {
+                    name, exists = true, server_name = sn,
+                    connection_string = isEncrypted ? null : cs,
+                    connection_string_encrypted = isEncrypted,
+                    headers = hdrs, last_modified = lastMod
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = $"Failed to read settings: {ex.Message}" }, statusCode: 500);
+            }
+        }).ExcludeFromDescription();
+
+        app.MapGet("/ui/api/environments/{name}/raw", (string name) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+
+            var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
+            if (!File.Exists(envPath))
+                return Results.Json(new { error = "File not found" }, statusCode: 404);
+
+            try
+            {
+                var raw     = File.ReadAllText(envPath);
+                var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
+                return Results.Json(new { content = raw, last_modified = lastMod });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: 500);
+            }
+        }).ExcludeFromDescription();
+
+        app.MapPut("/ui/api/environments/{name}/raw", async (string name, HttpContext context) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind != JsonValueKind.String)
+                return Results.Json(new { error = "content field required" }, statusCode: 400);
+
+            var raw = contentEl.GetString() ?? "";
+            JsonElement root;
+            try
+            {
+                using var testDoc = JsonDocument.Parse(raw);
+                root = testDoc.RootElement.Clone();
+                if (!root.TryGetProperty("ConnectionString", out _) &&
+                    !root.TryGetProperty("ServerName", out _) &&
+                    !root.TryGetProperty("Headers", out _))
+                    return Results.Json(new { error = "JSON must contain at least one of: ConnectionString, ServerName, Headers" }, statusCode: 400);
+            }
+            catch (JsonException ex)
+            {
+                return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400);
+            }
+
+            // Auto-encrypt any plaintext ConnectionString so raw saves never bypass encryption.
+            if (root.TryGetProperty("ConnectionString", out var csEl) &&
+                csEl.ValueKind == JsonValueKind.String)
+            {
+                var cs = csEl.GetString() ?? "";
+                if (!string.IsNullOrEmpty(cs) && !cs.StartsWith("PWENC:"))
+                {
+                    var encrypted = PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(cs);
+                    // Rebuild JSON with encrypted value
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(raw)!;
+                    var rebuilt = new Dictionary<string, object?>();
+                    foreach (var (k, v) in dict)
+                        rebuilt[k] = k == "ConnectionString"
+                            ? (object?)encrypted
+                            : JsonSerializer.Deserialize<object>(v.GetRawText());
+                    raw = JsonSerializer.Serialize(rebuilt, new JsonSerializerOptions { WriteIndented = true });
+                }
+            }
+
+            var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
+            await File.WriteAllTextAsync(envPath, raw);
+            var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
+            return Results.Ok(new { ok = true, last_modified = lastMod });
+        }).ExcludeFromDescription();
+
+        app.MapPost("/ui/api/environments/{name}/test", async (string name) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { ok = false, error = "Invalid environment name" }, statusCode: 400);
+
+            var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
+            if (!File.Exists(envPath))
+                return Results.Json(new { ok = false, error = "No settings.json found for this environment" }, statusCode: 404);
+
+            try
+            {
+                var provider = app.Services.GetRequiredService<IEnvironmentSettingsProvider>();
+                var (connectionString, _, _) = await provider.LoadEnvironmentOrThrowAsync(name);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                await using var conn = new SqlConnection(connectionString);
+                await conn.OpenAsync(cts.Token);
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText  = "SELECT 1";
+                cmd.CommandTimeout = 4;
+                await cmd.ExecuteScalarAsync(cts.Token);
+
+                return Results.Ok(new { ok = true, message = "Connection successful" });
+            }
+            catch (Exception ex)
+            {
+                var msg = ex.InnerException?.Message ?? ex.Message;
+                return Results.Json(new { ok = false, error = msg });
+            }
+        }).ExcludeFromDescription();
+
+        app.MapPost("/ui/api/environments", async (HttpContext context) =>
+        {
+            var body        = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var name        = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+            var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath  = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name. Use only letters, numbers, hyphens, and underscores." }, statusCode: 400);
+            if (envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
+                return Results.Json(new { error = "Environment already exists" }, statusCode: 409);
+
+            var envDir         = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var envSettingsPath = Path.Combine(envDir, "settings.json");
+            Directory.CreateDirectory(envDir);
+
+            var serverName = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
+                ? sn.GetString() ?? envSettings.ServerName : envSettings.ServerName;
+            var connStr    = body.TryGetProperty("connection_string", out var cs) && cs.ValueKind == JsonValueKind.String
+                ? cs.GetString() ?? "" : "";
+            var headers    = new Dictionary<string, string>();
+            if (body.TryGetProperty("headers", out var hdrs) && hdrs.ValueKind == JsonValueKind.Object)
+                foreach (var h in hdrs.EnumerateObject())
+                    headers[h.Name] = h.Value.GetString() ?? "";
+
+            var encryptedCs = !string.IsNullOrEmpty(connStr)
+                ? PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(connStr) : "";
+            var envModel = new { ConnectionString = encryptedCs, ServerName = serverName, Headers = headers };
+            await File.WriteAllTextAsync(envSettingsPath,
+                JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
+
+            var newAllowed = envSettings.AllowedEnvironments;
+            newAllowed.Add(name);
+            var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
+            await File.WriteAllTextAsync(globalPath,
+                JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+            envSettings.Reload();
+            return Results.Json(new { ok = true, name }, statusCode: 201);
+        }).ExcludeFromDescription();
+
+        app.MapPut("/ui/api/environments/{name}", async (string name, HttpContext context) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+
+            var envDir          = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var envSettingsPath = Path.Combine(envDir, "settings.json");
+            var existingJson    = File.Exists(envSettingsPath) ? File.ReadAllText(envSettingsPath) : "{}";
+            JsonElement existing;
+            try { existing = JsonDocument.Parse(existingJson).RootElement.Clone(); }
+            catch { existing = JsonDocument.Parse("{}").RootElement.Clone(); }
+
+            var body       = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var serverName = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
+                ? sn.GetString()
+                : (existing.TryGetProperty("ServerName", out var esn) ? esn.GetString() : null);
+
+            var existingCs = existing.TryGetProperty("ConnectionString", out var ecs) ? ecs.GetString() ?? "" : "";
+            string newCs;
+            if (body.TryGetProperty("connection_string", out var cs) && cs.ValueKind == JsonValueKind.String &&
+                !string.IsNullOrEmpty(cs.GetString()))
+                newCs = PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(cs.GetString()!);
+            else
+                newCs = existingCs;
+
+            var headers = new Dictionary<string, string>();
+            if (body.TryGetProperty("headers", out var hdrs) && hdrs.ValueKind == JsonValueKind.Object)
+                foreach (var h in hdrs.EnumerateObject())
+                    headers[h.Name] = h.Value.GetString() ?? "";
+            else if (existing.TryGetProperty("Headers", out var ehdrs) && ehdrs.ValueKind == JsonValueKind.Object)
+                foreach (var h in ehdrs.EnumerateObject())
+                    headers[h.Name] = h.Value.GetString() ?? "";
+
+            Directory.CreateDirectory(envDir);
+            var envModel = new { ConnectionString = newCs, ServerName = serverName, Headers = headers };
+            await File.WriteAllTextAsync(envSettingsPath,
+                JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
+            var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envSettingsPath), TimeSpan.Zero).ToUnixTimeSeconds();
+            return Results.Ok(new { ok = true, last_modified = lastMod });
+        }).ExcludeFromDescription();
+
+        app.MapMethods("/ui/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid new name" }, statusCode: 400);
+
+            var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath  = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var oldDir      = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var newDir      = Path.Combine(Directory.GetCurrentDirectory(), "environments", newName);
+
+            if (!envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
+                return Results.Json(new { error = "Environment not found" }, statusCode: 404);
+            if (envSettings.AllowedEnvironments.Contains(newName, StringComparer.OrdinalIgnoreCase))
+                return Results.Json(new { error = "An environment with that name already exists" }, statusCode: 409);
+
+            if (Directory.Exists(oldDir)) Directory.Move(oldDir, newDir);
+
+            var newAllowed  = envSettings.AllowedEnvironments
+                .Select(e => e.Equals(name, StringComparison.OrdinalIgnoreCase) ? newName : e).ToList();
+            var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
+            await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+            envSettings.Reload();
+
+            return Results.Ok(new { ok = true, name = newName });
+        }).ExcludeFromDescription();
+
+        app.MapDelete("/ui/api/environments/{name}", async (string name, HttpRequest request) =>
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+                return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
+
+            var envSettings  = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath   = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var envDir       = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var deleteFiles  = request.Query["delete_files"] == "true";
+            var newAllowed   = envSettings.AllowedEnvironments
+                .Where(e => !e.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+            var globalModel  = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
+            await File.WriteAllTextAsync(globalPath,
+                JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+            envSettings.Reload();
+            if (deleteFiles && Directory.Exists(envDir))
+                Directory.Delete(envDir, true);
+            return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
         app.MapGet("/ui/api/settings", (IConfiguration config) => Results.Json(new
@@ -267,6 +570,266 @@ public static class WebUiEndpointExtensions
                 debounce_ms = config.GetValue<int>("EndpointReloading:DebounceMs")
             }
         })).ExcludeFromDescription();
+
+        // Token management endpoints
+        app.MapGet("/ui/api/tokens", async (HttpRequest request, TokenService tokenService) =>
+        {
+            var includeRevoked = request.Query["include_revoked"] == "true";
+            var tokens = includeRevoked
+                ? await tokenService.GetAllTokensAsync()
+                : await tokenService.GetActiveTokensAsync();
+            return Results.Json(tokens.Select(t => new
+            {
+                id                   = t.Id,
+                username             = t.Username,
+                description          = t.Description,
+                created_at           = t.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                expires_at           = t.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                revoked_at           = t.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                allowed_scopes       = t.AllowedScopes,
+                allowed_environments = t.AllowedEnvironments,
+                is_active            = t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow)
+            }));
+        }).ExcludeFromDescription();
+
+        app.MapPost("/ui/api/tokens", async (HttpContext context, TokenService tokenService) =>
+        {
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var username     = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+            var description  = body.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
+            var scopes       = body.TryGetProperty("allowed_scopes", out var s) ? s.GetString() ?? "*" : "*";
+            var environments = body.TryGetProperty("allowed_environments", out var e) ? e.GetString() ?? "*" : "*";
+            int? expiresInDays = body.TryGetProperty("expires_in_days", out var exp) && exp.ValueKind == JsonValueKind.Number
+                ? exp.GetInt32() : null;
+            if (string.IsNullOrWhiteSpace(username))
+                return Results.Json(new { error = "username is required" }, statusCode: 400);
+            var token = await tokenService.GenerateTokenAsync(username, scopes, environments, description, expiresInDays);
+            return Results.Json(new { ok = true, token });
+        }).ExcludeFromDescription();
+
+        app.MapPut("/ui/api/tokens/{id:int}", async (int id, HttpContext context, TokenService tokenService) =>
+        {
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (body.TryGetProperty("allowed_scopes", out var scopes) && scopes.ValueKind == JsonValueKind.String)
+                await tokenService.UpdateTokenScopesAsync(id, scopes.GetString() ?? "*");
+            if (body.TryGetProperty("allowed_environments", out var envs) && envs.ValueKind == JsonValueKind.String)
+                await tokenService.UpdateTokenEnvironmentsAsync(id, envs.GetString() ?? "*");
+            if (body.TryGetProperty("expires_at", out var expiresAt) &&
+                expiresAt.ValueKind == JsonValueKind.String &&
+                DateTime.TryParse(expiresAt.GetString(), out var dt))
+                await tokenService.SetTokenExpirationAsync(id, dt.ToUniversalTime());
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
+        app.MapDelete("/ui/api/tokens/{id:int}", async (int id, TokenService tokenService) =>
+        {
+            var blockReason = await tokenService.GetRevokeBlockReasonAsync(id);
+            if (blockReason != null)
+                return Results.Json(new { error = blockReason }, statusCode: 409);
+            var ok = await tokenService.RevokeTokenAsync(id);
+            return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found" }, statusCode: 404);
+        }).ExcludeFromDescription();
+
+        app.MapGet("/ui/api/tokens/{id:int}/audit", async (int id, TokenService tokenService) =>
+        {
+            var entries = await tokenService.GetAuditLogAsync(tokenId: id, maxRecords: 50);
+            return Results.Json(entries.Select(e => new
+            {
+                operation  = e.Operation,
+                timestamp  = e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                details    = e.Details,
+                ip_address = e.IpAddress,
+                user_agent = e.UserAgent
+            }));
+        }).ExcludeFromDescription();
+
+        // Server-Sent Events stream
+        app.MapGet("/ui/api/events", async (HttpContext context) =>
+        {
+            var response = context.Response;
+            response.Headers.ContentType  = "text/event-stream";
+            response.Headers.CacheControl = "no-cache";
+            response.Headers.Append("X-Accel-Buffering", "no"); // disable nginx buffering
+
+            var broadcaster  = app.Services.GetRequiredService<PortwayApi.Services.SseBroadcaster>();
+            var healthService = app.Services.GetRequiredService<PortwayApi.Services.HealthCheckService>();
+            var ct = context.RequestAborted;
+
+            // Push current health state immediately so the client doesn't wait for the next scheduled refresh.
+            try
+            {
+                var report = await healthService.CheckHealthAsync(ct);
+                await response.WriteAsync($"event: health\ndata: {{\"status\":\"{report.Status}\"}}\n\n", ct);
+                await response.Body.FlushAsync(ct);
+            }
+            catch (OperationCanceledException) { return; }
+            catch { /* cache empty on cold start, client will receive first real event shortly */ }
+
+            try
+            {
+                await foreach (var msg in broadcaster.SubscribeAsync(ct))
+                {
+                    await response.WriteAsync(msg, ct);
+                    await response.Body.FlushAsync(ct);
+                }
+            }
+            catch (OperationCanceledException) { /* client disconnected, expected */ }
+        }).ExcludeFromDescription();
+
+        // Endpoint CRUD
+
+        // PATCH /ui/api/endpoints/{type}/{**name}, rename (move directory)
+        app.MapMethods("/ui/api/endpoints/{type}/{**name}", ["PATCH"], async (string type, string name, HttpContext context) =>
+        {
+            var (filePath, err) = ResolveEndpointPath(type, name);
+            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (!File.Exists(filePath!))
+                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+            if (type.ToLowerInvariant() == "webhook")
+                return Results.Json(new { error = "Webhook endpoint cannot be renamed" }, statusCode: 400);
+
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
+                return Results.Json(new { error = "Invalid name" }, statusCode: 400);
+
+            var (newFilePath, newErr) = ResolveEndpointPath(type, newName);
+            if (newErr != null) return Results.Json(new { error = newErr }, statusCode: 400);
+            if (File.Exists(newFilePath!))
+                return Results.Json(new { error = "An endpoint with that name already exists" }, statusCode: 409);
+
+            var oldDir = Path.GetDirectoryName(filePath!)!;
+            var newDir = Path.GetDirectoryName(newFilePath!)!;
+            Directory.CreateDirectory(Path.GetDirectoryName(newDir)!);
+            Directory.Move(oldDir, newDir);
+
+            var epType = TypeStringToEndpointType(type);
+            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+
+            return Results.Ok(new { ok = true, name = newName });
+        }).ExcludeFromDescription();
+
+        // GET /ui/api/endpoints/{type}/{**name}?raw=true , fetch a single endpoint file (structured or raw JSON)
+        app.MapGet("/ui/api/endpoints/{type}/{**name}", (string type, string name, HttpRequest request) =>
+        {
+            var (filePath, err) = ResolveEndpointPath(type, name);
+            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+
+            if (!File.Exists(filePath!))
+                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+
+            try
+            {
+                var raw     = File.ReadAllText(filePath!);
+                var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
+
+                if (request.Query["raw"] == "true")
+                    return Results.Json(new { content = raw, last_modified = lastMod });
+
+                var content = JsonDocument.Parse(raw).RootElement.Clone();
+                return Results.Json(new { name, type, content, last_modified = lastMod, raw });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: 500);
+            }
+        }).ExcludeFromDescription();
+
+        // PUT /ui/api/endpoints/{type}/{**name}?raw=true , overwrite a single endpoint file
+        app.MapPut("/ui/api/endpoints/{type}/{**name}", async (string type, string name, HttpContext context) =>
+        {
+            var (filePath, err) = ResolveEndpointPath(type, name);
+            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+
+            string rawContent;
+            if (context.Request.Query["raw"] == "true")
+            {
+                if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind != JsonValueKind.String)
+                    return Results.Json(new { error = "content field required" }, statusCode: 400);
+                rawContent = contentEl.GetString() ?? "";
+            }
+            else
+            {
+                if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind == JsonValueKind.Undefined)
+                    return Results.Json(new { error = "content field required" }, statusCode: 400);
+                rawContent = contentEl.GetRawText();
+            }
+
+            // Validate JSON
+            try { using var _ = JsonDocument.Parse(rawContent); }
+            catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
+            await File.WriteAllTextAsync(filePath!, rawContent);
+            var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
+
+            var epType = TypeStringToEndpointType(type);
+            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+
+            return Results.Ok(new { ok = true, last_modified = lastMod });
+        }).ExcludeFromDescription();
+
+        // POST /ui/api/endpoints/{type} , create a new endpoint
+        app.MapPost("/ui/api/endpoints/{type}", async (string type, HttpContext context) =>
+        {
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var name = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+
+            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
+                return Results.Json(new { error = "Invalid endpoint name. Use letters, numbers, hyphens, underscores, and forward slashes as separators." }, statusCode: 400);
+
+            var (filePath, err) = ResolveEndpointPath(type, name);
+            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+
+            if (File.Exists(filePath!))
+                return Results.Json(new { error = "Endpoint already exists" }, statusCode: 409);
+
+            string rawContent;
+            if (body.TryGetProperty("content", out var contentEl) && contentEl.ValueKind == JsonValueKind.String)
+                rawContent = contentEl.GetString() ?? "{}";
+            else if (body.TryGetProperty("content", out var contentObj) && contentObj.ValueKind == JsonValueKind.Object)
+                rawContent = contentObj.GetRawText();
+            else
+                rawContent = "{}";
+
+            try { using var _ = JsonDocument.Parse(rawContent); }
+            catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
+            await File.WriteAllTextAsync(filePath!, rawContent);
+
+            var epType = TypeStringToEndpointType(type);
+            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+
+            return Results.Json(new { ok = true, name }, statusCode: 201);
+        }).ExcludeFromDescription();
+
+        // DELETE /ui/api/endpoints/{type}/{**name} , remove an endpoint
+        app.MapDelete("/ui/api/endpoints/{type}/{**name}", (string type, string name) =>
+        {
+            var (filePath, err) = ResolveEndpointPath(type, name);
+            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+
+            if (!File.Exists(filePath!))
+                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+
+            var typeNorm = type.ToLowerInvariant();
+            if (typeNorm == "webhook")
+                return Results.Json(new { error = "Webhook endpoint cannot be deleted (shared entity.json)" }, statusCode: 400);
+
+            var dir = Path.GetDirectoryName(filePath!);
+            if (dir != null && Directory.Exists(dir))
+                Directory.Delete(dir, true);
+            else
+                File.Delete(filePath!);
+
+            var epType = TypeStringToEndpointType(type);
+            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
 
         app.MapGet("/ui/api/logs", async (HttpRequest request) =>
         {
@@ -334,7 +897,7 @@ public static class WebUiEndpointExtensions
                     catch { /* skip inaccessible files */ }
                 }
 
-                // Newest first — sort by timestamp string (ISO format is lexicographically comparable)
+                // Newest first, sort by timestamp string (ISO format is lexicographically comparable)
                 allEntries.Sort((a, b) => string.CompareOrdinal(b.Timestamp, a.Timestamp));
 
                 var filtered = string.IsNullOrEmpty(filterLevel) || filterLevel == "ALL"
@@ -372,6 +935,49 @@ public static class WebUiEndpointExtensions
         var sig        = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(expiry)));
         return $"{expiry}.{sig}";
     }
+
+    private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
+    {
+        // Allow Namespace/Name paths (each segment: alphanumeric + hyphens/underscores, no "..")
+        if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
+            return (null, "Invalid endpoint name");
+
+        var baseDir = Directory.GetCurrentDirectory();
+        var (typeDir, isFixed) = type.ToLowerInvariant() switch
+        {
+            "sql"       => ("endpoints/SQL",      false),
+            "proxy"     => ("endpoints/Proxy",    false),
+            "composite" => ("endpoints/Proxy",    false),
+            "file"      => ("endpoints/Files",    false),
+            "static"    => ("endpoints/Static",   false),
+            "webhook"   => ("endpoints/Webhooks", true),
+            _           => ((string?)null,        false)
+        };
+
+        if (typeDir == null) return (null, $"Unknown endpoint type: {type}");
+
+        var filePath = isFixed
+            ? Path.GetFullPath(Path.Combine(baseDir, typeDir, "entity.json"))
+            : Path.GetFullPath(Path.Combine(baseDir, typeDir, name, "entity.json"));
+
+        var allowedBase = Path.GetFullPath(Path.Combine(baseDir, typeDir));
+        if (!filePath.StartsWith(allowedBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+            !filePath.Equals(allowedBase, StringComparison.OrdinalIgnoreCase))
+            return (null, "Invalid path");
+
+        return (filePath, null);
+    }
+
+    private static EndpointType? TypeStringToEndpointType(string type) => type.ToLowerInvariant() switch
+    {
+        "sql"       => EndpointType.SQL,
+        "proxy"     => EndpointType.Proxy,
+        "composite" => EndpointType.Composite,
+        "file"      => EndpointType.Files,
+        "static"    => EndpointType.Static,
+        "webhook"   => EndpointType.Webhook,
+        _           => null
+    };
 
     private static bool ValidateToken(string token, string adminApiKey)
     {

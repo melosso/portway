@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Serilog;
 using PortwayApi.Classes;
@@ -14,6 +15,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
     private readonly string _endpointsPath;
     private readonly SqlMetadataService _sqlMetadataService;
     private readonly IOptionsMonitor<EndpointReloadingOptions> _optionsMonitor;
+    private readonly SseBroadcaster? _broadcaster;
     private FileSystemWatcher? _fileWatcher;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
     private readonly Dictionary<string, DateTime> _lastReloadTimes = new();
@@ -21,12 +23,14 @@ public class EndpointFileWatcher : IHostedService, IDisposable
 
     public EndpointFileWatcher(
         SqlMetadataService sqlMetadataService,
-        IOptionsMonitor<EndpointReloadingOptions> optionsMonitor)
+        IOptionsMonitor<EndpointReloadingOptions> optionsMonitor,
+        SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
-        _endpointsPath = Path.Combine(baseDir, "endpoints");
+        _endpointsPath  = Path.Combine(baseDir, "endpoints");
         _sqlMetadataService = sqlMetadataService;
         _optionsMonitor = optionsMonitor;
+        _broadcaster    = broadcaster;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -160,6 +164,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             }
 
             Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+            _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "endpoints" }));
         }
         catch (Exception ex)
         {

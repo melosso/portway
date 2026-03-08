@@ -9,223 +9,937 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="/css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="/js/sidebar.js"></script>
+  <script src="/js/shared.js"></script>
+  <style>
+    main { display: flex; flex-direction: column; }
+    .page-body-fill { flex: 1; display: flex; flex-direction: column; }
+  </style>
 </head>
 <body>
 
-<aside>
-  <div class="brand select-none">
-    <div class="brand-avatar">
-      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-avatar-bg" aria-hidden="true">
-        <g clip-path="url(#portway-clip)">
-          <rect width="20" height="20" fill="#000" rx="5.5"/>
-          <rect width="20" height="20" fill="url(#portway-grad)" fill-opacity="0.2" rx="5.5"/>
-          <g filter="url(#portway-blur-1)" opacity="0.3"><circle cx="16" cy="17" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
-          <g filter="url(#portway-blur-2)" opacity="0.1"><circle cx="16" cy="16" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
-          <g filter="url(#portway-blur-3)" opacity="0.4"><circle cx="17" cy="19" r="6" fill="#FF64B4" fill-opacity="0.671"/></g>
-          <rect width="20" height="20" fill="#FF64B4" fill-opacity="0.15" rx="5.5"/>
-          <g style="mix-blend-mode:hard-light"><rect width="20" height="20" fill="#6A62FF" fill-opacity="0.1" rx="5.5"/></g>
-        </g>
-        <rect width="19" height="19" x="0.5" y="0.5" stroke="#FDFDFD" stroke-opacity="0.1" rx="5"/>
-        <defs>
-          <filter id="portway-blur-1" width="32" height="32" x="0" y="1" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="5"/></filter>
-          <filter id="portway-blur-2" width="22" height="22" x="5" y="5" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="2.5"/></filter>
-          <filter id="portway-blur-3" width="22" height="22" x="6" y="8" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur" stdDeviation="2.5"/></filter>
-          <linearGradient id="portway-grad" x1="10" x2="10" y1="0" y2="20" gradientUnits="userSpaceOnUse"><stop stop-color="#FDFDFD"/><stop offset="1" stop-color="#FDFDFD" stop-opacity="0"/></linearGradient>
-          <clipPath id="portway-clip"><rect width="20" height="20" fill="#FDFDFD" rx="5.5"/></clipPath>
-        </defs>
-      </svg>
-      <svg class="brand-avatar-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FDFDFD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-      </svg>
-    </div>
-    <span class="brand-name">Portway</span>
-  </div>
-
-  <div class="nav-group">
-    <div class="nav-label">Navigation</div>
-    <a href="/ui/dashboard" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      Dashboard
-    </a>
-    <a href="/ui/endpoints" class="nav-item active">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      Endpoints
-    </a>
-    <a href="/ui/environments" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
-      Environments
-    </a>
-    <a href="/ui/settings" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
-    </a>
-    <a href="/ui/logs" class="nav-item">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Logs
-    </a>
-  </div>
-
-  <div class="sidebar-footer">
-    <div class="sidebar-footer-meta">
-      <div class="sidebar-version" id="sidebarVersion"></div>
-      <span class="tooltip-wrapper">
-        <a href="https://github.com/melosso/portway" target="_blank" rel="noopener" class="github-link">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-        </a>
-        <span class="tooltip tooltip-above tooltip-right">View on GitHub</span>
-      </span>
-    </div>
-    <button class="btn-logout" onclick="logout()">Log Out</button>
-  </div>
-</aside>
+<aside></aside>
 
 <main>
   <div class="page-header">
     <div class="page-title">
       <h1 class="select-none">Endpoints</h1>
-      <span class="badge badge-muted" id="totalCount"></span>
     </div>
     <div class="header-actions">
-      <button class="btn btn-outline" onclick="load()">
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="epSearch" placeholder="Search..." oninput="filterList()">
+      </div>
+      <button class="btn btn-outline" onclick="refreshAll()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
+      </button>
+      <button class="btn btn-primary" onclick="openCreateDrawer()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Endpoint
       </button>
     </div>
   </div>
 
-  <div class="page-body" id="endpointList">
-    <div class="muted" style="font-size:0.875rem">Loading…</div>
+  <!-- Tab strip -->
+  <div class="ep-tabs" id="epTabs"></div>
+
+  <!-- Split panel -->
+  <div class="page-body-fill" style="padding:0.75rem;padding-top:0.5rem;">
+    <div class="ep-split">
+      <!-- Left: list -->
+      <div class="ep-list">
+        <div class="ep-list-scroll" id="epListScroll">
+          <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+        </div>
+        <div class="ep-list-footer">
+          <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Endpoint
+          </button>
+        </div>
+      </div>
+      <!-- Right: detail -->
+      <div class="ep-detail" id="epDetail">
+        <div class="ep-empty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          <span>Select an endpoint to view and edit its configuration</span>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Create Drawer -->
+<div class="drawer-backdrop" id="createBackdrop" onclick="closeCreateDrawer()"></div>
+<div class="drawer" id="createDrawer">
+  <div class="drawer-header">
+    <h3 class="drawer-title">Add Endpoint</h3>
+    <button class="btn btn-ghost btn-sm" onclick="closeCreateDrawer()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <!-- Type selector tabs -->
+    <div style="display:flex;gap:0.375rem;flex-wrap:wrap;margin-bottom:1rem" id="createTypePicker"></div>
+
+    <div id="createForm"></div>
+
+    <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeCreateDrawer()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreate()">Create</button>
+    </div>
+  </div>
+</div>
+
 <script>
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+// ── Config ────────────────────────────────────────────────
+const ENDPOINT_TYPES = [
+  {
+    key: 'sql', label: 'SQL', dotClass: 'dot-sql',
+    fields: ['name','methods','schema','object_name','object_type','allowed_columns','is_private','allowed_environments','documentation'],
+    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], IsPrivate: false }
+  },
+  {
+    key: 'proxy', label: 'Proxy', dotClass: 'dot-proxy',
+    fields: ['name','url','methods','is_private','allowed_environments','documentation'],
+    defaultContent: { Url: '', AllowedMethods: ['GET'], IsPrivate: false }
+  },
+  {
+    key: 'composite', label: 'Composite', dotClass: 'dot-composite',
+    fields: ['name','methods','is_private','allowed_environments','composite_steps','documentation'],
+    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], IsPrivate: false, CompositeConfig: { Steps: [] } }
+  },
+  {
+    key: 'file', label: 'File', dotClass: 'dot-file',
+    fields: ['name','methods','storage_type','base_directory','allowed_extensions','is_private','allowed_environments'],
+    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], IsPrivate: false }
+  },
+  {
+    key: 'static', label: 'Static', dotClass: 'dot-static',
+    fields: ['name','methods','is_private','allowed_environments'],
+    defaultContent: { AllowedMethods: ['GET'], IsPrivate: false }
+  },
+  {
+    key: 'webhook', label: 'Webhook', dotClass: 'dot-webhook',
+    fields: ['methods','schema','object_name','allowed_columns','is_private','documentation'],
+    defaultContent: null // fixed file
+  }
+];
 
-function methodBadge(m) {
-  const colors = { GET: 'badge-success', POST: 'badge-info', PUT: 'badge-warning', PATCH: 'badge-warning', DELETE: 'badge-error' };
-  return `<span class="badge ${colors[m] ?? 'badge-muted'}">${esc(m)}</span>`;
-}
+// ── State ─────────────────────────────────────────────────
+let _allData = {};        // { sql: [...], proxy: [...], ... }
+let _activeTab = 'all';   // tab key or 'all'
+let _selected = null;     // { type, name }
+let _detailData = null;   // raw content from GET /ui/api/endpoints/{type}/{name}
+let _dirty = false;
+let _rawMode = false;
+let _renaming = false;
+let _createType = 'sql';
+let _confirmingDelete = false;
 
-function renderSection(title, items, columns, rowFn) {
-  if (!items || !items.length) return '';
-  const rows = items.map(rowFn).join('');
-  const ths = columns.map(c => `<th>${c}</th>`).join('');
-  return `<div class="card">
-    <div class="card-header">
-      <span class="card-title">${title}</span>
-      <span class="badge badge-muted">${items.length}</span>
-    </div>
-    <div class="table-wrapper" style="border:none;border-radius:0;max-height:400px">
-      <div class="scroll-area">
-        <table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>
-      </div>
-    </div>
-  </div>`;
-}
-
-async function load() {
-  const list = document.getElementById('endpointList');
+// ── Init ──────────────────────────────────────────────────
+async function refreshAll() {
   try {
     const d = await fetch('/ui/api/endpoints').then(r => r.json());
-
-    const sqlRows = (d.sql ?? []).map(e => `<tr>
-      <td>${esc(e.name)}</td>
-      <td class="col-mono">${esc(e.schema ?? '')}${e.schema && e.object_name ? '.' : ''}${esc(e.object_name ?? '')}</td>
-      <td><span class="badge badge-muted">${esc(e.object_type ?? 'Table')}</span></td>
-      <td>${(e.methods ?? []).map(methodBadge).join(' ')}</td>
-      <td>${e.is_private ? '<span class="badge badge-muted">Private</span>' : ''}</td>
-    </tr>`);
-
-    const proxyRows = (d.proxy ?? []).map(e => `<tr>
-      <td>${esc(e.name)}</td>
-      <td class="col-mono truncate" style="max-width:260px" title="${esc(e.url ?? '')}">${esc(e.url ?? '')}</td>
-      <td>${(e.methods ?? []).map(methodBadge).join(' ')}</td>
-      <td>${e.is_private ? '<span class="badge badge-muted">Private</span>' : ''}</td>
-    </tr>`);
-
-    const compositeRows = (d.composite ?? []).map(e => `<tr>
-      <td>${esc(e.name)}</td>
-      <td>${(e.methods ?? []).map(methodBadge).join(' ')}</td>
-      <td>${e.is_private ? '<span class="badge badge-muted">Private</span>' : ''}</td>
-    </tr>`);
-
-    const fileRows = (d.file ?? []).map(e => `<tr>
-      <td>${esc(e.name)}</td>
-      <td>${(e.methods ?? []).map(methodBadge).join(' ')}</td>
-      <td>${e.is_private ? '<span class="badge badge-muted">Private</span>' : ''}</td>
-    </tr>`);
-
-    const staticRows = (d.static ?? []).map(e => `<tr>
-      <td>${esc(e.name)}</td>
-      <td>${(e.methods ?? []).map(methodBadge).join(' ')}</td>
-      <td>${e.is_private ? '<span class="badge badge-muted">Private</span>' : ''}</td>
-    </tr>`);
-
-    const webhookRows = (d.webhook ?? []).map(e => `<tr>
-      <td>${esc(e.name)}</td>
-      <td>${(e.methods ?? []).map(methodBadge).join(' ')}</td>
-      <td>${e.is_private ? '<span class="badge badge-muted">Private</span>' : ''}</td>
-    </tr>`);
-
-    const total = (d.sql?.length ?? 0) + (d.proxy?.length ?? 0) + (d.composite?.length ?? 0) +
-                  (d.file?.length ?? 0) + (d.static?.length ?? 0) + (d.webhook?.length ?? 0);
-    document.getElementById('totalCount').textContent = `${total} total`;
-
-    const html = [
-      renderSection('SQL Endpoints', d.sql, ['Name', 'Database Object', 'Type', 'Methods', ''], () => ''),
-      renderSection('Proxy Endpoints', d.proxy, ['Name', 'Target URL', 'Methods', ''], () => ''),
-      renderSection('Composite Endpoints', d.composite, ['Name', 'Methods', ''], () => ''),
-      renderSection('File Endpoints', d.file, ['Name', 'Methods', ''], () => ''),
-      renderSection('Static Endpoints', d.static, ['Name', 'Methods', ''], () => ''),
-      renderSection('Webhook Endpoints', d.webhook, ['Name', 'Methods', ''], () => ''),
-    ].filter(Boolean);
-
-    // Re-render with actual rows
-    list.innerHTML = [
-      (d.sql?.length ? renderSectionWithRows('SQL Endpoints', d.sql, ['Name', 'Database Object', 'Type', 'Methods', ''], sqlRows) : ''),
-      (d.proxy?.length ? renderSectionWithRows('Proxy Endpoints', d.proxy, ['Name', 'Target URL', 'Methods', ''], proxyRows) : ''),
-      (d.composite?.length ? renderSectionWithRows('Composite Endpoints', d.composite, ['Name', 'Methods', ''], compositeRows) : ''),
-      (d.file?.length ? renderSectionWithRows('File Endpoints', d.file, ['Name', 'Methods', ''], fileRows) : ''),
-      (d.static?.length ? renderSectionWithRows('Static Endpoints', d.static, ['Name', 'Methods', ''], staticRows) : ''),
-      (d.webhook?.length ? renderSectionWithRows('Webhook Endpoints', d.webhook, ['Name', 'Methods', ''], webhookRows) : ''),
-    ].filter(Boolean).join('') || '<div class="muted" style="font-size:0.875rem">No endpoints configured</div>';
-
+    _allData = {
+      sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
+      proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
+      composite: (d.composite ?? []).map(e => ({ ...e, _type: 'composite' })),
+      file:      (d.file ?? []).map(e => ({ ...e, _type: 'file' })),
+      static:    (d.static ?? []).map(e => ({ ...e, _type: 'static' })),
+      webhook:   (d.webhook ?? []).map(e => ({ ...e, _type: 'webhook' })),
+    };
+    renderTabs();
+    renderList();
+    if (_selected) selectEndpoint(_selected.type, _selected.name, false);
   } catch(e) {
-    list.innerHTML = `<div class="muted" style="font-size:0.875rem">Failed to load endpoints: ${esc(e.message)}</div>`;
+    showToast('Failed to load endpoints: ' + e.message, 'error');
   }
-
-  try {
-    const d = await fetch('/ui/api/overview').then(r => r.json());
-    const v = (d.version ?? '').split('+')[0];
-    document.getElementById('sidebarVersion').textContent = v ? `v${v}` : '';
-  } catch(_) {}
 }
 
-function renderSectionWithRows(title, items, columns, rows) {
-  const ths = columns.map(c => `<th>${c}</th>`).join('');
-  return `<div class="card">
-    <div class="card-header">
-      <span class="card-title">${title}</span>
-      <span class="badge badge-muted">${items.length}</span>
+// ── Tabs ──────────────────────────────────────────────────
+function renderTabs() {
+  const total = Object.values(_allData).reduce((s, a) => s + a.length, 0);
+  const tabs = [{ key: 'all', label: 'All', count: total }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label, count: (_allData[t.key] ?? []).length }))];
+  document.getElementById('epTabs').innerHTML = tabs.map(t => `
+    <button class="ep-tab ${_activeTab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">
+      ${esc(t.label)}
+      <span class="ep-tab-badge">${t.count}</span>
+    </button>`).join('');
+}
+
+function switchTab(key) {
+  _activeTab = key;
+  renderTabs();
+  renderList();
+}
+
+// ── List ──────────────────────────────────────────────────
+function getFilteredItems() {
+  const q = (document.getElementById('epSearch')?.value ?? '').toLowerCase();
+  const types = _activeTab === 'all' ? ENDPOINT_TYPES.map(t => t.key) : [_activeTab];
+  const results = [];
+  for (const type of types) {
+    for (const item of (_allData[type] ?? [])) {
+      if (!q || (item.name ?? '').toLowerCase().includes(q) || type.includes(q)) {
+        results.push(item);
+      }
+    }
+  }
+  return results;
+}
+
+function renderList() {
+  const scroll = document.getElementById('epListScroll');
+  const items = getFilteredItems();
+
+  if (!items.length) {
+    scroll.innerHTML = `<div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">No endpoints found</div>`;
+    return;
+  }
+
+  // Group by type
+  const byType = {};
+  for (const item of items) {
+    (byType[item._type] = byType[item._type] ?? []).push(item);
+  }
+
+  let html = '';
+  const showGroups = _activeTab === 'all';
+  for (const typeKey of ENDPOINT_TYPES.map(t => t.key)) {
+    const group = byType[typeKey];
+    if (!group?.length) continue;
+    const typeCfg = ENDPOINT_TYPES.find(t => t.key === typeKey);
+    if (showGroups) {
+      html += `<div class="ep-list-group">${esc(typeCfg?.label ?? typeKey)}</div>`;
+    }
+    for (const item of group) {
+      const isActive = _selected?.type === typeKey && _selected?.name === item.name;
+      html += `<div class="ep-list-item ${isActive ? 'active' : ''}" onclick="selectEndpoint('${esc(typeKey)}','${esc(item.name)}')">
+        <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
+        <span class="ep-list-name">${esc(item.name)}</span>
+      </div>`;
+    }
+  }
+  scroll.innerHTML = html;
+}
+
+function filterList() {
+  renderList();
+}
+
+// ── Detail ────────────────────────────────────────────────
+async function selectEndpoint(type, name, scroll = true) {
+  _selected = { type, name };
+  _confirmingDelete = false;
+  renderList(); // update active state
+
+  const detail = document.getElementById('epDetail');
+  detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
+
+  try {
+    const d = await fetch(`/ui/api/endpoints/${type}/${name}`).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    _detailData = d;
+    _dirty = false;
+    _rawMode = false;
+    renderDetail();
+  } catch(e) {
+    detail.innerHTML = `<div class="ep-empty"><span style="color:hsl(var(--destructive))">Error: ${esc(e.message)}</span></div>`;
+  }
+}
+
+function renderDetail() {
+  if (!_detailData) return;
+  const { name, type, content, raw } = _detailData;
+  const typeCfg = ENDPOINT_TYPES.find(t => t.key === type);
+  const detail = document.getElementById('epDetail');
+  const isWebhook = type === 'webhook';
+
+  const nameDisplay = _renaming
+    ? `<input type="text" id="renameInput" value="${esc(name)}" style="font-size:1rem;font-weight:600;flex:1;min-width:0;border:1px solid hsl(var(--primary));border-radius:var(--radius);padding:0.2rem 0.5rem;background:hsl(var(--background));color:hsl(var(--foreground))" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
+       <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
+       <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
+    : `<h2>${esc(name)}</h2>
+       <span class="badge badge-muted" style="font-size:0.7rem">${esc(typeCfg?.label ?? type)}</span>`;
+
+  detail.innerHTML = `
+    <div class="ep-detail-header">
+      <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
+      ${nameDisplay}
+      ${_renaming ? '' : `<div class="actions">
+        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startRename()" title="Rename">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Rename
+        </button>`}
+        <button class="btn btn-outline btn-sm" onclick="toggleRawMode()">
+          ${_rawMode ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Structured' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Raw JSON'}
+        </button>
+        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startDelete()" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          Delete
+        </button>`}
+      </div>`}
     </div>
-    <div class="table-wrapper" style="border:none;border-radius:0;max-height:400px">
-      <div class="scroll-area">
-        <table><thead><tr>${ths}</tr></thead><tbody>${rows.join('')}</tbody></table>
+    <div id="epDeleteConfirm" style="display:none;padding:0.5rem 1rem 0">
+      <div class="ep-confirm-delete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Delete <strong>${esc(name)}</strong>? This cannot be undone.
+        <button class="btn btn-sm" style="background:hsl(var(--destructive));color:#fff;margin-left:auto" onclick="confirmDelete()">Delete</button>
+        <button class="btn btn-outline btn-sm" onclick="cancelDelete()">Cancel</button>
       </div>
+    </div>
+    <div class="ep-detail-body" id="epDetailBody">
+      ${_rawMode ? renderRawForm(raw) : renderStructuredForm(type, content)}
+    </div>
+    <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
+      <button class="btn btn-outline btn-sm" onclick="reloadDetail()">Discard</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEndpoint()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
+    </div>`;
+}
+
+function renderRawForm(raw) {
+  const pretty = (() => { try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; } })();
+  return `<div class="ep-raw-editor">
+    <textarea id="rawContent" spellcheck="false">${esc(pretty)}</textarea>
+  </div>`;
+}
+
+function renderStructuredForm(type, content) {
+  const c = content ?? {};
+  switch(type) {
+    case 'sql':      return renderSqlForm(c);
+    case 'proxy':    return renderProxyForm(c);
+    case 'composite':return renderCompositeForm(c);
+    case 'file':     return renderFileForm(c);
+    case 'static':   return renderStaticForm(c);
+    case 'webhook':  return renderWebhookForm(c);
+    default:         return `<div class="ep-empty">Unknown type</div>`;
+  }
+}
+
+// ── Field helpers ─────────────────────────────────────────
+
+function fieldText(id, label, value) {
+  return `<div class="ep-field">
+    <label for="${id}">${label}</label>
+    <input type="text" id="${id}" value="${esc(value ?? '')}">
+  </div>`;
+}
+
+function fieldSelect(id, label, value, options) {
+  const opts = options.map(o => `<option ${value === o ? 'selected' : ''}>${esc(o)}</option>`).join('');
+  return `<div class="ep-field">
+    <label for="${id}">${label}</label>
+    <select id="${id}">${opts}</select>
+  </div>`;
+}
+
+function fieldMethods(selected, id = 'methodPicker') {
+  const all = ['GET','POST','PUT','PATCH','DELETE'];
+  const sel = Array.isArray(selected) ? selected : [];
+  return `<div class="ep-field">
+    <label>Methods</label>
+    <div class="method-picker" id="${id}">
+      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" onclick="toggleMethod(this)">${m}</button>`).join('')}
     </div>
   </div>`;
 }
 
-load();
-
-function logout() {
-  fetch('/ui/api/auth/logout', { method: 'POST', credentials: 'include' })
-    .finally(() => { window.location.href = '/ui/login'; });
+function toggleMethod(btn) {
+  btn.classList.toggle('active');
 }
+
+function fieldKV(id, label, obj) {
+  const rows = Object.entries(obj ?? {}).map(([k, v]) => kvRow(k, v)).join('');
+  return `<div class="ep-field">
+    <label>${label}</label>
+    <div class="ep-kv-editor" id="${id}">
+      ${rows}
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.375rem;font-size:0.75rem" onclick="addKvRow('${id}')">+ Add row</button>
+  </div>`;
+}
+
+function kvRow(k = '', v = '') {
+  return `<div class="ep-kv-row">
+    <input type="text" placeholder="Key" value="${esc(k)}">
+    <input type="text" placeholder="Value" value="${esc(v)}">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove()" title="Remove">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>`;
+}
+
+function addKvRow(id) {
+  document.getElementById(id)?.insertAdjacentHTML('beforeend', kvRow());
+}
+
+function readKV(id) {
+  const obj = {};
+  document.querySelectorAll(`#${id} .ep-kv-row`).forEach(row => {
+    const [kInput, vInput] = row.querySelectorAll('input');
+    if (kInput?.value?.trim()) obj[kInput.value.trim()] = vInput?.value ?? '';
+  });
+  return obj;
+}
+
+function fieldColumns(id, label, arr) {
+  const rows = (arr ?? []).map(col => colRow(col)).join('');
+  return `<div class="ep-field">
+    <label>${label}</label>
+    <div class="ep-col-list" id="${id}">${rows}</div>
+    <button type="button" class="btn btn-outline btn-sm" style="margin-top:0.375rem;font-size:0.75rem" onclick="addColRow('${id}')">+ Add column</button>
+  </div>`;
+}
+
+function colRow(val = '') {
+  return `<div class="ep-col-row">
+    <input type="text" placeholder="ColumnName" value="${esc(val)}">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove()" title="Remove">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>`;
+}
+
+function addColRow(id) {
+  document.getElementById(id)?.insertAdjacentHTML('beforeend', colRow());
+}
+
+function readColumns(id) {
+  return Array.from(document.querySelectorAll(`#${id} .ep-col-row input`))
+    .map(i => i.value.trim()).filter(Boolean);
+}
+
+function readMethods(id = 'methodPicker') {
+  return Array.from(document.querySelectorAll(`#${id} .method-btn.active`)).map(b => b.textContent.trim());
+}
+
+function fieldToggle(id, label, checked) {
+  return `<div class="ep-field" style="flex-direction:row;align-items:center;gap:0.5rem">
+    <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} style="width:auto">
+    <label for="${id}" style="margin:0;cursor:pointer">${label}</label>
+  </div>`;
+}
+
+function fieldAllowedEnvs(value) {
+  return fieldText('allowedEnvironments', 'Environments', Array.isArray(value) ? value.join(', ') : (value ?? '*'));
+}
+
+// ── Structured forms per type ─────────────────────────────
+
+function renderSqlForm(c) {
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Database Object</div>
+      ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
+      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
+      ${fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
+      ${fieldText('procedure', 'Procedure', c.Procedure ?? '')}
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Access</div>
+      ${fieldMethods(c.AllowedMethods)}
+      ${fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns)}
+      ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+    </div>`;
+}
+
+function renderProxyForm(c) {
+  // Proxy JSON uses "Methods" (not "AllowedMethods")
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Target</div>
+      ${fieldText('url', 'URL', c.Url ?? '')}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Access</div>
+      ${fieldMethods(c.Methods ?? c.AllowedMethods)}
+      ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+    </div>`;
+}
+
+function renderCompositeForm(c) {
+  // Composite also lives in Proxy dir, uses "Methods"
+  const steps = (c.CompositeConfig?.Steps ?? []);
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Access</div>
+      ${fieldMethods(c.Methods ?? c.AllowedMethods)}
+      ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Steps</div>
+      <div class="ep-field">
+        <label for="compositeSteps">Steps Array (JSON)</label>
+        <textarea id="compositeSteps" style="min-height:160px;font-family:monospace;font-size:0.8rem">${esc(JSON.stringify(steps, null, 2))}</textarea>
+      </div>
+    </div>`;
+}
+
+function renderFileForm(c) {
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Storage</div>
+      ${fieldSelect('storageType', 'Storage Type', c.StorageType ?? 'Local', ['Local','AzureBlob','S3'])}
+      ${fieldText('baseDirectory', 'Base Directory', c.BaseDirectory ?? '')}
+      ${fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '))}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Access</div>
+      ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+    </div>`;
+}
+
+function renderStaticForm(c) {
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Content</div>
+      ${fieldText('contentFile', 'Content File', c.ContentFile ?? '')}
+      ${fieldText('contentType', 'Content-Type', c.ContentType ?? 'application/json')}
+      ${fieldToggle('enableFiltering', 'Enable OData Filtering', c.EnableFiltering ?? false)}
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Access</div>
+      ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+    </div>`;
+}
+
+function renderWebhookForm(c) {
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Database Object</div>
+      ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
+      ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Access</div>
+      ${fieldMethods(c.AllowedMethods)}
+      ${fieldColumns('allowedCols', 'Allowed Tables', c.AllowedColumns)}
+      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+    </div>`;
+}
+
+// ── Validation ────────────────────────────────────────────
+
+function readEnvs() {
+  const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
+  const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
+  return envs.length === 1 && envs[0] === '*' ? '*' : envs;
+}
+
+function validateForm(type) {
+  const methods = readMethods();
+  const errors = [];
+
+  switch(type) {
+    case 'sql':
+      if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
+      if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
+      if (!methods.length) errors.push('At least one method must be selected');
+      break;
+    case 'proxy':
+      if (!document.getElementById('url')?.value?.trim()) errors.push('URL is required');
+      if (!methods.length) errors.push('At least one method must be selected');
+      break;
+    case 'composite':
+      if (!methods.length) errors.push('At least one method must be selected');
+      try { JSON.parse(document.getElementById('compositeSteps')?.value ?? '[]'); }
+      catch { errors.push('Steps must be valid JSON'); }
+      break;
+    case 'file':
+      if (!document.getElementById('baseDirectory')?.value?.trim()) errors.push('Base Directory is required');
+      break;
+    case 'static':
+      if (!document.getElementById('contentFile')?.value?.trim()) errors.push('Content File is required');
+      if (!document.getElementById('contentType')?.value?.trim()) errors.push('Content-Type is required');
+      break;
+    case 'webhook':
+      if (!document.getElementById('objectName')?.value?.trim()) errors.push('Object Name is required');
+      if (!document.getElementById('schema')?.value?.trim())     errors.push('Schema is required');
+      if (!methods.length) errors.push('At least one method must be selected');
+      break;
+  }
+  return errors;
+}
+
+// ── Collect form → JSON object ────────────────────────────
+
+function collectFormConfig(type, existingContent) {
+  const c = existingContent ?? {};
+  const methods = readMethods();
+  const envs = readEnvs();
+
+  switch(type) {
+    case 'sql': {
+      const cols = readColumns('allowedCols');
+      const procedure = document.getElementById('procedure')?.value?.trim();
+      const namespace = document.getElementById('namespace')?.value?.trim();
+      return {
+        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
+        DatabaseObjectName: document.getElementById('objectName')?.value?.trim() ?? '',
+        DatabaseSchema: document.getElementById('schema')?.value?.trim() ?? 'dbo',
+        DatabaseObjectType: document.getElementById('objectType')?.value ?? 'Table',
+        ...(namespace ? { Namespace: namespace } : {}),
+        ...(procedure ? { Procedure: procedure } : {}),
+        AllowedMethods: methods,
+        ...(cols.length ? { AllowedColumns: cols } : {}),
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+      };
+    }
+    case 'proxy': {
+      return {
+        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
+        Url: document.getElementById('url')?.value?.trim() ?? '',
+        Methods: methods,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+      };
+    }
+    case 'composite': {
+      let steps = [];
+      try { steps = JSON.parse(document.getElementById('compositeSteps')?.value ?? '[]'); } catch {}
+      return {
+        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
+        Type: 'Composite',
+        Methods: methods,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+        CompositeConfig: { Steps: steps },
+      };
+    }
+    case 'file': {
+      const exts = (document.getElementById('allowedExtensions')?.value ?? '').split(',').map(s=>s.trim()).filter(Boolean);
+      return {
+        StorageType: document.getElementById('storageType')?.value ?? 'Local',
+        BaseDirectory: document.getElementById('baseDirectory')?.value?.trim() ?? '',
+        AllowedExtensions: exts,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+      };
+    }
+    case 'static': {
+      const namespace = document.getElementById('namespace')?.value?.trim();
+      return {
+        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
+        ContentFile: document.getElementById('contentFile')?.value?.trim() ?? '',
+        ContentType: document.getElementById('contentType')?.value?.trim() ?? 'application/json',
+        EnableFiltering: document.getElementById('enableFiltering')?.checked ?? false,
+        ...(namespace ? { Namespace: namespace } : {}),
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+      };
+    }
+    case 'webhook': {
+      const cols = readColumns('allowedCols');
+      return {
+        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
+        DatabaseObjectName: document.getElementById('objectName')?.value?.trim() ?? '',
+        DatabaseSchema: document.getElementById('schema')?.value?.trim() ?? 'dbo',
+        AllowedMethods: methods,
+        ...(cols.length ? { AllowedColumns: cols } : {}),
+        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+      };
+    }
+  }
+  return {};
+}
+
+// ── Save ──────────────────────────────────────────────────
+
+async function saveEndpoint() {
+  if (!_selected || !_detailData) return;
+  const { type, name } = _selected;
+
+  let body;
+  if (_rawMode) {
+    const raw = document.getElementById('rawContent')?.value ?? '';
+    try { JSON.parse(raw); } catch(e) { showToast('Invalid JSON: ' + e.message, 'error'); return; }
+    body = { content: raw };
+    try {
+      const r = await fetch(`/ui/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? r.statusText);
+      showToast('Saved', 'success');
+      _dirty = false;
+      await selectEndpoint(type, name, false);
+    } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+  } else {
+    const errs = validateForm(type);
+    if (errs.length) { showToast(errs[0], 'error'); return; }
+    const cfg = collectFormConfig(type, _detailData.content);
+    body = { content: cfg };
+    try {
+      const r = await fetch(`/ui/api/endpoints/${type}/${name}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error ?? r.statusText);
+      showToast('Saved', 'success');
+      _dirty = false;
+      await selectEndpoint(type, name, false);
+    } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+  }
+}
+
+function toggleRawMode() {
+  _rawMode = !_rawMode;
+  renderDetail();
+}
+
+async function reloadDetail() {
+  if (_selected) await selectEndpoint(_selected.type, _selected.name, false);
+}
+
+// ── Delete ────────────────────────────────────────────────
+
+function startDelete() {
+  const el = document.getElementById('epDeleteConfirm');
+  if (el) el.style.display = '';
+}
+
+function cancelDelete() {
+  const el = document.getElementById('epDeleteConfirm');
+  if (el) el.style.display = 'none';
+}
+
+async function confirmDelete() {
+  if (!_selected) return;
+  const { type, name } = _selected;
+  try {
+    const r = await fetch(`/ui/api/endpoints/${type}/${name}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error ?? r.statusText);
+    showToast(`${name} deleted`, 'success');
+    _selected = null;
+    _detailData = null;
+    document.getElementById('epDetail').innerHTML = `<div class="ep-empty">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <span>Select an endpoint to view and edit its configuration</span>
+    </div>`;
+    await refreshAll();
+  } catch(e) {
+    showToast('Delete failed: ' + e.message, 'error');
+  }
+}
+
+// ── Create Drawer ─────────────────────────────────────────
+
+function openCreateDrawer() {
+  _createType = 'sql';
+  renderCreateTypePicker();
+  renderCreateForm();
+  document.getElementById('createBackdrop').classList.add('open');
+  document.getElementById('createDrawer').classList.add('open');
+}
+
+function closeCreateDrawer() {
+  document.getElementById('createBackdrop').classList.remove('open');
+  document.getElementById('createDrawer').classList.remove('open');
+}
+
+function renderCreateTypePicker() {
+  document.getElementById('createTypePicker').innerHTML = ENDPOINT_TYPES
+    .filter(t => t.key !== 'webhook') // webhook is a single shared file
+    .map(t => `<button type="button" class="btn ${_createType === t.key ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="setCreateType('${t.key}')">${t.label}</button>`)
+    .join('');
+}
+
+function setCreateType(key) {
+  _createType = key;
+  renderCreateTypePicker();
+  renderCreateForm();
+}
+
+function renderCreateForm() {
+  const typeCfg = ENDPOINT_TYPES.find(t => t.key === _createType);
+  const def = typeCfg?.defaultContent ?? {};
+  let html = `<div class="ep-section">
+    <div class="ep-section-title">Identity</div>
+    ${fieldText('createName', 'Name', '')}
+  </div>`;
+
+  switch(_createType) {
+    case 'sql':
+      html += `<div class="ep-section">
+        <div class="ep-section-title">Database Object</div>
+        ${fieldText('createObjectName', 'Object Name', '')}
+        ${fieldText('createSchema', 'Schema', 'dbo')}
+        ${fieldSelect('createObjectType', 'Type', 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
+      </div>
+      <div class="ep-section">
+        <div class="ep-section-title">Access</div>
+        ${fieldMethods(['GET'], 'createMethodPicker')}
+        ${fieldAllowedEnvs('*')}
+        ${fieldToggle('createIsPrivate', 'Private', false)}
+      </div>`;
+      break;
+    case 'proxy':
+      html += `<div class="ep-section">
+        <div class="ep-section-title">Target</div>
+        ${fieldText('createUrl', 'URL', '')}
+      </div>
+      <div class="ep-section">
+        <div class="ep-section-title">Access</div>
+        ${fieldMethods(['GET'], 'createMethodPicker')}
+        ${fieldAllowedEnvs('*')}
+        ${fieldToggle('createIsPrivate', 'Private', false)}
+      </div>`;
+      break;
+    case 'composite':
+      html += `<div class="ep-section">
+        <div class="ep-section-title">Access</div>
+        ${fieldMethods(['GET'], 'createMethodPicker')}
+        ${fieldAllowedEnvs('*')}
+        ${fieldToggle('createIsPrivate', 'Private', false)}
+      </div>
+      <div class="ep-section">
+        <div class="ep-section-title">Steps (JSON)</div>
+        <div class="ep-field">
+          <label for="createSteps">Steps Array</label>
+          <textarea id="createSteps" style="min-height:100px;font-family:monospace;font-size:0.8rem">[]</textarea>
+        </div>
+      </div>`;
+      break;
+    case 'file':
+      html += `<div class="ep-section">
+        <div class="ep-section-title">Storage</div>
+        ${fieldSelect('createStorageType', 'Storage Type', 'Local', ['Local','AzureBlob','S3'])}
+        ${fieldText('createBaseDir', 'Base Directory', '')}
+        ${fieldText('createExtensions', 'Allowed Extensions', '.jpg, .png, .pdf')}
+      </div>
+      <div class="ep-section">
+        <div class="ep-section-title">Access</div>
+        ${fieldAllowedEnvs('*')}
+        ${fieldToggle('createIsPrivate', 'Private', false)}
+      </div>`;
+      break;
+    case 'static':
+      html += `<div class="ep-section">
+        <div class="ep-section-title">Content</div>
+        ${fieldText('createContentFile', 'Content File', '')}
+        ${fieldText('createContentType', 'Content-Type', 'application/json')}
+        ${fieldToggle('createEnableFiltering', 'Enable OData Filtering', false)}
+      </div>
+      <div class="ep-section">
+        <div class="ep-section-title">Access</div>
+        ${fieldAllowedEnvs('*')}
+        ${fieldToggle('createIsPrivate', 'Private', false)}
+      </div>`;
+      break;
+  }
+
+  document.getElementById('createForm').innerHTML = html;
+}
+
+async function submitCreate() {
+  const name = (document.getElementById('createName')?.value ?? '').trim();
+  if (!name) { showToast('Name is required', 'error'); return; }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) { showToast('Name must use only letters, numbers, hyphens, or underscores', 'error'); return; }
+
+  const methods = readMethods('createMethodPicker');
+  const envs = readEnvs();
+  let content;
+  let validationErr = null;
+
+  switch(_createType) {
+    case 'sql': {
+      const objectName = document.getElementById('createObjectName')?.value?.trim();
+      if (!objectName) { validationErr = 'Object Name is required'; break; }
+      if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
+      content = {
+        DatabaseObjectName: objectName,
+        DatabaseSchema: document.getElementById('createSchema')?.value?.trim() ?? 'dbo',
+        DatabaseObjectType: document.getElementById('createObjectType')?.value ?? 'Table',
+        AllowedMethods: methods,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+      }; break; }
+    case 'proxy': {
+      const url = document.getElementById('createUrl')?.value?.trim();
+      if (!url) { validationErr = 'URL is required'; break; }
+      if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
+      content = {
+        Url: url,
+        Methods: methods,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+      }; break; }
+    case 'composite': {
+      if (!methods.length) { validationErr = 'At least one method must be selected'; break; }
+      let steps = [];
+      try { steps = JSON.parse(document.getElementById('createSteps')?.value ?? '[]'); }
+      catch { validationErr = 'Steps must be valid JSON'; break; }
+      content = {
+        Type: 'Composite',
+        Methods: methods,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
+        CompositeConfig: { Steps: steps }
+      }; break; }
+    case 'file': {
+      const baseDir = document.getElementById('createBaseDir')?.value?.trim();
+      if (!baseDir) { validationErr = 'Base Directory is required'; break; }
+      const exts = (document.getElementById('createExtensions')?.value ?? '').split(',').map(s=>s.trim()).filter(Boolean);
+      content = {
+        StorageType: document.getElementById('createStorageType')?.value ?? 'Local',
+        BaseDirectory: baseDir,
+        AllowedExtensions: exts,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+      }; break; }
+    case 'static': {
+      const contentFile = document.getElementById('createContentFile')?.value?.trim();
+      const contentType = document.getElementById('createContentType')?.value?.trim();
+      if (!contentFile) { validationErr = 'Content File is required'; break; }
+      if (!contentType) { validationErr = 'Content-Type is required'; break; }
+      content = {
+        ContentFile: contentFile,
+        ContentType: contentType,
+        EnableFiltering: document.getElementById('createEnableFiltering')?.checked ?? false,
+        AllowedEnvironments: envs,
+        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+      }; break; }
+    default:
+      content = {};
+  }
+
+  if (validationErr) { showToast(validationErr, 'error'); return; }
+
+  try {
+    const r = await fetch(`/ui/api/endpoints/${_createType}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, content: JSON.stringify(content, null, 2) })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error ?? r.statusText);
+    showToast(`${name} created`, 'success');
+    closeCreateDrawer();
+    await refreshAll();
+    selectEndpoint(_createType, name);
+  } catch(e) {
+    showToast('Create failed: ' + e.message, 'error');
+  }
+}
+
+// ── Toast helper ──────────────────────────────────────────
+function showToast(msg, type = 'success') { toast(msg, type); }
+
+// ── Bootstrap ─────────────────────────────────────────────
+refreshAll();
 </script>
 </body>
 </html>

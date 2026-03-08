@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Serilog;
 using PortwayApi.Interfaces;
+using PortwayApi.Services;
 using PortwayApi.Services.Caching;
 
 namespace PortwayApi.Services.Configuration;
@@ -12,6 +14,7 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
     private readonly string _environmentsPath;
     private readonly CacheManager _cacheManager;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
+    private readonly SseBroadcaster? _broadcaster;
     private FileSystemWatcher? _fileWatcher;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
     private readonly Dictionary<string, DateTime> _lastReloadTimes = new();
@@ -20,12 +23,14 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
 
     public EnvironmentFileWatcher(
         CacheManager cacheManager,
-        IEnvironmentSettingsProvider environmentSettingsProvider)
+        IEnvironmentSettingsProvider environmentSettingsProvider,
+        SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
-        _environmentsPath = Path.Combine(baseDir, "environments");
-        _cacheManager = cacheManager;
+        _environmentsPath            = Path.Combine(baseDir, "environments");
+        _cacheManager                = cacheManager;
         _environmentSettingsProvider = environmentSettingsProvider;
+        _broadcaster                 = broadcaster;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -131,6 +136,7 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
             await InvalidateEnvironmentCacheAsync(environmentName);
 
             Log.Information("Environment '{Environment}' settings changed, definition will reload on next request", environmentName);
+            _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "environments" }));
         }
         catch (Exception ex)
         {

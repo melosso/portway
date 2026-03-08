@@ -290,34 +290,40 @@ try
             }
         }, new JsonSerializerOptions { WriteIndented = true }));
     }
+
     var urlValidator = new UrlValidator(urlValidatorPath);
     builder.Services.AddSingleton(urlValidator);
-
-    // Configure Health Checks
     builder.Services.AddHealthChecks();
-
-    // Register HealthCheckService wrapper with all dependencies (uses lazy endpoint lookup)
     builder.Services.AddSingleton<PortwayApi.Services.HealthCheckService>(sp =>
     {
         var healthCheckService = sp.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
         var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+        var environmentSettingsProvider = sp.GetRequiredService<IEnvironmentSettingsProvider>();
+        var environmentSettings = sp.GetRequiredService<EnvironmentSettings>();
 
         return new PortwayApi.Services.HealthCheckService(
             healthCheckService,
-            TimeSpan.FromSeconds(30),
-            httpClientFactory);
+            TimeSpan.FromSeconds(90),   // TTL longer than refresh interval so cache is always valid
+            httpClientFactory,
+            environmentSettingsProvider,
+            environmentSettings);
     });
 
-    // Configure OpenAPI using our centralized configuration (now returns void and registers with IOptionsMonitor)
+    // The SSE broadcaster for /ui/ route
+    builder.Services.AddSingleton<PortwayApi.Services.SseBroadcaster>();
+
+    // Background service to prevent health check cache from expiring 
+    builder.Services.AddHostedService(sp =>
+        new PortwayApi.Services.HealthRefreshService(
+            sp.GetRequiredService<PortwayApi.Services.HealthCheckService>(),
+            TimeSpan.FromSeconds(60),
+            sp.GetRequiredService<PortwayApi.Services.SseBroadcaster>()));
+
     OpenApiConfiguration.ConfigureOpenApi(builder);
 
     // Build the application
     var app = builder.Build();
-
-    // ── Web UI Administration ─────────────────────────────────
     var adminApiKey = builder.Configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
-
-    // Configure PathBase from environment variable or IIS
     var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
         ?? builder.Configuration["PathBase"];
 
@@ -350,7 +356,7 @@ try
     app.UseSecurityHeaders();
     app.UseContentNegotiation();
 
-    // 5. HTTPS redirection and forwarded headers
+    // HTTPS redirection and forwarded headers
     var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor |
@@ -364,7 +370,7 @@ try
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
 
-    // 5. Proxy-specific middleware
+    // Proxy-specific middleware
     app.Use((context, next) =>
     {
         // Check for CF headers
@@ -394,8 +400,10 @@ try
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
 
+    // Configure Web UI authentication and static file serving..
     if (!string.IsNullOrEmpty(adminApiKey))
         app.UseWebUiAuth(adminApiKey);
+
     app.UseDefaultFilesWithOptions();
     app.UseStaticFiles();
 
@@ -422,8 +430,7 @@ try
                 return;
             }
 
-            // Browser request: only show the landing page selector on the local network
-            // when the Web UI is enabled. External clients always go straight to docs.
+            // Browser request: only show the landing page selector on the local network,when the Web UI is enabled. External clients always go straight to docs.
             var remoteIp = context.Connection.RemoteIpAddress;
             var urlValidator = context.RequestServices.GetRequiredService<UrlValidator>();
             var isLocalClient = remoteIp != null && urlValidator.IsClientIpAllowed(
@@ -441,7 +448,7 @@ try
                 }
             }
 
-            // External client or no landing page — redirect to docs
+            // External client or no landing page; redirect to docs
             {
                 var redirectPath = $"{pathBase}/docs";
                 Log.Debug("Redirecting root to {Path}", redirectPath);
@@ -469,10 +476,9 @@ try
         await next();
     });
 
-    // 9. Request/response logging
+    // Logging middleware
     var enableRequestLogging = builder.Configuration.GetValue<bool>("LogSettings:LogResponseToFile") || builder.Environment.IsDevelopment();
 
-    // 10. CORS (before authentication)
     if (!builder.Environment.IsDevelopment())
     {
         app.UseCors("AllowAllOrigins");
@@ -487,22 +493,14 @@ try
         });
     }
 
-    // 11. Rate limiting (before authentication to limit by IP)
     PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app);
-
-    // 12. Authentication and authorization
     app.UseTokenAuthentication();
     app.UseAuthorization();
-
-    // 13. Caching middleware (after auth)
     app.UseResponseCaching();
     app.UseAuthenticatedCaching();
     app.UseRequestTrafficLogging();
-
-    // 14. Routing
     app.UseRouting();
 
-    // Initialize Database & Token (if required)
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -610,7 +608,7 @@ try
     // Map health check endpoints
     PortwayApi.Endpoints.HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
 
-    // ── Web UI Routes & API ────────────────────────────────────
+    // Web UI Routes
     if (!string.IsNullOrEmpty(adminApiKey))
         app.MapWebUiEndpoints(adminApiKey);
 
@@ -658,7 +656,7 @@ try
         Log.Information("Application is hosted on: {Urls}", formattedUrls);
     }
 
-    var webUiAuthStatus = string.IsNullOrEmpty(adminApiKey) ? "disabled" : "enabled";
+    var webUiAuthStatus = string.IsNullOrEmpty(adminApiKey) ? "Disabled" : "Enabled";
     Log.Information("Web UI: {Status}", webUiAuthStatus);
 
     var endpointReloadEnabled = builder.Configuration.GetValue<bool>("EndpointReloading:Enabled", true);
