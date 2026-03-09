@@ -230,6 +230,8 @@ GET /api/600/Products
 Response: 401 Unauthorized
 {
   "error": "Authentication required",
+  "clientIp": "0.0.0.0",
+  "requestedPath": "/api/600/Products",
   "success": false
 }
 ```

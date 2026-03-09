@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
+using PortwayApi.Helpers;
 using PortwayApi.Services;
 using Serilog;
 
@@ -41,10 +42,20 @@ public class TokenAuthMiddleware
         // Continue with authentication logic
         if (!context.Request.Headers.TryGetValue("Authorization", out var providedToken))
         {
-            Log.Warning("Authorization header missing for {Path}", context.Request.Path);
+            var remoteIp = context.Connection.RemoteIpAddress;
+            var validator = context.RequestServices.GetRequiredService<UrlValidator>();
+
+            Log.Debug("Authorization header missing for {Path}", context.Request.Path);
+            
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { error = "Authentication required", success = false });
+            await context.Response.WriteAsJsonAsync(new 
+            { 
+                error = "Authentication required",
+                clientIp = remoteIp?.ToString() ?? "Unknown",
+                requestedPath = context.Request.Path.Value,
+                success = false 
+            });            
             return;
         }
 
