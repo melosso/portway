@@ -149,9 +149,9 @@ public class HealthCheckService
 
             var description = status switch
             {
-                HealthStatus.Unhealthy => $"Critical: Only {percentFreeRounded:F0}% disk space remaining",
-                HealthStatus.Degraded => $"Low disk space: {percentFreeRounded:F0}% remaining",
-                _ => $"Disk space: {percentFreeRounded:F0}% remaining"
+                HealthStatus.Unhealthy => $"Health check status: Critical: Only {percentFreeRounded:F0}% disk space remaining",
+                HealthStatus.Degraded => $"Health check status: Low disk space: {percentFreeRounded:F0}% remaining",
+                _ => $"Health check status: Disk space: {percentFreeRounded:F0}% remaining"
             };
 
             return new HealthReportEntry(
@@ -228,12 +228,12 @@ public class HealthCheckService
 
             status = unhealthyEndpoints.Any() ? HealthStatus.Unhealthy : HealthStatus.Healthy;
             var description = status == HealthStatus.Healthy 
-                ? "All proxy services are responding" 
-                : "One or more proxy services are not responding properly";
+                ? "Health check status: All proxy services are responding" 
+                : "Health check status: One or more proxy services are not responding properly";
 
             if (unhealthyEndpoints.Any())
             {
-                Log.Warning("Unhealthy proxy endpoints detected: {UnhealthyEndpoints}", 
+                Log.Warning("Health check status: Unhealthy proxy endpoints detected ({UnhealthyEndpoints})", 
                     string.Join(", ", unhealthyEndpoints));
             }
 
@@ -387,9 +387,18 @@ public class HealthCheckService
                 lock (results) results[env] = new { Status = "Healthy" };
                 Log.Debug("SQL connectivity check passed for environment: {Environment}", env);
             }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                const string timeoutMsg = "Connection timed out after 5 seconds";
+                Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, timeoutMsg);
+                lock (results) results[env] = new { Status = "Unhealthy", Error = timeoutMsg };
+                lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);
+            }
             catch (Exception ex)
             {
-                var errorMsg = ex.InnerException?.Message ?? ex.Message;
+                var errorMsg = ex is SqlException sql
+                    ? $"SQL error {sql.Number}: {sql.Message}"
+                    : ex.InnerException?.Message ?? ex.Message;
                 Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
                 lock (results) results[env] = new { Status = "Unhealthy", Error = errorMsg };
                 lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);
@@ -402,7 +411,7 @@ public class HealthCheckService
             : $"SQL connectivity failed for: {string.Join(", ", unhealthyEnvironments)}";
 
         if (unhealthyEnvironments.Any())
-            Log.Warning("Unhealthy SQL environments: {Environments}", string.Join(", ", unhealthyEnvironments));
+            Log.Warning("Health check status: Unhealthy SQL environments detected ({Environments})", string.Join(", ", unhealthyEnvironments));
 
         return new HealthReportEntry(
             status,
