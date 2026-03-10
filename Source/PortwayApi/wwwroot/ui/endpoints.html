@@ -867,7 +867,7 @@ async function saveEndpoint() {
       if (!r.ok) throw new Error(d.error ?? r.statusText);
       showToast('Saved', 'success');
       _dirty = false;
-      await loadAll();
+      await refreshAll();
     } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
   } else {
     const errs = validateForm(type);
@@ -880,7 +880,7 @@ async function saveEndpoint() {
       if (!r.ok) throw new Error(d.error ?? r.statusText);
       showToast('Saved', 'success');
       _dirty = false;
-      await loadAll();
+      await refreshAll();
     } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
   }
 }

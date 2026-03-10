@@ -123,7 +123,7 @@ public static class WebUiEndpointExtensions
         // Login
         app.MapGet("/ui/login", (HttpContext ctx) =>
             uiAuthEnabled
-                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase)
+                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase, appVersion)
                 : Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
             .ExcludeFromDescription();
         app.MapGet("/ui/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/login"))
@@ -170,7 +170,7 @@ public static class WebUiEndpointExtensions
         {
             var p        = page;
             var filePath = Path.Combine(wwwroot, $"{p}.html");
-            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeHtml(filePath, ctx.Request.PathBase)).ExcludeFromDescription();
+            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeHtml(filePath, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
             app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
         }
 
@@ -1051,12 +1051,18 @@ public static class WebUiEndpointExtensions
             Encoding.UTF8.GetBytes(token[(dot + 1)..]));
     }
 
-    private static IResult ServeHtml(string filePath, PathString pathBase)
+    private static IResult ServeHtml(string filePath, PathString pathBase, string version)
     {
         if (!File.Exists(filePath)) return Results.NotFound();
         var pb = pathBase.Value ?? "";
+        var v  = Uri.EscapeDataString(version);
         var html = File.ReadAllText(filePath);
         html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
+        // Cache-bust local CSS and JS so browsers always fetch the latest version
+        html = System.Text.RegularExpressions.Regex.Replace(
+            html,
+            @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",
+            m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={v}\"");
         return Results.Content(html, "text/html; charset=utf-8");
     }
 }
