@@ -9,6 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="/css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="/js/components/toast.js"></script>
+  <script src="/js/components/tooltip.js"></script>
+  <script src="/js/components/drawer.js"></script>
+  <script src="/js/components/dialog.js"></script>
   <script src="/js/sidebar.js"></script>
   <script src="/js/shared.js"></script>
 </head>
@@ -22,10 +26,6 @@
       <h1 class="select-none">Access Tokens</h1>
     </div>
     <div class="header-actions">
-      <div class="search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="searchInput" placeholder="Search tokens…" oninput="applyFilters()">
-      </div>
       <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; color:hsl(var(--muted-foreground)); cursor:pointer;" onclick="document.getElementById('showRevokedCb').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="showRevokedCb" onchange="loadTokens()">
@@ -33,9 +33,16 @@
         </label>
         Show archived
       </div>
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Search tokens…" oninput="applyFilters()">
+      </div>
+      <button class="btn btn-outline" onclick="refreshAll()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
       <button class="btn btn-primary" onclick="openCreateDrawer()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Token
       </button>
     </div>
   </div>
@@ -97,11 +104,11 @@
 </main>
 
 <!-- Create Drawer -->
-<div class="drawer-backdrop" id="createBackdrop" onclick="closeCreateDrawer()"></div>
+<div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
   <div class="drawer-header">
     <span class="drawer-title">Create Token</span>
-    <button class="btn-icon" onclick="closeCreateDrawer()">
+    <button class="btn-icon" data-drawer-close="createDrawer">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -146,15 +153,15 @@
   </div>
 </div>
 
-<!-- Edit Drawer ───────────────────────────────────────── -->
-<div class="drawer-backdrop" id="editBackdrop" onclick="closeEditDrawer()"></div>
+<!-- Edit Drawer -->
+<div class="drawer-backdrop" id="editBackdrop" data-drawer-backdrop="editDrawer"></div>
 <div class="drawer" id="editDrawer">
   <div class="drawer-header">
     <div>
       <div class="drawer-title" id="editDrawerTitle">Edit Token</div>
       <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.125rem" id="editDrawerSubtitle"></div>
     </div>
-    <button class="btn-icon" onclick="closeEditDrawer()">
+    <button class="btn-icon" data-drawer-close="editDrawer">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -200,7 +207,7 @@
     </div>
   </div>
   <div class="drawer-footer" id="editFooter">
-    <button class="btn btn-outline" onclick="closeEditDrawer()">Cancel</button>
+    <button class="btn btn-outline" data-drawer-close="editDrawer">Cancel</button>
     <button class="btn btn-primary" onclick="saveToken()" id="saveTokenBtn" style="margin-left:auto">
       <span class="btn-label">Save Changes</span>
       <span class="btn-spinner"></span>
@@ -230,7 +237,7 @@
   </div>
 </div>
 
-<!-- Toast Container ───────────────────────────────────── -->
+<!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
 <script>
@@ -350,9 +357,17 @@ class TagInput {
     const filtered = this.suggestions
       .filter(s => (!val || s.toLowerCase().includes(val)) && !this.tags.includes(s))
       .slice(0, 12);
-    if (!filtered.length) { this._hideDropdown(); return; }
+    const showWild = !val || '*'.includes(val);
+    if (!filtered.length && !showWild) { this._hideDropdown(); return; }
 
     this.dropdown.innerHTML = '';
+    if (showWild) {
+      const item = document.createElement('div');
+      item.className = 'tag-dropdown-item';
+      item.innerHTML = '<strong>*</strong> <span style="color:hsl(var(--muted-foreground));font-size:0.72rem">— allow all</span>';
+      item.addEventListener('mousedown', e => { e.preventDefault(); this.addTag('*'); });
+      this.dropdown.appendChild(item);
+    }
     filtered.forEach(s => {
       const item = document.createElement('div');
       item.className = 'tag-dropdown-item';
@@ -374,7 +389,7 @@ class TagInput {
   _hideDropdown() { this.dropdown.style.display = 'none'; }
 }
 
-// Data Loading ──────────────────────────────────────────
+// Data Loading
 async function loadTokens() {
   const includeRevoked = document.getElementById('showRevokedCb').checked;
   try {
@@ -389,6 +404,36 @@ async function loadTokens() {
 
 function tokenStatus(t) {
   return t.revoked_at ? 'archived' : !t.is_active ? 'expired' : 'active';
+}
+
+async function refreshAll() {
+  const [epsResult, envResult] = await Promise.allSettled([
+    fetch('/ui/api/endpoints').then(r => r.json()),
+    fetch('/ui/api/environments').then(r => r.json())
+  ]);
+
+  if (epsResult.status === 'fulfilled') {
+    const eps = epsResult.value;
+    const names = [
+      ...(eps.sql       || []).map(e => e.name),
+      ...(eps.proxy     || []).map(e => e.name),
+      ...(eps.composite || []).map(e => e.name),
+      ...(eps.file      || []).map(e => e.name),
+      ...(eps.static    || []).map(e => e.name),
+      ...(eps.webhook   || []).map(e => e.name)
+    ];
+    endpointSuggestions = [...new Set(names)].sort();
+    createScopesTI.setSuggestions(endpointSuggestions);
+    editScopesTI.setSuggestions(endpointSuggestions);
+  }
+
+  if (envResult.status === 'fulfilled') {
+    environmentSuggestions = envResult.value.allowed_environments || [];
+    createEnvsTI.setSuggestions(environmentSuggestions);
+    editEnvsTI.setSuggestions(environmentSuggestions);
+  }
+
+  await loadTokens();
 }
 
 function applyFilters() {
@@ -455,8 +500,10 @@ function renderTable() {
   const start = (currentPage - 1) * rpp;
   const page  = filteredTokens.slice(start, start + rpp);
 
-  const archiveIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
-  const editIcon    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const archiveIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
+  const unarchiveIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="8 12 12 8 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>`;
+  const editIcon      = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const showArchived  = document.getElementById('showRevokedCb').checked;
 
   tbody.innerHTML = page.map(t => {
     const status = tokenStatus(t);
@@ -471,8 +518,10 @@ function renderTable() {
       : `<span class="muted">Never</span>`;
 
     const revokeBtn = t.revoked_at
-      ? `<button class="btn-icon" disabled title="Already archived" style="opacity:0.3; cursor:default">${archiveIcon}</button>`
-      : `<button class="btn-icon" title="Archive token" onclick="confirmRevoke(${t.id},this)">${archiveIcon}</button>`;
+      ? (showArchived
+          ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Restore token" onclick="unarchiveToken(${t.id})">${unarchiveIcon}</button>`
+          : `<button class="btn-icon shadcn-tooltip" disabled data-tooltip="Already archived" style="opacity:0.3; cursor:default">${archiveIcon}</button>`)
+      : `<button class="btn-icon shadcn-tooltip" data-tooltip="Archive token" onclick="confirmRevoke(${t.id},this)">${archiveIcon}</button>`;
 
     return `<tr>
       <td style="padding-left:1rem; width:36px;"><input type="checkbox" class="row-check" data-id="${t.id}" style="cursor:pointer; accent-color:hsl(var(--primary));"></td>
@@ -485,7 +534,7 @@ function renderTable() {
       <td>${badge}</td>
       <td style="text-align:right; padding-right:1rem;">
         <div style="display:inline-flex; gap:2px; align-items:center;">
-          <button class="btn-icon" title="Edit" onclick="openEditDrawer(${t.id})">${editIcon}</button>
+          <button class="btn-icon shadcn-tooltip" data-tooltip="Edit token" onclick="openEditDrawer(${t.id})">${editIcon}</button>
           ${revokeBtn}
         </div>
       </td>
@@ -530,14 +579,12 @@ function openCreateDrawer() {
   document.getElementById('createName').value   = '';
   document.getElementById('createDesc').value   = '';
   document.getElementById('createExpiry').value = '';
-  document.getElementById('createBackdrop').classList.add('open');
-  document.getElementById('createDrawer').classList.add('open');
+  Drawer.open('createDrawer');
   setTimeout(() => document.getElementById('createName').focus(), 220);
 }
 
 function closeCreateDrawer() {
-  document.getElementById('createBackdrop').classList.remove('open');
-  document.getElementById('createDrawer').classList.remove('open');
+  Drawer.close('createDrawer');
 }
 
 async function createToken() {
@@ -603,13 +650,11 @@ function openEditDrawer(id) {
   }
 
   switchTab('policy');
-  document.getElementById('editBackdrop').classList.add('open');
-  document.getElementById('editDrawer').classList.add('open');
+  Drawer.open('editDrawer');
 }
 
 function closeEditDrawer() {
-  document.getElementById('editBackdrop').classList.remove('open');
-  document.getElementById('editDrawer').classList.remove('open');
+  Drawer.close('editDrawer');
   editingTokenId = null;
 }
 
@@ -719,6 +764,17 @@ async function revokeToken(id) {
   }
 }
 
+async function unarchiveToken(id) {
+  try {
+    const r = await fetch(`/ui/api/tokens/${id}/unarchive`, { method: 'POST' });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.error || 'Failed to restore token', 'error'); return; }
+    toast('Token restored', 'success');
+    await loadTokens();
+  } catch(e) {
+    toast('Failed to restore token', 'error');
+  }
+}
+
 // Token Reveal Modal ────────────────────────────────────
 function showRevealModal(token, data) {
   revealData = { ...data, token };
@@ -812,6 +868,8 @@ async function init() {
 }
 
 init();
+
+refreshAll();
 </script>
 </body>
 </html>

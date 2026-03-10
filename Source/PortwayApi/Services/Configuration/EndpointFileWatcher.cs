@@ -151,7 +151,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Debug("Could not determine endpoint name from path: {Path}", filePath);
                 return;
             }
-
+            
             // Reload endpoint definitions
             EndpointHandler.ReloadEndpointType(endpointType.Value);
 
@@ -163,7 +163,11 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Debug("SQL metadata cleared for endpoint '{Endpoint}'", endpointName);
             }
 
-            Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+            var ns = ExtractNamespace(filePath);
+            if (ns != null)
+                Log.Information("Endpoint '{Name}' ({Type}, namespace: {Namespace}) changed, will reload on next request", endpointName, endpointType, ns);
+            else
+                Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
             _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "endpoints" }));
         }
         catch (Exception ex)
@@ -175,6 +179,9 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             _reloadSemaphore.Release();
         }
     }
+
+    private static readonly HashSet<string> _typeFolderNames = new(StringComparer.OrdinalIgnoreCase)
+        { "SQL", "Proxy", "Static", "Files", "Webhooks" };
 
     private string? ExtractEndpointName(string filePath)
     {
@@ -195,6 +202,26 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         }
 
         return null;
+    }
+
+    private string? ExtractNamespace(string filePath)
+    {
+        try
+        {
+            if (!Path.GetFileName(filePath).Equals("entity.json", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            // .../endpoints/{Type}/{Namespace?}/{EndpointName}/entity.json
+            var endpointDir  = Path.GetDirectoryName(filePath);          // EndpointName dir
+            var namespaceDir = Path.GetDirectoryName(endpointDir);       // Namespace or Type dir
+            var namespaceName = Path.GetFileName(namespaceDir);
+
+            return _typeFolderNames.Contains(namespaceName) ? null : namespaceName;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void StartPollingFallback()
