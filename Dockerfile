@@ -44,7 +44,7 @@ RUN mkdir -p /app/endpoints/SQL/Product && \
     mkdir -p /app/environments/prod
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
+# For future reference, ASPNETCORE_HTTP_PORTS=8080 is already set by the base image (dotnet/aspnet:8.0+). Can be removed when deemed stable.
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Copy published output and tools

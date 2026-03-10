@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
@@ -28,30 +29,37 @@ public static class WebUiEndpointExtensions
     public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
     {
         var uiAuthEnabled = !string.IsNullOrEmpty(adminApiKey);
+        var publicOrigins = app.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
 
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path;
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
 
-            // Restrict the UI to the local machine and allowed network hosts only.
-            var remoteIp = context.Connection.RemoteIpAddress;
-            var validator = context.RequestServices.GetRequiredService<UrlValidator>();
+            // Allow external clients whose origin matches a configured PublicOrigins pattern.
+            // Otherwise restrict to local network only.
+            var isPublicOrigin = publicOrigins.Length > 0 && IsPublicOriginAllowed(context.Request, publicOrigins);
 
-            if (remoteIp == null || !validator.IsClientIpAllowed(remoteIp))
+            if (!isPublicOrigin)
             {
-                context.Response.StatusCode = 403;
-                context.Response.ContentType = "application/json";
-                
-                await context.Response.WriteAsJsonAsync(new 
-                { 
-                    error = "Access denied",
-                    clientIp = remoteIp?.ToString() ?? "Unknown",
-                    requestedPath = context.Request.Path.Value,
-                    success = false 
-                });
-                
-                return;
+                var remoteIp = context.Connection.RemoteIpAddress;
+                var validator = context.RequestServices.GetRequiredService<UrlValidator>();
+
+                if (remoteIp == null || !validator.IsClientIpAllowed(remoteIp))
+                {
+                    context.Response.StatusCode = 403;
+                    context.Response.ContentType = "application/json";
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "Access denied",
+                        clientIp = remoteIp?.ToString() ?? "Unknown",
+                        requestedPath = context.Request.Path.Value,
+                        success = false
+                    });
+
+                    return;
+                }
             }
 
             // Cookie auth check, skip for the login page and the auth endpoints themselves.
@@ -71,6 +79,34 @@ public static class WebUiEndpointExtensions
         });
 
         return app;
+    }
+
+    /// <summary>
+    /// Returns true if the request's effective origin matches any of the configured PublicOrigins patterns.
+    /// Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com".
+    /// </summary>
+    internal static bool IsPublicOriginAllowed(HttpRequest request, string[] patterns)
+    {
+        // Origin header is present on XHR/fetch; for navigation requests fall back to scheme+host.
+        var origin = request.Headers.Origin.FirstOrDefault();
+        if (string.IsNullOrEmpty(origin))
+        {
+            var scheme = request.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? request.Scheme;
+            origin = $"{scheme}://{request.Host.Value}";
+        }
+
+        return patterns.Any(p => MatchesOriginPattern(origin, p));
+    }
+
+    private static bool MatchesOriginPattern(string origin, string pattern)
+    {
+        if (!pattern.Contains('*'))
+            return string.Equals(origin.TrimEnd('/'), pattern.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+
+        // * matches a single host label (no dots), e.g. https://*.melosso.com matches
+        // https://foo.melosso.com but NOT https://a.b.melosso.com.
+        var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", "[^.]+") + "/?$";
+        return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
     }
 
     /// <summary>
