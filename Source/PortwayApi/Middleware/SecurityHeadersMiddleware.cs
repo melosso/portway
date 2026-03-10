@@ -70,22 +70,47 @@ public class SecurityHeadersMiddleware
             return;
         }
 
+        // Block cross-origin font requests
+        if (IsFontRequest(context.Request.Path))
+        {
+            var origin = context.Request.Headers.Origin.ToString();
+            if (!string.IsNullOrEmpty(origin))
+            {
+                var serverOrigin = $"{context.Request.Scheme}://{context.Request.Host}";
+                if (!origin.Equals(serverOrigin, StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = 403;
+                    return;
+                }
+                context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+            }
+        }
+
         // Register a callback to modify headers after response generation
         context.Response.OnStarting(() =>
         {
             // Remove unsafe headers
             RemoveUnsafeHeaders(context.Response.Headers);
-            
+
             // Add security headers
             AddSecurityHeaders(context.Response.Headers);
-            
+
             return Task.CompletedTask;
         });
 
         await _next(context);
     }
 
-    private bool ShouldSkipSecurityHeaders(PathString path)
+    private static bool IsFontRequest(PathString path)
+    {
+        var p = path.Value ?? "";
+        return p.StartsWith("/fonts/", StringComparison.OrdinalIgnoreCase) &&
+               (p.EndsWith(".woff2", StringComparison.OrdinalIgnoreCase) ||
+                p.EndsWith(".woff", StringComparison.OrdinalIgnoreCase) ||
+                p.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ShouldSkipSecurityHeaders(PathString path)
     {
         return path.StartsWithSegments("/openapi-docs") ||
                path.StartsWithSegments("/docs") ||
@@ -97,12 +122,7 @@ public class SecurityHeadersMiddleware
     private void RemoveUnsafeHeaders(IHeaderDictionary headers)
     {
         foreach (var header in _unsafeResponseHeaders)
-        {
-            if (headers.ContainsKey(header))
-            {
-                headers.Remove(header);
-            }
-        }
+            headers.Remove(header);
     }
 
     private void AddSecurityHeaders(IHeaderDictionary headers)
