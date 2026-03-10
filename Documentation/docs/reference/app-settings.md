@@ -406,7 +406,6 @@ For production, restrict to specific domains:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
-| `ASPNETCORE_URLS` | Listening URLs | `http://+:8080` |
 | `KEYVAULT_URI` | Azure Key Vault URI | `https://vault.azure.net` |
 | `PROXY_USERNAME` | Proxy authentication user | `domain\user` |
 | `PROXY_PASSWORD` | Proxy authentication password | `password` |

@@ -20,7 +20,6 @@ This guide explains how to deploy Portway using Docker Compose for quick develop
         - ./data:/app/data
       environment:
         - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-        - ASPNETCORE_URLS=http://+:8080
 
   volumes:
     portway_app:
@@ -56,7 +55,6 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - ASPNETCORE_URLS=http://+:8080
       - USE_HTTPS=false
       
       # Proxy settings for Kerberos/NTLM
@@ -86,7 +84,6 @@ volumes:
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
-| `ASPNETCORE_URLS` | URL binding configuration | `http://+:8080` |
 | `USE_HTTPS` | Enable/disable HTTPS | `false` |
 
 ### Proxy Configuration
