@@ -41,7 +41,6 @@ services:
       - ./data:/app/data
     environment:
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - ASPNETCORE_URLS=http://+:8080
 
 volumes:
   portway_app:
