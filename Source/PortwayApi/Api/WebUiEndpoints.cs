@@ -640,6 +640,12 @@ public static class WebUiEndpointExtensions
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found" }, statusCode: 404);
         }).ExcludeFromDescription();
 
+        app.MapPost("/ui/api/tokens/{id:int}/unarchive", async (int id, TokenService tokenService) =>
+        {
+            var ok = await tokenService.UnarchiveTokenAsync(id);
+            return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found or not archived" }, statusCode: 404);
+        }).ExcludeFromDescription();
+
         app.MapGet("/ui/api/tokens/{id:int}/audit", async (int id, TokenService tokenService) =>
         {
             var entries = await tokenService.GetAuditLogAsync(tokenId: id, maxRecords: 50);
@@ -767,8 +773,12 @@ public static class WebUiEndpointExtensions
                 rawContent = contentEl.GetRawText();
             }
 
-            // Validate JSON
-            try { using var _ = JsonDocument.Parse(rawContent); }
+            // Validate JSON and re-serialize prettified
+            try
+            {
+                using var doc = JsonDocument.Parse(rawContent);
+                rawContent = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+            }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);

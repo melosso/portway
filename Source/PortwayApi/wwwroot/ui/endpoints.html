@@ -9,6 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="/css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="/js/components/toast.js"></script>
+  <script src="/js/components/tooltip.js"></script>
+  <script src="/js/components/drawer.js"></script>
+  <script src="/js/components/alert-dialog.js"></script>
   <script src="/js/sidebar.js"></script>
   <script src="/js/shared.js"></script>
   <style>
@@ -71,41 +75,23 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- Alert Dialog -->
-<div class="alert-dialog-overlay" id="alertDialogOverlay" onclick="if(event.target===this)hideAlertDialog()">
-  <div class="alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="alertDialogTitle">
-    <div class="alert-dialog-icon">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    </div>
-    <div>
-      <div class="alert-dialog-title" id="alertDialogTitle"></div>
-      <div class="alert-dialog-description" id="alertDialogDescription" style="margin-top:0.375rem"></div>
-    </div>
-    <div class="alert-dialog-extra" id="alertDialogExtra" style="display:none"></div>
-    <div class="alert-dialog-footer">
-      <button class="btn btn-outline" onclick="hideAlertDialog()">Cancel</button>
-      <button class="btn btn-destructive" id="alertDialogAction" onclick="confirmAlertDialog()">Delete</button>
-    </div>
-  </div>
-</div>
-
 <!-- Create Drawer -->
-<div class="drawer-backdrop" id="createBackdrop" onclick="closeCreateDrawer()"></div>
+<div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
   <div class="drawer-header">
     <h3 class="drawer-title">Add Endpoint</h3>
-    <button class="btn btn-ghost btn-sm" onclick="closeCreateDrawer()">
+    <button class="btn btn-ghost btn-sm" data-drawer-close="createDrawer">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
   <div class="drawer-body">
     <!-- Type selector tabs -->
-    <div style="display:flex;gap:0.375rem;flex-wrap:wrap;margin-bottom:1rem" id="createTypePicker"></div>
+    <div style="display:flex;gap:0.375rem;flex-wrap:wrap;margin-bottom:0rem" id="createTypePicker"></div>
 
     <div id="createForm"></div>
 
     <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
-      <button class="btn btn-outline" onclick="closeCreateDrawer()">Cancel</button>
+      <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
       <button class="btn btn-primary" onclick="submitCreate()">Create</button>
     </div>
   </div>
@@ -288,14 +274,14 @@ function renderDetail() {
       <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
       ${nameDisplay}
       ${_renaming ? '' : `<div class="actions">
-        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startRename()" title="Rename">
+        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm shadcn-tooltip" onclick="startRename()" data-tooltip="Rename endpoint name">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Rename
         </button>`}
         <button class="btn btn-outline btn-sm" onclick="toggleRawMode()">
           ${_rawMode ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Structured' : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Raw JSON'}
         </button>
-        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startDelete()" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)">
+        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startDelete()" style="color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4)" data-tooltip="Delete endpoint permanently">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           Delete
         </button>`}
@@ -322,15 +308,17 @@ function renderRawForm(raw) {
 
 function renderStructuredForm(type, content) {
   const c = content ?? {};
+  let inner;
   switch(type) {
-    case 'sql':      return renderSqlForm(c);
-    case 'proxy':    return renderProxyForm(c);
-    case 'composite':return renderCompositeForm(c);
-    case 'file':     return renderFileForm(c);
-    case 'static':   return renderStaticForm(c);
-    case 'webhook':  return renderWebhookForm(c);
-    default:         return `<div class="ep-empty">Unknown type</div>`;
+    case 'sql':       inner = renderSqlForm(c);       break;
+    case 'proxy':     inner = renderProxyForm(c);     break;
+    case 'composite': inner = renderCompositeForm(c); break;
+    case 'file':      inner = renderFileForm(c);      break;
+    case 'static':    inner = renderStaticForm(c);    break;
+    case 'webhook':   inner = renderWebhookForm(c);   break;
+    default:          return `<div class="ep-empty">Unknown type</div>`;
   }
+  return `<div class="ep-form">${inner}</div>`;
 }
 
 // Field helpers ─────────────────────────────────────────
@@ -386,11 +374,19 @@ function fieldTextarea(id, label, value, minHeight = '80px', isCode = false) {
 
 function fieldDocumentation(c) {
   const doc = c.Documentation ?? {};
-  return `<div class="ep-section">
-    <div class="ep-section-title">Documentation</div>
-    ${fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true)}
-    ${fieldTextarea('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions ? JSON.stringify(doc.MethodDescriptions, null, 2) : '', '72px', true)}
-    ${fieldTextarea('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation ? JSON.stringify(doc.MethodDocumentation, null, 2) : '', '100px', true)}
+  const hasContent = !!(doc.TagDescription || doc.MethodDescriptions || doc.MethodDocumentation);
+  return `<div class="accordion${hasContent ? '' : ''}">
+    <button type="button" class="accordion-trigger" onclick="this.closest('.accordion').classList.toggle('open')" style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
+      <span>Documentation</span>
+      <svg class="accordion-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <div class="accordion-body">
+      <div class="accordion-section" style="display:flex;flex-direction:column;gap:0.75rem;">
+        ${fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true)}
+        ${fieldTextarea('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions ? JSON.stringify(doc.MethodDescriptions, null, 2) : '', '72px', true)}
+        ${fieldTextarea('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation ? JSON.stringify(doc.MethodDocumentation, null, 2) : '', '100px', true)}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -481,35 +477,80 @@ function fieldAllowedEnvs(value) {
   return fieldText('allowedEnvironments', 'Environments', Array.isArray(value) ? value.join(', ') : (value ?? '*'));
 }
 
+function fieldJson(id, label, value, minHeight = '100px') {
+  const str = value != null ? JSON.stringify(value, null, 2) : '';
+  return fieldTextarea(id, label, str, minHeight, true);
+}
+
+function readJsonField(id) {
+  const val = document.getElementById(id)?.value?.trim();
+  if (!val) return undefined;
+  try { return JSON.parse(val); } catch { return undefined; }
+}
+
+function accordion(label, contentHtml, open = false) {
+  return `<div class="accordion${open ? ' open' : ''}">
+    <button type="button" class="accordion-trigger" onclick="this.closest('.accordion').classList.toggle('open')" style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
+      <span>${label}</span>
+      <svg class="accordion-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+    <div class="accordion-body">
+      <div class="accordion-section" style="display:flex;flex-direction:column;gap:0.75rem;">
+        ${contentHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+function fieldDocumentation(c) {
+  const doc = c.Documentation ?? {};
+  return accordion('Documentation',
+    fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true) +
+    fieldTextarea('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions ? JSON.stringify(doc.MethodDescriptions, null, 2) : '', '72px', true) +
+    fieldTextarea('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation ? JSON.stringify(doc.MethodDocumentation, null, 2) : '', '100px', true)
+  );
+}
+
 // Structured forms per type ─────────────────────────────
 
+// SQL — order matches file convention:
+// DatabaseSchema, DatabaseObjectName, Namespace, NamespaceDisplayName, IsPrivate,
+// AllowedEnvironments, AllowedMethods, Procedure, PrimaryKey,
+// [Columns accordion], [Advanced accordion], Documentation
 function renderSqlForm(c) {
   return `
     <div class="ep-section">
       <div class="ep-section-title">Database Object</div>
-      ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
       ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
+      ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
       ${fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       ${fieldText('procedure', 'Procedure', c.Procedure ?? '')}
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+      ${fieldText('primaryKey', 'Primary Key', c.PrimaryKey ?? '')}
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Access</div>
-      ${fieldMethods(c.AllowedMethods)}
-      ${fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldMethods(c.AllowedMethods)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
-      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
     </div>
+    ${accordion('Columns',
+        fieldColumns('allowedCols', 'Allowed Columns', c.AllowedColumns) +
+        fieldColumns('requiredCols', 'Required Columns', c.RequiredColumns))}
+    ${accordion('Advanced',
+        fieldJson('columnValidation', 'Column Validation (JSON)', c.ColumnValidation) +
+        fieldJson('functionParameters', 'Function Parameters (JSON, TVF only)', c.FunctionParameters))}
     ${fieldDocumentation(c)}`;
 }
 
+// Proxy — order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
+//                [Delete Patterns accordion], Documentation
 function renderProxyForm(c) {
-  // Proxy JSON uses "Methods" (not "AllowedMethods")
   return `
     <div class="ep-section">
       <div class="ep-section-title">Target</div>
@@ -521,12 +562,21 @@ function renderProxyForm(c) {
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
     </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Metadata</div>
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+    </div>
+    ${accordion('Delete Patterns',
+        fieldJson('deletePatterns', 'Delete Patterns (JSON)', c.DeletePatterns?.length ? c.DeletePatterns : null, '120px'))}
     ${fieldDocumentation(c)}`;
 }
 
+// Composite — order: Type, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
+//                    CompositeConfig (Name, Description, Steps), Documentation
 function renderCompositeForm(c) {
-  // Composite also lives in Proxy dir, uses "Methods"
-  const steps = (c.CompositeConfig?.Steps ?? []);
+  const cfg = c.CompositeConfig ?? {};
   return `
     <div class="ep-section">
       <div class="ep-section-title">Access</div>
@@ -535,12 +585,22 @@ function renderCompositeForm(c) {
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
     </div>
     <div class="ep-section">
-      <div class="ep-section-title">Steps</div>
-      ${fieldTextarea('compositeSteps', 'Steps Array (JSON)', JSON.stringify(steps, null, 2), '160px', true)}
+      <div class="ep-section-title">Metadata</div>
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Composite Config</div>
+      ${fieldText('compositeConfigName', 'Name', cfg.Name ?? '')}
+      ${fieldTextarea('compositeConfigDesc', 'Description', cfg.Description ?? '', '60px')}
+      ${fieldTextarea('compositeSteps', 'Steps (JSON)', JSON.stringify(cfg.Steps ?? [], null, 2), '160px', true)}
     </div>
     ${fieldDocumentation(c)}`;
 }
 
+// File — order: StorageType, BaseDirectory, AllowedExtensions, Namespace, NamespaceDisplayName,
+//               AllowedEnvironments, IsPrivate, Documentation
 function renderFileForm(c) {
   return `
     <div class="ep-section">
@@ -553,26 +613,44 @@ function renderFileForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
-    </div>`;
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Metadata</div>
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+    </div>
+    ${fieldDocumentation(c)}`;
 }
 
+// Static — order: ContentType, ContentFile, EnableFiltering, Namespace, NamespaceDisplayName,
+//                 AllowedEnvironments, IsPrivate, Documentation
 function renderStaticForm(c) {
   return `
     <div class="ep-section">
       <div class="ep-section-title">Content</div>
-      ${fieldText('contentFile', 'Content File', c.ContentFile ?? '')}
       ${fieldText('contentType', 'Content-Type', c.ContentType ?? 'application/json')}
+      ${fieldText('contentFile', 'Content File', c.ContentFile ?? '')}
       ${fieldToggle('enableFiltering', 'Enable OData Filtering', c.EnableFiltering ?? false)}
-      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
-    </div>`;
+    </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Metadata</div>
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+    </div>
+    ${fieldDocumentation(c)}`;
 }
 
+// Webhook — order: DatabaseObjectName, DatabaseSchema, AllowedColumns, AllowedMethods,
+//                  AllowedEnvironments, Namespace, NamespaceDisplayName, Documentation
 function renderWebhookForm(c) {
+  const hasAdvanced = !!(c.RequiredColumns?.length || c.ColumnValidation);
   return `
     <div class="ep-section">
       <div class="ep-section-title">Database Object</div>
@@ -583,13 +661,23 @@ function renderWebhookForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldMethods(c.AllowedMethods)}
       ${fieldColumns('allowedCols', 'Allowed Tables', c.AllowedColumns)}
+      ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
     </div>
+    <div class="ep-section">
+      <div class="ep-section-title">Metadata</div>
+      ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
+      ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
+      ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
+    </div>
+    ${accordion('Advanced',
+        fieldColumns('requiredCols', 'Required Columns', c.RequiredColumns) +
+        fieldJson('columnValidation', 'Column Validation (JSON)', c.ColumnValidation),
+        hasAdvanced)}
     ${fieldDocumentation(c)}`;
 }
 
-// Validation ────────────────────────────────────────────
-
+// Validation
 function readEnvs() {
   const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
   const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
@@ -642,8 +730,8 @@ function validateForm(type) {
   return errors;
 }
 
-// Collect form → JSON object ────────────────────────────
-
+// Collect form → JSON object
+// Always spread existing content first so fields not shown in the UI are preserved.
 function collectFormConfig(type, existingContent) {
   const c = existingContent ?? {};
   const methods = readMethods();
@@ -651,82 +739,114 @@ function collectFormConfig(type, existingContent) {
 
   switch(type) {
     case 'sql': {
-      const cols = readColumns('allowedCols');
-      const procedure = document.getElementById('procedure')?.value?.trim();
-      const namespace = document.getElementById('namespace')?.value?.trim();
-      const displayName = document.getElementById('displayName')?.value?.trim();
-      const nsDisplayName = document.getElementById('namespaceDisplayName')?.value?.trim();
-      const doc = readDocumentation(c);
+      const cols     = readColumns('allowedCols');
+      const reqCols  = readColumns('requiredCols');
+      const doc      = readDocumentation(c);
       return {
-        DatabaseObjectName: document.getElementById('objectName')?.value?.trim() ?? '',
-        DatabaseSchema: document.getElementById('schema')?.value?.trim() ?? 'dbo',
-        DatabaseObjectType: document.getElementById('objectType')?.value ?? 'Table',
-        ...(namespace ? { Namespace: namespace } : {}),
-        ...(procedure ? { Procedure: procedure } : {}),
-        ...(displayName ? { DisplayName: displayName } : {}),
-        ...(nsDisplayName ? { NamespaceDisplayName: nsDisplayName } : {}),
-        AllowedMethods: methods,
-        ...(cols.length ? { AllowedColumns: cols } : {}),
-        AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
-        ...(doc ? { Documentation: doc } : {}),
+        ...c,
+        DatabaseSchema:       document.getElementById('schema')?.value?.trim() ?? 'dbo',
+        DatabaseObjectName:   document.getElementById('objectName')?.value?.trim() ?? '',
+        DatabaseObjectType:   document.getElementById('objectType')?.value ?? 'Table',
+        Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
+        NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
+        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        AllowedEnvironments:  envs,
+        AllowedMethods:       methods,
+        Procedure:            document.getElementById('procedure')?.value?.trim() || undefined,
+        PrimaryKey:           document.getElementById('primaryKey')?.value?.trim() || undefined,
+        AllowedColumns:       cols.length ? cols : undefined,
+        RequiredColumns:      reqCols.length ? reqCols : undefined,
+        ColumnValidation:     readJsonField('columnValidation'),
+        FunctionParameters:   readJsonField('functionParameters'),
+        Documentation:        doc ?? undefined,
       };
     }
     case 'proxy': {
       const doc = readDocumentation(c);
       return {
-        Url: document.getElementById('url')?.value?.trim() ?? '',
-        Methods: methods,
-        AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
-        ...(doc ? { Documentation: doc } : {}),
+        ...c,
+        Url:                  document.getElementById('url')?.value?.trim() ?? '',
+        Methods:              methods,
+        Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
+        NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
+        AllowedEnvironments:  envs,
+        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        DeletePatterns:       readJsonField('deletePatterns'),
+        Documentation:        doc ?? undefined,
       };
     }
     case 'composite': {
-      let steps = [];
-      try { steps = JSON.parse(document.getElementById('compositeSteps')?.value ?? '[]'); } catch {}
-      const doc = readDocumentation(c);
+      const doc   = readDocumentation(c);
+      const steps = readJsonField('compositeSteps') ?? [];
       return {
-        Type: 'Composite',
-        Methods: methods,
-        AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
-        CompositeConfig: { Steps: steps },
-        ...(doc ? { Documentation: doc } : {}),
+        ...c,
+        Type:                 'Composite',
+        Methods:              methods,
+        Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
+        NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
+        AllowedEnvironments:  envs,
+        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        CompositeConfig: {
+          ...c.CompositeConfig,
+          Name:        document.getElementById('compositeConfigName')?.value?.trim() || undefined,
+          Description: document.getElementById('compositeConfigDesc')?.value?.trim() || undefined,
+          Steps:       steps,
+        },
+        Documentation: doc ?? undefined,
       };
     }
     case 'file': {
       const exts = (document.getElementById('allowedExtensions')?.value ?? '').split(',').map(s=>s.trim()).filter(Boolean);
+      const doc  = readDocumentation(c);
       return {
-        StorageType: document.getElementById('storageType')?.value ?? 'Local',
-        BaseDirectory: document.getElementById('baseDirectory')?.value?.trim() ?? '',
-        AllowedExtensions: exts,
-        AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+        ...c,
+        StorageType:          document.getElementById('storageType')?.value ?? 'Local',
+        BaseDirectory:        document.getElementById('baseDirectory')?.value?.trim() ?? '',
+        AllowedExtensions:    exts,
+        Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
+        NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
+        AllowedEnvironments:  envs,
+        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Documentation:        doc ?? undefined,
       };
     }
     case 'static': {
-      const namespace = document.getElementById('namespace')?.value?.trim();
+      const doc = readDocumentation(c);
       return {
-        ...(c.Documentation ? { Documentation: c.Documentation } : {}),
-        ContentFile: document.getElementById('contentFile')?.value?.trim() ?? '',
-        ContentType: document.getElementById('contentType')?.value?.trim() ?? 'application/json',
-        EnableFiltering: document.getElementById('enableFiltering')?.checked ?? false,
-        ...(namespace ? { Namespace: namespace } : {}),
-        AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
+        ...c,
+        ContentType:          document.getElementById('contentType')?.value?.trim() ?? 'application/json',
+        ContentFile:          document.getElementById('contentFile')?.value?.trim() ?? '',
+        EnableFiltering:      document.getElementById('enableFiltering')?.checked ?? false,
+        Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
+        NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
+        AllowedEnvironments:  envs,
+        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Documentation:        doc ?? undefined,
       };
     }
     case 'webhook': {
-      const cols = readColumns('allowedCols');
-      const doc = readDocumentation(c);
+      const cols    = readColumns('allowedCols');
+      const reqCols = readColumns('requiredCols');
+      const doc     = readDocumentation(c);
       return {
-        DatabaseObjectName: document.getElementById('objectName')?.value?.trim() ?? '',
-        DatabaseSchema: document.getElementById('schema')?.value?.trim() ?? 'dbo',
-        AllowedMethods: methods,
-        ...(cols.length ? { AllowedColumns: cols } : {}),
-        IsPrivate: document.getElementById('isPrivate')?.checked ?? false,
-        ...(doc ? { Documentation: doc } : {}),
+        ...c,
+        DatabaseObjectName:   document.getElementById('objectName')?.value?.trim() ?? '',
+        DatabaseSchema:       document.getElementById('schema')?.value?.trim() ?? 'dbo',
+        AllowedColumns:       cols.length ? cols : undefined,
+        AllowedMethods:       methods,
+        AllowedEnvironments:  envs,
+        Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
+        NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
+        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        RequiredColumns:      reqCols.length ? reqCols : undefined,
+        ColumnValidation:     readJsonField('columnValidation'),
+        Documentation:        doc ?? undefined,
       };
     }
   }
@@ -734,7 +854,6 @@ function collectFormConfig(type, existingContent) {
 }
 
 // Save 
-
 async function saveEndpoint() {
   if (!_selected || !_detailData) return;
   const { type, name } = _selected;
@@ -750,7 +869,7 @@ async function saveEndpoint() {
       if (!r.ok) throw new Error(d.error ?? r.statusText);
       showToast('Saved', 'success');
       _dirty = false;
-      await selectEndpoint(type, name, false);
+      await loadAll();
     } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
   } else {
     const errs = validateForm(type);
@@ -763,7 +882,7 @@ async function saveEndpoint() {
       if (!r.ok) throw new Error(d.error ?? r.statusText);
       showToast('Saved', 'success');
       _dirty = false;
-      await selectEndpoint(type, name, false);
+      await loadAll();
     } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
   }
 }
@@ -777,35 +896,27 @@ async function reloadDetail() {
   if (_selected) await selectEndpoint(_selected.type, _selected.name, false);
 }
 
-// Alert Dialog ──────────────────────────────────────────
-
-let _alertOnConfirm = null;
-
+// Alert Dialog 
 function showAlertDialog({ title, description, actionLabel = 'Confirm', onConfirm, extraHtml = '' }) {
-  _alertOnConfirm = onConfirm;
-  document.getElementById('alertDialogTitle').textContent = title;
-  document.getElementById('alertDialogDescription').textContent = description;
-  const btn = document.getElementById('alertDialogAction');
-  btn.textContent = actionLabel;
-  const extra = document.getElementById('alertDialogExtra');
-  extra.innerHTML = extraHtml;
-  extra.style.display = extraHtml ? '' : 'none';
-  document.getElementById('alertDialogOverlay').classList.add('open');
+  AlertDialog.show({
+    title,
+    description,
+    actionLabel,
+    variant: actionLabel.toLowerCase() === 'delete' ? 'destructive' : 'default',
+    extraHtml,
+    onConfirm
+  });
 }
 
 function hideAlertDialog() {
-  document.getElementById('alertDialogOverlay').classList.remove('open');
-  _alertOnConfirm = null;
+  AlertDialog.hide();
 }
 
 function confirmAlertDialog() {
-  const cb = _alertOnConfirm;
-  hideAlertDialog();
-  if (cb) cb();
+  // Handled by AlertDialog component
 }
 
-// Delete ────────────────────────────────────────────────
-
+// Delete 
 function startDelete() {
   if (!_selected) return;
   const { name } = _selected;
@@ -876,13 +987,11 @@ function openCreateDrawer() {
   _createType = 'sql';
   renderCreateTypePicker();
   renderCreateForm();
-  document.getElementById('createBackdrop').classList.add('open');
-  document.getElementById('createDrawer').classList.add('open');
+  Drawer.open('createDrawer');
 }
 
 function closeCreateDrawer() {
-  document.getElementById('createBackdrop').classList.remove('open');
-  document.getElementById('createDrawer').classList.remove('open');
+  Drawer.close('createDrawer');
 }
 
 function renderCreateTypePicker() {
@@ -1094,10 +1203,10 @@ async function submitCreate() {
   }
 }
 
-// Toast helper ──────────────────────────────────────────
+// Toast helper
 function showToast(msg, type = 'success') { toast(msg, type); }
 
-// Bootstrap ─────────────────────────────────────────────
+// Bootstrap
 refreshAll();
 </script>
 </body>

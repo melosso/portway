@@ -405,6 +405,40 @@ public class TokenService
     }
     
     /// <summary>
+    /// Unarchive (restore) a previously revoked token by ID.
+    /// Returns false when the token is not found or is not revoked.
+    /// </summary>
+    public async Task<bool> UnarchiveTokenAsync(int tokenId)
+    {
+        var token = await _dbContext.Tokens.FindAsync(tokenId);
+        if (token == null || token.RevokedAt == null) return false;
+
+        token.RevokedAt = null;
+        await _dbContext.SaveChangesAsync();
+
+        // Rename .revoked.txt back to .txt
+        try
+        {
+            string revokedPath = Path.Combine(_tokenFolderPath, $"{token.Username}.revoked.txt");
+            if (File.Exists(revokedPath))
+            {
+                string tokenFilePath = Path.Combine(_tokenFolderPath, $"{token.Username}.txt");
+                if (File.Exists(tokenFilePath))
+                    File.Delete(tokenFilePath);
+                File.Move(revokedPath, tokenFilePath);
+                Log.Information("Restored token file: {FilePath}", tokenFilePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not restore token file for unarchived token");
+        }
+
+        Log.Information("Unarchived token ID: {TokenId} for user: {Username}", tokenId, token.Username);
+        return true;
+    }
+
+    /// <summary>
     /// Set token expiration by ID
     /// </summary>
     public async Task<bool> SetTokenExpirationAsync(int tokenId, DateTime expirationDate)
