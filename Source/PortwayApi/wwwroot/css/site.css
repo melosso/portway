@@ -13,6 +13,15 @@
     --radius: 0.5rem;
     --sidebar-width: 260px;
     --app-font: "Inter", system-ui, -apple-system, sans-serif;
+    /* Log viewer — light mode */
+    --log-bg: 240 5% 97%;
+    --log-hover: 240 5% 91%;
+    --log-ts: 240 3.8% 46.1%;
+    --log-msg: 240 10% 10%;
+    --log-dbg: 240 5% 58%;
+    --log-inf: 217 91% 40%;
+    --log-wrn: 38 80% 34%;
+    --log-err: 0 72% 48%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +34,15 @@
         --primary: 0 0% 98%;
         --primary-foreground: 240 5.9% 10%;
         color-scheme: dark;
+        /* Log viewer — dark mode */
+        --log-bg: 240 10% 6%;
+        --log-hover: 240 8% 11%;
+        --log-ts: 240 5% 44%;
+        --log-msg: 240 3% 86%;
+        --log-dbg: 240 5% 47%;
+        --log-inf: 217 91% 65%;
+        --log-wrn: 38 92% 60%;
+        --log-err: 0 84% 65%;
     }
 }
 
@@ -38,6 +56,14 @@
     --primary: 240 5.9% 10%;
     --primary-foreground: 0 0% 98%;
     color-scheme: light;
+    --log-bg: 240 5% 97%;
+    --log-hover: 240 5% 91%;
+    --log-ts: 240 3.8% 46.1%;
+    --log-msg: 240 10% 10%;
+    --log-dbg: 240 5% 58%;
+    --log-inf: 217 91% 40%;
+    --log-wrn: 38 80% 34%;
+    --log-err: 0 72% 48%;
 }
 
 [data-theme="dark"] {
@@ -49,6 +75,14 @@
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
     color-scheme: dark;
+    --log-bg: 240 10% 6%;
+    --log-hover: 240 8% 11%;
+    --log-ts: 240 5% 44%;
+    --log-msg: 240 3% 86%;
+    --log-dbg: 240 5% 47%;
+    --log-inf: 217 91% 65%;
+    --log-wrn: 38 92% 60%;
+    --log-err: 0 84% 65%;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -736,7 +770,7 @@ body:has(.drawer-backdrop.open) main {
 .log-level-btn:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
 .log-level-btn.active { background: hsl(var(--muted)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); }
 .log-level-btn.active-INF { color: hsl(var(--info)); border-color: hsl(217 91% 60% / 0.3); background: hsl(217 91% 60% / 0.08); }
-.log-level-btn.active-WRN { color: hsl(38 85% 40%); border-color: hsl(38 92% 50% / 0.3); background: hsl(38 92% 50% / 0.08); }
+.log-level-btn.active-WRN { color: hsl(var(--log-wrn)); border-color: hsl(38 92% 50% / 0.3); background: hsl(38 92% 50% / 0.08); }
 .log-level-btn.active-ERR { color: hsl(var(--destructive)); border-color: hsl(0 84% 60% / 0.3); background: hsl(0 84% 60% / 0.08); }
 .log-level-btn.active-DBG { color: hsl(var(--muted-foreground)); border-color: hsl(var(--border)); background: hsl(var(--muted)); }
 
@@ -746,7 +780,7 @@ body:has(.drawer-backdrop.open) main {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    background: hsl(240 10% 6%);
+    background: hsl(var(--log-bg));
     padding: 1rem;
     font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
     font-size: 0.75rem;
@@ -761,14 +795,14 @@ body:has(.drawer-backdrop.open) main {
     transition: background 0.1s;
 }
 
-.log-line:hover { background: rgba(255,255,255,0.04); }
-.log-ts { color: rgba(255,255,255,0.3); }
-.log-lvl-INF { color: hsl(217 91% 65%); font-weight: 600; }
-.log-lvl-WRN { color: hsl(38 92% 60%); font-weight: 600; }
-.log-lvl-ERR { color: hsl(0 84% 65%); font-weight: 600; }
-.log-lvl-FTL { color: hsl(0 84% 65%); font-weight: 700; }
-.log-lvl-DBG { color: rgba(255,255,255,0.35); font-weight: 600; }
-.log-msg { color: rgba(255,255,255,0.8); }
+.log-line:hover { background: hsl(var(--log-hover)); }
+.log-ts { color: hsl(var(--log-ts)); }
+.log-lvl-INF { color: hsl(var(--log-inf)); font-weight: 600; }
+.log-lvl-WRN { color: hsl(var(--log-wrn)); font-weight: 600; }
+.log-lvl-ERR { color: hsl(var(--log-err)); font-weight: 600; }
+.log-lvl-FTL { color: hsl(var(--log-err)); font-weight: 700; }
+.log-lvl-DBG { color: hsl(var(--log-dbg)); font-weight: 600; }
+.log-msg { color: hsl(var(--log-msg)); }
 
 .log-count {
     margin-left: auto;
