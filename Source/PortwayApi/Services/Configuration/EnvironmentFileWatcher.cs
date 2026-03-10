@@ -135,6 +135,13 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
             // Invalidate cache entries related to this environment
             await InvalidateEnvironmentCacheAsync(environmentName);
 
+            // Re-encrypt if a plaintext connection string was written (e.g. after IIS reset / config restore)
+            // Only applies to per-environment settings (parts.Length >= 2), not the global settings.json
+            var relativePath = Path.GetRelativePath(_environmentsPath, filePath);
+            var parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (parts.Length >= 2 && changeType != WatcherChangeTypes.Deleted)
+                _environmentSettingsProvider.EncryptEnvironmentIfNeeded(environmentName);
+
             Log.Information("Environment '{Environment}' settings changed, definition will reload on next request", environmentName);
             _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "environments" }));
         }

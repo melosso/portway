@@ -133,6 +133,30 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             encryptedCount, alreadyEncryptedCount, errorCount);
     }
 
+    public void EncryptEnvironmentIfNeeded(string envName)
+    {
+        if (string.IsNullOrWhiteSpace(_privateKeyPem))
+        {
+            Log.Error("Cannot encrypt environment '{Env}' on file change: no private key available", envName);
+            return;
+        }
+
+        var settingsPath = Path.Combine(_basePath, envName, "settings.json");
+        if (!File.Exists(settingsPath)) return;
+
+        try
+        {
+            var json   = File.ReadAllText(settingsPath);
+            var config = JsonSerializer.Deserialize<EnvironmentConfig>(json);
+            if (config == null) return;
+            AutoEncryptIfNeeded(settingsPath, config, envName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error encrypting environment '{Env}' after file change", envName);
+        }
+    }
+
     private enum EncryptionResult
     {
         Encrypted,
