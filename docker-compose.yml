@@ -13,7 +13,6 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - ASPNETCORE_URLS=http://+:8080
       - USE_HTTPS=false
       
       # Proxy settings for Kerberos/NTLM

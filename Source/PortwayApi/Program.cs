@@ -324,6 +324,7 @@ try
     // Build the application
     var app = builder.Build();
     var adminApiKey = builder.Configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
+    var publicOrigins = builder.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
     var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
         ?? builder.Configuration["PathBase"];
 
@@ -451,13 +452,16 @@ try
                 return;
             }
 
-            // Browser request: only show the landing page selector on the local network,when the Web UI is enabled. External clients always go straight to docs.
+            // Browser request: show the landing page selector for local clients or external clients
+            // whose origin matches a configured PublicOrigins pattern. Others go straight to docs.
             var remoteIp = context.Connection.RemoteIpAddress;
             var urlValidator = context.RequestServices.GetRequiredService<UrlValidator>();
             var isLocalClient = remoteIp != null && urlValidator.IsClientIpAllowed(
                 remoteIp.IsIPv4MappedToIPv6 ? remoteIp.MapToIPv4() : remoteIp);
+            var isPublicOrigin = publicOrigins.Length > 0 &&
+                WebUiEndpointExtensions.IsPublicOriginAllowed(context.Request, publicOrigins);
 
-            if (isLocalClient && !string.IsNullOrEmpty(adminApiKey))
+            if ((isLocalClient || isPublicOrigin) && !string.IsNullOrEmpty(adminApiKey))
             {
                 var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 var indexPath = Path.Combine(webRootPath, "index.html");
