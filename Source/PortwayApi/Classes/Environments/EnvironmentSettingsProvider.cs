@@ -151,6 +151,30 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return;
         }
 
+        // Warn if any environment settings are already encrypted — new keys will orphan them
+        if (Directory.Exists(_basePath))
+        {
+            var encryptedSettings = Directory.GetDirectories(_basePath)
+                .Select(d => Path.Combine(d, "settings.json"))
+                .Where(File.Exists)
+                .Where(p => {
+                    try { return SettingsEncryptionHelper.IsEncrypted(File.ReadAllText(p)); }
+                    catch { return false; }
+                })
+                .Select(p => new DirectoryInfo(Path.GetDirectoryName(p)!).Name)
+                .ToList();
+
+            if (encryptedSettings.Count > 0)
+            {
+                Log.Warning(
+                    "New RSA encryption keys are being generated, but the following environments have settings.json files " +
+                    "already encrypted with the OLD key: {Environments}. " +
+                    "These environments will FAIL to decrypt until their settings.json files are replaced with unencrypted versions. " +
+                    "To recover: restore the original plaintext connection strings in each settings.json, then restart.",
+                    string.Join(", ", encryptedSettings));
+            }
+        }
+
         Log.Debug("Generating new RSA encryption keys...");
 
         try

@@ -62,7 +62,7 @@ public static class WebUiEndpointExtensions
                 if (!context.Request.Cookies.TryGetValue(CookieName, out var cookie) ||
                     !ValidateToken(cookie, adminApiKey))
                 {
-                    context.Response.Redirect("/ui/login");
+                    context.Response.Redirect($"{context.Request.PathBase}/ui/login");
                     return;
                 }
             }
@@ -85,12 +85,12 @@ public static class WebUiEndpointExtensions
             ?.InformationalVersion ?? "0.0.0";
 
         // Login
-        app.MapGet("/ui/login", () =>
+        app.MapGet("/ui/login", (HttpContext ctx) =>
             uiAuthEnabled
-                ? Results.File(Path.Combine(wwwroot, "login.html"), "text/html")
-                : Results.Redirect("/ui/dashboard"))
+                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase)
+                : Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
             .ExcludeFromDescription();
-        app.MapGet("/ui/login.html", () => Results.Redirect("/ui/login"))
+        app.MapGet("/ui/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/login"))
             .ExcludeFromDescription();
 
         // Auth endpoints
@@ -127,15 +127,15 @@ public static class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Page routes
-        app.MapGet("/ui", () => Results.Redirect("/ui/dashboard"))
+        app.MapGet("/ui", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
             .ExcludeFromDescription();
 
         foreach (var page in new[] { "dashboard", "endpoints", "environments", "tokens", "settings", "logs" })
         {
             var p        = page;
             var filePath = Path.Combine(wwwroot, $"{p}.html");
-            app.MapGet($"/ui/{p}",      () => Results.File(filePath, "text/html")).ExcludeFromDescription();
-            app.MapGet($"/ui/{p}.html", () => Results.Redirect($"/ui/{p}")).ExcludeFromDescription();
+            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeHtml(filePath, ctx.Request.PathBase)).ExcludeFromDescription();
+            app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
         }
 
         // Data endpoints
@@ -1013,5 +1013,14 @@ public static class WebUiEndpointExtensions
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expected),
             Encoding.UTF8.GetBytes(token[(dot + 1)..]));
+    }
+
+    private static IResult ServeHtml(string filePath, PathString pathBase)
+    {
+        if (!File.Exists(filePath)) return Results.NotFound();
+        var pb = pathBase.Value ?? "";
+        var html = File.ReadAllText(filePath);
+        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
+        return Results.Content(html, "text/html; charset=utf-8");
     }
 }

@@ -405,6 +405,27 @@ try
         app.UseWebUiAuth(adminApiKey);
 
     app.UseDefaultFilesWithOptions();
+
+    // Inject PathBase into index.html before static files can serve it
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Path.Value?.Equals("/index.html", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var webRoot = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var filePath = Path.Combine(webRoot, "index.html");
+            if (File.Exists(filePath))
+            {
+                var pb = context.Request.PathBase.Value ?? "";
+                var html = await File.ReadAllTextAsync(filePath);
+                html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
+                context.Response.ContentType = "text/html; charset=utf-8";
+                await context.Response.WriteAsync(html);
+                return;
+            }
+        }
+        await next();
+    });
+
     app.UseStaticFiles();
 
     // Root path handling middleware

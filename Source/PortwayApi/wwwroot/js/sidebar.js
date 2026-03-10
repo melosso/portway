@@ -108,13 +108,15 @@ function renderSidebar() {
   if (!aside) return;
 
   const currentPath = location.pathname.replace(/\/$/, '');
+  const base = window.PortwayBase || '';
 
   const groupsHtml = NAV_GROUPS.map((group, i) => {
     const sep = i > 0 ? '<div class="nav-sep"></div>' : '';
     const items = group.items.map(item => {
-      const active = !item.external && (currentPath === item.href || currentPath.startsWith(item.href + '/'));
+      const href   = item.external ? item.href : base + item.href;
+      const active = !item.external && (currentPath === href || currentPath.startsWith(href + '/'));
       const ext    = item.external ? ' target="_blank" rel="noopener"' : '';
-      return `<a href="${item.href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}">${icon(item.icon)}<span>${item.label}</span></a>`;
+      return `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}">${icon(item.icon)}<span>${item.label}</span></a>`;
     }).join('\n    ');
     return `${sep}<div class="nav-group">
     <div class="nav-label">${group.label}</div>
@@ -145,7 +147,7 @@ function renderSidebar() {
   </div>`;
 
   // Populate version + OpenAPI icon
-  fetch('/ui/api/overview')
+  fetch((window.PortwayBase || '') + '/ui/api/overview')
     .then(r => r.json())
     .then(d => {
       const v = (d.version ?? '').split('+')[0];
@@ -157,7 +159,7 @@ function renderSidebar() {
         if (meta) {
           const link = document.createElement('span');
           link.className = 'tooltip-wrapper';
-          link.innerHTML = `<a href="/docs" target="_blank" rel="noopener" class="github-link" aria-label="API Documentation">
+          link.innerHTML = `<a href="${window.PortwayBase || ''}/docs" target="_blank" rel="noopener" class="github-link" aria-label="API Documentation">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
@@ -177,8 +179,9 @@ function renderSidebar() {
 }
 
 function logout() {
-  fetch('/ui/api/auth/logout', { method: 'POST', credentials: 'include' })
-    .finally(() => { window.location.href = '/ui/login'; });
+  var base = window.PortwayBase || '';
+  fetch(base + '/ui/api/auth/logout', { method: 'POST', credentials: 'include' })
+    .finally(() => { window.location.href = base + '/ui/login'; });
 }
 
 // Sidebar collapse 
