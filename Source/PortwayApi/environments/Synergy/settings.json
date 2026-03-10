@@ -1,0 +1,8 @@
+
+{
+  "ServerName": "localhost",
+  "ConnectionString": "Server=localhost;Database=600_Synergy;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
+  "Headers": {
+    "Origin": "Portway"
+  }
+}
