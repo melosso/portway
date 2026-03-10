@@ -337,7 +337,7 @@ var html = $@"
             'color: #dcaf34ff; font-weight: bold; font-size: 12px;'
         );
     </script>
-    <script src=""https://cdn.jsdelivr.net/npm/@scalar/api-reference""></script>
+    <script src=""{pathBase}/js/vendor/scalar-api-reference.js""></script>
     <script
         id=""{overlayId}""
         {overlayAttr}=""""

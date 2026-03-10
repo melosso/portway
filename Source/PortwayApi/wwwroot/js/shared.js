@@ -21,3 +21,15 @@ function togglePasswordVis(inputId, btn) {
   btn.title = showing ? 'Show / hide' : 'Hide';
   btn.style.color = showing ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))';
 }
+
+// Auto-prepend PortwayBase to all absolute fetch paths so the UI works
+// correctly when the app is hosted under a sub-path (PathBase) like /v1.
+(function () {
+  var _fetch = window.fetch;
+  window.fetch = function (url, options) {
+    if (typeof url === 'string' && url.startsWith('/') && window.PortwayBase) {
+      url = window.PortwayBase + url;
+    }
+    return _fetch.call(this, url, options);
+  };
+})();

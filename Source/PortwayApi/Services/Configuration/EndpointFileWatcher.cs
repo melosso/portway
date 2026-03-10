@@ -216,7 +216,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             var namespaceDir = Path.GetDirectoryName(endpointDir);       // Namespace or Type dir
             var namespaceName = Path.GetFileName(namespaceDir);
 
-            return _typeFolderNames.Contains(namespaceName) ? null : namespaceName;
+            return namespaceName == null || _typeFolderNames.Contains(namespaceName) ? null : namespaceName;
         }
         catch
         {

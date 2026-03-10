@@ -4,11 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In · Portway</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="/css/site.css" rel="stylesheet" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link href="css/inter.css" rel="stylesheet">
+  <link href="css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/shared.js"></script>
 </head>
 <body>
 
@@ -82,7 +81,7 @@ async function signIn() {
       body: JSON.stringify({ apiKey: key })
     });
     if (r.ok) {
-      window.location.href = '/ui/dashboard';
+      window.location.href = (window.PortwayBase || '') + '/ui/dashboard';
     } else {
       err.style.display = 'block';
       btn.classList.remove('is-loading');
