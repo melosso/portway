@@ -1,6 +1,8 @@
+using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.FileProviders;
+using PortwayApi.Helpers;
 using Serilog;
 
 namespace PortwayApi.Middleware;
@@ -86,6 +88,7 @@ public static class StaticFilesMiddlewareExtensions
 
     /// <summary>
     /// Configuration for static files with just caching headers (no redirect logic)
+    /// Uses ContentTypeHelper for consistent content types and cache durations
     /// </summary>
     public static IApplicationBuilder UseStaticFilesWithCaching(this IApplicationBuilder app)
     {
@@ -93,26 +96,12 @@ public static class StaticFilesMiddlewareExtensions
         {
             OnPrepareResponse = context =>
             {
-                var path = context.Context.Request.Path.Value?.ToLowerInvariant() ?? "";
+                var path = context.Context.Request.Path.Value ?? "";
+                var extension = Path.GetExtension(path);
 
-                // Set appropriate cache headers based on file type
-                if (path.EndsWith(".html") || path.EndsWith(".htm"))
-                {
-                    context.Context.Response.Headers.CacheControl = "public, max-age=300"; // 5 minutes
-                }
-                else if (path.EndsWith(".js") || path.EndsWith(".css"))
-                {
-                    context.Context.Response.Headers.CacheControl = "public, max-age=3600"; // 1 hour
-                }
-                else if (path.EndsWith(".png") || path.EndsWith(".jpg") || path.EndsWith(".jpeg") ||
-                        path.EndsWith(".gif") || path.EndsWith(".ico") || path.EndsWith(".svg"))
-                {
-                    context.Context.Response.Headers.CacheControl = "public, max-age=86400"; // 24 hours
-                }
-                else
-                {
-                    context.Context.Response.Headers.CacheControl = "public, max-age=1800"; // 30 minutes
-                }
+                // Set appropriate cache headers based on file type using the shared helper
+                var cacheDuration = ContentTypeHelper.GetCacheDuration(extension);
+                context.Context.Response.Headers.CacheControl = $"public, max-age={(int)cacheDuration.TotalSeconds}";
 
                 // Add security headers for static files
                 context.Context.Response.Headers["X-Content-Type-Options"] = "nosniff";
