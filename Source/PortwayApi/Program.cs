@@ -209,27 +209,23 @@ try
     if (!string.IsNullOrEmpty(proxyUsername) && !string.IsNullOrEmpty(proxyPassword))
     {
         builder.Services.AddHttpClient("ProxyClient")
-            .ConfigurePrimaryHttpMessageHandler(() =>
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
-                return new HttpClientHandler
-                {
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(proxyUsername, proxyPassword, proxyDomain),
-                    PreAuthenticate = true
-                };
+                Credentials = new NetworkCredential(proxyUsername, proxyPassword, proxyDomain),
+                PreAuthenticate = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
             });
     }
     else
     {
-        // Fallback to default credentials if not specified
+        // Fallback to default credentials (NTLM/Kerberos via service account)
         builder.Services.AddHttpClient("ProxyClient")
-            .ConfigurePrimaryHttpMessageHandler(() =>
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
-                return new HttpClientHandler
-                {
-                    UseDefaultCredentials = true,
-                    PreAuthenticate = true
-                };
+                UseProxy = false,
+                Credentials = CredentialCache.DefaultNetworkCredentials,
+                PreAuthenticate = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
             });
     }
 
