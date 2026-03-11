@@ -86,9 +86,9 @@ public static class UrlRewriter
                     });
                 }
             }
-            catch (UriFormatException)
+            catch (UriFormatException ex)
             {
-                // Skip domain replacement if URLs cannot be parsed
+                Log.Debug(ex, "Unable to parse URL for domain replacement, skipping");
             }
 
             // 4. Rewrite all Exact.Entity.REST.svc URLs regardless of domain/path

@@ -604,9 +604,9 @@ public class FileHandlerService : IDisposable
                 return true;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Invalid file ID format
+            Log.Debug(ex, "Failed to parse file ID");
         }
         environment = string.Empty;
         filename = string.Empty;

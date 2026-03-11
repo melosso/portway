@@ -3,6 +3,7 @@ namespace PortwayApi.Endpoints;
 using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
+using Serilog;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -715,7 +716,7 @@ public static class WebUiEndpointExtensions
                 await response.Body.FlushAsync(ct);
             }
             catch (OperationCanceledException) { return; }
-            catch { /* cache empty on cold start, client will receive first real event shortly */ }
+            catch (Exception ex) { Log.Warning(ex, "Failed to push initial health state to SSE client"); }
 
             try
             {
@@ -950,7 +951,7 @@ public static class WebUiEndpointExtensions
                         latestFile ??= file;
                         if (allEntries.Count >= limit * 5) break;
                     }
-                    catch { /* skip inaccessible files */ }
+                    catch (Exception ex) { Log.Debug(ex, "Skipping inaccessible log file: {File}", file); }
                 }
 
                 // Newest first, sort by timestamp string (ISO format is lexicographically comparable)
