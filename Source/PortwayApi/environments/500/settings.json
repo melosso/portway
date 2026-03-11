@@ -1,0 +1,10 @@
+
+{
+  "ServerName": "localhost",
+  "ConnectionString": "Server=localhost;Database=500;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
+  "Headers": {
+    "DatabaseName": "500",
+    "ServerName": "localhost",
+    "Origin": "Portway"
+  }
+}

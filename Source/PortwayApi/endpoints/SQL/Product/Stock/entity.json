@@ -13,7 +13,7 @@
         "QuantityInOrder;QuantityInOrder"
     ],
     "AllowedMethods": ["GET"],
-    "AllowedEnvironments": ["600","700"],
+    "AllowedEnvironments": ["500","700"],
     "Documentation": {
         "TagDescription": "**Product Stock Information**\n\nAccess current stock levels and availability for products across warehouses. Retrieve essential inventory data for stock management and order fulfillment.\n\n> [!IMPORTANT]\n> This endpoint provides real-time stock information including available quantities and pending orders.",
         "MethodDescriptions": {

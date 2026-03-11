@@ -226,12 +226,12 @@ Expires: Wed, 21 Oct 2023 07:33:00 GMT
 
 ```http
 # Error: Missing Authorization
-GET /api/600/Products
+GET /api/500/Products
 Response: 401 Unauthorized
 {
   "error": "Authentication required",
   "clientIp": "0.0.0.0",
-  "requestedPath": "/api/600/Products",
+  "requestedPath": "/api/500/Products",
   "success": false
 }
 ```
@@ -240,7 +240,7 @@ Response: 401 Unauthorized
 
 ```http
 # Error: Invalid content type
-POST /api/600/Products
+POST /api/500/Products
 Content-Type: text/plain
 Response: 415 Unsupported Media Type
 {
@@ -252,7 +252,7 @@ Response: 415 Unsupported Media Type
 
 ```http
 # Error: Conflicting cache directives
-GET /api/600/Products
+GET /api/500/Products
 Cache-Control: no-cache, max-age=3600
 Response: 400 Bad Request
 {
@@ -268,14 +268,14 @@ Response: 400 Bad Request
 # Basic request with headers
 curl -H "Authorization: Bearer token123" \
      -H "Accept: application/json" \
-     https://api.company.com/api/600/Products
+     https://api.company.com/api/500/Products
 
 # POST with content type
 curl -X POST \
      -H "Authorization: Bearer token123" \
      -H "Content-Type: application/json" \
      -d '{"name":"Product"}' \
-     https://api.company.com/api/600/Products
+     https://api.company.com/api/500/Products
 ```
 
 ### Using Postman

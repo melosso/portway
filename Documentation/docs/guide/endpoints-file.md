@@ -29,7 +29,7 @@ Create a configuration file for your endpoint (e.g., `Documents`):
 ### 2. Upload a File
 
 ```bash
-curl -X POST "https://your-api.com/api/600/files/Documents" \
+curl -X POST "https://your-api.com/api/500/files/Documents" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@report.pdf"
 ```
@@ -37,7 +37,7 @@ curl -X POST "https://your-api.com/api/600/files/Documents" \
 ### 3. List Your Files
 
 ```bash
-curl -X GET "https://your-api.com/api/600/files/Documents/list" \
+curl -X GET "https://your-api.com/api/500/files/Documents/list" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -50,7 +50,7 @@ Response shows available files with download links:
       "fileName": "report.pdf",
       "contentType": "application/pdf", 
       "size": 125679,
-      "url": "/api/600/files/Documents/abc123fileId"
+      "url": "/api/500/files/Documents/abc123fileId"
     }
   ]
 }
@@ -61,7 +61,7 @@ Response shows available files with download links:
 Use the `url` from the list response:
 
 ```bash
-curl -X GET "https://your-api.com/api/600/files/Documents/abc123fileId" \
+curl -X GET "https://your-api.com/api/500/files/Documents/abc123fileId" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -o "downloaded-report.pdf"
 ```
@@ -149,11 +149,11 @@ Use placeholders for automatic organization:
 ```
 
 Files automatically organized like:
-- `backups/600/2025/01/database-backup.sql`
+- `backups/500/2025/01/database-backup.sql`
 - `backups/700/2025/01/test-backup.sql`
 
 Available placeholders:
-- `{env}` - Environment (600, 700, etc.)
+- `{env}` - Environment (500,700, etc.)
 - `{year}` - Current year (2025)
 - `{month}` - Current month (01, 02, etc.)
 - `{date}` - Current date (2025-01-15)
@@ -174,7 +174,7 @@ Common file types work automatically with proper browser handling:
 ### Display Images Directly
 ```html
 <!-- Note: This requires authentication headers to work -->
-<img src="https://your-api.com/api/600/files/Images/imageFileId" 
+<img src="https://your-api.com/api/500/files/Images/imageFileId" 
      alt="Product Photo" />
 <!-- For web apps, you'll need to handle authentication via JavaScript -->
 ```
@@ -182,7 +182,7 @@ Common file types work automatically with proper browser handling:
 ### Embed PDF Documents
 ```html
 <!-- Note: This requires authentication headers to work -->
-<embed src="https://your-api.com/api/600/files/Documents/pdfFileId"
+<embed src="https://your-api.com/api/500/files/Documents/pdfFileId"
        type="application/pdf" 
        width="800" height="prod" />
 <!-- For web apps, you'll need to handle authentication via JavaScript -->
@@ -191,14 +191,14 @@ Common file types work automatically with proper browser handling:
 ### Download Files with JavaScript
 ```javascript
 // Get file list
-const response = await fetch('/api/600/files/Documents/list', {
+const response = await fetch('/api/500/files/Documents/list', {
   headers: { 'Authorization': 'Bearer ' + token }
 });
 const data = await response.json();
 
 // Download first file using the fileId from the response
 const fileId = data.files[0].fileId;
-const downloadUrl = `/api/600/files/Documents/${fileId}`;
+const downloadUrl = `/api/500/files/Documents/${fileId}`;
 
 // Download file
 const fileResponse = await fetch(downloadUrl, {
@@ -227,7 +227,7 @@ Always specify allowed file types for security:
 ### Environment Control
 Separate files by environment:
 - **Development/Testing:** Environment `700`
-- **Production:** Environment `600`
+- **Production:** Environment `500`
 - **Sensitive Data:** Restrict to `["prod"]` only
 
 ### Size Limits
@@ -272,7 +272,7 @@ These dangerous file types are always blocked:
 
 **Solution:** Check if your `BaseDirectory` uses placeholders like `{env}`. The system might have created literal placeholder folders instead of processing them.
 
-**Fix:** If you see a folder literally named `{env}`, move files from `files/customer-data/{env}/` to `files/600/customer-data/600/`
+**Fix:** If you see a folder literally named `{env}`, move files from `files/customer-data/{env}/` to `files/500/customer-data/500/`
 
 ### Upload Fails - File Too Large
 **Problem:** "File size exceeds maximum allowed size"
@@ -311,11 +311,11 @@ log/portwayapi-[date].log
 Use simple commands to verify functionality:
 ```bash
 # Test upload
-curl -X POST https://your-api/api/600/files/Documents \
+curl -X POST https://your-api/api/500/files/Documents \
   -H "Authorization: Bearer TOKEN" -F "file=@test.txt"
 
 # Test listing  
-curl -X GET https://your-api/api/600/files/Documents/list \
+curl -X GET https://your-api/api/500/files/Documents/list \
   -H "Authorization: Bearer TOKEN"
 ```
 

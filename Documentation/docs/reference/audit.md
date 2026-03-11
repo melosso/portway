@@ -114,7 +114,7 @@ Each traffic log entry contains:
   "Id": 12345,
   "Timestamp": "2024-01-20T10:30:15Z",
   "Method": "GET",
-  "Path": "/api/600/Products",
+  "Path": "/api/500/Products",
   "QueryString": "?$top=10",
   "Environment": "prod",
   "EndpointName": "Products",

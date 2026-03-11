@@ -29,7 +29,7 @@
       }
     ]
   },
-  "AllowedEnvironments": ["600","700"],
+  "AllowedEnvironments": ["500","700"],
   "Documentation": {
     "TagDescription": "**Financial Entry Management**\n\nCreate complete financial transactions with headers and multiple line items. Composite endpoint that handles complex financial data entry workflows with automatic transaction key management.",
     "MethodDescriptions": {

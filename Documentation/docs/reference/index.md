@@ -38,7 +38,7 @@ https://your-domain.com/api/{environment}/{endpoint}
 
 | Component | Description | Example |
 |-----------|-------------|---------|
-| `{environment}` | Target environment | `600`, `700`, `prod` |
+| `{environment}` | Target environment | `500`, `700`, `prod` |
 | `{endpoint}` | Endpoint name | `Products`, `Orders` |
 
 ## Endpoint Types
@@ -47,7 +47,7 @@ https://your-domain.com/api/{environment}/{endpoint}
 Direct access to SQL Server data with OData query support.
 
 ```http
-GET /api/600/Products?$filter=Assortment eq 'Books'&$top=10
+GET /api/500/Products?$filter=Assortment eq 'Books'&$top=10
 ```
 
 ### Proxy Endpoints
@@ -62,41 +62,41 @@ POST /api/700/Orders
 Serve static content files with optional OData filtering.
 
 ```http
-GET /api/600/ProductionMachine?$top=1&$filter=status eq 'running'
+GET /api/500/ProductionMachine?$top=1&$filter=status eq 'running'
 ```
 
 ### Composite Endpoints
 Orchestrate multiple operations in a single request.
 
 ```http
-POST /api/600/SalesOrder
+POST /api/500/SalesOrder
 ```
 
 ### Webhook Endpoints
 Receive and store external webhook data.
 
 ```http
-POST /api/600/webhook/webhook1
+POST /api/500/webhook/webhook1
 ```
 
 ### Files Endpoints
 Handle file upload, download, and management operations organized by file categories.
 
 ```http
-POST /api/600/files/CustomerData
-GET /api/600/files/CustomerData/{fileId}
-DELETE /api/600/files/CustomerData/{fileId}
-GET /api/600/files/CustomerData/list
+POST /api/500/files/CustomerData
+GET /api/500/files/CustomerData/{fileId}
+DELETE /api/500/files/CustomerData/{fileId}
+GET /api/500/files/CustomerData/list
 
-POST /api/600/files/Documents
-GET /api/600/files/Documents/{fileId}
-DELETE /api/600/files/Documents/{fileId}
-GET /api/600/files/Documents/list
+POST /api/500/files/Documents
+GET /api/500/files/Documents/{fileId}
+DELETE /api/500/files/Documents/{fileId}
+GET /api/500/files/Documents/list
 
-POST /api/600/files/Images
-GET /api/600/files/Images/{fileId}
-DELETE /api/600/files/Images/{fileId}
-GET /api/600/files/Images/list
+POST /api/500/files/Images
+GET /api/500/files/Images/{fileId}
+DELETE /api/500/files/Images/{fileId}
+GET /api/500/files/Images/list
 ```
 
 ## Authentication Flow

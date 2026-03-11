@@ -11,7 +11,7 @@
         "sysguid;InternalID"
     ],
     "AllowedMethods": ["GET"],
-    "AllowedEnvironments": ["600","700"],
+    "AllowedEnvironments": ["500","700"],
     "Documentation": {
         "TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information. Query by assortment, search descriptions, and retrieve item details for integration with external systems.\n\n> [!IMPORTANT]\n> This endpoint doesn't and will never include complex price information.",
         "MethodDescriptions": {

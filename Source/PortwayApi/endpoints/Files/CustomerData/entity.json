@@ -3,5 +3,5 @@
   "BaseDirectory": "customer-data/{env}",
   "AllowedExtensions": [".csv", ".json", ".xml", ".xlsx"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["500", "700"]
 }

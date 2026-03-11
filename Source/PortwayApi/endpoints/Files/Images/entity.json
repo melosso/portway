@@ -3,5 +3,5 @@
   "BaseDirectory": "images",
   "AllowedExtensions": [".jpg", ".jpeg", ".png", ".gif", ".svg"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700"]
+  "AllowedEnvironments": ["500", "700"]
 }
