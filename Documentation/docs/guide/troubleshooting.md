@@ -176,7 +176,7 @@ Your first step should be verifying that your connection string is correct and c
 
 ```json
 {
-  "ConnectionString": "Server=YOUR_SERVER;Database=600;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;"
+  "ConnectionString": "Server=YOUR_SERVER;Database=500;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;"
 }
 ```
 
@@ -185,7 +185,7 @@ Before diving into complex troubleshooting, test whether you can connect to SQL 
 ```powershell
 # Test SQL connection
 $conn = New-Object System.Data.SqlClient.SqlConnection
-$conn.ConnectionString = "Server=YOUR_SERVER;Database=600;Trusted_Connection=True;"
+$conn.ConnectionString = "Server=YOUR_SERVER;Database=500;Trusted_Connection=True;"
 try {
     $conn.Open()
     Write-Host "Connection successful"
@@ -235,7 +235,7 @@ Sometimes proxy issues are related to environment-specific configurations. Revie
 
 ```powershell
 # Check current environment settings
-Get-Content ".\environments\600\settings.json" | ConvertFrom-Json
+Get-Content ".\environments\500\settings.json" | ConvertFrom-Json
 ```
 
 ### Health Check Failures
@@ -294,7 +294,7 @@ Once you know which endpoints are problematic, test them individually to isolate
 $headers = @{
     "Authorization" = "Bearer YOUR_TOKEN"
 }
-Invoke-RestMethod -Uri "https://your-gateway/api/600/Products" -Headers $headers
+Invoke-RestMethod -Uri "https://your-gateway/api/500/Products" -Headers $headers
 ```
 
 If specific endpoints are consistently failing, review their error logs to understand what's happening:

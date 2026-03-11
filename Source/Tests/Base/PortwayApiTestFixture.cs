@@ -119,7 +119,7 @@ public class PortwayApiTestFixture : IDisposable
         string settingsContent = @"{
             ""Environment"": {
                 ""ServerName"": ""localhost"",
-                ""AllowedEnvironments"": [""600"", ""700""]
+                ""AllowedEnvironments"": [""500"", ""700""]
             }
         }";
         

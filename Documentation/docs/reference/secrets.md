@@ -154,7 +154,7 @@ In `appsettings.json`:
 You'll see:
 ```
 [DBG] Scanning all environments for auto-encryption...
-[DBG] Found 3 environment(s): 600, 700, Synergy
+[DBG] Found 3 environment(s): 500,700, Synergy
 [DBG] Auto-encrypted ConnectionString for environment: 600
 [DBG] Auto-encryption scan complete: 3 encrypted, 0 already encrypted, 0 errors
 ```

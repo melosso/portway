@@ -61,7 +61,7 @@ jobs:
       run: |
         echo "Pruning environments..."
         for dir in publish_win publish_lin; do
-          rm -rf ${{ github.workspace }}/$dir/environments/{600,700,Synergy}
+          rm -rf ${{ github.workspace }}/$dir/environments/{500,700,Synergy}
         done
 
     - name: Remove Meta Files

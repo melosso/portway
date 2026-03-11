@@ -12,7 +12,7 @@ public class EnvironmentSettingsTests
     {
         // Arrange
         var settings = new TestEnvironmentSettings();
-        settings.SetAllowedEnvironments(new List<string> { "600", "700", "test" });
+        settings.SetAllowedEnvironments(new List<string> { "500", "700", "test" });
         
         // Act
         bool result = settings.IsEnvironmentAllowed("test");
@@ -26,7 +26,7 @@ public class EnvironmentSettingsTests
     {
         // Arrange
         var settings = new TestEnvironmentSettings();
-        settings.SetAllowedEnvironments(new List<string> { "600", "700", "test" });
+        settings.SetAllowedEnvironments(new List<string> { "500", "700", "test" });
         
         // Act
         bool result = settings.IsEnvironmentAllowed("invalid");
@@ -39,7 +39,7 @@ public class EnvironmentSettingsTests
     public void GetAllowedEnvironments_ReturnsCorrectEnvironments()
     {
         // Arrange
-        var expectedEnvironments = new List<string> { "600", "700", "test" };
+        var expectedEnvironments = new List<string> { "500", "700", "test" };
         var settings = new TestEnvironmentSettings();
         settings.SetAllowedEnvironments(expectedEnvironments);
         

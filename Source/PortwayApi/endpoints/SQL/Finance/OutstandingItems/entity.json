@@ -1,7 +1,7 @@
 {
     "DatabaseObjectName": "OutstandingItems",
     "DatabaseSchema": "dbo",
-    "AllowedEnvironments": ["600","700"],
+    "AllowedEnvironments": ["500","700"],
     "Namespace": "Finance",
     "DisplayName": "Outstanding Items",
     "NamespaceDisplayName": "Financial",

@@ -29,7 +29,7 @@
       }
     ]
   },
-  "AllowedEnvironments": ["600","700"],
+  "AllowedEnvironments": ["500","700"],
   "Documentation": {
     "TagDescription": "**Sales Order Management**\n\nCreate complete sales orders with headers and multiple line items. Uses utomatic transaction key linking.",
     "MethodDescriptions": {

@@ -4,7 +4,7 @@
   "EnableFiltering": true,
   "Namespace": "Masterdata",
   "NamespaceDisplayName": "Masterdata",
-  "AllowedEnvironments": ["600", "700", "Synergy"],
+  "AllowedEnvironments": ["500", "700", "Synergy"],
   "Documentation": {
     "TagDescription": "**Mock Countries API**\n\nStatic country data for testing frontend applications and API simulation.\n\nSupports OData filtering: $filter, $select, $orderby, $top, $skip",
     "MethodDescriptions": {
