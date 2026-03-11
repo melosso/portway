@@ -66,35 +66,53 @@
 </div>
 
 <script>
-async function signIn() {
-  const key = document.getElementById('apiKeyInput').value;
-  const btn = document.getElementById('signInBtn');
-  const err = document.getElementById('authError');
-  err.style.display = 'none';
-  btn.classList.add('is-loading');
-  btn.disabled = true;
-  try {
-    const r = await fetch('/ui/api/auth', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: key })
-    });
-    if (r.ok) {
-      window.location.href = (window.PortwayBase || '') + '/ui/dashboard';
-    } else {
+  let csrfToken = '';
+
+  async function initCsrf() {
+    try {
+      const r = await fetch('/ui/api/auth/csrf');
+      if (r.ok) {
+        const d = await r.json();
+        csrfToken = d.csrf;
+      }
+    } catch(e) {
+      console.error('Failed to fetch CSRF token:', e);
+    }
+  }
+  initCsrf();
+
+  async function signIn() {
+    const key = document.getElementById('apiKeyInput').value;
+    const btn = document.getElementById('signInBtn');
+    const err = document.getElementById('authError');
+    err.style.display = 'none';
+    btn.classList.add('is-loading');
+    btn.disabled = true;
+    try {
+      const r = await fetch('/ui/api/auth', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: key, csrf: csrfToken })
+      });
+      if (r.ok) {
+        window.location.href = (window.PortwayBase || '') + '/ui/dashboard';
+      } else {
+        const d = await r.json();
+        err.textContent = d.error || 'Invalid API key';
+        err.style.display = 'block';
+        btn.classList.remove('is-loading');
+        btn.disabled = false;
+        document.getElementById('apiKeyInput').focus();
+        initCsrf();
+      }
+    } catch(e) {
+      err.textContent = 'Connection error. Is the server running?';
       err.style.display = 'block';
       btn.classList.remove('is-loading');
       btn.disabled = false;
-      document.getElementById('apiKeyInput').focus();
     }
-  } catch(e) {
-    err.textContent = 'Connection error. Is the server running?';
-    err.style.display = 'block';
-    btn.classList.remove('is-loading');
-    btn.disabled = false;
   }
-}
 </script>
 </body>
 </html>
