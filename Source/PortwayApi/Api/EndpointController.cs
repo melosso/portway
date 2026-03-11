@@ -3822,37 +3822,9 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     }
 
     /// <summary>
-    /// Auto-detects content type based on file extension
+    /// Auto-detects content type based on file extension (uses shared ContentTypeHelper)
     /// </summary>
-    private string GetContentTypeFromExtension(string fileName)
-    {
-        var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        
-        return extension switch
-        {
-            ".json" => "application/json",
-            ".xml" => "application/xml",
-            ".html" => "text/html",
-            ".htm" => "text/html",
-            ".css" => "text/css",
-            ".js" => "application/javascript",
-            ".txt" => "text/plain",
-            ".csv" => "text/csv",
-            ".png" => "image/png",
-            ".jpg" => "image/jpeg",
-            ".jpeg" => "image/jpeg",
-            ".gif" => "image/gif",
-            ".svg" => "image/svg+xml",
-            ".webp" => "image/webp",
-            ".ico" => "image/x-icon",
-            ".pdf" => "application/pdf",
-            ".zip" => "application/zip",
-            ".mp4" => "video/mp4",
-            ".mp3" => "audio/mpeg",
-            ".wav" => "audio/wav",
-            _ => "application/octet-stream"
-        };
-    }
+    private string GetContentTypeFromExtension(string fileName) => ContentTypeHelper.GetContentType(fileName);
 
     /// <summary>
     /// Helper method to create a standard error response

@@ -482,7 +482,7 @@ public class RateLimiter
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, options));
     }
-    private TokenBucket CreateBucket(string key, int limit, int windowSeconds, string type, TokenService? tokenService = null)
+        private TokenBucket CreateBucket(string key, int limit, int windowSeconds, string type, TokenService? tokenService = null)
     {
         string displayKey = key;
         
@@ -497,28 +497,9 @@ public class RateLimiter
             else
             {
                 var token = key.Substring("token:".Length);
-                try
-                {
-                    // Attempt to get token details synchronously for logging purposes
-                    var tokenDetails = Task.Run(async () => await tokenService.GetTokenDetailsByTokenAsync(token)).Result;
-                    if (tokenDetails != null)
-                    {
-                        displayKey = $"TOKEN_ID:{tokenDetails.Id} ({tokenDetails.Username})";
-                        // Cache the result for future use
-                        _tokenDisplayCache.TryAdd(key, displayKey);
-                    }
-                    else
-                    {
-                        displayKey = "UNKNOWN_TOKEN";
-                        _tokenDisplayCache.TryAdd(key, displayKey);
-                    }
-                }
-                catch
-                {
-                    // Fallback to masking if lookup fails
-                    displayKey = MaskKey(key);
-                    _tokenDisplayCache.TryAdd(key, displayKey);
-                }
+                var maskedToken = MaskToken(token);
+                displayKey = $"TOKEN:{maskedToken[..Math.Min(8, maskedToken.Length)]}...";
+                _tokenDisplayCache.TryAdd(key, displayKey);
             }
         }
         else
