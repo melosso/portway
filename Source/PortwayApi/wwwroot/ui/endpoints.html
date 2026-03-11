@@ -461,7 +461,6 @@ function readMethods(id = 'methodPicker') {
 }
 
 function fieldToggle(id, label, checked) {
-  // Single wrapping label — clicking anywhere toggles once (no double-toggle from nested labels)
   return `<label class="ep-field-switch">
     <span>${esc(label)}</span>
     <span class="switch" aria-hidden="true">
