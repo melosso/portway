@@ -105,17 +105,14 @@ cat > "$WEB_CONFIG_PATH" <<'XML'
     </defaultDocument>
     <httpProtocol>
       <customHeaders>
+        <!-- Stop IIS from adding these headers, since Portway already adds them. So removing them here prevents duplicates. -->
         <remove name="X-Powered-By" />
         <remove name="X-Content-Type-Options" />
         <remove name="X-Frame-Options" />
         <remove name="Strict-Transport-Security" />
         <remove name="Referrer-Policy" />
         <remove name="Permissions-Policy" />
-        <add name="X-Content-Type-Options" value="nosniff" />
-        <add name="X-Frame-Options" value="DENY" />
-        <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
-        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
-        <add name="Permissions-Policy" value="geolocation=(), camera=(), microphone=(), payment=()" />
+        <remove name="Content-Security-Policy" />
       </customHeaders>
     </httpProtocol>
   </system.webServer>
