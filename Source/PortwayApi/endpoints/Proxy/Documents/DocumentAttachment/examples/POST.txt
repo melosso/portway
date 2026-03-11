@@ -1,0 +1,21 @@
+{
+  "Binary": {
+    "DataString": "JVBERi0xLjQKMSAwIG9iajw8L1R5cGUgL0NhdGFsb2cgL1BhZ2VzIDIgMCBSPj5lbmRvYmoKMiAwIG9iajw8L1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDE+PmVuZG9iagozIDAgb2JqPDwvVHlwZSAvUGFnZSAvTWVkaWFCb3ggWzAgMCA1OTUgODQyXT4+ZW5kb2JqCnhyZWYKMCA0CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAwOSAwMDAwMCBuIAowMDAwMDAwMDU4IDAwMDAwIG4gCjAwMDAwMDAxMTUgMDAwMDAgbiAKdHJhaWxlcjw8L1NpemUgNC9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjE5MAolJUVPRg==",
+    "Sequence": 0,
+    "Encoded": true
+  },
+  "Document": {
+    "Type": 115,
+    "Subject": "My Document (v1)",
+    "SecurityLevel": 10,
+    "Status": 30,
+    "Version": "1",
+    "VersionActivate": true,
+    "VersionToDealWith": "1"
+  },
+  "Attachment": {
+    "AttachmentFileName": "my-document.pdf",
+    "AttachmentFileExtension": ".pdf",
+    "VersionNumber": "1"
+  }
+}

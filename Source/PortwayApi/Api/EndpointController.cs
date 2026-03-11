@@ -1951,17 +1951,18 @@ public class EndpointController : ControllerBase
                 HttpContext, env, compositeName, requestBody);
                 
             // Convert from IResult to IActionResult
-            if (result is OkObjectResult okResult)
+            if (result is IStatusCodeHttpResult statusCodeResult)
             {
-                return Ok(okResult.Value);
-            }
-            else if (result is NotFoundObjectResult notFoundResult)
-            {
-                return NotFound(notFoundResult.Value);
-            }
-            else if (result is BadRequestObjectResult badRequestResult)
-            {
-                return BadRequest(badRequestResult.Value);
+                var statusCode = statusCodeResult.StatusCode ?? 200;
+                var value = (result is IValueHttpResult valueResult) ? valueResult.Value : null;
+
+                return statusCode switch
+                {
+                    200 => Ok(value),
+                    400 => BadRequest(value),
+                    404 => NotFound(value),
+                    _ => StatusCode(statusCode, value)
+                };
             }
             else if (result is ObjectResult objectResult)
             {
@@ -1973,7 +1974,7 @@ public class EndpointController : ControllerBase
                 return Ok(new
                 {
                     success = true,
-                    message = "Record(s) created successfully", 
+                    message = "Record(s) created successfully",
                 });
             }
         }
