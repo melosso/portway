@@ -1,1 +1,2 @@
 # Ignore environment settings files — they contain credentials
+**/settings.json
