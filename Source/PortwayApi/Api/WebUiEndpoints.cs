@@ -121,6 +121,9 @@ public static class WebUiEndpointExtensions
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0";
 
+        // Get security settings from configuration
+        var secureCookies = app.Configuration.GetValue<bool>("WebUi:SecureCookies", false);
+        
         // Login
         app.MapGet("/ui/login", (HttpContext ctx) =>
             uiAuthEnabled
@@ -130,20 +133,50 @@ public static class WebUiEndpointExtensions
         app.MapGet("/ui/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/login"))
             .ExcludeFromDescription();
 
+        // CSRF token endpoint
+        app.MapGet("/ui/api/auth/csrf", () => Results.Json(new { csrf = WebUiAuthHelper.GenerateCsrfToken() }))
+            .ExcludeFromDescription();
+
         // Auth endpoints
         app.MapPost("/ui/api/auth", async (HttpContext context) =>
         {
+            // Rate limiting and lockout check
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var blockReason = WebUiAuthHelper.CheckAccess(clientIp);
+            if (blockReason != null)
+            {
+                return Results.Json(new { error = blockReason }, statusCode: 429);
+            }
+
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            
+            // CSRF validation
+            var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
+            if (!WebUiAuthHelper.ValidateCsrfToken(csrfToken))
+            {
+                WebUiAuthHelper.RecordFailedAttempt(clientIp);
+                return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
+            }
+            
             var provided = body.TryGetProperty("apiKey", out var kp) ? kp.GetString() ?? "" : "";
             var provHash = SHA256.HashData(Encoding.UTF8.GetBytes(provided));
             var expHash  = SHA256.HashData(Encoding.UTF8.GetBytes(adminApiKey));
             if (!CryptographicOperations.FixedTimeEquals(provHash, expHash))
+            {
+                WebUiAuthHelper.RecordFailedAttempt(clientIp);
                 return Results.Json(new { error = "Invalid API key" }, statusCode: 401);
+            }
+
+            // Success - clear failed attempts
+            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            // Consume the CSRF token (one-time use)
+            WebUiAuthHelper.ConsumeCsrfToken(csrfToken!);
 
             var token = GenerateToken(adminApiKey);
             context.Response.Cookies.Append(CookieName, token, new CookieOptions
             {
                 HttpOnly = true,
+                Secure = secureCookies, // Configurable - set to true in production with HTTPS
                 SameSite = SameSiteMode.Lax,
                 Path     = "/",
                 Expires  = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours)
@@ -156,6 +189,7 @@ public static class WebUiEndpointExtensions
             context.Response.Cookies.Append(CookieName, "", new CookieOptions
             {
                 HttpOnly = true,
+                Secure = secureCookies,
                 SameSite = SameSiteMode.Lax,
                 Path     = "/",
                 Expires  = DateTimeOffset.UnixEpoch
@@ -995,7 +1029,7 @@ public static class WebUiEndpointExtensions
 
     private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
     {
-        // Allow Namespace/Name paths (each segment: alphanumeric + hyphens/underscores, no "..")
+        // Allow namespace/name paths
         if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
             return (null, "Invalid endpoint name");
 
