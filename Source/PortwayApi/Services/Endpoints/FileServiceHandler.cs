@@ -58,7 +58,8 @@ public class FileStorageOptions
             ".jsp", ".jspx", ".cgi", ".pl", ".py", ".rb",
             ".jar", ".bin", ".elf", ".app", ".dmg", ".run",
             ".docm", ".xlsm", ".pptm"
-        };}
+        };
+}
 
 /// <summary>
 /// Service for handling file operations
