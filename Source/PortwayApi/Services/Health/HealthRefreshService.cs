@@ -42,7 +42,7 @@ public class HealthRefreshService : BackgroundService
             var report = await _healthService.CheckHealthAsync(ct);
             _broadcaster?.Broadcast("health", JsonSerializer.Serialize(new { status = report.Status.ToString() }));
         }
-        catch (OperationCanceledException) { /* shutting down */ }
+        catch (OperationCanceledException) { return; }
         catch (Exception ex)
         {
             Log.Warning("Background health refresh failed: {Error}", ex.Message);

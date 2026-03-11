@@ -730,7 +730,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { Log.Debug(ex, "Failed to read environment variable, falling back to next option"); }
         }
 
         return "$XTSI5gTEf1hawq3G2uOdWTsFUrgZ6mkCBGrdr0fsRTegXwis68HxGEoCsIBpgbPl5swwY9BQ0qiXG6CaeEPJzp3SPyGebl0ZyHL3jLACKIuSw7G1ufAZ5XATtetKatH0sr#";

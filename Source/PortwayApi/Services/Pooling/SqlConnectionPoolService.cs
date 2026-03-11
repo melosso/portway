@@ -183,7 +183,8 @@ public class SqlConnectionPoolService : IHostedService
                     Log.Warning(ex, "Error with maintenance connection, recreating...");
                     
                     // Dispose old connection
-                    try { await connection.DisposeAsync(); } catch { }
+                    try { await connection.DisposeAsync(); }
+                    catch (Exception disposeEx) { Log.Debug(disposeEx, "Error disposing connection during maintenance"); }
                     
                     // Create a new connection
                     var newConnection = new SqlConnection(connectionString);
