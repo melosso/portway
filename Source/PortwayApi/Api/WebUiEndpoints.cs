@@ -676,7 +676,7 @@ public static class WebUiEndpointExtensions
         app.MapPost("/ui/api/tokens", async (HttpContext context, TokenService tokenService) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
-            var username     = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+            var username     = (body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "").Trim();
             var description  = body.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "";
             var scopes       = body.TryGetProperty("allowed_scopes", out var s) ? s.GetString() ?? "*" : "*";
             var environments = body.TryGetProperty("allowed_environments", out var e) ? e.GetString() ?? "*" : "*";
@@ -684,6 +684,9 @@ public static class WebUiEndpointExtensions
                 ? exp.GetInt32() : null;
             if (string.IsNullOrWhiteSpace(username))
                 return Results.Json(new { error = "username is required" }, statusCode: 400);
+            var active = await tokenService.GetActiveTokensAsync();
+            if (active.Any(t => string.Equals(t.Username.Trim(), username, StringComparison.OrdinalIgnoreCase)))
+                return Results.Json(new { error = $"A token named '{username}' already exists" }, statusCode: 409);
             var token = await tokenService.GenerateTokenAsync(username, scopes, environments, description, expiresInDays);
             return Results.Json(new { ok = true, token });
         }).ExcludeFromDescription();
@@ -695,6 +698,8 @@ public static class WebUiEndpointExtensions
                 await tokenService.UpdateTokenScopesAsync(id, scopes.GetString() ?? "*");
             if (body.TryGetProperty("allowed_environments", out var envs) && envs.ValueKind == JsonValueKind.String)
                 await tokenService.UpdateTokenEnvironmentsAsync(id, envs.GetString() ?? "*");
+            if (body.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
+                await tokenService.UpdateTokenDescriptionAsync(id, desc.GetString() ?? "");
             if (body.TryGetProperty("expires_at", out var expiresAt) &&
                 expiresAt.ValueKind == JsonValueKind.String &&
                 DateTime.TryParse(expiresAt.GetString(), out var dt))
@@ -715,6 +720,42 @@ public static class WebUiEndpointExtensions
         {
             var ok = await tokenService.UnarchiveTokenAsync(id);
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found or not archived" }, statusCode: 404);
+        }).ExcludeFromDescription();
+
+        app.MapPost("/ui/api/tokens/{id:int}/rotate", async (int id, TokenService tokenService) =>
+        {
+            var existing = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
+            if (existing == null)
+                return Results.Json(new { error = "Token not found" }, statusCode: 404);
+            if (existing.RevokedAt != null)
+                return Results.Json(new { error = "Cannot rotate an archived token" }, statusCode: 400);
+
+            int? expiresInDays = null;
+            if (existing.ExpiresAt.HasValue)
+            {
+                var remaining = (int)Math.Ceiling((existing.ExpiresAt.Value - DateTime.UtcNow).TotalDays);
+                expiresInDays = Math.Max(1, remaining);
+            }
+
+            // Create the replacement token first so the last-token guard won't block the revoke.
+            var newToken = await tokenService.GenerateTokenAsync(
+                existing.Username,
+                existing.AllowedScopes,
+                existing.AllowedEnvironments,
+                existing.Description,
+                expiresInDays);
+
+            await tokenService.RevokeTokenAsync(id);
+
+            return Results.Json(new
+            {
+                ok                   = true,
+                token                = newToken,
+                username             = existing.Username,
+                allowed_scopes       = existing.AllowedScopes,
+                allowed_environments = existing.AllowedEnvironments,
+                expires_in_days      = expiresInDays
+            });
         }).ExcludeFromDescription();
 
         app.MapGet("/ui/api/tokens/{id:int}/audit", async (int id, TokenService tokenService) =>

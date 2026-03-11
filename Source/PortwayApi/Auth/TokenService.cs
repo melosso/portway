@@ -400,6 +400,9 @@ public class TokenService
             Log.Warning(ex, "Could not rename token file for revoked token");
         }
         
+        await LogAuditAsync(token.Id, token.Username, "Revoked", token.TokenHash, null,
+            JsonSerializer.Serialize(new { RevokedAt = token.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss") }));
+
         Log.Information("Revoked token ID: {TokenId} for user: {Username}", tokenId, token.Username);
         return true;
     }
@@ -433,6 +436,9 @@ public class TokenService
         {
             Log.Warning(ex, "Could not restore token file for unarchived token");
         }
+
+        await LogAuditAsync(token.Id, token.Username, "Unarchived", null, null,
+            JsonSerializer.Serialize(new { RestoredAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
 
         Log.Information("Unarchived token ID: {TokenId} for user: {Username}", tokenId, token.Username);
         return true;
@@ -492,6 +498,22 @@ public class TokenService
         return true;
     }
     
+    /// <summary>
+    /// Update token description by ID
+    /// </summary>
+    public async Task<bool> UpdateTokenDescriptionAsync(int tokenId, string description)
+    {
+        var token = await _dbContext.Tokens.FindAsync(tokenId);
+        if (token == null) return false;
+        string old = token.Description ?? "";
+        token.Description = description;
+        await _dbContext.SaveChangesAsync();
+        await LogAuditAsync(token.Id, token.Username, "DescriptionUpdated", null, null,
+            JsonSerializer.Serialize(new { OldDescription = old, NewDescription = description,
+                UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
+        return true;
+    }
+
     /// <summary>
     /// Log audit information for token operations
     /// </summary>

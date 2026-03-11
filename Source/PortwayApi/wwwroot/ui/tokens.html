@@ -169,6 +169,10 @@
   </div>
   <div class="drawer-body" id="policyPanel">
     <div class="drawer-field">
+      <label>Description</label>
+      <input type="text" id="editDesc" placeholder="Optional description" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    </div>
+    <div class="drawer-field">
       <label>Scopes</label>
       <div class="tag-input-wrapper" id="editScopesWrapper">
         <input type="text" id="editScopesInput" class="tag-input" placeholder="Type to search or * for all">
@@ -501,6 +505,7 @@ function renderTable() {
   const archiveIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
   const unarchiveIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="8 12 12 8 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>`;
   const editIcon      = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const rotateIcon    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
   const showArchived  = document.getElementById('showRevokedCb').checked;
 
   tbody.innerHTML = page.map(t => {
@@ -515,11 +520,15 @@ function renderTable() {
       ? `<span class="col-mono" style="font-size:0.72rem">${esc(t.expires_at.slice(0,10))}</span>`
       : `<span class="muted">Never</span>`;
 
+    const isActive  = !t.revoked_at && t.is_active;
     const revokeBtn = t.revoked_at
       ? (showArchived
           ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Restore token" onclick="unarchiveToken(${t.id})">${unarchiveIcon}</button>`
           : `<button class="btn-icon shadcn-tooltip" disabled data-tooltip="Already archived" style="opacity:0.3; cursor:default">${archiveIcon}</button>`)
       : `<button class="btn-icon shadcn-tooltip" data-tooltip="Archive token" onclick="confirmRevoke(${t.id},this)">${archiveIcon}</button>`;
+    const rotateBtn = isActive
+      ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Rotate token" onclick="confirmRotate(${t.id},this)">${rotateIcon}</button>`
+      : '';
 
     return `<tr>
       <td style="padding-left:1rem; width:36px;"><input type="checkbox" class="row-check" data-id="${t.id}" style="cursor:pointer; accent-color:hsl(var(--primary));"></td>
@@ -530,9 +539,10 @@ function renderTable() {
       <td>${formatPills(t.allowed_environments)}</td>
       <td>${expires}</td>
       <td>${badge}</td>
-      <td style="text-align:right; padding-right:1rem;">
+      <td style="text-align:right; padding-right:1rem; width:112px;">
         <div style="display:inline-flex; gap:2px; align-items:center;">
           <button class="btn-icon shadcn-tooltip" data-tooltip="Edit token" onclick="openEditDrawer(${t.id})">${editIcon}</button>
+          ${rotateBtn}
           ${revokeBtn}
         </div>
       </td>
@@ -589,6 +599,10 @@ async function createToken() {
   const name = document.getElementById('createName').value.trim();
   if (!name) { toast('Name is required', 'error'); document.getElementById('createName').focus(); return; }
 
+  const nameLower = name.toLowerCase();
+  const isDuplicate = allTokens.some(t => !t.revoked_at && t.username.trim().toLowerCase() === nameLower);
+  if (isDuplicate) { toast(`A token named "${name}" already exists`, 'error'); document.getElementById('createName').focus(); return; }
+
   const expiryStr = document.getElementById('createExpiry').value.trim();
   if (expiryStr) {
     const days = parseInt(expiryStr, 10);
@@ -614,7 +628,11 @@ async function createToken() {
       body: JSON.stringify(body)
     });
     const d = await r.json();
-    if (!r.ok || !d.ok) { toast(d.error || 'Failed to create token', 'error'); return; }
+    if (!r.ok || !d.ok) {
+      toast(d.error || 'Failed to create token', 'error');
+      if (r.status === 409) document.getElementById('createName').focus();
+      return;
+    }
 
     closeCreateDrawer();
     await loadTokens();
@@ -635,6 +653,7 @@ function openEditDrawer(id) {
 
   document.getElementById('editDrawerTitle').textContent    = token.username;
   document.getElementById('editDrawerSubtitle').textContent = token.description || '';
+  document.getElementById('editDesc').value = token.description || '';
   editScopesTI.setValue(token.allowed_scopes);
   editEnvsTI.setValue(token.allowed_environments);
 
@@ -674,6 +693,7 @@ async function saveToken() {
 
   try {
     const body = {
+      description:          document.getElementById('editDesc').value.trim(),
       allowed_scopes:       editScopesTI.getValue(),
       allowed_environments: editEnvsTI.getValue()
     };
@@ -770,6 +790,31 @@ async function unarchiveToken(id) {
     await loadTokens();
   } catch(e) {
     toast('Failed to restore token', 'error');
+  }
+}
+
+// Rotate ────────────────────────────────────────────────
+function confirmRotate(id, btn) {
+  const cell = btn.closest('td');
+  cell.innerHTML = `
+    <div style="display:flex;gap:0.3rem;align-items:center;white-space:nowrap;justify-content:flex-end;padding-right:1rem;">
+      <span style="font-size:0.72rem;font-weight:600;">Rotate?</span>
+      <button class="btn btn-outline" style="height:1.5rem;padding:0 0.5rem;font-size:0.72rem;" onclick="rotateToken(${id})">Yes</button>
+      <button class="btn btn-outline" style="height:1.5rem;padding:0 0.5rem;font-size:0.72rem;" onclick="loadTokens()">No</button>
+    </div>`;
+}
+
+async function rotateToken(id) {
+  try {
+    const r = await fetch(`/ui/api/tokens/${id}/rotate`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok || !d.ok) { toast(d.error || 'Failed to rotate token', 'error'); await loadTokens(); return; }
+    await loadTokens();
+    showRevealModal(d.token, { username: d.username, allowed_scopes: d.allowed_scopes, allowed_environments: d.allowed_environments, expires_in_days: d.expires_in_days });
+    toast('Token rotated', 'success');
+  } catch(e) {
+    toast('Failed to rotate token', 'error');
+    await loadTokens();
   }
 }
 
