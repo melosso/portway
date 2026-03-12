@@ -1361,28 +1361,65 @@ public static class EndpointHandler
             switch (type)
             {
                 case EndpointType.SQL:
-                    _loadedSqlEndpoints = null;
-                    _loadedSqlWebhookEndpoints = null; // Webhooks are SQL-based
-                    Log.Information("SQL endpoint cache cleared, will reload on next access");
+                    // Reload immediately so singletons get updated data
+                    _loadedSqlEndpoints = ReloadSqlEndpoints();
+                    _loadedSqlWebhookEndpoints = null; // Webhooks will be reloaded on next access
+                    Log.Information("SQL endpoints reloaded from disk");
                     break;
                 case EndpointType.Proxy:
                 case EndpointType.Composite:
-                    _loadedProxyEndpoints = null;
-                    Log.Information("Proxy endpoint cache cleared, will reload on next access");
+                    _loadedProxyEndpoints = ReloadProxyEndpoints();
+                    Log.Information("Proxy endpoints reloaded from disk");
                     break;
                 case EndpointType.Files:
-                    _loadedFileEndpoints = null;
-                    Log.Information("File endpoint cache cleared, will reload on next access");
+                    _loadedFileEndpoints = ReloadFileEndpoints();
+                    Log.Information("File endpoints reloaded from disk");
                     break;
                 case EndpointType.Static:
-                    _loadedStaticEndpoints = null;
-                    Log.Information("Static endpoint cache cleared, will reload on next access");
+                    _loadedStaticEndpoints = ReloadStaticEndpoints();
+                    Log.Information("Static endpoints reloaded from disk");
                     break;
                 default:
                     Log.Warning("Unknown endpoint type for reload: {Type}", type);
                     break;
             }
         }
+    }
+
+    /// <summary>
+    /// Forces immediate reload of SQL endpoints
+    /// </summary>
+    private static Dictionary<string, EndpointDefinition> ReloadSqlEndpoints()
+    {
+        var sqlEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "SQL");
+        return LoadSqlEndpoints(sqlEndpointsDirectory);
+    }
+
+    /// <summary>
+    /// Forces immediate reload of proxy endpoints
+    /// </summary>
+    private static Dictionary<string, EndpointDefinition> ReloadProxyEndpoints()
+    {
+        var proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
+        return LoadProxyEndpoints(proxyEndpointsDirectory);
+    }
+
+    /// <summary>
+    /// Forces immediate reload of file endpoints
+    /// </summary>
+    private static Dictionary<string, EndpointDefinition> ReloadFileEndpoints()
+    {
+        var fileEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Files");
+        return LoadFileEndpoints(fileEndpointsDirectory);
+    }
+
+    /// <summary>
+    /// Forces immediate reload of static endpoints
+    /// </summary>
+    private static Dictionary<string, EndpointDefinition> ReloadStaticEndpoints()
+    {
+        var staticEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static");
+        return LoadStaticEndpoints(staticEndpointsDirectory);
     }
 
     /// <summary>

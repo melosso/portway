@@ -295,6 +295,8 @@ public class CompositeEndpointHandler
         // Create the request
         var request = new HttpRequestMessage(new HttpMethod(step.Method), fullUrl);
         
+        Log.Debug("Executing step {StepName} to {Url} with method {Method}", step.Name, fullUrl, step.Method);
+        
         // Add headers
         request.Headers.Add("ServerName", _serverName);
         request.Headers.Add("DatabaseName", env);
