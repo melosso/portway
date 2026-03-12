@@ -202,12 +202,22 @@ try
     builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
 
     // Configure HTTP client
-    var proxyUsername = Environment.GetEnvironmentVariable("PROXY_USERNAME");
-    var proxyPassword = Environment.GetEnvironmentVariable("PROXY_PASSWORD");
-    var proxyDomain = Environment.GetEnvironmentVariable("PROXY_DOMAIN");
+    // Check environment variables first, then fall back to config
+    var proxyUsername = Environment.GetEnvironmentVariable("PROXY_USERNAME") 
+        ?? builder.Configuration["Proxy:Username"];
+    var proxyPassword = Environment.GetEnvironmentVariable("PROXY_PASSWORD") 
+        ?? builder.Configuration["Proxy:Password"];
+    var proxyDomain = Environment.GetEnvironmentVariable("PROXY_DOMAIN") 
+        ?? builder.Configuration["Proxy:Domain"];
+
+    Log.Debug("Proxy credentials found: username={HasUsername}, password={HasPassword}, domain={HasDomain}", 
+        !string.IsNullOrEmpty(proxyUsername), 
+        !string.IsNullOrEmpty(proxyPassword),
+        !string.IsNullOrEmpty(proxyDomain));
 
     if (!string.IsNullOrEmpty(proxyUsername) && !string.IsNullOrEmpty(proxyPassword))
     {
+        Log.Information("Configuring proxy with explicit credentials for user: {Username}@{Domain}", proxyUsername, proxyDomain);
         builder.Services.AddHttpClient("ProxyClient")
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
