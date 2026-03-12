@@ -1372,7 +1372,7 @@ public class EndpointController : ControllerBase
             // Validate URL safety
             if (!_urlValidator.IsUrlSafe(fullUrl))
             {
-                Log.Warning("Blocked potentially unsafe URL: {Url}", fullUrl);
+                Log.Warning("Blocked URL due to security restrictions: {Url}", fullUrl);
                 return StatusCode(403);
             }
 
