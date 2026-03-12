@@ -8,6 +8,9 @@ WORKDIR /src
 # Copy only project files first to leverage Docker layer caching for dependencies
 COPY Source/PortwayApi/PortwayApi.csproj Source/PortwayApi/
 COPY Source/Tools/TokenGenerator/TokenGenerator.csproj Source/Tools/TokenGenerator/
+COPY Source/Directory.Build.props Source/
+COPY Source/Directory.Packages.props Source/
+COPY Source/global.json Source/
 
 # Restore dependencies as distinct layers
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
