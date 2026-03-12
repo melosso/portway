@@ -1,7 +1,7 @@
 { 
     "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Classification", 
     "Methods": ["GET"],
-    "AllowedEnvironments": ["600","700"],
+    "AllowedEnvironments": ["500","700"],
     "Namespace": "Masterdata",
     "NamespaceDisplayName": "Masterdata",
     "Documentation": {

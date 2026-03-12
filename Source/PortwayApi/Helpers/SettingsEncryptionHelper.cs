@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Serilog;
 
 namespace PortwayApi.Helpers
 {
@@ -36,9 +37,9 @@ public static class SettingsEncryptionHelper
                     _currentPublicKeyPem = File.ReadAllText(publicKeyPath);
                     return _currentPublicKeyPem;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Continue to next option if error
+                    Log.Debug(ex, "Failed to read public key from {Path}, trying next option", publicKeyPath);
                 }
             }
 
@@ -62,9 +63,9 @@ public static class SettingsEncryptionHelper
                     
                     return publicKeyPem;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Fall back to hardcoded key if error
+                    Log.Warning(ex, "Failed to derive public key from encrypted private key, falling back to hardcoded key");
                 }
             }
             
@@ -115,9 +116,9 @@ public static class SettingsEncryptionHelper
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Continue to fallback
+                    Log.Debug(ex, "Failed to read PORTWAY_ENCRYPTION_KEY from process environment, trying machine scope");
                 }
             }
 

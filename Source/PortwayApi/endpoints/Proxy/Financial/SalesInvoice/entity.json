@@ -29,7 +29,7 @@
       }
     ]
   },
-  "AllowedEnvironments": ["600","700"],
+  "AllowedEnvironments": ["500","700"],
   "Documentation": {
     "TagDescription": "**Invoice Management**\n\nCreate complete invoices with header and line items in one request. Uses automatic transaction key linking.",
     "MethodDescriptions": {

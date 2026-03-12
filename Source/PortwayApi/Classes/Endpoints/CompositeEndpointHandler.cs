@@ -87,7 +87,7 @@ public class CompositeEndpointHandler
             // Execute each step in the composite definition
             foreach (var step in compositeDefinition.Steps)
             {
-                Log.Information("▶️ Executing step: {StepName} for composite endpoint: {Endpoint}", 
+                Log.Debug("Executing step: {StepName} for composite endpoint: {Endpoint}", 
                     step.Name, endpointName);
                     
                 try
@@ -105,6 +105,8 @@ public class CompositeEndpointHandler
                     result.ErrorDetail = ex.ErrorDetail;
                     result.StatusCode = ex.StatusCode;
                     
+                    Log.Error("Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}", 
+                        ex.StepName, endpointName, ex.Message);
                     Log.Error("Step {StepName} failed with status code {StatusCode}: {ErrorDetail}", 
                         ex.StepName, ex.StatusCode, ex.ErrorDetail);
                         
@@ -226,8 +228,13 @@ public class CompositeEndpointHandler
             // Process a single item (non-array step)
             JsonNode nodeToProcess;
             
+            // If this step explicitly requires an empty body (e.g. Binary create)
+            if (step.EmptyBody)
+            {
+                nodeToProcess = JsonNode.Parse("{}") ?? throw new Exception("Failed to create empty JSON object");
+            }
             // If this step depends on a previous step and not from the request data
-            if (!string.IsNullOrEmpty(step.DependsOn) && previousResults.ContainsKey(step.DependsOn))
+            else if (!string.IsNullOrEmpty(step.DependsOn) && previousResults.ContainsKey(step.DependsOn))
             {
                 // Use the result from the previous step
                 nodeToProcess = JsonSerializer.SerializeToNode(previousResults[step.DependsOn])!;

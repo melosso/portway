@@ -1,0 +1,11 @@
+{
+    "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc/Document",
+    "Methods": ["POST"],
+    "IsPrivate": true,
+    "Documentation": {
+        "TagDescription": "**Document Records**\n\nInternal endpoint for creating document records. Stores document metadata such as type and subject. Used by composite endpoints as part of the document attachment workflow.",
+        "MethodDescriptions": {
+            "POST": "Create a document record with type and subject metadata (internal use only)"
+        }
+    }
+}

@@ -4,7 +4,7 @@
   "EnableFiltering": true,
   "Namespace": "Masterdata",
   "NamespaceDisplayName": "Masterdata",  
-  "AllowedEnvironments": ["600", "700", "Synergy"],
+  "AllowedEnvironments": ["500", "700", "Synergy"],
   "Documentation": {
     "TagDescription": "**Masterdata**\n\nAccess all relevent masterdata, which may be used throughout the system.",
     "MethodDescriptions": {

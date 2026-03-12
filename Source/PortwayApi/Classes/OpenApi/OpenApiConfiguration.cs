@@ -241,6 +241,12 @@ public static class OpenApiConfiguration
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi/{documentName}/openapi.json");
 
+        // Serve stub source maps for Scalar's vendor JS (which embeds /sm/... sourceMappingURL comments).
+        // Scalar's own middleware normally handles these, but we serve the JS as a static vendor file,
+        // so we return a minimal valid source map to suppress DevTools 404 warnings.
+        app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
+           .ExcludeFromDescription();
+
         // Configure unified documentation interface at /docs using Scalar
         app.MapGet("/docs", (HttpContext context) =>
         {
@@ -337,7 +343,7 @@ var html = $@"
             'color: #dcaf34ff; font-weight: bold; font-size: 12px;'
         );
     </script>
-    <script src=""https://cdn.jsdelivr.net/npm/@scalar/api-reference""></script>
+    <script src=""{pathBase}/js/vendor/scalar-api-reference.js""></script>
     <script
         id=""{overlayId}""
         {overlayAttr}=""""

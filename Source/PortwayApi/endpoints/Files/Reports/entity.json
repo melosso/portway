@@ -3,5 +3,5 @@
   "BaseDirectory": "reports",
   "AllowedExtensions": [".pdf", ".xlsx", ".csv"],
   "IsPrivate": false,
-  "AllowedEnvironments": ["600"]
+  "AllowedEnvironments": ["500"]
 }

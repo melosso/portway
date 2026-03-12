@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Logs · Portway</title>
+  <link href="css/inter.css" rel="stylesheet">
+  <link href="css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/components/toast.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/shared.js"></script>
+</head>
+<body>
+
+<aside></aside>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">Logs</h1>
+      <span class="page-subtitle" id="fileLabel"></span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" id="autoRefreshBtn" onclick="toggleAutoRefresh()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Auto-refresh
+      </button>
+      <button class="btn btn-outline" onclick="resetAndLoad()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="log-toolbar">
+    <div class="log-level-btns">
+      <button class="log-level-btn active" id="btn-ALL" onclick="setLevel('ALL')">ALL</button>
+      <button class="log-level-btn" id="btn-INF" onclick="setLevel('INF')">INF</button>
+      <button class="log-level-btn" id="btn-WRN" onclick="setLevel('WRN')">WRN</button>
+      <button class="log-level-btn" id="btn-ERR" onclick="setLevel('ERR')">ERR</button>
+      <button class="log-level-btn" id="btn-DBG" onclick="setLevel('DBG')">DBG</button>
+    </div>
+    <div class="log-divider"></div>
+    <select id="limitSelect" onchange="resetAndLoad()">
+      <option value="100">100 lines</option>
+      <option value="200" selected>200 lines</option>
+      <option value="500">500 lines</option>
+      <option value="1000">1000 lines</option>
+    </select>
+    <button class="btn btn-outline" id="loadMoreBtn" onclick="loadMore()" style="display:none">Load More</button>
+    <span class="log-count" id="logCount"></span>
+  </div>
+
+  <div class="log-viewer" id="logViewer">
+    <div class="log-line"><span class="log-msg">Loading logs…</span></div>
+  </div>
+</main>
+
+<script>
+let activeLevel = 'ALL';
+let autoRefreshTimer = null;
+let autoRefreshActive = false;
+let logOffset = 0;
+let hasMoreLogs = false;
+let currentLogs = [];
+
+function setLevel(level) {
+  activeLevel = level;
+  const levels = ['ALL','INF','WRN','ERR','DBG'];
+  levels.forEach(l => {
+    const btn = document.getElementById(`btn-${l}`);
+    btn.className = 'log-level-btn' + (l === level ? ` active active-${l === 'ALL' ? '' : l}`.trimEnd() : '');
+  });
+  resetAndLoad();
+}
+
+function resetAndLoad() {
+  logOffset = 0;
+  currentLogs = [];
+  load();
+}
+
+function loadMore() {
+  load(true);
+}
+
+function toggleAutoRefresh() {
+  autoRefreshActive = !autoRefreshActive;
+  const btn = document.getElementById('autoRefreshBtn');
+  btn.style.color = autoRefreshActive ? 'hsl(var(--primary))' : '';
+  btn.style.borderColor = autoRefreshActive ? 'hsl(var(--primary) / 0.4)' : '';
+  clearInterval(autoRefreshTimer);
+  if (autoRefreshActive) autoRefreshTimer = setInterval(resetAndLoad, 10000);
+}
+
+async function load(append = false) {
+  const limit = document.getElementById('limitSelect').value;
+  const params = new URLSearchParams({ limit, offset: logOffset });
+  if (activeLevel && activeLevel !== 'ALL') params.set('level', activeLevel);
+
+  try {
+    const d = await fetch(`/ui/api/logs?${params}`).then(r => r.json());
+    document.getElementById('fileLabel').textContent = d.file ?? '';
+    
+    const newLogs = d.lines ?? [];
+    currentLogs = append ? [...currentLogs, ...newLogs] : newLogs;
+    hasMoreLogs = d.has_more ?? false;
+    logOffset = currentLogs.length;
+
+    document.getElementById('logCount').textContent = d.total
+      ? `${currentLogs.length} of ${d.total} entries` : '';
+    
+    document.getElementById('loadMoreBtn').style.display = hasMoreLogs ? 'inline-flex' : 'none';
+
+    const viewer = document.getElementById('logViewer');
+    if (!currentLogs.length) {
+      viewer.innerHTML = '<div class="log-line"><span class="log-msg muted">No log entries found</span></div>';
+      return;
+    }
+
+    // Render oldest→newest (top→bottom) so multi-line tree structures read naturally
+    viewer.innerHTML = [...currentLogs].reverse().map(line => {
+      const lvl = (line.level ?? 'INF').substring(0, 3).toUpperCase();
+      const ts = esc(line.timestamp ?? '');
+      const msg = esc(line.message ?? '');
+      return `<div class="log-line">` +
+        `<span class="log-ts">${ts}</span> ` +
+        `<span class="log-lvl-${lvl}">[${lvl}]</span> ` +
+        `<span class="log-msg">${msg}</span>` +
+        `</div>`;
+    }).join('');
+    // On first load (not "load more"), scroll to bottom so newest entries are visible
+    if (!append) viewer.scrollTop = viewer.scrollHeight;
+  } catch(e) {
+    document.getElementById('logViewer').innerHTML =
+      `<div class="log-line"><span class="log-lvl-ERR">[ERR]</span> <span class="log-msg">Failed to load logs: ${esc(e.message)}</span></div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

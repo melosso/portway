@@ -710,7 +710,20 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 if (!_isReleased)
                 {
                     _isReleased = true;
-                    _provider.ReleaseLockAsync(_lockKey, _lockValue).GetAwaiter().GetResult();
+                    // Release lock without blocking, fire and forget with timeout
+                    try
+                    {
+                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                        _provider.ReleaseLockAsync(_lockKey, _lockValue).Wait(cts.Token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // Timeout or already cancelled, lock will expire nativly
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(ex, "Failed to release lock {Key} synchronously, will expire naturally", _lockKey);
+                    }
                 }
                 
                 _isDisposed = true;

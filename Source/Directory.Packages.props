@@ -1,0 +1,98 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AspNetCoreVersion>10.0.3</AspNetCoreVersion>
+    <EntityFrameworkVersion>10.0.3</EntityFrameworkVersion>
+    <SerilogVersion>4.2.0</SerilogVersion>
+    <SerilogAspNetCoreVersion>5.0.0</SerilogAspNetCoreVersion>
+    <SerilogExtensionsLoggingVersion>10.0.0</SerilogExtensionsLoggingVersion>
+    <SerilogSinksConsoleVersion>6.1.1</SerilogSinksConsoleVersion>
+    <SerilogSinksFileVersion>7.0.0</SerilogSinksFileVersion>
+    <SerilogSettingsConfigurationVersion>10.0.0</SerilogSettingsConfigurationVersion>
+    <OpenTelemetryVersion>1.15.0</OpenTelemetryVersion>
+    <MicrosoftExtensionsVersion>10.0.3</MicrosoftExtensionsVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Versioning -->
+    <PackageVersion Include="MinVer" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="ASP.NET Core">
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.UI" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(AspNetCoreVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="Authentication">
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.16.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Entity Framework">
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EntityFrameworkVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="Databases">
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Dapper" Version="2.1.66" />
+    <PackageVersion Include="SqlKata" Version="2.4.0" />
+    <PackageVersion Include="SqlKata.Execution" Version="2.4.0" />
+    <PackageVersion Include="DynamicODataToSQL" Version="2.1.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="OData">
+    <PackageVersion Include="Microsoft.OData.Core" Version="8.4.3" />
+    <PackageVersion Include="Microsoft.OData.Edm" Version="8.4.3" />
+    <PackageVersion Include="Microsoft.OData.ModelBuilder" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Serilog">
+    <PackageVersion Include="Serilog" Version="$(SerilogVersion)" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="$(SerilogAspNetCoreVersion)" />
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="$(SerilogExtensionsLoggingVersion)" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="$(SerilogSinksConsoleVersion)" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="$(SerilogSinksFileVersion)" />
+    <PackageVersion Include="Serilog.Settings.Configuration" Version="$(SerilogSettingsConfigurationVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpenTelemetry">
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="$(OpenTelemetryVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="Azure">
+    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.8.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Other">
+    <PackageVersion Include="StackExchange.Redis" Version="2.11.0" />
+    <PackageVersion Include="Polly" Version="8.6.5" />
+    <PackageVersion Include="Flurl" Version="4.0.0" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.12.39" />
+  </ItemGroup>
+
+  <ItemGroup Label="Microsoft Extensions">
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test Dependencies">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Moq" Version="4.20.72" />
+  </ItemGroup>
+</Project>

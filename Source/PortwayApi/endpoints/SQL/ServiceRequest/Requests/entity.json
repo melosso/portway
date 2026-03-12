@@ -22,7 +22,7 @@
     ],
     "Procedure": "dbo.sp_ManageServiceRequests",
     "AllowedMethods": ["GET", "POST", "PUT"],
-    "AllowedEnvironments": ["600"],
+    "AllowedEnvironments": ["500"],
     "Documentation": {
         "TagDescription": "**Service Request Management**\n\nComprehensive service request lifecycle management. Track customer issues, assign technicians, monitor progress, and maintain service quality metrics.",
         "MethodDescriptions": {

@@ -67,8 +67,8 @@ log/
 
 ### Request Timing
 ```
-[DBG] Incoming request: POST /api/600/Orders
-[DBG] Outgoing response: 200 for /api/600/Orders - Took 125ms
+[DBG] Incoming request: POST /api/500/Orders
+[DBG] Outgoing response: 200 for /api/500/Orders - Took 125ms
 ```
 
 ### Rate Limiting

@@ -230,7 +230,6 @@ For troubleshooting, enable stdout logging in web.config:
 - Implement token rotation policy
 - Use token scoping for least-privilege access
 
-
 ### Firewall Whitelisting
 - Restrict access to the API by enabling Firewall in IIS
 - Set the default response to Deny
@@ -274,7 +273,8 @@ Include these critical components in your backup plan:
 Now that Portway is installed, continue with:
 
 - [Configure Endpoints](./endpoints/overview) - Set up SQL, Proxy, and Webhook endpoints
-- [Manage Authentication](./security/tokens) - Generate and manage access tokens  
 - [Configure Environments](./environments) - Set up database connections
+- [Configure Web UI](./webui1) - Set up the Web UI 
+- [Manage Authentication](./security/tokens) - Generate and manage access tokens  
 - [Monitor Your Installation](./monitoring) - Learn about logging and health checks
 - [Production Security](./security/production) - Implement security best practices

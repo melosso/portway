@@ -13,11 +13,11 @@ public class SqlEndpointTests : ApiTestBase
     public async Task GetSqlEndpoint_ValidEnvironment_ReturnsOk()
     {
         // Arrange
-        string testEnv = "600";
+        string testEnv = "500";
         string endpointName = "Products";
         
         // Ensure the environment is allowed
-        SetAllowedEnvironments("600", "700");
+        SetAllowedEnvironments("500", "700");
         
         // Mock ODataToSqlConverter to return a simple query
         // Note: The endpoint name is "Products" but it maps to "dbo.Items" in the database
@@ -50,7 +50,7 @@ public class SqlEndpointTests : ApiTestBase
         string endpointName = "Products";
         
         // Configure allowed environments to not include the test environment
-        SetAllowedEnvironments("600", "700");
+        SetAllowedEnvironments("500", "700");
         
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}");
@@ -63,7 +63,7 @@ public class SqlEndpointTests : ApiTestBase
     public async Task GetSqlEndpoint_Unauthorized_Returns401()
     {
         // Arrange
-        string testEnv = "600";
+        string testEnv = "500";
         string endpointName = "Products";
         
         // Remove authorization header

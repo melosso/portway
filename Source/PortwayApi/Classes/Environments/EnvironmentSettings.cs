@@ -73,6 +73,12 @@ public class EnvironmentSettings
         }
     }
 
+    public void Reload()
+    {
+        _allowedEnvironments.Clear();
+        LoadSettings();
+    }
+
     public bool IsEnvironmentAllowed(string environment)
     {
         return _allowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase);

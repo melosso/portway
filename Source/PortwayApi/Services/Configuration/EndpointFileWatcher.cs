@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Serilog;
 using PortwayApi.Classes;
@@ -14,6 +15,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
     private readonly string _endpointsPath;
     private readonly SqlMetadataService _sqlMetadataService;
     private readonly IOptionsMonitor<EndpointReloadingOptions> _optionsMonitor;
+    private readonly SseBroadcaster? _broadcaster;
     private FileSystemWatcher? _fileWatcher;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
     private readonly Dictionary<string, DateTime> _lastReloadTimes = new();
@@ -21,12 +23,14 @@ public class EndpointFileWatcher : IHostedService, IDisposable
 
     public EndpointFileWatcher(
         SqlMetadataService sqlMetadataService,
-        IOptionsMonitor<EndpointReloadingOptions> optionsMonitor)
+        IOptionsMonitor<EndpointReloadingOptions> optionsMonitor,
+        SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
-        _endpointsPath = Path.Combine(baseDir, "endpoints");
+        _endpointsPath  = Path.Combine(baseDir, "endpoints");
         _sqlMetadataService = sqlMetadataService;
         _optionsMonitor = optionsMonitor;
+        _broadcaster    = broadcaster;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -59,7 +63,6 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         _fileWatcher.Deleted += OnFileChanged;
         _fileWatcher.Renamed += OnFileRenamed;
 
-        Log.Information("Configuration reload enabled: Monitoring `/endpoints` folder for changes");
         Log.Debug("Endpoint file watcher initialized at path: {Path}", _endpointsPath);
 
         // WORKAROUND: Detect drvfs mount and use polling fallback for WSL2 compatibility
@@ -148,7 +151,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Debug("Could not determine endpoint name from path: {Path}", filePath);
                 return;
             }
-
+            
             // Reload endpoint definitions
             EndpointHandler.ReloadEndpointType(endpointType.Value);
 
@@ -160,7 +163,12 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Debug("SQL metadata cleared for endpoint '{Endpoint}'", endpointName);
             }
 
-            Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+            var ns = ExtractNamespace(filePath);
+            if (ns != null)
+                Log.Information("Endpoint '{Name}' ({Type}, namespace: {Namespace}) changed, will reload on next request", endpointName, endpointType, ns);
+            else
+                Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+            _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "endpoints" }));
         }
         catch (Exception ex)
         {
@@ -171,6 +179,9 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             _reloadSemaphore.Release();
         }
     }
+
+    private static readonly HashSet<string> _typeFolderNames = new(StringComparer.OrdinalIgnoreCase)
+        { "SQL", "Proxy", "Static", "Files", "Webhooks" };
 
     private string? ExtractEndpointName(string filePath)
     {
@@ -191,6 +202,26 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         }
 
         return null;
+    }
+
+    private string? ExtractNamespace(string filePath)
+    {
+        try
+        {
+            if (!Path.GetFileName(filePath).Equals("entity.json", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            // .../endpoints/{Type}/{Namespace?}/{EndpointName}/entity.json
+            var endpointDir  = Path.GetDirectoryName(filePath);          // EndpointName dir
+            var namespaceDir = Path.GetDirectoryName(endpointDir);       // Namespace or Type dir
+            var namespaceName = Path.GetFileName(namespaceDir);
+
+            return namespaceName == null || _typeFolderNames.Contains(namespaceName) ? null : namespaceName;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void StartPollingFallback()

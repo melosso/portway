@@ -1,0 +1,11 @@
+{
+    "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc/DocumentAttachment",
+    "Methods": ["POST"],
+    "IsPrivate": true,
+    "Documentation": {
+        "TagDescription": "**Document Attachments**\n\nInternal endpoint for linking a binary file to a document record. Associates the uploaded file content with its document metadata using the binary message ID and document ID.",
+        "MethodDescriptions": {
+            "POST": "Link a binary file to a document record (internal use only)"
+        }
+    }
+}

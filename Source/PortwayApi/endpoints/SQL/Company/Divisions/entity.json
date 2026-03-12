@@ -4,7 +4,7 @@
   "Namespace": "Company",
   "NamespaceDisplayName": "Company",
   "IsPrivate": false,
-  "AllowedEnvironments": ["600", "700", "Synergy"],
+  "AllowedEnvironments": ["500", "700", "Synergy"],
   "Documentation": {
     "Summary": "Retrieve division data",
     "Description": "Access and manage company division records, including division details, management assignments, locations, and operational information. Useful for organizational structure, reporting, and business analysis.",

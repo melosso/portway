@@ -18,7 +18,7 @@ All requests to Globe+ endpoints require two critical headers that are automatic
 
 | Header | Description | Example |
 |--------|-------------|---------|
-| `DatabaseName` | The Globe+ database identifier | `600`, `700` |
+| `DatabaseName` | The Globe+ database identifier | `500`, `700` |
 | `ServerName` | The server hosting Globe+ | `YOUR-SERVER` |
 
 These headers are configured in the environment settings and automatically injected into proxy requests.
@@ -28,12 +28,12 @@ These headers are configured in the environment settings and automatically injec
 Each environment must be properly configured in the settings:
 
 ```json
-// environments/600/settings.json
+// environments/500/settings.json
 {
   "ServerName": "YOUR-SERVER",
-  "ConnectionString": "Server=YOUR-SERVER;Database=600;Trusted_Connection=True;",
+  "ConnectionString": "Server=YOUR-SERVER;Database=500;Trusted_Connection=True;",
   "Headers": {
-    "DatabaseName": "600",
+    "DatabaseName": "500",
     "ServerName": "YOUR-SERVER",
     "Origin": "Portway"
   }
@@ -143,7 +143,7 @@ Globe+ specific error responses are preserved and forwarded:
 Portway automatically rewrites Globe+ URLs in responses to maintain proxy routing:
 
 - Original: `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')`
-- Rewritten: `https://api.company.com/api/600/Account(guid'123')`
+- Rewritten: `https://api.company.com/api/500/Account(guid'123')`
 
 This ensures that related links in responses continue to work through the proxy.
 
@@ -177,7 +177,7 @@ You may want to implement best practices:
 
 ```javascript
 try {
-  const response = await fetch('/api/600/composite/SalesOrder', {
+  const response = await fetch('/api/500/composite/SalesOrder', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -254,7 +254,7 @@ Globe+ operations are tracked through:
 
 ```javascript
 async function createSalesOrder(orderData) {
-  const response = await fetch('/api/600/composite/SalesOrder', {
+  const response = await fetch('/api/500/composite/SalesOrder', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -289,7 +289,7 @@ async function createSalesOrder(orderData) {
 ```javascript
 async function getAccount(accountCode) {
   const response = await fetch(
-    `/api/600/Account?$filter=CustomerCode eq '${accountCode}'`,
+    `/api/500/Account?$filter=CustomerCode eq '${accountCode}'`,
     {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -320,7 +320,7 @@ async function processFinancialEntry(entryData) {
     throw new Error('Entry is not balanced');
   }
 
-  const response = await fetch('/api/600/composite/FinancialEntry', {
+  const response = await fetch('/api/500/composite/FinancialEntry', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,

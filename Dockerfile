@@ -44,7 +44,7 @@ RUN mkdir -p /app/endpoints/SQL/Product && \
     mkdir -p /app/environments/prod
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
+# For future reference, ASPNETCORE_HTTP_PORTS=8080 is already set by the base image (dotnet/aspnet:8.0+). Can be removed when deemed stable.
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Copy published output and tools
@@ -53,11 +53,11 @@ COPY --from=build /app/tools/publish /app/tools
 
 # Copy configuration files
 COPY Source/PortwayApi/environments/settings.json /app/environments/
-COPY Source/PortwayApi/environments/600/settings.json /app/environments/prod/
+COPY Source/PortwayApi/environments/500/settings.json /app/environments/prod/
 
 # Fix environment names inside the JSON files
-RUN sed -i 's/600/prod/g' /app/environments/prod/settings.json && \
-    sed -i 's/600/prod/g' /app/environments/settings.json && \
+RUN sed -i 's/500/prod/g' /app/environments/prod/settings.json && \
+    sed -i 's/500/prod/g' /app/environments/settings.json && \
     sed -i 's/, "700"//g' /app/environments/settings.json && \
     sed -i 's/, "Synergy"//g' /app/environments/settings.json
 

@@ -12,6 +12,7 @@ Documentation/* linguist-vendored
 *.yml linguist-vendored=true
 *.sh linguist-vendored=true
 *.sln linguist-vendored=true
+*.slnx linguist-vendored=true
 *.sql linguist-vendored=true
 *.ps1 linguist-vendored=true
 *.bat linguist-vendored=true

@@ -80,7 +80,7 @@ Generated tokens are stored in JSON files:
   "Username": "api-service",
   "Token": "your-secure-token-here",
   "AllowedScopes": "Products,Orders",
-  "AllowedEnvironments": "600,700",
+  "AllowedEnvironments": "500,700",
   "ExpiresAt": "2024-04-15 10:30:00",
   "CreatedAt": "2024-01-15 10:30:00",
   "Description": "API access for service X",
@@ -110,8 +110,8 @@ Control access to specific environments:
 | Scope Pattern | Description | Example |
 |--------------|-------------|---------|
 | `*` | Access to all environments | Default |
-| `600` | Access to environment 600 only | Single environment |
-| `600,700` | Access to multiple environments | Comma-separated |
+| `500` | Access to environment 600 only | Single environment |
+| `500,700` | Access to multiple environments | Comma-separated |
 | `6*` | Access to environments starting with "6" | Wildcard |
 
 ## Token Security
@@ -259,7 +259,7 @@ You may encounter issues with authentication. We've gathered some common issues 
    # Check token file
    {
      "AllowedScopes": "Products,Orders",
-     "AllowedEnvironments": "600,700"
+     "AllowedEnvironments": "500,700"
    }
    ```
 

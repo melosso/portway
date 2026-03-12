@@ -21,16 +21,16 @@ $filter=expression
 #### Examples
 ```http
 # String equality
-GET /api/600/Products?$filter=ItemCode eq 'PROD001'
+GET /api/500/Products?$filter=ItemCode eq 'PROD001'
 
 # Numeric equality
-GET /api/600/Products?$filter=Price eq 99.99
+GET /api/500/Products?$filter=Price eq 99.99
 
 # Boolean equality
-GET /api/600/Products?$filter=IsActive eq true
+GET /api/500/Products?$filter=IsActive eq true
 
 # Date equality
-GET /api/600/Orders?$filter=OrderDate eq 2024-01-15
+GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
 ```
 
 ### Relational Operators
@@ -45,13 +45,13 @@ GET /api/600/Orders?$filter=OrderDate eq 2024-01-15
 #### Examples
 ```http
 # Numeric comparison
-GET /api/600/Products?$filter=Price gt 50.00
+GET /api/500/Products?$filter=Price gt 50.00
 
 # Date comparison
-GET /api/600/Orders?$filter=OrderDate gt 2024-01-01
+GET /api/500/Orders?$filter=OrderDate gt 2024-01-01
 
 # String comparison (alphabetical)
-GET /api/600/Customers?$filter=Name gt 'M'
+GET /api/500/Customers?$filter=Name gt 'M'
 ```
 
 ## Logical Operators
@@ -67,16 +67,16 @@ GET /api/600/Customers?$filter=Name gt 'M'
 #### Examples
 ```http
 # AND condition
-GET /api/600/Products?$filter=Price gt 100 and Category eq 'Electronics'
+GET /api/500/Products?$filter=Price gt 100 and Category eq 'Electronics'
 
 # OR condition
-GET /api/600/Orders?$filter=Status eq 'Pending' or Status eq 'Processing'
+GET /api/500/Orders?$filter=Status eq 'Pending' or Status eq 'Processing'
 
 # NOT condition
-GET /api/600/Products?$filter=not IsDeleted
+GET /api/500/Products?$filter=not IsDeleted
 
 # Complex combination
-GET /api/600/Products?$filter=(Price gt 100 and Price lt 500) or Category eq 'Special'
+GET /api/500/Products?$filter=(Price gt 100 and Price lt 500) or Category eq 'Special'
 ```
 
 ### Grouping with Parentheses
@@ -85,11 +85,11 @@ Use parentheses to control operator precedence:
 
 ```http
 # Without parentheses (AND has precedence over OR)
-GET /api/600/Products?$filter=Price gt 100 and Category eq 'A' or Category eq 'B'
+GET /api/500/Products?$filter=Price gt 100 and Category eq 'A' or Category eq 'B'
 # Evaluates as: (Price gt 100 AND Category eq 'A') OR Category eq 'B'
 
 # With parentheses
-GET /api/600/Products?$filter=Price gt 100 and (Category eq 'A' or Category eq 'B')
+GET /api/500/Products?$filter=Price gt 100 and (Category eq 'A' or Category eq 'B')
 # Evaluates as: Price gt 100 AND (Category eq 'A' OR Category eq 'B')
 ```
 
@@ -106,16 +106,16 @@ GET /api/600/Products?$filter=Price gt 100 and (Category eq 'A' or Category eq '
 #### Examples
 ```http
 # Contains search (case-sensitive)
-GET /api/600/Products?$filter=contains(Description,'book')
+GET /api/500/Products?$filter=contains(Description,'book')
 
 # Starts with
-GET /api/600/Customers?$filter=startswith(Name,'John')
+GET /api/500/Customers?$filter=startswith(Name,'John')
 
 # Ends with
-GET /api/600/Documents?$filter=endswith(FileName,'.pdf')
+GET /api/500/Documents?$filter=endswith(FileName,'.pdf')
 
 # Combining string functions
-GET /api/600/Products?$filter=contains(Description,'premium') and startswith(ItemCode,'P')
+GET /api/500/Products?$filter=contains(Description,'premium') and startswith(ItemCode,'P')
 ```
 
 ### String Function Best Practices
@@ -210,43 +210,43 @@ $filter=Status eq 'Open' and AssignedTo eq null
 
 ```http
 # Numeric range
-GET /api/600/Products?$filter=Price ge 100 and Price le 500
+GET /api/500/Products?$filter=Price ge 100 and Price le 500
 
 # Date range
-GET /api/600/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
+GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 
 # Excluding boundaries
-GET /api/600/Products?$filter=Price gt 100 and Price lt 500
+GET /api/500/Products?$filter=Price gt 100 and Price lt 500
 ```
 
 ### Multiple Value Matching
 
 ```http
 # Using OR for multiple values
-GET /api/600/Orders?$filter=Status eq 'New' or Status eq 'Pending' or Status eq 'Processing'
+GET /api/500/Orders?$filter=Status eq 'New' or Status eq 'Pending' or Status eq 'Processing'
 
 # Alternative approach with grouping
-GET /api/600/Products?$filter=(Category eq 'A' or Category eq 'B' or Category eq 'C') and Price gt 50
+GET /api/500/Products?$filter=(Category eq 'A' or Category eq 'B' or Category eq 'C') and Price gt 50
 ```
 
 ### Complex Text Searches
 
 ```http
 # Multiple text conditions
-GET /api/600/Products?$filter=contains(Description,'premium') and not contains(Description,'refurbished')
+GET /api/500/Products?$filter=contains(Description,'premium') and not contains(Description,'refurbished')
 
 # Search in multiple fields
-GET /api/600/Products?$filter=contains(Name,'widget') or contains(Description,'widget')
+GET /api/500/Products?$filter=contains(Name,'widget') or contains(Description,'widget')
 ```
 
 ### Nested Conditions
 
 ```http
 # Complex nested logic
-GET /api/600/Orders?$filter=(Status eq 'Open' and Priority eq 1) or (Status eq 'Pending' and DueDate lt 2024-02-01)
+GET /api/500/Orders?$filter=(Status eq 'Open' and Priority eq 1) or (Status eq 'Pending' and DueDate lt 2024-02-01)
 
 # Multiple grouping levels
-GET /api/600/Products?$filter=((Price gt 100 and Price lt 500) or Category eq 'Special') and IsActive eq true
+GET /api/500/Products?$filter=((Price gt 100 and Price lt 500) or Category eq 'Special') and IsActive eq true
 ```
 
 ## Filter Performance Tips
@@ -257,46 +257,46 @@ Always filter on indexed fields when possible:
 
 ```http
 # Good - filtering on primary key
-GET /api/600/Products?$filter=ItemCode eq 'PROD001'
+GET /api/500/Products?$filter=ItemCode eq 'PROD001'
 
 # Less efficient - filtering on non-indexed field
-GET /api/600/Products?$filter=contains(Description,'long text search')
+GET /api/500/Products?$filter=contains(Description,'long text search')
 ```
 
 ### 2. Avoid Complex String Operations
 
 ```http
 # Efficient - exact match
-GET /api/600/Products?$filter=Category eq 'Electronics'
+GET /api/500/Products?$filter=Category eq 'Electronics'
 
 # Less efficient - contains operation
-GET /api/600/Products?$filter=contains(Category,'Elec')
+GET /api/500/Products?$filter=contains(Category,'Elec')
 
 # Most efficient for prefix search
-GET /api/600/Products?$filter=startswith(ItemCode,'PROD')
+GET /api/500/Products?$filter=startswith(ItemCode,'PROD')
 ```
 
 ### 3. Limit Result Sets Early
 
 ```http
 # Good - filter reduces dataset before sorting
-GET /api/600/Orders?$filter=Status eq 'Open'&$orderby=OrderDate desc&$top=10
+GET /api/500/Orders?$filter=Status eq 'Open'&$orderby=OrderDate desc&$top=10
 
 # Less efficient - sorting entire dataset
-GET /api/600/Orders?$orderby=OrderDate desc&$top=10
+GET /api/500/Orders?$orderby=OrderDate desc&$top=10
 ```
 
 ### 4. Use Specific Conditions
 
 ```http
 # Specific date
-GET /api/600/Orders?$filter=OrderDate eq 2024-01-15
+GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
 
 # Date range (less specific)
-GET /api/600/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
+GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 
 # Very broad (avoid)
-GET /api/600/Orders?$filter=OrderDate ne null
+GET /api/500/Orders?$filter=OrderDate ne null
 ```
 
 ## Common Filter Patterns
@@ -305,49 +305,49 @@ GET /api/600/Orders?$filter=OrderDate ne null
 
 ```http
 # Active items
-GET /api/600/Products?$filter=IsActive eq true and IsDeleted eq false
+GET /api/500/Products?$filter=IsActive eq true and IsDeleted eq false
 
 # Non-deleted items
-GET /api/600/Customers?$filter=DeletedDate eq null
+GET /api/500/Customers?$filter=DeletedDate eq null
 ```
 
 ### Date-Based Filters
 
 ```http
 # Today's records
-GET /api/600/Orders?$filter=OrderDate eq 2024-01-15
+GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
 
 # This month's records
-GET /api/600/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
+GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 
 # Last 30 days
-GET /api/600/Orders?$filter=OrderDate gt 2023-12-16
+GET /api/500/Orders?$filter=OrderDate gt 2023-12-16
 ```
 
 ### Status Filters
 
 ```http
 # Single status
-GET /api/600/Tasks?$filter=Status eq 'Open'
+GET /api/500/Tasks?$filter=Status eq 'Open'
 
 # Multiple statuses
-GET /api/600/Tasks?$filter=Status eq 'Open' or Status eq 'InProgress'
+GET /api/500/Tasks?$filter=Status eq 'Open' or Status eq 'InProgress'
 
 # Exclude status
-GET /api/600/Tasks?$filter=Status ne 'Closed'
+GET /api/500/Tasks?$filter=Status ne 'Closed'
 ```
 
 ### Search Patterns
 
 ```http
 # Partial match
-GET /api/600/Products?$filter=contains(Name,'widget')
+GET /api/500/Products?$filter=contains(Name,'widget')
 
 # Prefix search
-GET /api/600/Customers?$filter=startswith(LastName,'Sm')
+GET /api/500/Customers?$filter=startswith(LastName,'Sm')
 
 # Multiple field search
-GET /api/600/Products?$filter=contains(Name,'phone') or contains(Description,'phone')
+GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'phone')
 ```
 
 ## Error Handling

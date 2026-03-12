@@ -34,7 +34,7 @@ public class ApiTestBase : IDisposable
         
         // Create a test implementation that we can control directly
         _testEnvironmentSettings = new TestEnvironmentSettings();
-        _testEnvironmentSettings.SetAllowedEnvironments(new List<string> { "600", "700" });
+        _testEnvironmentSettings.SetAllowedEnvironments(new List<string> { "500", "700" });
 
         // Setup environment settings provider
         _mockEnvironmentSettingsProvider.Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
@@ -100,7 +100,7 @@ public class ApiTestBase : IDisposable
 // Test implementation that we can control directly without mocking
 public class TestEnvironmentSettings : EnvironmentSettings
 {
-    private List<string> _allowedEnvironments = new List<string> { "600", "700" };
+    private List<string> _allowedEnvironments = new List<string> { "500", "700" };
     
     public void SetAllowedEnvironments(List<string> environments)
     {
