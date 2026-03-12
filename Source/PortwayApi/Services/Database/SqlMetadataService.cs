@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Serilog;
+using PortwayApi.Classes;
 
 namespace PortwayApi.Services;
 
@@ -48,6 +49,7 @@ public class SqlMetadataService
 
     public async Task InitializeAsync(
         Dictionary<string, Classes.EndpointDefinition> sqlEndpoints,
+        EnvironmentSettings environmentSettings,
         Func<string, Task<string>> getConnectionStringAsync)
     {
         if (_isInitialized)
@@ -71,6 +73,7 @@ public class SqlMetadataService
         Log.Debug("Initializing SQL metadata cache for {Count} endpoints...", sqlEndpoints.Count);
         
         var initTasks = new List<Task>();
+        var globalEnvironments = environmentSettings.GetAllowedEnvironments().Take(3).ToList();
         
         foreach (var endpoint in sqlEndpoints)
         {
@@ -80,17 +83,32 @@ public class SqlMetadataService
             if (string.IsNullOrEmpty(definition.DatabaseObjectName))
                 continue;
 
-            var environment = definition.AllowedEnvironments?.FirstOrDefault();
-            if (environment == null)
+            // Priority: Endpoint-specific allowed environments, then global fallback
+            var environmentsToTry = new List<string>();
+            if (definition.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
             {
-                Log.Warning("Endpoint {EndpointName} has no allowed environments, skipping metadata initialization", endpointName);
+                environmentsToTry.AddRange(definition.AllowedEnvironments);
+            }
+            
+            // Add global environments that aren't already in the list
+            foreach (var env in globalEnvironments)
+            {
+                if (!environmentsToTry.Contains(env, StringComparer.OrdinalIgnoreCase))
+                {
+                    environmentsToTry.Add(env);
+                }
+            }
+
+            if (!environmentsToTry.Any())
+            {
+                Log.Warning("Endpoint {EndpointName} has no allowed or global environments, skipping metadata initialization", endpointName);
                 continue;
             }
 
             initTasks.Add(InitializeEndpointMetadataAsync(
                 endpointName, 
                 definition, 
-                environment, 
+                environmentsToTry, 
                 getConnectionStringAsync));
         }
 
@@ -116,39 +134,59 @@ public class SqlMetadataService
     private async Task InitializeEndpointMetadataAsync(
         string endpointName,
         Classes.EndpointDefinition definition,
-        string environment,
+        List<string> environments,
         Func<string, Task<string>> getConnectionStringAsync)
     {
-        try
+        foreach (var environment in environments)
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            
-            var connectionString = await getConnectionStringAsync(environment);
-            if (string.IsNullOrEmpty(connectionString))
+            try
             {
-                Log.Warning("No connection string found for environment {Environment}, skipping endpoint {EndpointName}", 
-                    environment, endpointName);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                
+                var connectionString = await getConnectionStringAsync(environment);
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    Log.Debug("No connection string found for environment {Environment}, trying next environment for {EndpointName}", 
+                        environment, endpointName);
+                    continue;
+                }
+
+                // Load object metadata for GET operations
+                int columnCount = await LoadObjectMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
+                
+                // If no columns were found, try the next environment
+                if (columnCount == 0)
+                {
+                    Log.Debug("No columns found for {EndpointName} in environment {Environment}, trying next environment", 
+                        endpointName, environment);
+                    continue;
+                }
+                
+                // If we successfully loaded object metadata, check if we need to load procedure metadata
+                if (HasModificationMethods(definition) && !string.IsNullOrEmpty(definition.Procedure))
+                {
+                    await LoadProcedureMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
+                }
+
+                // If we've reached this point without an exception, we've successfully loaded metadata
+                Log.Debug("Successfully initialized metadata for {EndpointName} using environment {Environment} ({ColumnCount} columns)", 
+                    endpointName, environment, columnCount);
                 return;
             }
-
-            // Load object metadata for GET operations
-            await LoadObjectMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
-            
-            // Load procedure metadata for POST, PUT, PATCH operations if procedure is defined
-            if (HasModificationMethods(definition) && !string.IsNullOrEmpty(definition.Procedure))
+            catch (OperationCanceledException)
             {
-                await LoadProcedureMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
+                Log.Error("Metadata initialization timed out for endpoint {EndpointName} in environment {Environment} after 30 seconds", 
+                    endpointName, environment);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorMessage}. Trying next environment...",
+                    endpointName, environment, ex.Message);
             }
         }
-        catch (OperationCanceledException)
-        {
-            Log.Error("Metadata initialization timed out for endpoint {EndpointName} after 30 seconds", endpointName);
-        }
-        catch (Exception ex)
-        {
-            Log.Error("Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorType} - {ErrorMessage}",
-                endpointName, environment, ex.GetType().Name, ex.Message);
-        }
+        
+        Log.Error("Failed to initialize metadata for endpoint {EndpointName} after trying all allowed environments: {Environments}",
+            endpointName, string.Join(", ", environments));
     }
 
     private bool HasModificationMethods(Classes.EndpointDefinition definition)
@@ -158,7 +196,7 @@ public class SqlMetadataService
         return !string.IsNullOrEmpty(definition.Procedure);
     }
 
-    private async Task LoadObjectMetadataForEndpointAsync(
+    private async Task<int> LoadObjectMetadataForEndpointAsync(
         string endpointName,
         Classes.EndpointDefinition definition,
         string connectionString,
@@ -196,7 +234,7 @@ public class SqlMetadataService
             default:
                 Log.Warning("Unknown database object type '{ObjectType}' for endpoint {EndpointName}",
                     objectType, endpointName);
-                return;
+                return 0;
         }
 
         columns = ProcessColumnMetadata(columns, definition, endpointName);
@@ -208,6 +246,8 @@ public class SqlMetadataService
 
         Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns",
             endpointName, columns.Count);
+            
+        return columns.Count;
     }
 
     private async Task LoadProcedureMetadataForEndpointAsync(
