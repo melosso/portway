@@ -28,6 +28,35 @@ jobs:
     - name: Publish PortwayApi (Linux x64)
       run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r linux-x64 --self-contained false -o ${{ github.workspace }}/publish_lin
 
+    - name: Publish PortwayMgt
+      run: |
+        cat > ${{ github.workspace }}/TrimmerRoots.xml <<'XML'
+        <linker>
+          <assembly fullname="System.Text.Json" preserve="all" />
+          <assembly fullname="System.Text.Json.Serialization" preserve="all" />
+          <assembly fullname="Microsoft.Extensions.Configuration.Json" preserve="all" />
+          <assembly fullname="Microsoft.EntityFrameworkCore.Sqlite" preserve="all" />
+        </linker>
+        XML
+
+        dotnet publish Source/Tools/TokenGenerator/TokenGenerator.csproj \
+          -c Release -r win-x64 --self-contained false \
+          -p:PublishSingleFile=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true \
+          -p:TrimmerRootDescriptor=${{ github.workspace }}/TrimmerRoots.xml \
+          -o ${{ github.workspace }}/publish_mgt_win
+        mv ${{ github.workspace }}/publish_mgt_win/TokenGenerator.exe ${{ github.workspace }}/publish_win/PortwayMgt.exe
+
+        dotnet publish Source/Tools/TokenGenerator/TokenGenerator.csproj \
+          -c Release -r linux-x64 --self-contained false \
+          -p:PublishSingleFile=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true \
+          -p:TrimmerRootDescriptor=${{ github.workspace }}/TrimmerRoots.xml \
+          -o ${{ github.workspace }}/publish_mgt_lin
+        mv ${{ github.workspace }}/publish_mgt_lin/TokenGenerator ${{ github.workspace }}/publish_lin/PortwayMgt
+
+        rm -f ${{ github.workspace }}/TrimmerRoots.xml
+
     - name: Remove Debug Files
       run: |
         echo "Removing debug files..."
