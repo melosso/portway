@@ -269,7 +269,7 @@ public class HealthCheckService
 
             Log.Debug("Sending request to endpoint {Endpoint} with URL: {Url}", endpoint.Key, url);
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
             // Send the request and capture the first response
