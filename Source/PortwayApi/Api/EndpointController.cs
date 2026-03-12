@@ -1516,7 +1516,7 @@ public class EndpointController : ControllerBase
         string baseUrl, 
         string? id, 
         string remainingPath, 
-        (string Url, HashSet<string> Methods, bool IsPrivate, string Type) endpointConfig,
+        (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments) endpointConfig,
         string endpointName)
     {
         var deletePattern = GetDeletePatternForProxy(endpointName);
@@ -1663,7 +1663,7 @@ public class EndpointController : ControllerBase
     /// </summary>
     private async Task<(bool IsSuccessful, string Content, Dictionary<string, string> Headers, int StatusCode, string? ContentType)> ExecuteProxyRequest(
         string method, string fullUrl, string env, 
-        (string Url, HashSet<string> Methods, bool IsPrivate, string Type) endpointConfig,
+        (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments) endpointConfig,
         string endpointName,
         bool isSoapRequest = false,
         string? originalMethod = null,

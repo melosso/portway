@@ -37,9 +37,6 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 .Where(kvp => kvp.Value.IsComposite)
                 .ToList();
 
-            // Get allowed environments for parameter description
-            var allowedEnvironments = GetAllowedEnvironments();
-
             // Collect tags with descriptions for proper namespace grouping
             var documentTags = new Dictionary<string, string>();
 
@@ -53,6 +50,9 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
             {
                 string endpointKey = endpoint.Key;
                 var definition = endpoint.Value;
+
+                // Get effective environments for this endpoint (endpoint-specific or global fallback)
+                var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
                 // Collect tag description if provided using the DocumentationTag for proper namespace grouping
                 if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
@@ -92,9 +92,9 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Schema = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String,
-                        Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
+                        Enum = effectiveEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
                     },
-                    Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
+                    Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
                 });
 
                 // Create request body schema
@@ -358,5 +358,18 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
             _logger.LogWarning(ex, "Error reading allowed environments, using default");
             return new List<string> { "demo" };
         }
+    }
+
+    /// <summary>
+    /// Gets the effective list of allowed environments for an endpoint.
+    /// Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings.
+    /// </summary>
+    private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
+    {
+        if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
+        {
+            return definition.AllowedEnvironments;
+        }
+        return GetAllowedEnvironments();
     }
 }

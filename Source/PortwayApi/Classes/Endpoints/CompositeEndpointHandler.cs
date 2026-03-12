@@ -13,12 +13,12 @@ using Serilog;
 public class CompositeEndpointHandler
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)> _endpointMap;
+    private readonly Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> _endpointMap;
     private readonly string _serverName;
     
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)> endpointMap,
+        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> endpointMap,
         string serverName)
     {
         _httpClientFactory = httpClientFactory;
@@ -178,9 +178,27 @@ public class CompositeEndpointHandler
         // Find the target endpoint for this step
         if (!_endpointMap.TryGetValue(step.Endpoint, out var endpoint))
         {
-            throw new Exception($"Target endpoint '{step.Endpoint}' not found for step '{step.Name}'");
+            throw new CompositeStepException(
+                $"Target endpoint '{step.Endpoint}' not found for step '{step.Name}'",
+                step.Name,
+                404,
+                $"Endpoint '{step.Endpoint}' not found",
+                string.Empty);
         }
         
+        // Check if the environment is allowed for this step's endpoint
+        if (endpoint.AllowedEnvironments != null && 
+            endpoint.AllowedEnvironments.Count > 0 &&
+            !endpoint.AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new CompositeStepException(
+                $"Environment '{env}' is not allowed for endpoint '{step.Endpoint}'",
+                step.Name,
+                400,
+                "Environment not allowed",
+                string.Empty);
+        }
+
         // Check if the endpoint supports the requested method
         if (!endpoint.Methods.Contains(step.Method))
         {
