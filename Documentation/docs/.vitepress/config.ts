@@ -83,7 +83,7 @@ export default withMermaid(
           text: 'API Reference',
           items: [
             { text: 'Overview', link: '/reference/' },
-            { text: 'Authentication', link: '/reference/authentication' },
+            { text: 'API Authentication', link: '/reference/api-auth' },
             { text: 'HTTP Headers', link: '/reference/headers' }
           ]
         },
@@ -92,6 +92,7 @@ export default withMermaid(
           items: [
             { text: 'Entity', link: '/reference/entity-config' },
             { text: 'Environment', link: '/reference/environment-settings' },
+            { text: 'Authentication', link: '/reference/environment-auth' },
             { text: 'Namespaces', link: '/reference/namespaces' }
           ]
         },
