@@ -13,14 +13,22 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - USE_HTTPS=false
+      - Use_HTTPS=false
+      - AllowedHosts=*
+      - PathBase=
+
+      # Configure Web UI settings
+      - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
+      #- WebUi__PublicOrigins__0=https://example.com
+      #- WebUi__PublicOrigins__1=https://api.example.com
+      #- WebUi__SecureCookies=false
       
       # Proxy settings for Kerberos/NTLM
       # - PROXY_USERNAME=serviceaccount
       # - PROXY_PASSWORD=password
       # - PROXY_DOMAIN=YOURDOMAIN
+
       # Azure credentials
-      
       # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
       # - AZURE_CLIENT_ID=your-client-id
       # - AZURE_TENANT_ID=your-tenant-id
