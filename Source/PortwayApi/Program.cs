@@ -571,10 +571,12 @@ try
             var metadataService = scope.ServiceProvider.GetRequiredService<SqlMetadataService>();
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             var sqlEnvironmentProviderScope = scope.ServiceProvider.GetRequiredService<IEnvironmentSettingsProvider>();
+            var metadataEnvSettings = scope.ServiceProvider.GetRequiredService<EnvironmentSettings>();
             
             // Initialize metadata cache for all SQL endpoints
             await metadataService.InitializeAsync(
                 sqlEndpoints,
+                metadataEnvSettings,
                 async environment => 
                 {
                     try
