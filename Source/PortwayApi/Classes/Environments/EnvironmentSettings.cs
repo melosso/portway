@@ -73,18 +73,18 @@ public class EnvironmentSettings
         }
     }
 
-    public void Reload()
+    public virtual void Reload()
     {
         _allowedEnvironments.Clear();
         LoadSettings();
     }
 
-    public bool IsEnvironmentAllowed(string environment)
+    public virtual bool IsEnvironmentAllowed(string environment)
     {
         return _allowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase);
     }
 
-    public List<string> GetAllowedEnvironments()
+    public virtual List<string> GetAllowedEnvironments()
     {
         return _allowedEnvironments.ToList();
     }

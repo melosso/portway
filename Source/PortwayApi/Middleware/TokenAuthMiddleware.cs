@@ -4,7 +4,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
+using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Interfaces;
 using PortwayApi.Services;
 using Serilog;
 
@@ -17,7 +19,12 @@ public class TokenAuthMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, AuthDbContext dbContext, TokenService tokenService)
+    public async Task InvokeAsync(
+        HttpContext context, 
+        AuthDbContext dbContext, 
+        TokenService tokenService,
+        IEnvironmentSettingsProvider environmentProvider,
+        EnvironmentAuthService environmentAuthService)
     {
         // Extract path
         var path = context.Request.Path.Value?.ToLowerInvariant(); 
@@ -27,8 +34,8 @@ public class TokenAuthMiddleware
         // Skip token validation for specific routes
         if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
-            context.Request.Path.StartsWithSegments("/health") ||
-            context.Request.Path.StartsWithSegments(pathBase + "/health") ||
+            context.Request.Path.StartsWithSegments("/health/live") ||
+            context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
             context.Request.Path.StartsWithSegments("/ui") ||
             context.Request.Path.StartsWithSegments("/sm") ||
             context.Request.Path == "/" ||
@@ -39,8 +46,40 @@ public class TokenAuthMiddleware
             await _next(context);
             return;
         }
+
+        // --- Environment-Specific Authentication ---
+        bool isApiOrWebhook = context.Request.Path.StartsWithSegments("/api") || 
+                             context.Request.Path.StartsWithSegments("/webhook");
+
+        if (isApiOrWebhook && !string.IsNullOrEmpty(env))
+        {
+            var config = await environmentProvider.GetEnvironmentConfigAsync(env);
+            if (config?.Authentication != null && config.Authentication.Enabled)
+            {
+                bool isEnvAuthenticated = await environmentAuthService.ValidateAsync(context, config.Authentication);
+                
+                if (isEnvAuthenticated)
+                {
+                    Log.Debug("Authorized for environment '{Env}' via custom authentication", env);
+                    await _next(context);
+                    return;
+                }
+
+                if (config.Authentication.OverrideGlobalToken)
+                {
+                    Log.Warning("Custom environment authentication failed for '{Env}' and OverrideGlobalToken is enabled", env);
+                    context.Response.StatusCode = 401;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(new { error = "Environment authentication failed", success = false });
+                    return;
+                }
+                
+                Log.Debug("Custom environment authentication failed for '{Env}', falling back to global token", env);
+            }
+        }
+        // -------------------------------------------
         
-        // Continue with authentication logic
+        // Continue with global authentication logic
         if (!context.Request.Headers.TryGetValue("Authorization", out var providedToken))
         {
             var remoteIp = context.Connection.RemoteIpAddress;
