@@ -28,9 +28,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Load file endpoint definitions
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
 
-            // Get allowed environments for parameter description
-            var allowedEnvironments = GetAllowedEnvironments();
-
             // Add schema definitions for file models
             AddFileSchemas(document);
 
@@ -46,6 +43,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                     continue;
                 }
 
+                // Get effective environments for this endpoint (endpoint-specific or global fallback)
+                var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
+
                 // Use "Files" as the main tag for all file endpoints (file endpoints don't use namespaces)
                 string mainTag = "Files";
 
@@ -56,16 +56,16 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 }
 
                 // Add file upload operation
-                AddFileUploadOperation(document, endpointName, endpoint, allowedEnvironments, mainTag);
+                AddFileUploadOperation(document, endpointName, endpoint, effectiveEnvironments, mainTag);
 
                 // Add file download operation
-                AddFileDownloadOperation(document, endpointName, endpoint, allowedEnvironments, mainTag);
+                AddFileDownloadOperation(document, endpointName, endpoint, effectiveEnvironments, mainTag);
 
                 // Add file delete operation
-                AddFileDeleteOperation(document, endpointName, endpoint, allowedEnvironments, mainTag);
+                AddFileDeleteOperation(document, endpointName, endpoint, effectiveEnvironments, mainTag);
 
                 // Add file listing operation
-                AddFileListOperation(document, endpointName, endpoint, allowedEnvironments, mainTag);
+                AddFileListOperation(document, endpointName, endpoint, effectiveEnvironments, mainTag);
             }
 
             // Add collected file endpoint tags to the document
@@ -179,7 +179,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    private void AddFileUploadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
+    private void AddFileUploadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for upload: /api/{env}/files/{endpointName}
         string path = $"/api/{{env}}/files/{endpointName}";
@@ -207,9 +207,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
+                Enum = effectiveEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
-            Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
+            Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
         });
 
         // Overwrite parameter
@@ -320,7 +320,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         document.Paths[path].Operations![HttpMethod.Post] = operation;
     }
 
-    private void AddFileDownloadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
+    private void AddFileDownloadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for download: /api/{env}/files/{endpointName}/{fileId}
         string path = $"/api/{{env}}/files/{endpointName}/{{fileId}}";
@@ -348,9 +348,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
+                Enum = effectiveEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
-            Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
+            Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
         });
 
         // File ID parameter
@@ -417,7 +417,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
-    private void AddFileDeleteOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
+    private void AddFileDeleteOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for delete: /api/{env}/files/{endpointName}/{fileId}
         string path = $"/api/{{env}}/files/{endpointName}/{{fileId}}";
@@ -445,9 +445,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
+                Enum = effectiveEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
-            Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
+            Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
         });
 
         // File ID parameter
@@ -521,7 +521,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         document.Paths[path].Operations![HttpMethod.Delete] = operation;
     }
 
-    private void AddFileListOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> allowedEnvironments, string tag)
+    private void AddFileListOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for listing: /api/{env}/files/{endpointName}/list
         string path = $"/api/{{env}}/files/{endpointName}/list";
@@ -549,9 +549,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
+                Enum = effectiveEnvironments.Select(e => (JsonNode)JsonValue.Create(e)!).ToList()
             },
-            Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
+            Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
         });
 
         // Prefix parameter
@@ -770,6 +770,19 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             _logger.LogError(ex, "Error loading environment settings");
             return new List<string> { "prod", "dev" };
         }
+    }
+
+    /// <summary>
+    /// Gets the effective list of allowed environments for an endpoint.
+    /// Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings.
+    /// </summary>
+    private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
+    {
+        if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
+        {
+            return definition.AllowedEnvironments;
+        }
+        return GetAllowedEnvironments();
     }
 
     // Helper classes for deserializing settings.json

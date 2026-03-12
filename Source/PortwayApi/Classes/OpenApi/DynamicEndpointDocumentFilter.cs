@@ -36,17 +36,14 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Generate unique operation IDs
             int operationIdCounter = 1;
 
-            // Get allowed environments for parameter description
-            var allowedEnvironments = GetAllowedEnvironments();
-
             // Collect all tags with descriptions for the document
             var documentTags = new Dictionary<string, string>();
 
             // Add documentation for each endpoint type
-            AddSqlEndpoints(document, allowedEnvironments, ref operationIdCounter, documentTags);
-            AddProxyEndpoints(document, allowedEnvironments, ref operationIdCounter, documentTags);
-            AddWebhookEndpoints(document, allowedEnvironments, ref operationIdCounter);
-            AddStaticEndpoints(document, allowedEnvironments, ref operationIdCounter, documentTags);
+            AddSqlEndpoints(document, ref operationIdCounter, documentTags);
+            AddProxyEndpoints(document, ref operationIdCounter, documentTags);
+            AddWebhookEndpoints(document, ref operationIdCounter);
+            AddStaticEndpoints(document, ref operationIdCounter, documentTags);
 
             // Collect file endpoint tags (but don't create operations since they're handled by EndpointController)
             CollectFileEndpointTags(documentTags);
@@ -92,7 +89,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    private void AddSqlEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddSqlEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         // Get SQL endpoints
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
@@ -106,6 +103,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
+
+            // Get effective environments for this endpoint (endpoint-specific or global fallback)
+            var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
             // Collect tag description if provided
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
@@ -145,7 +145,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     endpointName,
                     method,
                     definition,
-                    allowedEnvironments,
+                    effectiveEnvironments,
                     operationIdCounter++);
 
                 if (opType != null)
@@ -169,7 +169,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 var deleteOperation = CreateSqlDeleteOperation(
                     endpointName,
                     definition,
-                    allowedEnvironments,
+                    effectiveEnvironments,
                     operationIdCounter++);
 
                 // Remove the query parameter for id, and add a path parameter instead
@@ -194,9 +194,11 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         OpenApiDocument document,
         string endpointName,
         EndpointDefinition definition,
-        List<string> allowedEnvironments,
         ref int operationIdCounter)
     {
+        // Get effective environments for this endpoint (endpoint-specific or global fallback)
+        var effectiveEnvironments = GetEffectiveEnvironments(definition);
+
         // Determine delete pattern (load from endpoint definition)
         var deletePattern = GetDeletePatternForDocs(definition);
 
@@ -230,9 +232,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             Schema = new OpenApiSchema
             {
                 Type = JsonSchemaType.String,
-                Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
+                Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
             },
-            Description = $"Target environment. Allowed values: {string.Join(", ", allowedEnvironments)}"
+            Description = $"Target environment. Allowed values: {string.Join(", ", effectiveEnvironments)}"
         });
 
         // ID parameter based on pattern
@@ -318,7 +320,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    private void AddProxyEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddProxyEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
 
@@ -333,6 +335,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 
             if (definition.IsPrivate || definition.IsComposite)
                 continue;
+
+            // Get effective environments for this endpoint (endpoint-specific or global fallback)
+            var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
             if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
                 !documentTags.ContainsKey(definition.DocumentationTag))
@@ -372,8 +377,8 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Name = "env",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList() },
-                    Description = $"Environment to target. Allowed values: {string.Join(", ", allowedEnvironments)}"
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList() },
+                    Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
                 });
 
                 // Add OData style query parameters for GET requests
@@ -506,12 +511,12 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Special handling for DELETE
             if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
-                AddProxyDeleteOperation(document, endpointName, definition, allowedEnvironments, ref operationIdCounter);
+                AddProxyDeleteOperation(document, endpointName, definition, ref operationIdCounter);
             }
         }
     }
 
-    private void AddWebhookEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter)
+    private void AddWebhookEndpoints(OpenApiDocument document, ref int operationIdCounter)
     {
         // Add webhook endpoint with correct path pattern
         string path = "/api/{env}/webhook/{webhookId}";
@@ -521,6 +526,10 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             return; // Skip adding webhook endpoints to docs if none exist
         }
+
+        // Get effective environments from the first webhook endpoint (they should all have the same restrictions)
+        var firstWebhook = webhookEndpoints.Values.FirstOrDefault();
+        var effectiveEnvironments = GetEffectiveEnvironments(firstWebhook);
 
         // Load webhook documentation from entity.json
         var webhookDocumentation = LoadWebhookDocumentation();
@@ -548,7 +557,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Schema = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String,
-                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
+                        Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 },
@@ -766,7 +775,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Adds static endpoints to the OpenAPI document
     /// </summary>
-    private void AddStaticEndpoints(OpenApiDocument document, List<string> allowedEnvironments, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddStaticEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         var staticEndpoints = EndpointHandler.GetStaticEndpoints();
 
@@ -783,6 +792,9 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Skip private endpoints
             if (definition.IsPrivate)
                 continue;
+
+            // Get effective environments for this endpoint (endpoint-specific or global fallback)
+            var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
             // Collect tag description using the DocumentationTag for proper namespace grouping
             string documentationTag = definition.DocumentationTag;
@@ -821,7 +833,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema
                         {
                             Type = JsonSchemaType.String,
-                            Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
+                            Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                         },
                         Description = "Environment identifier"
                     }
@@ -1075,7 +1087,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         string endpointName,
         string method,
         EndpointDefinition definition,
-        List<string> allowedEnvironments,
+        List<string> effectiveEnvironments,
         int operationId)
     {
         // Determine Accept content type from CustomProperties or default to application/json
@@ -1098,7 +1110,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Schema = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String,
-                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
+                        Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 }
@@ -1598,7 +1610,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
     private OpenApiOperation CreateSqlDeleteOperation(
         string endpointName,
         EndpointDefinition definition,
-        List<string> allowedEnvironments,
+        List<string> effectiveEnvironments,
         int operationId)
     {
         // Determine Accept content type from CustomProperties or default to application/json
@@ -1621,7 +1633,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Schema = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String,
-                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
+                        Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 },
@@ -1807,7 +1819,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         string endpointName,
         string method,
         string targetUrl,
-        List<string> allowedEnvironments,
+        List<string> effectiveEnvironments,
         int operationId,
         EndpointDefinition? definition = null)
     {
@@ -1828,7 +1840,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Schema = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String,
-                        Enum = allowedEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
+                        Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
                     },
                     Description = "Target environment"
                 }
@@ -1976,6 +1988,19 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             _logger.LogError(ex, "Error loading environment settings");
             return new List<string> { "prod", "dev" };
         }
+    }
+
+    /// <summary>
+    /// Gets the effective list of allowed environments for an endpoint.
+    /// Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings.
+    /// </summary>
+    private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
+    {
+        if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
+        {
+            return definition.AllowedEnvironments;
+        }
+        return GetAllowedEnvironments();
     }
 
     private HttpMethod? GetOperationType(string method)
