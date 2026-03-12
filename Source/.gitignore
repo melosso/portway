@@ -1,1 +1,4 @@
-
+# Ignore generated reports and test results
+coverage/
+TestResults/
+*.py
