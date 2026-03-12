@@ -99,7 +99,7 @@ public class TokenService
     /// <summary>
     /// Verify if a token is valid (not revoked or expired)
     /// </summary>
-    public async Task<bool> VerifyTokenAsync(string token)
+    public virtual async Task<bool> VerifyTokenAsync(string token)
     {
         // Get active tokens
         var tokens = await _dbContext.Tokens
@@ -128,7 +128,7 @@ public class TokenService
     /// <summary>
     /// Verify if a token is valid for a specific username
     /// </summary>
-    public async Task<bool> VerifyTokenAsync(string token, string username)
+    public virtual async Task<bool> VerifyTokenAsync(string token, string username)
     {
         // Get active tokens for this user
         var tokens = await _dbContext.Tokens
@@ -159,7 +159,7 @@ public class TokenService
     /// <summary>
     /// Verify if a token has access to a specific endpoint
     /// </summary>
-    public async Task<bool> VerifyTokenForEndpointAsync(string token, string endpointName)
+    public virtual async Task<bool> VerifyTokenForEndpointAsync(string token, string endpointName)
     {
         if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(endpointName))
             return false;
@@ -189,7 +189,7 @@ public class TokenService
         return false;
     }
 
-    public async Task<bool> VerifyTokenForEnvironmentAsync(string token, string environment)
+    public virtual async Task<bool> VerifyTokenForEnvironmentAsync(string token, string environment)
     {
         if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(environment))
             return false;
@@ -222,7 +222,7 @@ public class TokenService
     /// <summary>
     /// Get token details by token string (for middleware use)
     /// </summary>
-    public async Task<AuthToken?> GetTokenDetailsByTokenAsync(string token)
+    public virtual async Task<AuthToken?> GetTokenDetailsByTokenAsync(string token)
     {
         // Get active tokens
         var tokens = await _dbContext.Tokens
@@ -319,7 +319,7 @@ public class TokenService
     /// <summary>
     /// Get all active tokens (not revoked and not expired)
     /// </summary>
-    public async Task<IEnumerable<AuthToken>> GetActiveTokensAsync()
+    public virtual async Task<IEnumerable<AuthToken>> GetActiveTokensAsync()
     {
         return await _dbContext.Tokens
             .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))

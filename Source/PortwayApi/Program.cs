@@ -178,10 +178,14 @@ try
     builder.Logging.AddConsole(options => options.FormatterName = "simple");
     builder.Logging.AddSimpleConsole(options => options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ");
 
+    // Register Serilog logger for dependency injection 
+    builder.Services.AddSingleton<Serilog.ILogger>(sp => Log.Logger);
+
     // Configure SQLite Authentication Database
     var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "auth.db");
     builder.Services.AddDbContext<AuthDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
     builder.Services.AddScoped<TokenService>();
+    builder.Services.AddScoped<EnvironmentAuthService>();
     builder.Services.AddAuthorization();
     builder.Services.AddHostedService<LogFlusher>();
 
@@ -248,9 +252,6 @@ try
     builder.Services.AddSingleton<IEdmModelBuilder, EdmModelBuilder>();
     builder.Services.AddSingleton<Compiler, SqlServerCompiler>();
     builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
-
-    // Register Serilog logger for dependency injection 
-    builder.Services.AddSingleton<Serilog.ILogger>(sp => Log.Logger);
 
     builder.Services.AddSingleton<SqlMetadataService>();
     builder.Services.AddSingleton<FileHandlerService>();
@@ -729,7 +730,6 @@ void LogApplicationAscii()
     Log.Information("");
 }
 
-// Extension method to configure rate limiting services
 public static class RateLimitingExtensions
 {
     public static IServiceCollection AddRateLimiting(this IServiceCollection services, IConfiguration configuration)
@@ -737,3 +737,5 @@ public static class RateLimitingExtensions
         return services;
     }
 }
+
+public partial class Program { }

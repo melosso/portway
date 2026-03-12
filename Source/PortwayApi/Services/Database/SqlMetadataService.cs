@@ -47,7 +47,7 @@ public class SqlMetadataService
         public int Position { get; set; }
     }
 
-    public async Task InitializeAsync(
+    public virtual async Task InitializeAsync(
         Dictionary<string, Classes.EndpointDefinition> sqlEndpoints,
         EnvironmentSettings environmentSettings,
         Func<string, Task<string>> getConnectionStringAsync)
@@ -604,7 +604,7 @@ public class SqlMetadataService
     /// <summary>
     /// Gets all cached endpoint names that have object metadata
     /// </summary>
-    public IEnumerable<string> GetCachedEndpoints()
+    public virtual IEnumerable<string> GetCachedEndpoints()
     {
         lock (_cacheLock)
         {
@@ -615,7 +615,7 @@ public class SqlMetadataService
     /// <summary>
     /// Gets all cached endpoint names that have procedure metadata
     /// </summary>
-    public IEnumerable<string> GetCachedProcedureEndpoints()
+    public virtual IEnumerable<string> GetCachedProcedureEndpoints()
     {
         lock (_cacheLock)
         {
@@ -667,7 +667,7 @@ public class SqlMetadataService
     /// <summary>
     /// Clears all cached metadata - forces lazy reload on next access
     /// </summary>
-    public void ClearAllMetadata()
+    public virtual void ClearAllMetadata()
     {
         lock (_cacheLock)
         {
@@ -681,7 +681,7 @@ public class SqlMetadataService
     /// <summary>
     /// Clears metadata for a specific endpoint - forces lazy reload on next access
     /// </summary>
-    public void ClearEndpointMetadata(string endpointName)
+    public virtual void ClearEndpointMetadata(string endpointName)
     {
         lock (_cacheLock)
         {
