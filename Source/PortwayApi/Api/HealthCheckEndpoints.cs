@@ -2,6 +2,7 @@ namespace PortwayApi.Endpoints;
 
 using Microsoft.AspNetCore.Builder;
 using PortwayApi.Services;
+using System.Reflection;
 
 /// <summary>
 /// Extension methods for mapping health check endpoints
@@ -10,26 +11,34 @@ public static class HealthCheckEndpointExtensions
 {
     public static WebApplication MapHealthCheckEndpoints(this WebApplication app)
     {
-        app.MapGet("/health", async (HttpContext context, 
+        var startTime = DateTime.UtcNow;
+        var version = (typeof(HealthCheckEndpointExtensions).Assembly
+            .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion ?? "0.0.0")
+            .Split('+')[0];
+
+        app.MapGet("/health", async (HttpContext context,
                                      HealthCheckService healthService) =>
         {
             // Get cached health report
             var report = await healthService.CheckHealthAsync();
-            
+
             // Add cache headers
             context.Response.Headers.CacheControl = "public, max-age=15";
             context.Response.Headers.Append("Expires", DateTime.UtcNow.AddSeconds(15).ToString("R"));
-            
+
             context.Response.ContentType = "application/json";
-            context.Response.StatusCode = report.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy 
-                ? StatusCodes.Status200OK 
+            context.Response.StatusCode = report.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
+                ? StatusCodes.Status200OK
                 : StatusCodes.Status503ServiceUnavailable;
-                
-            await context.Response.WriteAsJsonAsync(new 
-            { 
+
+            await context.Response.WriteAsJsonAsync(new
+            {
                 status = report.Status.ToString(),
+                version,
+                uptime = $"{(long)(DateTime.UtcNow - startTime).TotalSeconds}s",
                 timestamp = DateTime.UtcNow,
-                cache_expires_in = "15 seconds" 
+                cache_expires_in = "15 seconds"
             });
         })
         .ExcludeFromDescription();

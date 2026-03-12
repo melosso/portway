@@ -24,6 +24,7 @@ public class CompositeStep
     public bool IsArray { get; set; } = false;
     public string? ArrayProperty { get; set; }
     public string? SourceProperty { get; set; }
+    public bool EmptyBody { get; set; } = false;
     public Dictionary<string, string> TemplateTransformations { get; set; } = new();
 }
 

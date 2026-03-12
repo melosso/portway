@@ -133,6 +133,30 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             encryptedCount, alreadyEncryptedCount, errorCount);
     }
 
+    public void EncryptEnvironmentIfNeeded(string envName)
+    {
+        if (string.IsNullOrWhiteSpace(_privateKeyPem))
+        {
+            Log.Error("Cannot encrypt environment '{Env}' on file change: no private key available", envName);
+            return;
+        }
+
+        var settingsPath = Path.Combine(_basePath, envName, "settings.json");
+        if (!File.Exists(settingsPath)) return;
+
+        try
+        {
+            var json   = File.ReadAllText(settingsPath);
+            var config = JsonSerializer.Deserialize<EnvironmentConfig>(json);
+            if (config == null) return;
+            AutoEncryptIfNeeded(settingsPath, config, envName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error encrypting environment '{Env}' after file change", envName);
+        }
+    }
+
     private enum EncryptionResult
     {
         Encrypted,
@@ -149,6 +173,30 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         {
             Log.Debug("Encryption keys already exist in {Path}", _certsPath);
             return;
+        }
+
+        // Warn if any environment settings are already encrypted — new keys will orphan them
+        if (Directory.Exists(_basePath))
+        {
+            var encryptedSettings = Directory.GetDirectories(_basePath)
+                .Select(d => Path.Combine(d, "settings.json"))
+                .Where(File.Exists)
+                .Where(p => {
+                    try { return SettingsEncryptionHelper.IsEncrypted(File.ReadAllText(p)); }
+                    catch { return false; }
+                })
+                .Select(p => new DirectoryInfo(Path.GetDirectoryName(p)!).Name)
+                .ToList();
+
+            if (encryptedSettings.Count > 0)
+            {
+                Log.Warning(
+                    "New RSA encryption keys are being generated, but the following environments have settings.json files " +
+                    "already encrypted with the OLD key: {Environments}. " +
+                    "These environments will FAIL to decrypt until their settings.json files are replaced with unencrypted versions. " +
+                    "To recover: restore the original plaintext connection strings in each settings.json, then restart.",
+                    string.Join(", ", encryptedSettings));
+            }
         }
 
         Log.Debug("Generating new RSA encryption keys...");
@@ -682,7 +730,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) { Log.Debug(ex, "Failed to read environment variable, falling back to next option"); }
         }
 
         return "$XTSI5gTEf1hawq3G2uOdWTsFUrgZ6mkCBGrdr0fsRTegXwis68HxGEoCsIBpgbPl5swwY9BQ0qiXG6CaeEPJzp3SPyGebl0ZyHL3jLACKIuSw7G1ufAZ5XATtetKatH0sr#";

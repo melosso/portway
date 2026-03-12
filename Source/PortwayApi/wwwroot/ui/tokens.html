@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Access Tokens · Portway</title>
+  <link href="css/inter.css" rel="stylesheet">
+  <link href="css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/components/toast.js"></script>
+  <script src="js/components/tooltip.js"></script>
+  <script src="js/components/drawer.js"></script>
+  <script src="js/components/dialog.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/shared.js"></script>
+</head>
+<body>
+
+<aside></aside>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">Access Tokens</h1>
+    </div>
+    <div class="header-actions">
+      <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; color:hsl(var(--muted-foreground)); cursor:pointer;" onclick="document.getElementById('showRevokedCb').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="showRevokedCb" onchange="loadTokens()">
+          <span class="slider"></span>
+        </label>
+        Show archived
+      </div>
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Search tokens…" oninput="applyFilters()">
+      </div>
+      <button class="btn btn-outline" onclick="refreshAll()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-outline" onclick="openCreateDrawer()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0;">
+    <div class="table-wrapper" style="flex:1; display:flex; flex-direction:column; min-height:0; border-left:none; border-right:none; border-bottom:none; border-radius:0;">
+      <div class="scroll-area" style="flex:1;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36px; padding-left:1rem;">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" style="cursor:pointer; accent-color:hsl(var(--primary));">
+              </th>
+              <th class="sortable" data-col="id" style="width:52px" onclick="setSort('id')">
+                # <span class="sort-icon">↕</span>
+              </th>
+              <th class="sortable" data-col="username" onclick="setSort('username')">
+                Name <span class="sort-icon">↕</span>
+              </th>
+              <th>Description</th>
+              <th>Scopes</th>
+              <th>Environments</th>
+              <th class="sortable" data-col="expires_at" onclick="setSort('expires_at')">
+                Expires <span class="sort-icon">↕</span>
+              </th>
+              <th class="sortable" data-col="status" onclick="setSort('status')">
+                Status <span class="sort-icon">↕</span>
+              </th>
+              <th style="width:88px; text-align:right; padding-right:1rem;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tokenTableBody">
+            <tr><td colspan="9" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination footer -->
+    <div class="table-footer">
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <span>Rows per page:</span>
+        <select id="rowsPerPage" onchange="currentPage=1;applyFilters()">
+          <option value="10">10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.375rem;">
+        <span id="paginationInfo" style="margin-right:0.25rem;">—</span>
+        <button class="page-btn" id="btnFirst"  onclick="goPage('first')" disabled>&#171; First</button>
+        <button class="page-btn" id="btnPrev"   onclick="goPage('prev')"  disabled>&#8249; Prev</button>
+        <button class="page-btn" id="btnNext"   onclick="goPage('next')"  disabled>Next &#8250;</button>
+        <button class="page-btn" id="btnLast"   onclick="goPage('last')"  disabled>Last &#187;</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Create Drawer -->
+<div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
+<div class="drawer" id="createDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title">Create Token</span>
+    <button class="btn-icon" data-drawer-close="createDrawer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-field">
+      <label>Name <span style="color:hsl(var(--destructive))">*</span></label>
+      <input type="text" id="createName" placeholder="e.g. ci-bot" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    </div>
+    <div class="drawer-field">
+      <label>Description</label>
+      <input type="text" id="createDesc" placeholder="Optional description" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    </div>
+    <div class="drawer-field">
+      <label>Expiration (days)</label>
+      <input type="number" id="createExpiry" placeholder="Leave blank for never" min="1" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    </div>
+    <div class="drawer-field">
+      <label>Scopes</label>
+      <div class="tag-input-wrapper" id="createScopesWrapper">
+        <input type="text" id="createScopesInput" class="tag-input" placeholder="Type to search or * for all">
+      </div>
+      <div class="tag-dropdown" id="createScopesDropdown"></div>
+      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Enter endpoint names or <code>*</code> for all. Press Enter or click to add.</div>
+    </div>
+    <div class="drawer-field">
+      <label>Environments</label>
+      <div class="tag-input-wrapper" id="createEnvsWrapper">
+        <input type="text" id="createEnvsInput" class="tag-input" placeholder="Type to search or * for all">
+      </div>
+      <div class="tag-dropdown" id="createEnvsDropdown"></div>
+      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Enter environment names or <code>*</code> for all.</div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-primary" style="flex:1; justify-content:center" onclick="createToken()" id="createBtn">
+      <span class="btn-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Create
+      </span>
+      <span class="btn-spinner"></span>
+    </button>
+  </div>
+</div>
+
+<!-- Edit Drawer -->
+<div class="drawer-backdrop" id="editBackdrop" data-drawer-backdrop="editDrawer"></div>
+<div class="drawer" id="editDrawer">
+  <div class="drawer-header">
+    <div>
+      <div class="drawer-title" id="editDrawerTitle">Edit Token</div>
+      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.125rem" id="editDrawerSubtitle"></div>
+    </div>
+    <button class="btn-icon" data-drawer-close="editDrawer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-tabs">
+    <button class="drawer-tab active" id="tabPolicy" onclick="switchTab('policy')">Policy</button>
+    <button class="drawer-tab" id="tabAudit" onclick="switchTab('audit')">Audit Log</button>
+  </div>
+  <div class="drawer-body" id="policyPanel">
+    <div class="drawer-field">
+      <label>Description</label>
+      <input type="text" id="editDesc" placeholder="Optional description" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    </div>
+    <div class="drawer-field">
+      <label>Scopes</label>
+      <div class="tag-input-wrapper" id="editScopesWrapper">
+        <input type="text" id="editScopesInput" class="tag-input" placeholder="Type to search or * for all">
+      </div>
+      <div class="tag-dropdown" id="editScopesDropdown"></div>
+    </div>
+    <div class="drawer-field">
+      <label>Environments</label>
+      <div class="tag-input-wrapper" id="editEnvsWrapper">
+        <input type="text" id="editEnvsInput" class="tag-input" placeholder="Type to search or * for all">
+      </div>
+      <div class="tag-dropdown" id="editEnvsDropdown"></div>
+    </div>
+    <div class="drawer-field">
+      <label>Expiration</label>
+      <input type="datetime-local" id="editExpiry" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s; color-scheme:dark light;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.25rem">Leave blank to keep existing expiration unchanged.</div>
+    </div>
+  </div>
+  <div class="drawer-body" id="auditPanel" style="display:none; padding:0;">
+    <div style="flex:1; overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>Timestamp</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="auditTableBody">
+          <tr><td colspan="3" class="empty-state">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="drawer-footer" id="editFooter">
+    <button class="btn btn-outline" data-drawer-close="editDrawer">Cancel</button>
+    <button class="btn btn-primary" onclick="saveToken()" id="saveTokenBtn" style="margin-left:auto">
+      <span class="btn-label">Save Changes</span>
+      <span class="btn-spinner"></span>
+    </button>
+  </div>
+</div>
+
+<!-- Token Reveal Modal ────────────────────────────────── -->
+<div id="revealBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;">
+  <div style="background:hsl(var(--background)); border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:2rem; width:540px; max-width:92vw; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);">
+    <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.875rem;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(38,92%,50%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <strong style="font-size:1rem">Success</strong>
+    </div>
+    <p style="font-size:0.875rem; color:hsl(var(--muted-foreground)); margin-bottom:1rem; line-height:1.5;">This token will <strong>only be shown once</strong>. Copy it now and store it securely, it will not be shown again.</p>
+    <div class="code-block" id="revealTokenValue" style="max-height:none; word-break:break-all; user-select:all; margin-bottom:1.25rem; font-size:0.7rem; line-height:1.9; letter-spacing:0.02em;"></div>
+    <div style="display:flex; gap:0.5rem;">
+      <button class="btn btn-outline" style="flex:1; justify-content:center" onclick="copyRevealToken()" id="copyBtn">
+        <svg id="copyIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span id="copyLabel">Copy</span>
+      </button>
+      <button class="btn btn-primary" style="flex:1; justify-content:center" onclick="exportRevealToken()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+let allTokens = [];
+let filteredTokens = [];
+let endpointSuggestions = [];
+let environmentSuggestions = [];
+let editingTokenId = null;
+let createScopesTI, createEnvsTI, editScopesTI, editEnvsTI;
+let revealData = null;
+
+// Sort n pagination state 
+let sortCol = 'id', sortDir = 'asc';
+let currentPage = 1;
+
+function setSort(col) {
+  if (sortCol === col) {
+    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortCol = col;
+    sortDir = 'asc';
+  }
+  applyFilters();
+}
+
+// Tag Input Class 
+class TagInput {
+  constructor(wrapperId, inputId, dropdownId) {
+    this.wrapper  = document.getElementById(wrapperId);
+    this.input    = document.getElementById(inputId);
+    this.dropdown = document.getElementById(dropdownId);
+    this.tags     = [];
+    this.suggestions = [];
+    this._init();
+  }
+
+  _init() {
+    document.body.appendChild(this.dropdown);
+    this.input.addEventListener('input',  () => this._showDropdown());
+    this.input.addEventListener('focus',  () => this._showDropdown());
+    this.input.addEventListener('blur',   () => setTimeout(() => this._hideDropdown(), 200));
+    this.input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const v = this.input.value.trim();
+        if (v) this.addTag(v);
+      } else if (e.key === 'Backspace' && !this.input.value && this.tags.length) {
+        this.removeTag(this.tags[this.tags.length - 1]);
+      }
+    });
+    this.wrapper.addEventListener('click', e => {
+      if (e.target === this.wrapper) this.input.focus();
+    });
+  }
+
+  setSuggestions(arr) { this.suggestions = arr; }
+
+  getValue() {
+    return this.tags.length === 0 ? '*' : this.tags.join(',');
+  }
+
+  setValue(str) {
+    if (!str || str === '*') {
+      this.tags = str === '*' ? ['*'] : [];
+    } else {
+      this.tags = str.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    this._render();
+  }
+
+  clear() { this.tags = []; this._render(); }
+
+  addTag(val) {
+    val = val.trim();
+    if (!val) return;
+    if (val === '*') {
+      this.tags = ['*'];
+    } else if (this.tags.includes('*') || this.tags.includes(val)) {
+      this.input.value = '';
+      return;
+    } else {
+      this.tags.push(val);
+    }
+    this.input.value = '';
+    this._hideDropdown();
+    this._render();
+  }
+
+  removeTag(val) {
+    this.tags = this.tags.filter(t => t !== val);
+    this._render();
+    if (!this.input.disabled) setTimeout(() => this.input.focus(), 0);
+  }
+
+  _render() {
+    this.wrapper.querySelectorAll('.tag-pill').forEach(p => p.remove());
+    const isWild = this.tags.includes('*');
+    for (const tag of this.tags) {
+      const pill = document.createElement('span');
+      pill.className = 'tag-pill';
+      pill.appendChild(document.createTextNode(tag));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '×';
+      btn.addEventListener('click', e => { e.stopPropagation(); this.removeTag(tag); });
+      pill.appendChild(btn);
+      this.wrapper.insertBefore(pill, this.input);
+    }
+    this.input.disabled = isWild;
+    this.input.style.display = isWild ? 'none' : '';
+    this.input.placeholder = this.tags.length === 0 ? 'Type to search, or * for all' : '';
+  }
+
+  _showDropdown() {
+    if (this.tags.includes('*')) { this._hideDropdown(); return; }
+    const val = this.input.value.toLowerCase();
+    const filtered = this.suggestions
+      .filter(s => (!val || s.toLowerCase().includes(val)) && !this.tags.includes(s))
+      .slice(0, 12);
+    const showWild = !val || '*'.includes(val);
+    if (!filtered.length && !showWild) { this._hideDropdown(); return; }
+
+    this.dropdown.innerHTML = '';
+    if (showWild) {
+      const item = document.createElement('div');
+      item.className = 'tag-dropdown-item';
+      item.innerHTML = '<strong>*</strong> <span style="color:hsl(var(--muted-foreground));font-size:0.72rem">— allow all</span>';
+      item.addEventListener('mousedown', e => { e.preventDefault(); this.addTag('*'); });
+      this.dropdown.appendChild(item);
+    }
+    filtered.forEach(s => {
+      const item = document.createElement('div');
+      item.className = 'tag-dropdown-item';
+      item.textContent = s;
+      item.addEventListener('mousedown', e => { e.preventDefault(); this.addTag(s); });
+      this.dropdown.appendChild(item);
+    });
+
+    const rect = this.wrapper.getBoundingClientRect();
+    Object.assign(this.dropdown.style, {
+      position: 'fixed',
+      top:   (rect.bottom + 2) + 'px',
+      left:  rect.left + 'px',
+      width: rect.width + 'px',
+      display: 'block'
+    });
+  }
+
+  _hideDropdown() { this.dropdown.style.display = 'none'; }
+}
+
+// Data Loading
+async function loadTokens() {
+  const includeRevoked = document.getElementById('showRevokedCb').checked;
+  try {
+    const qs = includeRevoked ? '?include_revoked=true' : '';
+    allTokens = await fetch(`/ui/api/tokens${qs}`).then(r => r.json());
+    currentPage = 1;
+    applyFilters();
+  } catch(e) {
+    toast('Failed to load tokens', 'error');
+  }
+}
+
+function tokenStatus(t) {
+  return t.revoked_at ? 'archived' : !t.is_active ? 'expired' : 'active';
+}
+
+async function refreshAll() {
+  const [epsResult, envResult] = await Promise.allSettled([
+    fetch('/ui/api/endpoints').then(r => r.json()),
+    fetch('/ui/api/environments').then(r => r.json())
+  ]);
+
+  if (epsResult.status === 'fulfilled') {
+    const eps = epsResult.value;
+    const names = [
+      ...(eps.sql       || []).map(e => e.name),
+      ...(eps.proxy     || []).map(e => e.name),
+      ...(eps.composite || []).map(e => e.name),
+      ...(eps.file      || []).map(e => e.name),
+      ...(eps.static    || []).map(e => e.name),
+      ...(eps.webhook   || []).map(e => e.name)
+    ];
+    endpointSuggestions = [...new Set(names)].sort();
+    createScopesTI.setSuggestions(endpointSuggestions);
+    editScopesTI.setSuggestions(endpointSuggestions);
+  }
+
+  if (envResult.status === 'fulfilled') {
+    environmentSuggestions = envResult.value.allowed_environments || [];
+    createEnvsTI.setSuggestions(environmentSuggestions);
+    editEnvsTI.setSuggestions(environmentSuggestions);
+  }
+
+  await loadTokens();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+
+  let list = allTokens.filter(t => {
+    if (!q) return true;
+    return (t.username || '').toLowerCase().includes(q)
+        || (t.description || '').toLowerCase().includes(q)
+        || (t.allowed_scopes || '').toLowerCase().includes(q)
+        || (t.allowed_environments || '').toLowerCase().includes(q);
+  });
+
+  // sort
+  list = list.slice().sort((a, b) => {
+    let av, bv;
+    if (sortCol === 'id') { av = a.id; bv = b.id; }
+    else if (sortCol === 'username') { av = (a.username||'').toLowerCase(); bv = (b.username||'').toLowerCase(); }
+    else if (sortCol === 'expires_at') { av = a.expires_at || '9999'; bv = b.expires_at || '9999'; }
+    else if (sortCol === 'status') { av = tokenStatus(a); bv = tokenStatus(b); }
+    else { av = a[sortCol]; bv = b[sortCol]; }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1;
+    if (av > bv) return sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  filteredTokens = list;
+  renderTable();
+}
+
+function formatPills(str) {
+  if (!str || str === '*') return `<span class="pill">*</span>`;
+  const parts = str.split(',').map(s => s.trim()).filter(Boolean);
+  const visible = parts.slice(0, 2);
+  const more = parts.length - visible.length;
+  let html = `<div class="pill-list">${visible.map(p => `<span class="pill">${esc(p)}</span>`).join('')}`;
+  if (more > 0) html += `<span class="muted" style="font-size:0.7rem">+${more}</span>`;
+  return html + '</div>';
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tokenTableBody');
+  const activeCount = allTokens.filter(t => t.is_active).length;
+
+  // Update sort indicators
+  document.querySelectorAll('th.sortable').forEach(th => {
+    const col = th.dataset.col;
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (col === sortCol) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = col === sortCol ? (sortDir === 'asc' ? '↑' : '↓') : '↕';
+  });
+
+  if (!filteredTokens.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">${allTokens.length ? 'No tokens match your search' : 'No tokens found'}</td></tr>`;
+    updatePagination(0);
+    return;
+  }
+
+  const rpp = parseInt(document.getElementById('rowsPerPage').value) || 10;
+  const total = filteredTokens.length;
+  const totalPages = Math.ceil(total / rpp);
+  currentPage = Math.max(1, Math.min(currentPage, totalPages));
+  const start = (currentPage - 1) * rpp;
+  const page  = filteredTokens.slice(start, start + rpp);
+
+  const archiveIcon   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;
+  const unarchiveIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="8 12 12 8 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>`;
+  const editIcon      = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+  const rotateIcon    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>`;
+  const showArchived  = document.getElementById('showRevokedCb').checked;
+
+  tbody.innerHTML = page.map(t => {
+    const status = tokenStatus(t);
+    const badge = status === 'archived'
+      ? `<span class="badge badge-muted">Archived</span>`
+      : status === 'expired'
+        ? `<span class="badge badge-warning">Expired</span>`
+        : `<span class="badge badge-success">Active</span>`;
+
+    const expires = t.expires_at
+      ? `<span class="col-mono" style="font-size:0.72rem">${esc(t.expires_at.slice(0,10))}</span>`
+      : `<span class="muted">Never</span>`;
+
+    const isActive  = !t.revoked_at && t.is_active;
+    const revokeBtn = t.revoked_at
+      ? (showArchived
+          ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Restore token" onclick="unarchiveToken(${t.id})">${unarchiveIcon}</button>`
+          : `<button class="btn-icon shadcn-tooltip" disabled data-tooltip="Already archived" style="opacity:0.3; cursor:default">${archiveIcon}</button>`)
+      : `<button class="btn-icon shadcn-tooltip" data-tooltip="Archive token" onclick="confirmRevoke(${t.id},this)">${archiveIcon}</button>`;
+    const rotateBtn = isActive
+      ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Rotate token" onclick="confirmRotate(${t.id},this)">${rotateIcon}</button>`
+      : '';
+
+    return `<tr>
+      <td style="padding-left:1rem; width:36px;"><input type="checkbox" class="row-check" data-id="${t.id}" style="cursor:pointer; accent-color:hsl(var(--primary));"></td>
+      <td class="col-mono" style="width:52px;">${t.id}</td>
+      <td><strong>${esc(t.username)}</strong></td>
+      <td class="muted" style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.description) || '—'}</td>
+      <td>${formatPills(t.allowed_scopes)}</td>
+      <td>${formatPills(t.allowed_environments)}</td>
+      <td>${expires}</td>
+      <td>${badge}</td>
+      <td style="text-align:right; padding-right:1rem; width:112px;">
+        <div style="display:inline-flex; gap:2px; align-items:center;">
+          <button class="btn-icon shadcn-tooltip" data-tooltip="Edit token" onclick="openEditDrawer(${t.id})">${editIcon}</button>
+          ${rotateBtn}
+          ${revokeBtn}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  updatePagination(total);
+}
+
+function updatePagination(total) {
+  const rpp = parseInt(document.getElementById('rowsPerPage').value) || 10;
+  const totalPages = Math.ceil(total / rpp);
+  const start = total ? (currentPage - 1) * rpp + 1 : 0;
+  const end   = Math.min(currentPage * rpp, total);
+
+  document.getElementById('paginationInfo').textContent = total ? `${start}–${end} of ${total}` : '0 results';
+  document.getElementById('btnFirst').disabled = currentPage <= 1;
+  document.getElementById('btnPrev').disabled  = currentPage <= 1;
+  document.getElementById('btnNext').disabled  = currentPage >= totalPages;
+  document.getElementById('btnLast').disabled  = currentPage >= totalPages;
+}
+
+function goPage(dir) {
+  const rpp = parseInt(document.getElementById('rowsPerPage').value) || 10;
+  const total = filteredTokens.length;
+  const totalPages = Math.ceil(total / rpp);
+  if (dir === 'first') currentPage = 1;
+  else if (dir === 'prev')  currentPage = Math.max(1, currentPage - 1);
+  else if (dir === 'next')  currentPage = Math.min(totalPages, currentPage + 1);
+  else if (dir === 'last')  currentPage = totalPages;
+  renderTable();
+}
+
+function toggleSelectAll(checked) {
+  document.querySelectorAll('.row-check').forEach(cb => cb.checked = checked);
+}
+
+// Create Drawer ─────────────────────────────────────────
+function openCreateDrawer() {
+  createScopesTI.clear();
+  createEnvsTI.clear();
+  document.getElementById('createName').value   = '';
+  document.getElementById('createDesc').value   = '';
+  document.getElementById('createExpiry').value = '';
+  Drawer.open('createDrawer');
+  setTimeout(() => document.getElementById('createName').focus(), 220);
+}
+
+function closeCreateDrawer() {
+  Drawer.close('createDrawer');
+}
+
+async function createToken() {
+  const name = document.getElementById('createName').value.trim();
+  if (!name) { toast('Name is required', 'error'); document.getElementById('createName').focus(); return; }
+
+  const nameLower = name.toLowerCase();
+  const isDuplicate = allTokens.some(t => !t.revoked_at && t.username.trim().toLowerCase() === nameLower);
+  if (isDuplicate) { toast(`A token named "${name}" already exists`, 'error'); document.getElementById('createName').focus(); return; }
+
+  const expiryStr = document.getElementById('createExpiry').value.trim();
+  if (expiryStr) {
+    const days = parseInt(expiryStr, 10);
+    if (isNaN(days) || days < 1) { toast('Expiration must be at least 1 day', 'error'); document.getElementById('createExpiry').focus(); return; }
+  }
+
+  const btn = document.getElementById('createBtn');
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+
+  try {
+    const body = {
+      username:             name,
+      description:          document.getElementById('createDesc').value.trim(),
+      allowed_scopes:       createScopesTI.getValue(),
+      allowed_environments: createEnvsTI.getValue()
+    };
+    if (expiryStr) body.expires_in_days = parseInt(expiryStr, 10);
+
+    const r = await fetch('/ui/api/tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) {
+      toast(d.error || 'Failed to create token', 'error');
+      if (r.status === 409) document.getElementById('createName').focus();
+      return;
+    }
+
+    closeCreateDrawer();
+    await loadTokens();
+    showRevealModal(d.token, body);
+  } catch(e) {
+    toast('Failed to create token', 'error');
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+// Edit Drawer ───────────────────────────────────────────
+function openEditDrawer(id) {
+  const token = allTokens.find(t => t.id === id);
+  if (!token) return;
+  editingTokenId = id;
+
+  document.getElementById('editDrawerTitle').textContent    = token.username;
+  document.getElementById('editDrawerSubtitle').textContent = token.description || '';
+  document.getElementById('editDesc').value = token.description || '';
+  editScopesTI.setValue(token.allowed_scopes);
+  editEnvsTI.setValue(token.allowed_environments);
+
+  const expiryInput = document.getElementById('editExpiry');
+  if (token.expires_at) {
+    const dt    = new Date(token.expires_at.replace(' ', 'T') + 'Z');
+    const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000);
+    expiryInput.value = local.toISOString().slice(0, 16);
+  } else {
+    expiryInput.value = '';
+  }
+
+  switchTab('policy');
+  Drawer.open('editDrawer');
+}
+
+function closeEditDrawer() {
+  Drawer.close('editDrawer');
+  editingTokenId = null;
+}
+
+function switchTab(tab) {
+  const isPolicy = tab === 'policy';
+  document.getElementById('policyPanel').style.display = isPolicy ? '' : 'none';
+  document.getElementById('auditPanel').style.display  = isPolicy ? 'none' : '';
+  document.getElementById('tabPolicy').classList.toggle('active', isPolicy);
+  document.getElementById('tabAudit').classList.toggle('active', !isPolicy);
+  document.getElementById('editFooter').style.display = isPolicy ? '' : 'none';
+  if (!isPolicy && editingTokenId) loadAudit(editingTokenId);
+}
+
+async function saveToken() {
+  if (!editingTokenId) return;
+  const btn = document.getElementById('saveTokenBtn');
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+
+  try {
+    const body = {
+      description:          document.getElementById('editDesc').value.trim(),
+      allowed_scopes:       editScopesTI.getValue(),
+      allowed_environments: editEnvsTI.getValue()
+    };
+    const expiryVal = document.getElementById('editExpiry').value;
+    if (expiryVal) {
+      const dt = new Date(expiryVal);
+      if (isNaN(dt.getTime()) || dt <= new Date()) {
+        toast('Expiration must be a future date and time', 'error');
+        btn.classList.remove('is-loading'); btn.disabled = false;
+        return;
+      }
+      body.expires_at = dt.toISOString();
+    }
+
+    const r = await fetch(`/ui/api/tokens/${editingTokenId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.error || 'Save failed', 'error'); return; }
+
+    toast('Token updated', 'success');
+    closeEditDrawer();
+    await loadTokens();
+  } catch(e) {
+    toast('Failed to save changes', 'error');
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+async function loadAudit(id) {
+  const tbody = document.getElementById('auditTableBody');
+  tbody.innerHTML = `<tr><td colspan="3" class="empty-state">Loading…</td></tr>`;
+  try {
+    const entries = await fetch(`/ui/api/tokens/${id}/audit`).then(r => r.json());
+    if (!entries.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="empty-state">No audit entries found</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = entries.map(e => {
+      let details = '';
+      if (e.details) {
+        try {
+          const d = JSON.parse(e.details);
+          details = Object.entries(d).map(([k, v]) => `${k}: ${v}`).join(' · ');
+        } catch { details = e.details; }
+      }
+      return `<tr>
+        <td><span class="badge badge-muted">${esc(e.operation)}</span></td>
+        <td class="col-mono" style="font-size:0.7rem; white-space:nowrap;">${esc(e.timestamp)}</td>
+        <td class="muted" style="font-size:0.75rem; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(details)}">${esc(details) || '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:1rem;color:hsl(var(--destructive))">Failed to load audit log</td></tr>`;
+  }
+}
+
+// Revoke ────────────────────────────────────────────────
+function confirmRevoke(id, btn) {
+  const cell = btn.closest('td');
+  cell.innerHTML = `
+    <div style="display:flex;gap:0.3rem;align-items:center;white-space:nowrap;justify-content:flex-end;padding-right:1rem;">
+      <span style="font-size:0.72rem;color:hsl(var(--destructive));font-weight:600;">Archive?</span>
+      <button class="btn btn-outline" style="height:1.5rem;padding:0 0.5rem;font-size:0.72rem;color:hsl(var(--destructive));border-color:hsl(var(--destructive)/0.4);" onclick="revokeToken(${id})">Yes</button>
+      <button class="btn btn-outline" style="height:1.5rem;padding:0 0.5rem;font-size:0.72rem;" onclick="loadTokens()">No</button>
+    </div>`;
+}
+
+async function revokeToken(id) {
+  try {
+    const r = await fetch(`/ui/api/tokens/${id}`, { method: 'DELETE' });
+    if (r.status === 409) {
+      const d = await r.json().catch(() => ({}));
+      toast(d.error || 'Token cannot be archived', 'warning');
+      await loadTokens();
+      return;
+    }
+    if (!r.ok) { toast('Failed to archive token', 'error'); return; }
+    toast('Token archived', 'success');
+    await loadTokens();
+  } catch(e) {
+    toast('Failed to archive token', 'error');
+  }
+}
+
+async function unarchiveToken(id) {
+  try {
+    const r = await fetch(`/ui/api/tokens/${id}/unarchive`, { method: 'POST' });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.error || 'Failed to restore token', 'error'); return; }
+    toast('Token restored', 'success');
+    await loadTokens();
+  } catch(e) {
+    toast('Failed to restore token', 'error');
+  }
+}
+
+// Rotate ────────────────────────────────────────────────
+function confirmRotate(id, btn) {
+  const cell = btn.closest('td');
+  cell.innerHTML = `
+    <div style="display:flex;gap:0.3rem;align-items:center;white-space:nowrap;justify-content:flex-end;padding-right:1rem;">
+      <span style="font-size:0.72rem;font-weight:600;">Rotate?</span>
+      <button class="btn btn-outline" style="height:1.5rem;padding:0 0.5rem;font-size:0.72rem;" onclick="rotateToken(${id})">Yes</button>
+      <button class="btn btn-outline" style="height:1.5rem;padding:0 0.5rem;font-size:0.72rem;" onclick="loadTokens()">No</button>
+    </div>`;
+}
+
+async function rotateToken(id) {
+  try {
+    const r = await fetch(`/ui/api/tokens/${id}/rotate`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok || !d.ok) { toast(d.error || 'Failed to rotate token', 'error'); await loadTokens(); return; }
+    await loadTokens();
+    showRevealModal(d.token, { username: d.username, allowed_scopes: d.allowed_scopes, allowed_environments: d.allowed_environments, expires_in_days: d.expires_in_days });
+    toast('Token rotated', 'success');
+  } catch(e) {
+    toast('Failed to rotate token', 'error');
+    await loadTokens();
+  }
+}
+
+// Token Reveal Modal ────────────────────────────────────
+function showRevealModal(token, data) {
+  revealData = { ...data, token };
+  document.getElementById('revealTokenValue').textContent = token;
+  document.getElementById('copyLabel').textContent = 'Copy to Clipboard';
+  document.getElementById('copyIcon').innerHTML = `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>`;
+  document.getElementById('revealBackdrop').style.display = 'flex';
+}
+
+function closeRevealModal() {
+  document.getElementById('revealBackdrop').style.display = 'none';
+  document.getElementById('revealTokenValue').textContent = '';
+  revealData = null;
+}
+
+function exportRevealToken() {
+  if (!revealData) return;
+  const expiresAt = revealData.expires_in_days
+    ? new Date(Date.now() + revealData.expires_in_days * 86400 * 1000).toISOString().slice(0, 19).replace('T', ' ')
+    : 'Never';
+  const payload = {
+    Username:            revealData.username,
+    Token:               revealData.token,
+    AllowedScopes:       revealData.allowed_scopes,
+    AllowedEnvironments: revealData.allowed_environments,
+    ExpiresAt:           expiresAt,
+    CreatedAt:           new Date().toISOString().slice(0, 19).replace('T', ' '),
+    Usage:               'Use this token in the Authorization header as: Bearer <token>'
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `${revealData.username}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  closeRevealModal();
+}
+
+async function copyRevealToken() {
+  const token = document.getElementById('revealTokenValue').textContent;
+  try {
+    await navigator.clipboard.writeText(token);
+    document.getElementById('copyLabel').textContent = 'Copied!';
+    document.getElementById('copyIcon').innerHTML = `<polyline points="20 6 9 17 4 12"/>`;
+    setTimeout(() => {
+      document.getElementById('copyLabel').textContent = 'Copy to Clipboard';
+      document.getElementById('copyIcon').innerHTML = `<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>`;
+    }, 2000);
+  } catch(e) {
+    toast('Copy failed! Please select and copy manually (Ctrl+C)', 'warning');
+  }
+}
+
+// Init 
+async function init() {
+  const [epsResult, envResult] = await Promise.allSettled([
+    fetch('/ui/api/endpoints').then(r => r.json()),
+    fetch('/ui/api/environments').then(r => r.json())
+  ]);
+
+  if (epsResult.status === 'fulfilled') {
+    const eps = epsResult.value;
+    const names = [
+      ...(eps.sql       || []).map(e => e.name),
+      ...(eps.proxy     || []).map(e => e.name),
+      ...(eps.composite || []).map(e => e.name),
+      ...(eps.file      || []).map(e => e.name),
+      ...(eps.static    || []).map(e => e.name),
+      ...(eps.webhook   || []).map(e => e.name)
+    ];
+    endpointSuggestions = [...new Set(names)].sort();
+  }
+
+  if (envResult.status === 'fulfilled') {
+    environmentSuggestions = envResult.value.allowed_environments || [];
+  }
+
+  createScopesTI = new TagInput('createScopesWrapper', 'createScopesInput', 'createScopesDropdown');
+  createScopesTI.setSuggestions(endpointSuggestions);
+  createEnvsTI = new TagInput('createEnvsWrapper', 'createEnvsInput', 'createEnvsDropdown');
+  createEnvsTI.setSuggestions(environmentSuggestions);
+  editScopesTI = new TagInput('editScopesWrapper', 'editScopesInput', 'editScopesDropdown');
+  editScopesTI.setSuggestions(endpointSuggestions);
+  editEnvsTI = new TagInput('editEnvsWrapper', 'editEnvsInput', 'editEnvsDropdown');
+  editEnvsTI.setSuggestions(environmentSuggestions);
+
+  await loadTokens();
+}
+
+init();
+
+refreshAll();
+</script>
+</body>
+</html>

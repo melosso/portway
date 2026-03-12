@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard · Portway</title>
+  <link href="css/inter.css" rel="stylesheet">
+  <link href="css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/components/toast.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/shared.js"></script>
+</head>
+<body>
+
+<aside></aside>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">Dashboard</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="load()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">SQL Endpoints</div>
+        <div class="stat-value" id="statSql">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Proxy Endpoints</div>
+        <div class="stat-value" id="statProxy">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">File / Static</div>
+        <div class="stat-value" id="statFile">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Environments</div>
+        <div class="stat-value" id="statEnvs">—</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Service Health</span>
+          <span class="badge badge-muted" id="healthBadge">—</span>
+        </div>
+        <div class="card-body">
+          <div class="kv-grid">
+            <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
+            <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
+            <span class="kv-key">Version</span><span class="kv-val" id="healthVersion">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Endpoint Breakdown</span></div>
+        <div class="card-body" id="breakdownBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── Overview data ─────────────────────────────────────────
+async function load() {
+  try {
+    const d = await fetch('/ui/api/overview').then(r => r.json());
+    const ep = d.endpoints ?? {};
+    document.getElementById('statSql').textContent = ep.sql ?? '—';
+    document.getElementById('statProxy').textContent = (ep.proxy ?? 0) + (ep.composite ? ` (+${ep.composite})` : '');
+    document.getElementById('statFile').textContent = ((ep.file ?? 0) + (ep.static ?? 0)) || '—';
+    document.getElementById('statEnvs').textContent = d.environments ?? '—';
+
+    const v = (d.version ?? '').split('+')[0];
+    document.getElementById('healthVersion').textContent = v || '—';
+    document.getElementById('healthUptime').textContent = d.uptime ?? '—';
+
+    const rows = [
+      ['SQL', ep.sql ?? 0],
+      ['Proxy', ep.proxy ?? 0],
+      ['Composite', ep.composite ?? 0],
+      ['File', ep.file ?? 0],
+      ['Static', ep.static ?? 0],
+      ['Webhook', ep.webhook ?? 0],
+    ].filter(([,n]) => n > 0);
+
+    document.getElementById('breakdownBody').innerHTML = rows.length
+      ? '<div class="kv-grid">' + rows.map(([k,v]) =>
+          `<span class="kv-key">${esc(k)}</span><span class="kv-val">${v}</span>`
+        ).join('') + `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Total</span>
+         <span class="kv-val" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">${ep.total ?? 0}</span>` + '</div>'
+      : '<span class="muted" style="font-size:0.8rem">No endpoints configured</span>';
+  } catch(e) { console.error('overview', e); }
+}
+
+// SSE
+let _sseAbort = null;
+let _sseDelay = 1000;
+
+function connectSSE() {
+  if (_sseAbort) _sseAbort.abort();
+  _sseAbort = new AbortController();
+
+  fetch('/ui/api/events', { credentials: 'same-origin', signal: _sseAbort.signal })
+    .then(response => {
+      if (!response.ok) throw new Error(`SSE ${response.status}`);
+      _sseDelay = 1000;
+      const reader  = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      function read() {
+        reader.read().then(({ done, value }) => {
+          if (done) { scheduleSSEReconnect(); return; }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+          let eventType = '', data = '';
+          for (const line of lines) {
+            if (line.startsWith('event: '))      eventType = line.slice(7).trim();
+            else if (line.startsWith('data: '))  data      = line.slice(6);
+            else if (line === '' && eventType && data) {
+              handleSSE(eventType, data);
+              eventType = ''; data = '';
+            }
+          }
+          read();
+        }).catch(err => { if (err.name !== 'AbortError') scheduleSSEReconnect(); });
+      }
+      read();
+    })
+    .catch(err => { if (err.name !== 'AbortError') scheduleSSEReconnect(); });
+}
+
+function scheduleSSEReconnect() {
+  if (!_sseAbort) return;
+  setTimeout(() => { if (_sseAbort) connectSSE(); }, _sseDelay);
+  _sseDelay = Math.min(_sseDelay * 2, 30000);
+}
+
+function handleSSE(type, data) {
+  try {
+    const d = JSON.parse(data);
+    if (type === 'health') applyHealth(d);
+    else if (type === 'reload') load(); // endpoint/environment config changed
+  } catch {}
+}
+
+function applyHealth(d) {
+  const status = d.status ?? '';
+  const ok     = status.toLowerCase() === 'healthy';
+  document.getElementById('healthStatus').textContent = status || '—';
+  const badge = document.getElementById('healthBadge');
+  badge.textContent = status || 'unknown';
+  badge.className   = `badge ${ok ? 'badge-success' : status ? 'badge-warning' : 'badge-muted'}`;
+}
+
+load();
+connectSSE();
+</script>
+</body>
+</html>

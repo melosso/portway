@@ -7,13 +7,12 @@ This guide will help you set up your first API gateway and configure endpoints t
 Before you begin, make sure you have:
 
 - Windows Server (or Windows 11 for development)
-- [.NET 10+ ASP.NET Core Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
-- Internet Information Services (IIS) with ASP.NET Core Hosting Bundle
-- SQL Server database access (for SQL endpoints)
-- Administrative access to configure IIS
+- [.NET 10+ ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) 
+- Internet Information Services (IIS)
+- SQL Server database access (if you're using MSSQL endpoints)
 
 > [!WARNING]
-> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core 10.0** provides. Make sure to choose the last option ("Hosting Bundle").
+> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core** provides. Make sure to choose the last option ("Hosting Bundle").
 
 ## Installation
 
@@ -42,7 +41,6 @@ services:
       - ./data:/app/data
     environment:
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - ASPNETCORE_URLS=http://+:8080
 
 volumes:
   portway_app:

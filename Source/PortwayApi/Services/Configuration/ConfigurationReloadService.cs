@@ -29,7 +29,6 @@ public class ConfigurationReloadService : IHostedService, IDisposable
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        Log.Information("Configuration reload enabled: Monitoring `appsettings.json` for changes");
         return Task.CompletedTask;
     }
 

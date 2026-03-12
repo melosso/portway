@@ -338,13 +338,46 @@ public class TokenService
     }
     
     /// <summary>
-    /// Revoke a token by ID
+    /// Returns null if the token can be revoked, or an error message if it is protected.
+    /// A token is protected when it is the last active token, or the last active token
+    /// that holds full wildcard (*/*)  permissions.
+    /// </summary>
+    public async Task<string?> GetRevokeBlockReasonAsync(int tokenId)
+    {
+        var active = await _dbContext.Tokens
+            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
+            .ToListAsync();
+
+        var target = active.FirstOrDefault(t => t.Id == tokenId);
+        if (target == null) return null; // not found or already archived
+
+        if (active.Count <= 1)
+            return "Cannot revoke token";
+
+        var fullPerm = active.Where(t => t.AllowedScopes == "*" && t.AllowedEnvironments == "*").ToList();
+        if (fullPerm.Count == 1 && fullPerm[0].Id == tokenId)
+            return "Cannot delete token";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Revoke (soft-delete / archive) a token by ID.
+    /// Returns false when the token is not found or is protected by the last-token guard.
     /// </summary>
     public async Task<bool> RevokeTokenAsync(int tokenId)
     {
+        // Enforce last-token guard even when called directly (e.g. from CLI)
+        var blockReason = await GetRevokeBlockReasonAsync(tokenId);
+        if (blockReason != null)
+        {
+            Log.Warning("Refused to archive token {TokenId}: {Reason}", tokenId, blockReason);
+            return false;
+        }
+
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null) return false;
-        
+
         token.RevokedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync();
         
@@ -367,10 +400,50 @@ public class TokenService
             Log.Warning(ex, "Could not rename token file for revoked token");
         }
         
+        await LogAuditAsync(token.Id, token.Username, "Revoked", token.TokenHash, null,
+            JsonSerializer.Serialize(new { RevokedAt = token.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss") }));
+
         Log.Information("Revoked token ID: {TokenId} for user: {Username}", tokenId, token.Username);
         return true;
     }
     
+    /// <summary>
+    /// Unarchive (restore) a previously revoked token by ID.
+    /// Returns false when the token is not found or is not revoked.
+    /// </summary>
+    public async Task<bool> UnarchiveTokenAsync(int tokenId)
+    {
+        var token = await _dbContext.Tokens.FindAsync(tokenId);
+        if (token == null || token.RevokedAt == null) return false;
+
+        token.RevokedAt = null;
+        await _dbContext.SaveChangesAsync();
+
+        // Rename .revoked.txt back to .txt
+        try
+        {
+            string revokedPath = Path.Combine(_tokenFolderPath, $"{token.Username}.revoked.txt");
+            if (File.Exists(revokedPath))
+            {
+                string tokenFilePath = Path.Combine(_tokenFolderPath, $"{token.Username}.txt");
+                if (File.Exists(tokenFilePath))
+                    File.Delete(tokenFilePath);
+                File.Move(revokedPath, tokenFilePath);
+                Log.Information("Restored token file: {FilePath}", tokenFilePath);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not restore token file for unarchived token");
+        }
+
+        await LogAuditAsync(token.Id, token.Username, "Unarchived", null, null,
+            JsonSerializer.Serialize(new { RestoredAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
+
+        Log.Information("Unarchived token ID: {TokenId} for user: {Username}", tokenId, token.Username);
+        return true;
+    }
+
     /// <summary>
     /// Set token expiration by ID
     /// </summary>
@@ -385,6 +458,22 @@ public class TokenService
         return true;
     }
     
+    /// <summary>
+    /// Update token allowed environments by ID
+    /// </summary>
+    public async Task<bool> UpdateTokenEnvironmentsAsync(int tokenId, string environments)
+    {
+        var token = await _dbContext.Tokens.FindAsync(tokenId);
+        if (token == null) return false;
+        string old = token.AllowedEnvironments;
+        token.AllowedEnvironments = environments;
+        await _dbContext.SaveChangesAsync();
+        await LogAuditAsync(token.Id, token.Username, "EnvironmentsUpdated", null, null,
+            JsonSerializer.Serialize(new { OldEnvironments = old, NewEnvironments = environments,
+                UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
+        return true;
+    }
+
     /// <summary>
     /// Update token scopes by ID
     /// </summary>
@@ -409,6 +498,22 @@ public class TokenService
         return true;
     }
     
+    /// <summary>
+    /// Update token description by ID
+    /// </summary>
+    public async Task<bool> UpdateTokenDescriptionAsync(int tokenId, string description)
+    {
+        var token = await _dbContext.Tokens.FindAsync(tokenId);
+        if (token == null) return false;
+        string old = token.Description ?? "";
+        token.Description = description;
+        await _dbContext.SaveChangesAsync();
+        await LogAuditAsync(token.Id, token.Username, "DescriptionUpdated", null, null,
+            JsonSerializer.Serialize(new { OldDescription = old, NewDescription = description,
+                UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
+        return true;
+    }
+
     /// <summary>
     /// Log audit information for token operations
     /// </summary>

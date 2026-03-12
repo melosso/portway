@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Settings · Portway</title>
+  <link href="css/inter.css" rel="stylesheet">
+  <link href="css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/components/toast.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/shared.js"></script>
+</head>
+<body>
+
+<aside></aside>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">Settings</h1>
+      <span class="page-subtitle">Read-only view</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="load()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="settings-grid">
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Rate Limiting</span></div>
+        <div class="card-body" id="rateLimitBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Caching</span></div>
+        <div class="card-body" id="cachingBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">SQL Connection Pooling</span></div>
+        <div class="card-body" id="sqlBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">File Storage</span></div>
+        <div class="card-body" id="fileBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Logging</span></div>
+        <div class="card-body" id="loggingBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Endpoint Reloading</span></div>
+        <div class="card-body" id="reloadBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+function settingItem(label, value, desc) {
+  return `<div class="settings-item">
+    <div>
+      <div class="settings-item-label">${label}</div>
+      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
+    </div>
+    <span class="settings-item-value">${esc(String(value ?? '—'))}</span>
+  </div>`;
+}
+
+function boolItem(label, value, desc) {
+  return settingItem(label, value ? 'Enabled' : 'Disabled', desc);
+}
+
+async function load() {
+  try {
+    const d = await fetch('/ui/api/settings').then(r => r.json());
+    const rl = d.rate_limiting ?? {};
+    const c = d.caching ?? {};
+    const sql = d.sql_pooling ?? {};
+    const f = d.file_storage ?? {};
+    const log = d.logging ?? {};
+    const ep = d.endpoint_reloading ?? {};
+
+    document.getElementById('rateLimitBody').innerHTML = [
+      boolItem('Enabled', rl.enabled),
+      settingItem('IP Limit', rl.ip_limit != null ? `${rl.ip_limit} req / ${rl.ip_window_seconds}s` : '—'),
+      settingItem('Token Limit', rl.token_limit != null ? `${rl.token_limit} req / ${rl.token_window_seconds}s` : '—'),
+    ].join('');
+
+    document.getElementById('cachingBody').innerHTML = [
+      boolItem('Enabled', c.enabled),
+      settingItem('Provider', c.provider ?? '—'),
+      settingItem('Default Duration', c.default_duration_seconds != null ? `${c.default_duration_seconds}s` : '—'),
+      settingItem('Max Items', c.max_items ?? '—'),
+      settingItem('Max Size', c.max_size_mb != null ? `${c.max_size_mb} MB` : '—'),
+    ].join('');
+
+    document.getElementById('sqlBody').innerHTML = [
+      boolItem('Enabled', sql.enabled),
+      settingItem('Pool Size', sql.min_pool_size != null ? `${sql.min_pool_size} – ${sql.max_pool_size}` : '—'),
+      settingItem('Connection Timeout', sql.connection_timeout != null ? `${sql.connection_timeout}s` : '—'),
+      settingItem('Command Timeout', sql.command_timeout != null ? `${sql.command_timeout}s` : '—'),
+    ].join('');
+
+    document.getElementById('fileBody').innerHTML = [
+      settingItem('Storage Directory', f.directory || '—'),
+      settingItem('Max File Size', f.max_file_size_mb != null ? `${f.max_file_size_mb} MB` : '—'),
+    ].join('');
+
+    document.getElementById('loggingBody').innerHTML = [
+      settingItem('Minimum Level', log.min_level ?? '—'),
+      settingItem('Sinks', (log.sinks ?? []).join(', ') || '—'),
+    ].join('');
+
+    document.getElementById('reloadBody').innerHTML = [
+      boolItem('Enabled', ep.enabled),
+      settingItem('Debounce', ep.debounce_ms != null ? `${ep.debounce_ms}ms` : '—'),
+    ].join('');
+
+  } catch(e) {
+    const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody'].forEach(id => {
+      document.getElementById(id).innerHTML = msg;
+    });
+  }
+}
+
+load();
+</script>
+</body>
+</html>

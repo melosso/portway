@@ -87,7 +87,7 @@ public class AuthToken
         if (environments.Any(e => e.Equals("*") || e.Equals(environment, StringComparison.OrdinalIgnoreCase)))
             return true;
             
-        // Check for wildcard matches (e.g., "6*" should match "600")
+        // Check for wildcard matches (e.g., "6*" should match "500")
         return environments.Any(e => 
             e.EndsWith("*") && 
             environment.StartsWith(e.Substring(0, e.Length - 1), StringComparison.OrdinalIgnoreCase));

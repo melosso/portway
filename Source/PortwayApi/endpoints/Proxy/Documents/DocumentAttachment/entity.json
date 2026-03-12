@@ -1,0 +1,45 @@
+{
+  "Type": "Composite",
+  "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc",
+  "Methods": ["POST"],
+  "Namespace": "Documents",
+  "NamespaceDisplayName": "Documents",
+  "CompositeConfig": {
+    "Name": "DocumentAttachment",
+    "Description": "Uploads a file and attaches it to a newly created document record in three steps: prepare binary storage, create the document, then link the attachment",
+    "Steps": [
+      {
+        "Name": "UploadBinary",
+        "Endpoint": "Binary",
+        "Method": "POST",
+        "SourceProperty": "Binary"
+      },
+      {
+        "Name": "CreateDocument",
+        "Endpoint": "Document",
+        "Method": "POST",
+        "SourceProperty": "Document"
+      },
+      {
+        "Name": "CreateDocumentAttachment",
+        "Endpoint": "DocumentAttachment",
+        "Method": "POST",
+        "SourceProperty": "Attachment",
+        "TemplateTransformations": {
+          "MessageID": "$prev.UploadBinary.d.MessageID",
+          "DocumentID": "$prev.CreateDocument.d.ID"
+        }
+      }
+    ]
+  },
+  "AllowedEnvironments": ["Synergy"],
+  "Documentation": {
+    "TagDescription": "**Document Attachment**\n\nAttach a file to a new document in Exact Synergy. Internally creates a Binary (file storage), a Document record, and a DocumentAttachment (the link between them).",
+    "MethodDescriptions": {
+      "POST": "Attach a file to a new document"
+    },
+    "MethodDocumentation": {
+      "POST": "Provide the file content under `Binary`, the document metadata (type, subject) under `Document`, and the file name/extension under `Attachment`. The endpoint handles the three Exact API calls in order and wires the IDs together automatically."
+    }
+  }
+}

@@ -1,5 +1,5 @@
 ---
-title: Portway Overview
+title: Guide
 description: A high-level guide to Portway, its core concepts, and how to get started.
 outline: [2, 3]
 keywords: [API Gateway, Windows, SQL Server, REST, OData]
@@ -18,7 +18,6 @@ Most users start with installation, deployment, or security configuration. Use t
 - [Deployment](./deployment)
 - [Security](./security)
 
-
 ## What Is Portway?
 
 Portway is an **API gateway built for Windows environments**. It sits in front of SQL Server, internal services, and static content, exposing them through a consistent REST interface. If you’re running a mix of legacy systems and new services, Portway allows you to surface them **without rewriting anything**.
@@ -27,20 +26,19 @@ Portway works with:
 - SQL Server tables and stored procedures
 - Internal web services that require authentication
 - JSON, XML, and CSV files
-- Incoming webhooks
+- Incoming requests as webhook endpoint
 - Multi-step composite operations
 
 There are some foundations you do need to know before continuing:
 
-## Core Concepts
+## Concepts
 
 These are the foundational ideas that shape how Portway works. Understanding these concepts will help you as you configure endpoints later.
 
 ### Security
 
-Portway includes built-in mechanisms to control access and manage how requests move between environments.
+Portway includes built-in mechanisms to control access and manage how requests move between environments. Some of the key features to mention:
 
-**Security Features:**
 - **Token Authentication**: Secure your endpoints with tokens.
 - **Scoped Permissions**: Define granular access control.
 - **Environment-Aware Controls**: Manage access based on environment.
@@ -48,36 +46,38 @@ Portway includes built-in mechanisms to control access and manage how requests m
 - **Azure Key Vault Integration**: Securely manage secrets.
 - **Rate Limiting and Request Validation**: Prevent abuse and ensure valid requests.
 
+Please read the documentation for more insight in how we harden our gateway.
+
 ### Environment Awareness
 
 Portway treats environments as independent spaces, keeping configurations clean and preventing cross-contamination between development, testing, and production.
 
-**Environment Awareness Features:**
-- **Routing Based on Environment**: Direct requests based on the environment.
-- **Environment-Specific Configuration**: Customize settings for each environment.
+- **Routing**: Direct requests based on the environment.
 - **Isolated Headers and Connection Strings**: Ensure environment-specific configurations remain separate.
+
+Environments combined with the endpoint configuration, allow full segmentation and granular control for each token.
 
 ### Developer Experience
 
-Portway includes tools to help you understand what’s happening at runtime and debug issues without additional setup.
+Portway includes tools to help you understand what’s happening at runtime and debug issues without additional setup. To enhance this experience:
 
-**Developer Tools:**
 - **Auto-Generated API Documentation**: Always up-to-date documentation.
 - **Logging and Tracing**: Track and debug requests.
 - **Health Endpoints**: Monitor the status of your gateway.
 - **JSON-Based Configuration**: Easy-to-manage configuration files.
 
+In any case, you're able to saturate your documentation by configuring your endpoints.
+
 ### Endpoint Types
 
 Portway exposes a variety of endpoint types. Knowing these will help you choose the right one for your use case.
 
-**Endpoint Types:**
 - **SQL Endpoints**: Support OData queries for SQL Server.
 - **Proxy Endpoints**: Forward requests to internal services.
 - **Composite Endpoints**: Handle multi-step workflows.
 - **File Endpoints**: Manage storage and retrieval of files.
 - **Webhook Receivers**: Process incoming webhooks.
-- **Static File Endpoints**: Serve static content.
+- **Static File Endpoints**: Serve static content (e.g. for static data, local files or mock-ups).
 
 ## What’s next?
 

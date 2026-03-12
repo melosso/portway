@@ -9,7 +9,7 @@
     ],
     "Procedure": "dbo.sp_ManageServiceRequests",
     "AllowedMethods": ["GET","DELETE"],
-    "AllowedEnvironments": ["600"],
+    "AllowedEnvironments": ["500"],
     "Documentation": {
         "TagDescription": "**Service Cancellations**\n\nManage service request cancellations and status updates. Handle customer cancellation requests and maintain audit trails for service modifications.",
         "MethodDescriptions": {

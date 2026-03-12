@@ -88,12 +88,14 @@ GET /api/prod/ProductionMachine?$filter=status eq 'running'&$top=5&$orderby=name
 - **Dashboards** - Provide static datasets for reporting and visualization
 - **API Simulation** - Prototype APIs before backend implementation
 
-## Authentication
+## Visibility
 
-Static endpoints can be public or private:
+The `IsPrivate` flag controls whether the endpoint appears in the OpenAPI documentation:
 
-- **Public** (`IsPrivate: false`) - No authentication required
-- **Private** (`IsPrivate: true`) - Requires Bearer token authentication
+- **Public** (`IsPrivate: false`) - Endpoint is visible in OpenAPI docs
+- **Private** (`IsPrivate: true`) - Endpoint is hidden from OpenAPI docs
+
+This does not affect authentication - authentication is handled separately.
 
 ```json
 {

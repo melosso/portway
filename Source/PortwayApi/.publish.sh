@@ -105,6 +105,7 @@ cat > "$WEB_CONFIG_PATH" <<'XML'
     </defaultDocument>
     <httpProtocol>
       <customHeaders>
+        <!-- Stop IIS from adding these headers, since Portway already adds them. So removing them here prevents duplicates. -->
         <remove name="X-Powered-By" />
         <remove name="X-Content-Type-Options" />
         <remove name="X-Frame-Options" />
@@ -112,12 +113,6 @@ cat > "$WEB_CONFIG_PATH" <<'XML'
         <remove name="Referrer-Policy" />
         <remove name="Permissions-Policy" />
         <remove name="Content-Security-Policy" />
-        <add name="X-Content-Type-Options" value="nosniff" />
-        <add name="X-Frame-Options" value="DENY" />
-        <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
-        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
-        <add name="Permissions-Policy" value="geolocation=(), camera=(), microphone=(), payment=()" />
-        <add name="Content-Security-Policy" value="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://proxy.scalar.com; font-src 'self' https://fonts.scalar.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" />
       </customHeaders>
     </httpProtocol>
   </system.webServer>

@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Serilog;
 using PortwayApi.Interfaces;
+using PortwayApi.Services;
 using PortwayApi.Services.Caching;
 
 namespace PortwayApi.Services.Configuration;
@@ -12,6 +14,7 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
     private readonly string _environmentsPath;
     private readonly CacheManager _cacheManager;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
+    private readonly SseBroadcaster? _broadcaster;
     private FileSystemWatcher? _fileWatcher;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
     private readonly Dictionary<string, DateTime> _lastReloadTimes = new();
@@ -20,12 +23,14 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
 
     public EnvironmentFileWatcher(
         CacheManager cacheManager,
-        IEnvironmentSettingsProvider environmentSettingsProvider)
+        IEnvironmentSettingsProvider environmentSettingsProvider,
+        SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
-        _environmentsPath = Path.Combine(baseDir, "environments");
-        _cacheManager = cacheManager;
+        _environmentsPath            = Path.Combine(baseDir, "environments");
+        _cacheManager                = cacheManager;
         _environmentSettingsProvider = environmentSettingsProvider;
+        _broadcaster                 = broadcaster;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -50,7 +55,6 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
         _fileWatcher.Deleted += OnFileChanged;
         _fileWatcher.Renamed += OnFileRenamed;
 
-        Log.Information("Configuration reload enabled: Monitoring `/environments` folder for changes");
         Log.Debug("Environment file watcher initialized at path: {Path}", _environmentsPath);
 
         // WORKAROUND: Detect drvfs mount and use polling fallback for WSL2 compatibility
@@ -131,7 +135,15 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
             // Invalidate cache entries related to this environment
             await InvalidateEnvironmentCacheAsync(environmentName);
 
+            // Re-encrypt if a plaintext connection string was written (e.g. after IIS reset / config restore)
+            // Only applies to per-environment settings (parts.Length >= 2), not the global settings.json
+            var relativePath = Path.GetRelativePath(_environmentsPath, filePath);
+            var parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (parts.Length >= 2 && changeType != WatcherChangeTypes.Deleted)
+                _environmentSettingsProvider.EncryptEnvironmentIfNeeded(environmentName);
+
             Log.Information("Environment '{Environment}' settings changed, definition will reload on next request", environmentName);
+            _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "environments" }));
         }
         catch (Exception ex)
         {

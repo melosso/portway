@@ -35,7 +35,7 @@
         "is_active;IsActive"
     ],
     "AllowedMethods": ["GET"],
-    "AllowedEnvironments": ["600", "700"],
+    "AllowedEnvironments": ["500", "700"],
     "Documentation": {
         "TagDescription": "Retrieve and manage company information and related organizational settings.",
         "MethodDescriptions": {

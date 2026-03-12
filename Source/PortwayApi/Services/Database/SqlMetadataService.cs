@@ -100,9 +100,8 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            var errorMessage = ex.Message;
-            Log.Error(ex, "One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
-                ex.GetType().Name, errorMessage);
+            Log.Error("One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
+                ex.GetType().Name, ex.Message);
         }
         
         lock (_cacheLock)
@@ -147,10 +146,8 @@ public class SqlMetadataService
         }
         catch (Exception ex)
         {
-            // Get the most relevant error message
-            var errorMessage = ex.Message;
-            Log.Error(ex, "Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorType} - {ErrorMessage}",
-                endpointName, environment, ex.GetType().Name, errorMessage);
+            Log.Error("Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorType} - {ErrorMessage}",
+                endpointName, environment, ex.GetType().Name, ex.Message);
         }
     }
 
@@ -167,62 +164,50 @@ public class SqlMetadataService
         string connectionString,
         CancellationToken cancellationToken = default)
     {
-        try
+        var schema = definition.DatabaseSchema ?? "dbo";
+        var objectName = definition.DatabaseObjectName!;
+        var objectType = definition.DatabaseObjectType ?? "Table";
+        var allowedColumns = definition.AllowedColumns ?? new List<string>();
+        var primaryKey = definition.PrimaryKey;
+
+        Log.Debug("Loading object metadata for {EndpointName}: {Schema}.{ObjectName} ({ObjectType})",
+            endpointName, schema, objectName, objectType);
+
+        var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
+        await using var connection = new SqlConnection(optimizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        List<ColumnMetadata> columns;
+
+        switch (objectType.ToLowerInvariant())
         {
-            var schema = definition.DatabaseSchema ?? "dbo";
-            var objectName = definition.DatabaseObjectName!;
-            var objectType = definition.DatabaseObjectType ?? "Table";
-            var allowedColumns = definition.AllowedColumns ?? new List<string>();
-            var primaryKey = definition.PrimaryKey;
+            case "table":
+                columns = await GetTableColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
+                break;
 
-            Log.Debug("Loading object metadata for {EndpointName}: {Schema}.{ObjectName} ({ObjectType})", 
-                endpointName, schema, objectName, objectType);
+            case "view":
+                columns = await GetViewColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
+                break;
 
-            var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
-            await using var connection = new SqlConnection(optimizedConnectionString);
-            await connection.OpenAsync(cancellationToken);
+            case "tablevaluedfunction":
+                columns = await GetTableValuedFunctionColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
+                break;
 
-            List<ColumnMetadata> columns;
-
-            switch (objectType.ToLowerInvariant())
-            {
-                case "table":
-                    columns = await GetTableColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
-                    break;
-                
-                case "view":
-                    columns = await GetViewColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
-                    break;
-                
-                case "tablevaluedfunction":
-                    columns = await GetTableValuedFunctionColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
-                    break;
-                
-                default:
-                    Log.Warning("Unknown database object type '{ObjectType}' for endpoint {EndpointName}", 
-                        objectType, endpointName);
-                    return;
-            }
-
-            // Mark primary key and apply column filtering/aliasing
-            columns = ProcessColumnMetadata(columns, definition, endpointName);  // Assign the returned filtered list
-
-            // Cache the object metadata
-            lock (_cacheLock)
-            {
-                _objectMetadataCache[endpointName] = columns;  // Now caching the FILTERED columns
-            }
-            
-            Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns", 
-                endpointName, columns.Count);
+            default:
+                Log.Warning("Unknown database object type '{ObjectType}' for endpoint {EndpointName}",
+                    objectType, endpointName);
+                return;
         }
-        catch (Exception ex)
+
+        columns = ProcessColumnMetadata(columns, definition, endpointName);
+
+        lock (_cacheLock)
         {
-            var errorMessage = ex.Message;
-            Log.Error(ex, "Error loading object metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
-                endpointName, ex.GetType().Name, errorMessage);
-            throw;
+            _objectMetadataCache[endpointName] = columns;
         }
+
+        Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns",
+            endpointName, columns.Count);
     }
 
     private async Task LoadProcedureMetadataForEndpointAsync(
@@ -231,51 +216,37 @@ public class SqlMetadataService
         string connectionString,
         CancellationToken cancellationToken = default)
     {
-        try
+        var procedureName = definition.Procedure!;
+        Log.Debug("Loading procedure metadata for {EndpointName}: {ProcedureName}",
+            endpointName, procedureName);
+
+        var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
+        await using var connection = new SqlConnection(optimizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        var parts = procedureName.Split('.');
+        string schema, name;
+        if (parts.Length == 2)
         {
-            var procedureName = definition.Procedure!;
-            Log.Debug("Loading procedure metadata for {EndpointName}: {ProcedureName}", 
-                endpointName, procedureName);
-
-            var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
-            await using var connection = new SqlConnection(optimizedConnectionString);
-            await connection.OpenAsync(cancellationToken);
-
-            // Parse schema and procedure name
-            var parts = procedureName.Split('.');
-            string schema, name;
-            if (parts.Length == 2)
-            {
-                schema = parts[0];
-                name = parts[1];
-            }
-            else
-            {
-                schema = "dbo";
-                name = procedureName;
-            }
-
-            var parameters = await GetStoredProcedureParametersAsync(connection, schema, name, cancellationToken).ConfigureAwait(false);
-
-            // Filter out reserved parameters like @Method
-            parameters = parameters.Where(p => !IsReservedParameter(p.ParameterName)).ToList();
-
-            // Cache the procedure metadata
-            lock (_cacheLock)
-            {
-                _procedureMetadataCache[endpointName] = parameters;
-            }
-
-            Log.Debug("Cached procedure metadata for {EndpointName}: {ParameterCount} parameters", 
-                endpointName, parameters.Count);
+            schema = parts[0];
+            name = parts[1];
         }
-        catch (Exception ex)
+        else
         {
-            var errorMessage = ex.Message;
-            Log.Error(ex, "Error loading procedure metadata for endpoint {EndpointName}: {ErrorType} - {ErrorMessage}",
-                endpointName, ex.GetType().Name, errorMessage);
-            throw;
+            schema = "dbo";
+            name = procedureName;
         }
+
+        var parameters = await GetStoredProcedureParametersAsync(connection, schema, name, cancellationToken).ConfigureAwait(false);
+        parameters = parameters.Where(p => !IsReservedParameter(p.ParameterName)).ToList();
+
+        lock (_cacheLock)
+        {
+            _procedureMetadataCache[endpointName] = parameters;
+        }
+
+        Log.Debug("Cached procedure metadata for {EndpointName}: {ParameterCount} parameters",
+            endpointName, parameters.Count);
     }
 
     private bool IsReservedParameter(string parameterName)

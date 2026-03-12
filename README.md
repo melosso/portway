@@ -12,7 +12,7 @@ Portway bridges internal services with external partners, making it ideal for mo
 
 A quick example to give you an idea of what this is all about:
 
-![Screenshot of Portway](https://github.com/melosso/portway/blob/main/.github/images/example.webp)
+![Screenshot of Portway](.github/images/example.png)
 
 ---
 
@@ -64,8 +64,13 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
+      # Set your encryption secret here (e.g. use openssl rand -hex 32)
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - ASPNETCORE_URLS=http://+:8080
+
+      # Configure CORS, prefix and access token
+      - AllowedHosts=*
+      - PathBase=
+      - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
 
 volumes:
   portway_app:
@@ -417,6 +422,15 @@ Content-Type: application/json
 </details>
 
 You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
+
+## Screenshots
+
+![Screenshot of Portway](.github/images/login.png)
+
+----
+
+![Screenshot of Portway](.github/images/dashboard.png)
+
 
 ## Documentation
 

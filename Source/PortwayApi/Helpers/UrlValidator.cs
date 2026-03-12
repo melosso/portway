@@ -202,6 +202,22 @@ public class UrlValidator
     }
 
     /// <summary>
+    /// Returns true if the given remote IP is loopback or matches one of the allowed hosts.
+    /// Used to restrict the administration UI to the local network.
+    /// </summary>
+    public bool IsClientIpAllowed(IPAddress ip)
+    {
+        // Map IPv4-in-IPv6 (::ffff:x.x.x.x) back to plain IPv4 before comparing.
+        if (ip.IsIPv4MappedToIPv6)
+            ip = ip.MapToIPv4();
+
+        if (IPAddress.IsLoopback(ip)) return true;
+
+        var ipStr = ip.ToString();
+        return _allowedHosts.Any(h => string.Equals(h, ipStr, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
     /// Validates if the given host is allowed based on the configuration.
     /// </summary>
     public bool IsHostAllowed(string host)

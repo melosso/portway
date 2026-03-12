@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
+using PortwayApi.Helpers;
 using PortwayApi.Services.Caching;
 using Serilog;
 
@@ -41,14 +42,23 @@ public class FileStorageOptions
     public int MaxTotalMemoryCacheMB { get; set; } = 200;
 
     /// <summary>
-    /// Allowed file extensions (empty means all extensions are allowed)
+    /// Allowed file extensions (empty eq. all are allowed)
     /// </summary>
     public List<string> AllowedExtensions { get; set; } = new List<string>();
 
     /// <summary>
-    /// Blocked file extensions (files with these extensions will be rejected)
+    /// Blocked file extensions 
     /// </summary>
-    public List<string> BlockedExtensions { get; set; } = new List<string> { ".exe", ".dll", ".bat", ".sh", ".cmd", ".msi", ".vbs" };
+    public List<string> BlockedExtensions { get; set; } = new List<string> 
+        { 
+            ".exe", ".dll", ".bat", ".sh", ".cmd", ".msi", ".vbs",
+            ".ps1", ".scr", ".wsf", ".hta", ".cpl", ".msc", ".pif", ".reg", ".com", ".vbe", ".wsh",
+            ".php", ".php3", ".php4", ".php5", ".phtml", 
+            ".asp", ".aspx", ".ashx", ".asmx", 
+            ".jsp", ".jspx", ".cgi", ".pl", ".py", ".rb",
+            ".jar", ".bin", ".elf", ".app", ".dmg", ".run",
+            ".docm", ".xlsm", ".pptm"
+        };
 }
 
 /// <summary>
@@ -405,19 +415,87 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>
+    /// Synchronously flushes all dirty files from memory to disk
+    /// Use this during application shutdown
+    /// </summary>
+    public void FlushAll()
+    {
+        foreach (var fileId in _memoryCache.Keys.ToList())
+        {
+            // Check if file is dirty
+            if (_dirtyFlags.TryGetValue(fileId, out var isDirty) && isDirty)
+            {
+                FlushFileToDisk(fileId);
+            }
+        }
+
+        Log.Information("Flushed all dirty files from memory cache to disk (sync)");
+    }
+
+    /// <summary>
+    /// Synchronously flushes a specific file to disk
+    /// </summary>
+    private void FlushFileToDisk(string fileId)
+    {
+        if (!_memoryCache.TryGetValue(fileId, out var memoryStream))
+        {
+            return;
+        }
+
+        if (!_dirtyFlags.TryGetValue(fileId, out var isDirty) || !isDirty)
+        {
+            return;
+        }
+
+        // Parse the file ID to get environment and filename
+        if (!ParseFileId(fileId, out string environment, out string filename))
+        {
+            Log.Warning("Invalid file ID in memory cache: {FileId}", fileId);
+            return;
+        }
+
+        // Create the environment directory if it doesn't exist
+        string environmentDir = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment);
+        Directory.CreateDirectory(environmentDir);
+
+        // Determine the file path
+        string filePath = Path.Combine(environmentDir, filename);
+
+        try
+        {
+            // Write to disk synchronously
+            using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                memoryStream.Position = 0;
+                memoryStream.CopyTo(fileStream);
+            }
+
+            // Clear dirty flag
+            _dirtyFlags[fileId] = false;
+
+            Log.Debug("Flushed file {FileId} to disk (sync)", fileId);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to flush file {FileId} to disk (sync)", fileId);
+        }
+    }
+
+    /// <summary>
     /// Flushes a specific file from memory to disk
     /// </summary>
     private async Task FlushFileToDiskAsync(string fileId)
     {
+        // Check if file is in memory cache
         if (!_memoryCache.TryGetValue(fileId, out var memoryStream))
         {
-            return; // File not in memory cache
+            return; 
         }
 
         // Check if file is dirty
         if (!_dirtyFlags.TryGetValue(fileId, out var isDirty) || !isDirty)
         {
-            return; // File is not dirty, no need to flush
+            return;
         }
 
         // Parse the file ID to get environment and filename
@@ -500,7 +578,7 @@ public class FileHandlerService : IDisposable
                     _dirtyFlags.TryRemove(fileId, out _);
                 }
 
-                Log.Debug("🧹 Removed {Count} old files from memory cache", filesToRemove.Count);
+                Log.Debug("Removed {Count} old files from memory cache", filesToRemove.Count);
             }
         }
         catch (Exception ex)
@@ -560,7 +638,7 @@ public class FileHandlerService : IDisposable
             }
         }
 
-        Log.Debug("🧹 Freed {FreedBytes} bytes from memory cache by removing oldest files", freedBytes);
+        Log.Debug("Freed {FreedBytes} bytes from memory cache by removing oldest files", freedBytes);
     }
 
     /// <summary>
@@ -604,9 +682,9 @@ public class FileHandlerService : IDisposable
                 return true;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Invalid file ID format
+            Log.Debug(ex, "Failed to parse file ID");
         }
         environment = string.Empty;
         filename = string.Empty;
@@ -618,10 +696,8 @@ public class FileHandlerService : IDisposable
     /// </summary>
     private string SanitizeFileName(string filename)
     {
-        // Remove any directory components
         filename = Path.GetFileName(filename);
 
-        // Replace invalid characters
         var invalidChars = Path.GetInvalidFileNameChars();
         foreach (var c in invalidChars)
         {
@@ -634,40 +710,7 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Determines the content type for a filename
     /// </summary>
-    private string GetContentType(string filename)
-    {
-        string extension = Path.GetExtension(filename).ToLowerInvariant();
-
-        return extension switch
-        {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".png" => "image/png",
-            ".gif" => "image/gif",
-            ".bmp" => "image/bmp",
-            ".ico" => "image/x-icon",
-            ".svg" => "image/svg+xml",
-            ".pdf" => "application/pdf",
-            ".doc" or ".docx" => "application/msword",
-            ".xls" or ".xlsx" => "application/vnd.ms-excel",
-            ".ppt" or ".pptx" => "application/vnd.ms-powerpoint",
-            ".zip" => "application/zip",
-            ".rar" => "application/x-rar-compressed",
-            ".tar" => "application/x-tar",
-            ".gz" => "application/gzip",
-            ".json" => "application/json",
-            ".xml" => "application/xml",
-            ".txt" => "text/plain",
-            ".html" or ".htm" => "text/html",
-            ".css" => "text/css",
-            ".js" => "application/javascript",
-            ".mp3" => "audio/mpeg",
-            ".mp4" => "video/mp4",
-            ".avi" => "video/x-msvideo",
-            ".mov" => "video/quicktime",
-            ".wmv" => "video/x-ms-wmv",
-            _ => "application/octet-stream"
-        };
-    }
+    private string GetContentType(string filename) => ContentTypeHelper.GetContentType(filename);
 
     public class FileInfo
     {
@@ -693,8 +736,8 @@ public class FileHandlerService : IDisposable
 
         if (disposing)
         {
-            // Flush any dirty files before shutting down
-            FlushAllAsync().GetAwaiter().GetResult();
+            // Flush any dirty files before shutting down (synchronous to avoid blocking)
+            FlushAll();
 
             // Dispose the timer
             _flushTimer?.Dispose();

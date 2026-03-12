@@ -1,0 +1,11 @@
+{
+    "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc/Binary",
+    "Methods": ["POST"],
+    "IsPrivate": true,
+    "Documentation": {
+        "TagDescription": "**Binary Storage**\n\nInternal endpoint for uploading binary file content. Used by composite endpoints to store raw file data before linking it to a document record.",
+        "MethodDescriptions": {
+            "POST": "Upload raw binary file content (internal use only)"
+        }
+    }
+}
