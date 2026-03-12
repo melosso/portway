@@ -804,53 +804,63 @@ public class FileSystemIndex
                 return cachedIndex;
             }
         }
+        
         // Cache miss or force refresh - rebuild index from filesystem
         await _indexLock.WaitAsync();
         try
         {
-            // Double-check after acquiring lock
-            if (!forceRefresh)
-            {
-                var cachedIndex = await _cacheProvider.GetAsync<Dictionary<string, FileMetadata>>(cacheKey);
-                if (cachedIndex != null)
-                {
-                    return cachedIndex;
-                }
-            }
-            string environmentDir = Path.Combine(_baseDirectory, environment);
-            Dictionary<string, FileMetadata> index = new();
-            if (Directory.Exists(environmentDir))
-            {
-                // Use recursive enumeration to scan ALL subdirectories
-                foreach (var file in Directory.EnumerateFiles(environmentDir, "*", SearchOption.AllDirectories))
-                {
-                    var fileInfo = new FileInfo(file);
-                    // Calculate relative path from environment directory
-                    string relativePath = Path.GetRelativePath(environmentDir, file);
-                    // Normalize path separators to forward slashes for consistency
-                    string normalizedPath = relativePath.Replace('\\', '/');
-                    index[normalizedPath] = new FileMetadata
-                    {
-                        FileId = _fileIdGenerator(environment, normalizedPath),
-                        FileName = normalizedPath,
-                        ContentType = _contentTypeResolver(normalizedPath),
-                        Size = fileInfo.Length,
-                        LastModified = fileInfo.LastWriteTimeUtc,
-                        IsInMemoryOnly = false
-                    };
-                }
-            }
-            // Cache the index with expiration
-            await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
-            // Also store in memory for very fast access
-            _environmentIndices[environment] = index;
-            _logger.Debug("📂 Built file index for environment {Environment}: {Count} files", environment, index.Count);
-            return index;
+            return await GetDirectoryIndexInternalAsync(environment, forceRefresh);
         }
         finally
         {
             _indexLock.Release();
         }
+    }
+
+    private async Task<Dictionary<string, FileMetadata>> GetDirectoryIndexInternalAsync(string environment, bool forceRefresh = false)
+    {
+        string cacheKey = $"file:index:{environment}";
+        
+        // Double-check after acquiring lock
+        if (!forceRefresh)
+        {
+            var cachedIndex = await _cacheProvider.GetAsync<Dictionary<string, FileMetadata>>(cacheKey);
+            if (cachedIndex != null)
+            {
+                return cachedIndex;
+            }
+        }
+        
+        string environmentDir = Path.Combine(_baseDirectory, environment);
+        Dictionary<string, FileMetadata> index = new();
+        if (Directory.Exists(environmentDir))
+        {
+            // Use recursive enumeration to scan ALL subdirectories
+            foreach (var file in Directory.EnumerateFiles(environmentDir, "*", SearchOption.AllDirectories))
+            {
+                var fileInfo = new System.IO.FileInfo(file);
+                // Calculate relative path from environment directory
+                string relativePath = Path.GetRelativePath(environmentDir, file);
+                // Normalize path separators to forward slashes for consistency
+                string normalizedPath = relativePath.Replace('\\', '/');
+                index[normalizedPath] = new FileMetadata
+                {
+                    FileId = _fileIdGenerator(environment, normalizedPath),
+                    FileName = normalizedPath,
+                    ContentType = _contentTypeResolver(normalizedPath),
+                    Size = fileInfo.Length,
+                    LastModified = fileInfo.LastWriteTimeUtc,
+                    IsInMemoryOnly = false
+                };
+            }
+        }
+        
+        // Cache the index with expiration
+        await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
+        // Also store in memory for very fast access
+        _environmentIndices[environment] = index;
+        _logger.Debug("📂 Built file index for environment {Environment}: {Count} files", environment, index.Count);
+        return index;
     }
     
     // Update index when files are added/modified/deleted
@@ -869,8 +879,8 @@ public class FileSystemIndex
             }
             else
             {
-                // Load from cache or rebuild
-                index = await GetDirectoryIndexAsync(environment);
+                // Load from cache or rebuild (using internal method to avoid deadlock)
+                index = await GetDirectoryIndexInternalAsync(environment);
             }
             
             if (isDeleted)
