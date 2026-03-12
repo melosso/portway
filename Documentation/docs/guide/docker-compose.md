@@ -55,7 +55,15 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - USE_HTTPS=false
+      - Use_HTTPS=false
+      - AllowedHosts=*
+      - PathBase=
+
+      # Web UI settings
+      - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
+      - WebUi__PublicOrigins__0=https://example.com
+      - WebUi__PublicOrigins__1=https://api.example.com
+      - WebUi__SecureCookies=false
       
       # Proxy settings for Kerberos/NTLM
       # - PROXY_USERNAME=serviceaccount
@@ -84,7 +92,23 @@ volumes:
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
-| `USE_HTTPS` | Enable/disable HTTPS | `false` |
+| `Use_HTTPS` | Enable/disable HTTPS | `false` |
+| `AllowedHosts` | Allowed host names | `*` |
+| `PathBase` | Base path for the application | (empty) |
+
+### Web UI Settings
+
+| Variable | Description | Default Value |
+|----------|-------------|---------------|
+| `WebUi__AdminApiKey` | Admin API key for web UI access | (none) |
+| `WebUi__PublicOrigins` | Allowed origins for CORS (array) | (empty) |
+| `WebUi__SecureCookies` | Use secure cookies | `false` |
+
+For `WebUi__PublicOrigins`, use index notation for multiple origins:
+```yaml
+- WebUi__PublicOrigins__0=https://example.com
+- WebUi__PublicOrigins__1=https://api.example.com
+```
 
 ### Proxy Configuration
 

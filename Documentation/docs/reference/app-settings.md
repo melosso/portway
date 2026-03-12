@@ -22,6 +22,12 @@ Application settings control the core behavior of Portway, including logging, se
     }
   },
   "AllowedHosts": "*",
+  "PathBase": "",
+  "WebUi": {
+    "AdminApiKey": "",
+    "PublicOrigins": [],
+    "SecureCookies": false
+  },
   "OpenApi": { ... },
   "RateLimiting": { ... },
   "RequestTrafficLogging": { ... },
@@ -297,6 +303,44 @@ Configure which hosts can access the application:
 - `"*.example.com"` - Allow subdomains
 - `"example.com;api.example.com"` - Multiple hosts
 
+### PathBase
+
+```json
+{
+  "PathBase": ""
+}
+```
+
+Base path for the application (e.g., `/api`).
+
+## Web UI Configuration
+
+The built-in admin interface settings.
+
+```json
+{
+  "WebUi": {
+    "AdminApiKey": "your-secure-password",
+    "PublicOrigins": ["https://example.com"],
+    "SecureCookies": true
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `AdminApiKey` | string | `""` | Password for web UI login (empty = disabled) |
+| `PublicOrigins` | array | `[]` | Allowed CORS origins for external access |
+| `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies |
+
+### Security
+
+- Without `AdminApiKey`, the web UI is disabled
+- Without `PublicOrigins`, only local network IPs can access the UI
+- Cookie auth uses HMAC-SHA256 signing
+
 ## Environment-Specific Configuration
 
 ### Development Settings
@@ -410,6 +454,11 @@ For production, restrict to specific domains:
 | `PROXY_USERNAME` | Proxy authentication user | `domain\user` |
 | `PROXY_PASSWORD` | Proxy authentication password | `password` |
 | `PROXY_DOMAIN` | Proxy domain | `CONTOSO` |
+| `AllowedHosts` | Allowed host names | `*` |
+| `PathBase` | Base path | `/api` |
+| `WebUi__AdminApiKey` | Web UI password | `secret` |
+| `WebUi__PublicOrigins__0` | CORS origin (array) | `https://example.com` |
+| `WebUi__SecureCookies` | Secure cookies | `true` |
 
 ### Configuration Priority
 

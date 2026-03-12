@@ -47,8 +47,8 @@ try
 
     LogApplicationAscii();
 
-    // In Docker, HTTPS is opt-in (USE_HTTPS=true). On Windows Server/IIS, HTTPS is enabled by default unless USE_HTTPS=false.
-    var useHttpsEnv = Environment.GetEnvironmentVariable("USE_HTTPS");
+    // In Docker, HTTPS is opt-in (Use_HTTPS=true). On Windows Server/IIS, HTTPS is enabled by default unless Use_HTTPS=false.
+    var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
     var runningInContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
     bool useHttps;
     if (runningInContainer)
@@ -93,7 +93,7 @@ try
         serverOptions.Limits.Http2.KeepAlivePingDelay = TimeSpan.FromSeconds(30);
         serverOptions.Limits.Http2.KeepAlivePingTimeout = TimeSpan.FromSeconds(60);
 
-        // 7. Configure HTTPS only if USE_HTTPS is set to 'true' (opt-in)
+        // 7. Configure HTTPS only if Use_HTTPS is set to 'true' (opt-in)
         if (!builder.Environment.IsDevelopment() && useHttps)
         {
             serverOptions.ConfigureEndpointDefaults(listenOptions =>
