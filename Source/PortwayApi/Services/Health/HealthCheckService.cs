@@ -373,6 +373,13 @@ public class HealthCheckService
             {
                 var (connectionString, _, _) = await _environmentSettingsProvider!.LoadEnvironmentOrThrowAsync(env);
 
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    Log.Debug("Skipping SQL health check for environment {Environment}: no connection string configured", env);
+                    lock (results) results[env] = new { Status = "NotConfigured", Note = "No SQL connection string" };
+                    return;
+                }
+
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
