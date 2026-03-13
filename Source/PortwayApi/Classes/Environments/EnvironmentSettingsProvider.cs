@@ -68,7 +68,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     {
         if (string.IsNullOrWhiteSpace(_privateKeyPem))
         {
-            Log.Error("Cannot auto-encrypt environments on startup: No private key available");
+            Log.Error("Cannot encrypt environments on startup: No private key available");
             return;
         }
 
@@ -78,7 +78,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return;
         }
 
-        Log.Debug("Scanning all environments for auto-encryption...");
+        Log.Debug("Scanning all environments for values to encrypt");
 
         var environmentDirs = Directory.GetDirectories(_basePath)
             .Select(d => new DirectoryInfo(d).Name)
@@ -136,7 +136,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             }
         }
 
-        Log.Debug("Auto-encryption scan complete: {Encrypted} encrypted, {AlreadyEncrypted} already encrypted, {Errors} errors",
+        Log.Debug("Encryption scan complete: {Encrypted} encrypted, {AlreadyEncrypted} already encrypted, {Errors} errors",
             encryptedCount, alreadyEncryptedCount, errorCount);
     }
 
@@ -623,7 +623,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         if (needsSave)
         {
             SaveEncryptedConfig(settingsPath, config);
-            Log.Debug("Auto-encryption complete for environment: {Env}", envName);
+            Log.Debug("Encryption complete for environment: {Env}", envName);
             return EncryptionResult.Encrypted;
         }
         
@@ -641,7 +641,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         {
             config.ConnectionString = SettingsEncryptionHelper.Encrypt(config.ConnectionString);
             needsSave = true;
-            Log.Debug("Auto-encrypted ConnectionString for environment: {Env}", envName);
+            Log.Debug("Encrypted ConnectionString for environment: {Env}", envName);
             return true;
         }
 
@@ -666,7 +666,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         {
             config.Headers[header.Key] = SettingsEncryptionHelper.Encrypt(header.Value);
             needsSave = true;
-            Log.Debug("Auto-encrypted header '{HeaderKey}' for environment: {Env}", header.Key, envName);
+            Log.Debug("Encrypted header '{HeaderKey}' for environment: {Env}", header.Key, envName);
         }
     }
 
@@ -676,7 +676,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         foreach (var method in config.Authentication.Methods)
         {
-            method.Value = EncryptFieldIfNeeded(method.Value, "Value", envName, ref needsSave, ref alreadyEncrypted);
+            method.Value = EncryptFieldIfNeeded(method.Value, "Value", envName, ref needsSave, ref alreadyEncrypted) ?? string.Empty;
             method.Secret = EncryptFieldIfNeeded(method.Secret, "Secret", envName, ref needsSave, ref alreadyEncrypted);
             method.ClientSecret = EncryptFieldIfNeeded(method.ClientSecret, "ClientSecret", envName, ref needsSave, ref alreadyEncrypted);
         }
@@ -689,7 +689,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             var encryptedValue = SettingsEncryptionHelper.Encrypt(fieldValue);
             needsSave = true;
             alreadyEncrypted = false;
-            Log.Debug("Auto-encrypted Auth {FieldName} for environment: {Env}", fieldName, envName);
+            Log.Debug("Encrypted Auth {FieldName} for environment: {Env}", fieldName, envName);
             return encryptedValue;
         }
         return fieldValue;

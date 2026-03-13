@@ -8,7 +8,7 @@ Environment-specific authentication is configured in the environment's `settings
 
 ### Key Features
 - **Multiple Methods**: Support for ApiKey, Basic, Bearer, JWT, and HMAC.
-- **Auto-Encryption**: Sensitive fields like secrets and keys are automatically encrypted using the `PWENC:` mechanism.
+- **Encryption**: Sensitive fields like secrets and keys are automatically encrypted using the `PWENC:` mechanism.
 - **Global Override:** Option to disable global tokens for a specific environment, requiring only environment-specific auth.
 - **OR Logic**: If multiple methods are defined, a request is authorized if it matches **an{** of the enabled methods.
 
@@ -55,7 +55,7 @@ Matches a static value against a header, query parameter, or cookie.
 |----------|-------------|
 | `Type`| `ApiKey` |
 | `Name`| The identifier name (e.g., "X-API-Key"). |
-| `Value`| The secret key value (auto-encrypted). |
+| `Value`| The secret key value (auto. encrypted). |
 | `In`| Where to look: `Header` (default), `Query`, or `Cookie`. |
 
 ### 2. Basic
@@ -65,7 +65,7 @@ _ Property | Description |
 |----------|-------------|
 | `Type`| `Basic` |
 | `Name`| The expected username. |
-| `Value`| The expected password (auto-encrypted). |
+| `Value`| The expected password (auto. encrypted). |
 
 ### 3. Bearer
 Matches a static token in the `Authorization: Bearer <token>` header.
@@ -73,7 +73,7 @@ Matches a static token in the `Authorization: Bearer <token>` header.
 | Property | Description |
 |----------|-------------|
 | `Type`| `Bearer` |
-| `Value` | The expected static token (auto-encrypted). |
+| `Value` | The expected static token (auto. encrypted). |
 
 ### 4. JWT (JSON Web Token)
 Performs full JWT validation including signature, issuer, and audience.
@@ -83,7 +83,7 @@ _ Property | Description |
 | `Type`| `JWT` |
 | `Issuer` | Optional: Validates the `iss` clai.`|
 | `Audience` | Optional: Validates the `aud` claim. |
-| `Secret` | Symmetric key for HMAC algorithms (e.g., HS256) (auto-encrypted). |
+| `Secret` | Symmetric key for HMAC algorithms (e.g., HS256) (auto. encrypted). |
 | `PublicKey`| RSA Public Key in PEM format for asymmetric algorithms (e.g., RS256). |
 | `Algorithm`| The expected signature algorithm (e.g., "HS256"). |
 
@@ -94,7 +94,7 @@ _ Property | Description |
 |----------|-------------|
 | `Type`| `HMAC` |
 | `Name` | The header name for the signature (default "X-Signature"). |
-| `Secret`| The shared secret used for hashing (auto-encrypted). |
+| `Secret`| The shared secret used for hashing (auto. encrypted). |
 
 :::info HMAC Implementation
 Portway's HMAC Implementation expects `X-Signature`and `X-Timestamp` headers. The signature is calculated as `HMACSHA256(Secret, Method + Path + Timestamp + Body)`.
