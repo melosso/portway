@@ -15,6 +15,7 @@ mkdir -p "$TARGET_DIR/config/endpoints/Proxy/Production"
 mkdir -p "$TARGET_DIR/tokens"
 mkdir -p "$TARGET_DIR/log"
 mkdir -p "$TARGET_DIR/data"
+mkdir -p "$TARGET_DIR/keys"
 
 cd "$TARGET_DIR" || exit
 
