@@ -17,6 +17,8 @@ services:
       - WebUi__AdminApiKey=demo-admin-key
       - WebUi__PublicOrigins__0=https://portway-demo.melosso.com
       - WebUi__SecureCookies=true
+      - 'WebUi__Customization__PromoText=<div id="demo-banner">This is a demo instance. Some functions are disabled. All data will be reset periodically. Use <code id="api-key" style="cursor:pointer; background:rgba(0,0,0,0.1); padding:2px 4px; border-radius:4px;" onclick="navigator.clipboard.writeText('\''Beacon-Api-Key'\'').then(function(){alert('\''Copied!'\'')}).catch(function(e){console.error(e)})">Beacon-Api-Key</code> for access.</div>'
+      - "WebUi__Customization__LoginFooter=If you don't have an account, please contact your [administrator](mailto:support@democompany.local)."
     depends_on:
       - nginx
     restart: unless-stopped

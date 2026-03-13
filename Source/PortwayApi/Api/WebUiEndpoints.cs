@@ -127,7 +127,7 @@ public static class WebUiEndpointExtensions
         // Login
         app.MapGet("/ui/login", (HttpContext ctx) =>
             uiAuthEnabled
-                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase, appVersion)
+                ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase, appVersion, app.Configuration)
                 : Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
             .ExcludeFromDescription();
         app.MapGet("/ui/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/login"))
@@ -205,7 +205,7 @@ public static class WebUiEndpointExtensions
         {
             var p        = page;
             var filePath = Path.Combine(wwwroot, $"{p}.html");
-            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeHtml(filePath, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
+            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeHtml(filePath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
             app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
         }
 
@@ -221,11 +221,13 @@ public static class WebUiEndpointExtensions
             var proxyCount     = proxyEps.Count(e => e.Value.Type.ToString() != "Composite");
             var envSettings   = app.Services.GetRequiredService<EnvironmentSettings>();
             var uptime        = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds;
+            var promoText     = app.Configuration.GetValue<string>("WebUi:Customization:PromoText");
 
             return Results.Json(new
             {
                 version = appVersion,
                 uptime  = $"{uptime}s",
+                promo_text = promoText,
                 endpoints = new
                 {
                     sql       = sqlEps.Count,
@@ -1127,18 +1129,52 @@ public static class WebUiEndpointExtensions
             Encoding.UTF8.GetBytes(token[(dot + 1)..]));
     }
 
-    private static IResult ServeHtml(string filePath, PathString pathBase, string version)
+    private static IResult ServeHtml(string filePath, PathString pathBase, string version, IConfiguration? config = null)
     {
         if (!File.Exists(filePath)) return Results.NotFound();
         var pb = pathBase.Value ?? "";
         var v  = Uri.EscapeDataString(version);
         var html = File.ReadAllText(filePath);
         html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
+        
+        // Inject Login Footer if this is the login page
+        if (filePath.EndsWith("login.html") && config != null)
+        {
+            var footerMd = config.GetValue<string>("WebUi:Customization:LoginFooter");
+            if (!string.IsNullOrEmpty(footerMd))
+            {
+                var footerHtml = ParseMarkdownToHtml(footerMd);
+                html = html.Replace("<!-- LOGIN_FOOTER_PLACEHOLDER -->", 
+                    $"<div class=\"auth-footer\">{footerHtml}</div>");
+            }
+        }
+
         // Cache-bust local CSS and JS so browsers always fetch the latest version
         html = System.Text.RegularExpressions.Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",
             m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={v}\"");
         return Results.Content(html, "text/html; charset=utf-8");
+    }
+
+    private static string ParseMarkdownToHtml(string md)
+    {
+        if (string.IsNullOrEmpty(md)) return "";
+        
+        // Simple server-side markdown parser (same logic as client-side)
+        var html = System.Net.WebUtility.HtmlEncode(md);
+        
+        // Bold
+        html = Regex.Replace(html, @"\*\*(.*?)\*\*", "<strong>$1</strong>");
+        html = Regex.Replace(html, @"__(.*?)__", "<strong>$1</strong>");
+        
+        // Italic
+        html = Regex.Replace(html, @"\*(.*?)\*", "<em>$1</em>");
+        html = Regex.Replace(html, @"_(.*?)_", "<em>$1</em>");
+        
+        // Links: [text](url)
+        html = Regex.Replace(html, @"\[(.*?)\]\((.*?)\)", "<a href=\"$2\" target=\"_blank\" rel=\"noopener noreferrer\">$1</a>");
+        
+        return html;
     }
 }
