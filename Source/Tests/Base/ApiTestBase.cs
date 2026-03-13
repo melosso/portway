@@ -8,6 +8,8 @@ using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
+using PortwayApi.Auth;
+using PortwayApi;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -20,6 +22,8 @@ public class ApiTestBase : IDisposable
     protected readonly Mock<UrlValidator> _mockUrlValidator;
     protected readonly Mock<IODataToSqlConverter> _mockODataToSqlConverter;
     protected readonly Mock<SqlConnectionPoolService> _mockConnectionPoolService;
+    protected readonly Mock<SqlMetadataService> _mockSqlMetadataService;
+    protected readonly Mock<TokenService> _mockTokenService;
     protected readonly WebApplicationFactory<Program> _factory;
     
     // Instead of mocking EnvironmentSettings, we'll create a test implementation
@@ -30,8 +34,27 @@ public class ApiTestBase : IDisposable
         _mockEnvironmentSettingsProvider = new Mock<IEnvironmentSettingsProvider>();
         _mockUrlValidator = new Mock<UrlValidator>(MockBehavior.Loose, "path");
         _mockODataToSqlConverter = new Mock<IODataToSqlConverter>();
-        _mockConnectionPoolService = new Mock<SqlConnectionPoolService>();
+        _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(5, 100, 15, 30, true, "PortwayAPI");
+        _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object);
+        _mockTokenService = new Mock<TokenService>((AuthDbContext)null!);
         
+        // Setup token service mock
+        _mockTokenService.Setup(s => s.VerifyTokenAsync("test-token"))
+            .ReturnsAsync(true);
+        
+        _mockTokenService.Setup(s => s.GetActiveTokensAsync())
+            .ReturnsAsync(new List<AuthToken>());
+        
+        _mockTokenService.Setup(s => s.GetTokenDetailsByTokenAsync("test-token"))
+            .ReturnsAsync(new AuthToken 
+            { 
+                Username = "test-user", 
+                TokenHash = "hash", 
+                TokenSalt = "salt",
+                AllowedEnvironments = "*", 
+                AllowedScopes = "*"
+            });
+
         // Create a test implementation that we can control directly
         _testEnvironmentSettings = new TestEnvironmentSettings();
         _testEnvironmentSettings.SetAllowedEnvironments(new List<string> { "500", "700" });
@@ -39,6 +62,13 @@ public class ApiTestBase : IDisposable
         // Setup environment settings provider
         _mockEnvironmentSettingsProvider.Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
             .ReturnsAsync(("Server=localhost;Database=test;Trusted_Connection=True", "localhost", new Dictionary<string, string>()));
+
+        _mockEnvironmentSettingsProvider.Setup(p => p.GetEnvironmentConfigAsync(It.IsAny<string>()))
+            .ReturnsAsync((string env) => new EnvironmentConfig 
+            { 
+                ConnectionString = "Server=localhost;Database=test;Trusted_Connection=True",
+                ServerName = "localhost"
+            });
 
         // Setup URL Validator
         _mockUrlValidator.Setup(v => v.IsUrlSafe(It.IsAny<string>())).Returns(true);
@@ -55,6 +85,8 @@ public class ApiTestBase : IDisposable
                     services.AddSingleton(_mockUrlValidator.Object);
                     services.AddSingleton(_mockODataToSqlConverter.Object);
                     services.AddSingleton(_mockConnectionPoolService.Object);
+                    services.AddSingleton(_mockSqlMetadataService.Object);
+                    services.AddSingleton(_mockTokenService.Object);
                     
                     // Disable rate limiting for tests
                     services.Configure<PortwayApi.Middleware.RateLimitSettings>(options =>
@@ -107,13 +139,14 @@ public class TestEnvironmentSettings : EnvironmentSettings
         _allowedEnvironments = environments.ToList();
     }
     
-    public new virtual bool IsEnvironmentAllowed(string environment)
+    public override bool IsEnvironmentAllowed(string environment)
     {
         return _allowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase);
     }
-    
-    public new virtual List<string> GetAllowedEnvironments()
+
+    public override List<string> GetAllowedEnvironments()
     {
         return _allowedEnvironments.ToList();
     }
+
 }

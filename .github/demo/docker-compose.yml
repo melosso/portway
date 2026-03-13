@@ -1,0 +1,29 @@
+services:
+  portway:
+    image: ghcr.io/melosso/portway:latest
+    container_name: demo-portway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config/environments:/app/environments
+      - ./config/endpoints:/app/endpoints
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+      - ./data:/app/data
+    environment:
+      - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
+      - Use_HTTPS=false
+      - AllowedHosts=*
+      - WebUi__AdminApiKey=demo-admin-key
+    depends_on:
+      - nginx
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: demo-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8000:80"
+    restart: unless-stopped

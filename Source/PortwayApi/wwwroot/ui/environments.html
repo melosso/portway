@@ -118,6 +118,7 @@
         Add header
       </button>
     </div>
+    <div id="createAuthContainer"></div>
   </div>
   <div class="drawer-footer">
     <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
@@ -145,7 +146,25 @@ let state = {
 
 function markDirty() { state.isDirty = true; }
 
-function confirmNavigate() {
+function confirmNavigate(onConfirm) {
+  if (!state.isDirty) {
+    onConfirm();
+    return;
+  }
+  
+  AlertDialog.show({
+    title: 'Are you sure?',
+    description: 'You have unsaved changes. Are you sure you want to leave without saving?',
+    actionLabel: 'Leave anyway',
+    cancelLabel: 'Stay here',
+    onConfirm: () => {
+      state.isDirty = false;
+      onConfirm();
+    }
+  });
+}
+
+function confirmNavigateSync() {
   if (!state.isDirty) return true;
   return confirm('You have unsaved changes. Leave without saving?');
 }
@@ -268,15 +287,16 @@ function setActiveItem(id) {
 // Navigation ────────────────────────────────────────────
 function trySelect(target) {
   if (state.selected === target) return;
-  if (!confirmNavigate()) return;
-  state.isDirty = false;
-  if (target === '__global__') selectGlobal();
-  else selectEnv(target);
+  confirmNavigate(() => {
+    if (target === '__global__') selectGlobal();
+    else selectEnv(target);
+  });
 }
 
 function selectGlobal() {
   state.selected = '__global__';
   state.rawMode  = false;
+  state.isDirty  = false;
   stopPoll();
   setActiveItem('__global__');
   renderGlobalDetail();
@@ -285,6 +305,7 @@ function selectGlobal() {
 async function selectEnv(name) {
   state.selected = name;
   state.rawMode  = false;
+  state.isDirty  = false;
   setActiveItem(name);
   stopPoll();
   await renderEnvDetail(name);
@@ -459,6 +480,7 @@ function buildFormView(name, d, headersHtml) {
            </div>`
       }
     </div>
+    ${buildAuthSection(d.authentication)}
     <div class="ep-section">
       <div class="ep-section-title">Headers</div>
       <div class="ep-field-hint" style="margin-bottom:0.375rem">HTTP headers forwarded with every request for this environment.</div>
@@ -468,6 +490,224 @@ function buildFormView(name, d, headersHtml) {
         Add header
       </button>
     </div>`;
+}
+
+function buildAuthSection(auth, prefix = 'edit') {
+  auth = auth || { enabled: false, override_global_token: false, methods: [] };
+  const methodsHtml = (auth.methods || []).map(m => buildAuthMethodCard(m)).join('');
+  
+  return `
+    <div class="ep-section">
+      <div class="ep-section-title">Authentication</div>
+      
+      <div style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1rem;">
+        <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;" onclick="document.getElementById('${prefix}AuthEnabled').click()">
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="${prefix}AuthEnabled" ${auth.enabled ? 'checked' : ''} onchange="toggleAuthUI('${prefix}'); markDirty()">
+            <span class="slider"></span>
+          </label>
+          <span style="font-size:0.8125rem;font-weight:500;">Enable custom authentication</span>
+        </div>
+
+        <div id="${prefix}AuthOverrideContainer" style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;${auth.enabled ? '' : 'opacity:0.5;pointer-events:none'}" 
+             onclick="document.getElementById('${prefix}AuthOverride').click()">
+          <label class="switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} onchange="markDirty()">
+            <span class="slider"></span>
+          </label>
+          <span style="font-size:0.8125rem;font-weight:500;">Override global token</span>
+        </div>
+      </div>
+
+      <div id="${prefix}AuthMethodsContainer" style="${auth.enabled ? '' : 'display:none;'}">
+        <div id="${prefix}AuthMethodsList" style="display:flex;flex-direction:column;gap:0.75rem;margin-bottom:0.75rem;">
+          ${methodsHtml}
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="addAuthMethod('${prefix}')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Method
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function buildAuthMethodCard(m) {
+  m = m || { type: 'ApiKey', name: '', value: '', in: 'Header' };
+  
+  const typeOptions = ['ApiKey', 'Basic', 'Bearer', 'JWT', 'HMAC'].map(t => 
+    `<option value="${t}" ${m.type === t ? 'selected' : ''}>${t}</option>`
+  ).join('');
+
+  return `
+    <div class="card auth-method-item">
+      <div class="card-header" style="padding:0.5rem 1rem;background:hsl(var(--muted)/0.3);border-bottom:1px solid hsl(var(--border));display:flex;align-items:center;gap:0.75rem;">
+        <span class="badge badge-muted">Method</span>
+        <select class="auth-type-sel" style="height:1.75rem;font-size:0.75rem;padding:0 0.25rem;width:120px;" onchange="updateAuthFields(this); markDirty()">
+          ${typeOptions}
+        </select>
+        <button class="btn-icon btn-destructive" style="margin-left:auto" onclick="this.closest('.auth-method-item').remove(); markDirty()" title="Remove method">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="card-body auth-fields" style="padding:0.75rem 1rem;display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+        ${buildAuthFieldsForType(m)}
+      </div>
+    </div>
+  `;
+}
+
+function updateAuthFields(sel) {
+  const type = sel.value;
+  const fieldsContainer = sel.closest('.auth-method-item').querySelector('.auth-fields');
+  fieldsContainer.innerHTML = buildAuthFieldsForType({ type, name: '', value: '', in: 'Header' });
+}
+
+function buildAuthFieldsForType(m) {
+  const pwdStyle = 'width:100%;padding:0.5rem 2rem 0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-monospace,monospace;font-size:0.75rem;outline:none;';
+  const toggleBtn = `
+    <button type="button" onclick="const input = this.previousElementSibling; input.type = input.type === 'password' ? 'text' : 'password'; this.style.color = input.type === 'text' ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))';"
+      style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>`;
+
+  if (m.type === 'JWT') {
+    return `
+      <div class="ep-field">
+        <label>Issuer</label>
+        <input type="text" class="auth-f-issuer" value="${esc(m.issuer || '')}" oninput="markDirty()">
+      </div>
+      <div class="ep-field">
+        <label>Audience</label>
+        <input type="text" class="auth-f-audience" value="${esc(m.audience || '')}" oninput="markDirty()">
+      </div>
+      <div class="ep-field">
+        <label>Algorithm</label>
+        <select class="auth-f-algorithm" onchange="markDirty()">
+          ${['HS256', 'RS256', 'None'].map(a => `<option value="${a}" ${m.algorithm === a ? 'selected' : ''}>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ep-field">
+        <label>Secret</label>
+        <div style="position:relative;">
+          <input type="password" class="auth-f-secret" placeholder="e.g. Abc" value="${esc(m.secret || '')}" oninput="markDirty()" style="${pwdStyle}">
+          ${toggleBtn}
+        </div>
+      </div>
+      <div class="ep-field" style="grid-column:1/-1;">
+        <label>Public Key (PEM)</label>
+        <textarea class="auth-f-publickey" style="min-height:60px;font-size:0.7rem;" placeholder="-----BEGIN PUBLIC KEY-----" oninput="markDirty()">${esc(m.publicKey || '')}</textarea>
+      </div>
+      <div class="ep-field">
+        <label>Client ID</label>
+        <input type="text" class="auth-f-clientid" value="${esc(m.clientId || '')}" placeholder="Optional" oninput="markDirty()">
+      </div>
+      <div class="ep-field">
+        <label>Client Secret</label>
+        <div style="position:relative;">
+          <input type="password" class="auth-f-clientsecret" value="${esc(m.clientSecret || '')}" placeholder="Optional" oninput="markDirty()" style="${pwdStyle}">
+          ${toggleBtn}
+        </div>
+      </div>
+      <div class="ep-field" style="grid-column:1/-1;">
+        <label>Introspection Endpoint</label>
+        <input type="text" class="auth-f-introspection" value="${esc(m.introspectionEndpoint || '')}" placeholder="https://..." oninput="markDirty()">
+      </div>
+    `;
+  }
+  
+  if (m.type === 'HMAC') {
+    return `
+      <div class="ep-field">
+        <label>Header Name</label>
+        <input type="text" class="auth-f-name" value="${esc(m.name || 'X-Signature')}" placeholder="e.g. X-Signature" oninput="markDirty()">
+      </div>
+      <div class="ep-field">
+        <label>Shared Secret</label>
+        <div style="position:relative;">
+          <input type="password" class="auth-f-secret" placeholder="E.g. Abc" value="${esc(m.secret || '')}" oninput="markDirty()" style="${pwdStyle}">
+          ${toggleBtn}
+        </div>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="ep-field">
+      <label>${m.type === 'Basic' ? 'Username' : 'Name'}</label>
+      <input type="text" class="auth-f-name" value="${esc(m.name || '')}" placeholder="${m.type === 'Bearer' ? 'n/a' : 'e.g. X-API-Key'}" oninput="markDirty()">
+    </div>
+    <div class="ep-field">
+      <label>${m.type === 'Basic' ? 'Password' : 'Value'}</label>
+      <div style="position:relative;">
+        <input type="password" class="auth-f-value" placeholder="e.g. ABC" value="${esc(m.value || '')}" oninput="markDirty()" style="${pwdStyle}">
+        ${toggleBtn}
+      </div>
+    </div>
+    <div class="ep-field" style="grid-column:1/-1;">
+      <label>In</label>
+      <select class="auth-f-in" onchange="markDirty()">
+        ${['Header', 'Query', 'Cookie'].map(i => `<option value="${i}" ${m.in === i ? 'selected' : ''}>${i}</option>`).join('')}
+      </select>
+    </div>
+  `;
+}
+
+function toggleAuthUI(prefix) {
+  const enabled = document.getElementById(`${prefix}AuthEnabled`)?.checked;
+  const container = document.getElementById(`${prefix}AuthMethodsContainer`);
+  const overrideCont = document.getElementById(`${prefix}AuthOverrideContainer`);
+  if (container) container.style.display = enabled ? 'block' : 'none';
+  if (overrideCont) {
+    overrideCont.style.opacity = enabled ? '1' : '0.5';
+    overrideCont.style.pointerEvents = enabled ? 'auto' : 'none';
+  }
+}
+
+function addAuthMethod(prefix) {
+  const container = document.getElementById(`${prefix}AuthMethodsList`);
+  if (!container) return;
+  const div = document.createElement('div');
+  div.innerHTML = buildAuthMethodCard({ type: 'ApiKey', name: '', value: '', in: 'Header' }).trim();
+  container.appendChild(div.firstChild);
+  markDirty();
+}
+
+function collectAuthData(prefix = 'edit') {
+  const enabled = document.getElementById(`${prefix}AuthEnabled`)?.checked ?? false;
+  const override = document.getElementById(`${prefix}AuthOverride`)?.checked ?? false;
+  const methods = [];
+  
+  if (enabled) {
+    const list = document.getElementById(`${prefix}AuthMethodsList`);
+    if (list) {
+      list.querySelectorAll('.auth-method-item').forEach(item => {
+        const type = item.querySelector('.auth-type-sel')?.value;
+        const m = { type };
+        
+        if (type === 'JWT') {
+          m.issuer = item.querySelector('.auth-f-issuer')?.value;
+          m.audience = item.querySelector('.auth-f-audience')?.value;
+          m.secret = item.querySelector('.auth-f-secret')?.value;
+          m.publicKey = item.querySelector('.auth-f-publickey')?.value;
+          m.algorithm = item.querySelector('.auth-f-algorithm')?.value;
+          m.clientId = item.querySelector('.auth-f-clientid')?.value;
+          m.clientSecret = item.querySelector('.auth-f-clientsecret')?.value;
+          m.introspectionEndpoint = item.querySelector('.auth-f-introspection')?.value;
+        } else if (type === 'HMAC') {
+          m.name = item.querySelector('.auth-f-name')?.value;
+          m.secret = item.querySelector('.auth-f-secret')?.value;
+        } else {
+          m.name = item.querySelector('.auth-f-name')?.value;
+          m.value = item.querySelector('.auth-f-value')?.value;
+          m.in = item.querySelector('.auth-f-in')?.value;
+        }
+        methods.push(m);
+      });
+    }
+  }
+  
+  return { enabled, override_global_token: override, methods };
 }
 
 function buildRawView(name, d) {
@@ -526,8 +766,9 @@ async function saveEnv(name) {
   const headerErr = validateHeaders('editHeadersContainer');
   if (headerErr) { toast(headerErr, 'error'); return; }
   const headers = collectHeaders('editHeadersContainer');
+  const auth = collectAuthData();
 
-  const body = { server_name: serverName, headers };
+  const body = { server_name: serverName, headers, authentication: auth };
   if (connStr) body.connection_string = connStr;
 
   try {
@@ -552,21 +793,21 @@ async function saveEnv(name) {
 
 // Raw JSON mode ─────────────────────────────────────────
 async function toggleRaw(name) {
-  if (state.isDirty && !confirmNavigate()) return;
-  state.rawMode = !state.rawMode;
-  state.isDirty = false;
-  const d = state.envData[name] ?? {};
-  if (state.rawMode) {
-    try {
-      const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}/raw`).then(r => r.json());
-      d._rawContent = r.content;
-      state.polledLastMod = r.last_modified;
-    } catch(_) {
-      d._rawContent = JSON.stringify({ ConnectionString: '', ServerName: d.server_name ?? '', Headers: d.headers ?? {} }, null, 2);
+  confirmNavigate(async () => {
+    state.rawMode = !state.rawMode;
+    const d = state.envData[name] ?? {};
+    if (state.rawMode) {
+      try {
+        const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}/raw`).then(r => r.json());
+        d._rawContent = r.content;
+        state.polledLastMod = r.last_modified;
+      } catch(_) {
+        d._rawContent = JSON.stringify({ ConnectionString: '', ServerName: d.server_name ?? '', Headers: d.headers ?? {} }, null, 2);
+      }
+      state.envData[name] = d;
     }
-    state.envData[name] = d;
-  }
-  paintEnvDetail(name, d, state.rawMode);
+    paintEnvDetail(name, d, state.rawMode);
+  });
 }
 
 function validateRaw(showMsg = false) {
@@ -630,11 +871,11 @@ function showBanner(){ const b = document.getElementById('changeBanner'); if (b)
 function hideBanner(){ const b = document.getElementById('changeBanner'); if (b) b.style.display = 'none'; }
 
 async function reloadEnv(name) {
-  if (state.isDirty && !confirmNavigate()) return;
-  state.isDirty = false;
-  state.rawMode = false;
-  hideBanner();
-  await renderEnvDetail(name);
+  confirmNavigate(async () => {
+    state.rawMode = false;
+    hideBanner();
+    await renderEnvDetail(name);
+  });
 }
 
 // Alert Dialog - using shared component
@@ -665,10 +906,13 @@ function startRemove(name) {
     title: `Remove "${name}"?`,
     description: 'This will remove the environment from the allowed list. The configuration file will be kept unless you choose to delete it.',
     actionLabel: 'Remove',
-    extraHtml: `<label class="ep-field-switch" style="margin:0;cursor:pointer">
-      <span>Also delete environment files</span>
-      <span class="switch" aria-hidden="true"><input type="checkbox" id="deleteFilesSwitch"><span class="slider"></span></span>
-    </label>`,
+    extraHtml: `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;margin-top:0.5rem;" onclick="document.getElementById('deleteFilesSwitch').click()">
+      <label class="switch" onclick="event.stopPropagation()">
+        <input type="checkbox" id="deleteFilesSwitch">
+        <span class="slider"></span>
+      </label>
+      <span style="font-size:0.8125rem;font-weight:500;">Also delete environment files</span>
+    </div>`,
     onConfirm: () => doRemove(name)
   });
 }
@@ -732,12 +976,19 @@ async function confirmEnvRename(oldName) {
 }
 
 // Create environment drawer ─────────────────────────────
+let _preDrawerDirty = false;
 function openCreateDrawer() {
+  _preDrawerDirty = state.isDirty;
   document.getElementById('createName').value       = '';
   document.getElementById('createServerName').value = state.globalData?.server_name ?? '';
   document.getElementById('createConnStr').value    = '';
   document.getElementById('createNameErr').style.display = 'none';
-  document.getElementById('createHeaders').innerHTML = buildKvEditor({ DatabaseName: '', Origin: 'Portway' });
+  document.getElementById('createHeaders').innerHTML = buildKvEditor({ 
+    DatabaseName: '', 
+    ServerName: '', 
+    Origin: 'Portway' 
+  });
+  document.getElementById('createAuthContainer').innerHTML = buildAuthSection(null, 'create');
   Drawer.open('createDrawer');
   setTimeout(() => document.getElementById('createName').focus(), 150);
 }
@@ -778,12 +1029,13 @@ async function submitCreate() {
   if (headerErr)                        { toast(headerErr, 'error'); return; }
 
   const headers = collectHeaders('createHeaders');
+  const auth = collectAuthData('create');
   const btn = document.querySelector('#createDrawer .btn-primary');
   btn?.classList.add('is-loading');
   try {
     const r = await fetch('/ui/api/environments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, server_name: serverName, connection_string: connStr, headers })
+      body: JSON.stringify({ name, server_name: serverName, connection_string: connStr, headers, authentication: auth })
     });
     if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
     toast(`Environment "${name}" created`, 'success');
@@ -797,14 +1049,14 @@ async function submitCreate() {
 // Init 
 async function refreshAll() {
   const prev = state.selected;
-  if (!confirmNavigate()) return;
-  state.isDirty = false;
-  await loadGlobal();
-  if (prev === '__global__') renderGlobalDetail();
-  else { await renderEnvDetail(prev); startPoll(prev); }
+  confirmNavigate(async () => {
+    await loadGlobal();
+    if (prev === '__global__') renderGlobalDetail();
+    else { await renderEnvDetail(prev); startPoll(prev); }
+  });
 }
-
 async function init() {
+  Drawer.onClose('createDrawer', () => { state.isDirty = _preDrawerDirty; });
   try {
     await loadGlobal();
     selectGlobal();
@@ -817,9 +1069,10 @@ async function init() {
 init();
 
 function logout() {
-  if (state.isDirty && !confirmNavigate()) return;
-  fetch('/ui/api/auth/logout', { method: 'POST', credentials: 'include' })
-    .finally(() => { window.location.href = (window.PortwayBase || '') + '/ui/login'; });
+  confirmNavigate(() => {
+    fetch('/ui/api/auth/logout', { method: 'POST', credentials: 'include' })
+      .finally(() => { window.location.href = (window.PortwayBase || '') + '/ui/login'; });
+  });
 }
 </script>
 </body>

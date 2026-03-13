@@ -1,0 +1,22 @@
+{
+  "Authentication": {
+    "Enabled": true,
+    "OverrideGlobalToken": false,
+    "Methods": [
+      {
+        "Type": "ApiKey",
+        "Name": "X-Demo-Key",
+        "Value": "demo-api-secret-123",
+        "In": "Header"
+      },
+      {
+        "Type": "Basic",
+        "Name": "demo-user",
+        "Value": "demo-password"
+      }
+    ]
+  },
+  "Headers": {
+    "X-Demo-Env": "Active"
+  }
+}

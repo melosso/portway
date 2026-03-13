@@ -141,24 +141,55 @@ let _renaming = false;
 let _createType = 'sql';
 let _confirmingDelete = false;
 
+function markDirty() { _dirty = true; }
+
+function confirmNavigate(onConfirm) {
+  if (!_dirty) {
+    onConfirm();
+    return;
+  }
+  
+  AlertDialog.show({
+    title: 'Are you sure?',
+    description: 'You have unsaved changes in this endpoint. Are you sure you want to leave without saving?',
+    actionLabel: 'Leave anyway',
+    cancelLabel: 'Stay here',
+    onConfirm: () => {
+      _dirty = false;
+      onConfirm();
+    }
+  });
+}
+
+function confirmNavigateSync() {
+  if (!_dirty) return true;
+  return confirm('You have unsaved changes. Leave without saving?');
+}
+
+window.addEventListener('beforeunload', e => {
+  if (_dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+
 // Init 
 async function refreshAll() {
-  try {
-    const d = await fetch('/ui/api/endpoints').then(r => r.json());
-    _allData = {
-      sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
-      proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
-      composite: (d.composite ?? []).map(e => ({ ...e, _type: 'composite' })),
-      file:      (d.file ?? []).map(e => ({ ...e, _type: 'file' })),
-      static:    (d.static ?? []).map(e => ({ ...e, _type: 'static' })),
-      webhook:   (d.webhook ?? []).map(e => ({ ...e, _type: 'webhook' })),
-    };
-    renderTabs();
-    renderList();
-    if (_selected) selectEndpoint(_selected.type, _selected.name, false);
-  } catch(e) {
-    showToast('Failed to load endpoints: ' + e.message, 'error');
-  }
+  confirmNavigate(async () => {
+    try {
+      const d = await fetch('/ui/api/endpoints').then(r => r.json());
+      _allData = {
+        sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
+        proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
+        composite: (d.composite ?? []).map(e => ({ ...e, _type: 'composite' })),
+        file:      (d.file ?? []).map(e => ({ ...e, _type: 'file' })),
+        static:    (d.static ?? []).map(e => ({ ...e, _type: 'static' })),
+        webhook:   (d.webhook ?? []).map(e => ({ ...e, _type: 'webhook' })),
+      };
+      renderTabs();
+      renderList();
+      if (_selected) selectEndpoint(_selected.type, _selected.name, false);
+    } catch(e) {
+      showToast('Failed to load endpoints: ' + e.message, 'error');
+    }
+  });
 }
 
 // Tabs 
@@ -173,9 +204,11 @@ function renderTabs() {
 }
 
 function switchTab(key) {
-  _activeTab = key;
-  renderTabs();
-  renderList();
+  confirmNavigate(() => {
+    _activeTab = key;
+    renderTabs();
+    renderList();
+  });
 }
 
 // List
@@ -191,6 +224,10 @@ function getFilteredItems() {
     }
   }
   return results;
+}
+
+function trySelect(type, name) {
+  confirmNavigate(() => selectEndpoint(type, name));
 }
 
 function renderList() {
@@ -219,7 +256,7 @@ function renderList() {
     }
     for (const item of group) {
       const isActive = _selected?.type === typeKey && _selected?.name === item.name;
-      html += `<div class="ep-list-item ${isActive ? 'active' : ''}" onclick="selectEndpoint('${esc(typeKey)}','${esc(item.name)}')">
+      html += `<div class="ep-list-item ${isActive ? 'active' : ''}" onclick="trySelect('${esc(typeKey)}','${esc(item.name)}')">
         <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
         <span class="ep-list-name">${esc(item.name)}</span>
       </div>`;
@@ -324,7 +361,7 @@ function renderStructuredForm(type, content) {
 function fieldText(id, label, value) {
   return `<div class="ep-field">
     <label for="${id}">${label}</label>
-    <input type="text" id="${id}" value="${esc(value ?? '')}">
+    <input type="text" id="${id}" value="${esc(value ?? '')}" oninput="markDirty()">
   </div>`;
 }
 
@@ -332,7 +369,7 @@ function fieldSelect(id, label, value, options) {
   const opts = options.map(o => `<option ${value === o ? 'selected' : ''}>${esc(o)}</option>`).join('');
   return `<div class="ep-field">
     <label for="${id}">${label}</label>
-    <select id="${id}">${opts}</select>
+    <select id="${id}" onchange="markDirty()">${opts}</select>
   </div>`;
 }
 
@@ -342,7 +379,7 @@ function fieldMethods(selected, id = 'methodPicker') {
   return `<div class="ep-field">
     <label>Methods</label>
     <div class="method-picker" id="${id}">
-      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" onclick="toggleMethod(this)">${m}</button>`).join('')}
+      ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" onclick="toggleMethod(this); markDirty()">${m}</button>`).join('')}
     </div>
   </div>`;
 }
@@ -366,7 +403,7 @@ function fieldKV(id, label, obj) {
 function fieldTextarea(id, label, value, minHeight = '80px', isCode = false) {
   return `<div class="ep-field">
     <label for="${id}">${label}</label>
-    <textarea id="${id}" class="ep-textarea${isCode ? ' ep-textarea-code' : ''}" style="min-height:${minHeight}">${esc(value ?? '')}</textarea>
+    <textarea id="${id}" class="ep-textarea${isCode ? ' ep-textarea-code' : ''}" style="min-height:${minHeight}" oninput="markDirty()">${esc(value ?? '')}</textarea>
   </div>`;
 }
 
@@ -405,9 +442,9 @@ function readDocumentation(c) {
 
 function kvRow(k = '', v = '') {
   return `<div class="ep-kv-row">
-    <input type="text" placeholder="Key" value="${esc(k)}">
-    <input type="text" placeholder="Value" value="${esc(v)}">
-    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove()" title="Remove">
+    <input type="text" placeholder="Key" value="${esc(k)}" oninput="markDirty()">
+    <input type="text" placeholder="Value" value="${esc(v)}" oninput="markDirty()">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove(); markDirty()" title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
@@ -440,8 +477,8 @@ function fieldColumns(id, label, arr) {
 
 function colRow(val = '') {
   return `<div class="ep-col-row">
-    <input type="text" placeholder="ColumnName" value="${esc(val)}">
-    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove()" title="Remove">
+    <input type="text" placeholder="ColumnName" value="${esc(val)}" oninput="markDirty()">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove(); markDirty()" title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
@@ -461,13 +498,13 @@ function readMethods(id = 'methodPicker') {
 }
 
 function fieldToggle(id, label, checked) {
-  return `<label class="ep-field-switch">
-    <span>${esc(label)}</span>
-    <span class="switch" aria-hidden="true">
-      <input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>
+  return `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('${id}').click()">
+    <label class="switch" onclick="event.stopPropagation()">
+      <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="markDirty()">
       <span class="slider"></span>
-    </span>
-  </label>`;
+    </label>
+    <span style="font-size:0.8125rem;font-weight:500;">${esc(label)}</span>
+  </div>`;
 }
 
 function fieldAllowedEnvs(value) {
@@ -885,12 +922,16 @@ async function saveEndpoint() {
 }
 
 function toggleRawMode() {
-  _rawMode = !_rawMode;
-  renderDetail();
+  confirmNavigate(() => {
+    _rawMode = !_rawMode;
+    renderDetail();
+  });
 }
 
 async function reloadDetail() {
-  if (_selected) await selectEndpoint(_selected.type, _selected.name, false);
+  confirmNavigate(async () => {
+    if (_selected) await selectEndpoint(_selected.type, _selected.name, false);
+  });
 }
 
 // Alert Dialog 
@@ -979,8 +1020,9 @@ async function confirmRename() {
 }
 
 // Create Drawer ─────────────────────────────────────────
-
+let _preDrawerDirty = false;
 function openCreateDrawer() {
+  _preDrawerDirty = _dirty;
   _createType = 'sql';
   renderCreateTypePicker();
   renderCreateForm();
@@ -1204,6 +1246,7 @@ async function submitCreate() {
 function showToast(msg, type = 'success') { toast(msg, type); }
 
 // Bootstrap
+Drawer.onClose('createDrawer', () => { _dirty = _preDrawerDirty; });
 refreshAll();
 </script>
 </body>
