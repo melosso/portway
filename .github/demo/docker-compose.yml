@@ -14,7 +14,7 @@ services:
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
       - HostOptions__BackgroundServiceExceptionBehavior=Ignore
-      - Use_HTTPS=true
+      - Use_HTTPS=false
       - AllowedHosts=*
       - WebUi__AdminApiKey=demo-admin-key
       - WebUi__PublicOrigins__0=https://portway-demo.melosso.com
