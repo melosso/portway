@@ -13,3 +13,4 @@ TrimmerRoots.xml
 .fake
 Source/PortwayApi/.core/
 # Ignore log files
+Source/coverage.runsettings

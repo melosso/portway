@@ -177,6 +177,63 @@ This creates a two-layer security model:
 1. Token must have access to the environment
 2. Endpoint must allow the environment
 
+
+## Environment Authentication
+
+Portway allows you to define custom authentication methods for specific environments. This is useful when an environment needs to be secured with a different mechanism than the global token system, such as an API Key, Basic Auth, or JWT.
+
+### Supported Types
+
+| Type | Description | Key Fields |
+|------|-------------|------------|
+| `ApiKey` | Matches a static key in headers or query params | `Name`, `Value`, `In` |
+| `Basic` | Standard Username/Password authentication | `Name`, `Value` |
+| `Bearer` | Matches a static token in the Authorization header | `Value` |
+| `JWT` | Validates JSON Web Tokens (Issuer, Audience, Signatures) | `Issuer`, `Secret`, `PublicKey` |
+| `HMAC` | Validates request signatures using a shared secret | `Name`, `Secret` |
+
+### Basic API Key Configuration
+
+To require a specific API key for an environment, add the `Authentication` object to its `settings.json`:
+
+```json
+{
+  "ServerName": "PROD-SQL",
+  "ConnectionString": "...",
+  "Authentication": {
+    "Enabled": true,
+    "Methods": [
+      {
+        "Type": "ApiKey",
+        "Name": "X-Custom-Auth",
+        "Value": "your-v3ry-secret-p4shword-here",
+        "In": "Header"
+      }
+    ]
+  }
+}
+```
+
+::: tip Automatic encryption
+When you save plaintext secrets in `settings.json`, the application automatically encrypts them on the next startup. As you're used to, you will see values change to `PWENC:...` format.
+:::
+
+### Overriding Global Tokens
+
+By default, both the environment-specific auth AND global Portway tokens work. If you want to **only** allow the custom method, set `OverrideGlobalToken` to `true`:
+
+```json
+{
+  "Authentication": {
+    "Enabled": true,
+    "OverrideGlobalToken": true,
+    "Methods": [...]
+  }
+}
+```
+
+For more advanced methods like JWT or HMAC, see the [Environment Authentication Reference](../reference/environment-auth).
+
 ## Azure Key Vault Integration
 
 For enhanced security, store connection strings in Azure Key Vault:

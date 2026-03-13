@@ -26,42 +26,49 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         _keyVaultUri = Environment.GetEnvironmentVariable("KEYVAULT_URI");
         _certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
         
-        // Ensure .core directory exists and generate keys if needed
-        EnsureEncryptionKeysExist();
-        
-        // Load private key from file
-        var privateKeyPath = Path.Combine(_certsPath, "recovery.binlz4");
-        
-        if (File.Exists(privateKeyPath))
+        try
         {
-            try
+            // Ensure .core directory exists and generate keys if needed
+            EnsureEncryptionKeysExist();
+            
+            // Load private key from file
+            var privateKeyPath = Path.Combine(_certsPath, "recovery.binlz4");
+            
+            if (File.Exists(privateKeyPath))
             {
-                var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
-                var encryptionKey = LoadEncryptionKey();
-                _privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
-                Log.Debug("Loaded and decrypted private key from: {KeyPath}", privateKeyPath);
+                try
+                {
+                    var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
+                    var encryptionKey = LoadEncryptionKey();
+                    _privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
+                    Log.Debug("Loaded and decrypted private key from: {KeyPath}", privateKeyPath);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to load or decrypt private key from {KeyPath}. If you changed PORTWAY_ENCRYPTION_KEY, you must delete the .core folder to regenerate keys.", privateKeyPath);
+                }
             }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Failed to load or decrypt private key from {KeyPath}. If you changed PORTWAY_ENCRYPTION_KEY, you must delete the .core folder to regenerate keys.", privateKeyPath);
-            }
-        }
 
-        // Debug logging
-        Log.Debug("Environment settings initialized:");
-        Log.Debug("  Local environments path: {BasePath}", _basePath);
-        Log.Debug("  Azure Key Vault: {Status}", !string.IsNullOrWhiteSpace(_keyVaultUri) ? _keyVaultUri : "Not configured");
-        Log.Debug("  Settings decryption: {Status}", !string.IsNullOrWhiteSpace(_privateKeyPem) ? "Available" : "Not configured");
-        
-        // Encrypt all environments on startup 
-        AutoEncryptAllEnvironmentsOnStartup();
+            // Debug logging
+            Log.Debug("Environment settings initialized:");
+            Log.Debug("  Local environments path: {BasePath}", _basePath);
+            Log.Debug("  Azure Key Vault: {Status}", !string.IsNullOrWhiteSpace(_keyVaultUri) ? _keyVaultUri : "Not configured");
+            Log.Debug("  Settings decryption: {Status}", !string.IsNullOrWhiteSpace(_privateKeyPem) ? "Available" : "Not configured");
+            
+            // Encrypt all environments on startup 
+            AutoEncryptAllEnvironmentsOnStartup();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Critical error during EnvironmentSettingsProvider initialization");
+        }
     }
 
     private void AutoEncryptAllEnvironmentsOnStartup()
     {
         if (string.IsNullOrWhiteSpace(_privateKeyPem))
         {
-            Log.Error("Cannot auto-encrypt environments on startup: No private key available");
+            Log.Error("Cannot encrypt environments on startup: No private key available");
             return;
         }
 
@@ -71,7 +78,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return;
         }
 
-        Log.Debug("Scanning all environments for auto-encryption...");
+        Log.Debug("Scanning all environments for values to encrypt");
 
         var environmentDirs = Directory.GetDirectories(_basePath)
             .Select(d => new DirectoryInfo(d).Name)
@@ -129,7 +136,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             }
         }
 
-        Log.Debug("Auto-encryption scan complete: {Encrypted} encrypted, {AlreadyEncrypted} already encrypted, {Errors} errors",
+        Log.Debug("Encryption scan complete: {Encrypted} encrypted, {AlreadyEncrypted} already encrypted, {Errors} errors",
             encryptedCount, alreadyEncryptedCount, errorCount);
     }
 
@@ -301,6 +308,19 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         return (securedLocalConnectionString, local.ServerName!, local.Headers);
     }
 
+    public async Task<EnvironmentConfig?> GetEnvironmentConfigAsync(string env)
+    {
+        try
+        {
+            return LoadFromJson(env);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to get environment config for {Env}", env);
+            return null;
+        }
+    }
+
     private async Task<EnvironmentConfig?> TryLoadFromAzureAsync(string env)
     {
         if (string.IsNullOrWhiteSpace(_keyVaultUri))
@@ -426,41 +446,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 throw new InvalidOperationException($"Application connection settings could not be loaded for the current environment.");
             }
 
-            // Decrypt ConnectionString if encrypted
-            if (SettingsEncryptionHelper.IsEncrypted(config.ConnectionString))
-            {
-                if (string.IsNullOrWhiteSpace(_privateKeyPem))
-                {
-                    Log.Error("ConnectionString is encrypted but no private key available for environment: {Environment}", env);
-                    throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
-                }
-                
-                config.ConnectionString = SettingsEncryptionHelper.Decrypt(config.ConnectionString, _privateKeyPem);
-            }
-
-            // Decrypt encrypted headers
-            if (config.Headers != null)
-            {
-                var decryptedHeaders = new Dictionary<string, string>();
-                foreach (var header in config.Headers)
-                {
-                    if (SettingsEncryptionHelper.IsEncrypted(header.Value))
-                    {
-                        if (string.IsNullOrWhiteSpace(_privateKeyPem))
-                        {
-                            Log.Error("Header '{HeaderKey}' is encrypted but no private key available for environment: {Environment}", header.Key, env);
-                            throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
-                        }
-                        
-                        decryptedHeaders[header.Key] = SettingsEncryptionHelper.Decrypt(header.Value, _privateKeyPem);
-                    }
-                    else
-                    {
-                        decryptedHeaders[header.Key] = header.Value;
-                    }
-                }
-                config.Headers = decryptedHeaders;
-            }
+            DecryptConfig(config, env);
 
             config.Headers ??= new Dictionary<string, string>();
             
@@ -477,6 +463,70 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             Log.Error(ex, "Error reading or parsing settings.json for environment: {Environment}", env);
             throw;
         }
+    }
+
+    private void DecryptConfig(EnvironmentConfig config, string env)
+    {
+        // Decrypt ConnectionString if encrypted
+        if (SettingsEncryptionHelper.IsEncrypted(config.ConnectionString!))
+        {
+            if (string.IsNullOrWhiteSpace(_privateKeyPem))
+            {
+                Log.Error("ConnectionString is encrypted but no private key available for environment: {Environment}", env);
+                throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
+            }
+            
+            config.ConnectionString = SettingsEncryptionHelper.Decrypt(config.ConnectionString!, _privateKeyPem);
+        }
+
+        // Decrypt encrypted headers
+        if (config.Headers != null)
+        {
+            var decryptedHeaders = new Dictionary<string, string>();
+            foreach (var header in config.Headers)
+            {
+                if (SettingsEncryptionHelper.IsEncrypted(header.Value))
+                {
+                    if (string.IsNullOrWhiteSpace(_privateKeyPem))
+                    {
+                        Log.Error("Header '{HeaderKey}' is encrypted but no private key available for environment: {Environment}", header.Key, env);
+                        throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
+                    }
+                    
+                    decryptedHeaders[header.Key] = SettingsEncryptionHelper.Decrypt(header.Value, _privateKeyPem);
+                }
+                else
+                {
+                    decryptedHeaders[header.Key] = header.Value;
+                }
+            }
+            config.Headers = decryptedHeaders;
+        }
+
+        // Decrypt authentication settings
+        if (config.Authentication?.Methods != null)
+        {
+            foreach (var method in config.Authentication.Methods)
+            {
+                method.Value = TryDecrypt(method.Value, "Value", env);
+                method.Secret = TryDecrypt(method.Secret, "Secret", env);
+                method.ClientSecret = TryDecrypt(method.ClientSecret, "ClientSecret", env);
+            }
+        }
+    }
+
+    private string TryDecrypt(string? value, string fieldName, string env)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !SettingsEncryptionHelper.IsEncrypted(value))
+            return value ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(_privateKeyPem))
+        {
+            Log.Error("Field '{FieldName}' is encrypted but no private key available for environment: {Environment}", fieldName, env);
+            throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
+        }
+
+        return SettingsEncryptionHelper.Decrypt(value, _privateKeyPem);
     }
 
     private string SecureConnectionString(string connectionString)
@@ -562,56 +612,87 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         bool needsSave = false;
         bool alreadyEncrypted = true;
 
-        // 1. Validate and encrypt ConnectionString if needed
-        if (!string.IsNullOrWhiteSpace(config.ConnectionString))
+        if (!TryAutoEncryptConnectionString(config, envName, ref needsSave, ref alreadyEncrypted))
         {
-            if (!SettingsEncryptionHelper.IsEncrypted(config.ConnectionString))
-            {
-                alreadyEncrypted = false;
-                
-                if (IsValidMssqlConnectionString(config.ConnectionString))
-                {
-                    config.ConnectionString = SettingsEncryptionHelper.Encrypt(config.ConnectionString);
-                    needsSave = true;
-                    Log.Debug("Auto-encrypted ConnectionString for environment: {Env}", envName);
-                }
-                else
-                {
-                    Log.Error("Invalid MSSQL connection string format in environment '{Env}' - skipping encryption. Connection string must have DataSource, InitialCatalog, and either IntegratedSecurity=true or valid UserID/Password.", envName);
-                    return EncryptionResult.Error;
-                }
-            }
+            return EncryptionResult.Error;
         }
 
-        // 2. Encrypt sensitive headers
-        if (config.Headers != null)
-        {
-            var headersToEncrypt = config.Headers
-                .Where(h => !SettingsEncryptionHelper.IsEncrypted(h.Value) && IsSensitiveHeader(h.Key))
-                .ToList();
+        AutoEncryptHeaders(config, envName, ref needsSave, ref alreadyEncrypted);
+        AutoEncryptAuthentication(config, envName, ref needsSave, ref alreadyEncrypted);
 
-            if (headersToEncrypt.Any())
-            {
-                alreadyEncrypted = false;
-            }
-
-            foreach (var header in headersToEncrypt)
-            {
-                config.Headers[header.Key] = SettingsEncryptionHelper.Encrypt(header.Value);
-                needsSave = true;
-                Log.Debug("Auto-encrypted header '{HeaderKey}' for environment: {Env}", header.Key, envName);
-            }
-        }
-
-        // 3. Save file if any changes were made
         if (needsSave)
         {
             SaveEncryptedConfig(settingsPath, config);
-            Log.Debug("Auto-encryption complete for environment: {Env}", envName);
+            Log.Debug("Encryption complete for environment: {Env}", envName);
             return EncryptionResult.Encrypted;
         }
         
         return alreadyEncrypted ? EncryptionResult.AlreadyEncrypted : EncryptionResult.Error;
+    }
+
+    private bool TryAutoEncryptConnectionString(EnvironmentConfig config, string envName, ref bool needsSave, ref bool alreadyEncrypted)
+    {
+        if (string.IsNullOrWhiteSpace(config.ConnectionString) || SettingsEncryptionHelper.IsEncrypted(config.ConnectionString))
+            return true;
+
+        alreadyEncrypted = false;
+        
+        if (IsValidMssqlConnectionString(config.ConnectionString))
+        {
+            config.ConnectionString = SettingsEncryptionHelper.Encrypt(config.ConnectionString);
+            needsSave = true;
+            Log.Debug("Encrypted ConnectionString for environment: {Env}", envName);
+            return true;
+        }
+
+        Log.Error("Invalid MSSQL connection string format in environment '{Env}' - skipping encryption. Connection string must have DataSource, InitialCatalog, and either IntegratedSecurity=true or valid UserID/Password.", envName);
+        return false;
+    }
+
+    private void AutoEncryptHeaders(EnvironmentConfig config, string envName, ref bool needsSave, ref bool alreadyEncrypted)
+    {
+        if (config.Headers == null) return;
+
+        var headersToEncrypt = config.Headers
+            .Where(h => !SettingsEncryptionHelper.IsEncrypted(h.Value) && IsSensitiveField(h.Key))
+            .ToList();
+
+        if (headersToEncrypt.Any())
+        {
+            alreadyEncrypted = false;
+        }
+
+        foreach (var header in headersToEncrypt)
+        {
+            config.Headers[header.Key] = SettingsEncryptionHelper.Encrypt(header.Value);
+            needsSave = true;
+            Log.Debug("Encrypted header '{HeaderKey}' for environment: {Env}", header.Key, envName);
+        }
+    }
+
+    private void AutoEncryptAuthentication(EnvironmentConfig config, string envName, ref bool needsSave, ref bool alreadyEncrypted)
+    {
+        if (config.Authentication?.Methods == null) return;
+
+        foreach (var method in config.Authentication.Methods)
+        {
+            method.Value = EncryptFieldIfNeeded(method.Value, "Value", envName, ref needsSave, ref alreadyEncrypted) ?? string.Empty;
+            method.Secret = EncryptFieldIfNeeded(method.Secret, "Secret", envName, ref needsSave, ref alreadyEncrypted);
+            method.ClientSecret = EncryptFieldIfNeeded(method.ClientSecret, "ClientSecret", envName, ref needsSave, ref alreadyEncrypted);
+        }
+    }
+
+    private string? EncryptFieldIfNeeded(string? fieldValue, string fieldName, string envName, ref bool needsSave, ref bool alreadyEncrypted)
+    {
+        if (!string.IsNullOrWhiteSpace(fieldValue) && !SettingsEncryptionHelper.IsEncrypted(fieldValue) && IsSensitiveField(fieldName))
+        {
+            var encryptedValue = SettingsEncryptionHelper.Encrypt(fieldValue);
+            needsSave = true;
+            alreadyEncrypted = false;
+            Log.Debug("Encrypted Auth {FieldName} for environment: {Env}", fieldName, envName);
+            return encryptedValue;
+        }
+        return fieldValue;
     }
 
     private bool IsValidMssqlConnectionString(string connectionString)
@@ -639,15 +720,15 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         }
     }
 
-    private bool IsSensitiveHeader(string headerName)
+    private bool IsSensitiveField(string fieldName)
     {
         string[] sensitivePatterns = 
         {
             "password", "secret", "token", "key", "auth", 
-            "credential", "signature", "hmac", "bearer"
+            "credential", "signature", "hmac", "bearer", "value", "clientsecret"
         };
         
-        var lowerName = headerName.ToLowerInvariant();
+        var lowerName = fieldName.ToLowerInvariant();
         return sensitivePatterns.Any(pattern => lowerName.Contains(pattern));
     }
 
@@ -678,7 +759,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             var jsonOptions = new JsonSerializerOptions 
             { 
                 WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             };
             
             var json = JsonSerializer.Serialize(config, jsonOptions);
@@ -748,12 +830,5 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         using var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
         using var sr = new StreamReader(cs);
         return sr.ReadToEnd();
-    }
-
-    private class EnvironmentConfig
-    {
-        public string? ConnectionString { get; set; }
-        public string? ServerName { get; set; }
-        public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
     }
 }
