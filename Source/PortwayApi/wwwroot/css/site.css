@@ -2686,3 +2686,91 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
     display: block;
 }
 
+
+/* Promo Bar */
+:root { --promo-height: 0px; }
+body.has-promo { --promo-height: 32px; }
+
+body.has-promo aside,
+body.has-promo main {
+    margin-top: var(--promo-height);
+    height: calc(100vh - var(--promo-height));
+}
+
+.promo-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--promo-height);
+    background: hsl(var(--muted));
+    color: hsl(var(--foreground));
+    padding: 0 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    z-index: 1100;
+    border-bottom: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.promo-bar.visible {
+    display: flex;
+}
+
+.promo-bar a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-weight: 600;
+    transition: opacity 0.15s;
+}
+
+.promo-bar a:hover {
+    opacity: 0.8;
+}
+
+.promo-bar-close {
+    position: relative;
+    background: none;
+    border: none;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    margin-left: 0.25rem;
+}
+
+.promo-bar-close:hover {
+    opacity: 1;
+    background: hsl(var(--foreground) / 0.05);
+    color: hsl(var(--foreground));
+    border-radius: 4px;
+}
+
+/* Auth Footer */
+.auth-footer {
+    margin-top: 1.5rem;
+    font-size: 0.8125rem;
+    color: hsl(var(--muted-foreground));
+    text-align: center;
+    max-width: 320px;
+    line-height: 1.5;
+}
+
+.auth-footer a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.auth-footer a:hover {
+    opacity: 0.8;
+}
