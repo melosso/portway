@@ -45,6 +45,10 @@ fi
 
 sed -i "s/PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345/PORTWAY_ENCRYPTION_KEY=$RANDOM_KEY/" docker-compose.yml
 
+# Optional: Prompt for domain or leave as default
+echo "Portway is configured for: https://portway-demo.melosso.com"
+echo "If you use a different domain, edit WebUi__PublicOrigins in docker-compose.yml"
+
 echo ""
 echo "Pull complete."
 echo "Run 'cd $TARGET_DIR && docker compose up -d' to start the demo."
