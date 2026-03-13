@@ -5,30 +5,32 @@ This guide explains how to deploy Portway using Docker Compose for quick develop
 ## Quick Start
 
 1. **Create a docker-compose.yml file:**
-   ```yaml
-  services:
-    portway:
-      image: ghcr.io/melosso/portway:latest
-      ports:
-        - "8080:8080"
-      volumes:
-        - portway_app:/app
-        - ./environments:/app/environments
-        - ./endpoints:/app/endpoints
-        - ./tokens:/app/tokens
-        - ./log:/app/log
-        - ./data:/app/data
-      environment:
-        - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
 
-  volumes:
-    portway_app:
-   ```
+```yaml
+services:
+  portway:
+    image: ghcr.io/melosso/portway:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - portway_app:/app
+      - ./environments:/app/environments
+      - ./endpoints:/app/endpoints
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+      - ./data:/app/data
+    environment:
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
+
+volumes:
+  portway_app:
+```
 
 2. **Start the application:**
-   ```bash
-   docker compose up -d
-   ```
+
+  ```bash
+  docker compose up -d
+  ```
 
 3. **Verify the installation:**
    The API will be available at `http://localhost:8080`
@@ -63,8 +65,10 @@ services:
       - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
       - WebUi__PublicOrigins__0=https://example.com
       - WebUi__PublicOrigins__1=https://api.example.com
-      - WebUi__SecureCookies=false
-      
+      - WebUi__SecureCookies=false  
+      - WebUi__Customization__PromoText=
+      - WebUi__Customization__LoginFooter=If you don't have an account, please contact your [administrator](mailto:support@democompany.local).
+    
       # Proxy settings for Kerberos/NTLM
       # - PROXY_USERNAME=serviceaccount
       # - PROXY_PASSWORD=password
@@ -103,6 +107,8 @@ volumes:
 | `WebUi__AdminApiKey` | Admin API key for web UI access | (none) |
 | `WebUi__PublicOrigins` | Allowed origins for CORS (array) | (empty) |
 | `WebUi__SecureCookies` | Use secure cookies | `false` |
+| `WebUi__Customization__PromoText` | Banner text at the top | (none) |
+| `WebUi__Customization__LoginFooter` | Footer text below login area | (none) |
 
 For `WebUi__PublicOrigins`, use index notation for multiple origins:
 ```yaml
