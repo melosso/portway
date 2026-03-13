@@ -633,7 +633,12 @@ public static class EndpointHandler
             }
             else
             {
-                Log.Warning("No entity.json found in {Directory}", endpointsDirectory);
+                // Skip message if it's /webhooks/
+                if (!endpointsDirectory.EndsWith("/webhooks", StringComparison.OrdinalIgnoreCase) 
+                 && !endpointsDirectory.EndsWith("\\webhooks", StringComparison.OrdinalIgnoreCase))
+                {
+                    Log.Warning("No entity.json found in {Directory}", endpointsDirectory);
+                }   
             }
 
             Log.Debug($"Loaded {endpoints.Count} webhook endpoints from {endpointsDirectory}");
