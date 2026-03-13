@@ -1,0 +1,6 @@
+{
+    "Environment": {
+      "ServerName": "localhost",
+      "AllowedEnvironments": ["Demo"]
+    }
+}
