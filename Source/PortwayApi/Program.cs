@@ -45,6 +45,12 @@ try
 
     builder.Host.UseSerilog();
 
+    builder.Services.Configure<HostOptions>(opts =>
+        {
+            opts.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+        }
+    );
+
     LogApplicationAscii();
 
     // In Docker, HTTPS is opt-in (Use_HTTPS=true). On Windows Server/IIS, HTTPS is enabled by default unless Use_HTTPS=false.
@@ -187,7 +193,6 @@ try
     builder.Services.AddScoped<TokenService>();
     builder.Services.AddScoped<EnvironmentAuthService>();
     builder.Services.AddAuthorization();
-    builder.Services.AddHostedService<LogFlusher>();
 
     // Register configuration reload services for dynamic config updates
     builder.Services.AddHostedService<PortwayApi.Services.Configuration.ConfigurationReloadService>();
