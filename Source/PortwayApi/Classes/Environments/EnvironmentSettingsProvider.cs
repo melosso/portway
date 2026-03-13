@@ -297,6 +297,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         }
 
         Log.Debug("Attempting to load from local JSON files...");
+
         var local = LoadFromJson(env);
         if (local == null)
         {
@@ -304,8 +305,11 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             throw new InvalidOperationException($"Failed to load environment settings for {env}");
         }
         Log.Debug("Successfully loaded environment {Env} from local settings.json", env);
-        var securedLocalConnectionString = SecureConnectionString(local.ConnectionString!);
-        return (securedLocalConnectionString, local.ServerName!, local.Headers);
+        
+        var securedLocalConnectionString = string.IsNullOrWhiteSpace(local.ConnectionString)
+            ? string.Empty
+            : SecureConnectionString(local.ConnectionString!);
+        return (securedLocalConnectionString, local.ServerName ?? string.Empty, local.Headers);
     }
 
     public async Task<EnvironmentConfig?> GetEnvironmentConfigAsync(string env)
@@ -442,8 +446,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
             if (string.IsNullOrWhiteSpace(config.ConnectionString))
             {
-                Log.Error("Missing ConnectionString in settings.json for environment: {Environment}", env);
-                throw new InvalidOperationException($"Application connection settings could not be loaded for the current environment.");
+                Log.Debug("No ConnectionString configured for environment: {Environment} (SQL endpoints will be unavailable)", env);
             }
 
             DecryptConfig(config, env);

@@ -99,7 +99,7 @@
         style="width:100%;padding:0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:inherit;font-size:0.8125rem;outline:none;">
     </div>
     <div class="drawer-field">
-      <label>Connection String <span style="color:hsl(var(--destructive))">*</span></label>
+      <label>Connection String</label>
       <div style="position:relative;">
         <input type="password" id="createConnStr" placeholder="Server=...;Database=...;User Id=...;Password=...;"
           style="width:100%;padding:0.5rem 2rem 0.5rem 0.625rem;border:1px solid hsl(var(--border));border-radius:var(--radius);background:hsl(var(--background));color:hsl(var(--foreground));font-family:ui-monospace,monospace;font-size:0.75rem;outline:none;">
@@ -108,7 +108,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
-      <div style="font-size:0.72rem;color:hsl(var(--muted-foreground));margin-top:0.25rem;">Stored encrypted, never written to disk in plaintext.</div>
+      <div style="font-size:0.72rem;color:hsl(var(--muted-foreground));margin-top:0.25rem;">Optional. Required only for SQL endpoints. Stored encrypted, never written to disk in plaintext.</div>
     </div>
     <div class="drawer-field">
       <label>Headers</label>
@@ -478,7 +478,8 @@ function buildFormView(name, d, headersHtml) {
                style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
              </button>
-           </div>`
+           </div>
+           <div class="ep-field-hint" style="margin-top:0.25rem">Optional. Required only for SQL endpoints. Stored encrypted, never written to disk in plaintext.</div>`
       }
     </div>
     ${buildAuthSection(d.authentication)}
@@ -1025,7 +1026,6 @@ async function submitCreate() {
 
   if (!name)                            { toast('Name is required', 'error'); return; }
   if (!/^[a-zA-Z0-9_-]+$/.test(name)) { toast('Invalid name format', 'error'); return; }
-  if (!connStr)                         { toast('Connection string is required', 'error'); return; }
   const headerErr = validateHeaders('createHeaders');
   if (headerErr)                        { toast(headerErr, 'error'); return; }
 
@@ -1033,10 +1033,12 @@ async function submitCreate() {
   const auth = collectAuthData('create');
   const btn = document.querySelector('#createDrawer .btn-primary');
   btn?.classList.add('is-loading');
+  const createBody = { name, server_name: serverName, headers, authentication: auth };
+  if (connStr) createBody.connection_string = connStr;
   try {
     const r = await fetch('/ui/api/environments', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, server_name: serverName, connection_string: connStr, headers, authentication: auth })
+      body: JSON.stringify(createBody)
     });
     if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? r.statusText); }
     toast(`Environment "${name}" created`, 'success');

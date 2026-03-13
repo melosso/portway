@@ -12,6 +12,7 @@ services:
       - ./data:/app/data
     environment:
       - PORTWAY_ENCRYPTION_KEY=a_very_s3cret_key
+      - HostOptions__BackgroundServiceExceptionBehavior=Ignore
       - Use_HTTPS=true
       - AllowedHosts=*
       - WebUi__AdminApiKey=demo-admin-key
