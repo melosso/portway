@@ -471,7 +471,7 @@ scrape_configs:
 
 ## Next Steps
 
-- [Security Guide](../security)
-- [API Endpoints Guide](../api-endpoints)
-- [Deployment Guide](../deployment)
-- [Troubleshooting Guide](../troubleshooting)
+- [Security Guide](/guide/security)
+- [API Endpoints Guide](/guide/endpoints-sql)
+- [Deployment Guide](/guide/deployment)
+- [Troubleshooting Guide](/guide/troubleshooting)

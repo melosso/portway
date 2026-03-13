@@ -346,7 +346,7 @@ Enable detailed logging for proxy requests:
 
 ## Next Steps
 
-- Explore [Composite Endpoints](/guide/endpoints/composite) for orchestrating multiple services
-- Learn about [SQL Endpoints](/guide/endpoints/sql) for database access
+- Explore [Composite Endpoints](/guide/endpoints-composite) for orchestrating multiple services
+- Learn about [SQL Endpoints](/guide/endpoints-sql) for database access
 - Configure [Environment Settings](/guide/environments) for your proxy endpoints
 - Implement [Security Best Practices](/guide/security) for your API gateway

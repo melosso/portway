@@ -884,7 +884,7 @@ For load-balanced deployments:
 
 ## Next Steps
 
-- Learn about [Security Headers](/guide/security-headers) for additional protection
-- Configure [Request Logging](/guide/logging) to monitor rate limit effectiveness
-- Implement [Token Management](/guide/token-management) for fine-grained access control
+- Learn about [Security Headers](/guide/security) for additional protection
+- Configure [Request Logging](/reference/logging) to monitor rate limit effectiveness
+- Implement [Token Management](/reference/token-generator) for fine-grained access control
 - Set up [Monitoring and Alerts](/guide/monitoring) for rate limit events

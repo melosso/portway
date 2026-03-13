@@ -445,7 +445,7 @@ ORDER BY Date DESC, WebhookId;
 
 ## Next Steps
 
-- Configure [SQL Endpoints](/guide/endpoints/sql) for querying webhook data
+- Configure [SQL Endpoints](/guide/endpoints-sql) for querying webhook data
 - Set up [Security](/guide/security) for webhook authentication
-- Implement [Monitoring](/guide/operations/monitoring) for webhook processing
-- Create [Composite Endpoints](/guide/endpoints/composite) to process webhooks with business logic
+- Implement [Monitoring](/guide/monitoring) for webhook processing
+- Create [Composite Endpoints](/guide/endpoints-composite) to process webhooks with business logic

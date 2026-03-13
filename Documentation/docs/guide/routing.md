@@ -199,4 +199,4 @@ Never expose the deployment folder structure through web access. The `web.config
 - Configure [Environments](/guide/environments) for your deployment
 - Set up [SQL Endpoints](/guide/endpoints-sql) for database access
 - Create [Proxy Endpoints](/guide/endpoints-proxy) for service integration
-- Implement [Webhooks](/guide/webhooks) for external integrations
+- Implement [Webhooks](/guide/endpoints-webhook) for external integrations

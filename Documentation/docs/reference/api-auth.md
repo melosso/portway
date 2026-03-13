@@ -282,7 +282,7 @@ Please make sure to implement the following best practices:
 
 ## Related Topics
 
-- [HTTP Headers](/reference/http-headers) - Additional header configuration
+- [HTTP Headers](/reference/headers) - Additional header configuration
 - [Security Guide](/guide/security) - Comprehensive security practices
-- [Token Generator](/reference/tools/token-generator) - Token management tool
-- [API Overview](/reference/api/overview) - General API reference
+- [Token Generator](/reference/token-generator) - Token management tool
+- [API Overview](/reference/) - General API reference

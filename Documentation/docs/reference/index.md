@@ -258,10 +258,10 @@ X-Correlation-ID: unique-request-id
 
 ## Next Steps
 
-- Learn about [Authentication](/reference/authentication) in detail
-- Explore [HTTP Headers](/reference/http-headers) usage
-- Understand [OData Syntax](/reference/query-language/odata-syntax) for queries
-- Review [Entity Configuration](/reference/configuration/entity-configuration)
+- Learn about [Authentication](/reference/api-auth) in detail
+- Explore [HTTP Headers](/reference/headers) usage
+- Understand [OData Syntax](/reference/odata) for queries
+- Review [Entity Configuration](/reference/entity-config)
 
 :::tip API Testing
 Use tools like Postman or curl to test endpoints. OpenAPI documentation is available at `/docs` for interactive API exploration.

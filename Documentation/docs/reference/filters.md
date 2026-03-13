@@ -442,7 +442,7 @@ GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'ph
 
 ## Related Topics
 
-- [OData Syntax](/reference/query-language/odata-syntax) - Complete OData syntax reference
-- [Sorting & Pagination](/reference/query-language/sorting-pagination) - Sorting and pagination
-- [SQL Endpoints](/guide/endpoints/sql) - SQL endpoint configuration
-- [API Overview](/reference/api/overview) - General API reference
+- [OData Syntax](/reference/odata) - Complete OData syntax reference
+- [Sorting & Pagination](/reference/sorting-pagination) - Sorting and pagination
+- [SQL Endpoints](/guide/endpoints-sql) - SQL endpoint configuration
+- [API Overview](/reference/) - General API reference

@@ -687,7 +687,7 @@ echo %ASPNETCORE_ENVIRONMENT%
 
 ## Related Topics
 
-- [Environment Settings](/reference/configuration/environment-settings) - Environment-specific configuration
+- [Environment Settings](/reference/environment-settings) - Environment-specific configuration
 - [Security Guide](/guide/security) - Security configuration
-- [Deployment Guide](/guide/deployment/production) - Production deployment
-- [Logging](/reference/tools/logging) - Logging configuration
+- [Deployment Guide](/guide/deployment) - Production deployment
+- [Logging](/reference/logging) - Logging configuration

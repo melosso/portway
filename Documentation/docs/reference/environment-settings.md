@@ -303,7 +303,7 @@ Use consistent naming conventions:
 
 ## Related Topics
 
-- [Entity Configuration](/reference/configuration/entity-configuration) - Endpoint configuration
+- [Entity Configuration](/reference/entity-config) - Endpoint configuration
 - [Security Guide](/guide/security) - Security best practices
-- [Deployment Guide](/guide/deployment/production) - Production deployment
-- [Application Settings](/reference/configuration/application-settings) - Application configuration
+- [Deployment Guide](/guide/deployment) - Production deployment
+- [Application Settings](/reference/app-settings) - Application configuration

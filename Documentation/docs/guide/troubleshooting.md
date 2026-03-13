@@ -579,9 +579,9 @@ This troubleshooting guide covers the most common issues you'll encounter, but e
 
 For deeper information about specific aspects of gateway operation and configuration, these additional guides will provide more detailed guidance:
 
-- **[Monitoring Guide](../monitoring)** - Set up comprehensive monitoring and alerting for your gateway
-- **[Security Guide](../security)** - Implement robust security practices and threat monitoring  
-- **[Deployment Guide](../deployment)** - Best practices for deploying and configuring your gateway
-- **[API Endpoints Guide](../api-endpoints)** - Detailed information about configuring and managing your API endpoints
+- **[Monitoring Guide](/guide/monitoring)** - Set up comprehensive monitoring and alerting for your gateway
+- **[Security Guide](/guide/security)** - Implement robust security practices and threat monitoring  
+- **[Deployment Guide](/guide/deployment)** - Best practices for deploying and configuring your gateway
+- **[API Endpoints Guide](/guide/endpoints-sql)** - Detailed information about configuring and managing your API endpoints
 
 Remember that troubleshooting is a skill that improves with practice. The more familiar you become with your gateway's normal operation patterns, the more quickly you'll be able to identify and resolve issues when they occur.

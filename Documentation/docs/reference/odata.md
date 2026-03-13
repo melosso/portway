@@ -412,7 +412,7 @@ GET /api/prod/Products
 
 ## Related Topics
 
-- [Filter Operations](/reference/query-language/filter-operations) - Detailed filter operations
-- [Sorting & Pagination](/reference/query-language/sorting-pagination) - Advanced sorting and pagination
-- [SQL Endpoints](/guide/endpoints/sql) - SQL endpoint configuration
-- [API Overview](/reference/api/overview) - General API reference
+- [Filter Operations](/reference/filters) - Detailed filter operations
+- [Sorting & Pagination](/reference/sorting-pagination) - Advanced sorting and pagination
+- [SQL Endpoints](/guide/endpoints-sql) - SQL endpoint configuration
+- [API Overview](/reference/) - General API reference

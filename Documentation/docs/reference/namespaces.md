@@ -486,7 +486,7 @@ Namespace validation occurs at:
 
 - [Entity Configuration](/reference/entity-config) - Complete endpoint configuration reference
 - [Environment Settings](/reference/environment-settings) - Environment configuration
-- [API Overview](/reference/api/overview) - API endpoint patterns
-- [SQL Endpoints](/guide/endpoints/sql) - SQL endpoint guide
-- [Proxy Endpoints](/guide/endpoints/proxy) - Proxy endpoint guide
-- [Composite Endpoints](/guide/endpoints/composite) - Composite endpoint guide
+- [API Overview](/reference/) - API endpoint patterns
+- [SQL Endpoints](/guide/endpoints-sql) - SQL endpoint guide
+- [Proxy Endpoints](/guide/endpoints-proxy) - Proxy endpoint guide
+- [Composite Endpoints](/guide/endpoints-composite) - Composite endpoint guide

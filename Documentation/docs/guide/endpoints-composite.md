@@ -449,7 +449,7 @@ Use template transformations to dynamically configure steps:
 
 ## Next Steps
 
-- Learn about [Proxy Endpoints](/guide/endpoints/proxy) that power composite operations
-- Explore [Webhook Endpoints](/guide/endpoints/webhooks) for event-driven integrations
+- Learn about [Proxy Endpoints](/guide/endpoints-proxy) that power composite operations
+- Explore [Webhook Endpoints](/guide/endpoints-webhook) for event-driven integrations
 - Review [Security Best Practices](/guide/security) for composite operations
 - Configure [Environment Settings](/guide/environments) for multi-stage deploymen
