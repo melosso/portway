@@ -140,7 +140,7 @@ export default withMermaid(
     },
     footer: {
       message: 'Released under the GNU AGPL (3.0) License.',
-      copyright: 'Copyright © 2025-Present Melosso.com'
+      copyright: 'Copyright © 2026 Melosso.com'
     }
   },
   vite: {
