@@ -44,8 +44,6 @@ else
     RANDOM_KEY=$(cat /dev/urandom | tr -dc 'a-f0-8' | fold -w 64 | head -n 1)
 fi
 
-sed -i "s/demo-encryption-key-12345/$RANDOM_KEY/g" docker-compose.yml
-
 # Optional: Prompt for domain or leave as default
 echo "Portway is configured for: https://portway-demo.melosso.com"
 echo "If you use a different domain, edit WebUi__PublicOrigins in docker-compose.yml"

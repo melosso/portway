@@ -287,9 +287,9 @@ curl -X POST \
 
 ## Related Topics
 
-- [Authentication](/reference/authentication) - Token and authorization headers
-- [API Overview](/reference/api/overview) - General API reference
-- [Environment Settings](/reference/configuration/environment-settings) - Environment-specific headers
+- [Authentication](/reference/api-auth) - Token and authorization headers
+- [API Overview](/reference/) - General API reference
+- [Environment Settings](/reference/environment-settings) - Environment-specific headers
 - [Security Guide](/guide/security) - Security header configuration
 
 :::tip Header Debugging

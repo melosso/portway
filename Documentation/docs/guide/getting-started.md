@@ -88,14 +88,14 @@ Configure the webserver accordingly:
    - Name: `Portway`
    - Application pool: `PortwayAppPool`
    - Physical path: `C:\Portway`
-   - Binding: https://localhost:443 (or your preferred port)
+   - Binding: `http://localhost:8080` (or your preferred port)
    - Certificate: The certificate you created
 5. Set Application Pool Identity (for proxy endpoints):
    - Select your Application Pool
    - Advanced Settings > Identity
    - Choose appropriate user account with network access
 
-You should now be ready for running Portway for the first time. Just open your browser on **http://localhost:8080**.
+You should now be ready for running Portway for the first time. Just open your browser on **`http://localhost:8080`**.
 
 ## Initial Configuration
 

@@ -272,9 +272,9 @@ Include these critical components in your backup plan:
 
 Now that Portway is installed, continue with:
 
-- [Configure Endpoints](./endpoints/overview) - Set up SQL, Proxy, and Webhook endpoints
+- [Configure Endpoints](/guide/endpoints-sql) - Set up SQL, Proxy, and Webhook endpoints
 - [Configure Environments](./environments) - Set up database connections
-- [Configure Web UI](./webui1) - Set up the Web UI 
-- [Manage Authentication](./security/tokens) - Generate and manage access tokens  
+- [Configure Web UI](/guide/webui) - Set up the Web UI 
+- [Manage Authentication](/reference/token-generator) - Generate and manage access tokens  
 - [Monitor Your Installation](./monitoring) - Learn about logging and health checks
-- [Production Security](./security/production) - Implement security best practices
+- [Production Security](/guide/security) - Implement security best practices

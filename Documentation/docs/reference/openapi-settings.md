@@ -333,5 +333,5 @@ This section may assist you in troubleshooting:
 ## Related Topics
 
 - [Entity Configuration](/reference/entity-config) - Complete entity configuration guide
-- [API Overview](/reference/api/overview) - API endpoint patterns and usage
-- [Environment Settings](/reference/configuration/environment-settings) - Environment configuration
+- [API Overview](/reference/) - API endpoint patterns and usage
+- [Environment Settings](/reference/environment-settings) - Environment configuration

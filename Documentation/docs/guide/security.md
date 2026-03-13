@@ -426,4 +426,4 @@ Token revocation is permanent. Once revoked, a token cannot be reactivated. Alwa
 - [Configure Rate Limiting](./rate-limiting) for API protection
 - [Set up Monitoring](./monitoring) for security events
 - [Deploy to Production](./deployment) with security best practices
-- [Review API Reference](../reference/authentication) for detailed security configuration
+- [Review API Reference](/reference/api-auth) for detailed security configuration

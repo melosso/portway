@@ -435,7 +435,7 @@ These should be pretty known for anyone familiar with SQL Server, but just give 
 
 ## Next Steps
 
-- Learn about [Proxy Endpoints](/guide/endpoints/proxy) for forwarding requests
-- Explore [Composite Endpoints](/guide/endpoints/composite) for complex operations
+- Learn about [Proxy Endpoints](/guide/endpoints-proxy) for forwarding requests
+- Explore [Composite Endpoints](/guide/endpoints-composite) for complex operations
 - Review [Security Best Practices](/guide/security) for protecting your data
 - Set up [Environment Configuration](/guide/environments) for multi-stage deployments

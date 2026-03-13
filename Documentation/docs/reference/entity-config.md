@@ -765,8 +765,8 @@ Configure allowed environments in `environments/settings.json`:
 
 ## Related Topics
 
-- [Environment Settings](/reference/configuration/environment-settings) - Environment configuration
-- [API Overview](/reference/api/overview) - API endpoint patterns
-- [SQL Endpoints](/guide/endpoints/sql) - SQL endpoint guide
-- [Composite Endpoints](/guide/endpoints/composite) - Composite endpoint guide
-- [File Operations](/guide/endpoints/files) - File handling guide
+- [Environment Settings](/reference/environment-settings) - Environment configuration
+- [API Overview](/reference/) - API endpoint patterns
+- [SQL Endpoints](/guide/endpoints-sql) - SQL endpoint guide
+- [Composite Endpoints](/guide/endpoints-composite) - Composite endpoint guide
+- [File Operations](/guide/endpoints-file) - File handling guide
