@@ -1,0 +1,15 @@
+{
+    "Url": "http://nginx/api/accounts",
+    "Methods": ["GET", "POST", "PUT", "DELETE"],
+    "Namespace": "Accounts",
+    "NamespaceDisplayName": "Account Management",
+    "Documentation": {
+        "TagDescription": "Manage customer and vendor accounts.",
+        "MethodDescriptions": {
+            "GET": "List all accounts",
+            "POST": "Create a new account",
+            "PUT": "Update an account",
+            "DELETE": "Delete an account"
+        }
+    }
+}

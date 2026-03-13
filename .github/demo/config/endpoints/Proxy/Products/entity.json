@@ -1,0 +1,15 @@
+{
+    "Url": "http://nginx/api/products",
+    "Methods": ["GET", "POST", "PUT", "DELETE"],
+    "Namespace": "Products",
+    "NamespaceDisplayName": "Product Catalog",
+    "Documentation": {
+        "TagDescription": "Manage your product catalog and inventory SKUs.",
+        "MethodDescriptions": {
+            "GET": "Browse products",
+            "POST": "Add a new product",
+            "PUT": "Update product details",
+            "DELETE": "Remove a product"
+        }
+    }
+}
