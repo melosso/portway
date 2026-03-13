@@ -10,6 +10,7 @@ services:
       - ./tokens:/app/tokens
       - ./log:/app/log
       - ./data:/app/data
+      - ./keys:/app/.core
     environment:
       - PORTWAY_ENCRYPTION_KEY=a_very_s3cret_key
       - HostOptions__BackgroundServiceExceptionBehavior=Ignore
