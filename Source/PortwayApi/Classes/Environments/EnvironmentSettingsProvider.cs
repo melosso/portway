@@ -471,15 +471,15 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     private void DecryptConfig(EnvironmentConfig config, string env)
     {
         // Decrypt ConnectionString if encrypted
-        if (SettingsEncryptionHelper.IsEncrypted(config.ConnectionString!))
+        if (!string.IsNullOrWhiteSpace(config.ConnectionString) && SettingsEncryptionHelper.IsEncrypted(config.ConnectionString))
         {
             if (string.IsNullOrWhiteSpace(_privateKeyPem))
             {
                 Log.Error("ConnectionString is encrypted but no private key available for environment: {Environment}", env);
                 throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
             }
-            
-            config.ConnectionString = SettingsEncryptionHelper.Decrypt(config.ConnectionString!, _privateKeyPem);
+
+            config.ConnectionString = SettingsEncryptionHelper.Decrypt(config.ConnectionString, _privateKeyPem);
         }
 
         // Decrypt encrypted headers
