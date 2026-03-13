@@ -96,9 +96,14 @@ volumes:
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
-| `Use_HTTPS` | Enable/disable HTTPS | `false` |
+| `Use_HTTPS` | Whether Kestrel serves HTTPS directly. See note below. | `false` |
 | `AllowedHosts` | Allowed host names | `*` |
 | `PathBase` | Base path for the application | (empty) |
+
+> [!WARNING]
+> **`Use_HTTPS` requires a TLS certificate to be available to Kestrel.** If you set this to `true` without mounting a valid certificate, the container will fail to start immediately with `BackgroundService failed / Hosting failed to start`.
+>
+> In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally — keep `Use_HTTPS=false` in that case. Only set `Use_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
 
 ### Web UI Settings
 
