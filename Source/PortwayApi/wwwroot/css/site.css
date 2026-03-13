@@ -1,6 +1,8 @@
 :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
     --border: 240 5.9% 90%;
@@ -28,6 +30,8 @@
     :root {
         --background: 240 10% 3.9%;
         --foreground: 0 0% 98%;
+        --card: 240 10% 3.9%;
+        --card-foreground: 0 0% 98%;
         --muted: 240 3.7% 15.9%;
         --muted-foreground: 240 5% 64.9%;
         --border: 240 3.7% 15.9%;
@@ -50,6 +54,8 @@
 [data-theme="light"] {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
     --border: 240 5.9% 90%;
@@ -69,6 +75,8 @@
 [data-theme="dark"] {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
     --border: 240 3.7% 15.9%;
@@ -2191,9 +2199,9 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 .alert-dialog-overlay {
     position: fixed; inset: 0; z-index: 9999;
     display: flex; align-items: center; justify-content: center;
-    background: hsl(0 0% 0% / 0.45);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: hsl(0 0% 0% / 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     opacity: 0; pointer-events: none;
     transition: opacity 0.15s ease;
 }
@@ -2421,8 +2429,8 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 .dialog-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
     opacity: 0;
     transition: opacity 0.2s;
     display: flex;

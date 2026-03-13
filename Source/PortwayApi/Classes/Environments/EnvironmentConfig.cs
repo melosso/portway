@@ -67,7 +67,7 @@ public class AuthenticationMethod
     
     /// <summary>
     /// Credential value (e.g., API key, static token, or Basic password). 
-    /// This will be auto-encrypted with PWENC: prefix.
+    /// This will be auto-encrypted with current encryption method
     /// </summary>
     public string Value { get; set; } = string.Empty;
     
@@ -79,10 +79,10 @@ public class AuthenticationMethod
     // JWT/OAuth2 specific properties
     public string? Issuer { get; set; }
     public string? Audience { get; set; }
-    public string? Secret { get; set; } // Will be auto-encrypted
+    public string? Secret { get; set; } // Will be encrypted
     public string? PublicKey { get; set; } // PEM format
     public string? Algorithm { get; set; } // e.g., "HS256", "RS256"
     public string? ClientId { get; set; }
-    public string? ClientSecret { get; set; } // Will be auto-encrypted
+    public string? ClientSecret { get; set; } // Will be encrypted
     public string? IntrospectionEndpoint { get; set; }
 }

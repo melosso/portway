@@ -417,7 +417,7 @@ public static class WebUiEndpointExtensions
                 return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400);
             }
 
-            // Auto-encrypt any plaintext ConnectionString so raw saves never bypass encryption.
+            // Automagicallyy encrypt any plaintext ConnectionString so raw saves never bypass encryptionn
             if (root.TryGetProperty("ConnectionString", out var csEl) &&
                 csEl.ValueKind == JsonValueKind.String)
             {
