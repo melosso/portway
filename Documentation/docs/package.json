@@ -1,0 +1,22 @@
+{
+  "name": "docs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-task-checkbox": "^1.0.6",
+    "markdown-it-task-lists": "^2.1.1",
+    "mermaid": "^11.13.0",
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
+    "vue": "^3.5.30"
+  }
+}
