@@ -222,7 +222,7 @@ Response:
 }
 ```
 
-### PUT /ui/api/tokens/{id}
+### PUT /ui/api/tokens/\{id\}
 
 Update token properties.
 
@@ -239,7 +239,7 @@ Content-Type: application/json
 }
 ```
 
-### DELETE /ui/api/tokens/{id}
+### DELETE /ui/api/tokens/\{id\}
 
 Revoke a token.
 

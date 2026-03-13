@@ -14,3 +14,7 @@ TrimmerRoots.xml
 Source/PortwayApi/.core/
 # Ignore log files
 Source/coverage.runsettings
+Documentation/docs/node_modules/*
+Documentation/package-lock.json
+Documentation/docs/package.json
+Documentation/docs/package-lock.json
