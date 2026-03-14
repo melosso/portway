@@ -2413,10 +2413,11 @@ public class EndpointController : ControllerBase
                 odataParams["orderby"] = orderbyForQuery;
 
             // Step 7: Convert OData to SQL (provider-aware for correct dialect)
+            var detectedProviderType = SqlProviderDetector.Detect(connectionString);
             var (query, parameters) = _oDataToSqlConverter.ConvertToSQL(
                 $"{schema}.{objectName}",
                 odataParams,
-                SqlProviderDetector.Detect(connectionString));
+                detectedProviderType);
 
             // Step 8: Check cache first if enabled
             object? cachedResponse = null;
@@ -2443,7 +2444,7 @@ public class EndpointController : ControllerBase
             var results = await connection.QueryAsync(query, parameters);
             var resultList = results.ToList();
 
-            // Step 9: Transform results to use aliases (if column mappings exist)
+            // Step 10: Transform results to use aliases, but onlyy if column mappings exist
             var transformedResults = resultList;
             if (allowedColumns.Count > 0)
             {

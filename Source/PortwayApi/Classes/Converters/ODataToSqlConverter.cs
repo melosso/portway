@@ -60,7 +60,10 @@ public class ODataToSqlConverter : IODataToSqlConverter
             Log.Debug("No endpoint definition found, using parsed values: Schema={Schema}, Table={Table}", schema, tableName);
         }
 
-        string fullTableName = $"{schema}.{tableName}";
+        // SQLite has no schema namespacing, we'll hav to omit schema prefix entirely.
+        string fullTableName = providerType == SqlProviderType.Sqlite
+            ? tableName
+            : $"{schema}.{tableName}";
 
         if (!_compilers.TryGetValue(providerType, out var compiler))
         {

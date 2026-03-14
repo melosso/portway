@@ -1,0 +1,32 @@
+{
+  "DatabaseObjectName": "Warehouses",
+  "Namespace": "WMS",
+  "NamespaceDisplayName": "WMS",
+  "IsPrivate": false,
+  "AllowedEnvironments": ["WMS"],
+  "AllowedMethods": ["GET"],
+  "AllowedColumns": [
+    "Id",
+    "Code",
+    "Name",
+    "City",
+    "Country",
+    "Region",
+    "CapacityM2",
+    "IsActive"
+  ],
+  "Properties": {
+    "CacheEnabled": false,
+    "MaxPageSize": 50,
+    "DefaultSort": "Code ASC"
+  },
+  "Documentation": {
+    "TagDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
+    "MethodDescriptions": {
+      "GET": "Retrieve warehouse locations"
+    },
+    "MethodDocumentation": {
+      "GET": "Browse warehouse location reference data stored in a local SQLite database (`demo.db`). These locations are referenced by `Product/Stock` and `Production/Lines`. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip`."
+    }
+  }
+}
