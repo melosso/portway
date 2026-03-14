@@ -13,7 +13,6 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - Use_HTTPS=false
       - AllowedHosts=*
       - PathBase=
 

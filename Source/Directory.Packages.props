@@ -42,6 +42,8 @@
   <ItemGroup Label="Databases">
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Npgsql" Version="9.0.3" />
+    <PackageVersion Include="MySqlConnector" Version="2.4.0" />
     <PackageVersion Include="Dapper" Version="2.1.66" />
     <PackageVersion Include="SqlKata" Version="2.4.0" />
     <PackageVersion Include="SqlKata.Execution" Version="2.4.0" />

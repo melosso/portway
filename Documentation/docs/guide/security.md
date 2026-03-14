@@ -46,30 +46,7 @@ Token file format:
 
 ### Managing Tokens
 
-Use the Portway Management Console to manage access tokens.
-
-> [!CAUTION]
-> Any changes made through the program or command-line interface (CLI) take effect immediately.
-
-#### Running the program
-
-You can start `PortwayMgt.exe` from the Portway root directory. The program will walk you through various options that'll allow you to manage access to the API.
-
-#### Using the CLI
-
-```bash
-# Generate token with full access
-PortwayMgt.exe admin
-
-# Generate token with specific scopes
-PortwayMgt.exe api-user -s "Products,Orders"
-
-# Generate token for specific environments
-PortwayMgt.exe deploy-bot -e "dev,test"
-
-# Generate token that expires
-PortwayMgt.exe temp-user --expires 30
-```
+Use the Portway Web UI to manage tokens.
 
 ## Authorization
 
@@ -333,66 +310,9 @@ GO
 
 If a token is compromised, follow these steps immediately:
 
-1. **Revoke the token using the Management Console**
+1. **Rotate or revoke the token using the web UI**
    
-   Run the Portway Management Console from the root directory:
-   ```powershell
-   cd C:\path\to\portway
-   PortwayMgt.exe
-   ```
-   
-   Then follow these steps:
-   ```
-   ===============================================
-         Portway Token Generator        
-   ===============================================
-   1. List all existing tokens
-   2. Generate new token
-   3. Revoke token
-   4. Update token scopes
-   5. Update token environments
-   6. Update token expiration
-   0. Exit
-   -----------------------------------------------
-   Select an option: 3
-   ```
-   
-   When prompted, enter the ID of the compromised token:
-   ```
-   Enter token ID to revoke (or 0 to cancel): DemoUser
-   Token with ID DemoUser has been revoked successfully.
-   ```
-
-2. **Effects of token revocation**
-   
-   - The token is marked with a `RevokedAt` timestamp in the database
-   - The token file is deleted from the `tokens/` directory
-   - All future API requests using this token will be rejected with 401 Unauthorized
-   - Access logs will show "Invalid or expired token" for attempts to use the revoked token
-
-3. **Review security logs**
-   
-   Check the logs for unauthorized activity:
-   ```
-   log/portwayapi-20240503.log
-   ```
-   
-   Look for entries with the compromised token:
-   ```
-   [2024-05-03 14:23:15] ❌ Invalid or expired token used for /api/prod/Customers
-   ```
-
-4. **Generate a replacement token**
-   
-   Create a new token with restricted permissions:
-   ```powershell
-   # Option 1: Interactive mode
-   PortwayMgt.exe
-   # Then select option 2 and follow prompts
-   
-   # Option 2: Command line with specific restrictions
-   PortwayMgt.exe api-user -s "Products,Orders" -e "dev,test" --expires 30
-   ```
+   As Portway offers a web UI for management, you can easily archive an existing token; or rotate that specific token. Go to `Access Tokens` and click on the `Rotate Token` button to do so.  
 
 5. **Update affected systems**
    

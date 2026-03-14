@@ -15,6 +15,7 @@ using SqlKata.Compilers;
 using PortwayApi.Api;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
+using PortwayApi.Classes.Providers;
 using PortwayApi.Endpoints;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
@@ -22,6 +23,7 @@ using PortwayApi.Middleware;
 using PortwayApi.Services;
 using PortwayApi.Services.Caching;
 using PortwayApi.Services.Files;
+using PortwayApi.Services.Providers;
 using System.Text;
 using System.Text.Json;
 using System.Net;
@@ -252,10 +254,16 @@ try
     builder.Services.AddSingleton<IEnvironmentSettingsProvider, EnvironmentSettingsProvider>();
     builder.Services.AddSingleton<EnvironmentSettings>();
 
+    // Register SQL providers (provider detection from connection string, no config changes needed)
+    builder.Services.AddSingleton<ISqlProvider, MsSqlProvider>();
+    builder.Services.AddSingleton<ISqlProvider, PostgreSqlProvider>();
+    builder.Services.AddSingleton<ISqlProvider, MySqlProvider>();
+    builder.Services.AddSingleton<ISqlProvider, SqliteProvider>();
+    builder.Services.AddSingleton<ISqlProviderFactory, SqlProviderFactory>();
+
     // Register OData SQL services
     builder.Services.AddSingleton<IHostedService, StartupLogger>();
     builder.Services.AddSingleton<IEdmModelBuilder, EdmModelBuilder>();
-    builder.Services.AddSingleton<Compiler, SqlServerCompiler>();
     builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
 
     builder.Services.AddSingleton<SqlMetadataService>();
@@ -313,12 +321,15 @@ try
         var environmentSettingsProvider = sp.GetRequiredService<IEnvironmentSettingsProvider>();
         var environmentSettings = sp.GetRequiredService<EnvironmentSettings>();
 
+        var sqlProviderFactory = sp.GetRequiredService<ISqlProviderFactory>();
+
         return new PortwayApi.Services.HealthCheckService(
             healthCheckService,
             TimeSpan.FromSeconds(90),   // TTL longer than refresh interval so cache is always valid
             httpClientFactory,
             environmentSettingsProvider,
-            environmentSettings);
+            environmentSettings,
+            sqlProviderFactory);
     });
 
     // The SSE broadcaster for /ui/ route

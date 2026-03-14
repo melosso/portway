@@ -1,8 +1,10 @@
-# Secrets Encryption
+# Secrets encryption
 
 Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
 
 ## How It Works
+
+The program will go through various steps in order to safely encrypt your secrets.
 
 **Automatic Encryption on Startup:**
 1. When Portway starts, it checks for encryption keys in the `.core` folder
@@ -14,7 +16,6 @@ Portway automatically encrypts sensitive data in your environment settings files
 **Key Storage:**
 - Private key: `.core/recovery.binlz4` (encrypted with `PORTWAY_ENCRYPTION_KEY`)
 - Public key: `.core/snapshot_blob.bin`
-- The `.core` folder is hidden on Windows
 
 ## Encryption Key Management
 
