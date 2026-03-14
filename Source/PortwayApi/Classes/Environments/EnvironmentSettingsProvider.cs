@@ -3,7 +3,6 @@ using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Serilog;
 using PortwayApi.Interfaces;
-using Microsoft.Data.SqlClient;
 using System.Security;
 using System.Security.Cryptography; 
 using PortwayApi.Helpers;
@@ -536,26 +535,14 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     {
         try
         {
-            var builder = new SqlConnectionStringBuilder(connectionString);
+            var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString };
             
-            bool hasUserID = !string.IsNullOrEmpty(builder.UserID);
-            bool hasPassword = !string.IsNullOrEmpty(builder.Password);
+            bool hasPassword = builder.ContainsKey("Password") || builder.ContainsKey("Pwd");
+            bool hasUserID = builder.ContainsKey("User ID") || builder.ContainsKey("Uid") || builder.ContainsKey("User");
             
             if (hasUserID || hasPassword)
             {
                 Log.Debug("Connection string contains hardcoded credentials, this will later be encrypted.");
-                
-                if (hasPassword)
-                {
-                    string originalPassword = builder.Password;
-                    var securePassword = new SecureString();
-                    foreach (char c in originalPassword)
-                    {
-                        securePassword.AppendChar(c);
-                    }
-                    securePassword.MakeReadOnly();
-                    builder.Password = "";
-                }
                 
                 var masked = MaskConnectionString(connectionString);
                 Log.Debug("Using connection string: {ConnectionString}", masked);
@@ -639,8 +626,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return true;
 
         alreadyEncrypted = false;
-        
-        if (IsValidMssqlConnectionString(config.ConnectionString))
+
+        if (IsValidConnectionString(config.ConnectionString))
         {
             config.ConnectionString = SettingsEncryptionHelper.Encrypt(config.ConnectionString);
             needsSave = true;
@@ -648,10 +635,9 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return true;
         }
 
-        Log.Error("Invalid MSSQL connection string format in environment '{Env}' - skipping encryption. Connection string must have DataSource, InitialCatalog, and either IntegratedSecurity=true or valid UserID/Password.", envName);
+        Log.Error("Invalid connection string format in environment '{Env}' - skipping encryption. Connection string must be a valid key-value format.", envName);
         return false;
     }
-
     private void AutoEncryptHeaders(EnvironmentConfig config, string envName, ref bool needsSave, ref bool alreadyEncrypted)
     {
         if (config.Headers == null) return;
@@ -698,31 +684,22 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         return fieldValue;
     }
 
-    private bool IsValidMssqlConnectionString(string connectionString)
+    private bool IsValidConnectionString(string connectionString)
     {
         try
         {
-            var builder = new SqlConnectionStringBuilder(connectionString);
-            
-            if (string.IsNullOrWhiteSpace(builder.DataSource))
-                return false;
-                
-            if (string.IsNullOrWhiteSpace(builder.InitialCatalog))
-                return false;
-            
-            if (!builder.IntegratedSecurity && 
-                (string.IsNullOrWhiteSpace(builder.UserID) || 
-                 string.IsNullOrWhiteSpace(builder.Password)))
-                return false;
-            
-            return true;
+            var builder = new System.Data.Common.DbConnectionStringBuilder
+            {
+                ConnectionString = connectionString
+            };
+
+            return builder.Count > 0;
         }
         catch
         {
             return false;
         }
     }
-
     private bool IsSensitiveField(string fieldName)
     {
         string[] sensitivePatterns = 
