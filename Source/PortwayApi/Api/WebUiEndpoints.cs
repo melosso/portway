@@ -471,11 +471,14 @@ public static class WebUiEndpointExtensions
                 var provider = app.Services.GetRequiredService<IEnvironmentSettingsProvider>();
                 var (connectionString, _, _) = await provider.LoadEnvironmentOrThrowAsync(name);
 
+                var sqlProviderFactory = app.Services.GetRequiredService<PortwayApi.Services.Providers.ISqlProviderFactory>();
+                var sqlProvider = sqlProviderFactory.GetProvider(connectionString);
+
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-                await using var conn = new SqlConnection(connectionString);
+                await using var conn = sqlProvider.CreateConnection(connectionString);
                 await conn.OpenAsync(cts.Token);
                 await using var cmd = conn.CreateCommand();
-                cmd.CommandText  = "SELECT 1";
+                cmd.CommandText  = sqlProvider.HealthCheckQuery;
                 cmd.CommandTimeout = 4;
                 await cmd.ExecuteScalarAsync(cts.Token);
 
