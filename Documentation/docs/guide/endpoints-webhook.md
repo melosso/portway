@@ -1,12 +1,12 @@
 # Webhook Endpoints
 
-Webhook endpoints in Portway provide a simple way to receive and store external event notifications in your SQL Server database. These endpoints act as HTTP receivers that automatically persist incoming webhook payloads, making them ideal for integrating with third-party services that use webhooks for notifications.
+Webhook endpoints in Portway provide a simple way to receive and store external event notifications in your SQL database. These endpoints act as HTTP receivers that automatically persist incoming webhook payloads, making them ideal for integrating with third-party services that use webhooks for notifications.
 
 ## Overview
 
 Webhook endpoints allow you to:
 - Receive HTTP POST requests from external services
-- Automatically store webhook payloads in SQL Server
+- Automatically store webhook payloads in your SQL database
 - Handle multiple webhook configurations
 - Track when webhooks were received
 - Process any valid JSON payload structure

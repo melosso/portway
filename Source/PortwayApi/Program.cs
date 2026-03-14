@@ -15,6 +15,7 @@ using SqlKata.Compilers;
 using PortwayApi.Api;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
+using PortwayApi.Classes.Providers;
 using PortwayApi.Endpoints;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
@@ -22,6 +23,7 @@ using PortwayApi.Middleware;
 using PortwayApi.Services;
 using PortwayApi.Services.Caching;
 using PortwayApi.Services.Files;
+using PortwayApi.Services.Providers;
 using System.Text;
 using System.Text.Json;
 using System.Net;
@@ -252,13 +254,20 @@ try
     builder.Services.AddSingleton<IEnvironmentSettingsProvider, EnvironmentSettingsProvider>();
     builder.Services.AddSingleton<EnvironmentSettings>();
 
+    // Register SQL providers (provider detection from connection string, no config changes needed)
+    builder.Services.AddSingleton<ISqlProvider, MsSqlProvider>();
+    builder.Services.AddSingleton<ISqlProvider, PostgreSqlProvider>();
+    builder.Services.AddSingleton<ISqlProvider, MySqlProvider>();
+    builder.Services.AddSingleton<ISqlProvider, SqliteProvider>();
+    builder.Services.AddSingleton<ISqlProviderFactory, SqlProviderFactory>();
+
     // Register OData SQL services
     builder.Services.AddSingleton<IHostedService, StartupLogger>();
     builder.Services.AddSingleton<IEdmModelBuilder, EdmModelBuilder>();
-    builder.Services.AddSingleton<Compiler, SqlServerCompiler>();
     builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
 
     builder.Services.AddSingleton<SqlMetadataService>();
+    builder.Services.AddHostedService<MetadataInitializationService>();
     builder.Services.AddSingleton<FileHandlerService>();
     builder.Services.AddSqlConnectionPooling(builder.Configuration);
 
@@ -313,23 +322,27 @@ try
         var environmentSettingsProvider = sp.GetRequiredService<IEnvironmentSettingsProvider>();
         var environmentSettings = sp.GetRequiredService<EnvironmentSettings>();
 
+        var sqlProviderFactory = sp.GetRequiredService<ISqlProviderFactory>();
+
         return new PortwayApi.Services.HealthCheckService(
             healthCheckService,
             TimeSpan.FromSeconds(90),   // TTL longer than refresh interval so cache is always valid
             httpClientFactory,
             environmentSettingsProvider,
-            environmentSettings);
+            environmentSettings,
+            sqlProviderFactory);
     });
 
     // The SSE broadcaster for /ui/ route
     builder.Services.AddSingleton<PortwayApi.Services.SseBroadcaster>();
 
-    // Background service to prevent health check cache from expiring 
+    // Background service to prevent health check cache from expiring
     builder.Services.AddHostedService(sp =>
         new PortwayApi.Services.HealthRefreshService(
             sp.GetRequiredService<PortwayApi.Services.HealthCheckService>(),
             TimeSpan.FromSeconds(60),
-            sp.GetRequiredService<PortwayApi.Services.SseBroadcaster>()));
+            sp.GetRequiredService<PortwayApi.Services.SseBroadcaster>(),
+            sp.GetRequiredService<IHostApplicationLifetime>()));
 
     OpenApiConfiguration.ConfigureOpenApi(builder);
 
@@ -568,42 +581,6 @@ try
         }
     }
 
-
-    // Initialize SQL Metadata Service
-    using (var scope = app.Services.CreateScope())
-    {
-        try
-        {
-            var metadataService = scope.ServiceProvider.GetRequiredService<SqlMetadataService>();
-            var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-            var sqlEnvironmentProviderScope = scope.ServiceProvider.GetRequiredService<IEnvironmentSettingsProvider>();
-            var metadataEnvSettings = scope.ServiceProvider.GetRequiredService<EnvironmentSettings>();
-            
-            // Initialize metadata cache for all SQL endpoints
-            await metadataService.InitializeAsync(
-                sqlEndpoints,
-                metadataEnvSettings,
-                async environment => 
-                {
-                    try
-                    {
-                        var (connectionString, _, _) = await sqlEnvironmentProviderScope.LoadEnvironmentOrThrowAsync(environment);
-                        return connectionString ?? string.Empty;
-                    }
-                    catch
-                    {
-                        return string.Empty;
-                    }
-                });
-            
-            Log.Debug("SQL metadata service initialized with {Count} endpoints", 
-                metadataService.GetCachedEndpoints().Count());
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Failed to initialize SQL metadata service: {Message}", ex.Message);
-        }
-    }
 
     // Log cache configuration
     using (var scope = app.Services.CreateScope())

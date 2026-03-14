@@ -1,0 +1,7 @@
+{
+  "ConnectionString": "Data Source=data/demo.db;",
+  "ServerName": "localhost",
+  "Headers": {
+    "Origin": "Portway"
+  }
+}

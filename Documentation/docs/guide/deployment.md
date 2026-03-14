@@ -24,7 +24,7 @@ Before you begin, ensure you have:
 ### 1. Verify System Requirements
 - [ ] IIS is installed and running
 - [ ] Administrator access is available
-- [ ] SQL Server is accessible (if using SQL endpoints)
+- [ ] SQL database is accessible (if using SQL endpoints)
 - [ ] Firewall rules allow necessary ports
 - [ ] Valid TLS/SSL (self-signed) certificate
 

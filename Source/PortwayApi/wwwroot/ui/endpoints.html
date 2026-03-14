@@ -548,7 +548,7 @@ function fieldDocumentation(c) {
 
 // Structured forms per type ─────────────────────────────
 
-// SQL — order matches file convention:
+// SQL, order matches file convention:
 // DatabaseSchema, DatabaseObjectName, Namespace, NamespaceDisplayName, IsPrivate,
 // AllowedEnvironments, AllowedMethods, Procedure, PrimaryKey,
 // [Columns accordion], [Advanced accordion], Documentation
@@ -583,7 +583,7 @@ function renderSqlForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Proxy — order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
+// Proxy, order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
 //                [Delete Patterns accordion], Documentation
 function renderProxyForm(c) {
   return `
@@ -608,7 +608,7 @@ function renderProxyForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Composite — order: Type, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
+// Composite, order: Type, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
 //                    CompositeConfig (Name, Description, Steps), Documentation
 function renderCompositeForm(c) {
   const cfg = c.CompositeConfig ?? {};
@@ -634,7 +634,7 @@ function renderCompositeForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// File — order: StorageType, BaseDirectory, AllowedExtensions, Namespace, NamespaceDisplayName,
+// File, order: StorageType, BaseDirectory, AllowedExtensions, Namespace, NamespaceDisplayName,
 //               AllowedEnvironments, IsPrivate, Documentation
 function renderFileForm(c) {
   return `
@@ -658,7 +658,7 @@ function renderFileForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Static — order: ContentType, ContentFile, EnableFiltering, Namespace, NamespaceDisplayName,
+// Static, order: ContentType, ContentFile, EnableFiltering, Namespace, NamespaceDisplayName,
 //                 AllowedEnvironments, IsPrivate, Documentation
 function renderStaticForm(c) {
   return `
@@ -682,7 +682,7 @@ function renderStaticForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Webhook — order: DatabaseObjectName, DatabaseSchema, AllowedColumns, AllowedMethods,
+// Webhook, order: DatabaseObjectName, DatabaseSchema, AllowedColumns, AllowedMethods,
 //                  AllowedEnvironments, Namespace, NamespaceDisplayName, Documentation
 function renderWebhookForm(c) {
   const hasAdvanced = !!(c.RequiredColumns?.length || c.ColumnValidation);

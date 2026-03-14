@@ -4,16 +4,61 @@
   'use strict';
 
   const PromoBar = {
-    init: async function() {
-      // Don't show if user closed it this session or globally (optional)
+    init: function() {
+      // Don't show if user closed it this session
       if (sessionStorage.getItem('portway_promo_closed')) return;
 
+      // Try cache to avoid layout shift/flicker
       try {
-        const response = await fetch('/ui/api/overview');
+        const cached = localStorage.getItem('portway_promo_cache');
+        if (cached) {
+          const data = JSON.parse(cached);
+          if (data && data.text) {
+            const isLogin = window.location.pathname.endsWith('/ui/login') || window.location.pathname.endsWith('/ui/login.html');
+            if (!(isLogin && !data.login)) {
+              this.render(data.text);
+            }
+          }
+        }
+      } catch (e) {}
+
+      // Fetch fresh version in background
+      this.refresh();
+    },
+
+    refresh: async function() {
+      try {
+        const response = await fetch('/ui/api/customization');
+        if (!response.ok) return;
         const data = await response.json();
         
-        if (data.promo_text) {
-          this.render(data.promo_text);
+        const isLogin = window.location.pathname.endsWith('/ui/login') || window.location.pathname.endsWith('/ui/login.html');
+        const shouldShow = data.promo_text && !(isLogin && !data.promo_login);
+
+        // Cache for next page load
+        localStorage.setItem('portway_promo_cache', JSON.stringify({
+          text: data.promo_text || '',
+          login: data.promo_login || false
+        }));
+
+        const existing = document.getElementById('portwayPromoBar');
+
+        if (shouldShow) {
+          const html = this.parseMarkdown(data.promo_text);
+          if (existing) {
+            // Update if changed
+            const content = existing.querySelector('.promo-bar-content');
+            if (content && content.innerHTML !== html) {
+              content.innerHTML = html;
+            }
+          } else {
+            // Render if not already there (first time visit or previously hidden)
+            this.render(data.promo_text);
+          }
+        } else if (existing) {
+          // Hide if it was there but now shouldn't be
+          existing.remove();
+          document.body.classList.remove('has-promo');
         }
       } catch (err) {
         console.error('Failed to load promo text:', err);
@@ -35,7 +80,7 @@
         </button>
       `;
 
-      // Apply layout shift
+      // Apply layout shift (must be before prepend for smoother layout calculation in some browsers)
       document.body.classList.add('has-promo');
       document.body.prepend(container);
 

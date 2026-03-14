@@ -170,7 +170,7 @@ Connection problems can be frustrating because they often indicate issues with u
 
 #### When Your Database Won't Connect
 
-Database connection failures will typically show up as `500 Internal Server Error` responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL Server or when the connection is dropped unexpectedly.
+Database connection failures will typically show up as `500 Internal Server Error` responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL database or when the connection is dropped unexpectedly.
 
 Your first step should be verifying that your connection string is correct and complete:
 
@@ -180,7 +180,7 @@ Your first step should be verifying that your connection string is correct and c
 }
 ```
 
-Before diving into complex troubleshooting, test whether you can connect to SQL Server at all from your gateway server:
+Before diving into complex troubleshooting, test whether you can connect to your SQL database at all from your gateway server:
 
 ```powershell
 # Test SQL connection
@@ -438,7 +438,7 @@ This query helps you identify which endpoints are experiencing the highest error
 Sometimes the issue isn't with the gateway itself, but with the network connections it depends on. These PowerShell commands help you verify connectivity to essential services:
 
 ```powershell
-# Test connectivity to SQL Server
+# Test connectivity to SQL Server (adjust host/port for other providers)
 Test-NetConnection -ComputerName "YOUR_SERVER" -Port 1433
 
 # Test proxy endpoint
@@ -557,7 +557,7 @@ Regular maintenance doesn't have to be complicated, but it does need to be consi
 
 - **Monitor your health endpoints regularly.** Don't wait for users to report problems; set up automated health checks that call your `/health` endpoint and alert you to issues. Consider setting up simple monitoring scripts that test both the basic health endpoint and a few key API endpoints to ensure end-to-end functionality.
 
-- **Test connectivity to your backend services.** The gateway is only as reliable as the services it connects to. Regularly verify that your SQL Server connections are working and that proxy endpoints can reach their target services. This is especially important after any network changes or server maintenance.
+- **Test connectivity to your backend services.** The gateway is only as reliable as the services it connects to. Regularly verify that your SQL database connections are working and that proxy endpoints can reach their target services. This is especially important after any network changes or server maintenance.
 
 - **Keep audit logs of configuration changes.** When you modify endpoint configurations, token scopes, or other settings, document what you changed and why. This information becomes invaluable when troubleshooting issues that appear after configuration updates.
 

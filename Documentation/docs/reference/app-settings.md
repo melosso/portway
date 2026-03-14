@@ -287,6 +287,142 @@ The documentation will be available at `/docs` (or your custom route) once confi
 | `CommandTimeout` | integer | `30` | Command timeout (seconds) |
 | `Enabled` | boolean | `true` | Enable connection pooling |
 
+## Caching Configuration
+
+Portway caches proxy and SQL responses in memory or Redis to reduce upstream load and improve response times.
+
+### Configuration Structure
+
+```json
+{
+  "Caching": {
+    "Enabled": true,
+    "DefaultCacheDurationSeconds": 300,
+    "ProviderType": "Memory",
+    "MemoryCacheMaxItems": 10000,
+    "MemoryCacheSizeLimitMB": 100,
+    "CacheableContentTypes": [
+      "application/json",
+      "text/json"
+    ],
+    "EndpointCacheDurations": {
+      "Products": 600,
+      "Customers": 300
+    },
+    "Redis": {
+      "ConnectionString": "localhost:6379",
+      "InstanceName": "Portway:",
+      "Database": 0,
+      "UseSsl": false,
+      "ConnectTimeoutMs": 5000,
+      "AbortOnConnectFail": false,
+      "FallbackToMemoryCache": true,
+      "MaxRetryAttempts": 3,
+      "RetryDelayMs": 200
+    }
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Enabled` | boolean | `true` | Enable response caching |
+| `DefaultCacheDurationSeconds` | integer | `300` | Default TTL for cached responses |
+| `ProviderType` | string | `"Memory"` | Cache backend: `"Memory"` or `"Redis"` |
+| `MemoryCacheMaxItems` | integer | `10000` | Maximum number of items in the memory cache |
+| `MemoryCacheSizeLimitMB` | integer | `100` | Memory cap for the cache in MB |
+| `CacheableContentTypes` | array | `["application/json", ...]` | Only responses with these content types are cached |
+| `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
+
+### Redis Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ConnectionString` | string | `"localhost:6379"` | Redis connection string |
+| `InstanceName` | string | `"Portway:"` | Key prefix to namespace cache entries |
+| `Database` | integer | `0` | Redis logical database index |
+| `UseSsl` | boolean | `false` | Use TLS for the Redis connection |
+| `ConnectTimeoutMs` | integer | `5000` | Connection timeout in milliseconds |
+| `AbortOnConnectFail` | boolean | `false` | Throw on connection failure instead of retrying |
+| `FallbackToMemoryCache` | boolean | `true` | Fall back to in-process memory cache if Redis is unavailable |
+| `MaxRetryAttempts` | integer | `3` | Retry attempts on transient Redis errors |
+| `RetryDelayMs` | integer | `200` | Delay between retry attempts in milliseconds |
+
+## File Storage Configuration
+
+Controls how Portway stores and serves files for `File`-type endpoints.
+
+### Configuration Structure
+
+```json
+{
+  "FileStorage": {
+    "StorageDirectory": "storage/files",
+    "MaxFileSizeBytes": 52428800,
+    "UseMemoryCache": true,
+    "MemoryCacheTimeSeconds": 60,
+    "MaxTotalMemoryCacheMB": 200,
+    "BlockedExtensions": [".exe", ".dll", ".bat", ".sh", "..."]
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `StorageDirectory` | string | `"storage/files"` | Directory where uploaded files are stored |
+| `MaxFileSizeBytes` | integer | `52428800` | Maximum upload size (default 50 MB) |
+| `UseMemoryCache` | boolean | `true` | Cache frequently accessed files in memory |
+| `MemoryCacheTimeSeconds` | integer | `60` | How long a file stays in the memory cache |
+| `MaxTotalMemoryCacheMB` | integer | `200` | Total memory budget for the file cache |
+| `BlockedExtensions` | array | `[".exe", ".dll", ...]` | File extensions that are refused on upload |
+
+> [!NOTE]
+> The default block list covers executable, script, and macro-enabled office formats. Extend it to suit your security policy; shrink it only with caution.
+
+## Endpoint Reloading Configuration
+
+Controls hot-reload behaviour when endpoint JSON files change on disk.
+
+### Configuration Structure
+
+```json
+{
+  "EndpointReloading": {
+    "Enabled": true,
+    "DebounceMs": 2000,
+    "LogLevel": "Information"
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Enabled` | boolean | `true` | Watch endpoint files and reload on change without restart |
+| `DebounceMs` | integer | `2000` | Minimum milliseconds between reloads for the same file (prevents double-fires from editors) |
+| `LogLevel` | string | `"Information"` | Log level for reload events (`"Debug"`, `"Information"`, `"Warning"`) |
+
+## Log Settings
+
+### Configuration Structure
+
+```json
+{
+  "LogSettings": {
+    "LogResponseToFile": false
+  }
+}
+```
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LogResponseToFile` | boolean | `false` | Write raw response bodies to the log file (useful for debugging; disable in production) |
+
 ## General Settings
 
 ### AllowedHosts
@@ -333,13 +469,31 @@ The built-in admin interface settings.
 |----------|------|---------|-------------|
 | `AdminApiKey` | string | `""` | Password for web UI login (empty = disabled) |
 | `PublicOrigins` | array | `[]` | Allowed CORS origins for external access |
-| `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies |
+| `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies ||
+| `Customization.PromoText` | string | `""` | Markdown banner shown at the top of the login page |
+| `Customization.PromoLogin` | boolean | `false` | Allow the promo-bar to be shown at `/login` | 
+| `Customization.LoginFooter` | string | `""` | Markdown text shown below the login form |
 
 ### Security
 
 - Without `AdminApiKey`, the web UI is disabled
 - Without `PublicOrigins`, only local network IPs can access the UI
 - Cookie auth uses HMAC-SHA256 signing
+
+### Customization Example
+
+```json
+{
+  "WebUi": {
+    "Customization": {
+      "PromoText": "Welcome to **Portway**. Check the [documentation](https://github.com/melosso/portway) to get started.",
+      "LoginFooter": "No account? Contact your [administrator](mailto:admin@example.com)."
+    }
+  }
+}
+```
+
+Both fields support standard Markdown (bold, links, inline code).
 
 ## Environment-Specific Configuration
 
@@ -450,6 +604,7 @@ For production, restrict to specific domains:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
+| `Use_HTTPS` | Whether Kestrel serves HTTPS directly (see note) | `false` |
 | `KEYVAULT_URI` | Azure Key Vault URI | `https://vault.azure.net` |
 | `PROXY_USERNAME` | Proxy authentication user | `domain\user` |
 | `PROXY_PASSWORD` | Proxy authentication password | `password` |
@@ -459,6 +614,9 @@ For production, restrict to specific domains:
 | `WebUi__AdminApiKey` | Web UI password | `secret` |
 | `WebUi__PublicOrigins__0` | CORS origin (array) | `https://example.com` |
 | `WebUi__SecureCookies` | Secure cookies | `true` |
+
+> [!WARNING]
+> **`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
 
 ### Configuration Priority
 

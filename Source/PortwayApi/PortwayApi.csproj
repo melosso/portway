@@ -9,7 +9,7 @@
 
     <!-- Assembly Information -->
     <AssemblyTitle>Portway</AssemblyTitle>
-    <AssemblyDescription>A fast, lightweight API gateway with fine-grained access to SQL Server data and flexible service proxying.</AssemblyDescription>
+    <AssemblyDescription>A fast, lightweight API gateway with fine-grained access to databases and flexible service proxying.</AssemblyDescription>
     <AssemblyProduct>Portway</AssemblyProduct>
     <AssemblyCompany>Melosso</AssemblyCompany>
     <AssemblyCopyright>Copyright © Melosso 2026</AssemblyCopyright>
@@ -41,6 +41,8 @@
     <!-- Entity Framework & Databases -->
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

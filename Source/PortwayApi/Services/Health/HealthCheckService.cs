@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -9,6 +10,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PortwayApi.Classes;
 using PortwayApi.Interfaces;
+using PortwayApi.Services.Providers;
 using Serilog;
 
 namespace PortwayApi.Services;
@@ -26,19 +28,22 @@ public class HealthCheckService
     private readonly IHttpClientFactory? _httpClientFactory;
     private readonly IEnvironmentSettingsProvider? _environmentSettingsProvider;
     private readonly EnvironmentSettings? _environmentSettings;
+    private readonly ISqlProviderFactory? _sqlProviderFactory;
 
     public HealthCheckService(
         Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService healthCheckService,
         TimeSpan cacheTime,
         IHttpClientFactory? httpClientFactory = null,
         IEnvironmentSettingsProvider? environmentSettingsProvider = null,
-        EnvironmentSettings? environmentSettings = null)
+        EnvironmentSettings? environmentSettings = null,
+        ISqlProviderFactory? sqlProviderFactory = null)
     {
         _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));
         _cacheTime = cacheTime;
         _httpClientFactory = httpClientFactory;
         _environmentSettingsProvider = environmentSettingsProvider;
         _environmentSettings = environmentSettings;
+        _sqlProviderFactory = sqlProviderFactory;
     }
 
     /// <summary>
@@ -383,13 +388,29 @@ public class HealthCheckService
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
-                using var connection = new SqlConnection(connectionString);
-                await connection.OpenAsync(linkedCts.Token);
+                DbConnection connection;
+                string healthQuery;
+                if (_sqlProviderFactory != null)
+                {
+                    var provider = _sqlProviderFactory.GetProvider(connectionString);
+                    connection = provider.CreateConnection(connectionString);
+                    healthQuery = provider.HealthCheckQuery;
+                }
+                else
+                {
+                    connection = new SqlConnection(connectionString);
+                    healthQuery = "SELECT 1";
+                }
 
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = "SELECT 1";
-                cmd.CommandTimeout = 5;
-                await cmd.ExecuteScalarAsync(linkedCts.Token);
+                await using (connection)
+                {
+                    await connection.OpenAsync(linkedCts.Token);
+
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = healthQuery;
+                    cmd.CommandTimeout = 5;
+                    await cmd.ExecuteScalarAsync(linkedCts.Token);
+                }
 
                 lock (results) results[env] = new { Status = "Healthy" };
                 Log.Debug("SQL connectivity check passed for environment: {Environment}", env);
@@ -405,7 +426,9 @@ public class HealthCheckService
             {
                 var errorMsg = ex is SqlException sql
                     ? $"SQL error {sql.Number}: {sql.Message}"
-                    : ex.InnerException?.Message ?? ex.Message;
+                    : ex is DbException dbEx
+                        ? $"DB error: {dbEx.Message}"
+                        : ex.InnerException?.Message ?? ex.Message;
                 Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
                 lock (results) results[env] = new { Status = "Unhealthy", Error = errorMsg };
                 lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);

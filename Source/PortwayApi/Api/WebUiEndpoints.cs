@@ -66,7 +66,8 @@ public static class WebUiEndpointExtensions
             // Cookie auth check, skip for the login page and the auth endpoints themselves.
             if (uiAuthEnabled &&
                 !path.StartsWithSegments("/ui/login") &&
-                !path.StartsWithSegments("/ui/api/auth"))
+                !path.StartsWithSegments("/ui/api/auth") &&
+                !path.StartsWithSegments("/ui/api/customization"))
             {
                 if (!context.Request.Cookies.TryGetValue(CookieName, out var cookie) ||
                     !ValidateToken(cookie, adminApiKey))
@@ -210,6 +211,15 @@ public static class WebUiEndpointExtensions
         }
 
         // Data endpoints
+        app.MapGet("/ui/api/customization", (IConfiguration config) =>
+        {
+            return Results.Json(new
+            {
+                promo_text = config.GetValue<string>("WebUi:Customization:PromoText"),
+                promo_login = config.GetValue<bool>("WebUi:Customization:PromoLogin", false)
+            });
+        }).ExcludeFromDescription();
+
         app.MapGet("/ui/api/overview", (IOptionsMonitor<OpenApiSettings> openApiMonitor) =>
         {
             var sqlEps        = EndpointHandler.GetSqlEndpoints();
@@ -222,12 +232,14 @@ public static class WebUiEndpointExtensions
             var envSettings   = app.Services.GetRequiredService<EnvironmentSettings>();
             var uptime        = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds;
             var promoText     = app.Configuration.GetValue<string>("WebUi:Customization:PromoText");
+            var promoLogin    = app.Configuration.GetValue<bool>("WebUi:Customization:PromoLogin", false);
 
             return Results.Json(new
             {
                 version = appVersion,
                 uptime  = $"{uptime}s",
                 promo_text = promoText,
+                promo_login = promoLogin,
                 endpoints = new
                 {
                     sql       = sqlEps.Count,

@@ -1,50 +1,25 @@
 using System.Data;
-using Microsoft.Data.SqlClient;
-using Serilog;
+using System.Data.Common;
 using PortwayApi.Classes;
+using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
+using Serilog;
 
 namespace PortwayApi.Services;
 
 public class SqlMetadataService
 {
-    private readonly Dictionary<string, List<ColumnMetadata>> _objectMetadataCache = new();
-    private readonly Dictionary<string, List<ParameterMetadata>> _procedureMetadataCache = new();
+    private readonly Dictionary<string, List<Classes.ColumnMetadata>> _objectMetadataCache = new();
+    private readonly Dictionary<string, List<Classes.ParameterMetadata>> _procedureMetadataCache = new();
     private readonly object _cacheLock = new();
     private readonly SqlConnectionPoolService _connectionPoolService;
+    private readonly ISqlProviderFactory _providerFactory;
     private bool _isInitialized = false;
 
-    public SqlMetadataService(SqlConnectionPoolService connectionPoolService)
+    public SqlMetadataService(SqlConnectionPoolService connectionPoolService, ISqlProviderFactory providerFactory)
     {
         _connectionPoolService = connectionPoolService;
-    }
-
-    public class ColumnMetadata
-    {
-        public string ColumnName { get; set; } = string.Empty;
-        public string DatabaseColumnName { get; set; } = string.Empty;
-        public string DataType { get; set; } = string.Empty;
-        public string ClrType { get; set; } = string.Empty;
-        public int? MaxLength { get; set; }
-        public bool IsNullable { get; set; }
-        public int? NumericPrecision { get; set; }
-        public int? NumericScale { get; set; }
-        public bool IsPrimaryKey { get; set; }
-        public bool IsIdentity { get; set; }
-        public bool IsComputed { get; set; }
-    }
-
-    public class ParameterMetadata
-    {
-        public string ParameterName { get; set; } = string.Empty;
-        public string DataType { get; set; } = string.Empty;
-        public string ClrType { get; set; } = string.Empty;
-        public int? MaxLength { get; set; }
-        public bool IsNullable { get; set; }
-        public int? NumericPrecision { get; set; }
-        public int? NumericScale { get; set; }
-        public bool IsOutput { get; set; }
-        public bool HasDefaultValue { get; set; }
-        public int Position { get; set; }
+        _providerFactory = providerFactory;
     }
 
     public virtual async Task InitializeAsync(
@@ -62,41 +37,33 @@ public class SqlMetadataService
         lock (_cacheLock)
         {
             if (!_isInitialized)
-            {
                 shouldInitialize = true;
-            }
         }
 
         if (!shouldInitialize)
             return;
 
         Log.Debug("Initializing SQL metadata cache for {Count} endpoints...", sqlEndpoints.Count);
-        
+
         var initTasks = new List<Task>();
         var globalEnvironments = environmentSettings.GetAllowedEnvironments().Take(3).ToList();
-        
+
         foreach (var endpoint in sqlEndpoints)
         {
             var endpointName = endpoint.Key;
             var definition = endpoint.Value;
-            
+
             if (string.IsNullOrEmpty(definition.DatabaseObjectName))
                 continue;
 
-            // Priority: Endpoint-specific allowed environments, then global fallback
             var environmentsToTry = new List<string>();
             if (definition.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
-            {
                 environmentsToTry.AddRange(definition.AllowedEnvironments);
-            }
-            
-            // Add global environments that aren't already in the list
+
             foreach (var env in globalEnvironments)
             {
                 if (!environmentsToTry.Contains(env, StringComparer.OrdinalIgnoreCase))
-                {
                     environmentsToTry.Add(env);
-                }
             }
 
             if (!environmentsToTry.Any())
@@ -106,9 +73,9 @@ public class SqlMetadataService
             }
 
             initTasks.Add(InitializeEndpointMetadataAsync(
-                endpointName, 
-                definition, 
-                environmentsToTry, 
+                endpointName,
+                definition,
+                environmentsToTry,
                 getConnectionStringAsync));
         }
 
@@ -121,13 +88,13 @@ public class SqlMetadataService
             Log.Error("One or more metadata initialization tasks failed: {ErrorType} - {ErrorMessage}",
                 ex.GetType().Name, ex.Message);
         }
-        
+
         lock (_cacheLock)
         {
             _isInitialized = true;
         }
-        
-        Log.Debug("SQL metadata cache initialized successfully. Objects: {ObjectCount}, Procedures: {ProcedureCount}", 
+
+        Log.Debug("SQL metadata cache initialized successfully. Objects: {ObjectCount}, Procedures: {ProcedureCount}",
             _objectMetadataCache.Count, _procedureMetadataCache.Count);
     }
 
@@ -142,40 +109,34 @@ public class SqlMetadataService
             try
             {
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                
+
                 var connectionString = await getConnectionStringAsync(environment);
                 if (string.IsNullOrEmpty(connectionString))
                 {
-                    Log.Debug("No connection string found for environment {Environment}, trying next environment for {EndpointName}", 
+                    Log.Debug("No connection string found for environment {Environment}, trying next environment for {EndpointName}",
                         environment, endpointName);
                     continue;
                 }
 
-                // Load object metadata for GET operations
                 int columnCount = await LoadObjectMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
-                
-                // If no columns were found, try the next environment
+
                 if (columnCount == 0)
                 {
-                    Log.Debug("No columns found for {EndpointName} in environment {Environment}, trying next environment", 
+                    Log.Debug("No columns found for {EndpointName} in environment {Environment}, trying next environment",
                         endpointName, environment);
                     continue;
                 }
-                
-                // If we successfully loaded object metadata, check if we need to load procedure metadata
-                if (HasModificationMethods(definition) && !string.IsNullOrEmpty(definition.Procedure))
-                {
-                    await LoadProcedureMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
-                }
 
-                // If we've reached this point without an exception, we've successfully loaded metadata
-                Log.Debug("Successfully initialized metadata for {EndpointName} using environment {Environment} ({ColumnCount} columns)", 
+                if (HasModificationMethods(definition) && !string.IsNullOrEmpty(definition.Procedure))
+                    await LoadProcedureMetadataForEndpointAsync(endpointName, definition, connectionString, cts.Token);
+
+                Log.Debug("Successfully initialized metadata for {EndpointName} using environment {Environment} ({ColumnCount} columns)",
                     endpointName, environment, columnCount);
                 return;
             }
             catch (OperationCanceledException)
             {
-                Log.Error("Metadata initialization timed out for endpoint {EndpointName} in environment {Environment} after 30 seconds", 
+                Log.Error("Metadata initialization timed out for endpoint {EndpointName} in environment {Environment} after 30 seconds",
                     endpointName, environment);
             }
             catch (Exception ex)
@@ -184,17 +145,13 @@ public class SqlMetadataService
                     endpointName, environment, ex.Message);
             }
         }
-        
+
         Log.Error("Failed to initialize metadata for endpoint {EndpointName} after trying all allowed environments: {Environments}",
             endpointName, string.Join(", ", environments));
     }
 
     private bool HasModificationMethods(Classes.EndpointDefinition definition)
-    {
-        // Check if the endpoint supports any modification methods by checking if Procedure is defined
-        // and the endpoint is configured for write operations
-        return !string.IsNullOrEmpty(definition.Procedure);
-    }
+        => !string.IsNullOrEmpty(definition.Procedure);
 
     private async Task<int> LoadObjectMetadataForEndpointAsync(
         string endpointName,
@@ -205,35 +162,35 @@ public class SqlMetadataService
         var schema = definition.DatabaseSchema ?? "dbo";
         var objectName = definition.DatabaseObjectName!;
         var objectType = definition.DatabaseObjectType ?? "Table";
-        var allowedColumns = definition.AllowedColumns ?? new List<string>();
-        var primaryKey = definition.PrimaryKey;
 
         Log.Debug("Loading object metadata for {EndpointName}: {Schema}.{ObjectName} ({ObjectType})",
             endpointName, schema, objectName, objectType);
 
+        var provider = _providerFactory.GetProvider(connectionString);
         var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
-        await using var connection = new SqlConnection(optimizedConnectionString);
+        await using var connection = provider.CreateConnection(optimizedConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        List<ColumnMetadata> columns;
+        List<Classes.ColumnMetadata> columns;
 
         switch (objectType.ToLowerInvariant())
         {
             case "table":
-                columns = await GetTableColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
-                break;
-
             case "view":
-                columns = await GetViewColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
+                columns = await GetTableColumnsAsync(connection, provider, schema, objectName, cancellationToken).ConfigureAwait(false);
                 break;
 
             case "tablevaluedfunction":
-                columns = await GetTableValuedFunctionColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
+                if (!provider.SupportsTvf)
+                {
+                    Log.Information("Provider {Provider} does not support TVF; skipping column metadata for {EndpointName}", provider.ProviderType, endpointName);
+                    return 0;
+                }
+                columns = await provider.GetTvfColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
                 break;
 
             default:
-                Log.Warning("Unknown database object type '{ObjectType}' for endpoint {EndpointName}",
-                    objectType, endpointName);
+                Log.Warning("Unknown database object type '{ObjectType}' for endpoint {EndpointName}", objectType, endpointName);
                 return 0;
         }
 
@@ -244,9 +201,7 @@ public class SqlMetadataService
             _objectMetadataCache[endpointName] = columns;
         }
 
-        Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns",
-            endpointName, columns.Count);
-            
+        Log.Debug("Cached object metadata for {EndpointName}: {ColumnCount} columns", endpointName, columns.Count);
         return columns.Count;
     }
 
@@ -257,11 +212,18 @@ public class SqlMetadataService
         CancellationToken cancellationToken = default)
     {
         var procedureName = definition.Procedure!;
-        Log.Debug("Loading procedure metadata for {EndpointName}: {ProcedureName}",
-            endpointName, procedureName);
+        var provider = _providerFactory.GetProvider(connectionString);
+
+        if (!provider.SupportsProcedures)
+        {
+            Log.Information("Provider {Provider} does not support stored procedures; skipping procedure metadata for {EndpointName}", provider.ProviderType, endpointName);
+            return;
+        }
+
+        Log.Debug("Loading procedure metadata for {EndpointName}: {ProcedureName}", endpointName, procedureName);
 
         var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
-        await using var connection = new SqlConnection(optimizedConnectionString);
+        await using var connection = provider.CreateConnection(optimizedConnectionString);
         await connection.OpenAsync(cancellationToken);
 
         var parts = procedureName.Split('.');
@@ -277,7 +239,7 @@ public class SqlMetadataService
             name = procedureName;
         }
 
-        var parameters = await GetStoredProcedureParametersAsync(connection, schema, name, cancellationToken).ConfigureAwait(false);
+        var parameters = await provider.GetProcedureParametersAsync(connection, schema, name, cancellationToken).ConfigureAwait(false);
         parameters = parameters.Where(p => !IsReservedParameter(p.ParameterName)).ToList();
 
         lock (_cacheLock)
@@ -285,8 +247,7 @@ public class SqlMetadataService
             _procedureMetadataCache[endpointName] = parameters;
         }
 
-        Log.Debug("Cached procedure metadata for {EndpointName}: {ParameterCount} parameters",
-            endpointName, parameters.Count);
+        Log.Debug("Cached procedure metadata for {EndpointName}: {ParameterCount} parameters", endpointName, parameters.Count);
     }
 
     private bool IsReservedParameter(string parameterName)
@@ -295,69 +256,50 @@ public class SqlMetadataService
         return reservedParameters.Contains(parameterName.ToLowerInvariant());
     }
 
-    private List<ColumnMetadata> ProcessColumnMetadata(List<ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
+    private List<Classes.ColumnMetadata> ProcessColumnMetadata(List<Classes.ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
     {
         var primaryKey = definition.PrimaryKey;
         var allowedColumns = definition.AllowedColumns ?? new List<string>();
 
-        // Mark primary key column if specified
         if (!string.IsNullOrEmpty(primaryKey))
         {
-            var pkColumn = columns.FirstOrDefault(c => 
+            var pkColumn = columns.FirstOrDefault(c =>
                 c.DatabaseColumnName.Equals(primaryKey, StringComparison.OrdinalIgnoreCase));
             if (pkColumn != null)
-            {
                 pkColumn.IsPrimaryKey = true;
-            }
         }
 
-        // Filter columns based on AllowedColumns if specified
         if (allowedColumns.Any())
         {
-            var (aliasToDatabase, databaseToAlias) = 
+            var (aliasToDatabase, databaseToAlias) =
                 Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
-            // Build the set of allowed database column names
             var allowedDatabaseColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            
-            // Add mapped columns from alias definitions
+
             foreach (var dbColumn in aliasToDatabase.Values)
-            {
                 allowedDatabaseColumns.Add(dbColumn);
-            }
-            
-            // Add simple column names (without 'as' syntax)
+
             foreach (var columnDef in allowedColumns)
             {
                 if (!columnDef.Contains(" as ", StringComparison.OrdinalIgnoreCase))
                 {
                     var simpleColumn = columnDef.Trim();
                     allowedDatabaseColumns.Add(simpleColumn);
-                    
-                    // Also ensure this simple column exists in databaseToAlias for mapping
+
                     if (!databaseToAlias.ContainsKey(simpleColumn))
-                    {
                         databaseToAlias[simpleColumn] = simpleColumn;
-                    }
                 }
             }
 
-            // Filter columns - only keep those in allowed columns
             var filteredColumns = columns.Where(c => allowedDatabaseColumns.Contains(c.DatabaseColumnName)).ToList();
 
-            // Apply proper column names and ensure no empty names
             foreach (var column in filteredColumns)
             {
-                // Always start with the database column name as fallback
                 string finalColumnName = column.DatabaseColumnName;
 
-                // Try to get alias mapping
                 if (databaseToAlias.TryGetValue(column.DatabaseColumnName, out var alias))
-                {
                     finalColumnName = alias;
-                }
 
-                // Ensure we never have an empty column name
                 if (string.IsNullOrWhiteSpace(finalColumnName))
                 {
                     Log.Warning("Empty column name detected for database column {DatabaseColumn} in endpoint {EndpointName}",
@@ -369,304 +311,107 @@ public class SqlMetadataService
             }
 
             Log.Debug("Filtered to {Count} allowed columns for {EndpointName}", filteredColumns.Count, endpointName);
-            
-            // Debug: Log the final column names
             foreach (var column in filteredColumns)
-            {
-                Log.Debug("Final column mapping: {DatabaseName} -> {ColumnName}", 
-                    column.DatabaseColumnName, column.ColumnName);
-            }
+                Log.Debug("Final column mapping: {DatabaseName} -> {ColumnName}", column.DatabaseColumnName, column.ColumnName);
 
             return filteredColumns;
         }
         else
         {
             foreach (var column in columns)
-            {
                 column.ColumnName = column.DatabaseColumnName;
-            }
-            
+
             return columns;
         }
     }
 
-    private async Task<List<ParameterMetadata>> GetStoredProcedureParametersAsync(
-        SqlConnection connection,
+    /// <summary>
+    /// Gets table/view columns using ADO.NET GetSchemaAsync first; falls back to provider-specific PRAGMA for SQLite.
+    /// </summary>
+    private async Task<List<Classes.ColumnMetadata>> GetTableColumnsAsync(
+        DbConnection connection,
+        ISqlProvider provider,
         string schema,
-        string procedureName,
-        CancellationToken cancellationToken)
-    {
-        var parameters = new List<ParameterMetadata>();
-
-        // Query system views to get procedure parameters
-        var query = @"
-            SELECT 
-                p.name AS PARAMETER_NAME,
-                TYPE_NAME(p.user_type_id) AS DATA_TYPE,
-                p.is_nullable AS IS_NULLABLE,
-                p.max_length AS MAX_LENGTH,
-                p.precision AS NUMERIC_PRECISION,
-                p.scale AS NUMERIC_SCALE,
-                p.is_output AS IS_OUTPUT,
-                p.has_default_value AS HAS_DEFAULT_VALUE,
-                p.parameter_id AS POSITION
-            FROM sys.parameters p
-            INNER JOIN sys.objects o ON p.object_id = o.object_id
-            INNER JOIN sys.schemas s ON o.schema_id = s.schema_id
-            WHERE o.type = 'P'  -- Stored procedures
-                AND s.name = @Schema
-                AND o.name = @ProcedureName
-            ORDER BY p.parameter_id";
-
-        await using var command = new SqlCommand(query, connection);
-        command.Parameters.AddWithValue("@Schema", schema);
-        command.Parameters.AddWithValue("@ProcedureName", procedureName);
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-
-        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-        {
-            var parameter = new ParameterMetadata
-            {
-                ParameterName = reader["PARAMETER_NAME"].ToString() ?? string.Empty,
-                DataType = reader["DATA_TYPE"].ToString() ?? string.Empty,
-                IsNullable = reader["IS_NULLABLE"] != DBNull.Value && Convert.ToBoolean(reader["IS_NULLABLE"]),
-                MaxLength = reader["MAX_LENGTH"] != DBNull.Value
-                    ? Convert.ToInt32(reader["MAX_LENGTH"])
-                    : null,
-                NumericPrecision = reader["NUMERIC_PRECISION"] != DBNull.Value
-                    ? Convert.ToInt32(reader["NUMERIC_PRECISION"])
-                    : null,
-                NumericScale = reader["NUMERIC_SCALE"] != DBNull.Value
-                    ? Convert.ToInt32(reader["NUMERIC_SCALE"])
-                    : null,
-                IsOutput = reader["IS_OUTPUT"] != DBNull.Value && Convert.ToBoolean(reader["IS_OUTPUT"]),
-                HasDefaultValue = reader["HAS_DEFAULT_VALUE"] != DBNull.Value && Convert.ToBoolean(reader["HAS_DEFAULT_VALUE"]),
-                Position = reader["POSITION"] != DBNull.Value ? Convert.ToInt32(reader["POSITION"]) : 0
-            };
-
-            parameter.ClrType = MapSqlTypeToClrType(parameter.DataType);
-            parameters.Add(parameter);
-        }
-
-        return parameters;
-    }
-
-    private async Task<List<ColumnMetadata>> GetTableColumnsAsync(
-        SqlConnection connection, 
-        string schema, 
         string tableName,
         CancellationToken cancellationToken)
     {
-        var columns = new List<ColumnMetadata>();
+        // SQLite uses PRAGMA, GetSchemaAsync("Columns") is not reliably supported
+        if (provider is SqliteProvider sqliteProvider)
+            return await sqliteProvider.GetColumnsViaPragmaAsync(connection, tableName, cancellationToken).ConfigureAwait(false);
 
-        // Get columns using GetSchema
-        var restrictions = new[] { null, schema, tableName, null };
+        var columns = new List<Classes.ColumnMetadata>();
+
+        var restrictions = new[] { null, schema, tableName, (string?)null };
         var columnsTable = await connection.GetSchemaAsync("Columns", restrictions, cancellationToken);
 
-        // Log all columns found
-        Log.Debug("Found {Count} columns for {Schema}.{TableName}:", 
-            columnsTable.Rows.Count, schema, tableName);
-        
+        Log.Debug("Found {Count} columns for {Schema}.{TableName}:", columnsTable.Rows.Count, schema, tableName);
+
         foreach (DataRow row in columnsTable.Rows)
         {
             var columnName = row["COLUMN_NAME"].ToString() ?? string.Empty;
-            Log.Debug("  - Column: '{ColumnName}', DataType: {DataType}, Nullable: {IsNullable}", 
-                columnName, 
+            Log.Debug("  - Column: '{ColumnName}', DataType: {DataType}, Nullable: {IsNullable}",
+                columnName,
                 row["DATA_TYPE"].ToString() ?? "unknown",
                 row["IS_NULLABLE"].ToString() ?? "unknown");
-                
-            var column = new ColumnMetadata
+
+            var col = new Classes.ColumnMetadata
             {
                 DatabaseColumnName = columnName,
                 DataType = row["DATA_TYPE"].ToString() ?? string.Empty,
                 IsNullable = row["IS_NULLABLE"].ToString()?.Equals("YES", StringComparison.OrdinalIgnoreCase) ?? false,
-                MaxLength = row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value 
-                    ? Convert.ToInt32(row["CHARACTER_MAXIMUM_LENGTH"]) 
-                    : null,
-                NumericPrecision = row["NUMERIC_PRECISION"] != DBNull.Value 
-                    ? Convert.ToInt32(row["NUMERIC_PRECISION"]) 
-                    : null,
-                NumericScale = row["NUMERIC_SCALE"] != DBNull.Value 
-                    ? Convert.ToInt32(row["NUMERIC_SCALE"]) 
-                    : null
+                MaxLength = row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value
+                    ? Convert.ToInt32(row["CHARACTER_MAXIMUM_LENGTH"]) : null,
+                NumericPrecision = row["NUMERIC_PRECISION"] != DBNull.Value
+                    ? Convert.ToInt32(row["NUMERIC_PRECISION"]) : null,
+                NumericScale = row["NUMERIC_SCALE"] != DBNull.Value
+                    ? Convert.ToInt32(row["NUMERIC_SCALE"]) : null
             };
 
-            // Map SQL type to CLR type
-            column.ClrType = MapSqlTypeToClrType(column.DataType);
-
-            columns.Add(column);
-        }
-
-        return columns;
-    }
-    private async Task<List<ColumnMetadata>> GetViewColumnsAsync(
-        SqlConnection connection, 
-        string schema, 
-        string viewName,
-        CancellationToken cancellationToken)
-    {
-        // Views use the same Columns schema collection as tables
-        return await GetTableColumnsAsync(connection, schema, viewName, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<List<ColumnMetadata>> GetTableValuedFunctionColumnsAsync(
-        SqlConnection connection, 
-        string schema, 
-        string functionName,
-        CancellationToken cancellationToken)
-    {
-        var columns = new List<ColumnMetadata>();
-
-        // For table-valued functions, we need to query system views
-        var query = @"
-            SELECT 
-                c.name AS COLUMN_NAME,
-                TYPE_NAME(c.user_type_id) AS DATA_TYPE,
-                c.is_nullable AS IS_NULLABLE,
-                c.max_length AS CHARACTER_MAXIMUM_LENGTH,
-                c.precision AS NUMERIC_PRECISION,
-                c.scale AS NUMERIC_SCALE
-            FROM sys.objects o
-            INNER JOIN sys.columns c ON o.object_id = c.object_id
-            WHERE o.type IN ('IF', 'TF')  -- Inline and Table-valued functions
-                AND SCHEMA_NAME(o.schema_id) = @Schema
-                AND o.name = @FunctionName
-            ORDER BY c.column_id";
-
-        await using var command = new SqlCommand(query, connection);
-        command.Parameters.AddWithValue("@Schema", schema);
-        command.Parameters.AddWithValue("@FunctionName", functionName);
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        
-        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-        {
-            var column = new ColumnMetadata
-            {
-                DatabaseColumnName = reader["COLUMN_NAME"].ToString() ?? string.Empty,
-                DataType = reader["DATA_TYPE"].ToString() ?? string.Empty,
-                IsNullable = reader["IS_NULLABLE"] != DBNull.Value && Convert.ToBoolean(reader["IS_NULLABLE"]),
-                MaxLength = reader["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value 
-                    ? Convert.ToInt32(reader["CHARACTER_MAXIMUM_LENGTH"]) 
-                    : null,
-                NumericPrecision = reader["NUMERIC_PRECISION"] != DBNull.Value 
-                    ? Convert.ToInt32(reader["NUMERIC_PRECISION"]) 
-                    : null,
-                NumericScale = reader["NUMERIC_SCALE"] != DBNull.Value 
-                    ? Convert.ToInt32(reader["NUMERIC_SCALE"]) 
-                    : null
-            };
-
-            column.ClrType = MapSqlTypeToClrType(column.DataType);
-            columns.Add(column);
+            col.ClrType = provider.MapSqlTypeToClr(col.DataType);
+            columns.Add(col);
         }
 
         return columns;
     }
 
-    // Metadata retrieval methods
-    public List<ColumnMetadata>? GetObjectMetadata(string endpointName)
+    // Public metadata retrieval methods
+
+    public List<Classes.ColumnMetadata>? GetObjectMetadata(string endpointName)
     {
         lock (_cacheLock)
-        {
-            return _objectMetadataCache.TryGetValue(endpointName, out var metadata) 
-                ? metadata 
-                : null;
-        }
+            return _objectMetadataCache.TryGetValue(endpointName, out var metadata) ? metadata : null;
     }
 
-    public List<ParameterMetadata>? GetProcedureMetadata(string endpointName)
+    public List<Classes.ParameterMetadata>? GetProcedureMetadata(string endpointName)
     {
         lock (_cacheLock)
-        {
-            return _procedureMetadataCache.TryGetValue(endpointName, out var metadata) 
-                ? metadata 
-                : null;
-        }
+            return _procedureMetadataCache.TryGetValue(endpointName, out var metadata) ? metadata : null;
     }
 
     public bool HasObjectMetadata(string endpointName)
     {
         lock (_cacheLock)
-        {
             return _objectMetadataCache.ContainsKey(endpointName);
-        }
     }
 
     public bool HasProcedureMetadata(string endpointName)
     {
         lock (_cacheLock)
-        {
             return _procedureMetadataCache.ContainsKey(endpointName);
-        }
     }
 
-    /// <summary>
-    /// Gets all cached endpoint names that have object metadata
-    /// </summary>
     public virtual IEnumerable<string> GetCachedEndpoints()
     {
         lock (_cacheLock)
-        {
             return _objectMetadataCache.Keys.ToList();
-        }
     }
 
-    /// <summary>
-    /// Gets all cached endpoint names that have procedure metadata
-    /// </summary>
     public virtual IEnumerable<string> GetCachedProcedureEndpoints()
     {
         lock (_cacheLock)
-        {
             return _procedureMetadataCache.Keys.ToList();
-        }
     }
 
-    /// <summary>
-    /// Maps SQL Server data types to .NET CLR types
-    /// </summary>
-    private string MapSqlTypeToClrType(string sqlType)
-    {
-        return sqlType.ToLowerInvariant() switch
-        {
-            "bigint" => "System.Int64",
-            "binary" => "System.Byte[]",
-            "bit" => "System.Boolean",
-            "char" => "System.String",
-            "date" => "System.DateTime",
-            "datetime" => "System.DateTime",
-            "datetime2" => "System.DateTime",
-            "datetimeoffset" => "System.DateTimeOffset",
-            "decimal" => "System.Decimal",
-            "float" => "System.Double",
-            "image" => "System.Byte[]",
-            "int" => "System.Int32",
-            "money" => "System.Decimal",
-            "nchar" => "System.String",
-            "ntext" => "System.String",
-            "numeric" => "System.Decimal",
-            "nvarchar" => "System.String",
-            "real" => "System.Single",
-            "smalldatetime" => "System.DateTime",
-            "smallint" => "System.Int16",
-            "smallmoney" => "System.Decimal",
-            "sql_variant" => "System.Object",
-            "text" => "System.String",
-            "time" => "System.TimeSpan",
-            "timestamp" => "System.Byte[]",
-            "tinyint" => "System.Byte",
-            "uniqueidentifier" => "System.Guid",
-            "varbinary" => "System.Byte[]",
-            "varchar" => "System.String",
-            "xml" => "System.String",
-            _ => "System.Object"
-        };
-    }
-
-    /// <summary>
-    /// Clears all cached metadata - forces lazy reload on next access
-    /// </summary>
     public virtual void ClearAllMetadata()
     {
         lock (_cacheLock)
@@ -674,13 +419,9 @@ public class SqlMetadataService
             _objectMetadataCache.Clear();
             _procedureMetadataCache.Clear();
         }
-
         Log.Information("All SQL metadata cache cleared, will reload lazily on next request");
     }
 
-    /// <summary>
-    /// Clears metadata for a specific endpoint - forces lazy reload on next access
-    /// </summary>
     public virtual void ClearEndpointMetadata(string endpointName)
     {
         lock (_cacheLock)
@@ -694,14 +435,10 @@ public class SqlMetadataService
                 .ToList();
 
             foreach (var key in objectKeysToRemove)
-            {
                 _objectMetadataCache.Remove(key);
-            }
 
             foreach (var key in procedureKeysToRemove)
-            {
                 _procedureMetadataCache.Remove(key);
-            }
 
             Log.Debug("SQL metadata cache cleared for endpoint: {Endpoint} (Objects: {ObjectCount}, Procedures: {ProcedureCount})",
                 endpointName, objectKeysToRemove.Count, procedureKeysToRemove.Count);

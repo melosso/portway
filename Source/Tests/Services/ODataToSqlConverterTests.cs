@@ -1,7 +1,9 @@
 using Microsoft.OData.Edm;
 using Moq;
 using PortwayApi.Classes;
+using PortwayApi.Classes.Providers;
 using PortwayApi.Interfaces;
+using PortwayApi.Services.Providers;
 using SqlKata.Compilers;
 using Xunit;
 
@@ -11,17 +13,25 @@ public class ODataToSqlConverterTests
 {
     private readonly ODataToSqlConverter _converter;
     private readonly Mock<IEdmModelBuilder> _mockEdmModelBuilder;
-    
+
     public ODataToSqlConverterTests()
     {
         _mockEdmModelBuilder = new Mock<IEdmModelBuilder>();
-        var compiler = new SqlServerCompiler();
-        
+
         // Create a simple EDM model for testing
         var mockModel = new Mock<IEdmModel>();
         _mockEdmModelBuilder.Setup(m => m.GetEdmModel(It.IsAny<string>())).Returns(mockModel.Object);
-        
-        _converter = new ODataToSqlConverter(_mockEdmModelBuilder.Object, compiler);
+
+        // Provide all registered providers (mirroring Program.cs registration)
+        var providers = new ISqlProvider[]
+        {
+            new MsSqlProvider(),
+            new PostgreSqlProvider(),
+            new MySqlProvider(),
+            new SqliteProvider()
+        };
+
+        _converter = new ODataToSqlConverter(_mockEdmModelBuilder.Object, providers);
     }
     
     [Fact]

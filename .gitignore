@@ -6,6 +6,8 @@ Deployment/
 *.example
 TrimmerRoots.xml
 *.db
+!Source/PortwayApi/environments/WMS/demo.db
+!.github/demo/data/demo.db
 .venv/
 /logs/
 /.core/

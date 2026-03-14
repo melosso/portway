@@ -65,7 +65,7 @@ Each environment has its own configuration file with connection details:
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `ServerName` | string | Yes | SQL Server instance name |
+| `ServerName` | string | Yes | Database server name (used for display and health checks) |
 | `ConnectionString` | string | Yes | Database connection string |
 | `Headers` | object | No | Custom headers for requests |
 
@@ -147,15 +147,11 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 
 ## Connection String Configuration
 
-### SQL Server Authentication
+The `ConnectionString` value determines both the target database and the SQL driver Portway uses. No additional property is needed, the provider is detected automatically.
 
-```json
-{
-  "ConnectionString": "Server=SERVER;Database=DB;User Id=username;Password=password;Connection Timeout=30;TrustServerCertificate=false;Encrypt=true;"
-}
-```
+See the [SQL Providers reference](/reference/sql-providers) for the full detection algorithm and capability differences between providers.
 
-### Windows Authentication
+### SQL Server — Windows authentication
 
 ```json
 {
@@ -163,20 +159,80 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 }
 ```
 
-### Connection String Parameters
+### SQL Server — SQL authentication
+
+```json
+{
+  "ConnectionString": "Server=SERVER;Database=DB;User Id=username;Password=password;Connection Timeout=30;TrustServerCertificate=false;Encrypt=true;"
+}
+```
+
+### PostgreSQL
+
+```json
+{
+  "ConnectionString": "Host=db.example.com;Port=5432;Database=mydb;Username=portway;Password=your-password;"
+}
+```
+
+### MySQL / MariaDB
+
+```json
+{
+  "ConnectionString": "Server=db.example.com;Port=3306;Database=mydb;Uid=portway;Pwd=your-password;SslMode=Preferred;"
+}
+```
+
+### SQLite
+
+```json
+{
+  "ConnectionString": "Data Source=environments/WMS/demo.db;"
+}
+```
+
+Paths are resolved relative to the Portway application working directory. SQLite connection strings carry no credentials and are not subject to automatic encryption or masking.
+
+### Key parameters by provider
+
+**SQL Server**
 
 | Parameter | Description | Default |
-|-----------|-------------|---------|
-| `Server` | SQL Server instance | Required |
+|---|---|---|
+| `Server` | SQL Server instance or hostname | Required |
 | `Database` | Database name | Required |
-| `User Id` | SQL authentication username | - |
-| `Password` | SQL authentication password | - |
-| `Trusted_Connection` | Use Windows authentication | False |
-| `Connection Timeout` | Connection timeout in seconds | 15 |
-| `TrustServerCertificate` | Trust server certificate | False |
-| `Encrypt` | Encrypt connection | False |
-| `Application Name` | Application identifier | "Portway API" |
-| `MultipleActiveResultSets` | Enable MARS | False |
+| `User Id` / `Password` | SQL authentication credentials | — |
+| `Trusted_Connection` | Use Windows authentication | `False` |
+| `Encrypt` | Encrypt the connection | `False` |
+| `TrustServerCertificate` | Skip certificate validation | `False` |
+| `Connection Timeout` | Seconds before giving up | `15` |
+| `MultipleActiveResultSets` | Enable MARS | `False` |
+
+**PostgreSQL**
+
+| Parameter | Description | Default |
+|---|---|---|
+| `Host` | Hostname or IP | Required |
+| `Port` | Server port | `5432` |
+| `Database` | Database name | Required |
+| `Username` / `Password` | Credentials | — |
+| `SSL Mode` | `Require`, `Prefer`, `Disable` | `Prefer` |
+
+**MySQL / MariaDB**
+
+| Parameter | Description | Default |
+|---|---|---|
+| `Server` | Hostname or IP | Required |
+| `Port` | Server port | `3306` |
+| `Database` | Database name | Required |
+| `Uid` / `Pwd` | Credentials | — |
+| `SslMode` | `Preferred`, `Required`, `None` | `Preferred` |
+
+**SQLite**
+
+| Parameter | Description |
+|---|---|
+| `Data Source` | Path to `.db` file, or `:memory:` for an in-memory database |
 
 ## Variables
 
