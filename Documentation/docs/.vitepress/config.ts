@@ -92,6 +92,7 @@ export default withMermaid(
           items: [
             { text: 'Entity', link: '/reference/entity-config' },
             { text: 'Environment', link: '/reference/environment-settings' },
+            { text: 'SQL Providers', link: '/reference/sql-providers' },
             { text: 'Authentication', link: '/reference/environment-auth' },
             { text: 'Namespaces', link: '/reference/namespaces' }
           ]

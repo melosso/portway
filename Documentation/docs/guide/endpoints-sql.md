@@ -1,7 +1,7 @@
 # SQL Endpoints
 
-:::important
-**Important:** You must have a high level of understanding of SQL Server database administration before continuing. Ensure you have the necessary permissions and are aware of the potential impact of your actions on the database and/or your organisations' policies.
+::: warning Database permissions
+You must have a sufficient understanding of your database platform and the necessary permissions before exposing tables or views through Portway. Ensure you are aware of the potential impact on your organisation's data and security policies.
 :::
 
 ## Overview
@@ -12,6 +12,12 @@ SQL endpoints allow you to:
 - Enable specific HTTP methods (GET, POST, PUT, DELETE)
 - Execute stored procedures for complex operations
 - Apply environment-specific configurations
+
+Portway supports **SQL Server, PostgreSQL, MySQL, and SQLite** as SQL backends. The correct driver is selected automatically from the connection string in the environment's `settings.json` — no changes to endpoint configuration are needed when using a non-SQL Server environment.
+
+::: tip Not all providers support every feature
+Table-valued functions (TVF) require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full matrix.
+:::
 
 ## Configuration
 
