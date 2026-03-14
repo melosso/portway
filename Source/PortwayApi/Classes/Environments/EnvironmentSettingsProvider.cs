@@ -182,7 +182,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return;
         }
 
-        // Warn if any environment settings are already encrypted — new keys will orphan them
+        // Warn if any environment settings are already encrypted, new keys will orphan them
         if (Directory.Exists(_basePath))
         {
             var encryptedSettings = Directory.GetDirectories(_basePath)

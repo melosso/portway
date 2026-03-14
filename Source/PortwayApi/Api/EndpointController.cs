@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
+using System.Data.Common;
+using PortwayApi.Classes.Providers;
 
 using Dapper;
 using System.Data;
@@ -2045,7 +2047,7 @@ public class EndpointController : ControllerBase
             }
 
             // Insert webhook data
-            using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
+            await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
             var insertQuery = $@"
@@ -2410,8 +2412,12 @@ public class EndpointController : ControllerBase
             if (!string.IsNullOrEmpty(orderbyForQuery)) 
                 odataParams["orderby"] = orderbyForQuery;
 
-            // Step 7: Convert OData to SQL
-            var (query, parameters) = _oDataToSqlConverter.ConvertToSQL($"{schema}.{objectName}", odataParams);
+            // Step 7: Convert OData to SQL (provider-aware for correct dialect)
+            var detectedProviderType = SqlProviderDetector.Detect(connectionString);
+            var (query, parameters) = _oDataToSqlConverter.ConvertToSQL(
+                $"{schema}.{objectName}",
+                odataParams,
+                detectedProviderType);
 
             // Step 8: Check cache first if enabled
             object? cachedResponse = null;
@@ -2432,13 +2438,13 @@ public class EndpointController : ControllerBase
             }
 
             // Step 9: Execute query
-            await using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
+            await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
             var results = await connection.QueryAsync(query, parameters);
             var resultList = results.ToList();
 
-            // Step 9: Transform results to use aliases (if column mappings exist)
+            // Step 10: Transform results to use aliases, but onlyy if column mappings exist
             var transformedResults = resultList;
             if (allowedColumns.Count > 0)
             {
@@ -2635,7 +2641,7 @@ public class EndpointController : ControllerBase
 			}
 
 			// Execute stored procedure
-			await using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
+			await using var connection = _connectionPoolService.CreateConnection(connectionString);
 			await connection.OpenAsync();
 			
 			// Parse procedure name
@@ -2841,7 +2847,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             }
 
             // Step 8: Execute stored procedure
-            await using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
+            await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
             // Parse procedure name properly
@@ -3006,7 +3012,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 			}
 
 			// Step 8: Execute stored procedure
-			await using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
+			await using var connection = _connectionPoolService.CreateConnection(connectionString);
 			await connection.OpenAsync();
 
 			// Parse procedure name properly
@@ -3153,7 +3159,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             }
 
             // Execute stored procedure
-            await using var connection = new SqlConnection(_connectionPoolService.OptimizeConnectionString(connectionString));
+            await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
             // Parse procedure name properly

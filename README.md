@@ -8,7 +8,7 @@
 
 Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
-> 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)
+> 📍 <a href="https://portway.melosso.com/" target="_blank" rel="noopener noreferrer">Landing Page</a>   |   📜 <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">Documentation</a>   |   🐋 <a href="https://portway-docs.melosso.com/guide/docker-compose.html" target="_blank" rel="noopener noreferrer">Docker Compose</a>   |   ✨ <a href="https://portway-demo.melosso.com/" target="_blank" rel="noopener noreferrer">Live demo</a>
 
 A quick example to give you an idea of what this is all about:
 
@@ -20,9 +20,9 @@ A quick example to give you an idea of what this is all about:
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
-* [.NET 10 Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+* <a href="https://dotnet.microsoft.com/en-us/download/dotnet/10.0" target="_blank" rel="noopener noreferrer">.NET 10 Hosting Bundle</a>
 * If you're running on Windows: Internet Information Services (IIS)
-* SQL Server access (if you're using SQL endpoints)
+* A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
 Ready to go? Then lets continue:
 
@@ -34,7 +34,7 @@ Follow these steps to get Portway up and running in your environment. Setup is f
 
 #### Windows Server (Recommended)
 
-Grab the [latest release](https://github.com/melosso/portway/releases) and extract it to your deployment folder. This build already includes a set of example environment and endpoint configurations. 
+Grab the <a href="https://github.com/melosso/portway/releases" target="_blank" rel="noopener noreferrer">latest release</a> and extract it to your deployment folder. This build already includes a set of example environment and endpoint configurations. 
 
 Note, before configuring the application in Internet Information Services, make sure to configure your environment-specific secret:
 
@@ -110,9 +110,9 @@ Define your server and environment settings to isolate the various environments 
 
 ### 3. Define Your Endpoints
 
-Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our [documentation page](https://portway-docs.melosso.com/). There are various types that Portway supports:
+Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a>. There are various types that Portway supports:
 
-* **SQL Server**: Direct CRUD access with schema-level control and documentation
+* **SQL** (SQL Server, PostgreSQL, MySQL, SQLite): Direct CRUD access with schema-level control and documentation
 * **Proxy**: Forward to internal services; supports complex orchestration
 * **File System**: Read/write from local storage or cache (In memory and/or Redis)
 * **Webhook**: Receive external calls and persist data to SQL
@@ -259,7 +259,7 @@ When an external service needs to push data into your system, this is the entry 
 When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
 
 > [!TIP] 
-> It's worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For your primary source of general best practices, consider visiting [this post](https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577) on the [Microsoft Community Hub](https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577). For additional guidance on security best practices, you might find [Security Headers by Probely](https://securityheaders.com/) helpful.
+> It's worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For your primary source of general best practices, consider visiting <a href="https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577" target="_blank" rel="noopener noreferrer">this post</a> on the <a href="https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577" target="_blank" rel="noopener noreferrer">Microsoft Community Hub</a>. For additional guidance on security best practices, you might find <a href="https://securityheaders.com/" target="_blank" rel="noopener noreferrer">Security Headers by Probely</a> helpful.
 
 ---
 
@@ -421,7 +421,7 @@ Content-Type: application/json
 
 </details>
 
-You'll find comprehensive configuration examples in our [documentation page](https://portway-docs.melosso.com/).
+You'll find comprehensive configuration examples in our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a>.
 
 ## Screenshots
 
@@ -437,14 +437,14 @@ You'll find comprehensive configuration examples in our [documentation page](htt
 We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
 
 ### Interactive documentation
-The application uses [Scalar](https://github.com/scalar/scalar) to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations.
+The application uses <a href="https://github.com/scalar/scalar" target="_blank" rel="noopener noreferrer">Scalar</a> to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations.
 
 ### Schema discovery
 Portway automatically generates API documentation by reading your **database objects** at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. 
 If you're using Windows Authentication with `Trusted_Connection=True`, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. This isn't necessary when you use SQL Authentication, but make sure each environment uses its own credentials.
 
 ### Walkthrough
-Our [documentation page](https://portway-docs.melosso.com/) will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
+Our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
 
 ## License
 

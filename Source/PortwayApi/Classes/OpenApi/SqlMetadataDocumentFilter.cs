@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using PortwayApi.Classes;
 using Serilog;
 
 namespace PortwayApi.Classes.OpenApi;
@@ -273,7 +274,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     }
 
     private JsonNode? CreateExampleObjectFromObjectMetadata(
-        List<Services.SqlMetadataService.ColumnMetadata>? metadata,
+        List<ColumnMetadata>? metadata,
         EndpointDefinition definition)
     {
         if (metadata == null || !metadata.Any())
@@ -331,7 +332,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an OpenAPI schema from object metadata (table/view columns)
     /// </summary>
     private OpenApiSchema CreateSchemaFromObjectMetadata(
-        List<Services.SqlMetadataService.ColumnMetadata> metadata,
+        List<ColumnMetadata> metadata,
         bool excludePrimaryKey = false,
         EndpointDefinition? endpoint = null,
         bool isRequest = false)
@@ -374,7 +375,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an OpenAPI schema from procedure metadata
     /// </summary>
     private OpenApiSchema CreateSchemaFromProcedureMetadata(
-        List<Services.SqlMetadataService.ParameterMetadata> parameters,
+        List<ParameterMetadata> parameters,
         EndpointDefinition endpoint,
         string method)
     {
@@ -461,7 +462,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates a schema for a single column from object metadata
     /// </summary>
     private OpenApiSchema CreateColumnSchema(
-        Services.SqlMetadataService.ColumnMetadata column,
+        ColumnMetadata column,
         EndpointDefinition? endpoint = null)
     {
         var columnSchema = new OpenApiSchema
@@ -515,7 +516,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates a schema for a single procedure parameter
     /// </summary>
     private OpenApiSchema CreateParameterSchema(
-        Services.SqlMetadataService.ParameterMetadata parameter,
+        ParameterMetadata parameter,
         EndpointDefinition endpoint)
     {
         // Remove @ from parameter name for JSON property
@@ -573,7 +574,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Builds a descriptive text for a column
     /// </summary>
     private string BuildColumnDescription(
-        Services.SqlMetadataService.ColumnMetadata column,
+        ColumnMetadata column,
         EndpointDefinition? endpoint = null)
     {
         var parts = new List<string>();
@@ -612,7 +613,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Builds a descriptive text for a procedure parameter
     /// </summary>
-    private string BuildParameterDescription(Services.SqlMetadataService.ParameterMetadata parameter)
+    private string BuildParameterDescription(ParameterMetadata parameter)
     {
         var parts = new List<string>();
 
@@ -722,7 +723,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an example object from procedure parameters
     /// </summary>
     private JsonNode? CreateExampleObjectFromProcedure(
-        List<Services.SqlMetadataService.ParameterMetadata> parameters,
+        List<ParameterMetadata> parameters,
         string method,
         EndpointDefinition definition)
     {
@@ -859,7 +860,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Generates an example value based on column metadata
     /// </summary>
-    private JsonNode? GenerateExampleValue(Services.SqlMetadataService.ColumnMetadata column)
+    private JsonNode? GenerateExampleValue(ColumnMetadata column)
     {
         if (column.IsNullable)
             return null;
@@ -896,7 +897,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Generates an example value based on parameter metadata (without property name)
     /// </summary>
-    private JsonNode? GenerateExampleValueFromParameter(Services.SqlMetadataService.ParameterMetadata parameter)
+    private JsonNode? GenerateExampleValueFromParameter(ParameterMetadata parameter)
     {
         // Use parameter name for context-aware examples
         var paramName = parameter.ParameterName.ToLowerInvariant().Replace("@", "");
@@ -948,7 +949,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Generates an example value based on parameter metadata and property name
     /// </summary>
     private JsonNode? GenerateExampleValueFromParameter(
-        Services.SqlMetadataService.ParameterMetadata parameter,
+        ParameterMetadata parameter,
         string propertyName)
     {
         if (string.IsNullOrWhiteSpace(propertyName))
@@ -1006,7 +1007,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an example object from metadata
     /// </summary>
     private JsonNode? CreateExampleObject(
-        List<Services.SqlMetadataService.ColumnMetadata> metadata,
+        List<ColumnMetadata> metadata,
         bool excludePrimaryKey = false)
     {
         var obj = new JsonObject();

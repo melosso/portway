@@ -1,6 +1,6 @@
 {
     "Environment": {
       "ServerName": "localhost",
-      "AllowedEnvironments": ["Demo"]
+      "AllowedEnvironments": ["WMS"]
     }
 }

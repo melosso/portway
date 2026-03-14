@@ -109,7 +109,7 @@ Comprehensive health information:
 
 ### Database Check
 
-Verifies SQL Server connectivity:
+Verifies SQL database connectivity:
 
 ```json
 {

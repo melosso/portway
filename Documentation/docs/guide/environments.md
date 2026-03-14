@@ -56,7 +56,7 @@ The root `environments/settings.json` file defines which environments are availa
 You must add environments to `AllowedEnvironments` for them to be accessible through the API.
 :::
 
-### Environment-Specific Settings
+### Environment-specific Settings
 
 Each environment has its own `settings.json` file with these properties:
 
@@ -76,9 +76,38 @@ Each environment has its own `settings.json` file with these properties:
 The `Headers` property is optional for SQL Server and Webhook endpoints but may be required for Proxy endpoints depending on your backend services.
 :::
 
+## Supported SQL Providers
+
+Portway connects to four SQL database backends. You do not need to declare which one you are using, Portway detects the provider automatically from the connection string you supply in `settings.json`.
+
+| Provider | When to use |
+|---|---|
+| **SQL Server** | Enterprise ERP, WMS, and existing Windows infrastructure. The default when no other provider is detected. |
+| **PostgreSQL** | Open-source environments, Linux hosts, and cloud-hosted databases. |
+| **MySQL / MariaDB** | Web applications and LAMP-stack back-ends. |
+| **SQLite** | Local file databases, demo setups, and lightweight read-only endpoints that need no external server. |
+
+### How detection works
+
+Portway inspects the connection string for provider-specific patterns, keywords, URI schemes, and parameter names, and routes the query through the correct driver. A standard SQL Server connection string, for example, is identified by keywords such as `TrustServerCertificate=` or `Integrated Security=` that only SQL Server uses.
+
+Because detection is purely based on the connection string, **switching providers for an environment is as simple as updating the `ConnectionString` value**, nothing else changes.
+
+::: tip SQLite, no server required
+An SQLite environment points to a local `.db` file. This makes it ideal for shipping a working demo alongside your Portway setup without needing a database server:
+```json
+{
+  "ConnectionString": "Data Source=environments/WMS/demo.db;"
+}
+```
+Portway detects the `.db` extension and switches to the SQLite driver automatically.
+:::
+
+For the full technical details on connection string formats, auto-detection priority, and per-provider capability differences, see the [SQL Providers reference](/reference/sql-providers).
+
 ## Configuration Examples
 
-### Development Environment
+### SQL Server — development
 
 ```json
 {
@@ -92,7 +121,7 @@ The `Headers` property is optional for SQL Server and Webhook endpoints but may 
 }
 ```
 
-### Production Environment
+### SQL Server — production
 
 ```json
 {
@@ -105,6 +134,35 @@ The `Headers` property is optional for SQL Server and Webhook endpoints but may 
   }
 }
 ```
+
+### PostgreSQL
+
+```json
+{
+  "ServerName": "pg-host",
+  "ConnectionString": "Host=pg-host;Port=5432;Database=mydb;Username=portway;Password=your-password;"
+}
+```
+
+### MySQL
+
+```json
+{
+  "ServerName": "mysql-host",
+  "ConnectionString": "Server=mysql-host;Port=3306;Database=mydb;Uid=portway;Pwd=your-password;SslMode=Preferred;"
+}
+```
+
+### SQLite (local file)
+
+```json
+{
+  "ServerName": "localhost",
+  "ConnectionString": "Data Source=environments/WMS/demo.db;"
+}
+```
+
+For more examples, you can check out (connectionstrings.com)[https://www.connectionstrings.com/sql-server/] for more.
 
 ## Using Environments in API Calls
 
@@ -283,10 +341,12 @@ These headers can be used by:
 - Keep names short but descriptive
 
 ### 2. Connection Strings
-- Use Windows Authentication when possible
-- Enable `TrustServerCertificate=true` for development only
+- Portway auto-detects the SQL provider from the connection string, no extra config needed
+- Use Windows Authentication for SQL Server where possible
+- Enable `TrustServerCertificate=true` for development SQL Server only
 - Use connection pooling settings for performance
 - Store sensitive credentials in Azure Key Vault
+- SQLite connection strings carry no credentials and are never encrypted or masked
 
 ### 3. Security
 - Use the Token Generator to create environment-specific access tokens
@@ -327,6 +387,9 @@ These headers can be used by:
    Error: Settings.json not found for environment: prod
    ```
    Solution: Create `environments/prod/settings.json` with required configuration
+
+5. **Wrong SQL provider used**
+   If queries fail with unexpected syntax errors (e.g. `no such table: dbo.TableName` on SQLite), the connection string may not contain enough signal for automatic detection. Ensure it uses provider-specific keywords or a recognised URI scheme. See the [SQL Providers reference](/reference/sql-providers) for detection priority rules.
 
 ### Debugging
 
