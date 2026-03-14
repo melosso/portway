@@ -12,12 +12,15 @@ public class CacheManager : ICacheProvider
 {
     private readonly ICacheProvider _provider;
     private readonly IOptionsMonitor<CacheOptions> _optionsMonitor;
+    private readonly PortwayApi.Services.MetricsService _metricsService;
 
     public CacheManager(
         IOptionsMonitor<CacheOptions> optionsMonitor,
         MemoryCacheProvider memoryCacheProvider,
+        PortwayApi.Services.MetricsService metricsService,
         RedisCacheProvider? redisCacheProvider = null)
     {
+        _metricsService = metricsService;
         _optionsMonitor = optionsMonitor;
         var options = optionsMonitor.CurrentValue;
 
@@ -45,14 +48,15 @@ public class CacheManager : ICacheProvider
     /// <summary>
     /// Gets a value from the cache
     /// </summary>
-    public Task<T?> GetAsync<T>(string key) where T : class
+    public async Task<T?> GetAsync<T>(string key) where T : class
     {
         if (!_optionsMonitor.CurrentValue.Enabled)
-        {
-            return Task.FromResult<T?>(null);
-        }
+            return null;
 
-        return _provider.GetAsync<T>(key);
+        var result = await _provider.GetAsync<T>(key);
+        if (result is not null) _metricsService.RecordCacheHit();
+        else _metricsService.RecordCacheMiss();
+        return result;
     }
 
     /// <summary>

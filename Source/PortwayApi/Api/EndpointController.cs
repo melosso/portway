@@ -173,7 +173,7 @@ public class EndpointController : ControllerBase
     /// Handles GET requests to endpoints
     /// </summary>
     [HttpGet("{env}/{**catchall}")]
-    [ResponseCache(Duration = 300, VaryByQueryKeys = new[] { "*" })]
+    [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -3312,16 +3312,32 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 }
             }
 
-            // Read content from file
-            var contentBytes = await System.IO.File.ReadAllBytesAsync(contentFilePath);
-
             // Check if OData filtering is requested and supported
             var hasODataParams = !string.IsNullOrEmpty(select) || !string.IsNullOrEmpty(filter) ||
                                !string.IsNullOrEmpty(orderby) || Request.Query.ContainsKey("$top") || Request.Query.ContainsKey("$skip");
 
+            // Serve from server-side cache when no OData params (raw file, cacheable as-is)
+            byte[] contentBytes;
+            if (!hasODataParams)
+            {
+                var staticCacheKey = $"static:{endpointName}:{env}";
+                var cached = await _cacheManager.GetAsync<byte[]>(staticCacheKey);
+                if (cached != null)
+                {
+                    Log.Debug("Cache hit for static content: {Endpoint}", endpointName);
+                    return File(cached, contentType!);
+                }
+                contentBytes = await System.IO.File.ReadAllBytesAsync(contentFilePath);
+                await _cacheManager.SetAsync(staticCacheKey, contentBytes, endpointName);
+            }
+            else
+            {
+                contentBytes = await System.IO.File.ReadAllBytesAsync(contentFilePath);
+            }
+
             if (hasODataParams && enableFiltering)
             {
-                if (contentType.Contains("json"))
+                if (contentType!.Contains("json"))
                 {
                     // Apply JSON filtering
                     return await ApplyJsonFiltering(contentBytes, contentType, select, filter, orderby, top, skip);
@@ -3335,7 +3351,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 
             Log.Debug("Serving static content: {Endpoint} ({ContentType})", endpointName, contentType);
 
-            return File(contentBytes, contentType);
+            return File(contentBytes, contentType!);
         }
         catch (Exception ex)
         {
@@ -4213,8 +4229,11 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 return parsedCacheEnabled;
             }
         }
-        
-        return false; // Default: caching disabled
+
+        // Fall back to global cache setting — CacheManager.GetAsync already guards
+        // against the global Enabled=false case, so returning true here means
+        // "defer to the global setting" rather than hard-disabling per endpoint.
+        return true;
     }
 
     /// <summary>
