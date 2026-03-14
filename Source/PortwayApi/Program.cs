@@ -336,6 +336,10 @@ try
     // The SSE broadcaster for /ui/ route
     builder.Services.AddSingleton<PortwayApi.Services.SseBroadcaster>();
 
+    // In-memory HTTP request metrics (traffic + error codes)
+    builder.Services.AddSingleton<PortwayApi.Services.MetricsService>();
+    builder.Services.AddHostedService<PortwayApi.Services.MetricsPersistenceService>();
+
     // Background service to prevent health check cache from expiring
     builder.Services.AddHostedService(sp =>
         new PortwayApi.Services.HealthRefreshService(
@@ -429,6 +433,26 @@ try
     // Configure Web UI authentication and static file serving..
     if (!string.IsNullOrEmpty(adminApiKey))
         app.UseWebUiAuth(adminApiKey);
+
+    // Record request metrics for all non-health paths (UI and API tracked separately)
+    var metricsService = app.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+    app.Use(async (context, next) =>
+    {
+        await next();
+        var path = context.Request.Path;
+        if (path.StartsWithSegments("/health") || path.StartsWithSegments("/scalar")) return;
+        string source, endpoint;
+        if (path.StartsWithSegments("/ui"))
+        {
+            source = "ui"; endpoint = "";
+        }
+        else
+        {
+            source   = "api";
+            endpoint = ParseEndpointName(path.Value);
+        }
+        metricsService.Record(context.Response.StatusCode, context.Request.Method, source, endpoint);
+    });
 
     app.UseDefaultFilesWithOptions();
 
@@ -546,7 +570,11 @@ try
     PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app);
     app.UseTokenAuthentication();
     app.UseAuthorization();
-    app.UseResponseCaching();
+
+    // UseResponseCaching() removed as we'll be using CacheManager to handles all server-side caching.
+    // Leaving it in causes ASP.NET Core to intercept repeat requests before reaching
+    // the controller, so CacheManager.GetAsync is never called on hits.
+    
     app.UseAuthenticatedCaching();
     app.UseRequestTrafficLogging();
     app.UseRouting();
@@ -698,6 +726,20 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+/// Parses "/api/{env}/{name}" or "/webhook/{env}/{name}" → "{name}" (or "{env}/composite/{name}" → "composite/{name}")
+static string ParseEndpointName(string? path)
+{
+    if (string.IsNullOrEmpty(path)) return "";
+    var segs = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+    if (segs.Length < 3) return "";
+    var prefix = segs[0].ToLowerInvariant();
+    if (prefix != "api" && prefix != "webhook") return "";
+    // segs[1] = env, segs[2] = name (or "composite"), segs[3] = composite name
+    if (segs.Length >= 4 && segs[2].Equals("composite", StringComparison.OrdinalIgnoreCase))
+        return $"composite/{segs[3]}";
+    return segs[2];
 }
 
 void LogApplicationAscii()

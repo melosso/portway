@@ -11,6 +11,32 @@
   <script src="js/components/promobar.js"></script>
   <script src="js/sidebar.js"></script>
   <script src="js/shared.js"></script>
+  <script src="js/components/chart-period-selector.js"></script>
+  <script src="js/components/area-chart.js"></script>
+  <script src="js/components/error-chart.js"></script>
+  <style>
+    /* ── Stacked-chart legend ─────────────────────────────── */
+    .chart-legend { display:flex; gap:1rem; align-items:center; }
+    .chart-legend-item { display:flex; align-items:center; gap:0.35rem; font-size:0.72rem; color:hsl(var(--muted-foreground)); }
+    .chart-legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* ── Cache card ───────────────────────────────────────── */
+    .cache-layout { display:flex; align-items:center; gap:1.25rem; }
+    .cache-ring   { flex-shrink:0; }
+    .cache-stats  { display:flex; flex-direction:column; gap:0.6rem; flex:1; min-width:0; }
+    .cache-row    { display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; gap:0.5rem; }
+    .cache-row-key{ color:hsl(var(--muted-foreground)); }
+    .cache-row-val{ font-family:ui-monospace,monospace; font-weight:600; color:hsl(var(--foreground)); }
+
+    /* ── Top endpoints ────────────────────────────────────── */
+    .ep-list  { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.6rem 1.25rem; }
+    .ep-item  { display:grid; grid-template-columns:1.2rem 1fr auto; grid-template-rows:auto auto; gap:0.2rem 0.6rem; align-items:center; }
+    .ep-rank  { font-size:0.7rem; font-variant-numeric:tabular-nums; color:hsl(var(--muted-foreground)); text-align:right; }
+    .ep-name  { font-size:0.8rem; color:hsl(var(--foreground)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ep-count { font-size:0.72rem; font-family:ui-monospace,monospace; color:hsl(var(--muted-foreground)); white-space:nowrap; }
+    .ep-bar-track { grid-column:2/-1; height:4px; background:hsl(var(--muted)); border-radius:999px; overflow:hidden; }
+    .ep-bar-fill  { height:100%; background:hsl(var(--info)); border-radius:999px; transition:width .3s; }
+  </style>
 </head>
 <body>
 
@@ -50,13 +76,14 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:start">
-      <div class="card">
+    <!-- Row 2: equal-height pair via stretch -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;align-items:stretch">
+      <div class="card" style="display:flex;flex-direction:column">
         <div class="card-header">
           <span class="card-title">Service Health</span>
           <span class="badge badge-muted" id="healthBadge">—</span>
         </div>
-        <div class="card-body">
+        <div class="card-body" style="flex:1">
           <div class="kv-grid">
             <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
             <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
@@ -65,80 +92,120 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" style="display:flex;flex-direction:column">
         <div class="card-header"><span class="card-title">Endpoint Breakdown</span></div>
-        <div class="card-body" id="breakdownBody">
+        <div class="card-body" id="breakdownBody" style="flex:1">
           <span class="muted" style="font-size:0.8rem">Loading…</span>
         </div>
       </div>
+    </div>
+
+    <!-- Row 3: traffic (stacked API/UI) + errors -->
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;margin-top:1.25rem;align-items:start">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Request Traffic</span>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <div class="chart-legend">
+              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:hsl(var(--info))"></span>API</span>
+              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:hsl(var(--muted-foreground)/.5)"></span>UI</span>
+            </div>
+            <div id="trafficPeriodSel"></div>
+          </div>
+        </div>
+        <div class="card-body" style="padding-bottom:1.25rem">
+          <div id="trafficChart" style="height:180px"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">HTTP Errors</span>
+          <div id="errorPeriodSel"></div>
+        </div>
+        <div class="card-body" style="padding-bottom:1.25rem">
+          <div id="errorChart" style="height:180px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: cache + top endpoints — equal height -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-top:1.25rem;align-items:stretch">
+
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="card-header"><span class="card-title">Cache</span></div>
+        <div class="card-body" id="cacheBody" style="flex:1">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="card-header">
+          <span class="card-title">Top Endpoints</span>
+          <span class="badge badge-muted" style="font-size:0.68rem" id="topEpPeriodLabel"></span>
+        </div>
+        <div class="card-body" id="topEndpointsBody" style="flex:1">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
     </div>
 
   </div>
 </main>
 
 <script>
-// ── Overview data ─────────────────────────────────────────
+// ── Overview ──────────────────────────────────────────────
 async function load() {
   try {
     const d = await fetch('/ui/api/overview').then(r => r.json());
     const ep = d.endpoints ?? {};
-    document.getElementById('statSql').textContent = ep.sql ?? '—';
+    document.getElementById('statSql').textContent = ep.sql ?? '0';
     document.getElementById('statProxy').textContent = (ep.proxy ?? 0) + (ep.composite ? ` (+${ep.composite})` : '');
-    document.getElementById('statFile').textContent = ((ep.file ?? 0) + (ep.static ?? 0)) || '—';
-    document.getElementById('statEnvs').textContent = d.environments ?? '—';
+    document.getElementById('statFile').textContent = ((ep.file ?? 0) + (ep.static ?? 0)) || '0';
+    document.getElementById('statEnvs').textContent = d.environments ?? '0';
 
-    const v = (d.version ?? '').split('+')[0];
-    document.getElementById('healthVersion').textContent = v || '—';
-    document.getElementById('healthUptime').textContent = d.uptime ?? '—';
+    document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
+    document.getElementById('healthUptime').textContent  = d.uptime ?? '—';
 
     const rows = [
-      ['SQL', ep.sql ?? 0],
-      ['Proxy', ep.proxy ?? 0],
-      ['Composite', ep.composite ?? 0],
-      ['File', ep.file ?? 0],
-      ['Static', ep.static ?? 0],
-      ['Webhook', ep.webhook ?? 0],
+      ['SQL', ep.sql ?? 0], ['Proxy', ep.proxy ?? 0], ['Composite', ep.composite ?? 0],
+      ['File', ep.file ?? 0], ['Static', ep.static ?? 0], ['Webhook', ep.webhook ?? 0],
     ].filter(([,n]) => n > 0);
 
     document.getElementById('breakdownBody').innerHTML = rows.length
       ? '<div class="kv-grid">' + rows.map(([k,v]) =>
           `<span class="kv-key">${esc(k)}</span><span class="kv-val">${v}</span>`
-        ).join('') + `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Total</span>
-         <span class="kv-val" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">${ep.total ?? 0}</span>` + '</div>'
+        ).join('') +
+        `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Total</span>
+         <span class="kv-val"  style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">${ep.total ?? 0}</span>` +
+        '</div>'
       : '<span class="muted" style="font-size:0.8rem">No endpoints configured</span>';
   } catch(e) { console.error('overview', e); }
 }
 
-// SSE
-let _sseAbort = null;
-let _sseDelay = 1000;
+// ── SSE ────────────────────────────────────────────────────
+let _sseAbort = null, _sseDelay = 1000;
 
 function connectSSE() {
   if (_sseAbort) _sseAbort.abort();
   _sseAbort = new AbortController();
-
   fetch('/ui/api/events', { credentials: 'same-origin', signal: _sseAbort.signal })
     .then(response => {
       if (!response.ok) throw new Error(`SSE ${response.status}`);
       _sseDelay = 1000;
-      const reader  = response.body.getReader();
-      const decoder = new TextDecoder();
+      const reader = response.body.getReader(), decoder = new TextDecoder();
       let buffer = '';
-
       function read() {
         reader.read().then(({ done, value }) => {
           if (done) { scheduleSSEReconnect(); return; }
           buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-          let eventType = '', data = '';
+          const lines = buffer.split('\n'); buffer = lines.pop();
+          let type = '', data = '';
           for (const line of lines) {
-            if (line.startsWith('event: '))      eventType = line.slice(7).trim();
-            else if (line.startsWith('data: '))  data      = line.slice(6);
-            else if (line === '' && eventType && data) {
-              handleSSE(eventType, data);
-              eventType = ''; data = '';
-            }
+            if (line.startsWith('event: '))      type = line.slice(7).trim();
+            else if (line.startsWith('data: '))  data = line.slice(6);
+            else if (line === '' && type && data) { handleSSE(type, data); type = ''; data = ''; }
           }
           read();
         }).catch(err => { if (err.name !== 'AbortError') scheduleSSEReconnect(); });
@@ -158,13 +225,12 @@ function handleSSE(type, data) {
   try {
     const d = JSON.parse(data);
     if (type === 'health') applyHealth(d);
-    else if (type === 'reload') load(); // endpoint/environment config changed
+    else if (type === 'reload') load();
   } catch {}
 }
 
 function applyHealth(d) {
-  const status = d.status ?? '';
-  const ok     = status.toLowerCase() === 'healthy';
+  const status = d.status ?? '', ok = status.toLowerCase() === 'healthy';
   document.getElementById('healthStatus').textContent = status || '—';
   const badge = document.getElementById('healthBadge');
   badge.textContent = status || 'unknown';
@@ -173,6 +239,111 @@ function applyHealth(d) {
 
 load();
 connectSSE();
+
+// ── Charts ─────────────────────────────────────────────────
+let _trafficChart, _errorChart;
+let _trafficPeriod = '24h', _errorPeriod = '24h';
+
+async function loadMetrics(period, target) {
+  try {
+    const d = await fetch(`/ui/api/metrics?period=${period}`).then(r => r.json());
+    if (target === 'traffic') {
+      const hasData = d.api_traffic?.some(b => b.count > 0) || d.ui_traffic?.some(b => b.count > 0);
+      if (hasData) {
+        _trafficChart.setData(d.api_traffic, d.ui_traffic);
+      } else {
+        const secs = d.collecting_for_secs ?? 0;
+        const ago  = secs < 120 ? `${secs}s` : secs < 3600 ? `${Math.round(secs/60)}m` : `${Math.round(secs/3600)}h`;
+        _trafficChart.setEmpty(`No traffic yet · collecting for ${ago}`);
+      }
+      renderTopEndpoints(d);
+      renderCache(d);
+    } else {
+      _errorChart.setData(d.errors ?? {}, d.total ?? 0);
+    }
+  } catch(e) { console.error('metrics', e); }
+}
+
+// ── Cache ring ─────────────────────────────────────────────
+function renderCache(d) {
+  const c  = d.cache;
+  const el = document.getElementById('cacheBody');
+  if (!c) { el.innerHTML = '<span class="muted" style="font-size:0.8rem">No data</span>'; return; }
+
+  const total = (c.hits ?? 0) + (c.misses ?? 0);
+  const pct   = c.hit_rate != null ? Math.round(c.hit_rate * 100) : null;
+  const r     = 22, circ = +(2 * Math.PI * r).toFixed(1);
+  const dash  = pct != null ? +((pct / 100) * circ).toFixed(1) : 0;
+  const ringColor = pct == null ? 'hsl(var(--muted-foreground)/.35)'
+    : pct >= 80 ? 'hsl(var(--success))' : pct >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
+  const rateLabel = pct != null ? `${pct}%` : 'N/A';
+
+  el.innerHTML = `
+    <div class="cache-layout">
+      <svg class="cache-ring" width="60" height="60" viewBox="0 0 60 60">
+        <circle cx="30" cy="30" r="${r}" fill="none" stroke="hsl(var(--muted))" stroke-width="5"/>
+        <circle cx="30" cy="30" r="${r}" fill="none" stroke="${ringColor}" stroke-width="5"
+          stroke-dasharray="${dash} ${circ}" stroke-linecap="round" transform="rotate(-90 30 30)"/>
+        <text x="30" y="34" text-anchor="middle" font-size="11" font-weight="700"
+          fill="hsl(var(--foreground))" font-family="var(--app-font)">${rateLabel}</text>
+      </svg>
+      <div class="cache-stats">
+        <div class="cache-row">
+          <span class="cache-row-key">Hits</span>
+          <span class="cache-row-val" style="color:hsl(var(--success))">${fmtN(c.hits)}</span>
+        </div>
+        <div class="cache-row">
+          <span class="cache-row-key">Misses</span>
+          <span class="cache-row-val">${fmtN(c.misses)}</span>
+        </div>
+        <div class="cache-row" style="padding-top:0.35rem;border-top:1px solid hsl(var(--border))">
+          <span class="cache-row-key">Total</span>
+          <span class="cache-row-val" style="color:hsl(var(--muted-foreground))">${fmtN(total)}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Top endpoints ──────────────────────────────────────────
+function renderTopEndpoints(d) {
+  const eps = d.top_endpoints ?? [];
+  document.getElementById('topEpPeriodLabel').textContent = d.period ?? '24h';
+  const el = document.getElementById('topEndpointsBody');
+  if (eps.length === 0) {
+    el.innerHTML = '<span class="muted" style="font-size:0.8rem">No API requests yet</span>';
+    return;
+  }
+  const max = eps[0].count;
+  el.innerHTML = `<div class="ep-list">${eps.map((ep, i) => `
+    <div class="ep-item">
+      <span class="ep-rank">${i+1}</span>
+      <span class="ep-name" title="${esc(ep.name)}">${esc(ep.name)}</span>
+      <span class="ep-count">${fmtN(ep.count)} req</span>
+      <div class="ep-bar-track"><div class="ep-bar-fill" style="width:${Math.round(ep.count/max*100)}%"></div></div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  _trafficChart = new AreaChart(document.getElementById('trafficChart'));
+  _errorChart   = new ErrorChart(document.getElementById('errorChart'));
+
+  new ChartPeriodSelector(
+    document.getElementById('trafficPeriodSel'),
+    ['24h','7d','30d'],
+    p => { _trafficPeriod = p; loadMetrics(p, 'traffic'); }
+  );
+  new ChartPeriodSelector(
+    document.getElementById('errorPeriodSel'),
+    ['24h','7d','30d'],
+    p => { _errorPeriod = p; loadMetrics(p, 'error'); }
+  );
+
+  loadMetrics('24h', 'traffic');
+  loadMetrics('24h', 'error');
+});
 </script>
 </body>
 </html>

@@ -1073,6 +1073,35 @@ public static class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
+        app.MapGet("/ui/api/metrics", (HttpRequest request) =>
+        {
+            var period   = request.Query["period"].ToString();
+            if (period != "7d" && period != "30d") period = "24h";
+            var metrics  = app.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+            var snapshot   = metrics.GetSnapshot(period);
+            var cacheTotal = snapshot.CacheHits + snapshot.CacheMisses;
+            static object BucketDto(TrafficBucket b) => new { label = b.Label, timestamp = b.Timestamp, count = b.Count };
+            return Results.Json(new
+            {
+                period              = snapshot.Period,
+                api_traffic         = snapshot.ApiTraffic.Select(BucketDto),
+                ui_traffic          = snapshot.UiTraffic.Select(BucketDto),
+                errors              = snapshot.Errors,
+                total               = snapshot.Total,
+                error_rate          = snapshot.ErrorRate,
+                collecting_for_secs = snapshot.CollectingForSeconds,
+                api_requests        = snapshot.ApiRequests,
+                ui_requests         = snapshot.UiRequests,
+                top_endpoints       = snapshot.TopEndpoints.Select(e => new { name = e.Name, count = e.Count }),
+                cache = new
+                {
+                    hits     = snapshot.CacheHits,
+                    misses   = snapshot.CacheMisses,
+                    hit_rate = cacheTotal > 0 ? Math.Round((double)snapshot.CacheHits / cacheTotal, 4) : (double?)null
+                }
+            });
+        }).ExcludeFromDescription();
+
         return app;
     }
 
