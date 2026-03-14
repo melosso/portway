@@ -10,7 +10,7 @@ The way Portway exposes data is rather simple. It functions as a bridge:
 graph TD
     Client[External Client] -->|HTTP/HTTPS| IIS[IIS 8.0]
     IIS -->|Firewall/Whitelisting| Portway[Portway API Gateway]
-    Portway -->|SQL| DB[(SQL Server)]
+    Portway -->|SQL| DB[(SQL Database)]
     Portway -->|HTTP| Services[Internal Services]
     Portway -->|Process| Webhooks[Webhook Data]
     

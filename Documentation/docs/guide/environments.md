@@ -56,7 +56,7 @@ The root `environments/settings.json` file defines which environments are availa
 You must add environments to `AllowedEnvironments` for them to be accessible through the API.
 :::
 
-### Environment-Specific Settings
+### Environment-specific Settings
 
 Each environment has its own `settings.json` file with these properties:
 
@@ -78,7 +78,7 @@ The `Headers` property is optional for SQL Server and Webhook endpoints but may 
 
 ## Supported SQL Providers
 
-Portway connects to four SQL database backends. You do not need to declare which one you are using — Portway detects the provider automatically from the connection string you supply in `settings.json`.
+Portway connects to four SQL database backends. You do not need to declare which one you are using, Portway detects the provider automatically from the connection string you supply in `settings.json`.
 
 | Provider | When to use |
 |---|---|
@@ -89,11 +89,11 @@ Portway connects to four SQL database backends. You do not need to declare which
 
 ### How detection works
 
-Portway inspects the connection string for provider-specific patterns — keywords, URI schemes, and parameter names — and routes the query through the correct driver. A standard SQL Server connection string, for example, is identified by keywords such as `TrustServerCertificate=` or `Integrated Security=` that only SQL Server uses.
+Portway inspects the connection string for provider-specific patterns, keywords, URI schemes, and parameter names, and routes the query through the correct driver. A standard SQL Server connection string, for example, is identified by keywords such as `TrustServerCertificate=` or `Integrated Security=` that only SQL Server uses.
 
-Because detection is purely based on the connection string, **switching providers for an environment is as simple as updating the `ConnectionString` value** — nothing else changes.
+Because detection is purely based on the connection string, **switching providers for an environment is as simple as updating the `ConnectionString` value**, nothing else changes.
 
-::: tip SQLite — no server required
+::: tip SQLite, no server required
 An SQLite environment points to a local `.db` file. This makes it ideal for shipping a working demo alongside your Portway setup without needing a database server:
 ```json
 {
@@ -341,7 +341,7 @@ These headers can be used by:
 - Keep names short but descriptive
 
 ### 2. Connection Strings
-- Portway auto-detects the SQL provider from the connection string — no extra config needed
+- Portway auto-detects the SQL provider from the connection string, no extra config needed
 - Use Windows Authentication for SQL Server where possible
 - Enable `TrustServerCertificate=true` for development SQL Server only
 - Use connection pooling settings for performance

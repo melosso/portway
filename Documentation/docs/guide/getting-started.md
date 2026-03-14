@@ -9,7 +9,7 @@ Before you begin, make sure you have:
 - Windows Server (or Windows 11 for development)
 - [.NET 10+ ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) 
 - Internet Information Services (IIS)
-- SQL Server database access (if you're using MSSQL endpoints)
+- A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
 > [!WARNING]
 > There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core** provides. Make sure to choose the last option ("Hosting Bundle").

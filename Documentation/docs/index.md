@@ -21,7 +21,7 @@ hero:
 features:
   - icon: 🗄️
     title: Multiple Endpoint Types
-    details: Connect SQL Server with OData support, proxy internal services, and process webhooks - all through a unified API gateway.
+    details: Connect SQL databases (SQL Server, PostgreSQL, MySQL, SQLite) with OData support, proxy internal services, and process webhooks - all through a unified API gateway.
   - icon: 🔐
     title: Enterprise Security
     details: Token-based authentication with scoped access, environment restrictions, and optional Azure Key Vault integration.

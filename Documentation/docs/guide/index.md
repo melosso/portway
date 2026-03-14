@@ -20,10 +20,10 @@ Most users start with installation, deployment, or security configuration. Use t
 
 ## What Is Portway?
 
-Portway is an **API gateway built for Windows environments**. It sits in front of SQL Server, internal services, and static content, exposing them through a consistent REST interface. If you’re running a mix of legacy systems and new services, Portway allows you to surface them **without rewriting anything**.
+Portway is an **API gateway built for Windows environments**. It sits in front of your SQL databases, internal services, and static content, exposing them through a consistent REST interface. If you’re running a mix of legacy systems and new services, Portway allows you to surface them **without rewriting anything**.
 
 Portway works with:
-- SQL Server tables and stored procedures
+- SQL databases (SQL Server, PostgreSQL, MySQL, SQLite): tables, views, and stored procedures
 - Internal web services that require authentication
 - JSON, XML, and CSV files
 - Incoming requests as webhook endpoint
@@ -72,7 +72,7 @@ In any case, you're able to saturate your documentation by configuring your endp
 
 Portway exposes a variety of endpoint types. Knowing these will help you choose the right one for your use case.
 
-- **SQL Endpoints**: Support OData queries for SQL Server.
+- **SQL Endpoints**: OData queries against SQL Server, PostgreSQL, MySQL, or SQLite.
 - **Proxy Endpoints**: Forward requests to internal services.
 - **Composite Endpoints**: Handle multi-step workflows.
 - **File Endpoints**: Manage storage and retrieval of files.
