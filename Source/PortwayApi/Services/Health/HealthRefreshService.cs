@@ -15,17 +15,30 @@ public class HealthRefreshService : BackgroundService
     private readonly HealthCheckService _healthService;
     private readonly TimeSpan _interval;
     private readonly SseBroadcaster? _broadcaster;
+    private readonly IHostApplicationLifetime? _lifetime;
 
-    public HealthRefreshService(HealthCheckService healthService, TimeSpan interval, SseBroadcaster? broadcaster = null)
+    public HealthRefreshService(
+        HealthCheckService healthService,
+        TimeSpan interval,
+        SseBroadcaster? broadcaster = null,
+        IHostApplicationLifetime? lifetime = null)
     {
         _healthService = healthService;
         _interval      = interval;
         _broadcaster   = broadcaster;
+        _lifetime      = lifetime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Run an initial check immediately so the cache is warm before the first request.
+        // Defer the first check until the HTTP server is ready so that SQL/proxy
+        // connectivity errors don't clutter logs during the service startup phase.
+        await WaitForApplicationStartedAsync(stoppingToken);
+
+        if (stoppingToken.IsCancellationRequested)
+            return;
+
+        // Run an initial check so the cache is warm before the first request.
         await RefreshAsync(stoppingToken);
 
         using var timer = new PeriodicTimer(_interval);
@@ -33,6 +46,28 @@ public class HealthRefreshService : BackgroundService
         {
             await RefreshAsync(stoppingToken);
         }
+    }
+
+    private Task WaitForApplicationStartedAsync(CancellationToken stoppingToken)
+    {
+        if (_lifetime is null)
+            return Task.CompletedTask;
+
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        if (_lifetime.ApplicationStarted.IsCancellationRequested)
+        {
+            tcs.TrySetResult();
+            return tcs.Task;
+        }
+
+        _lifetime.ApplicationStarted.Register(
+            static s => ((TaskCompletionSource)s!).TrySetResult(), tcs);
+
+        stoppingToken.Register(
+            static s => ((TaskCompletionSource)s!).TrySetCanceled(), tcs);
+
+        return tcs.Task;
     }
 
     private async Task RefreshAsync(CancellationToken ct)
