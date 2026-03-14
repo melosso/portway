@@ -2,7 +2,7 @@
     "Url": "http://nginx/api/production",
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Namespace": "Production",
-    "NamespaceDisplayName": "Production Management",
+    "NamespaceDisplayName": "Production",
     "Documentation": {
         "TagDescription": "Monitor and manage production orders.",
         "MethodDescriptions": {
