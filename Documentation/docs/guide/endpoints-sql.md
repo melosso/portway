@@ -13,7 +13,7 @@ SQL endpoints allow you to:
 - Execute stored procedures for complex operations
 - Apply environment-specific configurations
 
-Portway supports **SQL Server, PostgreSQL, MySQL, and SQLite** as SQL backends. The correct driver is selected automatically from the connection string in the environment's `settings.json` — no changes to endpoint configuration are needed when using a non-SQL Server environment.
+Portway supports **SQL Server, PostgreSQL, MySQL, and SQLite** as SQL backends. The correct driver is selected automatically from the connection string in the environment's `settings.json`, no changes to endpoint configuration are needed when using a non-SQL Server environment.
 
 ::: tip Not all providers support every feature
 Table-valued functions (TVF) require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full matrix.
@@ -419,7 +419,7 @@ Enable detailed logging to troubleshoot issues:
 
 ## Best Practices
 
-These should be pretty known for anyone familiar with SQL Server, but just give you a short insight:
+These should be pretty well known for anyone familiar with relational databases, but just give you a short insight:
 
 1. **Use Stored Procedures for Write Operations**
    - Provides better control and validation

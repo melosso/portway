@@ -8,7 +8,7 @@
 
 Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
-> 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)
+> 📍 [Landing Page](https://portway.melosso.com/)   |   📜 [Documentation](https://portway-docs.melosso.com/)  |   🐋 [Docker Compose](https://portway-docs.melosso.com/guide/docker-compose.html)   |   ✨ [Live demo](https://portway-demo.melosso.com/)
 
 A quick example to give you an idea of what this is all about:
 
@@ -22,7 +22,7 @@ Before deploying Portway, make sure your environment meets the following require
 
 * [.NET 10 Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 * If you're running on Windows: Internet Information Services (IIS)
-* SQL Server access (if you're using SQL endpoints)
+* A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
 Ready to go? Then lets continue:
 
@@ -112,7 +112,7 @@ Define your server and environment settings to isolate the various environments 
 
 Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our [documentation page](https://portway-docs.melosso.com/). There are various types that Portway supports:
 
-* **SQL Server**: Direct CRUD access with schema-level control and documentation
+* **SQL** (SQL Server, PostgreSQL, MySQL, SQLite): Direct CRUD access with schema-level control and documentation
 * **Proxy**: Forward to internal services; supports complex orchestration
 * **File System**: Read/write from local storage or cache (In memory and/or Redis)
 * **Webhook**: Receive external calls and persist data to SQL

@@ -17,7 +17,7 @@ graph TD
     D -->|Composite| G[Composite Endpoints]
     D -->|Webhook| H[Webhook Endpoints]
     D -->|Files| K[Files Endpoints]
-    E -->|Query| I[SQL Server]
+    E -->|Query| I[SQL Database]
     F -->|Forward| J[Internal Services]
     M -->|Serve| N[Content Files]
     G -->|Orchestrate| F
@@ -44,7 +44,7 @@ https://your-domain.com/api/{environment}/{endpoint}
 ## Endpoint Types
 
 ### SQL Endpoints
-Direct access to SQL Server data with OData query support.
+Direct access to SQL database data (SQL Server, PostgreSQL, MySQL, SQLite) with OData query support.
 
 ```http
 GET /api/500/Products?$filter=Assortment eq 'Books'&$top=10

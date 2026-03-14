@@ -1,13 +1,13 @@
 ---
 title: SQL Providers
-description: Reference for all supported SQL database providers — SQL Server, PostgreSQL, MySQL, and SQLite — including connection string formats, provider auto-detection logic, and capability matrix.
+description: Reference for all supported SQL database providers, e.g. SQL Server, PostgreSQL, MySQL, and SQLite, including connection string formats, provider auto-detection logic, and capability matrix.
 outline: [2, 3]
 keywords: [SQL Server, PostgreSQL, MySQL, SQLite, connection string, provider detection, OData]
 ---
 
 # SQL Providers
 
-Portway supports four relational database backends. The active provider for each environment is determined automatically from the connection string in `settings.json` — no extra configuration key is required.
+Portway supports four relational database backends. The active provider for each environment is determined automatically from the connection string in `settings.json`, no extra configuration key is required.
 
 ## Supported Providers
 

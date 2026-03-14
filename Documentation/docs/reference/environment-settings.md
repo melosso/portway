@@ -65,7 +65,7 @@ Each environment has its own configuration file with connection details:
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
-| `ServerName` | string | Yes | SQL Server instance name |
+| `ServerName` | string | Yes | Database server name (used for display and health checks) |
 | `ConnectionString` | string | Yes | Database connection string |
 | `Headers` | object | No | Custom headers for requests |
 
@@ -147,7 +147,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 
 ## Connection String Configuration
 
-The `ConnectionString` value determines both the target database and the SQL driver Portway uses. No additional property is needed — the provider is detected automatically.
+The `ConnectionString` value determines both the target database and the SQL driver Portway uses. No additional property is needed, the provider is detected automatically.
 
 See the [SQL Providers reference](/reference/sql-providers) for the full detection algorithm and capability differences between providers.
 
