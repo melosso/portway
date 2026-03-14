@@ -2,7 +2,7 @@
     "Url": "http://nginx/api/company",
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Namespace": "Company",
-    "NamespaceDisplayName": "Company Management",
+    "NamespaceDisplayName": "Company",
     "Documentation": {
         "TagDescription": "Manage your company and its branch locations.",
         "MethodDescriptions": {
