@@ -1,5 +1,10 @@
 # Portway Management Console
 
+:::warning Important
+:::
+::: The Management Console is a legacy, deprecated feature that'll be removed on future releases.
+:::
+
 The Portway Management Console is a command-line utility for creating and managing authentication tokens for the Portway API. It provides fine-grained control over token permissions, including endpoint access and environment restrictions.
 
 ## Usage Modes

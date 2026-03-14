@@ -2,6 +2,7 @@ namespace PortwayApi.Interfaces;
 
 using Microsoft.OData.Edm;
 using DynamicODataToSQL;
+using PortwayApi.Classes.Providers;
 
 /// <summary>
 /// Interface for converting OData queries to SQL
@@ -9,14 +10,19 @@ using DynamicODataToSQL;
 public interface IODataToSqlConverter
 {
     /// <summary>
-    /// Converts OData query parameters to SQL with parameter values
+    /// Converts OData query parameters to SQL (defaults to SqlServer compiler).
     /// </summary>
-    /// <param name="entityName">The entity/table name to query</param>
-    /// <param name="odataParams">Dictionary of OData query parameters</param>
-    /// <returns>Tuple with SQL query string and parameter dictionary</returns>
     (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
-        string entityName, 
+        string entityName,
         Dictionary<string, string> odataParams);
+
+    /// <summary>
+    /// Converts OData query parameters to SQL using the compiler for the specified provider.
+    /// </summary>
+    (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType);
 }
 
 /// <summary>
@@ -24,18 +30,7 @@ public interface IODataToSqlConverter
 /// </summary>
 public interface IEdmModelBuilder
 {
-    /// <summary>
-    /// Gets an EDM model for the specified entity
-    /// </summary>
     IEdmModel GetEdmModel(string entityName);
-    
-    /// <summary>
-    /// Builds an EDM model for the specified table
-    /// </summary>
     EdmModel BuildModel(string tableName);
-    
-    /// <summary>
-    /// Parses an EDM model from CSDL XML
-    /// </summary>
     IEdmModel? ParseMetadata(string csdl);
 }

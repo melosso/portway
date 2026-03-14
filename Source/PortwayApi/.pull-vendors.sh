@@ -61,15 +61,15 @@ declare -A SUBSET_MAP=(
 # Build a temporary file for the new inter.css
 TMP_CSS="$(mktemp)"
 cat > "$TMP_CSS" <<CSS
-/* Inter ${INTER_VERSION} — self-hosted, variable font (weights 400/700) */
+/* Inter ${INTER_VERSION}, self-hosted, variable font (weights 400/700) */
 
 CSS
 
-# Process each subset — find unique urls per subset name (first occurrence per subset)
+# Process each subset, find unique urls per subset name (first occurrence per subset)
 for subset in "cyrillic-ext" "cyrillic" "greek-ext" "greek" "vietnamese" "latin-ext" "latin"; do
     filename="${SUBSET_MAP[$subset]}"
 
-    # Extract the woff2 URL for this subset (pick one — all weights share the same file)
+    # Extract the woff2 URL for this subset (pick one, all weights share the same file)
     url="$(echo "$FONTS_CSS" \
         | grep -A6 "/\* $subset \*/" \
         | grep -oP 'https://[^\)]+\.woff2' \

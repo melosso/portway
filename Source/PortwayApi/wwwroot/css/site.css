@@ -2692,7 +2692,8 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 body.has-promo { --promo-height: 32px; }
 
 body.has-promo aside,
-body.has-promo main {
+body.has-promo main,
+body.has-promo .auth-overlay {
     margin-top: var(--promo-height);
     height: calc(100vh - var(--promo-height));
 }
@@ -2712,7 +2713,7 @@ body.has-promo main {
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    z-index: 1100;
+    z-index: 2100;
     border-bottom: 1px solid hsl(var(--border));
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }

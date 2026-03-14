@@ -5,6 +5,8 @@ using Dapper;
 using Serilog;
 using PortwayApi.Classes;
 using PortwayApi.Classes.Helpers;
+using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 
 namespace PortwayApi.Classes.Handlers;
 
@@ -84,6 +86,9 @@ public static class TableValuedFunctionSqlHandler
             // Get column mappings from AllowedColumns (using existing system)
             var (aliasToDb, dbToAlias) = PortwayApi.Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
 
+            // Resolve provider factory once (used for both OData dialect and connection creation)
+            var providerFactory = request.HttpContext.RequestServices.GetService(typeof(ISqlProviderFactory)) as ISqlProviderFactory;
+
             // Hybrid OData support for TVFs
             string finalQuery = functionCall;
             Dictionary<string, object> odataSqlParams = new();
@@ -98,9 +103,12 @@ public static class TableValuedFunctionSqlHandler
                     return (false, new ObjectResult(new { error = "OData-to-SQL converter not available", success = false }) { StatusCode = 500 }, null);
                 }
 
-                // Use a dummy table name to generate OData SQL
+                // Use a dummy table name to generate OData SQL (provider-aware)
                 var dummyTable = "ODataDummy";
-                var (odataQuery, odataParamsDict) = odataConverter.ConvertToSQL(dummyTable, odataParams);
+                var providerType = providerFactory != null
+                    ? SqlProviderDetector.Detect(connectionString)
+                    : SqlProviderType.SqlServer;
+                var (odataQuery, odataParamsDict) = odataConverter.ConvertToSQL(dummyTable, odataParams, providerType);
                 odataSqlParams = odataParamsDict;
 
                 // Extract WHERE, ORDER BY, OFFSET/FETCH from the generated SQL
@@ -144,8 +152,11 @@ public static class TableValuedFunctionSqlHandler
                 Log.Debug("Applied OData fragments to TVF: {Query}", finalQuery);
             }
 
-            // Execute the query
-            await using var connection = new SqlConnection(connectionString);
+            // Execute the query, use provider factory if available, fall back to SQL Server
+            System.Data.Common.DbConnection rawConn = providerFactory != null
+                ? providerFactory.GetProvider(connectionString).CreateConnection(connectionString)
+                : new SqlConnection(connectionString);
+            await using var connection = rawConn;
             await connection.OpenAsync();
 
             // Merge TVF parameters and OData parameters

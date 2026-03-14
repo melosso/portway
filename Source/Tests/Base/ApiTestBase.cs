@@ -5,9 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PortwayApi.Classes;
+using PortwayApi.Classes.Providers;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
+using PortwayApi.Services.Providers;
 using PortwayApi.Auth;
 using PortwayApi;
 using System.Net.Http.Headers;
@@ -34,8 +36,14 @@ public class ApiTestBase : IDisposable
         _mockEnvironmentSettingsProvider = new Mock<IEnvironmentSettingsProvider>();
         _mockUrlValidator = new Mock<UrlValidator>(MockBehavior.Loose, "path");
         _mockODataToSqlConverter = new Mock<IODataToSqlConverter>();
-        _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(5, 100, 15, 30, true, "PortwayAPI");
-        _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object);
+
+        var poolingOptions = new SqlPoolingOptions(5, 100, 15, true, "PortwayAPI");
+        var mockProviderFactory = new Mock<ISqlProviderFactory>();
+        mockProviderFactory.Setup(f => f.GetProvider(It.IsAny<string>())).Returns(new MsSqlProvider());
+        mockProviderFactory.Setup(f => f.GetProvider(It.IsAny<SqlProviderType>())).Returns(new MsSqlProvider());
+
+        _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(poolingOptions, mockProviderFactory.Object);
+        _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object, mockProviderFactory.Object);
         _mockTokenService = new Mock<TokenService>((AuthDbContext)null!);
         
         // Setup token service mock
