@@ -1,20 +1,12 @@
 # File Endpoints
 
-File endpoints let you store, retrieve, and manage files through simple API calls. Perfect for document management, image galleries, data imports, and file sharing in your applications.
+> Upload, download, and list files through authenticated API calls.
 
-## What You Can Do
+File endpoints expose a storage directory as a REST API. Callers upload files via multipart form POST, retrieve them by file ID, and list available files by endpoint. File type restrictions, environment scoping, and a configurable base directory path are all defined in the endpoint configuration.
 
-- **Upload files** - Store documents, images, data files securely
-- **Download files** - Retrieve files with a simple web request
-- **Organize files** - Group files by type, environment, or purpose
-- **Control access** - Restrict file types and environments
-- **List files** - Browse available files with search capabilities
+## Configuration
 
-## Quick Start
-
-### 1. Set Up a File Endpoint
-
-Create a configuration file for your endpoint (e.g., `Documents`):
+Create `endpoints/File/{EndpointName}/entity.json`:
 
 ```json
 {
@@ -26,29 +18,66 @@ Create a configuration file for your endpoint (e.g., `Documents`):
 }
 ```
 
-### 2. Upload a File
+### Configuration properties
+
+| Property | Required | Type | Description |
+|---|---|---|---|
+| `StorageType` | Yes | string | Storage backend. Currently `Local` |
+| `BaseDirectory` | Yes | string | Path under `files/` where uploaded files are stored. Supports placeholders |
+| `AllowedExtensions` | No | array | File extensions accepted by this endpoint. Empty array allows all non-blocked types |
+| `IsPrivate` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
+| `AllowedEnvironments` | No | array | Environments where this endpoint responds |
+
+### Base directory placeholders
+
+`BaseDirectory` supports dynamic path segments:
+
+| Placeholder | Resolves to |
+|---|---|
+| `{env}` | Environment name |
+| `{year}` | Current year (`2025`) |
+| `{month}` | Current month (`01`–`12`) |
+| `{date}` | Current date (`2025-01-15`) |
+
+```json
+{ "BaseDirectory": "backups/{env}/{year}/{month}" }
+```
+
+Files land at paths like `files/prod/2025/01/database-backup.sql`.
+
+## API operations
+
+### Upload a file
+
+```http
+POST /api/{env}/files/{EndpointName}
+Authorization: Bearer YOUR_TOKEN
+Content-Type: multipart/form-data
+
+file=@report.pdf
+```
 
 ```bash
-curl -X POST "https://your-api.com/api/500/files/Documents" \
+curl -X POST "https://your-api/api/500/files/Documents" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@report.pdf"
 ```
 
-### 3. List Your Files
+### List files
 
-```bash
-curl -X GET "https://your-api.com/api/500/files/Documents/list" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+```http
+GET /api/{env}/files/{EndpointName}/list
+Authorization: Bearer YOUR_TOKEN
 ```
 
-Response shows available files with download links:
 ```json
 {
   "success": true,
   "files": [
     {
+      "fileId": "abc123fileId",
       "fileName": "report.pdf",
-      "contentType": "application/pdf", 
+      "contentType": "application/pdf",
       "size": 125679,
       "url": "/api/500/files/Documents/abc123fileId"
     }
@@ -56,157 +85,47 @@ Response shows available files with download links:
 }
 ```
 
-### 4. Download a File
+### Download a file
 
-Use the `url` from the list response:
+Use the `fileId` from the list response:
+
+```http
+GET /api/{env}/files/{EndpointName}/{fileId}
+Authorization: Bearer YOUR_TOKEN
+```
 
 ```bash
-curl -X GET "https://your-api.com/api/500/files/Documents/abc123fileId" \
+curl -X GET "https://your-api/api/500/files/Documents/abc123fileId" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -o "downloaded-report.pdf"
 ```
 
-## Common Use Cases
+## File type restrictions
 
-### Document Repository
-Store business documents like contracts, reports, and manuals.
+Specify which extensions callers can upload via `AllowedExtensions`. Any extension not listed is rejected.
 
-**Configuration:**
-```json
-{
-  "StorageType": "Local",
-  "BaseDirectory": "documents", 
-  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
-  "AllowedEnvironments": ["prod", "test"]
-}
-```
+Regardless of `AllowedExtensions`, the following types are always blocked:
+`.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`
 
-**Example:** Upload a contract, share download link with team members.
+The default maximum file size is **50MB**. This is configurable in system settings.
 
-### Image Gallery
-Store and serve product images, logos, and marketing materials.
+## JavaScript integration
 
-**Configuration:**
-```json
-{
-  "StorageType": "Local",
-  "BaseDirectory": "images",
-  "AllowedExtensions": [".jpg", ".png", ".gif", ".svg"],
-  "AllowedEnvironments": ["prod", "test"]  
-}
-```
-
-**Example:** Upload product photos that display directly in your website.
-
-### Data Exchange
-Import/export data files for business processes.
-
-**Configuration:**
-```json
-{
-  "StorageType": "Local",
-  "BaseDirectory": "data-import",
-  "AllowedExtensions": [".csv", ".xlsx", ".json"],
-  "AllowedEnvironments": ["prod", "test"]
-}
-```
-
-**Example:** Upload customer CSV files for import processing.
-
-### Secure Reports
-Store sensitive internal reports with restricted access.
-
-**Configuration:**
-```json
-{
-  "StorageType": "Local", 
-  "BaseDirectory": "reports",
-  "AllowedExtensions": [".pdf", ".xlsx"],
-  "IsPrivate": true,
-  "AllowedEnvironments": ["prod"]
-}
-```
-
-**Example:** Quarterly financial reports available only in production environment.
-
-## Configuration Options
-
-| Setting | Purpose | Example |
-|---------|---------|---------|
-| `BaseDirectory` | Organize files in folders | `"documents"`, `"images/{env}"` |
-| `AllowedExtensions` | Security - control file types | `[".pdf", ".jpg", ".csv"]` |
-| `AllowedEnvironments` | Control which environments can access | `["prod"]` for production only |
-| `IsPrivate` | Hide from public API documentation | `true` for internal endpoints |
-
-### Smart Folder Organization
-
-Use placeholders for automatic organization:
-
-```json
-{
-  "BaseDirectory": "backups/{env}/{year}/{month}"
-}
-```
-
-Files automatically organized like:
-- `backups/500/2025/01/database-backup.sql`
-- `backups/700/2025/01/test-backup.sql`
-
-Available placeholders:
-- `{env}` - Environment (500,700, etc.)
-- `{year}` - Current year (2025)
-- `{month}` - Current month (01, 02, etc.)
-- `{date}` - Current date (2025-01-15)
-
-## Supported File Types
-
-Common file types work automatically with proper browser handling:
-
-| File Type | Extensions | Browser Behavior |
-|-----------|------------|------------------|
-| **Documents** | `.pdf`, `.docx`, `.xlsx` | PDFs display inline, others download |
-| **Images** | `.jpg`, `.png`, `.gif`, `.svg` | Show directly in browser |
-| **Data Files** | `.csv`, `.json`, `.xml` | Download for processing |
-| **Text Files** | `.txt`, `.log` | Display inline as text |
-
-## Web Integration
-
-### Display Images Directly
-```html
-<!-- Note: This requires authentication headers to work -->
-<img src="https://your-api.com/api/500/files/Images/imageFileId" 
-     alt="Product Photo" />
-<!-- For web apps, you'll need to handle authentication via JavaScript -->
-```
-
-### Embed PDF Documents
-```html
-<!-- Note: This requires authentication headers to work -->
-<embed src="https://your-api.com/api/500/files/Documents/pdfFileId"
-       type="application/pdf" 
-       width="800" height="prod" />
-<!-- For web apps, you'll need to handle authentication via JavaScript -->
-```
-
-### Download Files with JavaScript
 ```javascript
-// Get file list
-const response = await fetch('/api/500/files/Documents/list', {
+// List files
+const listResponse = await fetch('/api/500/files/Documents/list', {
   headers: { 'Authorization': 'Bearer ' + token }
 });
-const data = await response.json();
+const data = await listResponse.json();
 
-// Download first file using the fileId from the response
+// Download a file by ID
 const fileId = data.files[0].fileId;
-const downloadUrl = `/api/500/files/Documents/${fileId}`;
-
-// Download file
-const fileResponse = await fetch(downloadUrl, {
+const fileResponse = await fetch(`/api/500/files/Documents/${fileId}`, {
   headers: { 'Authorization': 'Bearer ' + token }
 });
 const blob = await fileResponse.blob();
 
-// Trigger download
+// Trigger browser download
 const url = window.URL.createObjectURL(blob);
 const a = document.createElement('a');
 a.href = url;
@@ -215,114 +134,23 @@ a.click();
 window.URL.revokeObjectURL(url);
 ```
 
-## Security & Access Control
-
-### File Type Restrictions
-Always specify allowed file types for security:
-
-```json
-"AllowedExtensions": [".pdf", ".jpg", ".png"]  // Only these types allowed
-```
-
-### Environment Control
-Separate files by environment:
-- **Development/Testing:** Environment `700`
-- **Production:** Environment `500`
-- **Sensitive Data:** Restrict to `["prod"]` only
-
-### Size Limits
-- Default maximum file size: **50MB**
-- Configurable in system settings
-- Large files automatically rejected
-
-### Blocked File Types
-These dangerous file types are always blocked:
-`.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`
-
-## Best Practices
-
-### 1. Name Endpoints Clearly
-```
-✓ ProductImages, CustomerReports, InvoiceDocuments
-✗ Files, Data, Stuff
-```
-
-### 2. Organize with Folders
-```json
-"BaseDirectory": "invoices/2025"     // ✓ Organized by purpose and year
-"BaseDirectory": ""                  // ✗ Everything mixed together
-```
-
-### 3. Restrict File Types
-```json
-"AllowedExtensions": [".pdf", ".jpg"]  // ✓ Only what you need
-"AllowedExtensions": []                // ✗ Allows everything (risky)
-```
-
-### 4. Use Environment Restrictions
-```json
-"AllowedEnvironments": ["prod"]         // ✓ Production-only for sensitive files
-"AllowedEnvironments": ["prod", "test"]  // ✓ Both environments for general files
-```
+:::info
+File endpoints require the `Authorization` header. Direct `<img src>` or `<embed src>` tags in HTML will not work unless authentication is handled via JavaScript.
+:::
 
 ## Troubleshooting
 
-### Files Not Showing Up
-**Problem:** File list returns empty but files exist.
+**File list returns empty** — If `BaseDirectory` uses `{env}`, verify Portway created the correct path. A literal folder named `{env}` indicates the placeholder was not resolved. Move files to the correct path under the actual environment name.
 
-**Solution:** Check if your `BaseDirectory` uses placeholders like `{env}`. The system might have created literal placeholder folders instead of processing them.
+**"File size exceeds maximum"** — The file exceeds the 50MB default. Either compress the file or increase the limit in system settings.
 
-**Fix:** If you see a folder literally named `{env}`, move files from `files/customer-data/{env}/` to `files/500/customer-data/500/`
+**"Extension not allowed"** — Add the extension to `AllowedExtensions` in the endpoint config, or convert the file to an allowed format.
 
-### Upload Fails - File Too Large
-**Problem:** "File size exceeds maximum allowed size"
+**"File not found" on download** — Confirm you are using the `fileId` from a list response (not the filename), that you are requesting from the correct environment, and that the file has not been deleted.
 
-**Solution:** File is larger than 50MB limit. Contact administrator to increase limit or compress the file.
+Files are stored at predictable paths: `files/{environment}/{baseDirectory}/{filename}`. Application logs at `log/portwayapi-[date].log` record upload and download events.
 
-### Upload Fails - File Type Not Allowed  
-**Problem:** "Files with extension .exe are not allowed"
+## Next steps
 
-**Solution:** Check the `AllowedExtensions` list in your endpoint configuration. Add the extension if safe, or convert to an allowed format.
-
-### Can't Download File
-**Problem:** File not found or access denied.
-
-**Solutions:**
-- Verify you're using the correct `fileId` from the list response
-- Check you're accessing the right environment (600 vs 700)
-- Ensure your token has proper permissions
-- Confirm file hasn't been deleted
-
-## Getting Help
-
-### Check File Locations
-Files are stored in predictable locations:
-```
-files/{environment}/{baseDirectory}/{filename}
-```
-
-### View System Logs
-Application logs show detailed information about file operations:
-```
-log/portwayapi-[date].log
-```
-
-### Test Basic Operations
-Use simple commands to verify functionality:
-```bash
-# Test upload
-curl -X POST https://your-api/api/500/files/Documents \
-  -H "Authorization: Bearer TOKEN" -F "file=@test.txt"
-
-# Test listing  
-curl -X GET https://your-api/api/500/files/Documents/list \
-  -H "Authorization: Bearer TOKEN"
-```
-
-## Next Steps
-
-1. **Plan your file organization** - Decide on endpoint names and folder structure
-2. **Set up configurations** - Create endpoint definitions for each file type
-3. **Test with sample files** - Upload and download test files to verify setup
-4. **Integrate with applications** - Add file operations to your business processes
-5. **Monitor usage** - Track file storage and access patterns
+- [Environments](./environments)
+- [Security](./security)

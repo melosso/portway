@@ -169,12 +169,7 @@ GET /api/prod/Products?$top=10&$skip=10
 GET /api/prod/Products?$top=25&$skip=50
 ```
 
-### Pagination Best Practices
-
-1. Always use `$orderby` with pagination for consistent results
-2. Keep page sizes reasonable (10-100 items)
-3. Use the `NextLink` in responses for easy navigation
-4. Implement server-side pagination for large datasets
+Always include `$orderby` when paginating to ensure consistent results across pages. Use the `NextLink` in the response for easy sequential navigation.
 
 ## Combining Query Options
 
@@ -371,44 +366,6 @@ GET /api/prod/Products
   "success": false
 }
 ```
-
-## Best Practices
-
-1. **Use Field Selection**
-   ```http
-   # Good - only needed fields
-   GET /api/prod/Products?$select=ItemCode,Name,Price
-   
-   # Avoid - retrieving all fields
-   GET /api/prod/Products
-   ```
-
-2. **Implement Efficient Pagination**
-   ```http
-   # Good - ordered pagination
-   GET /api/prod/Products?$orderby=ItemCode&$top=50&$skip=0
-   
-   # Avoid - pagination without ordering
-   GET /api/prod/Products?$top=50&$skip=0
-   ```
-
-3. **Use Appropriate Filters**
-   ```http
-   # Good - specific filter
-   GET /api/prod/Products?$filter=ItemCode eq 'PROD001'
-   
-   # Avoid - filtering in application
-   GET /api/prod/Products  # Then filter in code
-   ```
-
-4. **Optimize Complex Queries**
-   ```http
-   # Good - server-side filtering
-   GET /api/prod/Orders
-     ?$filter=Status eq 'Open' and CustomerCode eq 'CUST001'
-     &$orderby=OrderDate desc
-     &$top=10
-   ```
 
 ## Related Topics
 

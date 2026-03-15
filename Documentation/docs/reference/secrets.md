@@ -4,10 +4,9 @@ Portway automatically encrypts sensitive data in your environment settings files
 
 ## How It Works
 
-The program will go through various steps in order to safely encrypt your secrets.
+On startup, Portway:
 
-**Automatic Encryption on Startup:**
-1. When Portway starts, it checks for encryption keys in the `.core` folder
+1. Checks for encryption keys in the `.core` folder
 2. If keys don't exist, it generates a new RSA 2048-bit keypair automatically
 3. It scans all environment folders (`environments/*/settings.json`)
 4. Any unencrypted connection strings or sensitive headers are automatically encrypted
@@ -104,8 +103,6 @@ Connection strings are validated before encryption. They must have:
 
 ## Troubleshooting
 
-You may encounter issues upon starting the application, perhaps when a system error occurred. 
-
 ### File Permission Errors
 
 If you see:
@@ -160,11 +157,6 @@ You'll see:
 [DBG] Encryption scan complete: 3 encrypted, 0 already encrypted, 0 errors
 ```
 
-## Security Best Practices
+## Security Notes
 
-Please make sure to implement the following best practices:
-
-1. **Set a strong `PORTWAY_ENCRYPTION_KEY`** in production (use machine environment variable)
-2. **Backup the `.core` folder** securely - without it, you cannot decrypt your settings
-3. **Never commit `.core` folder** to source control, if you use this
-4. **Use different encryption keys** for different environments (dev/staging/production)
+Set a strong `PORTWAY_ENCRYPTION_KEY` in production using a machine-level environment variable. Back up the `.core` folder securely — without it you cannot decrypt your settings. Never commit `.core` to source control. Use different encryption keys for different environments.

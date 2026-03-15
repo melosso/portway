@@ -1,37 +1,25 @@
 # Security
 
-Portway implements multiple layers of security to protect your APIs, data, and internal services. This guide covers authentication, authorization, network security, and best practices for securing your deployment.
+> Token authentication, scope control, network restrictions, and encryption for a Portway deployment.
 
-
-::: warning Warning
-Always follow your organization's security policies and compliance requirements when configuring Portway. If you're not certain which internal guidelines you have, don't continue.
+:::warning
+Configure Portway in accordance with your organisation's security policies before exposing it to production traffic. The defaults are sensible starting points, not a finished security posture.
 :::
 
 ## Authentication
 
-### Token-Based Authentication
-
-Portway uses Bearer token authentication for all API requests:
+All API requests require a Bearer token:
 
 ```http
 Authorization: Bearer your-token-here
 ```
 
-Tokens are:
-- Generated using cryptographically secure random values
-- Saved using modern encryption
-- Bound to specific usernames for auditing
+Tokens are generated using cryptographically secure random values and stored encrypted on disk. Each token is bound to a username for audit trail purposes.
 
-### Token Generation
+### First-run token
 
-Initial token generation happens automatically on first run:
+On first run, Portway generates an initial token and writes it to `tokens/YOUR_SERVER_NAME.txt`:
 
-```
-Generated token for SERVER-NAME
-Token saved to: /tokens/SERVER-NAME.txt
-```
-
-Token file format:
 ```json
 {
   "Username": "SERVER-NAME",
@@ -39,44 +27,41 @@ Token file format:
   "AllowedScopes": "*",
   "AllowedEnvironments": "*",
   "ExpiresAt": "Never",
-  "CreatedAt": "2024-01-01 00:00:00",
-  "Usage": "Use this token in the Authorization header as: Bearer your-token-here"
+  "CreatedAt": "2024-01-01 00:00:00"
 }
 ```
 
-### Managing Tokens
-
-Use the Portway Web UI to manage tokens.
+Remove this file from disk immediately after recording the token. Use the Web UI to manage all subsequent tokens.
 
 ## Authorization
 
-### Scoped Access Control
+### Scope control
 
-Tokens can be restricted to specific endpoints:
+Restrict a token to specific endpoints using the `AllowedScopes` field:
 
-| Scope Pattern | Description | Example |
-|--------------|-------------|----------|
-| `*` | Full access to all endpoints | Default for admin tokens |
-| `Products,Orders` | Access to specific endpoints | API integration tokens |
-| `Product*` | Wildcard access to endpoints | All product-related endpoints |
-| `Company/Employees` | Access to namespaced endpoint | Specific namespaced access |
-| `Company/*` | Access to all endpoints in namespace | All Company namespace endpoints |
-| `GET:Products` | Method-specific access | Read-only access |
+| Pattern | Access |
+|---|---|
+| `*` | All endpoints |
+| `Products,Orders` | Named endpoints only |
+| `Product*` | All endpoints matching the prefix |
+| `Company/Employees` | Specific namespaced endpoint |
+| `Company/*` | All endpoints in a namespace |
+| `GET:Products` | Single endpoint, single method |
 
-### Environment Access Control
+### Environment control
 
-Restrict tokens to specific environments:
+Restrict a token to specific environments using `AllowedEnvironments`:
 
-| Environment Pattern | Description | Example |
-|--------------------|-------------|----------|
-| `*` | Access to all environments | Admin tokens |
-| `prod` | Single environment access | Production-only tokens |
-| `dev,test` | Multiple environments | Development team tokens |
-| `dev*` | Wildcard environment access | All dev environments |
+| Pattern | Access |
+|---|---|
+| `*` | All environments |
+| `prod` | Single environment |
+| `dev,test` | Named environments |
+| `dev*` | All environments matching the prefix |
 
-### Endpoint-Level Security
+### Endpoint-level restrictions
 
-Configure security at the endpoint level:
+Individual endpoints enforce their own environment and visibility constraints:
 
 ```json
 {
@@ -87,20 +72,13 @@ Configure security at the endpoint level:
 }
 ```
 
-## Network Security
+Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments — access control](./environments#access-control) for the full matrix.
 
-### Request Validation
+## Network security
 
-All requests are validated for:
-- Valid authorization headers
-- Allowed HTTP methods
-- Permitted environments
-- Token scopes and permissions
-- Request size limits (10MB default)
+### IP restrictions
 
-### IP Restrictions
-
-Configure allowed hosts in `environments/network-access-policy.json`:
+Configure allowed hosts and blocked IP ranges in `environments/network-access-policy.json`:
 
 ```json
 {
@@ -112,238 +90,130 @@ Configure allowed hosts in `environments/network-access-policy.json`:
   "blockedIpRanges": [
     "10.0.0.0/8",
     "172.16.0.0/12",
-    "192.168.0.0/16",
-    "169.254.0.0/16"
+    "192.168.0.0/16"
   ]
 }
 ```
 
-## Secure Configuration
+### Security headers
 
-### Azure Key Vault Integration
+Portway adds these headers to all responses automatically:
 
-Store sensitive data securely in Azure Key Vault:
+| Header | Value |
+|---|---|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Strict-Transport-Security` | `max-age=31536000` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Content-Security-Policy` | `default-src 'self'; object-src 'none'; ...` |
 
-1. Set up Key Vault access:
+## Secrets management
+
+### Automatic encryption
+
+Portway encrypts plaintext secrets in `settings.json` files on next startup. Connection strings and authentication values written in plaintext become `PWENC:...` format. The original value is no longer stored.
+
+### Azure Key Vault
+
+Store connection strings and server names in Azure Key Vault instead of `settings.json`:
+
 ```powershell
 $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
 ```
 
-2. Create secrets in Azure Key Vault:
-```
-{environment}-ConnectionString
-{environment}-ServerName
-{environment}-Headers
-```
+Create secrets named by environment:
+- `{environment}-ConnectionString`
+- `{environment}-ServerName`
+- `{environment}-Headers` (JSON string)
 
-3. Portway automatically retrieves secrets:
-```
-[INF] Azure Key Vault: Successfully connected to ...
-```
+Portway fetches these at startup and uses them identically to file-based configuration.
 
-Or use Azure Key Vault for credentials.
+## SQL Server permissions
 
-## Security Headers
+When using Windows Authentication (NTLM) via IIS, configure the database account with minimum required permissions:
 
-### Automatic Security Headers
-
-Portway adds these security headers to all responses:
-
-| Header | Value | Purpose |
-|--------|-------|---------|
-| X-Content-Type-Options | nosniff | Prevent MIME type sniffing |
-| X-Frame-Options | DENY | Prevent clickjacking |
-| Strict-Transport-Security | max-age=31536000 | Enforce HTTPS |
-| Referrer-Policy | strict-origin-when-cross-origin | Control referrer information |
-| Permissions-Policy | geolocation=(), camera=(), microphone=() | Restrict browser features |
-
-### Content Security Policy
-
-Strict CSP is automatically applied:
-
-```
-Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'
+```sql
+USE [master];
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\USER_NAME')
+BEGIN
+    EXEC ('CREATE LOGIN [DOMAIN\USER_NAME] FROM WINDOWS;');
+END
+GO
+USE [YourDatabase];
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'DOMAIN\USER_NAME')
+BEGIN
+    CREATE USER [DOMAIN\USER_NAME] FOR LOGIN [DOMAIN\USER_NAME];
+END
+GO
+ALTER ROLE [db_datareader] ADD MEMBER [DOMAIN\USER_NAME];  -- Read tables/views
+ALTER ROLE [db_datawriter] ADD MEMBER [DOMAIN\USER_NAME];  -- Write (insert/update/delete)
+GRANT EXECUTE TO [DOMAIN\USER_NAME];                       -- Stored procedures
+GRANT VIEW DEFINITION TO [DOMAIN\USER_NAME];               -- Schema metadata
+GO
 ```
 
-## Logging and Auditing
+Grant only the roles your endpoints require. A read-only deployment needs only `db_datareader`.
 
-### Security Event Logging
+## Logging and auditing
 
-All security events are logged:
+Security events are logged at Warning or Debug level:
 
 ```
 [DBG] Invalid token: {masked}
 [WRN] IP {IP} has exceeded rate limit, blocking for {period}
 ```
 
-### Request Tracing
-
-Enable detailed request tracing for security analysis:
+Enable request traffic logging to capture headers and bodies for security analysis:
 
 ```json
 {
   "RequestTrafficLogging": {
     "Enabled": true,
-    "IncludeRequestBodies": true,
-    "IncludeResponseBodies": false,
-    "CaptureHeaders": true
+    "CaptureHeaders": true,
+    "IncludeRequestBodies": true
   }
 }
 ```
 
-## Best Practices
+See [Monitoring](./monitoring) for traffic logging configuration details.
 
-### Token Management
+## Pre-deployment checklist
 
-1. **Principle of Least Privilege**
-   - Grant minimum required permissions
-   - Use specific scopes instead of wildcards
-   - Limit environment access
+- [ ] HTTPS binding configured in IIS
+- [ ] IIS Application Pool using minimum-privilege identity
+- [ ] Azure Key Vault configured (if applicable)
+- [ ] Initial token file removed from disk
+- [ ] Tokens created with specific scopes and environments
+- [ ] Rate limiting configured
+- [ ] Firewall rules reviewed
+- [ ] Security headers verified with a response inspection tool
 
-2. **Token Rotation**
-   - Set expiration dates on tokens
-   - Regularly rotate long-lived tokens
-   - Revoke compromised tokens immediately
+## Incident response — compromised token
 
-3. **Secure Storage**
-   - Keep token files in secure locations
-   - Use file system permissions
-   - Never commit tokens to source control
-
-### Deployment Security
-
-1. **IIS Configuration**
-   - Use a dedicated application pool
-   - Configure appropriate identity
-   - Enable HTTPS only
-   - Remove server headers
-
-2. **Network Security**
-   - Deploy behind a firewall
-   - Use internal network addresses
-   - Implement IP whitelisting
-   - Enable DDoS protection
-
-3. **Database Security**
-   - Use Windows Authentication
-   - Implement least-privilege database users
-   - Enable SQL Server auditing
-
-### Monitoring and Alerts
-
-1. **Security Monitoring**
-   - Monitor failed authentication attempts
-   - Track rate limit violations
-   - Alert on suspicious patterns
-   - Review access logs regularly
-
-2. **Automated Responses**
-   - Block IPs after repeated failures
-   - Revoke tokens with suspicious activity
-   - Alert administrators on breaches
-   - Implement automatic backups
-
-## SQL Server User Management
-
-If you are using a dedicated NTLM (Windows) user when using Internet Information Services, I'd wise to use the principle of least privilege. You'll need to configure SQL Server to allow access for this user and assign the appropriate rights. Below is a sample script to set up the login, database user, and permissions for a Windows account (replace `DOMAIN\USER_NAME` with your actual domain and username):
-
-```sql
-USE [master];
-GO
--- Create a login for the Windows account if it doesn't exist
-IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'DOMAIN\USER_NAME')
-BEGIN
-   EXEC ('CREATE LOGIN [DOMAIN\USER_NAME] FROM WINDOWS;');
-END
-GO
-USE [<your target database>];
-GO
--- Create a user for the login in the database if not exists
-IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'DOMAIN\USER_NAME')
-BEGIN
-   CREATE USER [DOMAIN\USER_NAME] FOR LOGIN [DOMAIN\USER_NAME];
-END
-GO
--- Read all tables/views
-ALTER ROLE [db_datareader] ADD MEMBER [DOMAIN\USER_NAME];
-
--- Write (insert/update/delete)
-ALTER ROLE [db_datawriter] ADD MEMBER [DOMAIN\USER_NAME];
-
--- Execute stored procedures and functions
-GRANT EXECUTE TO [DOMAIN\USER_NAME];
-
--- Allow viewing metadata (schema definitions)
-GRANT VIEW DEFINITION TO [DOMAIN\USER_NAME];
-GO
-```
-
-**Note:**
-- Replace `DOMAIN\USER_NAME` with your actual domain and Windows username.
-- Replace `[<your target database>]` with your target database name if different.
-- Grant only the permissions required for your application, which in your case can be more or less permissive.
-
-## Security Checklist
-
-### Pre-Deployment
-
-- [ ] Configure HTTPS in IIS
-- [ ] Configure (NTLM) connections (using principle of least privilege)
-- [ ] Set up Azure Key Vault (if applicable)
-- [ ] Create restricted tokens
-- [ ] Configure rate limiting
-- [ ] Review firewall rules
-- [ ] Test security headers
-
-### Post-Deployment
-
-- [ ] Verify security headers
-- [ ] Test rate limiting
-- [ ] Check access logs
-- [ ] Validate token permissions
-- [ ] Monitor for unauthorized access
-- [ ] Review security alerts
-
-## Incident Response
-
-### Compromised Token
-
-If a token is compromised, follow these steps immediately:
-
-1. **Rotate or revoke the token using the web UI**
-   
-   As Portway offers a web UI for management, you can easily archive an existing token; or rotate that specific token. Go to `Access Tokens` and click on the `Rotate Token` button to do so.  
-
-5. **Update affected systems**
-   
-   - Update all applications using the compromised token
-   - Rotate any related credentials
-   - Document the incident for security audit
-
-6. **Monitor for continued unauthorized access**
-   
-   Enable detailed logging if not already active:
+1. Open the Web UI and navigate to **Access Tokens**
+2. Click **Rotate Token** on the affected entry to invalidate it and generate a replacement
+3. Update all applications using the compromised token with the new value
+4. Enable traffic logging if not already active to monitor for continued unauthorized activity:
    ```json
    {
-     "RequestTrafficLogging": {
-       "Enabled": true,
-       "IncludeRequestBodies": true,
-       "CaptureHeaders": true
-     }
+     "RequestTrafficLogging": { "Enabled": true, "CaptureHeaders": true }
    }
    ```
+5. Document the incident for your security audit trail
 
-::: tip Quick Reference
-To quickly check active tokens, run PortwayMgt.exe and select option 1. This shows all tokens that haven't been revoked or expired.
+:::info
+Manage all tokens in the [Web UI](./webui) under **Tokens**. The **Tokens** page lists all active (non-revoked, non-expired) tokens with their scope and environment restrictions.
 :::
 
-::: warning Important
-Token revocation is permanent. Once revoked, a token cannot be reactivated. Always create a new token for the affected user or system.
+:::warning
+Token revocation is permanent. A revoked token cannot be reactivated. Create a new token for any affected user or system.
 :::
 
-## Next Steps
+## Next steps
 
-- [Configure Rate Limiting](./rate-limiting) for API protection
-- [Set up Monitoring](./monitoring) for security events
-- [Deploy to Production](./deployment) with security best practices
-- [Review API Reference](/reference/api-auth) for detailed security configuration
+- [Rate Limiting](./rate-limiting)
+- [Environments — authentication](./environments#per-environment-authentication)
+- [Monitoring](./monitoring)
+- [Deployment](./deployment)

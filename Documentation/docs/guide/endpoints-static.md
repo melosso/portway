@@ -1,14 +1,20 @@
 # Static Endpoints
 
-Static endpoints serve pre-defined content files (JSON, XML, CSV, etc.) with optional OData filtering capabilities. They're perfect for providing mock data, configuration files, or read-only datasets.
+> Serve pre-defined JSON, XML, or CSV files with optional OData filtering.
+
+Static endpoints return the contents of a file stored alongside the endpoint configuration. They support the same OData query parameters as SQL endpoints when `EnableFiltering` is enabled, making them suitable for mock data, reference datasets, and read-only configuration responses.
 
 ## Configuration
 
-Static endpoints are configured using JSON files in the `endpoints/Static/{EndpointName}/` directory.
+Create a folder under `endpoints/Static/{EndpointName}/` containing `entity.json` and the content file:
 
-### Basic Configuration
+```
+endpoints/Static/ProductionMachine/
+├── entity.json
+└── summary.xml
+```
 
-**`endpoints/Static/ProductionMachine/entity.json`**
+**`entity.json`:**
 
 ```json
 {
@@ -18,7 +24,7 @@ Static endpoints are configured using JSON files in the `endpoints/Static/{Endpo
   "IsPrivate": false,
   "AllowedEnvironments": ["prod", "dev"],
   "Documentation": {
-    "TagDescription": "Production machine data for testing and simulation",
+    "TagDescription": "Production machine data",
     "MethodDescriptions": {
       "GET": "Retrieve machine details"
     }
@@ -26,88 +32,43 @@ Static endpoints are configured using JSON files in the `endpoints/Static/{Endpo
 }
 ```
 
-### Configuration Properties
+### Configuration properties
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `ContentType` | string | No | MIME type (auto-detected if not specified) |
-| `ContentFile` | string | Yes | Filename relative to endpoint directory |
-| `EnableFiltering` | boolean | No | Enable OData filtering support (default: false) |
-| `IsPrivate` | boolean | No | Whether endpoint requires authentication (default: false) |
-| `AllowedEnvironments` | array | Yes | List of environments where endpoint is available |
-| `Documentation` | object | No | OpenAPI documentation metadata |
+| Property | Required | Type | Description |
+|---|---|---|---|
+| `ContentFile` | Yes | string | Filename relative to the endpoint directory |
+| `ContentType` | No | string | MIME type. Auto-detected from file extension if omitted |
+| `EnableFiltering` | No | boolean | Enable OData filtering. Defaults to `false` |
+| `IsPrivate` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
+| `AllowedEnvironments` | Yes | array | Environments where this endpoint responds |
+| `Documentation` | No | object | OpenAPI metadata — tag description and per-method descriptions |
 
-## Content Files
+## Supported content types
 
-Place your content files in the same directory as the `entity.json` file:
+| Format | MIME type | OData filtering |
+|---|---|---|
+| JSON | `application/json` | Supported |
+| XML | `application/xml` | Supported |
+| CSV | `text/csv` | Not supported |
+| Plain text | `text/plain` | Not supported |
+| Images | `image/*` | Not supported |
 
-```
-endpoints/Static/ProductionMachine/
-├── entity.json
-└── summary.xml
-```
+## OData filtering
 
-### Supported Content Types
-
-- **JSON** (`application/json`) - With full OData filtering
-- **XML** (`application/xml`) - With OData filtering support
-- **CSV** (`text/csv`) - Raw file serving
-- **Text** (`text/plain`) - Raw file serving
-- **Images** (`image/*`) - Raw file serving
-
-## OData Filtering
-
-When `EnableFiltering: true` is set, Static endpoints support OData query parameters:
-
-- `$filter` - Filter data based on field values
-- `$select` - Choose specific fields to return
-- `$orderby` - Sort results
-- `$top` - Limit number of results
-- `$skip` - Skip a number of results
-
-### Examples
+When `EnableFiltering: true`, static endpoints accept the same OData parameters as SQL endpoints:
 
 ```http
-# Get first machine
-GET /api/prod/ProductionMachine?$top=1
-
-# Filter by status
-GET /api/prod/ProductionMachine?$filter=status eq 'running'
-
-# Select specific fields
-GET /api/prod/ProductionMachine?$select=id,name,status
-
-# Combined filtering
 GET /api/prod/ProductionMachine?$filter=status eq 'running'&$top=5&$orderby=name
+GET /api/prod/ProductionMachine?$select=id,name,status
 ```
 
-## Use Cases
+When filtering is applied, the response includes:
 
-- **Mock APIs** - Provide realistic test data for frontend development
-- **Configuration Data** - Serve application settings or reference data
-- **Dashboards** - Provide static datasets for reporting and visualization
-- **API Simulation** - Prototype APIs before backend implementation
+- `X-Filtering-Status: Applied`
+- `X-Total-Count` — total items before filtering
+- `X-Returned-Count` — items returned after filtering
 
-## Visibility
+## Next steps
 
-The `IsPrivate` flag controls whether the endpoint appears in the OpenAPI documentation:
-
-- **Public** (`IsPrivate: false`) - Endpoint is visible in OpenAPI docs
-- **Private** (`IsPrivate: true`) - Endpoint is hidden from OpenAPI docs
-
-This does not affect authentication - authentication is handled separately.
-
-```json
-{
-  "IsPrivate": true,
-  "AllowedEnvironments": ["prod"]
-}
-```
-
-## Response Headers
-
-When filtering is applied, additional headers are included:
-
-- `X-Filtering-Status: Applied` - Indicates filtering was processed
-- `X-Total-Count` - Total number of items before filtering
-- `X-Returned-Count` - Number of items returned after filtering
+- [SQL Endpoints](./endpoints-sql)
+- [Environments](./environments)

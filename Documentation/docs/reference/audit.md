@@ -1,14 +1,6 @@
 # Auditing
 
-Portway provides detailed auditing. Apart from logging, there is an extensive request traffic logging framework. This provides capabilities to track and analyze all API requests, including timing, payloads, and response data. 
-
-::: tip
-This feature is useful for auditing, but can also help with debugging, and performance monitoring.
-:::
-
-## Overview
-
-Request Traffic Logging captures comprehensive details about every API request that passes through the system. The feature can be configured to store logs in either file-based storage or SQLite database, with options to control what data is captured and how long it's retained.
+Request traffic logging captures per-request detail — timing, payloads, headers, and response data — and writes it to file or SQLite storage for later querying.
 
 ## Configuration
 
@@ -192,32 +184,15 @@ Request and response bodies are:
 
 ## Performance Considerations
 
-Using request traffic logging **will come with a performance penalty**. This framework is built with minimal impact on request processing in mind, but you should be aware of the trade-offs.
+Traffic logging adds I/O overhead. The queue-based design minimises impact on request latency — writes happen in background batches — but high-volume deployments should tune the settings below.
 
-To optimize performance if the impact is too significant:
-
-#### Queue Management
-- Adjust the `QueueCapacity` setting in `appsettings.json` based on your traffic volume
-- The system automatically drops oldest entries when the queue is full (preventing memory exhaustion)
-- A background service processes entries in batches, reducing I/O overhead
-
-#### Batch Processing
-- Increase `BatchSize` to reduce write frequency (default: 100)
-- Extend `FlushIntervalMs` to accumulate more entries before writing (default: 1000ms)
-- Balance between data freshness and I/O efficiency
-
-#### Resource Optimization
-- Disable body capture (`IncludeRequestBodies` and `IncludeResponseBodies`) to reduce memory usage
-- Limit `MaxBodyCaptureSizeBytes` to capture only essential data
-- Consider file storage over SQLite for high-volume scenarios
-- Use shorter retention periods (`MaxFileCount`) to manage disk space
-
-###s# Performance Tuning Tips
-1. Start with minimal logging (headers only, no bodies)
-2. Monitor queue saturation and adjust capacity
-3. Increase batch size for high-traffic APIs
-4. Consider sampling strategies for extremely high-volume endpoints
-5. Use dedicated storage drives for log files
+| Setting | Recommendation |
+|---------|---------------|
+| `IncludeRequestBodies` / `IncludeResponseBodies` | Keep disabled unless actively debugging |
+| `BatchSize` | Increase (e.g. 500) on high-traffic APIs to reduce write frequency |
+| `FlushIntervalMs` | Increase (e.g. 5000) if I/O is a bottleneck |
+| `QueueCapacity` | Increase if log entries are being dropped (watch for queue-full warnings in application logs) |
+| `StorageType` | Prefer `file` over `sqlite` for raw throughput |
 
 ## Querying Traffic Logs
 
@@ -291,84 +266,15 @@ GROUP BY Username
 ORDER BY RequestCount DESC;
 ```
 
-## Use Cases
-
-There may be various scenarios where this proves valuable. Some common use cases include:
-
-### 1. Performance Monitoring
-- Identify slow requests
-- Track response times by endpoint
-- Monitor request patterns
-- Detect performance degradation
-
-### 2. Security Auditing
-- Track user access patterns
-- Identify suspicious activity
-- Monitor failed authentication attempts
-- Audit data access
-
-### 3. Debugging
-- Trace request flow
-- Examine request/response payloads
-- Correlate errors with requests
-- Reproduce issues
-
-### 4. Usage Analytics
-- Measure endpoint popularity
-- Track user behavior
-- Identify usage patterns
-- Plan capacity
-
-## Best Practices
-
-### 1. Storage Selection
-- Use file storage for simplicity
-- Choose SQLite for complex queries
-- Consider external databases for scale
-
-### 2. Data Retention
-- Set appropriate `MaxFileCount`
-- Implement regular cleanup
-- Balance retention vs. storage costs
-
-### 3. Performance Tuning
-- Adjust `BatchSize` for throughput
-- Configure `FlushIntervalMs` for latency
-- Monitor queue capacity usage
-
-### 4. Security Configuration
-- Disable body capture in production
-- Protect log storage location
-- Implement access controls
-- Regular audit of log access
-
 ## Troubleshooting
 
-### Common Issues
-
-1. **Logs Not Being Written**
-   - Verify `Enabled` is set to `true`
-   - Check write permissions
-   - Ensure storage path exists
-   - Review application logs for errors
-
-2. **Missing Data**
-   - Check queue capacity limits
-   - Verify flush intervals
-   - Review body capture settings
-   - Confirm header capture is enabled
-
-3. **Performance Impact**
-   - Reduce batch size
-   - Increase flush interval
-   - Disable body capture
-   - Consider sampling high-traffic endpoints
-
-4. **Storage Issues**
-   - Monitor disk space
-   - Review rotation settings
-   - Check file permissions
-   - Validate SQLite connection
+| Symptom | Check |
+|---------|-------|
+| Logs not written | `Enabled: true` in config; write permissions on `LogDirectory` / `SqlitePath`; check application logs |
+| Missing entries | Queue may be full — increase `QueueCapacity`; verify `FlushIntervalMs` is not too high |
+| High performance impact | Disable body capture; increase `BatchSize` and `FlushIntervalMs`; switch to file storage |
+| Disk filling up | Reduce `MaxFileCount`; reduce `MaxBodyCaptureSizeBytes`; disable body capture |
+| SQLite errors | Check file permissions; ensure path directory exists; validate with `sqlite3 log/traffic_logs.db .tables` |
 
 ### Diagnostic Commands
 

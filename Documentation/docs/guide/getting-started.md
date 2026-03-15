@@ -1,30 +1,28 @@
 # Getting Started
 
-This guide will help you set up your first API gateway and configure endpoints to connect to your services.
+> Install Portway and make your first authenticated API call.
+
+Portway runs as an ASP.NET Core application behind IIS on Windows Server, or as a Docker container on any platform. This guide covers both paths through to a working endpoint.
 
 ## Prerequisites
 
-Before you begin, make sure you have:
-
+**Windows Server / IIS:**
 - Windows Server (or Windows 11 for development)
-- [.NET 10+ ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) 
+- [.NET 10 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 - Internet Information Services (IIS)
-- A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
-> [!WARNING]
-> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core** provides. Make sure to choose the last option ("Hosting Bundle").
+:::warning
+Download the **Hosting Bundle**, not the x64 runtime installer. The Hosting Bundle includes the IIS integration module that the runtime package omits.
+:::
+
+**Docker:**
+- Docker Engine with Compose support
+
+A SQL database is only required if you plan to use SQL endpoints.
 
 ## Installation
 
-We offer two methods, beginning with installation on Windows Server.
-
----
-
-### Docker Compose (Recommended)
-
-You can quickly deploy Portway using Docker Compose. For a complete setup guide with detailed configuration options, see our [Docker Installation Guide](docker-compose.md).
-
-Quick start:
+### Docker Compose
 
 ```yaml
 services:
@@ -46,70 +44,65 @@ volumes:
   portway_app:
 ```
 
-Then run:
+Start the container:
 
 ```sh
 docker compose pull && docker compose up -d
 ```
 
-This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment. 
+Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Docker Installation](docker-compose.md).
 
-### Configure on Windows Server 
+### Windows Server (IIS)
 
-> [!IMPORTANT]
-> This guide assumes you have basic knowledge of IIS configuration and data source connectivity. While we cover the essential steps, some details may require your existing expertise.
+:::info
+This guide assumes working knowledge of IIS and your data sources. The steps cover the required configuration — some details will depend on your existing environment.
+:::
 
 Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
 
-1. **Install .NET 10 (Hosting Bundle) Runtime:**
+**1. Install the .NET 10 Hosting Bundle:**
+
 ```powershell
-   winget install --id Microsoft.DotNet.HostingBundle.10 -e
+winget install --id Microsoft.DotNet.HostingBundle.10 -e
 ```
 
-2. **Set encryption key:**
+**2. Generate an encryption key:**
+
 ```powershell
-   $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+$bytes = New-Object byte[] 48
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+[Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
 ```
 
-3. **Install Portway:**
-Extract the application to your IIS directory (e.g., C:\Portway).
+**3. Extract Portway to your IIS directory** (e.g. `C:\Portway`).
 
-4. **Configure Internet Information Services**:
-Configure the webserver accordingly:
+**4. Configure IIS:**
 
 1. Open IIS Manager
 2. Create a new Application Pool:
    - Name: `PortwayAppPool`
    - .NET CLR version: `No Managed Code`
    - Managed pipeline mode: `Integrated`
-   - Optional: User: `Running as a priviledged (NT) user` (if you're going to use NTLM as passthrough)
-3. Create a new TLS/SSL certificate or use an existing one (unless you disable TLS/SSL)
-4. Create a new Website or Application:
-   - Name: `Portway`
+3. Create a TLS/SSL certificate or import an existing one
+4. Create a new Website:
    - Application pool: `PortwayAppPool`
    - Physical path: `C:\Portway`
-   - Binding: `http://localhost:8080` (or your preferred port)
-   - Certificate: The certificate you created
-5. Set Application Pool Identity (for proxy endpoints):
-   - Select your Application Pool
-   - Advanced Settings > Identity
-   - Choose appropriate user account with network access
+   - Binding: your preferred port and certificate
+5. Set the Application Pool identity to a domain user with network access if you need NTLM pass-through for proxy endpoints
 
-You should now be ready for running Portway for the first time. Just open your browser on **`http://localhost:8080`**.
+Portway is now accessible at the configured binding address.
 
-## Initial Configuration
+## Initial configuration
 
-> [!CAUTION]
-> On first run, a token file is generated. This contains a secret and poses a significant security risk if left on disk. **Remove this file immediately after securely saving your token elsewhere.** Unauthorized access to this file can comprimise your environment.
+### Retrieve your access token
 
-### Access Token
+On first run, Portway generates a token file at:
 
-After the first run, find your authentication token in:
 ```
 tokens/YOUR_SERVER_NAME.txt
 ```
 
-This JSON file contains your Bearer token for API authentication:
+The file contains your Bearer token:
 
 ```json
 {
@@ -118,15 +111,17 @@ This JSON file contains your Bearer token for API authentication:
   "AllowedScopes": "*",
   "AllowedEnvironments": "*",
   "ExpiresAt": "Never",
-  "CreatedAt": "2025-01-01 00:00:00",
-  "Usage": "Use this token in the Authorization header as: Bearer your-bearer-token-here"
+  "CreatedAt": "2025-01-01 00:00:00"
 }
 ```
 
-### Configure Environments
+:::warning
+This file contains a plaintext secret. Remove it from disk immediately after recording the token. Unauthorized access to this file compromises your gateway.
+:::
 
-1. Navigate to the `environments` folder in your deployment directory
-2. Create the main `settings.json` file:
+### Configure environments
+
+Create `environments/settings.json` to define which environments are active:
 
 ```json
 {
@@ -137,7 +132,7 @@ This JSON file contains your Bearer token for API authentication:
 }
 ```
 
-3. Create environment-specific configurations:
+Then create a folder and `settings.json` for each environment:
 
 ```
 environments/
@@ -162,9 +157,9 @@ Example `environments/prod/settings.json`:
 }
 ```
 
-### Create Your First Endpoint
+### Create your first endpoint
 
-Create a SQL endpoint by adding `endpoints/SQL/Products/entity.json`:
+Create `endpoints/SQL/Products/entity.json`:
 
 ```json
 {
@@ -181,34 +176,20 @@ Create a SQL endpoint by adding `endpoints/SQL/Products/entity.json`:
 }
 ```
 
-### Test Your API
+Portway detects the new file and loads it without restarting.
 
-1. Restart the IIS Application Pool to load new configurations
-2. Open OpenAPI UI at https://localhost/docs
-3. Click "Authorize" and enter your Bearer token
-4. Make your first API call:
+### Test your API
+
+Open the OpenAPI UI at `https://localhost/docs`, authorize with your Bearer token, and make your first call:
 
 ```http
 GET /api/prod/Products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-You'll be all set now!
+## Next steps
 
-## Next Steps
-
-Now that Portway is running in IIS:
-
-- [Configure SQL Endpoints](./endpoints-sql) for database access
-- [Set up Proxy Endpoints](./endpoints-proxy) for service forwarding
-- [Create Composite Endpoints](./endpoints-composite) for multi-step operations
-- [Configure Security](./security) for production deployment
-- [Set up Monitoring](./monitoring) with health checks
-
-::: tip Production Deployment
-For production environments, ensure you:
-- Configure HTTPS bindings in IIS
-- Set up proper security headers
-- Enable request logging
-- Configure Azure Key Vault for secrets management
-:::
+- [Configure SQL Endpoints](./endpoints-sql)
+- [Set up Proxy Endpoints](./endpoints-proxy)
+- [Manage Environments](./environments)
+- [Configure Security](./security)

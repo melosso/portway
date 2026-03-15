@@ -1,16 +1,10 @@
 # Environment Authentication
 
-Environment authentication allows you to define custom authorization rules per environment. This provides flexibility when different environments (e.g., prod, dev, staging) require different security schemes or when integrating with external systems that have their own authentication mechanisms.
+> Per-environment authentication methods that augment or replace the global Portway token system.
 
-## Overview
+Environment-specific authentication is configured in each environment's `settings.json`. It supports ApiKey, Basic, Bearer, JWT, and HMAC methods. Sensitive fields are automatically encrypted to `PWENC:` format on next startup.
 
-Environment-specific authentication is configured in the environment's `settings.json` file. It supports multiple authentication methods and can either augment or override the global token system.
-
-### Key Features
-- **Multiple Methods**: Support for ApiKey, Basic, Bearer, JWT, and HMAC.
-- **Encryption**: Sensitive fields like secrets and keys are automatically encrypted using the `PWENC:` mechanism.
-- **Global Override:** Option to disable global tokens for a specific environment, requiring only environment-specific auth.
-- **OR Logic**: If multiple methods are defined, a request is authorized if it matches **an{** of the enabled methods.
+If multiple methods are defined, a request is authorised if it satisfies **any** of them.
 
 ## Configuration Structure
 
@@ -61,11 +55,11 @@ Matches a static value against a header, query parameter, or cookie.
 ### 2. Basic
 Standard HTTP Basic authentication.
 
-_ Property | Description |
+| Property | Description |
 |----------|-------------|
 | `Type`| `Basic` |
 | `Name`| The expected username. |
-| `Value`| The expected password (auto. encrypted). |
+| `Value`| The expected password (auto-encrypted). |
 
 ### 3. Bearer
 Matches a static token in the `Authorization: Bearer <token>` header.
@@ -78,23 +72,23 @@ Matches a static token in the `Authorization: Bearer <token>` header.
 ### 4. JWT (JSON Web Token)
 Performs full JWT validation including signature, issuer, and audience.
 
-_ Property | Description |
+| Property | Description |
 |----------|-------------|
 | `Type`| `JWT` |
-| `Issuer` | Optional: Validates the `iss` clai.`|
+| `Issuer` | Optional: Validates the `iss` claim. |
 | `Audience` | Optional: Validates the `aud` claim. |
-| `Secret` | Symmetric key for HMAC algorithms (e.g., HS256) (auto. encrypted). |
+| `Secret` | Symmetric key for HMAC algorithms (e.g., HS256) (auto-encrypted). |
 | `PublicKey`| RSA Public Key in PEM format for asymmetric algorithms (e.g., RS256). |
-| `Algorithm`| The expected signature algorithm (e.g., "HS256"). |
+| `Algorithm`| The expected signature algorithm (e.g., `"HS256"`). |
 
 ### 5. HMAC
 Validates a request signature generated using a shared secret.
 
-_ Property | Description |
+| Property | Description |
 |----------|-------------|
 | `Type`| `HMAC` |
-| `Name` | The header name for the signature (default "X-Signature"). |
-| `Secret`| The shared secret used for hashing (auto. encrypted). |
+| `Name` | The header name for the signature (default `"X-Signature"`). |
+| `Secret`| The shared secret used for hashing (auto-encrypted). |
 
 :::info HMAC Implementation
 Portway's HMAC Implementation expects `X-Signature`and `X-Timestamp` headers. The signature is calculated as `HMACSHA256(Secret, Method + Path + Timestamp + Body)`.
@@ -102,9 +96,9 @@ Portway's HMAC Implementation expects `X-Signature`and `X-Timestamp` headers. Th
 
 ## Automatic Encryption
 
-When you save a `settings.json` file with plaintext secrets, Porvway will automatically detect them on startup and encrypt them using its internal RSA/AES mechanism.
+When you save a `settings.json` file with plaintext secrets, Portway detects them on next startup and encrypts them using RSA/AES hybrid encryption.
 
-The following fields are autonatically encrypted:
+The following fields are automatically encrypted:
 - `Value`
 - `Secret`
 - `ClientSecret`
@@ -121,15 +115,12 @@ By default (`OverrideGlobalToken: false`), Portway uses the following logic:
 
 If `OverrideGlobalToken` is set to `true`, the request **must** satisfy the environment-specific rules; global tokens will be rejected.
 
-## Security Best Practices
+## Security Notes
 
-1. **Use Strong Secrets**: Always use cryptographically strong keys for ApiKey and HMAC methods.
-2. **Rotate Regularly**: Change environment-specific credentials periodically.
-3. **Prefer JWT for External Auth**: When integrating with OAuth2 providers, use the JWT method for robust validation.
-4. **Use HTTPS**: Authentication credentials sent via headers or query parameters are only secure over HTTPS.
+Use cryptographically strong keys for ApiKey and HMAC methods. Rotate credentials periodically. For OAuth2 provider integrations, prefer JWT for full signature validation. Authentication credentials sent via headers are only secure over HTTPS.
 
 ## Related Topics
 
 - [Environment Settings](/reference/environment-settings) - General environment configuration
-- [API Authentication](/reference/api-auth) - Standard Porvway token system
+- [API Authentication](/reference/api-auth) - Standard Portway token system
 - [Security Guide](/guide/security) - General security practices

@@ -49,6 +49,7 @@ export default withMermaid(
           text: 'Configuration',
           items: [
             { text: 'Environments', link: '/guide/environments' },
+            { text: 'Access Tokens', link: '/guide/tokens' },
             { text: 'Security', link: '/guide/security' },
             { text: 'Rate Limiting', link: '/guide/rate-limiting' },
             { text: 'Versioning', link: '/guide/versioning' },

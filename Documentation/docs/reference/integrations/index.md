@@ -1,6 +1,6 @@
 # Integrations
 
-Portway API supports a variety of integrations that extend its functionality and simplify integration with third-party systems. Below is a list of each documented integration. Documented to meet specific integration needs.
+Configuration guides for connecting Portway to third-party systems.
 
 ## Enterprise Resource Planning (ERP) Systems
 

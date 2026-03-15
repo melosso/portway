@@ -1,29 +1,20 @@
 # SQL Endpoints
 
-::: warning Database permissions
-You must have a sufficient understanding of your database platform and the necessary permissions before exposing tables or views through Portway. Ensure you are aware of the potential impact on your organisation's data and security policies.
+> Expose SQL tables, views, stored procedures, and table-valued functions as REST endpoints with OData filtering.
+
+:::warning
+Before exposing any table or view through Portway, verify you understand the database permissions in play and the data contained in those objects. Portway enforces column-level restrictions — but only for columns you explicitly configure.
 :::
 
-## Overview
+SQL endpoints support four backends — SQL Server, PostgreSQL, MySQL, and SQLite. Portway selects the correct driver automatically from the connection string in the environment's `settings.json`. No changes to endpoint configuration are needed when working across providers.
 
-SQL endpoints allow you to:
-- Expose specific tables or views as REST endpoints
-- Control which columns are accessible
-- Enable specific HTTP methods (GET, POST, PUT, DELETE)
-- Execute stored procedures for complex operations
-- Apply environment-specific configurations
-
-Portway supports **SQL Server, PostgreSQL, MySQL, and SQLite** as SQL backends. The correct driver is selected automatically from the connection string in the environment's `settings.json`, no changes to endpoint configuration are needed when using a non-SQL Server environment.
-
-::: tip Not all providers support every feature
-Table-valued functions (TVF) require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full matrix.
+:::info
+Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full capability matrix.
 :::
 
 ## Configuration
 
-### Basic SQL Endpoint Configuration
-
-Create a JSON file in the `endpoints/SQL/{EndpointName}/entity.json` directory:
+Create `endpoints/SQL/{EndpointName}/entity.json`:
 
 ```json
 {
@@ -42,95 +33,73 @@ Create a JSON file in the `endpoints/SQL/{EndpointName}/entity.json` directory:
 }
 ```
 
-### Configuration Properties
+### Configuration properties
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `DatabaseObjectName` | string | Yes | The table or view name in the database |
-| `DatabaseSchema` | string | No | Database schema (defaults to "dbo") |
-| `PrimaryKey` | string | No | Primary key column name (defaults to "Id") |
-| `AllowedColumns` | array | No | List of accessible columns (empty = all columns) |
-| `AllowedMethods` | array | No | HTTP methods allowed (defaults to ["GET"]) |
-| `AllowedEnvironments` | array | No | Environments where endpoint is available |
-| `Procedure` | string | No | Stored procedure for POST/PUT/DELETE operations |
+| Property | Required | Type | Description |
+|---|---|---|---|
+| `DatabaseObjectName` | Yes | string | Table, view, or function name in the database |
+| `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
+| `PrimaryKey` | No | string | Primary key column name. Defaults to `Id` |
+| `AllowedColumns` | No | array | Columns accessible via the API. Empty array exposes all columns |
+| `AllowedMethods` | No | array | HTTP methods allowed. Defaults to `["GET"]` |
+| `AllowedEnvironments` | No | array | Environments where this endpoint responds |
+| `Procedure` | No | string | Stored procedure to call for write operations |
+| `DatabaseObjectType` | No | string | Set to `TableValuedFunction` for TVF endpoints |
 
-### Column Aliases
+## Column aliases
 
-You can create user-friendly column names using semicolon-separated aliases:
+Map internal column names to API-facing names using semicolon syntax in `AllowedColumns`:
 
 ```json
 {
   "DatabaseObjectName": "Items",
-  "DatabaseSchema": "dbo",
-  "PrimaryKey": "ItemCode",
   "AllowedColumns": [
     "ItemCode;ProductNumber",
     "Description;ProductName",
-    "Assortment;Category",
-    "sysguid;InternalID"
+    "Assortment;Category"
   ]
 }
 ```
 
-With aliases configured, you can use friendly names in your API requests:
+The API accepts and returns `ProductNumber`, `ProductName`, and `Category`. Portway maps them to the underlying column names before querying the database.
 
 ```http
-GET /api/prod/Products?$select=ProductNumber,ProductName&$filter=Category eq 'Electronics'
+GET /api/prod/Items?$select=ProductNumber,ProductName&$filter=Category eq 'Electronics'
 ```
 
-This automatically converts to the actual database columns (`ItemCode`, `Description`, `Assortment`) while keeping your API clean and user-friendly.
+## Querying with OData
 
-## Using SQL Endpoints
-
-### GET Requests (Query Data)
-
-SQL endpoints support OData query parameters for filtering, sorting, and pagination:
-
-```http
-GET /api/prod/Products?$filter=Category eq 'Electronics'&$orderby=Price desc&$top=10
-```
-
-#### OData Query Parameters
+All GET requests support OData query parameters:
 
 | Parameter | Description | Example |
-|-----------|-------------|---------|
-| `$select` | Choose specific columns | `$select=ProductName,Price` |
-| `$filter` | Filter results | `$filter=Price gt 100` |
+|---|---|---|
+| `$select` | Return specific columns | `$select=ProductName,Price` |
+| `$filter` | Filter rows | `$filter=Price gt 100` |
 | `$orderby` | Sort results | `$orderby=ProductName desc` |
-| `$top` | Limit results | `$top=50` |
-| `$skip` | Skip records | `$skip=20` |
+| `$top` | Limit row count | `$top=50` |
+| `$skip` | Skip rows (for pagination) | `$skip=20` |
 
-#### Filter Operators
+Filter operators: `eq`, `ne`, `gt`, `lt`, `ge`, `le`, `and`, `or`, `contains()`
 
-```
-eq    - Equals
-ne    - Not equals
-gt    - Greater than
-lt    - Less than
-ge    - Greater than or equal
-le    - Less than or equal
-and   - Logical and
-or    - Logical or
-```
-
-Example filters:
 ```http
-# Simple equality
-$filter=Category eq 'Books'
-
-# Numeric comparison
-$filter=Price gt 50
-
-# String contains
-$filter=contains(ProductName, 'Phone')
-
-# Multiple conditions
-$filter=Price gt 100 and InStock eq true
+GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price desc&$top=25
 ```
 
-### POST Requests (Create Data)
+### Response format
 
-Create new records by sending JSON data:
+```json
+{
+  "Count": 25,
+  "Value": [
+    { "ProductID": "abc123", "ProductName": "Gadget", "Price": 99.99 }
+  ],
+  "NextLink": "/api/prod/Products?$top=25&$skip=25"
+}
+```
+
+## Write operations
+
+### POST — create a record
 
 ```http
 POST /api/prod/Products
@@ -144,32 +113,30 @@ Content-Type: application/json
 }
 ```
 
-### PUT Requests (Update Data)
+### PUT — update a record
 
-Update existing records. The ID must be included in the request body:
+Include the primary key in the request body:
 
 ```http
 PUT /api/prod/Products
 Content-Type: application/json
 
 {
-  "id": "abc123",
+  "ProductID": "abc123",
   "ProductName": "Updated Gadget",
   "Price": 249.99
 }
 ```
 
-### DELETE Requests
-
-Delete records by ID:
+### DELETE — remove a record
 
 ```http
 DELETE /api/prod/Products?id=abc123
 ```
 
-## Stored Procedure Integration
+## Stored procedures
 
-For complex operations, configure a stored procedure:
+For write operations that require business logic, validation, or audit logging, configure a stored procedure:
 
 ```json
 {
@@ -177,68 +144,44 @@ For complex operations, configure a stored procedure:
   "DatabaseSchema": "dbo",
   "Procedure": "dbo.sp_ManageServiceRequests",
   "AllowedMethods": ["GET", "POST", "PUT", "DELETE"],
-  "AllowedColumns": [
-    "RequestId",
-    "CustomerCode",
-    "Title",
-    "Status"
-  ]
+  "AllowedColumns": ["RequestId", "CustomerCode", "Title", "Status"]
 }
 ```
 
-The stored procedure should handle different operations based on the `@Method` parameter:
+The procedure receives the HTTP method as `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`):
 
 ```sql
 CREATE PROCEDURE [dbo].[sp_ManageServiceRequests]
-    @Method NVARCHAR(10),
-    @id UNIQUEIDENTIFIER = NULL,
+    @Method      NVARCHAR(10),
+    @id          UNIQUEIDENTIFIER = NULL,
     @CustomerCode NVARCHAR(20) = NULL,
-    @Title NVARCHAR(100) = NULL,
-    @Status NVARCHAR(20) = NULL,
-    @UserName NVARCHAR(50) = NULL
+    @Title       NVARCHAR(100) = NULL,
+    @Status      NVARCHAR(20) = NULL,
+    @UserName    NVARCHAR(50) = NULL
 AS
 BEGIN
     IF @Method = 'INSERT'
-        -- Insert logic
+        -- insert logic
     ELSE IF @Method = 'UPDATE'
-        -- Update logic
-    ELSE IF @methd = 'PATCH'
-        -- Patch Logic (be wary about NULL's here). E.g. `SET Field1 = ISNULL(@Field1, Field1)` to only update if provided
+        -- update logic; use ISNULL(@Field, Field) to handle partial updates
     ELSE IF @Method = 'DELETE'
-        -- Delete logic
+        -- delete logic
 END
 ```
 
-:::tip
-Stored procedures provide better control over complex business logic and can include audit logging, validation, and transaction management.
+:::info
+Stored procedures handle write operations only. GET requests use the standard OData query path against `DatabaseObjectName` directly.
 :::
 
-:::important
-This method doesn't support full "CRUD". Retrieve (used for GET-methods) isn't supported.
-:::
+## Table-valued functions
 
-## Table-Valued Functions (TVF)
+TVFs support parameterized queries — useful for reporting, generated datasets, or complex parameterized lookups that views cannot express.
 
-Table-Valued Functions provide parameterized data generation for dynamic endpoints, unlike regular table/view endpoints that query static data.
-
-**Regular Table Endpoint:**
 ```json
 {
-  "DatabaseObjectName": "Items",
-  "DatabaseSchema": "dbo",
-  "PrimaryKey": "ItemCode",
-  "AllowedColumns": ["ItemCode", "Description"],
-  "AllowedMethods": ["GET", "POST", "PUT", "DELETE"]
-}
-```
-
-**Table-Valued Function Endpoint:**
-```json
-{
-  "DatabaseObjectName": "GenerateSampleUsers",
+  "DatabaseObjectName": "fn_GetDepartmentUsers",
   "DatabaseSchema": "dbo",
   "DatabaseObjectType": "TableValuedFunction",
-  //"PrimaryKey" isn't supported in this method
   "FunctionParameters": [
     {
       "Name": "DepartmentId",
@@ -266,21 +209,20 @@ Table-Valued Functions provide parameterized data generation for dynamic endpoin
 }
 ```
 
-**Usage Examples:**
+Parameters can be sourced from `Path`, `Query`, or `Header`. Example calls:
+
 ```http
 GET /api/dev/Departments/5?UserCount=25
 GET /api/dev/Departments?UserCount=50&$top=20&$orderby=FirstName
 ```
 
-:::tip
-TVFs are ideal for generating test data, reporting functions, and parameterized queries. Parameters can be sourced from URL paths, query strings, or headers for flexible endpoint design.
+:::info
+`PrimaryKey` is not applicable to TVF endpoints.
 :::
 
-## Security Considerations
+## Column-level access control
 
-### Column-Level Access Control
-
-Restrict access to sensitive columns:
+Use `AllowedColumns` to exclude sensitive fields from API responses and requests. Any column not listed is invisible to callers — it is neither returned in GET results nor accepted in POST/PUT bodies.
 
 ```json
 {
@@ -289,123 +231,23 @@ Restrict access to sensitive columns:
     "CustomerID",
     "CompanyName",
     "ContactName"
-    // Excludes sensitive fields like SSN, CreditCard, etc.
   ]
 }
 ```
 
-### Environment Restrictions
-
-Limit endpoints to specific environments:
-
-```json
-{
-  "AllowedEnvironments": ["prod", "staging"]
-  // Not available in dev or test
-}
-```
-
-:::warning
-Always use the `AllowedColumns` property to prevent exposure of sensitive data. Never expose columns containing passwords, SSNs, or other PII without proper security measures.
-:::
-
-## Database Object Requirements
-
-### Required SQL Objects
-
-For endpoints using stored procedures, create the following:
-
-1. **Main table**:
-```sql
-CREATE TABLE [dbo].[YourTable] (
-    [Id] UNIQUEIDENTIFIER PRIMARY KEY,
-    [Field1] NVARCHAR(100),
-    [Field2] INT,
-    -- other fields
-);
-```
-
-2. **Stored procedure** (if using):
-```sql
-CREATE PROCEDURE [dbo].[sp_ManageYourTable]
-    @Method NVARCHAR(10),
-    -- parameters matching your fields
-AS
-BEGIN
-    -- CRUD operations based on @Method
-END
-```
-
-3. **Indexes** for performance:
-```sql
-CREATE INDEX IX_YourTable_CommonQueryField ON [dbo].[YourTable] (CommonQueryField);
-```
-
-## Response Format
-
-SQL endpoints return JSON responses with the following structure:
-
-### Collection Response
-```json
-{
-  "Count": 25,
-  "Value": [
-    {
-      "ProductID": "abc123",
-      "ProductName": "Gadget",
-      "Price": 99.99
-    }
-    // ... more items
-  ],
-  "NextLink": "/api/prod/Products?$top=10&$skip=10"
-}
-```
-
-### Single Item Response
-```json
-{
-  "ProductID": "abc123",
-  "ProductName": "Gadget",
-  "Category": "Electronics",
-  "Price": 99.99,
-  "InStock": true
-}
-```
-
-### Error Response
-```json
-{
-  "error": "Invalid request",
-  "detail": "The Price field must be a positive number",
-  "success": false
-}
-```
+Columns containing credentials, SSNs, financial data, or internal system fields should be excluded explicitly rather than relying on callers not to request them.
 
 ## Troubleshooting
 
-### Common Issues
+**"Column not allowed"** — The column is not listed in `AllowedColumns`, or the name does not match exactly (case-sensitive).
 
-1. **"Column not allowed" error**
-   - Check `AllowedColumns` in your configuration
-   - Ensure the column name matches exactly (case-sensitive)
+**"Method not allowed"** — Add the HTTP method to `AllowedMethods`, and ensure the stored procedure handles it if one is configured.
 
-2. **"Method not allowed" error**
-   - Verify `AllowedMethods` includes the HTTP method you're using
-   - Check that the stored procedure handles the method
+**No results returned** — Verify filter syntax, check that data exists in the target environment, and confirm database permissions for the connection string account.
 
-3. **No results returned**
-   - Verify your filter syntax
-   - Check if data exists in the specified environment
-   - Ensure proper permissions on the database
+**Performance issues** — Add indexes on columns used in `$filter` and `$orderby`. Use `$top` to limit result set size. Consider stored procedures for complex multi-table queries.
 
-4. **Performance issues**
-   - Add appropriate indexes to frequently queried columns
-   - Use `$top` to limit result sets
-   - Consider implementing stored procedures for complex queries
-
-### Logging
-
-Enable detailed logging to troubleshoot issues:
+To increase log verbosity:
 
 ```json
 {
@@ -417,31 +259,9 @@ Enable detailed logging to troubleshoot issues:
 }
 ```
 
-## Best Practices
+## Next steps
 
-These should be pretty well known for anyone familiar with relational databases, but just give you a short insight:
-
-1. **Use Stored Procedures for Write Operations**
-   - Provides better control and validation
-   - Enables audit logging
-   - Supports complex business logic
-
-2. **Implement Proper Indexing**
-   - Index columns used in filters and sorting
-   - Consider composite indexes for multi-column queries
-
-3. **Limit Result Sets**
-   - Always use `$top` for large tables
-   - Implement default limits in your configuration
-
-4. **Secure Sensitive Data**
-   - Use `AllowedColumns` to restrict access
-   - Consider separate endpoints for sensitive operations
-   - Implement row-level security when needed
-
-## Next Steps
-
-- Learn about [Proxy Endpoints](/guide/endpoints-proxy) for forwarding requests
-- Explore [Composite Endpoints](/guide/endpoints-composite) for complex operations
-- Review [Security Best Practices](/guide/security) for protecting your data
-- Set up [Environment Configuration](/guide/environments) for multi-stage deployments
+- [Proxy Endpoints](./endpoints-proxy)
+- [Composite Endpoints](./endpoints-composite)
+- [Environments](./environments)
+- [Security](./security)

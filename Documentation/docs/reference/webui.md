@@ -368,9 +368,9 @@ data: {"type":"sql","count":5}
 
 ---
 
-## WebSocket Events
+## SSE Events
 
-The UI subscribes to real-time events via SSE (Server-Sent Events).
+The UI subscribes to real-time updates via Server-Sent Events.
 
 ### Event Types
 

@@ -1,6 +1,6 @@
 # Logging
 
-Portway implements comprehensive logging using Serilog, providing detailed insights into API operations, errors, and system health. The logging system captures events with configurable verbosity levels and outputs to both console and file storage.
+> Serilog configuration reference for log levels, file rotation, and structured output.
 
 ## Log Outputs
 
@@ -28,20 +28,9 @@ Portway implements comprehensive logging using Serilog, providing detailed insig
 | Fatal | Critical failures | Application startup failures |
 
 
-## Configuration Settings
+## Configuration
 
-The logging system can be configured through:
-
-### Application Settings
-- Minimum log levels per category
-- Output destinations
-- File rotation settings
-- Buffer and flush intervals
-
-### Environment Variables
-- Override default log levels
-- Enable/disable specific categories
-- Set custom output paths
+Logging is configured in `appsettings.json` under the `Serilog` section. See [Application Settings](/reference/app-settings) for the full configuration schema.
 
 ## Log File Management
 
@@ -95,29 +84,6 @@ Logs are automatically enriched with:
 - Request correlation IDs
 - User context
 - Environment information
-
-## Best Practices
-
-### 1. Log Level Selection
-- Use Information for standard operations
-- Reserve Debug for development troubleshooting
-- Use Warning for handled exceptions
-- Use Error for failures requiring attention
-
-### 2. Sensitive Data Protection
-- Authorization headers are automatically redacted
-- Passwords and tokens masked in logs
-- Personal data handled according to privacy settings
-
-### 3. Performance Considerations
-- Buffered file writing for efficiency
-- Asynchronous logging operations
-- Filtered exclusions for high-frequency endpoints
-
-### 4. Log Analysis
-- Use structured properties for filtering
-- Correlate requests using trace IDs
-- Monitor error patterns for alerts
 
 ## Troubleshooting
 

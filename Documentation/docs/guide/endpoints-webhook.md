@@ -1,39 +1,51 @@
 # Webhook Endpoints
 
-Webhook endpoints in Portway provide a simple way to receive and store external event notifications in your SQL database. These endpoints act as HTTP receivers that automatically persist incoming webhook payloads, making them ideal for integrating with third-party services that use webhooks for notifications.
+> Receive HTTP POST payloads from external services and persist them to a SQL table.
 
-## Overview
-
-Webhook endpoints allow you to:
-- Receive HTTP POST requests from external services
-- Automatically store webhook payloads in your SQL database
-- Handle multiple webhook configurations
-- Track when webhooks were received
-- Process any valid JSON payload structure
-
-You could, for example, use a program that loads the unprocessed data asynchronously and then processes it into your main database or triggers other workflows.
-
-## How Webhooks Work
+Webhook endpoints accept incoming POST requests and store the JSON payload in a configured database table. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. No parsing or transformation occurs — the raw payload is stored as-is for downstream processing.
 
 ```mermaid
 sequenceDiagram
     participant External as External Service
     participant Portway as Portway Gateway
     participant DB as SQL Database
-    
+
     External->>Portway: POST /api/prod/webhook/payment-received
-    Note over Portway: Validate request
-    Note over Portway: Extract payload
     Portway->>DB: INSERT INTO WebhookData
     DB-->>Portway: Success
     Portway-->>External: 200 OK
 ```
 
+Downstream processing is handled by a separate job or procedure that reads from the webhook table. Portway does not retry failed inserts or forward payloads further.
+
+## Database setup
+
+Create the webhook table before configuring the endpoint:
+
+```sql
+CREATE TABLE [dbo].[WebhookData] (
+    [Id]         INT IDENTITY(1,1) PRIMARY KEY,
+    [WebhookId]  NVARCHAR(255)    NOT NULL,
+    [Payload]    NVARCHAR(MAX)    NOT NULL,
+    [ReceivedAt] DATETIME         NOT NULL DEFAULT GETDATE()
+);
+
+CREATE INDEX IX_WebhookData_WebhookId
+ON [dbo].[WebhookData] ([WebhookId], [ReceivedAt] DESC);
+```
+
+If your processing job needs to track status, extend the table accordingly:
+
+```sql
+ALTER TABLE WebhookData ADD
+    ProcessedAt DATETIME     NULL,
+    RetryCount  INT          NOT NULL DEFAULT 0,
+    LastError   NVARCHAR(MAX) NULL;
+```
+
 ## Configuration
 
-### Basic Webhook Configuration
-
-Create a JSON file in the `endpoints/Webhooks/entity.json` directory:
+Create `endpoints/Webhooks/entity.json`:
 
 ```json
 {
@@ -47,54 +59,21 @@ Create a JSON file in the `endpoints/Webhooks/entity.json` directory:
 }
 ```
 
-### Configuration Properties
+### Configuration properties
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `DatabaseObjectName` | string | Yes | Table name for storing webhook data |
-| `DatabaseSchema` | string | No | Database schema (defaults to "dbo") |
-| `AllowedColumns` | array | No | List of allowed webhook identifiers |
+| Property | Required | Type | Description |
+|---|---|---|---|
+| `DatabaseObjectName` | Yes | string | Table name for storing webhook payloads |
+| `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
+| `AllowedColumns` | No | array | Webhook IDs this endpoint accepts. Any ID not listed is rejected with 400 |
 
-## Database Setup
+Webhook IDs map to values in the `WebhookId` column. Use names that identify the source and event type — `stripe_payment_success`, `shopify_order_created` — rather than generic identifiers.
 
-### Create Webhook Table
-
-The webhook system requires a specific table structure:
-
-```sql
-CREATE TABLE [dbo].[WebhookData] (
-    [Id] INT IDENTITY(1,1) PRIMARY KEY,
-    [WebhookId] NVARCHAR(255) NOT NULL,
-    [Payload] NVARCHAR(MAX) NOT NULL,
-    [ReceivedAt] DATETIME NOT NULL DEFAULT GETDATE()
-);
-
--- Optional: Add index for faster queries
-CREATE INDEX IX_WebhookData_WebhookId 
-ON [dbo].[WebhookData] ([WebhookId], [ReceivedAt] DESC);
-```
-
-### Table Structure
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `Id` | INT | Auto-incrementing primary key |
-| `WebhookId` | NVARCHAR(255) | Webhook identifier from the URL |
-| `Payload` | NVARCHAR(MAX) | JSON payload from the request |
-| `ReceivedAt` | DATETIME | Timestamp when the webhook was received |
-
-## Using Webhook Endpoints
-
-### Webhook URL Format
+## Sending webhooks
 
 ```
 POST /api/{environment}/webhook/{webhookId}
 ```
-
-- `{environment}`: Target environment (e.g., "prod", "test")
-- `{webhookId}`: Identifier for the webhook type (e.g., "payment-received")
-
-### Making Webhook Requests
 
 ```http
 POST /api/prod/webhook/payment-received
@@ -106,15 +85,11 @@ Authorization: Bearer <token>
   "payment_id": "pay_123456",
   "amount": 99.99,
   "currency": "EUR",
-  "customer": {
-    "id": "cust_789",
-    "email": "customer@example.com"
-  },
   "timestamp": "2024-03-15T10:30:00Z"
 }
 ```
 
-### Response Format
+**Response:**
 
 ```json
 {
@@ -123,329 +98,65 @@ Authorization: Bearer <token>
 }
 ```
 
-## Webhook Identifier Validation
+:::warning
+All webhook endpoints require Bearer token authentication. External services that do not support custom request headers cannot authenticate directly with Portway. For services that require unauthenticated inbound webhooks, place a proxy or ingress layer in front that adds the token before forwarding to Portway.
+:::
 
-### Allowed Webhook IDs
+## Querying stored payloads
 
-Only webhook IDs listed in the `AllowedColumns` configuration are accepted:
-
-```json
-{
-  "AllowedColumns": [
-    "payment_webhook",     // ✓ Valid
-    "shipping_webhook",    // ✓ Valid
-    "unknown_webhook"      // ✗ Will be rejected
-  ]
-}
-```
-
-### Error Response
-
-When using an unallowed webhook ID:
-
-```json
-{
-  "error": "Webhook ID 'unknown_webhook' is not configured",
-  "success": false
-}
-```
-
-## Common Webhook Patterns
-
-### Payment Provider Webhooks
-
-Configure for payment notifications:
-
-```json
-{
-  "DatabaseObjectName": "PaymentWebhooks",
-  "AllowedColumns": [
-    "stripe_events",
-    "paypal_ipn",
-    "square_notifications"
-  ]
-}
-```
-
-Example Stripe webhook:
-```http
-POST /api/prod/webhook/stripe_events
-Content-Type: application/json
-
-{
-  "id": "evt_123456789",
-  "object": "event",
-  "type": "charge.succeeded",
-  "data": {
-    "object": {
-      "id": "ch_123456789",
-      "amount": 2000,
-      "currency": "eur"
-    }
-  }
-}
-```
-
-### E-commerce Platform Webhooks
-
-Configure for order and inventory updates:
-
-```json
-{
-  "DatabaseObjectName": "EcommerceWebhooks",
-  "AllowedColumns": [
-    "shopify_orders",
-    "woocommerce_products",
-    "magento_inventory"
-  ]
-}
-```
-
-### Monitoring Service Webhooks
-
-Configure for system alerts:
-
-```json
-{
-  "DatabaseObjectName": "MonitoringWebhooks",
-  "AllowedColumns": [
-    "datadog_alerts",
-    "pingdom_notifications",
-    "pagerduty_incidents"
-  ]
-}
-```
-
-## Processing Stored Webhooks
-
-### Query Recent Webhooks
+Use SQL Server's JSON functions to extract fields from stored payloads:
 
 ```sql
--- Get recent webhooks for a specific ID
-SELECT TOP 10 
+-- Recent payloads for one webhook type
+SELECT TOP 10
     Id,
-    WebhookId,
-    Payload,
+    JSON_VALUE(Payload, '$.event')      AS EventType,
+    JSON_VALUE(Payload, '$.payment_id') AS PaymentId,
     ReceivedAt
 FROM WebhookData
 WHERE WebhookId = 'payment_webhook'
 ORDER BY ReceivedAt DESC;
 ```
 
-### Parse JSON Payload
+## Limitations
 
-```sql
--- Extract specific values from JSON payload
-SELECT 
-    Id,
-    WebhookId,
-    JSON_VALUE(Payload, '$.event') as EventType,
-    JSON_VALUE(Payload, '$.payment_id') as PaymentId,
-    JSON_VALUE(Payload, '$.amount') as Amount,
-    ReceivedAt
-FROM WebhookData
-WHERE WebhookId = 'payment_webhook'
-  AND ReceivedAt > DATEADD(day, -1, GETDATE());
-```
-
-### Create Processing Procedures
-
-```sql
-CREATE PROCEDURE ProcessPaymentWebhooks
-AS
-BEGIN
-    -- Process unprocessed webhooks
-    DECLARE @WebhookId INT, @Payload NVARCHAR(MAX);
-    
-    DECLARE webhook_cursor CURSOR FOR
-    SELECT Id, Payload
-    FROM WebhookData
-    WHERE WebhookId = 'payment_webhook'
-      AND ProcessedAt IS NULL;
-    
-    OPEN webhook_cursor;
-    FETCH NEXT FROM webhook_cursor INTO @WebhookId, @Payload;
-    
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
-        -- Process webhook payload
-        BEGIN TRY
-            -- Your processing logic here
-            
-            -- Mark as processed
-            UPDATE WebhookData
-            SET ProcessedAt = GETDATE()
-            WHERE Id = @WebhookId;
-        END TRY
-        BEGIN CATCH
-            -- Log error
-            INSERT INTO WebhookErrors (WebhookId, ErrorMessage)
-            VALUES (@WebhookId, ERROR_MESSAGE());
-        END CATCH
-        
-        FETCH NEXT FROM webhook_cursor INTO @WebhookId, @Payload;
-    END
-    
-    CLOSE webhook_cursor;
-    DEALLOCATE webhook_cursor;
-END
-```
-
-## Security Considerations
-
-### Authentication
-
-All webhook endpoints require Bearer token authentication:
-
-```http
-Authorization: Bearer <your-token>
-```
-
-:::warning
-External services must support custom headers to authenticate with Portway webhook endpoints. If the service doesn't support authentication headers, consider using a proxy service or implementing IP-based restrictions.
-:::
-
-### Network Security
-
-1. **IP Whitelisting**: Configure your firewall to only allow webhook requests from known service IPs
-2. **HTTPS Only**: Always use HTTPS in production to encrypt webhook payloads
-3. **Rate Limiting**: Portway's built-in rate limiting protects against webhook flooding
-
-### Data Validation
-
-The webhook system automatically:
-- Validates JSON syntax
-- Checks webhook ID against allowed list
-- Enforces size limits on payloads
-- Sanitizes data before storage
-
-## Best Practices
-
-### 1. Use Descriptive Webhook IDs
-
-Choose webhook IDs that clearly indicate their purpose:
-
-```json
-{
-  "AllowedColumns": [
-    "stripe_payment_success",     // ✓ Good
-    "github_push_events",         // ✓ Good
-    "webhook1",                   // ✗ Avoid
-    "temp_hook"                   // ✗ Avoid
-  ]
-}
-```
-
-### 2. Implement Processing Logic
-
-Don't just store webhooks—process them:
-
-1. Create scheduled jobs to process webhook data
-2. Implement error handling for failed processing
-3. Add monitoring for webhook processing delays
-4. Archive old webhook data periodically
-
-### 3. Design for Reliability
-
-Handle webhook delivery issues:
-
-```sql
--- Add columns for processing status
-ALTER TABLE WebhookData ADD 
-    ProcessedAt DATETIME NULL,
-    RetryCount INT DEFAULT 0,
-    LastError NVARCHAR(MAX) NULL;
-```
-
-### 4. Monitor Webhook Activity
-
-Set up monitoring queries:
-
-```sql
--- Monitor webhook volume
-SELECT 
-    WebhookId,
-    CAST(ReceivedAt as DATE) as Date,
-    COUNT(*) as WebhookCount
-FROM WebhookData
-WHERE ReceivedAt > DATEADD(day, -7, GETDATE())
-GROUP BY WebhookId, CAST(ReceivedAt as DATE)
-ORDER BY Date DESC, WebhookId;
-```
+- POST only — webhook endpoints do not respond to GET, PUT, or DELETE
+- JSON only — payloads must be valid JSON; non-JSON bodies are rejected
+- No payload validation beyond JSON syntax and webhook ID matching
+- No automatic retry on insert failure
+- Default payload size limit: 10MB
 
 ## Troubleshooting
 
-### Common Issues
+**"Webhook ID not configured"** — The ID in the URL must match an entry in `AllowedColumns` exactly. Webhook IDs are case-sensitive.
 
-1. **"Webhook ID not configured" error**
-   - Check that the webhook ID matches an entry in `AllowedColumns`
-   - Ensure exact case matching (webhook IDs are case-sensitive)
-   - Verify the configuration file is properly loaded
+**Database connection errors** — Verify the table exists with the correct schema and that the environment's connection string account has INSERT permission on the table.
 
-2. **Database connection errors**
-   - Verify the table exists with correct schema
-   - Check database permissions
-   - Ensure connection string is valid
+**Authentication failures** — Confirm the Bearer token is valid and has access to the target environment.
 
-3. **Authentication failures**
-   - Verify Bearer token is included in request
-   - Check token has not expired
-   - Ensure token has access to the environment
+To increase log verbosity:
 
-4. **Payload too large**
-   - Check payload size limits (default 10MB)
-   - Consider compressing large payloads
-   - Store large data externally and reference it
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "PortwayApi.Api.EndpointController": "Debug"
+    }
+  }
+}
+```
 
-### Debugging Webhooks
+Test with a minimal payload:
 
-1. **Enable detailed logging**:
-   ```json
-   {
-     "Logging": {
-       "LogLevel": {
-         "PortwayApi.Api.EndpointController": "Debug"
-       }
-     }
-   }
-   ```
+```bash
+curl -X POST https://your-api/api/prod/webhook/test_webhook \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"test": "data"}'
+```
 
-2. **Test with simple payloads**:
-   ```bash
-   curl -X POST https://your-api/api/prod/webhook/test_webhook \
-     -H "Authorization: Bearer <token>" \
-     -H "Content-Type: application/json" \
-     -d '{"test": "data"}'
-   ```
+## Next steps
 
-3. **Check database directly**:
-   ```sql
-   SELECT TOP 10 * FROM WebhookData
-   ORDER BY ReceivedAt DESC;
-   ```
-
-## Webhook vs Other Endpoints
-
-| Feature | Webhook Endpoints | SQL Endpoints | Proxy Endpoints |
-|---------|------------------|---------------|-----------------|
-| Purpose | Receive external events | Database CRUD operations | Forward requests |
-| HTTP Methods | POST only | GET, POST, PUT, DELETE | Configurable |
-| Data Storage | Automatic | Query-based | None |
-| Request Format | Any JSON | Structured queries | Pass-through |
-| Response Format | Simple success | Query results | Service response |
-| Use Case | External integrations | Data operations | Service proxy |
-
-## Limitations
-
-1. **POST Only**: Webhook endpoints only support POST requests
-2. **JSON Only**: Payloads must be valid JSON
-3. **No Processing**: Webhooks are stored as-is without processing
-4. **No Validation**: Payload structure is not validated beyond JSON syntax
-5. **No Retry**: Failed webhooks are not automatically retried
-
-## Next Steps
-
-- Configure [SQL Endpoints](/guide/endpoints-sql) for querying webhook data
-- Set up [Security](/guide/security) for webhook authentication
-- Implement [Monitoring](/guide/monitoring) for webhook processing
-- Create [Composite Endpoints](/guide/endpoints-composite) to process webhooks with business logic
+- [SQL Endpoints](./endpoints-sql) — query and expose webhook data
+- [Security](./security)
+- [Monitoring](./monitoring)

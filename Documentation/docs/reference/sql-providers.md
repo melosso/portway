@@ -36,8 +36,9 @@ Portway reads the connection string and identifies the provider without requirin
 | 8 | `Data Source=` value ends in `.db`, `.sqlite`, `.sqlite3`, or equals `:memory:` | SQLite |
 | 9 | _(anything else)_ | **SQL Server** (default) |
 
-> [!TIP]
-> Standard SQL Server connection strings naturally contain keywords like `TrustServerCertificate=` or `Integrated Security=` and are caught at priority 1. Existing environments require no changes.
+:::tip
+Standard SQL Server connection strings naturally contain keywords like `TrustServerCertificate=` or `Integrated Security=` and are caught at priority 1. Existing environments require no changes.
+:::
 
 ---
 
@@ -142,8 +143,9 @@ In-memory (data is lost when the process restarts):
 }
 ```
 
-> [!NOTE]
-> SQLite connection strings carry no credentials. Portway skips the credential-masking step for SQLite environments entirely.
+:::info
+SQLite connection strings carry no credentials. Portway skips the credential-masking step for SQLite environments entirely.
+:::
 
 ---
 
@@ -160,11 +162,13 @@ In-memory (data is lost when the process restarts):
 | Connection pooling | ✅ | ✅ | ✅ | Limited |
 | Health check | ✅ | ✅ | ✅ | ✅ |
 
-> [!WARNING]
-> **SQLite — write operations:** SQLite does not support stored procedures. Endpoints that define a `Procedure` field and point to a SQLite environment return `501 Not Implemented`. GET-only endpoints are unaffected.
+:::warning
+**SQLite — write operations:** SQLite does not support stored procedures. Endpoints that define a `Procedure` field and point to a SQLite environment return `501 Not Implemented`. GET-only endpoints are unaffected.
+:::
 
-> [!NOTE]
-> **MySQL — table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
+:::info
+**MySQL — table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
+:::
 
 ---
 
