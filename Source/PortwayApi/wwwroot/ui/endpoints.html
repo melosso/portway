@@ -716,7 +716,7 @@ function renderWebhookForm(c) {
 function readEnvs() {
   const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
   const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
-  return envs.length === 1 && envs[0] === '*' ? '*' : envs;
+  return envs.length === 1 && envs[0] === '*' ? null : envs;
 }
 
 function validateDocFields(errors) {
