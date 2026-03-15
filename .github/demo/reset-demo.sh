@@ -32,6 +32,7 @@ echo "Resetting configuration and database from main repository..."
 files=(
     "config/environments/settings.json"
     "config/environments/WMS/settings.json"
+    "config/environments/network-access-policy.json"
     "config/endpoints/Proxy/Accounts/entity.json"
     "config/endpoints/Proxy/Products/entity.json"
     "config/endpoints/Proxy/Production/entity.json"
