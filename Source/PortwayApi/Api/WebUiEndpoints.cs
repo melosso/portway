@@ -1143,6 +1143,18 @@ public static class WebUiEndpointExtensions
             !filePath.Equals(allowedBase, StringComparison.OrdinalIgnoreCase))
             return (null, "Invalid path");
 
+        // Fallback: if path doesn't exist and name is namespaced (e.g. NS/Name), retry with just the
+        // leaf folder — handles the doubled-key case where Namespace == folder name (e.g. Production/Production → Production/)
+        // and the explicit-namespace case (e.g. Catalog/Products → Products/).
+        if (!isFixed && !File.Exists(filePath) && name.Contains('/'))
+        {
+            var leafName     = name.Split('/')[^1];
+            var fallbackPath = Path.GetFullPath(Path.Combine(baseDir, typeDir, leafName, "entity.json"));
+            if (fallbackPath.StartsWith(allowedBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+                && File.Exists(fallbackPath))
+                filePath = fallbackPath;
+        }
+
         return (filePath, null);
     }
 
