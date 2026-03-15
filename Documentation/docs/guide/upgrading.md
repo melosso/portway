@@ -63,4 +63,4 @@ For major version upgrades, validate in a non-production environment before upgr
 
 ## Find your current version
 
-Your installed version is recorded in `.version.txt` in the deployment directory. Update this file after upgrading to keep version information current — this is useful when submitting bug reports.
+Your installed version is recorded in `.version.txt` in the deployment directory. Update this file after upgrading to keep version information current, this is useful when submitting bug reports.

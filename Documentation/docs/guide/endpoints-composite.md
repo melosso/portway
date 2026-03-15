@@ -2,10 +2,10 @@
 
 > Orchestrate multiple proxy endpoint calls into a single transaction, with data passing between steps.
 
-Composite endpoints chain existing proxy endpoints into a sequence. Each step calls a named proxy endpoint, receives its response, and can pass extracted values to subsequent steps. The caller sends one request and receives a combined result. Steps execute in order — if any step fails, execution stops.
+Composite endpoints chain existing proxy endpoints into a sequence. Each step calls a named proxy endpoint, receives its response, and can pass extracted values to subsequent steps. The caller sends one request and receives a combined result. Steps execute in order, if any step fails, execution stops.
 
 :::warning
-Composite endpoints do not provide automatic rollback. Steps that complete before a failure remain committed. Design your operations accordingly — idempotent steps and a clean-up procedure for partial failures are both worth implementing.
+Composite endpoints do not provide automatic rollback. Steps that complete before a failure remain committed. Design your operations accordingly, idempotent steps and a clean-up procedure for partial failures are both worth implementing.
 :::
 
 :::info
@@ -156,7 +156,7 @@ Authorization: Bearer <token>
 
 `StepResults` always includes results from steps that completed before the failure.
 
-## Example — multi-service operation
+## Example: multi-service operation
 
 ```json
 {
@@ -194,11 +194,11 @@ Authorization: Bearer <token>
 
 ## Troubleshooting
 
-**"Endpoint not found"** — The step's `Endpoint` value must match an existing proxy endpoint name exactly (case-sensitive).
+**"Endpoint not found"**: The step's `Endpoint` value must match an existing proxy endpoint name exactly (case-sensitive).
 
-**Transformation resolves to null** — Verify the `$prev.StepName.property` path against the actual response structure of the referenced step. Check array indices when referencing array results.
+**Transformation resolves to null**: Verify the `$prev.StepName.property` path against the actual response structure of the referenced step. Check array indices when referencing array results.
 
-**Timeouts** — Total execution time includes all steps in sequence. If individual steps are slow, the composite timeout can be reached. Test each step individually first.
+**Timeouts**: Total execution time includes all steps in sequence. If individual steps are slow, the composite timeout can be reached. Test each step individually first.
 
 To increase log verbosity:
 

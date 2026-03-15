@@ -151,7 +151,7 @@ The `ConnectionString` value determines both the target database and the SQL dri
 
 See the [SQL Providers reference](/reference/sql-providers) for the full detection algorithm and capability differences between providers.
 
-### SQL Server — Windows authentication
+### SQL Server: Windows authentication
 
 ```json
 {
@@ -159,7 +159,7 @@ See the [SQL Providers reference](/reference/sql-providers) for the full detecti
 }
 ```
 
-### SQL Server — SQL authentication
+### SQL Server: SQL authentication
 
 ```json
 {
@@ -201,7 +201,7 @@ Paths are resolved relative to the Portway application working directory. SQLite
 |---|---|---|
 | `Server` | SQL Server instance or hostname | Required |
 | `Database` | Database name | Required |
-| `User Id` / `Password` | SQL authentication credentials | — |
+| `User Id` / `Password` | SQL authentication credentials | - |
 | `Trusted_Connection` | Use Windows authentication | `False` |
 | `Encrypt` | Encrypt the connection | `False` |
 | `TrustServerCertificate` | Skip certificate validation | `False` |
@@ -215,7 +215,7 @@ Paths are resolved relative to the Portway application working directory. SQLite
 | `Host` | Hostname or IP | Required |
 | `Port` | Server port | `5432` |
 | `Database` | Database name | Required |
-| `Username` / `Password` | Credentials | — |
+| `Username` / `Password` | Credentials | - |
 | `SSL Mode` | `Require`, `Prefer`, `Disable` | `Prefer` |
 
 **MySQL / MariaDB**
@@ -225,7 +225,7 @@ Paths are resolved relative to the Portway application working directory. SQLite
 | `Server` | Hostname or IP | Required |
 | `Port` | Server port | `3306` |
 | `Database` | Database name | Required |
-| `Uid` / `Pwd` | Credentials | — |
+| `Uid` / `Pwd` | Credentials | - |
 | `SslMode` | `Preferred`, `Required`, `None` | `Preferred` |
 
 **SQLite**

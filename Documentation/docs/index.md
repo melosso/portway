@@ -3,8 +3,7 @@ layout: home
 
 hero:
   name: "Portway"
-  text: "API Gateway for Windows"
-  tagline: Expose SQL databases, proxy services, and handle webhooks — configured with JSON, no code required.
+  tagline: A lightweight API gateway. Expose SQL databases, proxy services, and handle webhooks. All with no code required.
   image:
     src: /logo.png
     alt: Portway
@@ -22,10 +21,10 @@ features:
     details: SQL with OData, HTTP proxy, static files, composite workflows, file system, and webhooks.
   - icon: 🔐
     title: Token authentication
-    details: Scoped Bearer tokens — restricted by endpoint, environment, and method. PBKDF2-SHA256 hashed.
+    details: Encrypted, scoped Bearer tokens. Easily restricted by endpoint, environment, and method.
   - icon: 🌍
     title: Environment isolation
-    details: Separate dev, test, and prod environments with independent connection strings and access rules.
+    details: Separate your environments with independent connection strings and access rules.
   - icon: 🖥️
     title: Web UI
     details: Manage tokens, browse logs, and monitor health from the browser. No CLI required.

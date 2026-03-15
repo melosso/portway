@@ -72,7 +72,7 @@ Individual endpoints enforce their own environment and visibility constraints:
 }
 ```
 
-Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments — access control](./environments#access-control) for the full matrix.
+Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments, access control](./environments#access-control) for the full matrix.
 
 ## Network security
 
@@ -190,7 +190,7 @@ See [Monitoring](./monitoring) for traffic logging configuration details.
 - [ ] Firewall rules reviewed
 - [ ] Security headers verified with a response inspection tool
 
-## Incident response — compromised token
+## Incident response: compromised token
 
 1. Open the Web UI and navigate to **Access Tokens**
 2. Click **Rotate Token** on the affected entry to invalidate it and generate a replacement
@@ -214,6 +214,6 @@ Token revocation is permanent. A revoked token cannot be reactivated. Create a n
 ## Next steps
 
 - [Rate Limiting](./rate-limiting)
-- [Environments — authentication](./environments#per-environment-authentication)
+- [Environments, authentication](./environments#per-environment-authentication)
 - [Monitoring](./monitoring)
 - [Deployment](./deployment)

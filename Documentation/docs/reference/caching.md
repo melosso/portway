@@ -219,5 +219,5 @@ redis-cli ttl "Portway:proxy:600:Products::"
 
 ## Related Topics
 
-- [Monitoring](/guide/monitoring) — cache configuration via the Web UI
-- [Application Settings](/reference/app-settings) — full `appsettings.json` reference
+- [Monitoring](/guide/monitoring): cache configuration via the Web UI
+- [Application Settings](/reference/app-settings): full `appsettings.json` reference

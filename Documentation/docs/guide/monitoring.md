@@ -237,11 +237,11 @@ scrape_configs:
 
 ## Troubleshooting
 
-**Missing traffic logs** — Verify `Enabled: true`, check write permissions on the log directory, and confirm the queue has not been exhausted (`QueueCapacity` in config).
+**Missing traffic logs**: Verify `Enabled: true`, check write permissions on the log directory, and confirm the queue has not been exhausted (`QueueCapacity` in config).
 
-**Health check degraded** — `GET /health/details` reports which check failed and its duration. Disk space and proxy endpoint connectivity are the most common failure sources.
+**Health check degraded**: `GET /health/details` reports which check failed and its duration. Disk space and proxy endpoint connectivity are the most common failure sources.
 
-**High response times** — Enable traffic logging with `StorageType: sqlite` and query `DurationMs` to identify slow endpoints.
+**High response times**: Enable traffic logging with `StorageType: sqlite` and query `DurationMs` to identify slow endpoints.
 
 ```powershell
 # Check disk space on Windows

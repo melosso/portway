@@ -2,7 +2,7 @@
 
 > Create, scope, rotate, and revoke the Bearer tokens that control API access.
 
-Every request to Portway requires a Bearer token. Tokens are managed in the Web UI under **Access Tokens** (`/ui`) and are never stored in plaintext — only a PBKDF2-SHA256 hash is persisted.
+Every request to Portway requires a Bearer token. Tokens are managed in the Web UI under **Access Tokens** (`/ui`) and are never stored in plaintext, only a PBKDF2-SHA256 hash is persisted.
 
 :::warning
 Save the token value shown at creation time. It is only displayed once and cannot be retrieved later.
@@ -82,7 +82,7 @@ Revocation is irreversible. Create a new token for any user or service that was 
 
 ## Token audit log
 
-Every token records a history of operations — created, used, rotated, revoked — accessible from the **Access Tokens** page by clicking **Audit** on a token row. This log is also queryable directly:
+Every token records a history of operations (created, used, rotated, revoked), accessible from the **Access Tokens** page by clicking **Audit** on a token row. This log is also queryable directly:
 
 ```http
 GET /ui/api/tokens/{id}/audit
@@ -96,6 +96,6 @@ On first startup, Portway writes an initial token to `tokens/{SERVER_NAME}.txt`.
 
 ## Related
 
-- [Authentication reference](/reference/api-auth) — validation flow, error responses, scope syntax
-- [Security guide](/guide/security) — incident response, network restrictions, encryption
-- [Web UI](/guide/webui) — enabling and configuring the management interface
+- [Authentication reference](/reference/api-auth): validation flow, error responses, scope syntax
+- [Security guide](/guide/security): incident response, network restrictions, encryption
+- [Web UI](/guide/webui): enabling and configuring the management interface

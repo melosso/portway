@@ -2,7 +2,7 @@
 
 > Receive HTTP POST payloads from external services and persist them to a SQL table.
 
-Webhook endpoints accept incoming POST requests and store the JSON payload in a configured database table. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. No parsing or transformation occurs — the raw payload is stored as-is for downstream processing.
+Webhook endpoints accept incoming POST requests and store the JSON payload in a configured database table. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. No parsing or transformation occurs, the raw payload is stored as-is for downstream processing.
 
 ```mermaid
 sequenceDiagram
@@ -67,7 +67,7 @@ Create `endpoints/Webhooks/entity.json`:
 | `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
 | `AllowedColumns` | No | array | Webhook IDs this endpoint accepts. Any ID not listed is rejected with 400 |
 
-Webhook IDs map to values in the `WebhookId` column. Use names that identify the source and event type — `stripe_payment_success`, `shopify_order_created` — rather than generic identifiers.
+Webhook IDs map to values in the `WebhookId` column. Use names that identify the source and event type, `stripe_payment_success`, `shopify_order_created`, rather than generic identifiers.
 
 ## Sending webhooks
 
@@ -120,19 +120,19 @@ ORDER BY ReceivedAt DESC;
 
 ## Limitations
 
-- POST only — webhook endpoints do not respond to GET, PUT, or DELETE
-- JSON only — payloads must be valid JSON; non-JSON bodies are rejected
+- POST only, webhook endpoints do not respond to GET, PUT, or DELETE
+- JSON only, payloads must be valid JSON; non-JSON bodies are rejected
 - No payload validation beyond JSON syntax and webhook ID matching
 - No automatic retry on insert failure
 - Default payload size limit: 10MB
 
 ## Troubleshooting
 
-**"Webhook ID not configured"** — The ID in the URL must match an entry in `AllowedColumns` exactly. Webhook IDs are case-sensitive.
+**"Webhook ID not configured"**: The ID in the URL must match an entry in `AllowedColumns` exactly. Webhook IDs are case-sensitive.
 
-**Database connection errors** — Verify the table exists with the correct schema and that the environment's connection string account has INSERT permission on the table.
+**Database connection errors**: Verify the table exists with the correct schema and that the environment's connection string account has INSERT permission on the table.
 
-**Authentication failures** — Confirm the Bearer token is valid and has access to the target environment.
+**Authentication failures**: Confirm the Bearer token is valid and has access to the target environment.
 
 To increase log verbosity:
 
@@ -157,6 +157,6 @@ curl -X POST https://your-api/api/prod/webhook/test_webhook \
 
 ## Next steps
 
-- [SQL Endpoints](./endpoints-sql) — query and expose webhook data
+- [SQL Endpoints](./endpoints-sql): query and expose webhook data
 - [Security](./security)
 - [Monitoring](./monitoring)

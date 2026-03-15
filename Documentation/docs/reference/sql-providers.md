@@ -67,12 +67,12 @@ SQL authentication:
 | `Server` | SQL Server instance name or IP | Required |
 | `Database` | Target database name | Required |
 | `Integrated Security` | Use Windows authentication | `False` |
-| `User Id` / `Password` | SQL authentication credentials | — |
+| `User Id` / `Password` | SQL authentication credentials | - |
 | `Encrypt` | Encrypt the connection | `False` |
 | `TrustServerCertificate` | Skip certificate validation (dev only) | `False` |
 | `Connection Timeout` | Seconds before giving up | `15` |
 | `MultipleActiveResultSets` | Enable MARS | `False` |
-| `ApplicationIntent` | `ReadOnly` for AG read replicas | — |
+| `ApplicationIntent` | `ReadOnly` for AG read replicas | - |
 
 ---
 
@@ -99,7 +99,7 @@ URI format:
 | `Host` | Server hostname or IP | Required |
 | `Port` | Server port | `5432` |
 | `Database` | Target database name | Required |
-| `Username` / `Password` | Credentials | — |
+| `Username` / `Password` | Credentials | - |
 | `SSL Mode` | `Require`, `Prefer`, `Disable` | `Prefer` |
 | `Timeout` | Connection timeout (seconds) | `15` |
 
@@ -120,7 +120,7 @@ URI format:
 | `Server` | Hostname or IP | Required |
 | `Port` | Server port | `3306` |
 | `Database` | Target database name | Required |
-| `Uid` / `Pwd` | Credentials | — |
+| `Uid` / `Pwd` | Credentials | - |
 | `SslMode` | `Preferred`, `Required`, `None` | `Preferred` |
 | `AllowUserVariables` | Allow user-defined variables in queries | `False` |
 | `ConnectionTimeout` | Timeout in seconds | `15` |
@@ -163,11 +163,11 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | Health check | ✅ | ✅ | ✅ | ✅ |
 
 :::warning
-**SQLite — write operations:** SQLite does not support stored procedures. Endpoints that define a `Procedure` field and point to a SQLite environment return `501 Not Implemented`. GET-only endpoints are unaffected.
+**SQLite, write operations:** SQLite does not support stored procedures. Endpoints that define a `Procedure` field and point to a SQLite environment return `501 Not Implemented`. GET-only endpoints are unaffected.
 :::
 
 :::info
-**MySQL — table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
+**MySQL, table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
 :::
 
 ---
@@ -179,7 +179,7 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | SQL Server | Full two-part names (`dbo.TableName`) | `dbo` |
 | PostgreSQL | Full two-part names (`public.table_name`) | `public` |
 | MySQL | Schema maps to the database in the connection string | _(from connection string)_ |
-| SQLite | No schema support — prefix is omitted automatically | — |
+| SQLite | No schema support: prefix is omitted automatically | - |
 
 When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway defaults to `dbo`. For SQLite environments this prefix is stripped at query time so no manual override is needed.
 
@@ -187,7 +187,7 @@ When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway defau
 
 ## Related Topics
 
-- [Environments Guide](/guide/environments) — creating and managing environments
-- [Environment Settings Reference](/reference/environment-settings) — full `settings.json` reference
-- [SQL Endpoints Guide](/guide/endpoints-sql) — configuring SQL endpoints
-- [Health Checks](/reference/health-checks) — per-environment health status
+- [Environments Guide](/guide/environments): creating and managing environments
+- [Environment Settings Reference](/reference/environment-settings): full `settings.json` reference
+- [SQL Endpoints Guide](/guide/endpoints-sql): configuring SQL endpoints
+- [Health Checks](/reference/health-checks): per-environment health status

@@ -58,11 +58,11 @@ Requests without a valid token return `401 Unauthorized`. The only unauthenticat
 |------|---------|
 | 200 | OK |
 | 201 | Created |
-| 400 | Bad Request — invalid format or query parameters |
-| 401 | Unauthorized — missing or invalid token |
-| 403 | Forbidden — token lacks the required scope or environment access |
-| 404 | Not Found — endpoint or resource does not exist |
-| 429 | Too Many Requests — rate limit exceeded |
+| 400 | Bad Request: invalid format or query parameters |
+| 401 | Unauthorized: missing or invalid token |
+| 403 | Forbidden: token lacks the required scope or environment access |
+| 404 | Not Found: endpoint or resource does not exist |
+| 429 | Too Many Requests: rate limit exceeded |
 | 500 | Internal Server Error |
 
 ## Error Format
@@ -107,7 +107,7 @@ Rate-limited requests receive `429 Too Many Requests`.
 
 ## Next Steps
 
-- [Authentication](/reference/api-auth) — token properties and scope patterns
-- [OData Syntax](/reference/odata) — filter, sort, and pagination
-- [Entity Configuration](/reference/entity-config) — endpoint configuration reference
-- [HTTP Headers](/reference/headers) — request and response headers
+- [Authentication](/reference/api-auth): token properties and scope patterns
+- [OData Syntax](/reference/odata): filter, sort, and pagination
+- [Entity Configuration](/reference/entity-config): endpoint configuration reference
+- [HTTP Headers](/reference/headers): request and response headers

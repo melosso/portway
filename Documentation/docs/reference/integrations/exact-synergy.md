@@ -8,7 +8,7 @@ When deploying in IIS with on-premise Synergy, the Application Pool Identity mus
 
 ## Overview
 
-Portway proxies requests to the internal Synergy REST API — useful when Synergy is behind a firewall or you need to expose only a subset of its API surface through a controlled gateway.
+Portway proxies requests to the internal Synergy REST API, useful when Synergy is behind a firewall or you need to expose only a subset of its API surface through a controlled gateway.
 
 ## Configuration Requirements
 
@@ -144,7 +144,7 @@ This ensures that related links in responses continue to work through the proxy.
 |---------|-------|
 | Authentication failures (401/403) | Domain user permissions in Synergy; NTLM enabled on IIS Application Pool |
 | Connection refused | Synergy web service running; firewall rules from Portway host to Synergy server |
-| URL links in responses broken | URL rewriting is automatic — verify `BaseProtocol` in `appsettings.json` matches your public hostname |
+| URL links in responses broken | URL rewriting is automatic. Verify `BaseProtocol` in `appsettings.json` matches your public hostname |
 | Missing data | Proxy endpoint `Url` points to correct Synergy REST service path |
 
 :::warning
