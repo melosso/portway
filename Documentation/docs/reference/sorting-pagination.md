@@ -438,15 +438,3 @@ X-Query-Time: 45ms
 X-Total-Records: 5000
 ```
 
-## Best Practices Summary
-
-1. **Always use $orderby with pagination**
-2. **Include unique identifier for stable sorting**
-3. **Keep page sizes reasonable (20-100 items)**
-4. **Sort on indexed fields for better performance**
-5. **Avoid deep pagination when possible**
-6. **Consider keyset pagination for large datasets**
-7. **Test sort performance with production data**
-8. **Monitor query execution times**
-9. **Handle edge cases (nulls, empty results)**
-10. **Validate user input for sort fields**

@@ -1,280 +1,166 @@
-# Deploying
+# Deploying to Windows Server (IIS)
 
-This guide explains how to deploy the Portway API on a Windows Server using Internet Information Services (IIS), which is currently our primary deployment method. 
+> Deploy Portway as an IIS website on Windows Server with HTTPS and a dedicated Application Pool.
 
-**Alternative Deployment:** For development and testing environments, you can use Docker. See our [Docker Installation Guide](docker-compose.md) for a quick setup.
+For Docker-based deployment, see [Docker Installation](docker-compose.md).
 
-**Note:** If you're running the API using Docker (Compose) and would like to contribute, you're welcome to start a discussion on GitHub.
+:::info
+This guide assumes working knowledge of IIS and your network/data sources. The steps cover the required configuration — some details depend on your existing environment.
+:::
 
 ## Prerequisites
 
-Before you begin, ensure you have:
-- Windows Server with IIS installed
+- Windows Server with IIS installed and running
 - Administrator access
-- [ASP.NET Core 10.0 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [ASP.NET Core 10 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/10.0)
+- A TLS/SSL certificate (self-signed is acceptable for internal deployments)
 
-> [!WARNING]
-> There's a slight difference between the **x64-installer** and the **Hosting Bundle that ASP.NET Core 10.0** provides. Make sure to choose the last option ("Hosting Bundle").
-
-> [!IMPORTANT]
-> This guide assumes you have basic knowledge of IIS configuration and data source connectivity. While we cover the essential steps, some details may require your existing expertise.
-
-## Pre-deployment Checklist
-
-### 1. Verify System Requirements
-- [ ] IIS is installed and running
-- [ ] Administrator access is available
-- [ ] SQL database is accessible (if using SQL endpoints)
-- [ ] Firewall rules allow necessary ports
-- [ ] Valid TLS/SSL (self-signed) certificate
-
-### 2. Deployment Package
-Ensure your deployment package contains:
-```
-/Deployment/PortwayApi/
-├── web.config
-├── appsettings.json
-├── endpoints/
-│   ├── SQL/
-│   ├── Proxy/
-│   └── (...)
-├── environments/
-│   └── settings.json
-├── wwwroot/
-│   └── index.html
-└── [various other files]
-```
+:::warning
+Download the **Hosting Bundle**, not the x64 runtime installer. The Hosting Bundle includes the IIS integration module the runtime package omits. Restart IIS after installation (`iisreset`).
+:::
 
 ## Installation
 
-### Step 1: Install ASP.NET Core Runtime
-1. Download and install the ASP.NET Core 10.0 Hosting Bundle
-2. Restart IIS to activate the changes:
-   ```cmd
-   iisreset
-   ```
+### 1. Generate the encryption key
 
-### Step 2: Deploy Application Files
-1. Create the application directory:
-   ```cmd
-   mkdir C:\path\to\your\PortwayApi
-   ```
+Set the encryption key as a Machine-level environment variable before deploying the application files:
 
-2. Copy all files from `/Deployment/PortwayApi/` to the new directory
+```powershell
+$bytes = New-Object byte[] 48
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+[Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
+```
 
-### Step 3: Configure IIS Website
+### 2. Deploy application files
+
+Extract the Portway release to your target directory (e.g. `C:\Apps\Portway`).
+
+### 3. Configure IIS
+
 1. Open IIS Manager
-2. Right-click Sites → Add Website
-3. Configure with these settings:
-   - **Site name**: PortwayApi
-   - **Physical path**: C:\path\to\your\PortwayApi
-   - **Port**: 443 (or your preferred port)
-4. Click OK
+2. Create an Application Pool:
+   - Name: `PortwayAppPool`
+   - .NET CLR version: `No Managed Code`
+   - Pipeline mode: `Integrated`
+   - Start Mode: `AlwaysRunning`
+   - Idle Time-out: `0`
+3. Create a new Website:
+   - Application pool: `PortwayAppPool`
+   - Physical path: `C:\Apps\Portway`
+   - HTTPS binding with your certificate
+4. Set directory permissions:
+   ```cmd
+   icacls "C:\Apps\Portway" /grant "IIS AppPool\PortwayAppPool:(OI)(CI)M" /T
+   ```
 
-### Step 4: Configure Application Pool
-1. Navigate to Application Pools in IIS Manager
-2. Select the "PortwayApi" pool
-3. Configure Basic Settings:
-   - **.NET CLR version**: No Managed Code
-   - **Pipeline mode**: Integrated
-4. Configure Advanced Settings:
-   - **Start Mode**: AlwaysRunning
-   - **Idle Time-out**: 0
-   - **Identity**: ApplicationPoolIdentity (or service account)
-
-::: tip
-If you're planning to use the **Proxy** to connect to any internal webservice, you may have to rely on NTLM-authentication (e.g. for Exact Globe+ or AFAS Profit). You'll have to bind the Identity of the Application Pool to an internal (domain) user instead. This user has to have the necessary permissions to connect to the internal services.
+:::info
+If any proxy endpoint needs NTLM pass-through (e.g. for Exact Globe+ or AFAS Profit), bind the Application Pool identity to a domain user with the required network access instead of using ApplicationPoolIdentity.
 :::
 
-### Step 5: Set Directory Permissions
-Grant the application pool identity required permissions:
-```cmd
-icacls "C:\path\to\your\PortwayApi" /grant "IIS AppPool\PortwayApi:(OI)(CI)M" /T
+### 4. Start and verify
+
+Start the website. On first run, Portway creates `tokens/`, `log/`, and `auth.db` automatically.
+
+Verify the application is running:
+- `https://localhost/health/live` — returns `Alive`
+- `https://localhost/docs` — OpenAPI documentation interface
+
+## Initial configuration
+
+### Retrieve the access token
+
+Find the generated token at `tokens/[SERVERNAME].txt`:
+
+```json
+{
+  "Username": "SERVER-NAME",
+  "Token": "your-bearer-token-here",
+  "AllowedScopes": "*",
+  "AllowedEnvironments": "*"
+}
 ```
 
-### Step 6: Prepare your Deployment
-
-If you're choosing to deploy the services on Windows, please make sure to prepare your environment: you'll need to safely store the application encryption key. On containerized environments, this can be done with the identically named PORTWAY_ENCRYPTION_KEY variable.
-
-```powershell
-# Immediately stores the encryption key to your System Environment Variables
-$bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
-```
-
-## Configuration
-
-### 1. Initial Startup
-Start the website in IIS. On first run, Portway will automatically:
-- Create required directories (`tokens`, `log`)
-- Generate an `auth.db` database
-- Create the first access token
-
-### 2. Retrieve Access Token
-1. Navigate to `C:\path\to\your\PortwayApi\tokens`
-2. Open `[SERVERNAME].txt`
-3. Note the authentication token for API access. 
-
-::: warning
-After the first run, the token will be stored as a text file. Make sure to store this token savely and **remove** this file permanently. 
+:::warning
+Remove this file from disk immediately after recording the token. The token is a plaintext secret. Unauthorized access to this file compromises your gateway.
 :::
 
-### 3. Configure Environments
-1. Navigate to `C:\path\to\your\PortwayApi\environments`
-2. Edit `settings.json` to define allowed environments:
-   ```json
-   {
-     "Environment": {
-       "ServerName": "YOUR_SERVER",
-       "AllowedEnvironments": ["prod", "dev","test"]
-     }
-   }
-   ```
+### Configure environments
 
-3. Create environment-specific configurations:
-   ```
-   environments/
-   ├── prod/
-   │   └── settings.json
-   └── dev/
-   │   └── settings.json
-   └── test/
-       └── settings.json
-   ```
+Edit `environments/settings.json`:
 
-   Example environment configuration:
-   ::: code-group
-
-   ```json [Production]
-   {
-     "ServerName": "YOUR_SQL_SERVER",
-     "ConnectionString": "Server=YOUR_SQL_SERVER;Database=prod;Trusted_Connection=True;TrustServerCertificate=true;",
-     "Headers": {
-       "DatabaseName": "prod",
-       "ServerName": "YOUR_APP_SERVER"
-     }
-   }
-   ```
-    
-   ```json [Development]
-   {
-     "ServerName": "YOUR_SQL_SERVER",
-     "ConnectionString": "Server=YOUR_SQL_SERVER;Database=dev;Trusted_Connection=True;TrustServerCertificate=true;",
-     "Headers": {
-       "DatabaseName": "dev",
-       "ServerName": "YOUR_APP_SERVER"
-     }
-   }
-   ```
-
-    ```json [Testing]
-   {
-     "ServerName": "YOUR_SQL_SERVER",
-     "ConnectionString": "Server=YOUR_SQL_SERVER;Database=test;Trusted_Connection=True;TrustServerCertificate=true;",
-     "Headers": {
-       "DatabaseName": "test",
-       "ServerName": "YOUR_APP_SERVER"
-     }
-   }
-
-   :::
-## Verification
-
-### 1. Test Basic Functionality
-Open a browser and navigate to:
-- `https://localhost/docs` - API documentation interface
-- `https://localhost/health/live` - Basic health check
-
-### 2. Verify Authentication
-Test API authentication using PowerShell:
-```powershell
-$token = Get-Content "C:\path\to\your\PortwayApi\tokens\[SERVERNAME].txt" | ConvertFrom-Json | Select-Object -ExpandProperty Token
-Invoke-RestMethod -Uri "https://localhost/health" -Headers @{"Authorization"="Bearer $token"}
+```json
+{
+  "Environment": {
+    "ServerName": "YOUR_SERVER",
+    "AllowedEnvironments": ["prod", "dev", "test"]
+  }
+}
 ```
 
-### 3. Check Logs
-Verify application startup in:
-- `C:\path\to\your\PortwayApi\log\portwayapi-[date].log`
+Create `environments/{name}/settings.json` for each environment:
+
+::: code-group
+
+```json [Production]
+{
+  "ServerName": "YOUR_SQL_SERVER",
+  "ConnectionString": "Server=YOUR_SQL_SERVER;Database=prod;Trusted_Connection=True;TrustServerCertificate=true;"
+}
+```
+
+```json [Development]
+{
+  "ServerName": "YOUR_SQL_SERVER",
+  "ConnectionString": "Server=YOUR_SQL_SERVER;Database=dev;Trusted_Connection=True;TrustServerCertificate=true;"
+}
+```
+
+:::
 
 ## Troubleshooting
 
-### Common Issues
+| Error | Likely cause | Resolution |
+|---|---|---|
+| HTTP 500.19 | ASP.NET Core Module not installed | Reinstall the Hosting Bundle and run `iisreset` |
+| HTTP 500 | Application startup error | Check `log/portwayapi-*.log` and Windows Event Viewer |
+| HTTP 403 | Directory permissions | Run `icacls` to grant the Application Pool identity access |
+| Blank screen | No HTTPS binding or missing certificate | Bind a certificate to the site in IIS Manager |
+| Database errors | Invalid connection string | Verify the connection string and SQL Server network access |
 
-| Error | Possible Cause | Solution |
-|-------|---------------|----------|
-| 500.19 | Missing ASP.NET Core Module | Reinstall ASP.NET Core Hosting Bundle |
-| 500 | Application error | Check Event Viewer and application logs |
-| 403 | Permission issues | Verify folder permissions for app pool identity |
-| Database errors | Connection issues | Check connection strings and SQL access |
-| Blank screen | Required TLS certificate | Bind a certificate and enforce HTTPS traffic |
+Enable stdout logging in `web.config` for startup errors that do not reach the application log:
 
-### Enable Detailed Logging
-For troubleshooting, enable stdout logging in web.config:
 ```xml
-<aspNetCore stdoutLogEnabled="true" stdoutLogFile=".\logs\stdout" />
+<aspNetCore stdoutLogEnabled="true" stdoutLogFile=".\log\stdout" />
 ```
 
-### Log Locations
-- **Application logs**: `C:\path\to\your\PortwayApi\log\portwayapi-*.log`
-- **IIS logs**: `C:\inetpub\logs\LogFiles\W3SVC[ID]\`
-- **Windows Event Viewer**: Application and System logs
+**Log locations:**
+- Application log: `log/portwayapi-*.log`
+- IIS log: `C:\inetpub\logs\LogFiles\W3SVC[ID]\`
+- Startup errors: Windows Event Viewer → Application
 
-## Security Best Practices
+## Security configuration
 
-### HTTPS Configuration
-1. Install SSL certificate in IIS
-2. Configure HTTPS binding
-3. Enforce HTTPS with URL Rewrite rules using the [IIS Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite)
+- Enforce HTTPS using URL Rewrite rules ([IIS Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite))
+- Restrict `tokens/` directory read access to the application pool identity only
+- Configure IP whitelisting in IIS Manager (IP Address and Domain Restrictions)
+- Use a dedicated domain service account with minimum SQL permissions for proxy endpoints
 
-### Access Token Security
-- Restrict access to the tokens directory
-- Implement token rotation policy
-- Use token scoping for least-privilege access
+See [Security](./security) for the full security configuration reference.
 
-### Firewall Whitelisting
-- Restrict access to the API by enabling Firewall in IIS
-- Set the default response to Deny
-- Add only whitelisted IP address ranges to the whitelist
+## Backup
 
-### Application Pool Hardening
-- Use dedicated service account for production
-- Implement principle of least privilege
-- Regularly review and audit permissions
+Include these in your backup plan:
 
-## Maintenance & Updates
+- `auth.db` — authentication database
+- `tokens/` — token files
+- `environments/` — connection strings and settings
+- `endpoints/` — endpoint definitions
 
-### Updating Portway
-1. Stop the application pool:
-   ```powershell
-   Stop-WebAppPool -Name "PortwayApi"
-   ```
+For upgrades, see [Upgrading Portway](./upgrading).
 
-2. Backup current deployment:
-   ```cmd
-   xcopy C:\path\to\your\PortwayApi C:\Backup\PortwayApi_%date% /E /I
-   ```
+## Next steps
 
-3. Deploy new files to the application directory
-
-4. Start the application pool:
-   ```powershell
-   Start-WebAppPool -Name "PortwayApi"
-   ```
-
-### Backup Strategy
-Include these critical components in your backup plan:
-- `auth.db` - Authentication database
-- `tokens/` directory - Access tokens
-- `environments/` directory - Configuration
-- `endpoints/` directory - Endpoint definitions
-- Application logs for audit purposes
-
-## Next Steps
-
-Now that Portway is installed, continue with:
-
-- [Configure Endpoints](/guide/endpoints-sql) - Set up SQL, Proxy, and Webhook endpoints
-- [Configure Environments](./environments) - Set up database connections
-- [Configure Web UI](/guide/webui) - Set up the Web UI 
-- [Manage Authentication](/reference/token-generator) - Generate and manage access tokens  
-- [Monitor Your Installation](./monitoring) - Learn about logging and health checks
-- [Production Security](/guide/security) - Implement security best practices
+- [Configure Environments](./environments)
+- [Configure Endpoints](./endpoints-sql)
+- [Security](./security)
+- [Monitoring](./monitoring)

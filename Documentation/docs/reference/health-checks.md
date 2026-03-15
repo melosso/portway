@@ -1,6 +1,6 @@
 # Health Checks
 
-Portway provides comprehensive health check endpoints to monitor the status of the API, its dependencies, and underlying services. These endpoints are essential for monitoring, alerting, and automated deployment processes.
+> Health check endpoints, response format, component checks, and load balancer / container integration.
 
 ## Available Endpoints
 
@@ -214,12 +214,11 @@ HEALTHCHECK_DISK_CRITICAL=10
 
 Health checks use intelligent caching to prevent overload:
 
-```csharp
-// Cache durations
-- /health: 15 seconds
-- /health/live: 5 seconds
-- /health/details: 60 seconds
-```
+| Endpoint | Cache duration |
+|----------|---------------|
+| `/health` | 15 seconds |
+| `/health/live` | 5 seconds |
+| `/health/details` | 60 seconds |
 
 ### Response Headers
 
@@ -262,81 +261,6 @@ Health checks handle failures gracefully:
      }
    }
    ```
-
-## Monitoring Integration
-
-### Prometheus Metrics
-
-```prometheus
-# Health check status
-portway_health_status{component="database"} 1
-portway_health_status{component="diskspace"} 1
-portway_health_status{component="proxy"} 0
-
-# Response times
-portway_health_duration_ms{component="database"} 45.23
-portway_health_duration_ms{component="proxy"} 234.56
-
-# Disk space
-portway_disk_free_percent 65
-```
-
-### Grafana Dashboard
-
-```json
-{
-  "dashboard": {
-    "panels": [
-      {
-        "title": "System Health",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "portway_health_status",
-            "legendFormat": "{{component}}"
-          }
-        ]
-      },
-      {
-        "title": "Response Times",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "portway_health_duration_ms",
-            "legendFormat": "{{component}}"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-### Azure Monitor
-
-```json
-{
-  "type": "Microsoft.Insights/metricAlerts",
-  "properties": {
-    "criteria": {
-      "allOf": [
-        {
-          "name": "HealthCheckFailure",
-          "metricName": "HealthCheckStatus",
-          "operator": "LessThan",
-          "threshold": 1,
-          "timeAggregation": "Average"
-        }
-      ]
-    },
-    "actions": [
-      {
-        "actionGroupId": "/subscriptions/.../actionGroups/critical"
-      }
-    ]
-  }
-}
-```
 
 ## Load Balancer Configuration
 
@@ -488,16 +412,3 @@ $response.Content | ConvertFrom-Json | Format-List
 [10:30:02 ERR] Proxy endpoint 'Products' failed: Connection timeout
 ```
 
-## Best Practices
-
-Make sure to tweak the health settings for it to fit your requirements:
-
-```json
-{
-  "HealthChecks": {
-    "ParallelExecution": true,
-    "MaxConcurrentChecks": 5,
-    "TimeoutSeconds": 10
-  }
-}
-```

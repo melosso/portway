@@ -12,8 +12,8 @@ All API requests must include authentication:
 Authorization: Bearer your_token_here
 ```
 
-:::warning Required for All API Endpoints
-The Authorization header is mandatory for all endpoints except `/health/live`. Requests without this header receive a 401 Unauthorized response.
+:::warning
+The `Authorization` header is required for all endpoints except `/health/live`. Requests without it receive `401 Unauthorized`.
 :::
 
 ### Content Type Headers
@@ -192,33 +192,15 @@ Expires: Wed, 21 Oct 2023 07:33:00 GMT
 | Single header value | 8 KB | Individual header value |
 | Header count | 100 | Maximum number of headers |
 
-:::tip Header Best Practices
-1. Keep header values concise
-2. Use standard headers when possible
-3. Avoid sensitive data in headers
-4. Validate header values
-5. Handle missing optional headers gracefully
-:::
+Keep header values concise and use standard headers where possible. Avoid including sensitive data (passwords, connection strings, PII) in headers. Validate and sanitize custom header values. Disable debug headers in production.
 
 ## Security Considerations
 
 ### Headers to Avoid
 
-:::danger Never Include in Headers
-- Passwords or secrets
-- Personally identifiable information (PII)
-- Internal system details
-- Database connection strings
-- File paths or system information
+:::warning
+Never include passwords, secrets, PII, connection strings, or internal system paths in headers. Authorization headers are logged as `[REDACTED]` by Portway's traffic logging, but headers sent to upstream services are not automatically masked.
 :::
-
-### Secure Header Practices
-
-1. **Authentication headers**: Always use HTTPS
-2. **CORS headers**: Restrict to known origins
-3. **Security headers**: Keep security headers enabled
-4. **Custom headers**: Validate and sanitize values
-5. **Debug headers**: Disable in production
 
 ## Common Header Issues
 
@@ -292,6 +274,3 @@ curl -X POST \
 - [Environment Settings](/reference/environment-settings) - Environment-specific headers
 - [Security Guide](/guide/security) - Security header configuration
 
-:::tip Header Debugging
-Use browser developer tools or API clients like Postman to inspect request and response headers. This helps troubleshoot authentication, caching, and CORS issues.
-:::

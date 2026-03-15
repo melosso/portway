@@ -90,13 +90,6 @@ Portway uses Serilog for structured logging with configurable sinks and filterin
 | `Error` | Error events | Application errors |
 | `Fatal` | Critical failures | System failures |
 
-### Configuration Options
-
-- **MinimumLevel.Default**: Controls the overall logging level
-- **MinimumLevel.Override**: Set specific levels for different namespaces
-- **WriteTo**: Configure output destinations (Console, File, etc.)
-- **File Settings**: Control log file rotation, size limits, and buffering
-
 ### Changing Log Levels
 
 To change the logging level, modify the `Default` value in `appsettings.json`:
@@ -113,15 +106,7 @@ To change the logging level, modify the `Default` value in `appsettings.json`:
 
 ## OpenAPI Configuration
 
-Portway automatically generates beautiful, interactive API documentation using the OpenAPI specification. The documentation is powered by Scalar, providing a modern and user-friendly interface for exploring your API endpoints.
-
-**What you can customize:**
-- **Basic Information**: Title, description, version, and contact details
-- **UI Appearance**: Theme, sidebar visibility, and component display options  
-- **Security**: Authentication methods and schemes
-- **Behavior**: Default expansions, filtering, and validation settings
-
-The documentation will be available at `/docs` (or your custom route) once configured.
+Portway generates OpenAPI documentation from your configured endpoints and exposes it through the Scalar UI at `/docs`.
 
 ### Full Configuration
 
@@ -380,8 +365,9 @@ Controls how Portway stores and serves files for `File`-type endpoints.
 | `MaxTotalMemoryCacheMB` | integer | `200` | Total memory budget for the file cache |
 | `BlockedExtensions` | array | `[".exe", ".dll", ...]` | File extensions that are refused on upload |
 
-> [!NOTE]
-> The default block list covers executable, script, and macro-enabled office formats. Extend it to suit your security policy; shrink it only with caution.
+:::info
+The default block list covers executable, script, and macro-enabled office formats. Extend it to suit your security policy; shrink it only with caution.
+:::
 
 ## Endpoint Reloading Configuration
 
@@ -619,8 +605,9 @@ For production, restrict to specific domains:
 | `WebUi__SecureCookies` | Secure cookies | `true` |
 | `WebUi__EnableLandingPage` | Show landing page at root | `false` |
 
-> [!WARNING]
-> **`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
+:::warning
+**`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
+:::
 
 ### Configuration Priority
 
@@ -628,121 +615,6 @@ For production, restrict to specific domains:
 2. `appsettings.{Environment}.json`
 3. `appsettings.json`
 4. Default values
-
-## Monitoring and Diagnostics
-
-### Diagnostic Logging
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft": "Warning",
-      "Microsoft.Hosting.Lifetime": "Information",
-      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
-    }
-  }
-}
-```
-
-### Request Tracing
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Enabled": true,
-    "CaptureHeaders": true,
-    "EnableInfoLogging": true
-  }
-}
-```
-
-### Performance Monitoring
-
-```json
-{
-  "RequestTrafficLogging": {
-    "EnableInfoLogging": true
-  }
-}
-```
-
-## Production Best Practices
-
-### 1. Security Settings
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Warning",
-      "Microsoft": "Warning",
-      "Microsoft.Hosting.Lifetime": "Information"
-    }
-  },
-  "RequestTrafficLogging": {
-    "Enabled": false,
-    "IncludeRequestBodies": false,
-    "IncludeResponseBodies": false
-  },
-  "OpenApi": {
-    "Enabled": false
-  }
-}
-```
-
-### 2. Performance Settings
-
-```json
-{
-  "SqlConnectionPooling": {
-    "MinPoolSize": 20,
-    "MaxPoolSize": 200,
-    "ConnectionTimeout": 30,
-    "CommandTimeout": 30,
-    "Enabled": true
-  },
-  "RateLimiting": {
-    "Enabled": true,
-    "IpLimit": 300,
-    "TokenLimit": 3000
-  }
-}
-```
-
-### 3. Error Handling
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Error",
-      "Microsoft": "Error",
-      "PortwayApi": "Warning"
-    }
-  }
-}
-```
-
-## Configuration Validation
-
-### Startup Validation
-
-The application validates critical settings on startup:
-
-1. Database connectivity
-2. Required environment variables
-3. SSL certificate availability
-4. Directory permissions
-
-### Health Checks
-
-```http
-GET /health
-GET /health/details
-GET /health/live
-```
 
 ## Troubleshooting Configuration
 

@@ -1,10 +1,16 @@
-# API Reference Overview
+# API Reference
 
-This reference guide covers all aspects of interacting with Portway's API, from authentication to documentation & advanced query operations.
+> Routes, endpoint types, authentication, response codes, and query parameters for Portway API requests.
 
-## API Architecture
+All requests follow this URL pattern:
 
-Portway follows a RESTful architecture with endpoint patterns that mirror your business logic:
+```
+/api/{environment}/{endpoint}
+```
+
+The `{environment}` segment maps to a folder under `environments/`. The `{endpoint}` segment matches a configured endpoint name, or `{namespace}/{endpoint}` for namespaced endpoints.
+
+## Request Flow
 
 ```mermaid
 graph TD
@@ -24,141 +30,42 @@ graph TD
     H -->|Store| I
     K -->|Upload/Download| L[File Storage]
 ```
-:::info
-**Note:** Advanced configuration such as the various caching strategies are not depicted in the diagram above, since this overview focuses on a high-level API flow.
-:::
-
-## Base URL Structure
-
-All Portway endpoints follow this pattern:
-
-```
-https://your-domain.com/api/{environment}/{endpoint}
-```
-
-| Component | Description | Example |
-|-----------|-------------|---------|
-| `{environment}` | Target environment | `500`, `700`, `prod` |
-| `{endpoint}` | Endpoint name | `Products`, `Orders` |
 
 ## Endpoint Types
 
-### SQL Endpoints
-Direct access to SQL database data (SQL Server, PostgreSQL, MySQL, SQLite) with OData query support.
+| Type | URL Pattern | Description |
+|------|-------------|-------------|
+| SQL | `/api/{env}/{endpoint}` | OData-queryable access to database tables, views, or stored procedures |
+| Proxy | `/api/{env}/{endpoint}` | Forwards requests to internal web services |
+| Static | `/api/{env}/{endpoint}` | Serves pre-defined content files |
+| Composite | `/api/{env}/{endpoint}` | Orchestrates multiple proxy operations in a single request |
+| Webhook | `/api/{env}/webhook/{name}` | Receives and stores external webhook payloads |
+| Files | `/api/{env}/files/{name}` | Handles file upload, download, and listing |
 
-```http
-GET /api/500/Products?$filter=Assortment eq 'Books'&$top=10
-```
+## Authentication
 
-### Proxy Endpoints
-Forward requests to internal web services.
-
-```http
-GET /api/700/Accounts
-POST /api/700/Orders
-```
-
-### Static Endpoints
-Serve static content files with optional OData filtering.
-
-```http
-GET /api/500/ProductionMachine?$top=1&$filter=status eq 'running'
-```
-
-### Composite Endpoints
-Orchestrate multiple operations in a single request.
-
-```http
-POST /api/500/SalesOrder
-```
-
-### Webhook Endpoints
-Receive and store external webhook data.
-
-```http
-POST /api/500/webhook/webhook1
-```
-
-### Files Endpoints
-Handle file upload, download, and management operations organized by file categories.
-
-```http
-POST /api/500/files/CustomerData
-GET /api/500/files/CustomerData/{fileId}
-DELETE /api/500/files/CustomerData/{fileId}
-GET /api/500/files/CustomerData/list
-
-POST /api/500/files/Documents
-GET /api/500/files/Documents/{fileId}
-DELETE /api/500/files/Documents/{fileId}
-GET /api/500/files/Documents/list
-
-POST /api/500/files/Images
-GET /api/500/files/Images/{fileId}
-DELETE /api/500/files/Images/{fileId}
-GET /api/500/files/Images/list
-```
-
-## Authentication Flow
-
-All requests must include a valid bearer token:
+Include a bearer token on every request:
 
 ```http
 Authorization: Bearer your_token_here
 ```
 
-:::tip Authentication Best Practices
-1. Use service-specific tokens with minimal required scopes
-2. Implement token rotation for enhanced security
-3. Store tokens securely - never in source code
-4. Use environment variables or secure vaults
-:::
+Requests without a valid token return `401 Unauthorized`. The only unauthenticated endpoint is `/health/live`. See [Authentication](/reference/api-auth) for token scope configuration.
 
-## Request/Response Format
+## Response Codes
 
-Portway uses JSON for both request and response bodies:
+| Code | Meaning |
+|------|---------|
+| 200 | OK |
+| 201 | Created |
+| 400 | Bad Request — invalid format or query parameters |
+| 401 | Unauthorized — missing or invalid token |
+| 403 | Forbidden — token lacks the required scope or environment access |
+| 404 | Not Found — endpoint or resource does not exist |
+| 429 | Too Many Requests — rate limit exceeded |
+| 500 | Internal Server Error |
 
-### Request Example
-```json
-{
-  "CustomerCode": "CUST001",
-  "OrderDate": "2024-01-15",
-  "Items": [
-    {
-      "ProductCode": "PROD001",
-      "Quantity": 5
-    }
-  ]
-}
-```
-
-### Response Example
-```json
-{
-  "success": true,
-  "data": {
-    "OrderId": "ORD-12345",
-    "Status": "Created"
-  }
-}
-```
-
-## Common Response Codes
-
-| Code | Meaning | Description |
-|------|---------|-------------|
-| 200 | OK | Request successful |
-| 201 | Created | Resource created successfully |
-| 400 | Bad Request | Invalid request format or parameters |
-| 401 | Unauthorized | Missing or invalid authentication token |
-| 403 | Forbidden | Token lacks required permissions |
-| 404 | Not Found | Endpoint or resource not found |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Server Error | Internal server error |
-
-## Error Response Format
-
-All errors follow a consistent structure:
+## Error Format
 
 ```json
 {
@@ -169,100 +76,38 @@ All errors follow a consistent structure:
 }
 ```
 
-## Rate Limiting
+## OData Query Parameters
 
-Portway implements rate limiting to ensure fair usage:
-
-| Limit Type | Default | Header |
-|------------|---------|--------|
-| Per IP | 100/minute | `X-RateLimit-IP-Remaining` |
-| Per Token | 1000/minute | `X-RateLimit-Token-Remaining` |
-
-:::warning Rate Limit Response
-When rate limited, you'll receive a 429 status with:
-```json
-{
-  "error": "Too many requests",
-  "retryAfter": "2024-01-15T10:31:00Z"
-}
-```
-:::
-
-## Query Parameters
-
-Common query parameters supported across endpoints:
+SQL and Static endpoints support OData query parameters:
 
 | Parameter | Type | Description | Example |
 |-----------|------|-------------|---------|
 | `$select` | string | Select specific fields | `$select=Name,Price` |
 | `$filter` | string | Filter results | `$filter=Price gt 100` |
 | `$orderby` | string | Sort results | `$orderby=Name desc` |
-| `$top` | integer | Limit results | `$top=50` |
-| `$skip` | integer | Skip results | `$skip=20` |
+| `$top` | integer | Maximum items to return | `$top=50` |
+| `$skip` | integer | Items to skip (pagination) | `$skip=20` |
 
-## Content Negotiation
+## Rate Limiting
 
-Portway supports content negotiation through headers:
+| Limit | Default | Response header |
+|-------|---------|-----------------|
+| Per IP | 100 / minute | `X-RateLimit-IP-Remaining` |
+| Per Token | 1000 / minute | `X-RateLimit-Token-Remaining` |
 
-```http
-Accept: application/json
-Content-Type: application/json
-```
+Rate-limited requests receive `429 Too Many Requests`.
 
-## API Versioning
+## Health Endpoints
 
-While Portway doesn't use explicit versioning, backward compatibility is maintained. Breaking changes are communicated in advance.
-
-## Health Check Endpoints
-
-Monitor API availability:
-
-| Endpoint | Description | Auth Required |
-|----------|-------------|---------------|
-| `/health/live` | Basic liveness check | No |
-| `/health` | Detailed health status | Yes |
-| `/health/details` | Component-level health | Yes |
-
-## Troubleshooting
-
-### Common Issues
-
-1. **401 Unauthorized**
-   - Verify token is included in Authorization header
-   - Check token hasn't expired
-   - Ensure "Bearer" prefix is present
-
-2. **403 Forbidden**
-   - Verify token has required scopes
-   - Check environment access permissions
-   - Confirm endpoint allows your token's permissions
-
-3. **404 Not Found**
-   - Verify endpoint name spelling
-   - Check environment is correct
-   - Ensure endpoint is configured
-
-4. **500 Server Error**
-   - Check server logs for details
-   - Verify database connectivity
-   - Ensure proper configuration
-
-### Debug Headers
-
-Include these headers for enhanced debugging:
-
-```http
-X-Debug-Mode: true
-X-Correlation-ID: unique-request-id
-```
+| Endpoint | Auth required | Description |
+|----------|--------------|-------------|
+| `/health/live` | No | Liveness check for load balancers |
+| `/health` | Yes | Basic health status |
+| `/health/details` | Yes | Per-component health with database and proxy checks |
 
 ## Next Steps
 
-- Learn about [Authentication](/reference/api-auth) in detail
-- Explore [HTTP Headers](/reference/headers) usage
-- Understand [OData Syntax](/reference/odata) for queries
-- Review [Entity Configuration](/reference/entity-config)
-
-:::tip API Testing
-Use tools like Postman or curl to test endpoints. OpenAPI documentation is available at `/docs` for interactive API exploration.
-:::
+- [Authentication](/reference/api-auth) — token properties and scope patterns
+- [OData Syntax](/reference/odata) — filter, sort, and pagination
+- [Entity Configuration](/reference/entity-config) — endpoint configuration reference
+- [HTTP Headers](/reference/headers) — request and response headers

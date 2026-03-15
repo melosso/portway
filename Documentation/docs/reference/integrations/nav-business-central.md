@@ -2,8 +2,8 @@
 
 Portway provides integration with Microsoft Dynamics NAV/Business Central on-premise installations through proxy endpoints, enabling external applications to interact with NAV/BC data and services. This integration relies on environment-specific headers to route requests to the correct database instance.
 
-::: warning NTLM Authentication Required
-If you're deploying Portway in IIS and need to connect to on-premise Microsoft Dynamics NAV/Business Central installations, you'll need to configure NTLM authentication. The Application Pool Identity must be bound to an internal (domain) user with the necessary permissions to connect to NAV/BC OData services. This is required because NAV/BC typically uses Windows/NTLM authentication for API access.
+:::warning
+When deploying in IIS, the Application Pool Identity must be a domain user with NAV/BC OData permissions. On-premise NAV/BC uses Windows/NTLM authentication.
 :::
 
 ## Overview
@@ -116,37 +116,8 @@ NAV/BC specific error responses are preserved and forwarded:
 }
 ```
 
-## Best Practices
+## Notes
 
-### 1. Environment Management
-
-- Keep NAV/BC company configurations synchronized
-- Test in NAV/BC test companies first
-- Use consistent NAV/BC field naming conventions (underscores)
-
-### 2. Error Handling
-
-```javascript
-try {
-  const response = await fetch('/api/PROD/Customers', {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('NAV/BC error:', error.details || error.message);
-  }
-} catch (error) {
-  console.error('Network error:', error);
-}
-```
-
-### 3. NAV/BC Field Mapping
-
-- Use NAV/BC OData field names with underscores (e.g., `Sell_to_Customer_No`)
-- Validate data according to NAV/BC field types and lengths
-- Handle NAV/BC-specific date and decimal formats
+- NAV/BC OData field names use underscores (e.g., `Sell_to_Customer_No`) — use these exact names in `$filter` and `$select` expressions.
+- The `Company` header value must be URL-encoded (e.g., `CRONUS%20International%20Ltd.`).
+- Test against a NAV/BC test company before connecting to production.

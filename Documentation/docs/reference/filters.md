@@ -118,11 +118,7 @@ GET /api/500/Documents?$filter=endswith(FileName,'.pdf')
 GET /api/500/Products?$filter=contains(Description,'premium') and startswith(ItemCode,'P')
 ```
 
-### String Function Best Practices
-
-1. **Case Sensitivity**: All string comparisons are case-sensitive
-2. **Performance**: `startswith` is typically faster than `contains`
-3. **Wildcards**: Use string functions instead of SQL wildcards
+All string comparisons are case-sensitive. `startswith` is typically faster than `contains` because it can use index range scans. There is no wildcard syntax — use `contains`, `startswith`, or `endswith` instead.
 
 ## Working with Data Types
 
@@ -399,46 +395,6 @@ GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'ph
 | String functions | Case-sensitive only | Handle case in application |
 | No regex support | No pattern matching | Use contains/startswith |
 | No arithmetic | No calculations in filters | Pre-calculate values |
-
-## Best Practices
-
-1. **Use Appropriate Data Types**
-   ```http
-   # Good
-   $filter=Price gt 100.00
-   $filter=IsActive eq true
-   
-   # Avoid
-   $filter=Price gt '100.00'
-   $filter=IsActive eq 'true'
-   ```
-
-2. **Optimize Filter Order**
-   ```http
-   # Good - most restrictive first
-   $filter=ItemCode eq 'PROD001' and IsActive eq true
-   
-   # Less optimal
-   $filter=IsActive eq true and ItemCode eq 'PROD001'
-   ```
-
-3. **Use Parentheses for Clarity**
-   ```http
-   # Clear precedence
-   $filter=(Status eq 'A' or Status eq 'B') and IsActive eq true
-   
-   # Ambiguous
-   $filter=Status eq 'A' or Status eq 'B' and IsActive eq true
-   ```
-
-4. **Escape Special Characters**
-   ```http
-   # Escape single quotes
-   $filter=Name eq 'O''Brien'
-   
-   # URL encode spaces
-   $filter=Name%20eq%20'John%20Doe'
-   ```
 
 ## Related Topics
 

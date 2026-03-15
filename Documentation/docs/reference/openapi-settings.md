@@ -1,26 +1,12 @@
 # OpenAPI Documentation Settings
 
-This guide focuses on configuring OpenAPI documentation for entities and tags in Portway. All endpoints automatically generate OpenAPI documentation based on their configuration, which is then exposed through the Scalar documentation UI.
+> Configuration reference for OpenAPI schema generation and the Scalar documentation UI.
 
-## Overview
-
-Portway automatically generates comprehensive OpenAPI documentation for all configured endpoints. The documentation includes:
-
-- **Schema discovery** - Automatically determine the schema (on SQL endpoints)
-- **Tag descriptions** - Group related endpoints with descriptive categories
-- **Method descriptions** - Specific documentation for each HTTP method
-- **Parameter documentation** - Automatic schema generation from entity configuration
-- **Response schemas** - Based on database columns or proxy endpoint responses
+Portway generates OpenAPI documentation from endpoint definitions and exposes it through Scalar at `/docs`. SQL endpoints include schema discovery — column names and types are read from the database at startup. All other endpoint types use the `Documentation` block in `entity.json` for descriptions.
 
 ## Global OpenAPI Configuration
 
-The main OpenAPI documentation configuration is defined in `appsettings.json`. This controls the overall appearance, behavior, and content of your API documentation.
-
-**What you can configure:**
-- **Branding**: Custom title, description, and contact information
-- **UI Theme**: Modern Scalar interface with customizable themes
-- **Authentication**: Security schemes and authentication methods
-- **Behavior**: Default expansions, filtering, and user interactions
+Configure the title, contact details, and Scalar UI behaviour in `appsettings.json`:
 
 ```json
 {
@@ -55,8 +41,6 @@ The main OpenAPI documentation configuration is defined in `appsettings.json`. T
   }
 }
 ```
-
-### Configuration Properties
 
 ### Configuration Properties
 | Property | Type | Description |
@@ -113,15 +97,14 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 | `MethodDescriptions` | object | No | Specific descriptions for each HTTP method |
 
 ## Schema Discovery
-Portway automatically generates API documentation by reading your database schema at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. This only included the SQL endpoint type.
+
+For SQL endpoints, Portway reads column metadata from the database at startup. It connects to the first allowed environment listed in the endpoint's `AllowedEnvironments`. Non-SQL endpoints are not queried.
 
 :::warning
 If you're using Windows Authentication (`Trusted_Connection=True`) in your Environments, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. With SQL Authentication, each environment uses its own credentials.
 :::
 
-## Tag Description Best Practices
-
-It's wise to describe the tag description, with Markdown support.
+## Tag Descriptions
 
 ### Formatting Guidelines
 
@@ -215,37 +198,7 @@ Use special formatting for callouts:
 "TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information.\n> [!tip]> This endpoint doesn't and will never include complex price information."
 ```
 
-For more information, please see the detailed list of supported alerts at [Scalar Guide](https://guides.scalar.com/scalar/scalar-api-references/markdown#alerts).
-
-## Tag Organization
-
-### Grouping Strategy
-
-Organize endpoints by business function:
-
-- **Product Management** - Product catalog, inventory, pricing
-- **Customer Management** - Accounts, contacts, relationships
-- **Order Processing** - Sales orders, fulfillment, shipping
-- **Financial Operations** - Invoicing, payments, reporting
-- **System Integration** - Webhooks, data sync, external APIs
-
-### Naming Conventions
-
-Use consistent naming patterns:
-
-```json
-// Good examples
-"**Product Catalog**"
-"**Service Request Management**"
-"**Financial Reporting**"
-"**Integration Webhooks**"
-
-// Avoid
-"Products"
-"Manage Service Requests"
-"Finance"
-"Webhooks Endpoint"
-```
+See the [Scalar markdown reference](https://guides.scalar.com/scalar/scalar-api-references/markdown#alerts) for supported alert types.
 
 ## Private Endpoint Handling
 
@@ -269,46 +222,7 @@ Documentation is automatically filtered by environment. Only endpoints available
 }
 ```
 
-## Best Practices
-
-### 1. Clear Tag Names
-
-Use business-focused, descriptive tag names:
-
-```json
-"TagDescription": "**Customer Account Management**\n\nComplete customer lifecycle management including account creation, updates, and relationship tracking."
-```
-
-### 2. Method-Specific Value
-
-Provide descriptions that go beyond generic CRUD operations:
-
-```json
-"MethodDescriptions": {
-  "GET": "Search products with advanced filtering by category, price range, and availability",
-  "POST": "Add new products with automatic SKU generation and inventory setup"
-}
-```
-
-### 3. Business Context
-
-Explain the business purpose and value:
-
-```json
-"TagDescription": "**Outstanding Items**\n\nRetrieve outstanding debtor information and payment tracking for accounts receivable management and cash flow analysis."
-```
-
-### 4. Consistent Formatting
-
-Use consistent patterns across all endpoints:
-
-```json
-"TagDescription": "**[Business Area]**\n\n[Primary purpose]. [Additional context or capabilities]."
-```
-
 ## Troubleshooting
-
-This section may assist you in troubleshooting:
 
 ### Documentation Not Appearing
 

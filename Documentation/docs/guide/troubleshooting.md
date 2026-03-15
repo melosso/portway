@@ -36,22 +36,14 @@ Authentication issues are the most common problems reported by API consumers. Th
    ```
 
 2. **Check token validity:**
-   Use TokenGenerator to verify the token and associated user still exist:
-   ```powershell
-   # Run the Management Console
-   .\PortwayMgt.exe
-   ```
+   Open the [Web UI](./webui) and navigate to **Tokens** to confirm the token exists and has not been revoked or expired.
 
 3. **Review authentication logs:**
    Look for patterns in failed authentication attempts to identify systemic issues.
 
 **Solutions:**
 
-- **Generate new token:** Create a fresh token for the user and ensure old tokens are properly revoked:
-  ```powershell
-  # Run the Management Console
-   .\PortwayMgt.exe
-  ```
+- **Generate new token:** Create a replacement token in the [Web UI](./webui) under **Tokens**, then revoke the old one.
 
 - **User guidance:** Provide clear documentation on proper Authorization header format
 - **Security review:** If multiple users are affected, verify that token storage and transmission are secure
@@ -94,10 +86,7 @@ Tokens are essentially API keys. Ensure users store them securely using environm
 
 **Solutions:**
 
-- **Update token scopes:** Use Management Console to modify permissions:
-  ```powershell
-  .\PortwayMgt.exe # Select option 4: Update token scopes
-  ```
+- **Update token scopes:** Edit the token in the [Web UI](./webui) under **Tokens** to add the required scopes or environments.
 
 - **Review endpoint access:** Ensure endpoint configuration matches business requirements
 - **Document permissions:** Maintain clear documentation of what scopes are needed for different use cases
@@ -462,7 +451,7 @@ When troubleshooting issues, the specific error codes and messages you encounter
 |------------|---------------|---------------------------|---------------|
 | `400` | "Environment '{env}' is not allowed" | The environment specified in your URL path isn't configured as valid for this endpoint | Check the allowed environments list in your endpoint's `settings.json` file |
 | `401` | "Authentication required" | Your request doesn't include a valid Authorization header with a Bearer token | Add the proper Authorization header to your request |
-| `403` | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update your token's scopes using the TokenGenerator tool |
+| `403` | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update the token's scopes in the Web UI under **Tokens** |
 | `404` | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
 | `429` | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
 | `500` | "Database operation failed" | The gateway can't connect to or query the SQL Server database | Check your connection string and verify SQL Server is accessible |

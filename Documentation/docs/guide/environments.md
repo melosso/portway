@@ -1,44 +1,29 @@
 # Environments
 
-Portway provides powerful environment isolation capabilities, allowing you to route API requests to different servers, databases, and configurations based on the environment specified in the URL.
+> Route API requests to different servers, databases, and configurations by environment name.
 
-## Understanding Environments
+Each request URL includes an environment segment — `/api/{environment}/{endpoint}`. Portway maps that name to a folder under `environments/`, which defines the connection string, server name, custom headers, and access rules for that target. Development, testing, and production configurations are completely separate.
 
-In Portway, environments represent different deployment targets such as:
-- Development (`dev`)
-- Testing (`test`)
-- Production (`prod`)
-
-Each environment can have its own:
-- Database connection strings
-- Server configurations
-- Custom HTTP headers
-- Access restrictions
-
-## Environment Structure
-
-Each environment is represented by a top-level directory inside the environments/ folder. The name of this directory determines the environment name and must contain a corresponding settings.json configuration file.
-
-### Directory Layout
+## Directory structure
 
 ```
 environments/
-├── settings.json              # Global settings shared across environments
+├── settings.json       # Global: allowed environment names and server name
 ├── prod/
-│   └── settings.json          # Configuration for the production environment
+│   └── settings.json   # Production connection string, headers, auth
 ├── test/
-│   └── settings.json          # Configuration for the testing environment
-├── dev/
-│   └── settings.json          # Configuration for the development environment
+│   └── settings.json
+└── dev/
+    └── settings.json
 ```
 
-::: info Note
-These environment names are examples. You can use descriptive names such as MyCompany, Synergy, or any other meaningful identifier.
+:::info
+Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any identifier meaningful to your organisation — `WMS`, `Synergy`, `500`. The folder name becomes the URL segment.
 :::
 
-### Global Settings
+### Global settings
 
-The root `environments/settings.json` file defines which environments are available:
+`environments/settings.json` controls which environments are accessible through the API:
 
 ```json
 {
@@ -49,94 +34,75 @@ The root `environments/settings.json` file defines which environments are availa
 }
 ```
 
-- **ServerName**: Default server name used in requests
-- **AllowedEnvironments**: List of valid environment names that can be used in URLs
+| Field | Required | Description |
+|---|---|---|
+| `ServerName` | Yes | Default server name included in forwarded headers |
+| `AllowedEnvironments` | Yes | Names of environments accessible via the API. Requests to any name not listed return 404 |
 
-::: warning Important
-You must add environments to `AllowedEnvironments` for them to be accessible through the API.
+:::warning
+Adding a folder under `environments/` is not enough — the name must also appear in `AllowedEnvironments` before Portway will route requests to it.
 :::
 
-### Environment-specific Settings
+### Environment settings
 
-Each environment has its own `settings.json` file with these properties:
+Each environment's `settings.json` defines its connection and forwarding configuration:
 
 ```json
 {
-  "ServerName": "SERVERNAME",
-  "ConnectionString": "Server=SERVERNAME;Database=prod;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;",
+  "ServerName": "PROD-SQL-CLUSTER",
+  "ConnectionString": "Server=PROD-SQL-CLUSTER;Database=ProductionDB;Integrated Security=True;TrustServerCertificate=true;",
   "Headers": {
-    "DatabaseName": "prod",
-    "ServerName": "SERVERNAME",
+    "DatabaseName": "ProductionDB",
     "Origin": "Portway"
   }
 }
 ```
 
-::: details Headers Property
-The `Headers` property is optional for SQL Server and Webhook endpoints but may be required for Proxy endpoints depending on your backend services.
-:::
+| Field | Required | Description |
+|---|---|---|
+| `ServerName` | No | Overrides the global server name for this environment |
+| `ConnectionString` | No | Database connection string. Required for SQL and Webhook endpoints |
+| `Headers` | No | Key-value pairs added to all forwarded requests. Primarily used by Proxy endpoints |
 
-## Supported SQL Providers
+## SQL provider detection
 
-Portway connects to four SQL database backends. You do not need to declare which one you are using, Portway detects the provider automatically from the connection string you supply in `settings.json`.
+Portway selects the SQL driver automatically from the connection string — no additional configuration needed. Switching databases for an environment is as simple as updating `ConnectionString`.
 
-| Provider | When to use |
+| Provider | Detection signal |
 |---|---|
-| **SQL Server** | Enterprise ERP, WMS, and existing Windows infrastructure. The default when no other provider is detected. |
-| **PostgreSQL** | Open-source environments, Linux hosts, and cloud-hosted databases. |
-| **MySQL / MariaDB** | Web applications and LAMP-stack back-ends. |
-| **SQLite** | Local file databases, demo setups, and lightweight read-only endpoints that need no external server. |
+| SQL Server | `TrustServerCertificate=`, `Integrated Security=`, `MultiSubnetFailover=` |
+| PostgreSQL | `Host=`, `Port=5432` URI schemes |
+| MySQL / MariaDB | `Server=...;Uid=`, `SslMode=` |
+| SQLite | `Data Source=...db` file path |
 
-### How detection works
-
-Portway inspects the connection string for provider-specific patterns, keywords, URI schemes, and parameter names, and routes the query through the correct driver. A standard SQL Server connection string, for example, is identified by keywords such as `TrustServerCertificate=` or `Integrated Security=` that only SQL Server uses.
-
-Because detection is purely based on the connection string, **switching providers for an environment is as simple as updating the `ConnectionString` value**, nothing else changes.
-
-::: tip SQLite, no server required
-An SQLite environment points to a local `.db` file. This makes it ideal for shipping a working demo alongside your Portway setup without needing a database server:
+:::tip
+Point an SQLite environment at a local `.db` file to run a self-contained demo with no database server:
 ```json
-{
-  "ConnectionString": "Data Source=environments/WMS/demo.db;"
-}
+{ "ConnectionString": "Data Source=environments/demo/demo.db;" }
 ```
-Portway detects the `.db` extension and switches to the SQLite driver automatically.
 :::
 
-For the full technical details on connection string formats, auto-detection priority, and per-provider capability differences, see the [SQL Providers reference](/reference/sql-providers).
+For full detection priority rules and per-provider capability differences, see the [SQL Providers reference](/reference/sql-providers).
 
-## Configuration Examples
+## Configuration examples
 
-### SQL Server — development
-
-```json
-{
-  "ServerName": "DEV-SQL-01",
-  "ConnectionString": "Server=DEV-SQL-01;Database=DevelopmentDB;User Id=dev_user;Password=dev_password;TrustServerCertificate=true;",
-  "Headers": {
-    "DatabaseName": "DevelopmentDB",
-    "ServerName": "DEV-APP-SERVER",
-    "Debug": "true"
-  }
-}
-```
-
-### SQL Server — production
-
+**SQL Server — production (Windows Authentication):**
 ```json
 {
   "ServerName": "PROD-SQL-CLUSTER",
-  "ConnectionString": "Server=PROD-SQL-CLUSTER;Database=ProductionDB;Integrated Security=True;MultiSubnetFailover=True;ApplicationIntent=ReadOnly;TrustServerCertificate=true;",
-  "Headers": {
-    "DatabaseName": "ProductionDB",
-    "ServerName": "PROD-APP-SERVER",
-    "StrictMode": "true"
-  }
+  "ConnectionString": "Server=PROD-SQL-CLUSTER;Database=ProductionDB;Integrated Security=True;MultiSubnetFailover=True;TrustServerCertificate=true;"
 }
 ```
 
-### PostgreSQL
+**SQL Server — development (SQL auth):**
+```json
+{
+  "ServerName": "DEV-SQL-01",
+  "ConnectionString": "Server=DEV-SQL-01;Database=DevelopmentDB;User Id=dev_user;Password=dev_password;TrustServerCertificate=true;"
+}
+```
 
+**PostgreSQL:**
 ```json
 {
   "ServerName": "pg-host",
@@ -144,8 +110,7 @@ For the full technical details on connection string formats, auto-detection prio
 }
 ```
 
-### MySQL
-
+**MySQL:**
 ```json
 {
   "ServerName": "mysql-host",
@@ -153,106 +118,59 @@ For the full technical details on connection string formats, auto-detection prio
 }
 ```
 
-### SQLite (local file)
-
+**SQLite:**
 ```json
 {
   "ServerName": "localhost",
-  "ConnectionString": "Data Source=environments/WMS/demo.db;"
+  "ConnectionString": "Data Source=environments/demo/demo.db;"
 }
 ```
 
-For more examples, you can check out (connectionstrings.com)[https://www.connectionstrings.com/sql-server/] for more.
+## Access control
 
-## Using Environments in API Calls
+Environment access is enforced at two independent layers. A request must pass both to succeed.
 
-Environment names are specified in the URL path:
+### Token-level restrictions
 
-```http
-GET /api/{environment}/{endpoint}
-```
+When creating a token, specify which environments it can access. Use `*` for all environments, a comma-separated list for specific ones, or a prefix pattern like `pro*`.
 
-Examples:
-```http
-GET /api/prod/Products
-GET /api/dev/Orders
-GET /api/test/Customers
-```
-
-::: info
-The environment name in the URL determines which configuration is used for database connections and request headers.
-:::
-
-## Environment Access Control
-
-Access to environments is controlled through the Token Generator tool. When creating or modifying tokens, you can specify which environments a token can access.
-
-### Using Token Generator for Environment Access
-
-1. **Run the Token Generator**:
-   ```batch
-   PortwayMgt.exe
-   ```
-
-2. **Create a token with specific environment access**:
-   - Choose option 2 (Generate new token)
-   - When prompted for environments, enter:
-     - `*` for all environments
-     - `prod,dev` for specific environments
-     - `pro*` for all environments starting with "pro"
-
-3. **Update existing token environments**:
-   - Choose option 5 (Update token environments)
-   - Select the token ID
-   - Enter new environment restrictions
-
-Example token file with environment restrictions:
+Example token with restricted access:
 ```json
 {
   "Username": "api-user",
   "Token": "your-token-here",
-  "AllowedEnvironments": "prod,dev",
-  "AllowedScopes": "*",
-  "ExpiresAt": "Never",
-  "CreatedAt": "2024-01-01 10:00:00"
+  "AllowedEnvironments": "prod,dev"
 }
 ```
 
-### Endpoint-Level Environment Restrictions
+### Endpoint-level restrictions
 
-Individual endpoints can also be restricted to specific environments in their configuration:
+Individual endpoints can also limit which environments they respond to:
 
 ```json
 {
   "DatabaseObjectName": "ServiceRequests",
-  "DatabaseSchema": "dbo",
-  "AllowedEnvironments": ["prod"], // [!code warning]
-  "AllowedMethods": ["GET", "POST", "PUT"]
+  "AllowedEnvironments": ["prod"]
 }
 ```
 
-This creates a two-layer security model:
-1. Token must have access to the environment
-2. Endpoint must allow the environment
+Both restrictions apply. The token must permit the environment **and** the endpoint must list it.
 
+| Token environments | Endpoint `AllowedEnvironments` | Request environment | Result |
+|---|---|---|---|
+| `*` | _(not set)_ | Any | Allowed |
+| `*` | `["prod"]` | `prod` | Allowed |
+| `*` | `["prod"]` | `dev` | Blocked |
+| `prod,dev` | _(not set)_ | `prod` | Allowed |
+| `prod,dev` | _(not set)_ | `test` | Blocked |
+| `prod,dev` | `["prod"]` | `prod` | Allowed |
+| `prod,dev` | `["prod"]` | `dev` | Blocked |
 
-## Environment Authentication
+## Per-environment authentication
 
-Portway allows you to define custom authentication methods for specific environments. This is useful when an environment needs to be secured with a different mechanism than the global token system, such as an API Key, Basic Auth, or JWT.
+Portway supports environment-specific authentication methods for backends that require their own credentials — API keys, Basic Auth, Bearer tokens, JWT, or HMAC.
 
-### Supported Types
-
-| Type | Description | Key Fields |
-|------|-------------|------------|
-| `ApiKey` | Matches a static key in headers or query params | `Name`, `Value`, `In` |
-| `Basic` | Standard Username/Password authentication | `Name`, `Value` |
-| `Bearer` | Matches a static token in the Authorization header | `Value` |
-| `JWT` | Validates JSON Web Tokens (Issuer, Audience, Signatures) | `Issuer`, `Secret`, `PublicKey` |
-| `HMAC` | Validates request signatures using a shared secret | `Name`, `Secret` |
-
-### Basic API Key Configuration
-
-To require a specific API key for an environment, add the `Authentication` object to its `settings.json`:
+Add an `Authentication` block to the environment's `settings.json`:
 
 ```json
 {
@@ -264,7 +182,7 @@ To require a specific API key for an environment, add the `Authentication` objec
       {
         "Type": "ApiKey",
         "Name": "X-Custom-Auth",
-        "Value": "your-v3ry-secret-p4shword-here",
+        "Value": "your-secret-key",
         "In": "Header"
       }
     ]
@@ -272,13 +190,15 @@ To require a specific API key for an environment, add the `Authentication` objec
 }
 ```
 
-::: tip Automatic encryption
-When you save plaintext secrets in `settings.json`, the application automatically encrypts them on the next startup. As you're used to, you will see values change to `PWENC:...` format.
-:::
+| Type | Key fields |
+|---|---|
+| `ApiKey` | `Name`, `Value`, `In` (`Header` or `Query`) |
+| `Basic` | `Name`, `Value` |
+| `Bearer` | `Value` |
+| `JWT` | `Issuer`, `Secret`, `PublicKey` |
+| `HMAC` | `Name`, `Secret` |
 
-### Overriding Global Tokens
-
-By default, both the environment-specific auth AND global Portway tokens work. If you want to **only** allow the custom method, set `OverrideGlobalToken` to `true`:
+By default, both the environment-specific auth method and the global Portway token are accepted. Set `OverrideGlobalToken: true` to require only the environment-specific method:
 
 ```json
 {
@@ -290,110 +210,53 @@ By default, both the environment-specific auth AND global Portway tokens work. I
 }
 ```
 
-For more advanced methods like JWT or HMAC, see the [Environment Authentication Reference](../reference/environment-auth).
+:::tip
+Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk.
+:::
 
-## Azure Key Vault Integration
+For JWT and HMAC configuration, see the [Environment Authentication reference](../reference/environment-auth).
 
-For enhanced security, store connection strings in Azure Key Vault:
+## Azure Key Vault
 
-1. Set the environment variable:
+Store connection strings and other secrets in Azure Key Vault instead of `settings.json`:
+
+1. Set the Key Vault URI:
    ```powershell
    $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
    ```
 
-2. Create secrets in Key Vault:
-   - `{environment}-ConnectionString` - Database connection string
-   - `{environment}-ServerName` - Server name
-   - `{environment}-Headers` - JSON string of custom headers
+2. Create secrets named by environment:
+   - `{environment}-ConnectionString`
+   - `{environment}-ServerName`
+   - `{environment}-Headers` (JSON string)
 
-3. The system will automatically fetch these values instead of reading from local files
+Portway fetches these values at startup and treats them identically to file-based configuration.
 
-::: warning Security Note
-Never commit connection strings with passwords to source control. Use Azure Key Vault or environment variables for sensitive data.
-:::
+## Environment headers
 
-## Environment Headers
-
-Headers defined in environment settings are automatically added to all requests:
+Headers defined in `settings.json` are added to all forwarded requests for that environment. This is primarily used by Proxy endpoints to pass context to internal services.
 
 ```json
 {
-  ...
   "Headers": {
     "DatabaseName": "prod",
-    "ServerName": "PROD-APP-SERVER",
     "X-Environment": "Production",
-    "X-Client-Version": "1.0.0"
+    "Origin": "Portway"
   }
 }
 ```
 
-These headers can be used by:
-- Proxy endpoints to route requests
-- SQL Server for auditing
-- Internal services for environment detection
-
-## Best Practices
-
-### 1. Environment Naming
-- Use meaningful names (`dev`, `test`, `prod`) or your organization's standard (`prod`, `dev`)
-- Avoid special characters or spaces
-- Keep names short but descriptive
-
-### 2. Connection Strings
-- Portway auto-detects the SQL provider from the connection string, no extra config needed
-- Use Windows Authentication for SQL Server where possible
-- Enable `TrustServerCertificate=true` for development SQL Server only
-- Use connection pooling settings for performance
-- Store sensitive credentials in Azure Key Vault
-- SQLite connection strings carry no credentials and are never encrypted or masked
-
-### 3. Security
-- Use the Token Generator to create environment-specific access tokens
-- Implement endpoint-level environment restrictions where needed
-- Regularly audit and rotate tokens
-- Use Azure Key Vault for production environments
-
-### 4. Headers
-- Include environment indicators in headers
-- Add version information for tracking
-- Use headers for request correlation
-- Keep header names consistent across environments
-
 ## Troubleshooting
 
-### Common Issues
+**"Environment not in the allowed list"** — Add the environment name to `AllowedEnvironments` in `environments/settings.json`.
 
-1. **Environment Not Found**
-   ```
-   Error: Environment 'staging' is not in the allowed list
-   ```
-   Solution: Add the environment to `AllowedEnvironments` in `environments/settings.json`
+**"Settings.json not found for environment"** — Create `environments/{name}/settings.json`. The folder must exist and contain the file.
 
-2. **Connection Failed**
-   ```
-   Error: A network-related or instance-specific error occurred
-   ```
-   Solution: Verify the connection string and network connectivity
+**"Access denied to environment"** — The token does not have permission for this environment. Update token permissions in the [Web UI](./webui) under **Tokens**.
 
-3. **Access Denied**
-   ```
-   Error: Access denied to environment 'prod'
-   ```
-   Solution: Check if the token has access to this environment using Token Generator
+**Unexpected SQL syntax errors** — The connection string may not contain enough signal for provider auto-detection. Check the [SQL Providers reference](/reference/sql-providers) for required keywords.
 
-4. **Missing Configuration**
-   ```
-   Error: Settings.json not found for environment: prod
-   ```
-   Solution: Create `environments/prod/settings.json` with required configuration
-
-5. **Wrong SQL provider used**
-   If queries fail with unexpected syntax errors (e.g. `no such table: dbo.TableName` on SQLite), the connection string may not contain enough signal for automatic detection. Ensure it uses provider-specific keywords or a recognised URI scheme. See the [SQL Providers reference](/reference/sql-providers) for detection priority rules.
-
-### Debugging
-
-Enable detailed logging to troubleshoot environment issues:
+To increase log verbosity for environment issues:
 
 ```json
 {
@@ -405,21 +268,9 @@ Enable detailed logging to troubleshoot environment issues:
 }
 ```
 
-## Environment vs Token Security Matrix
+## Next steps
 
-| Token Environments | Endpoint AllowedEnvironments | API Request Environment | Result |
-|-------------------|----------------------------|----------------------|---------|
-| `*` (all) | Not specified | Any | Allowed |
-| `*` (all) | `["prod"]` | `prod` | Allowed |
-| `*` (all) | `["prod"]` | `dev` | Blocked |
-| `prod,dev` | Not specified | `prod` | Allowed |
-| `prod,dev` | Not specified | `prod` | Blocked |
-| `prod,dev` | `["prod"]` | `prod` | Allowed |
-| `prod,dev` | `["prod"]` | `dev` | Blocked |
-
-## Next Steps
-
-- Learn how to use the [Token Generator](./security#managing-tokens) for environment access control
-- [Configure SQL Endpoints](./endpoints-sql) to use your environments
-- [Set up Proxy Endpoints](./endpoints-proxy) with environment-specific routing
-- [Deploy to Production](./deployment) with proper environment isolation
+- [Configure SQL Endpoints](./endpoints-sql)
+- [Set up Proxy Endpoints](./endpoints-proxy)
+- [Security — token management](./security#managing-tokens)
+- [Deploy to production](./deployment)

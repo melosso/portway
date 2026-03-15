@@ -1,34 +1,53 @@
 # Authentication
 
-Portway uses token-based authentication to secure API access. This reference guide covers token management, authentication headers, and scope-based access control.
+> Token properties, scope patterns, and the authentication flow for Portway API requests.
 
-## Token Authentication Overview
-
-All API requests require authentication using bearer tokens:
+All API requests require a bearer token:
 
 ```http
 Authorization: Bearer your_token_here
 ```
 
-:::warning Required for All API Calls
-Authentication is required for all API endpoints except `/health/live`. Requests without valid tokens receive a 401 Unauthorized response.
-:::
+Requests without a valid token receive `401 Unauthorized`. The only unauthenticated endpoint is `/health/live`.
 
 ## Token Properties
-
-Each token has the following properties:
 
 | Property | Description | Default |
 |----------|-------------|---------|
 | `username` | Unique identifier for the token | Required |
-| `tokenHash` | Cryptographic hash of the token | Auto-generated |
-| `tokenSalt` | Salt for token hashing | Auto-generated |
-| `createdAt` | Token creation timestamp | Current time |
-| `expiresAt` | Optional expiration date | `null` (never expires) |
+| `tokenHash` | PBKDF2-SHA256 hash, 10,000 iterations, 256-bit output | Auto-generated |
+| `tokenSalt` | 128-bit random salt | Auto-generated |
+| `createdAt` | Creation timestamp | Current time |
+| `expiresAt` | Expiration date | `null` (never expires) |
 | `revokedAt` | Revocation timestamp | `null` (active) |
-| `allowedScopes` | Endpoint access permissions | `*` (all endpoints) |
-| `allowedEnvironments` | Environment access permissions | `*` (all environments) |
-| `description` | Token purpose/description | Empty |
+| `allowedScopes` | Endpoint access restrictions | `*` (all endpoints) |
+| `allowedEnvironments` | Environment access restrictions | `*` (all environments) |
+| `description` | Purpose note | Empty |
+
+Tokens are created and managed in the [Web UI](/guide/webui) under **Tokens**.
+
+## Scope Patterns
+
+### Endpoint scopes (`allowedScopes`)
+
+| Pattern | Access |
+|---------|--------|
+| `*` | All endpoints |
+| `Products` | Single endpoint |
+| `Products,Orders` | Named endpoints only (comma-separated) |
+| `Product*` | All endpoints matching the prefix |
+| `Company/Employees` | Specific namespaced endpoint |
+| `Company/*` | All endpoints in a namespace |
+| `GET:Products` | Single endpoint, single HTTP method |
+
+### Environment scopes (`allowedEnvironments`)
+
+| Pattern | Access |
+|---------|--------|
+| `*` | All environments |
+| `prod` | Single environment |
+| `dev,test` | Named environments (comma-separated) |
+| `dev*` | All environments matching the prefix |
 
 ## Authentication Flow
 
@@ -38,7 +57,7 @@ sequenceDiagram
     participant Portway
     participant TokenService
     participant Endpoint
-    
+
     Client->>Portway: Request with Bearer token
     Portway->>TokenService: Verify token
     TokenService-->>Portway: Token valid/invalid
@@ -53,236 +72,49 @@ sequenceDiagram
     end
 ```
 
-## Token Generation
+## Validation Process
 
-Tokens are generated using the Management Console:
+When a request arrives, Portway:
 
-```bash
-# Generate token with default settings
-PortwayMgt.exe username
+1. Extracts the token from the `Authorization: Bearer` header
+2. Verifies the token against its stored hash
+3. Checks token expiration
+4. Checks the token has not been revoked
+5. Validates endpoint scope against `allowedScopes`
+6. Validates environment scope against `allowedEnvironments`
 
-# Generate token with specific scopes
-PortwayMgt.exe username -s "Products,Orders"
-
-# Generate token with environment restrictions
-PortwayMgt.exe username -e "prod,staging"
-
-# Generate token with expiration
-PortwayMgt.exe username --expires 90
-```
-
-## Token File Format
-
-Generated tokens are stored in JSON files:
-
-```json
-{
-  "Username": "api-service",
-  "Token": "your-secure-token-here",
-  "AllowedScopes": "Products,Orders",
-  "AllowedEnvironments": "500,700",
-  "ExpiresAt": "2024-04-15 10:30:00",
-  "CreatedAt": "2024-01-15 10:30:00",
-  "Description": "API access for service X",
-  "Usage": "Use this token in the Authorization header as: Bearer your-secure-token-here"
-}
-```
-
-## Scope-Based Access Control
-
-### Endpoint Scopes
-
-Control access to specific endpoints:
-
-| Scope Pattern | Description | Example |
-|--------------|-------------|---------|
-| `*` | Access to all endpoints | Default |
-| `Products` | Access to Products endpoint only | Single endpoint |
-| `Products,Orders` | Access to multiple endpoints | Comma-separated |
-| `Product*` | Access to endpoints starting with "Product" | Wildcard |
-| `Company/Employees` | Access to namespaced endpoint | Specific namespaced access |
-| `Company/*` | Access to all endpoints in namespace | All Company namespace endpoints |
-
-### Environment Scopes
-
-Control access to specific environments:
-
-| Scope Pattern | Description | Example |
-|--------------|-------------|---------|
-| `*` | Access to all environments | Default |
-| `500` | Access to environment 600 only | Single environment |
-| `500,700` | Access to multiple environments | Comma-separated |
-| `6*` | Access to environments starting with "6" | Wildcard |
-
-## Token Security
-
-### Hashing Algorithm
-
-Tokens are secured using PBKDF2 with SHA256:
-
-- 10,000 iterations
-- 256-bit output
-- Random 128-bit salt per token
-- Stored hash, not plaintext
-
-### Security Best Practices
-
-:::tip Token Security Checklist
-1. Never store tokens in source code
-2. Use environment variables for tokens
-3. Rotate tokens regularly
-4. Use minimal required scopes
-5. Set expiration dates for temporary access
-6. Revoke compromised tokens immediately
-7. Use separate tokens per service/application
-:::
-
-## Authentication Errors
-
-### Common Error Responses
+## Error Responses
 
 | Status | Error | Cause |
 |--------|-------|-------|
-| 401 | "Authentication required" | Missing Authorization header |
-| 401 | "Invalid or expired token" | Token invalid, expired, or revoked |
-| 403 | "Access denied to endpoint" | Token lacks endpoint permission |
-| 403 | "Access denied to environment" | Token lacks environment permission |
+| 401 | `Authentication required` | Missing `Authorization` header |
+| 401 | `Invalid or expired token` | Token invalid, expired, or revoked |
+| 403 | `Access denied to endpoint` | Token lacks endpoint permission |
+| 403 | `Access denied to environment` | Token lacks environment permission |
 
-### Error Response Format
-
-```json
-{
-  "success": false,
-  "error": "Access denied to endpoint 'Products'",
-  "availableScopes": "Orders,Customers",
-  "requestedEndpoint": "Products"
-}
-```
-
-## Token Management
-
-Tokens can be managed using the Management Console, available via the CLI or running it as a Program.
-
-### Managing Tokens via 
-
-```bash
-# List all active tokens
-PortwayMgt.exe
-> Option 1
-
-# Revoke a token
-PortwayMgt.exe
-> Option 3
-> Enter token ID
-
-# Update token scopes
-PortwayMgt.exe
-> Option 4
-> Enter new scopes
-
-# Update token expiration
-PortwayMgt.exe
-> Option 6
-> Enter days until expiration
-```
-
-### Token Lifecycle
-
-1. **Generation**: Create token with specific permissions
-2. **Distribution**: Share token file securely
-3. **Usage**: Include in API requests
-4. **Rotation**: Generate new token before expiration
-5. **Revocation**: Invalidate compromised tokens
-
-## Advanced Authentication
-
-### Custom Headers
-
-While Portway uses standard bearer authentication, you can add custom headers for tracking:
+### Correct header format
 
 ```http
+# Correct
 Authorization: Bearer your_token_here
-X-Client-ID: service-name
-X-Request-ID: correlation-id
+
+# Incorrect — missing "Bearer" prefix
+Authorization: your_token_here
 ```
 
-### Token Validation Process
+## Token Lifecycle
 
-1. Extract token from Authorization header
-2. Verify token against hashed database entry
-3. Check token expiration
-4. Verify token hasn't been revoked
-5. Validate endpoint access scope
-6. Validate environment access scope
-7. Proceed with request or return error
+1. **Create** — generate a token with defined scopes and environment restrictions in the Web UI
+2. **Distribute** — share the token value securely with the service or user
+3. **Use** — include in `Authorization: Bearer` header on every request
+4. **Rotate** — generate a replacement before the old token expires; the old token is invalidated
+5. **Revoke** — immediately invalidate a compromised or unused token
 
-## Troubleshooting Authentication
-
-You may encounter issues with authentication. We've gathered some common issues related to this topic:
-
-### Common Issues
-
-1. **"Missing or invalid authentication header"**
-   ```http
-   # Incorrect
-   Authorization: your_token_here
-   
-   # Correct
-   Authorization: Bearer your_token_here
-   ```
-
-2. **"Token lacks permission for endpoint"**
-   - Check token's `allowedScopes`
-   - Verify endpoint name matches exactly
-   - Update token scopes if needed
-
-3. **"Token expired"**
-   - Generate new token
-   - Implement token rotation
-   - Check `expiresAt` in token file
-
-4. **"Invalid token format"**
-   - Ensure token is copied completely
-   - Check for extra whitespace
-   - Verify token hasn't been truncated
-
-### Debug Authentication Issues
-
-1. Check token validity:
-   ```bash
-   PortwayMgt.exe
-   > Option 1 (List tokens)
-   ```
-
-2. Verify token permissions:
-   ```json
-   # Check token file
-   {
-     "AllowedScopes": "Products,Orders",
-     "AllowedEnvironments": "500,700"
-   }
-   ```
-
-3. Test with minimal request:
-   ```bash
-   curl -H "Authorization: Bearer your_token_here" \
-        https://api.company.com/health
-   ```
-
-## Best Practices
-
-Please make sure to implement the following best practices:
-
-### Token Rotation Strategy
-
-1. Set reasonable expiration periods
-2. Generate new tokens before expiry
-3. Update services with new tokens
-4. Revoke old tokens after transition
+Revocation is permanent. A revoked token cannot be reactivated.
 
 ## Related Topics
 
-- [HTTP Headers](/reference/headers) - Additional header configuration
-- [Security Guide](/guide/security) - Comprehensive security practices
-- [Token Generator](/reference/token-generator) - Token management tool
-- [API Overview](/reference/) - General API reference
+- [Web UI guide](/guide/webui) — create, revoke, rotate, and audit tokens
+- [Security guide](/guide/security) — incident response for compromised tokens
+- [HTTP Headers](/reference/headers) — full header reference
+- [Token audit log](/reference/token-generator) — audit trail schema

@@ -248,88 +248,13 @@ Supported variables:
 - `${VARIABLE_NAME}` - Replaced at runtime
 - Azure Key Vault integration (if configured)
 
-## Security Considerations
+## Security Notes
 
-### Connection String Security
-
-:::warning Sensitive Information
-Never store passwords or secrets directly in configuration files. Use:
-- Environment variables
-- Azure Key Vault
-- Secure configuration providers
+:::warning
+Never store passwords or secrets directly in configuration files. Use environment variables, Azure Key Vault, or Portway's automatic `PWENC:` encryption.
 :::
 
-### Network Access Policy
-
-The network access policy prevents Server-Side Request Forgery (SSRF) attacks:
-
-1. **Allowed Hosts**: Only whitelisted hosts can be accessed
-2. **Blocked IP Ranges**: Internal/private networks are blocked by default
-3. **DNS Resolution**: All hostnames are resolved and checked
-
-### Environment Isolation
-
-Each environment should have:
-- Separate database credentials
-- Unique connection strings
-- Environment-specific headers
-- Appropriate timeout values
-
-## Best Practices
-
-### 1. Environment Naming
-
-Use consistent naming conventions:
-- Production: `prod`, `production`
-- Development: `dev`, `development`
-- Testing: `test`, `staging`
-- Numeric: `prod`, `dev` (legacy systems)
-
-### 2. Connection String Management
-
-```json
-{
-  // Development (relaxed security)
-  "ConnectionString": "Server=DEV;Database=DevDB;Trusted_Connection=True;TrustServerCertificate=true;",
-  
-  // Production (strict security)
-  "ConnectionString": "Server=PROD;Database=ProdDB;User Id=svc_portway;Password=${PROD_PASSWORD};Encrypt=true;TrustServerCertificate=false;"
-}
-```
-
-### 3. Header Configuration
-
-```json
-{
-  "Headers": {
-    // Identify environment
-    "Environment": "Production",
-    
-    // Track requests
-    "X-Request-Source": "Portway",
-    
-    // Environment-specific behavior
-    "X-Strict-Mode": "true"
-  }
-}
-```
-
-### 4. Network Security
-
-```json
-{
-  "allowedHosts": [
-    "api.internal.company.com",
-    "legacy-system.local"
-  ],
-  "blockedIpRanges": [
-    "10.0.0.0/8",      // Private network
-    "172.16.0.0/12",   // Private network
-    "192.168.0.0/16",  // Private network
-    "169.254.0.0/16"   // Link-local
-  ]
-}
-```
+The network access policy in `network-access-policy.json` prevents Server-Side Request Forgery (SSRF) by blocking private IP ranges and restricting proxy target hosts. Use separate database credentials per environment, and set `Encrypt=true; TrustServerCertificate=false` on production SQL Server connections.
 
 ## Troubleshooting
 

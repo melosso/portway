@@ -1,41 +1,66 @@
 # Upgrading Portway
 
-Upgrading Portway is simple. Follow these steps to ensure a smooth upgrade from a previous version.
+> Replace application files and restore configuration to move to a new release.
 
-> [!IMPORTANT]
-> Portway can be **subject** to **application and database changes** between versions.Staying up to date with the release notes, especially for major version upgrades, is adviced to avoid data loss or compatibility issues. Please make sure to validate no such breaking changes have been made before upgrading.
+:::warning
+Portway may include application and database changes between versions. Read the [release notes](https://github.com/melosso/portway/releases/) before upgrading, particularly for major version changes. Verify no breaking changes apply to your configuration before proceeding.
+:::
 
-1. **Read the Release Notes**
-Please review the [release notes](https://github.com/melosso/portway/releases/) for important changes or migration steps.
+## Steps
 
-> [!NOTE]
-> You can find your installated version in file `.version.txt`. Please make sure to overwrite it, to keep version information up to date (which is especially important when submitting bug reports).
+**1. Read the release notes**
 
-2. **Backup Your Current Installation**
-   - Copy your existing Portway directory to a safe location.
-   - Save your configuration files, including:
-     - `appsettings.json`
-     - `.core\`
-     - `Endpoints\` 
-     - `Environments\`
-   - Backup any SQLite database files used by Portway (e.g., `auth.db`).
+Review the [GitHub release notes](https://github.com/melosso/portway/releases/) for migration steps, breaking changes, and new configuration requirements.
 
-3. **Windows: Suspend The Webserver**
-If you're using Windows Server (IIS): Stop the Application Pool. 
+**2. Back up your installation**
 
-> [!IMPORTANT]
-> By stopping the web server on IIS (either by either stopping the website or application pool) you'll reset any cache and/or rate limits configured by the application.
+Copy these files and directories to a safe location before making any changes:
 
-4. **Install the New Version**
-Download the latest release from GitHub. Then, replace the old files with the new ones, or follow the [installation guide](/guide/getting-started).
+- `appsettings.json`
+- `auth.db`
+- `environments/`
+- `endpoints/`
+- `.core/`
 
-If you're on Docker, a simple `docker compose pull && docker compose up -d` will work.
+**3. Stop the application**
 
-5. **Restore Configuration and Data**
-Copy your saved configuration files and SQLite databases into the new installation if needed.
+*IIS:*
+```powershell
+Stop-WebAppPool -Name "PortwayAppPool"
+```
 
-6. **Test and Validate**
-Start Portway and verify that your endpoints, environments, and data work as expected.
+*Docker:*
+```sh
+docker compose down
+```
 
-> [!TIP]
-> For major upgrades, always test in a non-production environment first. We try to make sure you're always up to date with any breaking changes (in the release notes).
+:::info
+Stopping the IIS Application Pool resets in-memory cache and rate limit state. This is expected behaviour.
+:::
+
+**4. Replace application files**
+
+Extract the new release over your existing directory, replacing application files. Do not overwrite your configuration files (`appsettings.json`, `environments/`, `endpoints/`).
+
+*Docker:*
+```sh
+docker compose pull && docker compose up -d
+```
+
+**5. Restore configuration**
+
+If the release notes require configuration changes (new fields, renamed settings), apply them to your `appsettings.json` and environment files now.
+
+**6. Start and verify**
+
+Start the application pool or container and confirm:
+- `GET /health/live` returns `Alive`
+- Endpoints respond as expected in your test environment
+
+:::tip
+For major version upgrades, validate in a non-production environment before upgrading production.
+:::
+
+## Find your current version
+
+Your installed version is recorded in `.version.txt` in the deployment directory. Update this file after upgrading to keep version information current — this is useful when submitting bug reports.

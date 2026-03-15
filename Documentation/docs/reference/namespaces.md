@@ -1,23 +1,10 @@
 # Namespaces
 
-Namespace configuration enables logical grouping and organization of related endpoints. Namespaces provide better API structure, clearer documentation, and enhanced endpoint management across all endpoint types.
+> Directory-based grouping for SQL, Proxy, Static, and Composite endpoints that exposes them under `/{namespace}/{endpoint}` URL paths.
 
-## Overview
+Namespaces let you organise related endpoints into logical groups — for example, `CRM`, `Finance`, or `Account` — using the directory structure under each endpoint type folder. The folder name becomes the namespace segment in the request URL.
 
-Namespaces allow you to organize endpoints into logical groups, such as:
-- **Functional areas**: `CRM`, `Finance`, `Inventory`
-- **Business domains**: `Account`, `Masterdata`, `Sales`
-- **System boundaries**: `Internal`, `External`, `Public`
-
-**Supported Endpoint Types:**
-- ✅ **SQL** endpoints
-- ✅ **Proxy** endpoints  
-- ✅ **Static** endpoints
-- ✅ **Composite** endpoints (stored in Proxy directory)
-
-**Not Supported:**
-- ❌ **Files** endpoints (use directory name only)
-- ❌ **Webhooks** endpoints (use directory name only)
+Files and Webhooks endpoints do not support namespaces; they use the immediate directory name only.
 
 ## Directory Structure
 
@@ -334,58 +321,6 @@ In the generated OpenAPI specification:
 }
 ```
 
-## Best Practices
-
-### 1. Consistent Naming
-
-Use consistent namespace naming across your organization:
-
-```
-Account/     # Customer/vendor management
-Finance/     # Financial operations  
-Product/     # Product catalog
-Order/       # Order management
-Report/      # Business reports
-```
-
-### 2. Logical Grouping
-
-Group related endpoints together:
-
-```
-/endpoints/Proxy/CRM/
-  ├── Accounts/
-  ├── Contacts/
-  ├── Opportunities/
-  └── Activities/
-
-/endpoints/Files/        # No namespace support
-  ├── Documents/
-  ├── Images/
-  └── Reports/
-```
-
-### 3. Clear Display Names
-
-Provide descriptive display names for documentation:
-
-```json
-{
-  "Namespace": "CRM",
-  "NamespaceDisplayName": "Customer Relationship Management",
-  "DisplayName": "Customer Account Management"
-}
-```
-
-### 4. Environment Consistency
-
-Ensure namespace structure is consistent across environments:
-
-```
-dev/CRM/Accounts    ← Matches
-test/CRM/Accounts   ← Matches  
-prod/CRM/Accounts   ← Matches
-```
 
 ## Migration from Non-Namespaced
 
@@ -468,19 +403,6 @@ During migration, both URL patterns work:
 - [ ] File and Webhook endpoints use simple directory structure (no namespaces)
 - [ ] Backward compatibility maintained for existing clients
 - [ ] Environment consistency across dev/test/prod
-
-## Server Configuration
-
-### Directory Creation
-
-The server automatically creates namespace directories when needed. You can also create them manually using the helper methods.
-
-### Namespace Validation
-
-Namespace validation occurs at:
-- **Startup**: During endpoint loading
-- **Runtime**: When processing requests
-- **Configuration**: When validating entity definitions
 
 ## Related Topics
 

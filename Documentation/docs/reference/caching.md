@@ -1,14 +1,13 @@
 # Caching
 
-Portway implements a flexible caching system that supports both `in-memory` and `Redis` distributed caching. This provides improved performance, reduced load on backend systems, and enhanced scalability for high-traffic deployments. The caching system seamlessly handles responses from proxied endpoints, SQL queries, and other operations.
+> Configuration reference for Portway's in-memory and Redis caching.
 
-## Caching Flow
+Portway caches GET responses from SQL and Proxy endpoints to reduce backend load. Only `2xx` responses with cacheable content types are stored.
 
-The diagram below illustrates the decision flow for caching in Portway, showing how requests are processed, when caching is applied, and how cache providers are selected:
+## Cache Flow
 
 ```mermaid
 flowchart TD
-    %% MAIN REQUEST FLOW (VERTICAL SPINE)
     A[Client Request] --> B{Cache Enabled?}
     B -->|No| G[Execute Request]
     B -->|Yes| C{GET Request?}
@@ -27,10 +26,8 @@ flowchart TD
     I -->|Yes| J[Store in Cache]
     J --> K
 
-    %% CHAIN THE AUXILIARY LOGIC UNDER THE MAIN FLOW
     K --> L{{Select Cache Provider}}
 
-    %% CACHE PROVIDER (VERTICAL)
     subgraph "Cache Provider Selection"
         direction TB
         L --> L1{Provider Type?}
@@ -43,7 +40,6 @@ flowchart TD
         O -->|No & No Fallback| P[No Caching]
     end
 
-    %% CACHE KEY GENERATION (VERTICAL SEQUENCE)
     M & NOK --> Q[Build Cache Key]
 
     subgraph "Cache Key Generation"
@@ -54,7 +50,6 @@ flowchart TD
         T --> U[+ Accept-Language]
     end
 
-    %% CACHE DURATION (VERTICAL)
     U --> V{Cache-Control Header?}
 
     subgraph "Cache Duration Determination"
@@ -68,93 +63,103 @@ flowchart TD
 
 ## Providers
 
-Portway offers two different caching providers to suit various deployment scenarios and performance requirements. Each provider has distinct characteristics that make it suitable for different use cases.
+| Provider | Use case |
+|----------|----------|
+| `Memory` | Single-instance deployments. Fastest; cache lost on restart. |
+| `Redis` | Multi-instance or load-balanced deployments. Persists across restarts; shared across instances. |
 
-### In-Memory Cache
-The in-memory cache is the default option that provides fast, local caching with minimal setup:
+## Configuration
 
-- Default caching mechanism with no external dependencies
-- Stores cached items in the application's memory
-- Ideal for single-instance deployments
-- Fastest response times for cached content
-- Cache is lost on application restart
+```json
+{
+  "Caching": {
+    "Enabled": true,
+    "DefaultCacheDurationSeconds": 300,
+    "ProviderType": "Memory",
+    "MemoryCacheMaxItems": 10000,
+    "MemoryCacheSizeLimitMB": 100,
+    "CacheableContentTypes": [
+      "application/json",
+      "text/json"
+    ],
+    "EndpointCacheDurations": {
+      "Products": 600,
+      "Customers": 300
+    }
+  }
+}
+```
 
-### Redis Distributed Cache
-For more robust, enterprise deployments, the Redis distributed cache offers advanced features:
+### Property Reference
 
-- Enterprise-grade distributed caching
-- Persistence across application restarts
-- Cross-instance cache sharing for load-balanced deployments
-- Configurable memory limits and eviction policies
-- Advanced monitoring capabilities
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Enabled` | boolean | `true` | Enable response caching |
+| `DefaultCacheDurationSeconds` | integer | `300` | Default TTL for cached responses |
+| `ProviderType` | string | `"Memory"` | Cache backend: `"Memory"` or `"Redis"` |
+| `MemoryCacheMaxItems` | integer | `10000` | Maximum number of items in memory cache |
+| `MemoryCacheSizeLimitMB` | integer | `100` | Memory cap in MB |
+| `CacheableContentTypes` | array | `["application/json", ...]` | Only cache responses with these content types |
+| `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
 
-## Cache Configuration
+### Redis Configuration
 
-Portway's caching system offers extensive configuration options to tailor caching behavior to your specific requirements. The following tables detail the available settings and their default values.
+```json
+{
+  "Caching": {
+    "ProviderType": "Redis",
+    "Redis": {
+      "ConnectionString": "localhost:6379",
+      "InstanceName": "Portway:",
+      "Database": 0,
+      "UseSsl": false,
+      "ConnectTimeoutMs": 5000,
+      "AbortOnConnectFail": false,
+      "FallbackToMemoryCache": true,
+      "MaxRetryAttempts": 3,
+      "RetryDelayMs": 200
+    }
+  }
+}
+```
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Enabled | Master switch to enable/disable caching | true |
-| ProviderType | Cache provider: "Memory" or "Redis" | Memory |
-| DefaultCacheDurationSeconds | Default cache lifetime in seconds | 300 |
-| MemoryCacheMaxItems | Maximum items in memory cache | 10,000 |
-| MemoryCacheSizeLimitMB | Memory cache size limit | 100 |
-| EndpointCacheDurations | Per-endpoint cache durations | varies |
-| CacheableContentTypes | Content types eligible for caching | application/json, text/xml |
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `ConnectionString` | string | `"localhost:6379"` | Redis connection string |
+| `InstanceName` | string | `"Portway:"` | Key prefix for all cache entries |
+| `Database` | integer | `0` | Redis logical database index |
+| `UseSsl` | boolean | `false` | Use TLS for the Redis connection |
+| `ConnectTimeoutMs` | integer | `5000` | Connection timeout in milliseconds |
+| `AbortOnConnectFail` | boolean | `false` | Throw on connection failure instead of retrying |
+| `FallbackToMemoryCache` | boolean | `true` | Fall back to in-process memory cache if Redis is unavailable |
+| `MaxRetryAttempts` | integer | `3` | Retry attempts on transient Redis errors |
+| `RetryDelayMs` | integer | `200` | Delay between retry attempts in milliseconds |
 
-### Redis-Specific Settings
+## Cache Behaviour
 
-When using Redis as your cache provider, these additional settings allow fine-tuning of the Redis connection and behavior:
+### What is cached
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| ConnectionString | Redis server connection string | localhost:6379 |
-| InstanceName | Prefix for Redis keys | Portway: |
-| Database | Redis database number | 0 |
-| UseSsl | Enable SSL for Redis connection | false |
-| ConnectTimeoutMs | Connection timeout in milliseconds | 5000 |
-| FallbackToMemoryCache | Use memory cache if Redis fails | true |
-| MaxRetryAttempts | Max retry attempts for Redis operations | 3 |
-| RetryDelayMs | Delay between retries in milliseconds | 200 |
+- GET requests to SQL and Proxy endpoints
+- Responses with content types listed in `CacheableContentTypes`
+- Successful responses (`2xx` status codes)
 
-## Behavior
-
-Understanding what gets cached and what doesn't is crucial for optimizing your caching strategy. The following sections explain the caching rules implemented in Portway.
-
-### What Gets Cached
-Portway's caching system selectively caches responses based on the following criteria:
-
-- GET requests to proxy endpoints
-- GET requests to SQL endpoints
-- Responses with cacheable content types
-- Successful responses (status codes 2xx)
-
-### What Doesn't Get Cached
-Certain types of requests and responses are deliberately excluded from caching:
+### What is not cached
 
 - POST, PUT, DELETE, PATCH requests
-- SOAP requests and responses
-- Error responses (status codes 4xx, 5xx)
-- Requests with authentication-specific caching rules
-- Non-cacheable content types
+- Error responses (`4xx`, `5xx`)
+- Responses with non-cacheable content types
 
-### Cache Keys
-The system generates unique cache keys based on multiple factors to ensure proper cache isolation. Keys are automatically generated based on:
+### Cache keys
 
-- Request URL and query parameters
-- Environment and endpoint name
-- Authentication context (securely hashed)
-- Accept-Language header
+Keys are generated from: request URL + query string, environment and endpoint name, hashed authentication context, and `Accept-Language` header.
+
+### Cache invalidation
+
+Cache entries expire after their configured TTL. A non-GET operation on the same endpoint also invalidates its cache entries. Memory cache is cleared on application restart; Redis persists.
 
 ## Cache Durations
 
-Portway provides flexible options for controlling how long items remain in the cache. This allows you to balance performance with data freshness based on your specific needs.
-
-### Default Duration
-All cacheable responses are stored for the configured DefaultCacheDurationSeconds (default: 300 seconds / 5 minutes).
-
-### Per-Endpoint Durations
-You can configure custom durations for specific endpoints to match their data volatility patterns:
+All cacheable responses use `DefaultCacheDurationSeconds` unless overridden. Override specific endpoints with `EndpointCacheDurations`:
 
 ```json
 "EndpointCacheDurations": {
@@ -164,260 +169,55 @@ You can configure custom durations for specific endpoints to match their data vo
 }
 ```
 
-### Cache-Control Overrides
-Responses with explicit Cache-Control headers will use their max-age value instead of the default or per-endpoint settings:
+Responses with an explicit `Cache-Control: max-age=N` header use that value instead.
 
-```
-Cache-Control: public, max-age=600
-```
+## High-Availability Redis
 
-## Cache Management
-
-Effective cache management ensures your system maintains optimal performance while serving fresh data. Portway provides several mechanisms for cache control and monitoring.
-
-### Cache Invalidation
-Cache entries are automatically invalidated under the following conditions:
-
-- After their configured duration expires
-- When a non-GET operation is performed on the same endpoint
-- When the application restarts (memory cache only)
-
-
-### Statistics
-The health endpoint `/health/details` provides comprehensive cache statistics to help monitor performance:
-
-- Current cache size and item count
-- Hit/miss ratio
-- Memory usage
-- Connection status for Redis
-
-## Performance Impact
-
-Caching significantly improves system performance, but it's important to understand the trade-offs. This section outlines the performance characteristics of Portway's caching system.
-
-### Cache Hit On Performance
-The performance improvement varies by cache provider:
-
-- In-memory: 10-20x faster than uncached requests
-- Redis: 5-10x faster than uncached requests
-
-### Memory Usage
-Different cache providers have different memory management characteristics:
-
-- In-memory: Configurable with MemoryCacheSizeLimitMB
-- Redis: Managed by Redis server, configurable through Redis configuration
-
-### Network Impact
-Network overhead depends on the cache provider:
-
-- In-memory: No network overhead
-- Redis: Adds minor network latency (typically 1-3ms)
-
-## High-Availability Configuration
-
-For production environments with demanding uptime requirements, Portway supports high-availability caching configurations. These options ensure your caching layer remains resilient and performant even under failure conditions.
-
-### Redis Sentinel Support
-For high-availability Redis deployments, you can configure Redis Sentinel to provide automatic failover:
+### Sentinel
 
 ```json
 "Redis": {
   "ConnectionString": "sentinel-master-name,sentinel1:26379,sentinel2:26379",
-  "InstanceName": "Portway:",
-  "Database": 0
+  "InstanceName": "Portway:"
 }
 ```
 
-### Redis Cluster Support
-For horizontally scalable Redis deployments that can handle larger datasets and higher throughput:
+### Cluster
 
 ```json
 "Redis": {
   "ConnectionString": "redis1:6379,redis2:6379,redis3:6379",
-  "InstanceName": "Portway:",
-  "Database": 0
+  "InstanceName": "Portway:"
 }
 ```
 
-### Fallback Behavior
-Portway implements sophisticated fallback mechanisms when Redis connectivity issues occur. When Redis is unavailable and FallbackToMemoryCache is enabled:
+When `FallbackToMemoryCache` is `true` and Redis becomes unavailable, Portway switches to in-memory caching automatically and logs a warning. It resumes Redis caching when the connection is restored.
 
-- Automatically switches to in-memory caching
-- Logs warning message
-- Periodically attempts to reconnect to Redis
-- Seamlessly returns to Redis when connection is restored
+## Cache Statistics
 
-## Security Considerations
+`GET /health/details` includes cache statistics: item count, hit/miss ratio, memory usage, and Redis connection status.
 
-Caching systems can introduce security considerations that should be addressed in your deployment. This section outlines key security aspects to consider.
+## Troubleshooting
 
-### Redis Security
-Redis has minimal security by default, so additional measures are recommended for production:
-
-- Redis has no authentication by default
-- Enable Redis authentication for production
-- Configure SSL for encrypted connections
-- Apply network-level security (VPC, firewall rules)
-
-### Sensitive Data
-Portway implements several measures to protect sensitive information in the cache:
-
-- Authorization tokens are hashed before use in cache keys
-- Sensitive headers are not cached
-- Response content is stored as-is, review data sensitivity
-
-### Redis Configuration
-Production deployments should configure Redis with these security measures:
-
-- Redis authentication (password)
-- Binding to specific network interfaces
-- Memory limits and eviction policies
-- SSL certificate configuration (if using SSL)
-
-## Monitoring and Troubleshooting
-
-Effective monitoring and troubleshooting are essential for maintaining a healthy caching system. Portway provides tools and information to help identify and resolve cache-related issues.
-
-### Cache Health Check
-Portway includes a health check endpoint that provides detailed Redis status information:
-
-```json
-{
-  "status": "Healthy",
-  "tags": ["cache", "redis", "readiness"],
-  "data": {
-    "127.0.0.1:6379": {
-      "redis_version": "7.0.11",
-      "uptime_in_seconds": "86400",
-      "connected_clients": "5",
-      "used_memory_human": "15.50M"
-    }
-  }
-}
-```
-
-### Common Issues
-
-When troubleshooting caching problems, consider these common issues and their solutions:
-
-1. **Redis Connection Failures**
-   - Check Redis server is running
-   - Verify connection string
-   - Ensure network connectivity
-   - Check for firewall blocking
-
-2. **Cache Not Working**
-   - Verify Caching:Enabled is true
-   - Check endpoint is using GET method
-   - Verify content type is in CacheableContentTypes
-   - Look for cache-related log entries
-
-3. **High Memory Usage**
-   - Reduce DefaultCacheDurationSeconds
-   - Lower MemoryCacheMaxItems
-   - Configure Redis maxmemory and eviction policy
-   - Consider caching fewer endpoints
-
-### Diagnostic Commands
-
-When troubleshooting Redis-specific issues, these commands can help diagnose problems:
+### Redis diagnostic commands
 
 ```
-# Check Redis connection
 redis-cli ping
-
-# Monitor cache operations in real-time
-redis-cli monitor
-
-# See memory usage
 redis-cli info memory
-
-# View cache keys
 redis-cli keys "Portway:*"
-
-# Check TTL for a specific key
 redis-cli ttl "Portway:proxy:600:Products::"
 ```
 
-## Performance Optimization
+### Common issues
 
-Optimizing your caching strategy can significantly improve application performance. This section provides guidance on tuning your cache configuration for maximum benefit.
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| Cache not working | `Caching.Enabled` is false, or non-GET request | Set `Enabled: true`; confirm it's a GET |
+| Content type not cached | Not in `CacheableContentTypes` | Add the content type |
+| Redis connection failures | Wrong connection string or unreachable server | Verify `ConnectionString`; check firewall |
+| High memory usage | Long TTL or too many items | Reduce `DefaultCacheDurationSeconds` or `MemoryCacheMaxItems` |
 
-### Optimizing Cache Efficiency
-To get the most from your caching implementation, consider these strategies:
+## Related Topics
 
-- Cache high-frequency, low-change-rate endpoints
-- Set appropriate cache durations based on data volatility
-- Consider caching at multiple levels (API gateway, CDN)
-
-### Cache Duration Strategy
-Different types of data benefit from different caching durations:
-
-- Static reference data: Long duration (hours)
-- Frequently accessed data: Medium duration (minutes) 
-- User-specific data: Short duration (seconds)
-- Time-sensitive data: Very short duration or no caching
-
-### Redis Performance Tuning
-When using Redis as your cache provider, these optimizations can improve performance:
-
-- Enable Redis persistence for critical data
-- Configure appropriate maxmemory-policy
-- Use pipelining for batch operations
-- Consider Redis cluster for high throughput
-
-## Best Practices
-
-Following these best practices will help you implement and maintain an effective caching strategy with Portway.
-
-### 1. Cache Selection
-Choose the right caching provider for your deployment scenario:
-
-- Use in-memory caching for single instances
-- Use Redis for multi-instance deployments
-- Enable FallbackToMemoryCache for reliability
-
-### 2. Cache Duration
-Set appropriate cache durations to balance performance with data freshness:
-
-- Set appropriate durations per endpoint
-- Consider data volatility in duration settings
-- Use longer durations for static data
-
-### 3. Content Types
-Configure which content types should be cached:
-
-- Cache JSON and XML responses by default
-- Add other content types as needed
-- Exclude binary data unless necessary
-
-### 4. Monitoring
-Implement proper monitoring to ensure cache health:
-
-- Regular health checks
-- Track cache hit/miss rates
-- Monitor memory usage
-- Watch for Redis connection issues
-
-## Scaling Considerations
-
-As your system grows, your caching strategy may need to evolve. This section outlines key considerations for scaling your caching implementation.
-
-### Horizontal Scaling
-When adding more application instances, consider these caching implications:
-
-- Redis provides cross-instance caching
-- In-memory cache requires sticky sessions
-
-### Vertical Scaling
-To handle more data without adding instances:
-
-- Increase MemoryCacheSizeLimitMB for larger datasets
-- Configure Redis memory limits appropriately
-
-### Geographic Distribution
-For globally distributed applications:
-
-- Consider Redis replicas for read-scaling
-- Use Redis cluster for geo-distributed deployments
-- Configure regional Redis instances for multi-region deployments
+- [Monitoring](/guide/monitoring) — cache configuration via the Web UI
+- [Application Settings](/reference/app-settings) — full `appsettings.json` reference

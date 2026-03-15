@@ -2,8 +2,9 @@
 layout: home
 
 hero:
-  name: "Portway" 
-  tagline: A lightweight API for Windows Server. Reliable and secure data access and service proxying.
+  name: "Portway"
+  text: "API Gateway for Windows"
+  tagline: Expose SQL databases, proxy services, and handle webhooks — configured with JSON, no code required.
   image:
     src: /logo.png
     alt: Portway
@@ -14,32 +15,18 @@ hero:
     - theme: alt
       text: Download
       link: https://github.com/melosso/portway/releases/
-    - theme: alt
-      text: View on GitHub
-      link: https://github.com/melosso/portway
 
 features:
   - icon: 🗄️
-    title: Multiple Endpoint Types
-    details: Connect SQL databases (SQL Server, PostgreSQL, MySQL, SQLite) with OData support, proxy internal services, and process webhooks - all through a unified API gateway.
+    title: Six endpoint types
+    details: SQL with OData, HTTP proxy, static files, composite workflows, file system, and webhooks.
   - icon: 🔐
-    title: Enterprise Security
-    details: Token-based authentication with scoped access, environment restrictions, and optional Azure Key Vault integration.
+    title: Token authentication
+    details: Scoped Bearer tokens — restricted by endpoint, environment, and method. PBKDF2-SHA256 hashed.
   - icon: 🌍
-    title: Environment Aware
-    details: Route requests to different environments (dev, test, prod) with isolated configurations and access controls.
-  - icon: 📊
-    title: Developer Friendly
-    details: Automatic OpenAPI documentation, comprehensive logging, rate limiting, and easy configuration.
+    title: Environment isolation
+    details: Separate dev, test, and prod environments with independent connection strings and access rules.
+  - icon: 🖥️
+    title: Web UI
+    details: Manage tokens, browse logs, and monitor health from the browser. No CLI required.
 ---
-
-## Quick Start
-
-Install Portway and have your API gateway running in minutes:
-
-1. Download the [latest release](https://github.com/melosso/portway/releases/)
-2. Extract the files and configure the website in Internet Information Services
-3. Configure the environment(s) and endpoint(s)
-4. Start your website and enjoy!
-
-Ready to configure your first endpoint? Check out our [Getting Started Guide](/guide/getting-started). 
