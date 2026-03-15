@@ -118,7 +118,7 @@ GET /api/500/Documents?$filter=endswith(FileName,'.pdf')
 GET /api/500/Products?$filter=contains(Description,'premium') and startswith(ItemCode,'P')
 ```
 
-All string comparisons are case-sensitive. `startswith` is typically faster than `contains` because it can use index range scans. There is no wildcard syntax — use `contains`, `startswith`, or `endswith` instead.
+All string comparisons are case-sensitive. `startswith` is typically faster than `contains` because it can use index range scans. There is no wildcard syntax, use `contains`, `startswith`, or `endswith` instead.
 
 ## Working with Data Types
 

@@ -98,23 +98,23 @@ When a request arrives, Portway:
 # Correct
 Authorization: Bearer your_token_here
 
-# Incorrect — missing "Bearer" prefix
+# Incorrect: missing "Bearer" prefix
 Authorization: your_token_here
 ```
 
 ## Token Lifecycle
 
-1. **Create** — generate a token with defined scopes and environment restrictions in the Web UI
-2. **Distribute** — share the token value securely with the service or user
-3. **Use** — include in `Authorization: Bearer` header on every request
-4. **Rotate** — generate a replacement before the old token expires; the old token is invalidated
-5. **Revoke** — immediately invalidate a compromised or unused token
+1. **Create**: generate a token with defined scopes and environment restrictions in the Web UI
+2. **Distribute**: share the token value securely with the service or user
+3. **Use**: include in `Authorization: Bearer` header on every request
+4. **Rotate**: generate a replacement before the old token expires; the old token is invalidated
+5. **Revoke**: immediately invalidate a compromised or unused token
 
 Revocation is permanent. A revoked token cannot be reactivated.
 
 ## Related Topics
 
-- [Web UI guide](/guide/webui) — create, revoke, rotate, and audit tokens
-- [Security guide](/guide/security) — incident response for compromised tokens
-- [HTTP Headers](/reference/headers) — full header reference
-- [Token audit log](/reference/token-generator) — audit trail schema
+- [Web UI guide](/guide/webui): create, revoke, rotate, and audit tokens
+- [Security guide](/guide/security): incident response for compromised tokens
+- [HTTP Headers](/reference/headers): full header reference
+- [Token audit log](/reference/token-generator): audit trail schema

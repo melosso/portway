@@ -41,7 +41,7 @@ endpoints/Static/ProductionMachine/
 | `EnableFiltering` | No | boolean | Enable OData filtering. Defaults to `false` |
 | `IsPrivate` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
 | `AllowedEnvironments` | Yes | array | Environments where this endpoint responds |
-| `Documentation` | No | object | OpenAPI metadata — tag description and per-method descriptions |
+| `Documentation` | No | object | OpenAPI metadata |
 
 ## Supported content types
 
@@ -65,8 +65,8 @@ GET /api/prod/ProductionMachine?$select=id,name,status
 When filtering is applied, the response includes:
 
 - `X-Filtering-Status: Applied`
-- `X-Total-Count` — total items before filtering
-- `X-Returned-Count` — items returned after filtering
+- `X-Total-Count`, total items before filtering
+- `X-Returned-Count`, items returned after filtering
 
 ## Next steps
 

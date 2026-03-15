@@ -159,4 +159,4 @@ You'll see:
 
 ## Security Notes
 
-Set a strong `PORTWAY_ENCRYPTION_KEY` in production using a machine-level environment variable. Back up the `.core` folder securely — without it you cannot decrypt your settings. Never commit `.core` to source control. Use different encryption keys for different environments.
+Set a strong `PORTWAY_ENCRYPTION_KEY` in production using a machine-level environment variable. Back up the `.core` folder securely, without it you cannot decrypt your settings. Never commit `.core` to source control. Use different encryption keys for different environments.

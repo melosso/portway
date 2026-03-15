@@ -4,7 +4,7 @@
   --vp-c-brand-3: #7B9BED;
   --vp-c-brand-soft: rgba(62, 99, 221, 0.14);
 
-  --vp-home-hero-image-background-image: radial-gradient(ellipse, #402DDB 0%, #229AFC 55%, transparent 75%);
+  --vp-home-hero-image-background-image: radial-gradient(ellipse, rgba(64, 45, 219, 0.1) 0%, rgba(34, 154, 252, 0.1) 55%, transparent 75%);
   --vp-home-hero-image-filter: blur(64px);
 }
 

@@ -5,7 +5,7 @@
 For Docker-based deployment, see [Docker Installation](docker-compose.md).
 
 :::info
-This guide assumes working knowledge of IIS and your network/data sources. The steps cover the required configuration — some details depend on your existing environment.
+This guide assumes working knowledge of IIS and your network/data sources. The steps cover the required configuration, some details depend on your existing environment.
 :::
 
 ## Prerequisites
@@ -62,8 +62,8 @@ If any proxy endpoint needs NTLM pass-through (e.g. for Exact Globe+ or AFAS Pro
 Start the website. On first run, Portway creates `tokens/`, `log/`, and `auth.db` automatically.
 
 Verify the application is running:
-- `https://localhost/health/live` — returns `Alive`
-- `https://localhost/docs` — OpenAPI documentation interface
+- `https://localhost/health/live`, returns `Alive`
+- `https://localhost/docs`, OpenAPI documentation interface
 
 ## Initial configuration
 
@@ -151,10 +151,10 @@ See [Security](./security) for the full security configuration reference.
 
 Include these in your backup plan:
 
-- `auth.db` — authentication database
-- `tokens/` — token files
-- `environments/` — connection strings and settings
-- `endpoints/` — endpoint definitions
+- `auth.db` for authentication database
+- `tokens/` for token files
+- `environments/` for connection strings and settings
+- `endpoints/` for endpoint definitions
 
 For upgrades, see [Upgrading Portway](./upgrading).
 

@@ -3,10 +3,10 @@
 > Expose SQL tables, views, stored procedures, and table-valued functions as REST endpoints with OData filtering.
 
 :::warning
-Before exposing any table or view through Portway, verify you understand the database permissions in play and the data contained in those objects. Portway enforces column-level restrictions — but only for columns you explicitly configure.
+Before exposing any table or view through Portway, verify you understand the database permissions in play and the data contained in those objects. Portway enforces column-level restrictions, but only for columns you explicitly configure.
 :::
 
-SQL endpoints support four backends — SQL Server, PostgreSQL, MySQL, and SQLite. Portway selects the correct driver automatically from the connection string in the environment's `settings.json`. No changes to endpoint configuration are needed when working across providers.
+SQL endpoints support four backends, SQL Server, PostgreSQL, MySQL, and SQLite. Portway selects the correct driver automatically from the connection string in the environment's `settings.json`. No changes to endpoint configuration are needed when working across providers.
 
 :::info
 Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full capability matrix.
@@ -99,7 +99,7 @@ GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price d
 
 ## Write operations
 
-### POST — create a record
+### POST: create a record
 
 ```http
 POST /api/prod/Products
@@ -113,7 +113,7 @@ Content-Type: application/json
 }
 ```
 
-### PUT — update a record
+### PUT: update a record
 
 Include the primary key in the request body:
 
@@ -128,7 +128,7 @@ Content-Type: application/json
 }
 ```
 
-### DELETE — remove a record
+### DELETE: remove a record
 
 ```http
 DELETE /api/prod/Products?id=abc123
@@ -175,7 +175,7 @@ Stored procedures handle write operations only. GET requests use the standard OD
 
 ## Table-valued functions
 
-TVFs support parameterized queries — useful for reporting, generated datasets, or complex parameterized lookups that views cannot express.
+TVFs support parameterized queries, useful for reporting, generated datasets, or complex parameterized lookups that views cannot express.
 
 ```json
 {
@@ -222,7 +222,7 @@ GET /api/dev/Departments?UserCount=50&$top=20&$orderby=FirstName
 
 ## Column-level access control
 
-Use `AllowedColumns` to exclude sensitive fields from API responses and requests. Any column not listed is invisible to callers — it is neither returned in GET results nor accepted in POST/PUT bodies.
+Use `AllowedColumns` to exclude sensitive fields from API responses and requests. Any column not listed is invisible to callers, it is neither returned in GET results nor accepted in POST/PUT bodies.
 
 ```json
 {
@@ -239,13 +239,13 @@ Columns containing credentials, SSNs, financial data, or internal system fields 
 
 ## Troubleshooting
 
-**"Column not allowed"** — The column is not listed in `AllowedColumns`, or the name does not match exactly (case-sensitive).
+**"Column not allowed"**: The column is not listed in `AllowedColumns`, or the name does not match exactly (case-sensitive).
 
-**"Method not allowed"** — Add the HTTP method to `AllowedMethods`, and ensure the stored procedure handles it if one is configured.
+**"Method not allowed"**: Add the HTTP method to `AllowedMethods`, and ensure the stored procedure handles it if one is configured.
 
-**No results returned** — Verify filter syntax, check that data exists in the target environment, and confirm database permissions for the connection string account.
+**No results returned**: Verify filter syntax, check that data exists in the target environment, and confirm database permissions for the connection string account.
 
-**Performance issues** — Add indexes on columns used in `$filter` and `$orderby`. Use `$top` to limit result set size. Consider stored procedures for complex multi-table queries.
+**Performance issues**: Add indexes on columns used in `$filter` and `$orderby`. Use `$top` to limit result set size. Consider stored procedures for complex multi-table queries.
 
 To increase log verbosity:
 

@@ -2,7 +2,7 @@
 
 > Forward requests to internal HTTP/HTTPS services through a consistent, authenticated gateway URL.
 
-Proxy endpoints route incoming requests to an internal service and return its response. Portway adds token authentication, environment headers, and URL rewriting — the internal service receives the request transparently without needing to know about the gateway.
+Proxy endpoints route incoming requests to an internal service and return its response. Portway adds token authentication, environment headers, and URL rewriting, the internal service receives the request transparently without needing to know about the gateway.
 
 :::info
 If your backend requires NTLM authentication (e.g. Exact Globe+ or Exact Synergy), bind the IIS Application Pool identity to a domain user with the necessary permissions to reach those services.
@@ -82,7 +82,7 @@ GET responses are cached for 5 minutes by default. The cache key includes the UR
 
 ## Private endpoints
 
-Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `/docs`. The endpoint still functions normally — it is simply not listed.
+Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `/docs`. The endpoint still functions normally, it is simply not listed.
 
 ```json
 {
@@ -115,13 +115,13 @@ Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `
 
 ## Troubleshooting
 
-**"Connection refused"** — Verify the target service is running and reachable from the Portway host. Check port numbers and firewall rules.
+**"Connection refused"**: Verify the target service is running and reachable from the Portway host. Check port numbers and firewall rules.
 
-**"Method not allowed"** — Verify the HTTP method is listed in `Methods`.
+**"Method not allowed"**: Verify the HTTP method is listed in `Methods`.
 
-**URL rewriting issues** — If clients receive internal hostnames in responses, check whether the internal service generates absolute URLs in its response body.
+**URL rewriting issues**: If clients receive internal hostnames in responses, check whether the internal service generates absolute URLs in its response body.
 
-**Slow responses** — Enable request traffic logging to measure where latency is occurring:
+**Slow responses**: Enable request traffic logging to measure where latency is occurring:
 
 ```json
 {
@@ -135,6 +135,6 @@ Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `
 
 ## Next steps
 
-- [Composite Endpoints](./endpoints-composite) — orchestrate multiple proxy steps
-- [Environments](./environments) — configure per-environment headers and auth
+- [Composite Endpoints](./endpoints-composite): orchestrate multiple proxy steps
+- [Environments](./environments): configure per-environment headers and auth
 - [Security](./security)

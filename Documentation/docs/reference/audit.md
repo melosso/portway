@@ -1,6 +1,6 @@
 # Auditing
 
-Request traffic logging captures per-request detail — timing, payloads, headers, and response data — and writes it to file or SQLite storage for later querying.
+Request traffic logging captures per-request detail (timing, payloads, headers, and response data) and writes it to file or SQLite storage for later querying.
 
 ## Configuration
 
@@ -184,7 +184,7 @@ Request and response bodies are:
 
 ## Performance Considerations
 
-Traffic logging adds I/O overhead. The queue-based design minimises impact on request latency — writes happen in background batches — but high-volume deployments should tune the settings below.
+Traffic logging adds I/O overhead. The queue-based design minimises impact on request latency, writes happen in background batches, but high-volume deployments should tune the settings below.
 
 | Setting | Recommendation |
 |---------|---------------|
@@ -271,7 +271,7 @@ ORDER BY RequestCount DESC;
 | Symptom | Check |
 |---------|-------|
 | Logs not written | `Enabled: true` in config; write permissions on `LogDirectory` / `SqlitePath`; check application logs |
-| Missing entries | Queue may be full — increase `QueueCapacity`; verify `FlushIntervalMs` is not too high |
+| Missing entries | Queue may be full, increase `QueueCapacity`; verify `FlushIntervalMs` is not too high |
 | High performance impact | Disable body capture; increase `BatchSize` and `FlushIntervalMs`; switch to file storage |
 | Disk filling up | Reduce `MaxFileCount`; reduce `MaxBodyCaptureSizeBytes`; disable body capture |
 | SQLite errors | Check file permissions; ensure path directory exists; validate with `sqlite3 log/traffic_logs.db .tables` |

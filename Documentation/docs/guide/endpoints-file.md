@@ -140,13 +140,13 @@ File endpoints require the `Authorization` header. Direct `<img src>` or `<embed
 
 ## Troubleshooting
 
-**File list returns empty** — If `BaseDirectory` uses `{env}`, verify Portway created the correct path. A literal folder named `{env}` indicates the placeholder was not resolved. Move files to the correct path under the actual environment name.
+**File list returns empty**: If `BaseDirectory` uses `{env}`, verify Portway created the correct path. A literal folder named `{env}` indicates the placeholder was not resolved. Move files to the correct path under the actual environment name.
 
-**"File size exceeds maximum"** — The file exceeds the 50MB default. Either compress the file or increase the limit in system settings.
+**"File size exceeds maximum"**: The file exceeds the 50MB default. Either compress the file or increase the limit in system settings.
 
-**"Extension not allowed"** — Add the extension to `AllowedExtensions` in the endpoint config, or convert the file to an allowed format.
+**"Extension not allowed"**: Add the extension to `AllowedExtensions` in the endpoint config, or convert the file to an allowed format.
 
-**"File not found" on download** — Confirm you are using the `fileId` from a list response (not the filename), that you are requesting from the correct environment, and that the file has not been deleted.
+**"File not found" on download**: Confirm you are using the `fileId` from a list response (not the filename), that you are requesting from the correct environment, and that the file has not been deleted.
 
 Files are stored at predictable paths: `files/{environment}/{baseDirectory}/{filename}`. Application logs at `log/portwayapi-[date].log` record upload and download events.
 

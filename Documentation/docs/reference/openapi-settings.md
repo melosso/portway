@@ -2,7 +2,7 @@
 
 > Configuration reference for OpenAPI schema generation and the Scalar documentation UI.
 
-Portway generates OpenAPI documentation from endpoint definitions and exposes it through Scalar at `/docs`. SQL endpoints include schema discovery — column names and types are read from the database at startup. All other endpoint types use the `Documentation` block in `entity.json` for descriptions.
+Portway generates OpenAPI documentation from endpoint definitions and exposes it through Scalar at `/docs`. SQL endpoints include schema discovery, column names and types are read from the database at startup. All other endpoint types use the `Documentation` block in `entity.json` for descriptions.
 
 ## Global OpenAPI Configuration
 

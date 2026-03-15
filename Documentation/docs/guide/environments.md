@@ -2,7 +2,7 @@
 
 > Route API requests to different servers, databases, and configurations by environment name.
 
-Each request URL includes an environment segment — `/api/{environment}/{endpoint}`. Portway maps that name to a folder under `environments/`, which defines the connection string, server name, custom headers, and access rules for that target. Development, testing, and production configurations are completely separate.
+Each request URL includes an environment segment, `/api/{environment}/{endpoint}`. Portway maps that name to a folder under `environments/`, which defines the connection string, server name, custom headers, and access rules for that target. Development, testing, and production configurations are completely separate.
 
 ## Directory structure
 
@@ -18,7 +18,7 @@ environments/
 ```
 
 :::info
-Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any identifier meaningful to your organisation — `WMS`, `Synergy`, `500`. The folder name becomes the URL segment.
+Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any identifier meaningful to your organisation, `WMS`, `Synergy`, `500`. The folder name becomes the URL segment.
 :::
 
 ### Global settings
@@ -40,7 +40,7 @@ Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any ident
 | `AllowedEnvironments` | Yes | Names of environments accessible via the API. Requests to any name not listed return 404 |
 
 :::warning
-Adding a folder under `environments/` is not enough — the name must also appear in `AllowedEnvironments` before Portway will route requests to it.
+Adding a folder under `environments/` is not enough, the name must also appear in `AllowedEnvironments` before Portway will route requests to it.
 :::
 
 ### Environment settings
@@ -66,7 +66,7 @@ Each environment's `settings.json` defines its connection and forwarding configu
 
 ## SQL provider detection
 
-Portway selects the SQL driver automatically from the connection string — no additional configuration needed. Switching databases for an environment is as simple as updating `ConnectionString`.
+Portway selects the SQL driver automatically from the connection string, no additional configuration needed. Switching databases for an environment is as simple as updating `ConnectionString`.
 
 | Provider | Detection signal |
 |---|---|
@@ -86,7 +86,7 @@ For full detection priority rules and per-provider capability differences, see t
 
 ## Configuration examples
 
-**SQL Server — production (Windows Authentication):**
+**SQL Server, production (Windows Authentication):**
 ```json
 {
   "ServerName": "PROD-SQL-CLUSTER",
@@ -94,7 +94,7 @@ For full detection priority rules and per-provider capability differences, see t
 }
 ```
 
-**SQL Server — development (SQL auth):**
+**SQL Server, development (SQL auth):**
 ```json
 {
   "ServerName": "DEV-SQL-01",
@@ -168,7 +168,7 @@ Both restrictions apply. The token must permit the environment **and** the endpo
 
 ## Per-environment authentication
 
-Portway supports environment-specific authentication methods for backends that require their own credentials — API keys, Basic Auth, Bearer tokens, JWT, or HMAC.
+Portway supports environment-specific authentication methods for backends that require their own credentials, API keys, Basic Auth, Bearer tokens, JWT, or HMAC.
 
 Add an `Authentication` block to the environment's `settings.json`:
 
@@ -248,13 +248,13 @@ Headers defined in `settings.json` are added to all forwarded requests for that 
 
 ## Troubleshooting
 
-**"Environment not in the allowed list"** — Add the environment name to `AllowedEnvironments` in `environments/settings.json`.
+**"Environment not in the allowed list"**: Add the environment name to `AllowedEnvironments` in `environments/settings.json`.
 
-**"Settings.json not found for environment"** — Create `environments/{name}/settings.json`. The folder must exist and contain the file.
+**"Settings.json not found for environment"**: Create `environments/{name}/settings.json`. The folder must exist and contain the file.
 
-**"Access denied to environment"** — The token does not have permission for this environment. Update token permissions in the [Web UI](./webui) under **Tokens**.
+**"Access denied to environment"**: The token does not have permission for this environment. Update token permissions in the [Web UI](./webui) under **Tokens**.
 
-**Unexpected SQL syntax errors** — The connection string may not contain enough signal for provider auto-detection. Check the [SQL Providers reference](/reference/sql-providers) for required keywords.
+**Unexpected SQL syntax errors**: The connection string may not contain enough signal for provider auto-detection. Check the [SQL Providers reference](/reference/sql-providers) for required keywords.
 
 To increase log verbosity for environment issues:
 
@@ -272,5 +272,5 @@ To increase log verbosity for environment issues:
 
 - [Configure SQL Endpoints](./endpoints-sql)
 - [Set up Proxy Endpoints](./endpoints-proxy)
-- [Security — token management](./security#managing-tokens)
+- [Security, token management](./security#managing-tokens)
 - [Deploy to production](./deployment)

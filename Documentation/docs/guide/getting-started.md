@@ -55,7 +55,7 @@ Portway starts on port 8080. Adjust the port mapping and volume paths to suit yo
 ### Windows Server (IIS)
 
 :::info
-This guide assumes working knowledge of IIS and your data sources. The steps cover the required configuration — some details will depend on your existing environment.
+This guide assumes working knowledge of IIS and your data sources. The steps cover the required configuration, some details will depend on your existing environment.
 :::
 
 Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).

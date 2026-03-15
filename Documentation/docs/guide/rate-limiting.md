@@ -2,7 +2,7 @@
 
 > Control request volume per IP address and per authentication token.
 
-Rate limiting is enabled by default. Portway applies two independent limits in sequence: an IP-based check on all traffic, then a token-based check on authenticated requests. Both use a sliding window token bucket algorithm — each client gets a bucket that refills at a constant rate and depletes by one per request.
+Rate limiting is enabled by default. Portway applies two independent limits in sequence: an IP-based check on all traffic, then a token-based check on authenticated requests. Both use a sliding window token bucket algorithm, each client gets a bucket that refills at a constant rate and depletes by one per request.
 
 ```mermaid
 graph TD
@@ -37,7 +37,7 @@ graph TD
 | `TokenLimit` | Maximum requests per token per window | `1000` |
 | `TokenWindow` | Window duration in seconds for token limits | `60` |
 
-Rate limits are tracked in memory. In a load-balanced deployment with multiple Portway instances, limits are enforced per instance — not across the cluster.
+Rate limits are tracked in memory. In a load-balanced deployment with multiple Portway instances, limits are enforced per instance, not across the cluster.
 
 ## Rate limit response
 
@@ -93,11 +93,11 @@ For production clients, combine this with exponential backoff, jitter, and a max
 
 ## Troubleshooting
 
-**Legitimate users receiving 429** — Review whether the `IpLimit` is too low for expected traffic. Per-token limits are typically set higher than per-IP limits; if a service account is being rate-limited, increase `TokenLimit`.
+**Legitimate users receiving 429**: Review whether the `IpLimit` is too low for expected traffic. Per-token limits are typically set higher than per-IP limits; if a service account is being rate-limited, increase `TokenLimit`.
 
-**Rate limiting not applying** — Confirm `"Enabled": true` in configuration and that the application has restarted after the change.
+**Rate limiting not applying**: Confirm `"Enabled": true` in configuration and that the application has restarted after the change.
 
-**Limits resetting unexpectedly** — Rate state is in-memory. Any application restart resets all buckets. This is expected behaviour.
+**Limits resetting unexpectedly**: Rate state is in-memory. Any application restart resets all buckets. This is expected behaviour.
 
 Rate limit events are logged at Information level:
 

@@ -2,7 +2,7 @@
 
 > Directory-based grouping for SQL, Proxy, Static, and Composite endpoints that exposes them under `/{namespace}/{endpoint}` URL paths.
 
-Namespaces let you organise related endpoints into logical groups — for example, `CRM`, `Finance`, or `Account` — using the directory structure under each endpoint type folder. The folder name becomes the namespace segment in the request URL.
+Namespaces let you organise related endpoints into logical groups, for example, `CRM`, `Finance`, or `Account`, using the directory structure under each endpoint type folder. The folder name becomes the namespace segment in the request URL.
 
 Files and Webhooks endpoints do not support namespaces; they use the immediate directory name only.
 

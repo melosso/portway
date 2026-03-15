@@ -1,6 +1,6 @@
 # Folder structure and routing
 
-> Portway derives API routes from the `endpoints/` folder hierarchy — no route registration required.
+> Portway derives API routes from the `endpoints/` folder hierarchy, no route registration required.
 
 Each subfolder under `endpoints/` corresponds to an endpoint type. The folder name within each type becomes the endpoint name in the API URL. Portway watches these folders and reloads configuration when files change.
 
