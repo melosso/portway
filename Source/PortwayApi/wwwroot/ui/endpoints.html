@@ -299,7 +299,7 @@ function renderDetail() {
   const isWebhook = type === 'webhook';
 
   const nameDisplay = _renaming
-    ? `<input type="text" id="renameInput" value="${esc(name)}" style="font-size:1rem;font-weight:600;flex:1;min-width:0;border:1px solid hsl(var(--primary));border-radius:var(--radius);padding:0.2rem 0.5rem;background:hsl(var(--background));color:hsl(var(--foreground))" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
+    ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" style="font-size:1rem;font-weight:600;flex:1;min-width:0;border:1px solid hsl(var(--primary));border-radius:var(--radius);padding:0.2rem 0.5rem;background:hsl(var(--background));color:hsl(var(--foreground))" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
        <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
        <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
     : `<h2>${esc(name)}</h2>
