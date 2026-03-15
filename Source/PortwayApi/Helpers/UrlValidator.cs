@@ -151,15 +151,28 @@ public class UrlValidator
             Log.Debug("Validating URL: {Url}", url);
             Log.Debug("Host to validate: {Host}", host);
             
+            // Check allowedHosts first — explicit allowlist bypasses IP range checks
+            bool isHostAllowed = _allowedHosts.Any(allowed =>
+                string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
+                MatchHostPattern(host, allowed));
+
+            if (!isHostAllowed)
+            {
+                Log.Warning("Host {Host} is NOT in allowed hosts", host);
+                Log.Warning("Allowed Hosts: {AllowedHosts}",
+                    string.Join(", ", _allowedHosts));
+                return false;
+            }
+
             var addresses = Dns.GetHostAddresses(host);
-            Log.Debug("Resolved Addresses: {Addresses}", 
+            Log.Debug("Resolved Addresses: {Addresses}",
                 string.Join(", ", addresses.Select(a => a.ToString())));
-            
+
             // Track blocked IPs for detailed logging
             var blockedIps = new List<string>();
-            bool anyIpBlocked = addresses.Any(ip => 
+            bool anyIpBlocked = addresses.Any(ip =>
             {
-                bool isBlocked = _blockedRanges.Any(range => 
+                bool isBlocked = _blockedRanges.Any(range =>
                 {
                     bool inRange = IsIpInRange(ip, range);
                     if (inRange)
@@ -170,24 +183,12 @@ public class UrlValidator
                 });
                 return isBlocked;
             });
-                
+
             if (anyIpBlocked)
             {
                 Log.Warning("Host {Host} blocked due to IP restrictions", host);
-                Log.Warning("Blocked IP Details: {BlockedIpDetails}", 
+                Log.Warning("Blocked IP Details: {BlockedIpDetails}",
                     string.Join(", ", blockedIps));
-                return false;
-            }
-            
-            bool isHostAllowed = _allowedHosts.Any(allowed => 
-                string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
-                MatchHostPattern(host, allowed));
-                
-            if (!isHostAllowed)
-            {
-                Log.Warning("Host {Host} is NOT in allowed hosts", host);
-                Log.Warning("Allowed Hosts: {AllowedHosts}", 
-                    string.Join(", ", _allowedHosts));
                 return false;
             }
             
