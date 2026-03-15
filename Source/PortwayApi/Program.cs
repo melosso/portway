@@ -354,6 +354,7 @@ try
     var app = builder.Build();
     var adminApiKey = builder.Configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
     var publicOrigins = builder.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
+    var enableLandingPage = builder.Configuration.GetValue<bool>("WebUi:EnableLandingPage", true);
     var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
         ?? builder.Configuration["PathBase"];
 
@@ -510,7 +511,7 @@ try
             var isPublicOrigin = publicOrigins.Length > 0 &&
                 WebUiEndpointExtensions.IsPublicOriginAllowed(context.Request, publicOrigins);
 
-            if ((isLocalClient || isPublicOrigin) && !string.IsNullOrEmpty(adminApiKey))
+            if (enableLandingPage && (isLocalClient || isPublicOrigin) && !string.IsNullOrEmpty(adminApiKey))
             {
                 var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 var indexPath = Path.Combine(webRootPath, "index.html");
