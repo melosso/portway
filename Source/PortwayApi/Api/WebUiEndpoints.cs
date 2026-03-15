@@ -843,15 +843,35 @@ public static class WebUiEndpointExtensions
             if (File.Exists(newFilePath!))
                 return Results.Json(new { error = "An endpoint with that name already exists" }, statusCode: 409);
 
-            var oldDir = Path.GetDirectoryName(filePath!)!;
-            var newDir = Path.GetDirectoryName(newFilePath!)!;
+            var oldDir        = Path.GetDirectoryName(filePath!)!;
+            var oldFolderName = Path.GetFileName(oldDir);
+            var newDir        = Path.GetDirectoryName(newFilePath!)!;
             Directory.CreateDirectory(Path.GetDirectoryName(newDir)!);
             Directory.Move(oldDir, newDir);
+
+            // If the entity.json Namespace equals the old folder name (doubled-key pattern, e.g. Accounts/Accounts),
+            // clear it so the routing key after rename is simply newName instead of "Accounts/newName".
+            var actualName = newName;
+            try
+            {
+                var movedJson = await File.ReadAllTextAsync(newFilePath!);
+                using var doc = JsonDocument.Parse(movedJson);
+                if (doc.RootElement.TryGetProperty("Namespace", out var nsEl)
+                    && nsEl.ValueKind == JsonValueKind.String
+                    && string.Equals(nsEl.GetString(), oldFolderName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(movedJson)!;
+                    dict.Remove("Namespace");
+                    await File.WriteAllTextAsync(newFilePath!,
+                        JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+            catch (Exception ex) { Log.Warning(ex, "Renamed endpoint to {NewName} but could not clear doubled Namespace from entity.json", newName); }
 
             var epType = TypeStringToEndpointType(type);
             if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
 
-            return Results.Ok(new { ok = true, name = newName });
+            return Results.Ok(new { ok = true, name = actualName });
         }).ExcludeFromDescription();
 
         // GET /ui/api/endpoints/{type}/{**name}?raw=true , fetch a single endpoint file (structured or raw JSON)
