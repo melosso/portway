@@ -458,7 +458,8 @@ The built-in admin interface settings.
   "WebUi": {
     "AdminApiKey": "your-secure-password",
     "PublicOrigins": ["https://example.com"],
-    "SecureCookies": true
+    "SecureCookies": true,
+    "EnableLandingPage": true
   }
 }
 ```
@@ -469,9 +470,10 @@ The built-in admin interface settings.
 |----------|------|---------|-------------|
 | `AdminApiKey` | string | `""` | Password for web UI login (empty = disabled) |
 | `PublicOrigins` | array | `[]` | Allowed CORS origins for external access |
-| `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies ||
+| `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies |
+| `EnableLandingPage` | boolean | `true` | Show the landing page at `/` for local/allowed clients. Set to `false` to redirect all root requests straight to `/docs` (useful for production systems where the UI should not be discoverable). |
 | `Customization.PromoText` | string | `""` | Markdown banner shown at the top of the login page |
-| `Customization.PromoLogin` | boolean | `false` | Allow the promo-bar to be shown at `/login` | 
+| `Customization.PromoLogin` | boolean | `false` | Allow the promo-bar to be shown at `/login` |
 | `Customization.LoginFooter` | string | `""` | Markdown text shown below the login form |
 
 ### Security
@@ -479,6 +481,7 @@ The built-in admin interface settings.
 - Without `AdminApiKey`, the web UI is disabled
 - Without `PublicOrigins`, only local network IPs can access the UI
 - Cookie auth uses HMAC-SHA256 signing
+- Set `EnableLandingPage: false` on internet-facing or production deployments to prevent the admin UI from being surfaced at the root path
 
 ### Customization Example
 
@@ -614,6 +617,7 @@ For production, restrict to specific domains:
 | `WebUi__AdminApiKey` | Web UI password | `secret` |
 | `WebUi__PublicOrigins__0` | CORS origin (array) | `https://example.com` |
 | `WebUi__SecureCookies` | Secure cookies | `true` |
+| `WebUi__EnableLandingPage` | Show landing page at root | `false` |
 
 > [!WARNING]
 > **`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
