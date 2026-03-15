@@ -110,7 +110,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         if (entries.Count > 0)
         {
             _metrics.Hydrate(entries);
-            Log.Information("MetricsPersistenceService: hydrated {Count} entries from metrics.db", entries.Count);
+            Log.Debug("MetricsPersistenceService: hydrated {Count} entries from metrics.db", entries.Count);
         }
     }
 
@@ -213,7 +213,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         if (remaining.Count > 0)
         {
             await WriteBatchAsync(remaining);
-            Log.Information("MetricsPersistenceService: flushed {Count} entries on shutdown", remaining.Count);
+            Log.Debug("MetricsPersistenceService: flushed {Count} entries on shutdown", remaining.Count);
         }
     }
 }

@@ -451,7 +451,7 @@ public static class EndpointHandler
                         
                         // Set inferred namespace (entity.json namespace takes precedence)
                         definition.InferredNamespace = inferredNamespace;
-                        
+
                         // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
 
@@ -461,7 +461,41 @@ public static class EndpointHandler
                             Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
-                        
+
+                        // Warn when entity.json Namespace overrides or doubles the folder-inferred namespace
+                        if (!string.IsNullOrEmpty(definition.Namespace))
+                        {
+                            if (!string.IsNullOrEmpty(inferredNamespace))
+                            {
+                                // Nested folder: warn if JSON namespace overrides the folder-inferred one
+                                if (!string.Equals(definition.Namespace, inferredNamespace, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
+                                        endpointName, definition.Namespace, inferredNamespace);
+                                }
+                                // else: matches folder — redundant but harmless, no warning
+                            }
+                            else
+                            {
+                                // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
+                                if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // Namespace equals folder name → doubled key (e.g. Products/Products) — almost certainly a mistake
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
+                                        endpointName, definition.Namespace);
+                                }
+                                else
+                                {
+                                    // Namespace differs from folder name → intentional grouping override, log for visibility
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' overrides flat folder identity — routing key will be '{Namespace}/{EndpointName}'",
+                                        endpointName, definition.Namespace);
+                                }
+                            }
+                        }
+
                         // Validate namespace if present
                         var validationErrors = definition.ValidateNamespace();
                         if (validationErrors.Any())
@@ -535,17 +569,51 @@ public static class EndpointHandler
                         
                         // Set inferred namespace (entity.json namespace takes precedence)
                         definition.InferredNamespace = inferredNamespace;
-                        
+
                         // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
-                        
+
                         // Skip if no valid name could be extracted
                         if (string.IsNullOrWhiteSpace(endpointName))
                         {
                             Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
-                        
+
+                        // Warn when entity.json Namespace overrides or doubles the folder-inferred namespace
+                        if (!string.IsNullOrEmpty(definition.Namespace))
+                        {
+                            if (!string.IsNullOrEmpty(inferredNamespace))
+                            {
+                                // Nested folder: warn if JSON namespace overrides the folder-inferred one
+                                if (!string.Equals(definition.Namespace, inferredNamespace, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
+                                        endpointName, definition.Namespace, inferredNamespace);
+                                }
+                                // else: matches folder — redundant but harmless, no warning
+                            }
+                            else
+                            {
+                                // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
+                                if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // Namespace equals folder name → doubled key (e.g. Products/Products) — almost certainly a mistake
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
+                                        endpointName, definition.Namespace);
+                                }
+                                else
+                                {
+                                    // Namespace differs from folder name → intentional grouping override, log for visibility
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' overrides flat folder identity — routing key will be '{Namespace}/{EndpointName}'",
+                                        endpointName, definition.Namespace);
+                                }
+                            }
+                        }
+
                         // Validate namespace if present
                         var validationErrors = definition.ValidateNamespace();
                         if (validationErrors.Any())
@@ -751,7 +819,7 @@ public static class EndpointHandler
                         
                         // Set inferred namespace (entity.json namespace takes precedence)
                         definition.InferredNamespace = inferredNamespace;
-                        
+
                         // Set folder name for backward compatibility with DocumentationTag logic
                         definition.FolderName = endpointName;
 
@@ -761,7 +829,41 @@ public static class EndpointHandler
                             Log.Warning("Could not determine endpoint name for {File}", file);
                             continue;
                         }
-                        
+
+                        // Warn when entity.json Namespace overrides or doubles the folder-inferred namespace
+                        if (!string.IsNullOrEmpty(definition.Namespace))
+                        {
+                            if (!string.IsNullOrEmpty(inferredNamespace))
+                            {
+                                // Nested folder: warn if JSON namespace overrides the folder-inferred one
+                                if (!string.Equals(definition.Namespace, inferredNamespace, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
+                                        endpointName, definition.Namespace, inferredNamespace);
+                                }
+                                // else: matches folder — redundant but harmless, no warning
+                            }
+                            else
+                            {
+                                // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
+                                if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // Namespace equals folder name → doubled key (e.g. Products/Products) — almost certainly a mistake
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
+                                        endpointName, definition.Namespace);
+                                }
+                                else
+                                {
+                                    // Namespace differs from folder name → intentional grouping override, log for visibility
+                                    Log.Warning(
+                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' overrides flat folder identity — routing key will be '{Namespace}/{EndpointName}'",
+                                        endpointName, definition.Namespace);
+                                }
+                            }
+                        }
+
                         // Validate namespace if present
                         var validationErrors = definition.ValidateNamespace();
                         if (validationErrors.Any())
