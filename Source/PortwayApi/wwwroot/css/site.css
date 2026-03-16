@@ -2001,7 +2001,40 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 }
 
 .ep-field { display: flex; flex-direction: column; gap: 0.25rem; }
-.ep-field label { font-size: 0.8125rem; font-weight: 500; }
+.ep-field label { font-size: 0.8125rem; font-weight: 500; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+
+.field-json-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.075rem 0.35rem;
+    font-size: 0.65rem;
+    font-family: monospace;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    border-radius: calc(var(--radius) - 2px);
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    line-height: 1.5;
+    user-select: none;
+}
+.field-label-hint {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    font-weight: 400;
+}
+.field-example-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+    color: hsl(var(--muted-foreground));
+    opacity: 0.55;
+    transition: opacity 0.12s, color 0.12s;
+    line-height: 1;
+    margin-left: 0.1rem;
+}
+.field-example-icon:hover { opacity: 1; color: hsl(var(--foreground)); }
 .ep-field input, .ep-field select, .ep-field textarea {
     font-size: 0.8125rem;
     width: 100%;

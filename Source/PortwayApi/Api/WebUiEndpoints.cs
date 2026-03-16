@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using Serilog;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
@@ -926,7 +927,7 @@ public static class WebUiEndpointExtensions
             try
             {
                 using var doc = JsonDocument.Parse(rawContent);
-                rawContent = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+                rawContent = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
             }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 

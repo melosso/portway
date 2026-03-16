@@ -514,7 +514,25 @@ function fieldAllowedEnvs(value) {
 
 function fieldJson(id, label, value, minHeight = '100px') {
   const str = value != null ? JSON.stringify(value, null, 2) : '';
-  return fieldTextarea(id, label, str, minHeight, true);
+  const badgeLabel = label.replace(/\s*\(JSON(?:,\s*([^)]*))?\)/, (_, extra) =>
+    ` <code class="field-json-badge">JSON</code>${extra ? ` <span class="field-label-hint">${extra.trim()}</span>` : ''}`
+  );
+  return fieldTextarea(id, badgeLabel, str, minHeight, true);
+}
+
+function fieldExampleIcon(fnName) {
+  return `<span class="field-example-icon" onmouseenter="ShadcnTooltip.show(this,${fnName}(),{side:'right'})" onmouseleave="ShadcnTooltip.hide()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>`;
+}
+
+function deletePatternsExample() {
+  const row = (code) => `<code style="display:block;background:hsl(0 0% 10%/0.5);padding:0.15rem 0.4rem;border-radius:3px;margin-bottom:0.2rem;font-size:0.68rem">${code}</code>`;
+  return '<div style="white-space:normal;max-width:260px;font-size:0.72rem;line-height:1.6">'
+    + '<div style="font-weight:600;margin-bottom:0.4rem">Delete Pattern examples</div>'
+    + row('[{"Style":"PathParameter"}]')
+    + row('[{"Style":"QueryParameter","Parameter":"id"}]')
+    + row('[{"Style":"ODataGuid"}]')
+    + row('[{"Style":"ODataKey"}]')
+    + '</div>';
 }
 
 function readJsonField(id) {
@@ -541,8 +559,8 @@ function fieldDocumentation(c) {
   const doc = c.Documentation ?? {};
   return accordion('Documentation',
     fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true) +
-    fieldTextarea('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions ? JSON.stringify(doc.MethodDescriptions, null, 2) : '', '72px', true) +
-    fieldTextarea('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation ? JSON.stringify(doc.MethodDocumentation, null, 2) : '', '100px', true)
+    fieldJson('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions, '72px') +
+    fieldJson('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation, '100px')
   );
 }
 
@@ -584,8 +602,10 @@ function renderSqlForm(c) {
 }
 
 // Proxy, order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
-//                [Delete Patterns accordion], Documentation
+//                [Delete Patterns accordion], [Custom Properties accordion], Documentation
 function renderProxyForm(c) {
+  const cp = c.CustomProperties ?? {};
+  const hasCp = !!(cp.ContentType || cp.HttpMethodTranslation || cp.HttpMethodAppendHeaders);
   return `
     <div class="ep-section">
       <div class="ep-section-title">Target</div>
@@ -604,7 +624,12 @@ function renderProxyForm(c) {
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
     </div>
     ${accordion('Delete Patterns',
-        fieldJson('deletePatterns', 'Delete Patterns (JSON)', c.DeletePatterns?.length ? c.DeletePatterns : null, '120px'))}
+        fieldJson('deletePatterns', 'Delete Patterns (JSON)' + fieldExampleIcon('deletePatternsExample'), c.DeletePatterns?.length ? c.DeletePatterns : null, '120px'))}
+    ${accordion('Custom Properties', `
+      ${fieldText('cpContentType', 'Content-Type', cp.ContentType ?? '')}
+      ${fieldText('cpHttpMethodTranslation', 'Method Translation', cp.HttpMethodTranslation ?? '')}
+      ${fieldText('cpHttpMethodAppendHeaders', 'Method Append Headers', cp.HttpMethodAppendHeaders ?? '')}
+    `, hasCp)}
     ${fieldDocumentation(c)}`;
 }
 
@@ -629,7 +654,7 @@ function renderCompositeForm(c) {
       <div class="ep-section-title">Composite Config</div>
       ${fieldText('compositeConfigName', 'Name', cfg.Name ?? '')}
       ${fieldTextarea('compositeConfigDesc', 'Description', cfg.Description ?? '', '60px')}
-      ${fieldTextarea('compositeSteps', 'Steps (JSON)', JSON.stringify(cfg.Steps ?? [], null, 2), '160px', true)}
+      ${fieldJson('compositeSteps', 'Steps (JSON)', cfg.Steps ?? [], '160px')}
     </div>
     ${fieldDocumentation(c)}`;
 }
@@ -716,7 +741,7 @@ function renderWebhookForm(c) {
 function readEnvs() {
   const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
   const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
-  return envs.length === 1 && envs[0] === '*' ? null : envs;
+  return envs.length === 1 && envs[0] === '*' ? undefined : (envs.length ? envs : undefined);
 }
 
 function validateDocFields(errors) {
@@ -781,7 +806,7 @@ function collectFormConfig(type, existingContent) {
         ...c,
         DatabaseSchema:       document.getElementById('schema')?.value?.trim() ?? 'dbo',
         DatabaseObjectName:   document.getElementById('objectName')?.value?.trim() ?? '',
-        DatabaseObjectType:   document.getElementById('objectType')?.value ?? 'Table',
+        DatabaseObjectType:   document.getElementById('objectType')?.value === 'Table' ? undefined : (document.getElementById('objectType')?.value ?? undefined),
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
@@ -799,6 +824,14 @@ function collectFormConfig(type, existingContent) {
     }
     case 'proxy': {
       const doc = readDocumentation(c);
+      const cpContentType         = document.getElementById('cpContentType')?.value?.trim() || undefined;
+      const cpMethodTranslation   = document.getElementById('cpHttpMethodTranslation')?.value?.trim() || undefined;
+      const cpMethodAppendHeaders = document.getElementById('cpHttpMethodAppendHeaders')?.value?.trim() || undefined;
+      const customProps = (cpContentType || cpMethodTranslation || cpMethodAppendHeaders) ? {
+        ...(cpContentType         ? { ContentType: cpContentType }                         : {}),
+        ...(cpMethodTranslation   ? { HttpMethodTranslation: cpMethodTranslation }         : {}),
+        ...(cpMethodAppendHeaders ? { HttpMethodAppendHeaders: cpMethodAppendHeaders }     : {}),
+      } : undefined;
       return {
         ...c,
         Url:                  document.getElementById('url')?.value?.trim() ?? '',
@@ -809,6 +842,7 @@ function collectFormConfig(type, existingContent) {
         AllowedEnvironments:  envs,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
         DeletePatterns:       readJsonField('deletePatterns'),
+        CustomProperties:     customProps,
         Documentation:        doc ?? undefined,
       };
     }
