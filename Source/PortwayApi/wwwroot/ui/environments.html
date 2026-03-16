@@ -745,15 +745,15 @@ async function testConnection(name) {
     result.style.display = 'block';
     if (d.ok) {
       result.style.color = 'hsl(var(--success))';
-      result.textContent = '✓ Connection successful';
+      result.textContent = 'Connection successful';
     } else {
       result.style.color = 'hsl(var(--destructive))';
-      result.textContent = `✗ ${d.error ?? 'Connection failed'}`;
+      result.textContent = `${d.error ?? 'Connection failed'}`;
     }
   } catch(e) {
     result.style.display = 'block';
     result.style.color = 'hsl(var(--destructive))';
-    result.textContent = `✗ ${e.message}`;
+    result.textContent = `${e.message}`;
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Test`;

@@ -351,8 +351,8 @@ During migration, both URL patterns work:
 **Solution**: Check namespace naming follows conventions:
 ```json
 {
-  "Namespace": "Account_Mgmt"  // ✓ Valid
-  // "Namespace": "Account-Mgmt"  // ✗ Invalid (hyphen)
+  "Namespace": "Account_Mgmt"  // Valid
+  // "Namespace": "Account-Mgmt"  // Invalid (hyphen)
 }
 ```
 
@@ -363,8 +363,8 @@ During migration, both URL patterns work:
 **Solution**: Choose a different namespace name:
 ```json
 {
-  "Namespace": "ApiProxy"  // ✓ Valid alternative
-  // "Namespace": "api"     // ✗ Reserved
+  "Namespace": "ApiProxy"  // Valid alternative
+  // "Namespace": "api"     // Reserved
 }
 ```
 
@@ -376,8 +376,8 @@ During migration, both URL patterns work:
 ```
 # Directory: /endpoints/Proxy/Account/Contacts/
 {
-  "Namespace": "Account"  // ✓ Matches directory
-  // "Namespace": "CRM"   // ⚠ Conflicts with directory
+  "Namespace": "Account"  // Matches directory
+  // "Namespace": "CRM"   // Conflicts with directory
 }
 ```
 
