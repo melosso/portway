@@ -118,32 +118,32 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                 Type = JsonSchemaType.Object,
                 Properties = new Dictionary<string, IOpenApiSchema>
                 {
-                    ["Success"] = new OpenApiSchema
+                    ["success"] = new OpenApiSchema
                     {
                         Type = JsonSchemaType.Boolean,
                         Description = "Indicates if the request was successful",
                         Example = JsonValue.Create(true)
                     },
-                    ["Count"] = new OpenApiSchema
+                    ["count"] = new OpenApiSchema
                     {
                         Type = JsonSchemaType.Integer,
                         Description = "Total number of records returned",
                         Example = JsonValue.Create(5)
                     },
-                    ["Value"] = new OpenApiSchema
+                    ["value"] = new OpenApiSchema
                     {
                         Type = JsonSchemaType.Array,
                         Items = responseSchema,
                         Description = "Array of records"
                     },
-                    ["NextLink"] = new OpenApiSchema
+                    ["nextLink"] = new OpenApiSchema
                     {
                         Type = JsonSchemaType.String | JsonSchemaType.Null,
                         Description = "URL for pagination (null if no more pages)",
                         Example = null
                     }
                 },
-                Required = new HashSet<string> { "Success", "Count", "Value" }
+                Required = new HashSet<string> { "success", "count", "value" }
             };
 
             if (response!.Content != null)

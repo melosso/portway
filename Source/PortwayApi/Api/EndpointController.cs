@@ -14,6 +14,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Xml.Linq;
 using PortwayApi.Classes;
+using PortwayApi.Classes.Helpers;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
@@ -53,7 +54,7 @@ public class EndpointController : ControllerBase
         if (!_environmentSettings.IsEnvironmentAllowed(env))
         {
             Log.Warning("Environment '{Env}' is not in the global allowed list.", env);
-            return (false, BadRequest(new { error = $"Environment '{env}' is not allowed.", success = false }));
+            return (false, PortwayResults.BadRequest(this, $"Environment '{env}' is not allowed."));
         }
 
         // Then check endpoint-specific environment restrictions
@@ -114,7 +115,7 @@ public class EndpointController : ControllerBase
             !allowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
         {
             Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
-            return (false, BadRequest(new { error = $"Environment '{env}' is not allowed for this endpoint.", success = false }));
+            return (false, PortwayResults.BadRequest(this, $"Environment '{env}' is not allowed for this endpoint."));
         }
 
         // Environment is allowed
@@ -223,15 +224,15 @@ public class EndpointController : ControllerBase
                 case EndpointType.Composite:
                     // Log warning and return 405
                     Log.Warning("Composite endpoints don't support GET requests");
-                    return StatusCode(405, new { error = "Method not allowed" });
+                    return PortwayResults.MethodNotAllowed(this);
                 case EndpointType.Webhook:
                     // Log warning and return 405
                     Log.Warning("Webhook endpoints don't support GET requests");
-                    return StatusCode(405, new { error = "Method not allowed" });
+                    return PortwayResults.MethodNotAllowed(this);
                 default:
                     // Log warning and return 404
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
-                    return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -266,7 +267,7 @@ public class EndpointController : ControllerBase
             // Only support HEAD for static endpoints
             if (endpointType != EndpointType.Static)
             {
-                return StatusCode(405, new { error = "HEAD method is only supported for static endpoints" });
+                return PortwayResults.MethodNotAllowed(this, "HEAD method is only supported for static endpoints");
             }
 
             Log.Debug("HEAD request for static endpoint: {Name}", endpointName);
@@ -333,7 +334,7 @@ public class EndpointController : ControllerBase
         catch (Exception ex)
         {
             Log.Error(ex, "Error processing HEAD request for {Path}", Request.Path);
-            return StatusCode(500);
+            return PortwayResults.ServerError(this, "Error processing HEAD request. Please check the logs for more details.");
         }
     }
 
@@ -407,7 +408,7 @@ public class EndpointController : ControllerBase
                     
                 default:
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
-                    return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -477,7 +478,7 @@ public class EndpointController : ControllerBase
             {
                 // Composite and Webhook endpoints don't support PUT
                 Log.Warning("{Type} endpoints don't support PUT requests", endpointType);
-                return StatusCode(405, new { error = $"Method not allowed" });
+                return PortwayResults.MethodNotAllowed(this);
             }
         }
         catch (Exception ex)
@@ -529,10 +530,7 @@ public class EndpointController : ControllerBase
                     // Ensure ID is provided for SQL DELETE
                     if (string.IsNullOrEmpty(parsedId))
                     {
-                        return BadRequest(new { 
-                            error = "ID parameter is required for delete operations", 
-                            success = false 
-                        });
+                        return PortwayResults.BadRequest(this, "ID parameter is required for delete operations");
                     }
                     
                     // For SQL endpoints, build the full key for lookup (same as GET)
@@ -546,15 +544,15 @@ public class EndpointController : ControllerBase
                     
                 case EndpointType.Composite:
                     Log.Warning("Composite endpoints don't support DELETE requests");
-                    return StatusCode(405, new { error = "Method not allowed" });
-                    
+                    return PortwayResults.MethodNotAllowed(this);
+
                 case EndpointType.Webhook:
                     Log.Warning("{Type} endpoints don't support DELETE requests", endpointType);
-                    return StatusCode(405, new { error = $"Method not allowed" });
-                    
+                    return PortwayResults.MethodNotAllowed(this);
+
                 default:
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
-                    return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -608,7 +606,7 @@ public class EndpointController : ControllerBase
             }
             
             Log.Warning("{Type} endpoints don't support PATCH requests", endpointType);
-            return StatusCode(405, new { error = $"Method not allowed" });
+            return PortwayResults.MethodNotAllowed(this);
         }
         catch (Exception ex)
         {
@@ -651,7 +649,7 @@ public class EndpointController : ControllerBase
             var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length == 0)
             {
-                return BadRequest(new { error = "Missing endpoint name in the URL path", success = false });
+                return PortwayResults.BadRequest(this, "Missing endpoint name in the URL path");
             }
             
             // Check if we have namespace/endpoint format (2+ segments)
@@ -692,20 +690,20 @@ public class EndpointController : ControllerBase
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
-            
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
             }
-            
+
             // Validate file
             if (file == null || file.Length == 0)
             {
-                return BadRequest(new { error = "No file was uploaded", success = false });
+                return PortwayResults.BadRequest(this, "No file was uploaded");
             }
             
             // Get storage options from endpoint definition
@@ -743,11 +741,7 @@ public class EndpointController : ControllerBase
             string extension = Path.GetExtension(filename).ToLowerInvariant();
             if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(extension))
             {
-                return StatusCode(415, new { 
-                    error = $"Files with extension {extension} are not allowed for this endpoint",
-                    allowedExtensions = allowedExtensions,
-                    code = "UNSUPPORTED_FILE_TYPE"
-                });
+                return PortwayResults.UnsupportedMediaType(this, $"Files with extension {extension} are not allowed for this endpoint");
             }
             
             // Upload the file
@@ -775,29 +769,21 @@ public class EndpointController : ControllerBase
             }
             
             // Return success with file info
-            return Created($"/api/{env}/files/{endpointName}/{fileId}", new { 
-                success = true, 
-                fileId = fileId, 
-                filename = filename,
-                contentType = file.ContentType,
-                size = file.Length,
-                url = $"/api/{env}/files/{endpointName}/{fileId}" 
-            });
+            var fileUrl = $"/api/{env}/files/{endpointName}/{fileId}";
+            return PortwayResults.FileCreate(this, fileUrl, fileId, filename, file.ContentType, file.Length, fileUrl);
         }
         catch (ArgumentException ex)
         {
-            // File validation errors
-            return BadRequest(new { error = ex.Message, success = false });
+            return PortwayResults.BadRequest(this, ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            // File already exists errors
-            return Conflict(new { success = false, error = ex.Message, code = "FILE_ALREADY_EXISTS" });
+            return PortwayResults.Conflict(this, ex.Message);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error uploading file for {Path}", Request.Path);
-            return StatusCode(500, new { success = false, error = "An error occurred while uploading the file" });
+            return PortwayResults.ServerError(this, "An error occurred while uploading the file");
         }
     }
 
@@ -824,44 +810,44 @@ public class EndpointController : ControllerBase
             var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length < 2)
             {
-                return BadRequest(new { error = "Missing endpoint name or file ID in the URL path", success = false });
+                return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
             }
-            
+
             string endpointName = segments[0];
             string fileId = segments[1];
-            
+
             // Check if this endpoint exists
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
-            
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
             }
-            
+
             // Download the file
             var (fileStream, filename, contentType) = await _fileHandlerService.DownloadFileAsync(fileId);
-            
+
             // Return the file
             return File(fileStream, contentType, filename);
         }
         catch (FileNotFoundException ex)
         {
-            return NotFound(new { error = $"File not found: {ex.FileName}", success = false });
+            return PortwayResults.NotFound(this, $"File not found: {ex.FileName}");
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message, success = false });
+            return PortwayResults.BadRequest(this, ex.Message);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error downloading file for {Path}", Request.Path);
-            return StatusCode(500, new { success = false, error = "An error occurred while downloading the file" });
+            return PortwayResults.ServerError(this, "An error occurred while downloading the file");
         }
     }
 
@@ -886,43 +872,39 @@ public class EndpointController : ControllerBase
             var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length < 2)
             {
-                return BadRequest(new { error = "Missing endpoint name or file ID in the URL path", success = false });
+                return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
             }
-            
+
             string endpointName = segments[0];
             string fileId = segments[1];
-            
+
             // Check if this endpoint exists
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
-            
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
             }
-            
+
             // Delete the file
             await _fileHandlerService.DeleteFileAsync(fileId);
-            
-            // Return success
-            return Ok(new { 
-                success = true, 
-                message = "File deleted successfully" 
-            });
+
+            return PortwayResults.Mutation(this, "File deleted successfully");
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message, success = false });
+            return PortwayResults.BadRequest(this, ex.Message);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error deleting file for {Path}", Request.Path);
-            return StatusCode(500, new { success = false, error = "An error occurred while deleting the file" });
+            return PortwayResults.ServerError(this, "An error occurred while deleting the file");
         }
     }
 
@@ -947,16 +929,16 @@ public class EndpointController : ControllerBase
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
-            
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
             }
-            
+
             // Get base directory for this endpoint
             var baseDirectory = (endpoint.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj)) 
                 ? baseDirObj?.ToString() ?? string.Empty
@@ -995,18 +977,13 @@ public class EndpointController : ControllerBase
             
             // Set pagination headers for consistency with other endpoints
             SetPaginationHeaders(filesWithUrls.Count, filesWithUrls.Count, false);
-            
-            // Return the list
-            return Ok(new { 
-                Success = true, 
-                Count = filesWithUrls.Count,
-                Value = filesWithUrls
-            });
+
+            return PortwayResults.Collection(this, filesWithUrls);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error listing files for {Path}", Request.Path);
-            return StatusCode(500, new { success = false, error = "An error occurred while listing files" });
+            return PortwayResults.ServerError(this, "An error occurred while listing files");
         }
     }
 
@@ -1262,7 +1239,7 @@ public class EndpointController : ControllerBase
             if (!proxyEndpoints.TryGetValue(endpointName, out var endpointDefinition))
             {
                 Log.Warning("Endpoint not found: {EndpointName}", endpointName);
-                return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Translate HTTP method if configured
@@ -1279,17 +1256,17 @@ public class EndpointController : ControllerBase
             // Check if method is allowed (using original method for validation)
             if (!endpointDefinition.Methods.Contains(originalMethod))
             {
-                Log.Warning("Method {Method} not allowed for endpoint {EndpointName}", 
+                Log.Warning("Method {Method} not allowed for endpoint {EndpointName}",
                     originalMethod, endpointName);
-                return StatusCode(405);
+                return PortwayResults.MethodNotAllowed(this);
             }
 
             // Validate translated method
             if (!PortwayApi.Classes.Helpers.HttpMethodTranslator.IsValidHttpMethod(translatedMethod))
             {
-                Log.Warning("Translated method {TranslatedMethod} is not valid for endpoint {EndpointName}", 
+                Log.Warning("Translated method {TranslatedMethod} is not valid for endpoint {EndpointName}",
                     translatedMethod, endpointName);
-                return StatusCode(500, new { error = "Invalid translated HTTP method" });
+                return PortwayResults.ServerError(this, "Invalid translated HTTP method");
             }
 
             // Convert endpoint definition to tuple format for legacy compatibility
@@ -1375,7 +1352,7 @@ public class EndpointController : ControllerBase
             if (!_urlValidator.IsUrlSafe(fullUrl))
             {
                 Log.Warning("Blocked URL due to security restrictions: {Url}", fullUrl);
-                return StatusCode(403);
+                return StatusCode(403, ErrorResponse.Of("Request blocked due to security restrictions"));
             }
 
             // Detect if this is likely a SOAP request
@@ -1973,11 +1950,7 @@ public class EndpointController : ControllerBase
             else
             {
                 // Default successful response
-                return Ok(new
-                {
-                    success = true,
-                    message = "Record(s) created successfully",
-                });
+                return PortwayResults.Mutation(this, "Record(s) created successfully");
             }
         }
         catch (Exception ex)
@@ -2011,10 +1984,7 @@ public class EndpointController : ControllerBase
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                return BadRequest(new { 
-                    error = "Environment is not configured properly.", 
-                    success = false 
-                });
+                return PortwayResults.BadRequest(this, "Environment is not configured properly.");
             }
 
             // Load webhook endpoint configuration using the namespace-aware key
@@ -2023,12 +1993,7 @@ public class EndpointController : ControllerBase
             {
                 Log.Warning("Webhook endpoint not configured properly: {WebhookEndpoint}", webhookEndpointKey);
 
-                return NotFound(new
-                {
-                    error = $"Endpoint '{webhookEndpointKey}' is not configured properly.",
-                    success = false
-                });
-            
+                return PortwayResults.NotFound(this, $"Endpoint '{webhookEndpointKey}' is not configured properly.");
             }
 
             // Get table name and schema from the configuration
@@ -2037,13 +2002,10 @@ public class EndpointController : ControllerBase
 
             // Validate webhook ID against allowed columns
             var allowedColumns = endpointConfig.AllowedColumns ?? new List<string>();
-            if (allowedColumns.Any() && 
+            if (allowedColumns.Any() &&
                 !allowedColumns.Contains(webhookId, StringComparer.OrdinalIgnoreCase))
             {
-                return NotFound(new { 
-                    error = $"Webhook ID '{webhookId}' is not configured.", 
-                    success = false 
-                });
+                return PortwayResults.NotFound(this, $"Webhook ID '{webhookId}' is not configured.");
             }
 
             // Insert webhook data
@@ -2067,22 +2029,12 @@ public class EndpointController : ControllerBase
 
             // Return 201 Created with location header for consistency
             var locationUrl = $"/api/{env}/webhook/{webhookId}/{insertedId}";
-            return Created(locationUrl, new
-            {
-                success = true,
-                message = "Webhook processed successfully.",
-                id = insertedId
-            });
+            return PortwayResults.Create(this, locationUrl, "Webhook processed successfully.", id: insertedId);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error during webhook processing: {WebhookId}", webhookId);
-            
-            return StatusCode(500, new
-            {
-                success = false,
-                error = "Error processing webhook. Please check the logs for more details."
-            });
+            return PortwayResults.ServerError(this, "Error processing webhook. Please check the logs for more details.");
         }
     }
 
@@ -2180,17 +2132,14 @@ public class EndpointController : ControllerBase
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             if (!sqlEndpoints.ContainsKey(endpointName))
             {
-                return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Step 1: Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
             {
-                return BadRequest(new { 
-                    success = false,
-                    error = $"Invalid or missing environment: {env}"
-                });
+                return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
             }
 
             // Step 2: Get endpoint configuration 
@@ -2257,12 +2206,9 @@ public class EndpointController : ControllerBase
                 {
                     if (tvfResultList.Count == 0)
                     {
-                        return NotFound(new {
-                            success = false,
-                            error = $"No record found with specified parameters"
-                        });
+                        return PortwayResults.NotFound(this, "No record found with specified parameters");
                     }
-                    
+
                     return Ok(tvfResultList.FirstOrDefault());
                 }
 
@@ -2276,18 +2222,9 @@ public class EndpointController : ControllerBase
                     SetCacheControlHeader(tvfCacheDurationSeconds);
                 }
                 
-                var tvfResponse = new
-                {
-                    Success = true,
-                    Count = tvfResultList.Count,
-                    Value = tvfResultList,
-                    NextLink = tvfIsLastPage 
-                        ? null 
-                        : BuildNextLink(env, endpointName, select, filter, orderby, top, skip)
-                };
-
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
-                return Ok(tvfResponse);
+                return PortwayResults.Collection(this, tvfResultList,
+                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip));
             }
 
             // Step 3: Extract endpoint details
@@ -2300,7 +2237,7 @@ public class EndpointController : ControllerBase
             // Check if GET is allowed
             if (!allowedMethods.Contains("GET"))
             {
-                return StatusCode(405);
+                return PortwayResults.MethodNotAllowed(this);
             }
 
             // Step 4: Handle ID-based filtering
@@ -2356,13 +2293,10 @@ public class EndpointController : ControllerBase
                 if (!string.IsNullOrEmpty(select))
                 {
                     var (isValid, invalidAliases) = PortwayApi.Classes.Helpers.ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
-                    
+
                     if (!isValid)
                     {
-                        return BadRequest(new { 
-                            error = $"Selected columns not allowed: {string.Join(", ", invalidAliases)}", 
-                            success = false 
-                        });
+                        return PortwayResults.BadRequest(this, $"Selected columns not allowed: {string.Join(", ", invalidAliases)}");
                     }
                     
                     // Convert aliases to database column names for the SQL query
@@ -2471,10 +2405,7 @@ public class EndpointController : ControllerBase
                 // Return 404 if no results found
                 if (transformedResults.Count == 0)
                 {
-                    return NotFound(new {
-                        success = false,
-                        error = $"No record found with {primaryKey} = {id}"
-                    });
+                    return PortwayResults.NotFound(this, $"No record found with {primaryKey} = {id}");
                 }
                 
                 // Return the single item directly (OData convention - no wrapper)
@@ -2501,18 +2432,11 @@ public class EndpointController : ControllerBase
                 SetCacheControlHeader(cacheDurationSeconds);
             }
             
-            var response = new
-            {
-                Success = true,
-                Count = transformedResults.Count,
-                Value = transformedResults,
-                NextLink = isLastPage 
-                    ? null 
-                    : BuildNextLink(env, endpointName, select, filter, orderby, top, skip)
-            };
+            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip);
+            var response = CollectionResponse<object>.Of(transformedResults, nextLink);
 
             Log.Debug("Successfully processed query for {Endpoint}", endpointName);
-            
+
             // Cache the response if caching is enabled
             if (cacheEnabled && !string.IsNullOrEmpty(cacheKey))
             {
@@ -2520,7 +2444,7 @@ public class EndpointController : ControllerBase
                 await _cacheManager.SetAsync(cacheKey, response, TimeSpan.FromMinutes(cacheDuration));
                 Log.Debug("Cached SQL response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
             }
-            
+
             return Ok(response);
         }
         catch (SqlException sqlEx)
@@ -2582,14 +2506,14 @@ public class EndpointController : ControllerBase
 			var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
 			if (!sqlEndpoints.ContainsKey(endpointName))
 			{
-				return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+				return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
 			}
 
 			// Validate environment
 			var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
 			if (string.IsNullOrEmpty(connectionString))
 			{
-				return CreateErrorResponse($"Invalid or missing environment: {env}");
+				return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
 			}
 
 			// Get endpoint configuration
@@ -2598,12 +2522,12 @@ public class EndpointController : ControllerBase
 			// Check method support and procedure definition
 			if (!(endpoint.Methods?.Contains("POST") ?? false))
 			{
-				return CreateErrorResponse("This endpoint does not support POST operations", null, StatusCodes.Status405MethodNotAllowed);
+				return PortwayResults.MethodNotAllowed(this, "This endpoint does not support POST operations");
 			}
 
 			if (string.IsNullOrEmpty(endpoint.Procedure))
 			{
-				return CreateErrorResponse("This endpoint does not support insert operations");
+				return PortwayResults.BadRequest(this, "This endpoint does not support insert operations");
 			}
 
 			// Validate input data against allowed columns, required columns, and regex patterns
@@ -2612,17 +2536,9 @@ public class EndpointController : ControllerBase
 			{
 				if (validationErrors != null && validationErrors.Any())
 				{
-					return StatusCode(422, new
-					{
-						error = "Validation failed",
-						details = validationErrors.Select(e => new
-						{
-							field = e.Field,
-							message = e.Message
-						})
-					});
+					return PortwayResults.ValidationFailed(this, validationErrors);
 				}
-				return BadRequest(new { error = errorMessage, success = false });
+				return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
 			}
 
 			// Prepare stored procedure parameters
@@ -2668,23 +2584,12 @@ public class EndpointController : ControllerBase
 				
 				Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
 				
-				return StatusCode(StatusCodes.Status201Created, new { 
-					success = true,
-					message = "Record created successfully", 
-					result = resultList.FirstOrDefault() 
-				});
+				return PortwayResults.Create(this, $"/api/{env}/{endpointName}", "Record created successfully", resultList.FirstOrDefault());
 			}
             catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
             {
-                // Extract the custom error message from RAISERROR
                 Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-                
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "Bad request",
-                    details = sqlEx.Message
-                });
+                return PortwayResults.BadRequest(this, sqlEx.Message);
             }
 		}
 		catch (SqlException sqlEx)
@@ -2721,20 +2626,15 @@ public class EndpointController : ControllerBase
 		}
 		catch (Exception ex)
 		{
-			string errorMessage = "An error occurred while processing your request";
-			string? errorDetail = null;
-			
 			if (ex is JsonException)
 			{
-				errorMessage = "Invalid JSON format in request";
-				errorDetail = "The request body contains malformed JSON";
-				return CreateErrorResponse(errorMessage, errorDetail, StatusCodes.Status400BadRequest);
+				return PortwayResults.BadRequest(this, "Invalid JSON format in request");
 			}
-			
-			Log.Error(ex, "Error processing request for endpoint {EndpointName}: {ErrorType}: {ErrorMessage}", 
+
+			Log.Error(ex, "Error processing request for endpoint {EndpointName}: {ErrorType}: {ErrorMessage}",
 				endpointName, ex.GetType().Name, ex.Message);
-			
-			return CreateErrorResponse(errorMessage, null, StatusCodes.Status500InternalServerError);
+
+			return PortwayResults.ServerError(this, "An error occurred while processing your request");
 		}
 	}
 
@@ -2762,18 +2662,14 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             if (!sqlEndpoints.ContainsKey(endpointName))
             {
-                return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Step 1: Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    error = $"Invalid or missing environment: {env}"
-                });
+                return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
             }
 
             // Step 2: Get endpoint configuration
@@ -2782,20 +2678,12 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             // Step 3: Check if the endpoint supports PUT and has a procedure defined
             if (!(endpoint.Methods?.Contains("PUT") ?? false))
             {
-                return StatusCode(405, new
-                {
-                    error = "Method not allowed",
-                    success = false
-                });
+                return PortwayResults.MethodNotAllowed(this);
             }
 
             if (string.IsNullOrEmpty(endpoint.Procedure))
             {
-                return BadRequest(new
-                {
-                    error = "This endpoint does not support update operations",
-                    success = false
-                });
+                return PortwayResults.BadRequest(this, "This endpoint does not support update operations");
             }
 
             // Step 4: Validate input data against allowed columns, required columns, and regex patterns
@@ -2804,28 +2692,16 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             {
                 if (validationErrors != null && validationErrors.Any())
                 {
-                    return StatusCode(422, new
-                    {
-                        error = "Validation failed",
-                        details = validationErrors.Select(e => new
-                        {
-                            field = e.Field,
-                            message = e.Message
-                        })
-                    });
+                    return PortwayResults.ValidationFailed(this, validationErrors);
                 }
-                return BadRequest(new { error = errorMessage, success = false });
+                return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
             }
 
             // Step 5: Validate that ID is present for update operations
             var (isParamsValid, paramsErrorMessage) = ValidateSqlParameters(data, "UPDATE");
             if (!isParamsValid)
             {
-                return BadRequest(new
-                {
-                    error = paramsErrorMessage,
-                    success = false
-                });
+                return PortwayResults.BadRequest(this, paramsErrorMessage ?? "Validation failed");
             }
 
             // Step 6: Prepare stored procedure parameters
@@ -2876,38 +2752,24 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 Log.Debug("Successfully executed UPDATE procedure for {Endpoint}", endpointName);
 
                 // Return the results, which typically includes the updated record
-                return Ok(new
-                {
-                    success = true,
-                    message = "Record updated successfully",
-                    result = resultList.FirstOrDefault()
-                });
+                return PortwayResults.Mutation(this, "Record updated successfully", resultList.FirstOrDefault());
             }
             catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
             {
-                // Extract the custom error message from RAISERROR
                 Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "Bad request",
-                    details = sqlEx.Message
-                });
+                return PortwayResults.BadRequest(this, sqlEx.Message);
             }
         }
         catch (SqlException sqlEx)
         {
-            // Handle other SQL exceptions
             Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
                 endpointName, sqlEx.Number, sqlEx.Message);
-
-            return CreateErrorResponse("Internal operation failed", null, StatusCodes.Status500InternalServerError);
+            return PortwayResults.ServerError(this, "Internal operation failed");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error processing UPDATE for {Endpoint}", endpointName);
-            return CreateErrorResponse("An error occurred while processing your request", null, StatusCodes.Status500InternalServerError);
+            return PortwayResults.ServerError(this, "An error occurred while processing your request");
         }
     }
 
@@ -2925,18 +2787,14 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 			var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
 			if (!sqlEndpoints.ContainsKey(endpointName))
 			{
-				return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
+				return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
 			}
 
 			// Step 2: Validate environment
 			var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
 			if (string.IsNullOrEmpty(connectionString))
 			{
-				return BadRequest(new
-				{
-					success = false,
-					error = $"Invalid or missing environment: {env}"
-				});
+				return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
 			}
 
 			// Step 3: Get endpoint configuration and check if PATCH is allowed
@@ -2944,20 +2802,12 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 
 			if (!(endpoint.Methods?.Contains("PATCH") ?? false))
 			{
-				return StatusCode(405, new
-				{
-					error = "Method not allowed",
-					success = false
-				});
+				return PortwayResults.MethodNotAllowed(this);
 			}
 
 			if (string.IsNullOrEmpty(endpoint.Procedure))
 			{
-				return BadRequest(new
-				{
-					error = "This endpoint does not support partial update operations",
-					success = false
-				});
+				return PortwayResults.BadRequest(this, "This endpoint does not support partial update operations");
 			}
 
 			// Step 4: Parse and validate request body
@@ -2969,28 +2819,16 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 			{
 				if (validationErrors != null && validationErrors.Any())
 				{
-					return StatusCode(422, new
-					{
-						error = "Validation failed",
-						details = validationErrors.Select(e => new
-						{
-							field = e.Field,
-							message = e.Message
-						})
-					});
+					return PortwayResults.ValidationFailed(this, validationErrors);
 				}
-				return BadRequest(new { error = errorMessage, success = false });
+				return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
 			}
 
 			// Step 5: Validate that required parameters are present (especially ID)
 			var (isParamsValid, paramsErrorMessage) = ValidateSqlParameters(data, "UPDATE");
 			if (!isParamsValid)
 			{
-				return BadRequest(new
-				{
-					error = paramsErrorMessage,
-					success = false
-				});
+				return PortwayResults.BadRequest(this, paramsErrorMessage ?? "Validation failed");
 			}
 
 			// Step 6: Prepare stored procedure parameters
@@ -3041,38 +2879,24 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 				Log.Debug("Successfully executed PATCH procedure for {Endpoint}", endpointName);
 
 				// Return the results
-				return Ok(new
-				{
-					success = true,
-					message = "Record partially updated successfully",
-					result = resultList.FirstOrDefault()
-				});
+				return PortwayResults.Mutation(this, "Record partially updated successfully", resultList.FirstOrDefault());
 			}
-            catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))			
+            catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
             {
-				// Extract the custom error message from RAISERROR
 				Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-				
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "Bad request",
-                    details = sqlEx.Message
-                });
+				return PortwayResults.BadRequest(this, sqlEx.Message);
 			}
 		}
 		catch (SqlException sqlEx)
 		{
-			// Handle other SQL exceptions
-			Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}", 
+			Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
 				endpointName, sqlEx.Number, sqlEx.Message);
-
-			return CreateErrorResponse("Internal operation failed", null, StatusCodes.Status500InternalServerError);
+			return PortwayResults.ServerError(this, "Internal operation failed");
 		}
 		catch (Exception ex)
 		{
 			Log.Error(ex, "Error processing PATCH for {Endpoint}", endpointName);
-			return CreateErrorResponse("An error occurred while processing your request", null, StatusCodes.Status500InternalServerError);
+			return PortwayResults.ServerError(this, "An error occurred while processing your request");
 		}
 	}
 
@@ -3090,18 +2914,14 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
             if (!sqlEndpoints.ContainsKey(endpointName))
             {
-                return NotFound(new { success = false, error = $"Endpoint '{endpointName}' not found" });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    error = $"Invalid or missing environment: {env}"
-                });
+                return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
             }
 
             // Get endpoint configuration
@@ -3110,30 +2930,18 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             // Check if the endpoint supports DELETE and has a procedure defined
             if (!(endpoint.Methods?.Contains("DELETE") ?? false))
             {
-                return StatusCode(405, new
-                {
-                    error = "Method not allowed",
-                    success = false
-                });
+                return PortwayResults.MethodNotAllowed(this);
             }
 
             if (string.IsNullOrEmpty(endpoint.Procedure))
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "This endpoint does not support delete operations"
-                });
+                return PortwayResults.BadRequest(this, "This endpoint does not support delete operations");
             }
 
             // Check if the ID is provided
             if (string.IsNullOrEmpty(id))
             {
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "ID parameter is required for delete operations"
-                });
+                return PortwayResults.BadRequest(this, "ID parameter is required for delete operations");
             }
 
             // Prepare stored procedure parameters
@@ -3188,38 +2996,24 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 Log.Debug("Successfully executed DELETE procedure for {Endpoint}", endpointName);
 
                 // Return the results, which typically includes deletion confirmation
-                return Ok(new
-                {
-                    success = true,
-                    message = "Record deleted successfully",
-                    result = resultList.FirstOrDefault()
-                });
+                return PortwayResults.Mutation(this, "Record deleted successfully", resultList.FirstOrDefault());
             }
             catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
             {
-                // Extract the custom error message from RAISERROR
                 Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-
-                return BadRequest(new
-                {
-                    success = false,
-                    error = "Bad request",
-                    details = sqlEx.Message
-                });
+                return PortwayResults.BadRequest(this, sqlEx.Message);
             }
         }
         catch (SqlException sqlEx)
         {
-            // Handle other SQL exceptions
             Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
                 endpointName, sqlEx.Number, sqlEx.Message);
-
-            return CreateErrorResponse("Internal operation failed", null, StatusCodes.Status500InternalServerError);
+            return PortwayResults.ServerError(this, "Internal operation failed");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error processing DELETE for {Endpoint}", endpointName);
-            return CreateErrorResponse("An error occurred while processing your request", null, StatusCodes.Status500InternalServerError);
+            return PortwayResults.ServerError(this, "An error occurred while processing your request");
         }
     }
 
@@ -3245,7 +3039,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             var staticEndpoints = EndpointHandler.GetStaticEndpoints();
             if (!staticEndpoints.TryGetValue(endpointName, out var endpoint))
             {
-                return NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Check environment restrictions
@@ -3275,7 +3069,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             if (!System.IO.File.Exists(contentFilePath))
             {
                 Log.Warning("Content file not found: {FilePath}", contentFilePath);
-                return NotFound(new { error = $"Content file not found: {contentFile}", success = false });
+                return PortwayResults.NotFound(this, $"Content file not found: {contentFile}");
             }
 
             // Get content type and filtering settings
@@ -3302,13 +3096,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                     Log.Debug("Content negotiation failed: Client accepts {AcceptHeader}, endpoint provides {ContentType}",
                         acceptHeader, contentType);
 
-                    return StatusCode(406, new
-                    {
-                        success = false,
-                        error = "Not Acceptable",
-                        detail = $"Endpoint provides '{contentType}' but client accepts '{acceptHeader}'",
-                        availableContentType = contentType
-                    });
+                    return PortwayResults.NotAcceptable(this, $"Endpoint provides '{contentType}' but client accepts '{acceptHeader}'");
                 }
             }
 
@@ -3356,7 +3144,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         catch (Exception ex)
         {
             Log.Error(ex, "Error serving static content for {Endpoint}", endpointName);
-            return StatusCode(500, new { success = false, error = "Error serving static content" });
+            return PortwayResults.ServerError(this, "Error serving static content");
         }
     }
 
@@ -3438,13 +3226,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             }
             
             // Build result in the correct API format
-            var result = new
-            {
-                Success = true,
-                Count = items.Count,
-                Value = items.Select(SerializeJsonElement).ToArray(),
-                NextLink = (string?)null  // Static endpoints don't support pagination links
-            };
+            var result = CollectionResponse<object>.Of(items.Select(SerializeJsonElement).ToList()!);
             
             var resultJson = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             var resultBytes = Encoding.UTF8.GetBytes(resultJson);
@@ -3474,7 +3256,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             var errorBytes = Encoding.UTF8.GetBytes(errorJson);
             
             Response.Headers["X-Filtering-Status"] = "Error";
-            return Task.FromResult<IActionResult>(StatusCode(500, errorResponse));
+            return Task.FromResult<IActionResult>(PortwayResults.ServerError(this, "Internal server error during filtering"));
         }
     }
     
@@ -3850,30 +3632,14 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     private string GetContentTypeFromExtension(string fileName) => ContentTypeHelper.GetContentType(fileName);
 
     /// <summary>
-    /// Helper method to create a standard error response
-    /// </summary>
-    private IActionResult CreateErrorResponse(string message, string? detail = null, int statusCode = 400)
-    {
-        var response = new
-        {
-            success = false,
-            error = message,
-            errorDetail = detail,
-            timestamp = DateTime.UtcNow
-        };
-        
-        return StatusCode(statusCode, response);
-    }
-
-    /// <summary>
     /// Validates SQL input data against allowed columns, required columns, and regex patterns
     /// </summary>
-    private (bool IsValid, string? ErrorMessage, List<ValidationError>? Errors) ValidateSqlInput(
+    private (bool IsValid, string? ErrorMessage, List<ValidationDetail>? Errors) ValidateSqlInput(
         JsonElement data,
         EndpointDefinition endpoint,
         string httpMethod)
     {
-        var errors = new List<ValidationError>();
+        var errors = new List<ValidationDetail>();
 
         // Check for empty request body
         if (data.ValueKind == JsonValueKind.Undefined || data.ValueKind == JsonValueKind.Null)
@@ -3893,11 +3659,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 
                 if (isEmpty)
                 {
-                    errors.Add(new ValidationError
-                    {
-                        Field = requiredColumn,
-                        Message = $"{requiredColumn} is required"
-                    });
+                    errors.Add(new ValidationDetail(requiredColumn, $"{requiredColumn} is required"));
                 }
             }
         }
@@ -3921,11 +3683,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             {
                 if (!allowedFields.Contains(property.Name))
                 {
-                    errors.Add(new ValidationError
-                    {
-                        Field = property.Name,
-                        Message = $"{property.Name} is not an allowed property"
-                    });
+                    errors.Add(new ValidationDetail(property.Name, $"{property.Name} is not an allowed property"));
                 }
             }
         }
@@ -3949,13 +3707,10 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 
                             if (!regex.IsMatch(value))
                             {
-                                errors.Add(new ValidationError
-                                {
-                                    Field = columnName,
-                                    Message = string.IsNullOrEmpty(validation.Value.ValidationMessage)
+                                errors.Add(new ValidationDetail(columnName,
+                                    string.IsNullOrEmpty(validation.Value.ValidationMessage)
                                         ? $"{columnName} does not match the required format"
-                                        : validation.Value.ValidationMessage
-                                });
+                                        : validation.Value.ValidationMessage));
                             }
                         }
                         catch (Exception ex)
@@ -4005,11 +3760,6 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         return (true, null);
     }
 
-    private class ValidationError
-    {
-        public string Field { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-    }
 
     /// <summary>
     /// Applies XML filtering using OData $filter syntax
