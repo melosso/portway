@@ -93,7 +93,9 @@ Authorization: Bearer <token>
 
 ```json
 {
+  "success": true,
   "message": "Webhook processed successfully",
+  "result": null,
   "id": 12345
 }
 ```

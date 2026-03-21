@@ -126,8 +126,8 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "Success": true,
-  "StepResults": {
+  "success": true,
+  "stepResults": {
     "CreateOrderLines": [
       { "d": { "TransactionKey": "abc-123", "LineNumber": 1, "ProductCode": "PROD001" } },
       { "d": { "TransactionKey": "abc-123", "LineNumber": 2, "ProductCode": "PROD002" } }
@@ -143,12 +143,12 @@ Authorization: Bearer <token>
 
 ```json
 {
-  "Success": false,
-  "ErrorStep": "CreateOrderHeader",
-  "ErrorMessage": "Insufficient credit limit",
-  "ErrorDetail": "Customer credit limit exceeded",
-  "StatusCode": 400,
-  "StepResults": {
+  "success": false,
+  "errorStep": "CreateOrderHeader",
+  "errorMessage": "Insufficient credit limit",
+  "errorDetail": "Customer credit limit exceeded",
+  "statusCode": 400,
+  "stepResults": {
     "CreateOrderLines": [...]
   }
 }

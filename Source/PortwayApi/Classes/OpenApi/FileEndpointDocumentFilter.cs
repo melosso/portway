@@ -167,15 +167,16 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Type = JsonSchemaType.Object,
             Properties = new Dictionary<string, IOpenApiSchema>
             {
-                ["Success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                ["Count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                ["Value"] = new OpenApiSchema
+                ["success"]  = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                ["count"]    = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                ["value"]    = new OpenApiSchema
                 {
                     Type = JsonSchemaType.Array,
                     Items = new OpenApiSchemaReference("FileInfo")
-                }
+                },
+                ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null }
             },
-            Required = new HashSet<string> { "Success", "Count", "Value" }
+            Required = new HashSet<string> { "success", "count", "value" }
         };
     }
 
@@ -476,7 +477,8 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                             Properties = new Dictionary<string, IOpenApiSchema>
                             {
                                 ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                ["result"]  = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null }
                             }
                         }
                     }
@@ -597,9 +599,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                             Type = JsonSchemaType.Object,
                             Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["Success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["Count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                ["Value"] = new OpenApiSchema
+                                ["success"]  = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                ["count"]    = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                ["value"]    = new OpenApiSchema
                                 {
                                     Type = JsonSchemaType.Array,
                                     Items = new OpenApiSchema
@@ -607,15 +609,17 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                                         Type = JsonSchemaType.Object,
                                         Properties = new Dictionary<string, IOpenApiSchema>
                                         {
-                                            ["fileId"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["fileName"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["contentType"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["size"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
-                                            ["lastModified"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" },
-                                            ["url"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                            ["fileId"]         = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["fileName"]       = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["contentType"]    = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["size"]           = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
+                                            ["lastModified"]   = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" },
+                                            ["url"]            = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["isInMemoryOnly"] = new OpenApiSchema { Type = JsonSchemaType.Boolean }
                                         }
                                     }
-                                }
+                                },
+                                ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null }
                             }
                         }
                     }
@@ -679,8 +683,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                     {
                         Value = new JsonObject
                         {
-                            ["success"] = true,
-                            ["message"] = "File deleted successfully"
+                            ["success"] = JsonValue.Create(true),
+                            ["message"] = "File deleted successfully",
+                            ["result"]  = null
                         },
                         Summary = "Successful deletion"
                     }
@@ -697,29 +702,32 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                     {
                         Value = new JsonObject
                         {
-                            ["success"] = true,
-                            ["files"] = new JsonArray
+                            ["success"]  = JsonValue.Create(true),
+                            ["count"]    = JsonValue.Create(2),
+                            ["value"]    = new JsonArray
                             {
                                 new JsonObject
                                 {
-                                    ["fileId"] = "YTAwOmV4YW1wbGUucGRm",
-                                    ["fileName"] = "example.pdf",
-                                    ["contentType"] = "application/pdf",
-                                    ["size"] = 12345,
-                                    ["lastModified"] = "2025-05-20T10:15:30Z",
-                                    ["url"] = $"/api/prod/files/{endpointName}/YTAwOmV4YW1wbGUucGRm"
+                                    ["fileId"]         = "YTAwOmV4YW1wbGUucGRm",
+                                    ["fileName"]       = "example.pdf",
+                                    ["contentType"]    = "application/pdf",
+                                    ["size"]           = 12345,
+                                    ["lastModified"]   = "2025-05-20T10:15:30Z",
+                                    ["url"]            = $"/api/prod/files/{endpointName}/YTAwOmV4YW1wbGUucGRm",
+                                    ["isInMemoryOnly"] = false
                                 },
                                 new JsonObject
                                 {
-                                    ["fileId"] = "YTAwOmltYWdlLmpwZw",
-                                    ["fileName"] = "image.jpg",
-                                    ["contentType"] = "image/jpeg",
-                                    ["size"] = 54321,
-                                    ["lastModified"] = "2025-05-19T14:30:45Z",
-                                    ["url"] = $"/api/prod/files/{endpointName}/YTAwOmltYWdlLmpwZw"
+                                    ["fileId"]         = "YTAwOmltYWdlLmpwZw",
+                                    ["fileName"]       = "image.jpg",
+                                    ["contentType"]    = "image/jpeg",
+                                    ["size"]           = 54321,
+                                    ["lastModified"]   = "2025-05-19T14:30:45Z",
+                                    ["url"]            = $"/api/prod/files/{endpointName}/YTAwOmltYWdlLmpwZw",
+                                    ["isInMemoryOnly"] = false
                                 }
                             },
-                            ["count"] = 2
+                            ["nextLink"] = null
                         },
                         Summary = "File listing example"
                     }

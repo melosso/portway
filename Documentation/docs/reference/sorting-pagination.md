@@ -123,9 +123,10 @@ Use the NextLink provided in responses:
 
 ```json
 {
-  "Count": 10,
-  "Value": [...],
-  "NextLink": "/api/prod/Products?$top=10&$skip=10&$orderby=ItemCode"
+  "success": true,
+  "count": 10,
+  "value": [...],
+  "nextLink": "/api/prod/Products?$top=10&$skip=10&$orderby=ItemCode"
 }
 ```
 
@@ -318,8 +319,9 @@ Response: 400 Bad Request
 
 ```json
 {
-  "Count": 10,
-  "Value": [
+  "success": true,
+  "count": 10,
+  "value": [
     {
       "ItemCode": "PROD001",
       "Name": "Widget A",
@@ -334,7 +336,7 @@ Response: 400 Bad Request
     }
     // ... 8 more items
   ],
-  "NextLink": "/api/prod/Products?$orderby=Category,Price desc&$top=10&$skip=10"
+  "nextLink": "/api/prod/Products?$orderby=Category,Price desc&$top=10&$skip=10"
 }
 ```
 
@@ -342,11 +344,12 @@ Response: 400 Bad Request
 
 ```json
 {
-  "Count": 5,
-  "Value": [
+  "success": true,
+  "count": 5,
+  "value": [
     // ... 5 items
   ],
-  "NextLink": null
+  "nextLink": null
 }
 ```
 

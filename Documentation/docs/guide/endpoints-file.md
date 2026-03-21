@@ -73,15 +73,19 @@ Authorization: Bearer YOUR_TOKEN
 ```json
 {
   "success": true,
-  "files": [
+  "count": 1,
+  "value": [
     {
       "fileId": "abc123fileId",
       "fileName": "report.pdf",
       "contentType": "application/pdf",
       "size": 125679,
-      "url": "/api/500/files/Documents/abc123fileId"
+      "lastModified": "2025-03-21T10:00:00Z",
+      "url": "/api/500/files/Documents/abc123fileId",
+      "isInMemoryOnly": false
     }
-  ]
+  ],
+  "nextLink": null
 }
 ```
 
