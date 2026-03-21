@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
+using PortwayApi.Services.Telemetry;
 using Serilog;
 
 namespace PortwayApi.Services.Caching;
@@ -13,14 +14,17 @@ public class CacheManager : ICacheProvider
     private readonly ICacheProvider _provider;
     private readonly IOptionsMonitor<CacheOptions> _optionsMonitor;
     private readonly PortwayApi.Services.MetricsService _metricsService;
+    private readonly PortwayMetrics _portwayMetrics;
 
     public CacheManager(
         IOptionsMonitor<CacheOptions> optionsMonitor,
         MemoryCacheProvider memoryCacheProvider,
         PortwayApi.Services.MetricsService metricsService,
+        PortwayMetrics portwayMetrics,
         RedisCacheProvider? redisCacheProvider = null)
     {
         _metricsService = metricsService;
+        _portwayMetrics = portwayMetrics;
         _optionsMonitor = optionsMonitor;
         var options = optionsMonitor.CurrentValue;
 
@@ -54,8 +58,8 @@ public class CacheManager : ICacheProvider
             return null;
 
         var result = await _provider.GetAsync<T>(key);
-        if (result is not null) _metricsService.RecordCacheHit();
-        else _metricsService.RecordCacheMiss();
+        if (result is not null) { _metricsService.RecordCacheHit();  _portwayMetrics.CacheHit(); }
+        else                    { _metricsService.RecordCacheMiss(); _portwayMetrics.CacheMiss(); }
         return result;
     }
 

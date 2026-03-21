@@ -1,6 +1,7 @@
 namespace PortwayApi.Middleware;
 
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -25,6 +26,20 @@ public class ExceptionHandlingMiddleware
         catch (Exception ex)
         {
             Log.Error(ex, "Unhandled exception occurred while processing request: {Path}", context.Request.Path);
+
+            // Propagate error status to the active OTel span
+            var activity = Activity.Current;
+            if (activity != null)
+            {
+                activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection
+                {
+                    ["exception.type"]       = ex.GetType().FullName,
+                    ["exception.message"]    = ex.Message,
+                    ["exception.stacktrace"] = ex.ToString()
+                }));
+            }
+
             await HandleExceptionAsync(context, ex);
         }
     }

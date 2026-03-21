@@ -9,6 +9,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Instrumentation.Http;
 using OpenTelemetry.Instrumentation.SqlClient;
+using OpenTelemetry.Resources;
+using PortwayApi.Services.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using SqlKata.Compilers;
@@ -159,24 +161,27 @@ try
         });
     }
 
+    var assemblyVersion = typeof(Program).Assembly
+        .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+        ?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
+
+    builder.Services.AddSingleton<PortwayMetrics>();
+
     builder.Services.AddOpenTelemetry()
-        .WithTracing(builder =>
-        {
-            builder
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddSqlClientInstrumentation()
-                .AddSource("PortwayAPI")
-                .AddOtlpExporter();
-        })
-        .WithMetrics(builder =>
-        {
-            builder
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddMeter("PortwayAPI")
-                .AddOtlpExporter();
-        });
+        .ConfigureResource(r => r.AddService(
+            serviceName:    PortwayTelemetry.ServiceName,
+            serviceVersion: assemblyVersion))
+        .WithTracing(t => t
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddSqlClientInstrumentation()
+            .AddSource(PortwayTelemetry.ServiceName)
+            .AddOtlpExporter())
+        .WithMetrics(m => m
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddMeter(PortwayTelemetry.MeterName)
+            .AddOtlpExporter());
 
     // Define server name
     string serverName = Environment.MachineName;
@@ -437,10 +442,14 @@ try
         app.UseWebUiAuth(adminApiKey);
 
     // Record request metrics for all non-health paths (UI and API tracked separately)
-    var metricsService = app.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+    var metricsService  = app.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+    var portwayMetrics  = app.Services.GetRequiredService<PortwayMetrics>();
     app.Use(async (context, next) =>
     {
+        var startTimestamp = System.Diagnostics.Stopwatch.GetTimestamp();
         await next();
+        var duration = System.Diagnostics.Stopwatch.GetElapsedTime(startTimestamp);
+
         var path = context.Request.Path;
         if (path.StartsWithSegments("/health") || path.StartsWithSegments("/scalar")) return;
         string source, endpoint;
@@ -454,6 +463,7 @@ try
             endpoint = ParseEndpointName(path.Value);
         }
         metricsService.Record(context.Response.StatusCode, context.Request.Method, source, endpoint);
+        portwayMetrics.RequestCompleted(context.Request.Method, context.Response.StatusCode, source, duration);
     });
 
     app.UseDefaultFilesWithOptions();
