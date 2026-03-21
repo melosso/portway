@@ -240,7 +240,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                 Schema = responseSchema,
                 Example = method == "POST"
                     ? CreateExampleObjectFromObjectMetadata(objectMetadata, definition)
-                    : CreateSuccessResponseExample(method)
+                    : CreateSuccessResponseExample()
             };
         }
 
@@ -257,7 +257,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Creates an example success response for PUT/PATCH operations
     /// </summary>
-    private JsonNode? CreateSuccessResponseExample(string method)
+    private JsonNode? CreateSuccessResponseExample()
     {
         return new JsonObject
         {
@@ -660,9 +660,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     {
         return method switch
         {
-            "POST" => "The object to create" + (definition.Procedure != null ? "" : ""),
-            "PUT" => "The updated object" + (definition.Procedure != null ? "" : ""),
-            "PATCH" => "The properties to update (partial)" + (definition.Procedure != null ? "" : ""),
+            "POST" => "The object to create",
+            "PUT" => "The updated object",
+            "PATCH" => "The properties to update (partial)",
             _ => "The request body"
         };
     }
@@ -758,12 +758,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             // Use the same ID field detection logic as EndpointController
             bool isIdField = IsIdField(propertyName);
 
-            // If field can't be mapped, don't return empty
-            if (string.IsNullOrWhiteSpace(propertyName))
-            {
-                continue;
-            }
-
             // Special handling for ID parameters - exclude for POST, include for others
             if (method == "POST" && isIdField)
             {
@@ -835,20 +829,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     }
 
     /// <summary>
-    /// Checks if a parameter is a common ID parameter in stored procedures
-    /// </summary>
-    private bool IsIdParameter(string parameterName)
-    {
-        var idParameters = new[]
-        {
-            "id", "Id", "ID", "primarykey", "PrimaryKey", "PK",
-            "recordid", "RecordId", "internalid", "InternalId"
-        };
-
-        return idParameters.Contains(parameterName, StringComparer.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
     /// Checks if a parameter name is reserved and should be excluded
     /// </summary>
     private bool IsReservedParameterName(string parameterName)
@@ -892,57 +872,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         };
 
         return idFieldNames.Contains(fieldName, StringComparer.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Generates an example value based on parameter metadata (without property name)
-    /// </summary>
-    private JsonNode? GenerateExampleValueFromParameter(ParameterMetadata parameter)
-    {
-        // Use parameter name for context-aware examples
-        var paramName = parameter.ParameterName.ToLowerInvariant().Replace("@", "");
-
-        if (paramName.Contains("id") && parameter.ClrType == "System.Guid")
-        {
-            return JsonValue.Create(Guid.NewGuid().ToString());
-        }
-        else if (paramName.Contains("id") && parameter.ClrType.Contains("Int"))
-        {
-            return JsonValue.Create(1);
-        }
-        else if (paramName.Contains("name") || paramName.Contains("title"))
-        {
-            return JsonValue.Create($"Example {paramName}");
-        }
-        else if (paramName.Contains("email"))
-        {
-            return JsonValue.Create("user@example.com");
-        }
-        else if (paramName.Contains("date") || paramName.Contains("time"))
-        {
-            return JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
-        }
-        else if (paramName.StartsWith("is") || paramName.StartsWith("has") || paramName.Contains("active"))
-        {
-            return JsonValue.Create(true);
-        }
-        else if (paramName.Contains("amount") || paramName.Contains("price") || paramName.Contains("cost"))
-        {
-            return JsonValue.Create(99.99);
-        }
-
-        // Fallback to type-based examples
-        return parameter.ClrType switch
-        {
-            "System.String" => JsonValue.Create($"example {paramName}"),
-            "System.Int32" => JsonValue.Create(42),
-            "System.Int64" => JsonValue.Create(42L),
-            "System.Boolean" => JsonValue.Create(true),
-            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
-            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
-            _ => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
-        };
     }
 
     /// <summary>
@@ -1001,26 +930,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
             _ => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
         };
-    }
-
-    /// <summary>
-    /// Creates an example object from metadata
-    /// </summary>
-    private JsonNode? CreateExampleObject(
-        List<ColumnMetadata> metadata,
-        bool excludePrimaryKey = false)
-    {
-        var obj = new JsonObject();
-
-        foreach (var column in metadata)
-        {
-            if (excludePrimaryKey && column.IsPrimaryKey)
-                continue;
-
-            obj[column.ColumnName] = GenerateExampleValue(column);
-        }
-
-        return obj;
     }
 
     /// <summary>

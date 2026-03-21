@@ -71,17 +71,10 @@ public class EndpointController : ControllerBase
                 break;
                 
             case EndpointType.Proxy:
-                var proxyEndpoints = EndpointHandler.GetEndpoints(
-                    Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
-                    
-                if (TryGetEndpoint(proxyEndpoints, namespaceName, endpointName, out var proxyConfig))
+                var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
+                if (TryGetEndpoint(endpointDefinitions, namespaceName, endpointName, out var proxyEndpoint))
                 {
-                    // Get the full endpoint definition to access AllowedEnvironments
-                    var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
-                    if (TryGetEndpoint(endpointDefinitions, namespaceName, endpointName, out var proxyEndpoint))
-                    {
-                        allowedEnvironments = proxyEndpoint?.AllowedEnvironments;
-                    }
+                    allowedEnvironments = proxyEndpoint?.AllowedEnvironments;
                 }
                 break;
                 
@@ -197,7 +190,6 @@ public class EndpointController : ControllerBase
         {
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
-            var _allowedEnvironments = new List<string>();
             Log.Debug("Processing {Type} endpoint: {Namespace}/{Name}", endpointType, namespaceName ?? "None", endpointName);
 
             // Check environment restrictions
@@ -454,31 +446,25 @@ public class EndpointController : ControllerBase
                 return errorResponse!;
             }
 
-            // Read the request body for SQL endpoint
-            if (endpointType == EndpointType.SQL)
+            switch (endpointType)
             {
-                string requestBody;
-                using (var reader = new StreamReader(Request.Body))
-                {
-                    requestBody = await reader.ReadToEndAsync();
-                }
-                
-                var data = JsonSerializer.Deserialize<JsonElement>(requestBody);
-                // For SQL endpoints, build the full key for lookup (same as GET)
-                var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-                return await HandleSqlPutRequest(env, sqlKey, data);
-            }
-            else if (endpointType == EndpointType.Proxy)
-            {
-                // For proxy endpoints, build the full key for lookup
-                var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-                return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PUT");
-            }
-            else
-            {
-                // Composite and Webhook endpoints don't support PUT
-                Log.Warning("{Type} endpoints don't support PUT requests", endpointType);
-                return PortwayResults.MethodNotAllowed(this);
+                case EndpointType.SQL:
+                    string requestBody;
+                    using (var reader = new StreamReader(Request.Body))
+                    {
+                        requestBody = await reader.ReadToEndAsync();
+                    }
+                    var data = JsonSerializer.Deserialize<JsonElement>(requestBody);
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleSqlPutRequest(env, sqlKey, data);
+
+                case EndpointType.Proxy:
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PUT");
+
+                default:
+                    Log.Warning("{Type} endpoints don't support PUT requests", endpointType);
+                    return PortwayResults.MethodNotAllowed(this);
             }
         }
         catch (Exception ex)
@@ -592,21 +578,22 @@ public class EndpointController : ControllerBase
                 return errorResponse!;
             }
 
-            // Handle different endpoint types
-            if (endpointType == EndpointType.Proxy)
+            switch (endpointType)
             {
-                var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-                return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PATCH");
+                case EndpointType.Proxy:
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PATCH");
+
+                case EndpointType.SQL:
+                    using (var requestBody = await JsonDocument.ParseAsync(Request.Body))
+                    {
+                        return await HandleSqlPatchRequest(env, endpointName, requestBody);
+                    }
+
+                default:
+                    Log.Warning("{Type} endpoints don't support PATCH requests", endpointType);
+                    return PortwayResults.MethodNotAllowed(this);
             }
-            else if (endpointType == EndpointType.SQL)
-            {
-                // Read the request body
-                using var requestBody = await JsonDocument.ParseAsync(Request.Body);
-                return await HandleSqlPatchRequest(env, endpointName, requestBody);
-            }
-            
-            Log.Warning("{Type} endpoints don't support PATCH requests", endpointType);
-            return PortwayResults.MethodNotAllowed(this);
         }
         catch (Exception ex)
         {
@@ -1280,7 +1267,7 @@ public class EndpointController : ControllerBase
             if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
             {
                 var delEncodedId = Uri.EscapeDataString(id ?? string.Empty);
-                fullUrl = ConstructDeleteUrl(fullUrl, delEncodedId, remainingPath, endpointConfig, endpointName);
+                fullUrl = ConstructDeleteUrl(fullUrl, delEncodedId, remainingPath, endpointName);
             }
             else
             {
@@ -1463,7 +1450,7 @@ public class EndpointController : ControllerBase
                 else
                 {
                     // If we couldn't acquire a lock, just execute the request without caching
-                    Log.Warning("⏱️ Could not acquire lock for caching: {Endpoint}", endpointName);
+                    Log.Warning("Could not acquire lock for caching: {Endpoint}", endpointName);
                     await ExecuteProxyRequest(translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                 }
                 
@@ -1492,10 +1479,9 @@ public class EndpointController : ControllerBase
     /// Constructs the DELETE URL based on configured DeletePattern
     /// </summary>
     private string ConstructDeleteUrl(
-        string baseUrl, 
-        string? id, 
-        string remainingPath, 
-        (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments) endpointConfig,
+        string baseUrl,
+        string? id,
+        string remainingPath,
         string endpointName)
     {
         var deletePattern = GetDeletePatternForProxy(endpointName);
@@ -1596,16 +1582,6 @@ public class EndpointController : ControllerBase
         }
 
         return baseUrl;
-    }
-
-    /// <summary>
-    /// Cache entry for proxy responses
-    /// </summary>
-    private class ProxyCacheEntry
-    {
-        public string Content { get; set; } = string.Empty;
-        public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
-        public int StatusCode { get; set; } = 200;
     }
 
     /// <summary>
@@ -2099,14 +2075,28 @@ public class EndpointController : ControllerBase
         return element.ValueKind switch
         {
             JsonValueKind.String => element.GetString(),
-            JsonValueKind.Number => element.TryGetInt32(out int intValue) ? intValue 
-                : element.TryGetDouble(out double doubleValue) ? doubleValue 
+            JsonValueKind.Number => element.TryGetInt32(out int intValue) ? intValue
+                : element.TryGetDouble(out double doubleValue) ? doubleValue
                 : (object?)null,
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             JsonValueKind.Null => null,
             _ => element.ToString()
         };
+    }
+
+    /// <summary>
+    /// Parses a stored procedure name into schema and procedure name parts.
+    /// Handles both "schema.procedure" and plain "procedure" formats, stripping brackets.
+    /// </summary>
+    private static (string Schema, string ProcedureName) ParseProcedureName(string procedure)
+    {
+        if (procedure.Contains('.'))
+        {
+            var parts = procedure.Split('.');
+            return (parts[0].Trim('[', ']'), parts[1].Trim('[', ']'));
+        }
+        return ("dbo", procedure);
     }
 
     /// <summary>
@@ -2560,23 +2550,13 @@ public class EndpointController : ControllerBase
 			await using var connection = _connectionPoolService.CreateConnection(connectionString);
 			await connection.OpenAsync();
 			
-			// Parse procedure name
-			string schema = "dbo";
-			string procedureName = endpoint.Procedure;
-			
-			if (endpoint.Procedure.Contains("."))
-			{
-				var parts = endpoint.Procedure.Split('.');
-				schema = parts[0].Trim('[', ']');
-				procedureName = parts[1].Trim('[', ']');
-			}
-
 			// Special handling for SqlException to catch RAISERROR messages
+			var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
 			try
 			{
 				var result = await connection.QueryAsync(
-					$"[{schema}].[{procedureName}]", 
-					dynamicParams, 
+					$"[{schema}].[{procedureName}]",
+					dynamicParams,
 					commandType: CommandType.StoredProcedure
 				);
 
@@ -2726,18 +2706,8 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
-            // Parse procedure name properly
-            string schema = "dbo";
-            string procedureName = endpoint.Procedure;
-
-            if (endpoint.Procedure.Contains("."))
-            {
-                var parts = endpoint.Procedure.Split('.');
-                schema = parts[0].Trim('[', ']');
-                procedureName = parts[1].Trim('[', ']');
-            }
-
             // Special handling for SqlException to catch RAISERROR messages
+            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
             try
             {
                 var result = await connection.QueryAsync(
@@ -2853,18 +2823,8 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 			await using var connection = _connectionPoolService.CreateConnection(connectionString);
 			await connection.OpenAsync();
 
-			// Parse procedure name properly
-			string schema = "dbo";
-			string procedureName = endpoint.Procedure;
-
-			if (endpoint.Procedure.Contains("."))
-			{
-				var parts = endpoint.Procedure.Split('.');
-				schema = parts[0].Trim('[', ']');
-				procedureName = parts[1].Trim('[', ']');
-			}
-
 			// Special handling for SqlException to catch RAISERROR messages
+			var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
 			try
 			{
 				var result = await connection.QueryAsync(
@@ -2970,18 +2930,8 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
-            // Parse procedure name properly
-            string schema = "dbo";
-            string procedureName = endpoint.Procedure;
-
-            if (endpoint.Procedure.Contains("."))
-            {
-                var parts = endpoint.Procedure.Split('.');
-                schema = parts[0].Trim('[', ']');
-                procedureName = parts[1].Trim('[', ']');
-            }
-
             // Special handling for SqlException to catch RAISERROR messages
+            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
             try
             {
                 var result = await connection.QueryAsync(
@@ -3040,13 +2990,6 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             if (!staticEndpoints.TryGetValue(endpointName, out var endpoint))
             {
                 return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
-            }
-
-            // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Static);
-            if (!isAllowed)
-            {
-                return errorResponse!;
             }
 
             // Build path to content file - handle namespaced endpoints
@@ -3242,19 +3185,6 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         catch (Exception ex)
         {
             Log.Error(ex, "Error applying JSON filtering: {Message}", ex.Message);
-            
-            // Return error response
-            var errorResponse = new
-            {
-                success = false,
-                error = "Internal server error during filtering",
-                details = ex.Message,
-                originalDataAvailable = true
-            };
-            
-            var errorJson = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions { WriteIndented = true });
-            var errorBytes = Encoding.UTF8.GetBytes(errorJson);
-            
             Response.Headers["X-Filtering-Status"] = "Error";
             return Task.FromResult<IActionResult>(PortwayResults.ServerError(this, "Internal server error during filtering"));
         }
