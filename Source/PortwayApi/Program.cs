@@ -4,31 +4,22 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Trace;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Instrumentation.AspNetCore;
-using OpenTelemetry.Instrumentation.Http;
-using OpenTelemetry.Instrumentation.SqlClient;
-using OpenTelemetry.Resources;
-using PortwayApi.Services.Telemetry;
-using Microsoft.EntityFrameworkCore;
-using Serilog;
-using SqlKata.Compilers;
 using PortwayApi.Api;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Providers;
 using PortwayApi.Endpoints;
-using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
+using PortwayApi.Services.Files;
+using PortwayApi.Helpers;
 using PortwayApi.Middleware;
 using PortwayApi.Services;
 using PortwayApi.Services.Caching;
-using PortwayApi.Services.Files;
+using PortwayApi.Services.Configuration;
+using PortwayApi.Services.Health;
 using PortwayApi.Services.Providers;
-using System.Text;
+using PortwayApi.Services.Telemetry;
+using Serilog;
 using System.Text.Json;
-using System.Net;
 using System.Reflection;
 
 // Create log directory
@@ -165,23 +156,7 @@ try
         .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
         ?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
 
-    builder.Services.AddSingleton<PortwayMetrics>();
-
-    builder.Services.AddOpenTelemetry()
-        .ConfigureResource(r => r.AddService(
-            serviceName:    PortwayTelemetry.ServiceName,
-            serviceVersion: assemblyVersion))
-        .WithTracing(t => t
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddSqlClientInstrumentation()
-            .AddSource(PortwayTelemetry.ServiceName)
-            .AddOtlpExporter())
-        .WithMetrics(m => m
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddMeter(PortwayTelemetry.MeterName)
-            .AddOtlpExporter());
+    builder.Services.AddPortwayTelemetry(assemblyVersion);
 
     // Define server name
     string serverName = Environment.MachineName;
@@ -194,22 +169,9 @@ try
     // Register Serilog logger for dependency injection 
     builder.Services.AddSingleton<Serilog.ILogger>(sp => Log.Logger);
 
-    // Configure SQLite Authentication Database
-    var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "auth.db");
-    builder.Services.AddDbContext<AuthDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
-    builder.Services.AddScoped<TokenService>();
-    builder.Services.AddScoped<EnvironmentAuthService>();
-    builder.Services.AddAuthorization();
-
-    // Register configuration reload services for dynamic config updates
-    builder.Services.AddSingleton<PortwayApi.Services.Configuration.ReloadTracker>();
-    builder.Services.AddHostedService<PortwayApi.Services.Configuration.ConfigurationReloadService>();
-    builder.Services.AddHostedService<PortwayApi.Services.Configuration.EnvironmentFileWatcher>();
-    builder.Services.AddHostedService<PortwayApi.Services.Configuration.EndpointFileWatcher>();
-
-    // Register EndpointReloading options for feature flag support
-    builder.Services.Configure<PortwayApi.Classes.Configuration.EndpointReloadingOptions>(
-        builder.Configuration.GetSection("EndpointReloading"));
+    // Authentication and configuration reload
+    builder.Services.AddPortwayAuth();
+    builder.Services.AddPortwayConfigurationReload(builder.Configuration);
 
     // Register route constraint for ProxyConstraint
     builder.Services.Configure<RouteOptions>(options =>
@@ -218,64 +180,9 @@ try
     });
     builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
 
-    // Configure HTTP client
-    // Check environment variables first, then fall back to config
-    var proxyUsername = Environment.GetEnvironmentVariable("PROXY_USERNAME") 
-        ?? builder.Configuration["Proxy:Username"];
-    var proxyPassword = Environment.GetEnvironmentVariable("PROXY_PASSWORD") 
-        ?? builder.Configuration["Proxy:Password"];
-    var proxyDomain = Environment.GetEnvironmentVariable("PROXY_DOMAIN") 
-        ?? builder.Configuration["Proxy:Domain"];
-
-    Log.Debug("Proxy credentials found: username={HasUsername}, password={HasPassword}, domain={HasDomain}", 
-        !string.IsNullOrEmpty(proxyUsername), 
-        !string.IsNullOrEmpty(proxyPassword),
-        !string.IsNullOrEmpty(proxyDomain));
-
-    if (!string.IsNullOrEmpty(proxyUsername) && !string.IsNullOrEmpty(proxyPassword))
-    {
-        Log.Information("Configuring proxy with explicit credentials for user: {Username}@{Domain}", proxyUsername, proxyDomain);
-        builder.Services.AddHttpClient("ProxyClient")
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                Credentials = new NetworkCredential(proxyUsername, proxyPassword, proxyDomain),
-                PreAuthenticate = true,
-                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
-            });
-    }
-    else
-    {
-        // Fallback to default credentials (NTLM/Kerberos via service account)
-        builder.Services.AddHttpClient("ProxyClient")
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                UseProxy = false,
-                Credentials = CredentialCache.DefaultNetworkCredentials,
-                PreAuthenticate = true,
-                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
-            });
-    }
-
-    // Register environment settings providers
-    builder.Services.AddSingleton<IEnvironmentSettingsProvider, EnvironmentSettingsProvider>();
-    builder.Services.AddSingleton<EnvironmentSettings>();
-
-    // Register SQL providers (provider detection from connection string, no config changes needed)
-    builder.Services.AddSingleton<ISqlProvider, MsSqlProvider>();
-    builder.Services.AddSingleton<ISqlProvider, PostgreSqlProvider>();
-    builder.Services.AddSingleton<ISqlProvider, MySqlProvider>();
-    builder.Services.AddSingleton<ISqlProvider, SqliteProvider>();
-    builder.Services.AddSingleton<ISqlProviderFactory, SqlProviderFactory>();
-
-    // Register OData SQL services
-    builder.Services.AddSingleton<IHostedService, StartupLogger>();
-    builder.Services.AddSingleton<IEdmModelBuilder, EdmModelBuilder>();
-    builder.Services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
-
-    builder.Services.AddSingleton<SqlMetadataService>();
-    builder.Services.AddHostedService<MetadataInitializationService>();
-    builder.Services.AddSingleton<FileHandlerService>();
-    builder.Services.AddSqlConnectionPooling(builder.Configuration);
+    // HTTP client and SQL/OData services
+    builder.Services.AddPortwayProxyHttpClient(builder.Configuration);
+    builder.Services.AddPortwaySqlServices(builder.Configuration);
 
     // Initialize endpoints directories
     DirectoryHelper.EnsureDirectoryStructure();
@@ -320,39 +227,7 @@ try
 
     var urlValidator = new UrlValidator(urlValidatorPath);
     builder.Services.AddSingleton(urlValidator);
-    builder.Services.AddHealthChecks();
-    builder.Services.AddSingleton<PortwayApi.Services.HealthCheckService>(sp =>
-    {
-        var healthCheckService = sp.GetRequiredService<Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService>();
-        var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-        var environmentSettingsProvider = sp.GetRequiredService<IEnvironmentSettingsProvider>();
-        var environmentSettings = sp.GetRequiredService<EnvironmentSettings>();
-
-        var sqlProviderFactory = sp.GetRequiredService<ISqlProviderFactory>();
-
-        return new PortwayApi.Services.HealthCheckService(
-            healthCheckService,
-            TimeSpan.FromSeconds(90),   // TTL longer than refresh interval so cache is always valid
-            httpClientFactory,
-            environmentSettingsProvider,
-            environmentSettings,
-            sqlProviderFactory);
-    });
-
-    // The SSE broadcaster for /ui/ route
-    builder.Services.AddSingleton<PortwayApi.Services.SseBroadcaster>();
-
-    // In-memory HTTP request metrics (traffic + error codes)
-    builder.Services.AddSingleton<PortwayApi.Services.MetricsService>();
-    builder.Services.AddHostedService<PortwayApi.Services.MetricsPersistenceService>();
-
-    // Background service to prevent health check cache from expiring
-    builder.Services.AddHostedService(sp =>
-        new PortwayApi.Services.HealthRefreshService(
-            sp.GetRequiredService<PortwayApi.Services.HealthCheckService>(),
-            TimeSpan.FromSeconds(60),
-            sp.GetRequiredService<PortwayApi.Services.SseBroadcaster>(),
-            sp.GetRequiredService<IHostApplicationLifetime>()));
+    builder.Services.AddPortwayHealthServices();
 
     OpenApiConfiguration.ConfigureOpenApi(builder);
 
@@ -764,14 +639,6 @@ void LogApplicationAscii()
     Log.Information(" ██║     ╚██████╔╝██║  ██║   ██║   ╚███╔███╔╝██║  ██║   ██║   ");
     Log.Information(" ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   ");
     Log.Information("");
-}
-
-public static class RateLimitingExtensions
-{
-    public static IServiceCollection AddRateLimiting(this IServiceCollection services, IConfiguration configuration)
-    {
-        return services;
-    }
 }
 
 public partial class Program { }
