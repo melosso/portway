@@ -607,14 +607,18 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                                 Type = JsonSchemaType.Object,
                                 Properties = new Dictionary<string, IOpenApiSchema>
                                 {
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
                                     ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("Request processed successfully.") },
-                                    ["id"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Example = JsonValue.Create(12345) }
+                                    ["result"]  = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null },
+                                    ["id"]      = new OpenApiSchema { Type = JsonSchemaType.Integer, Example = JsonValue.Create(12345) }
                                 }
                             },
                             Example = new JsonObject
                             {
+                                ["success"] = JsonValue.Create(true),
                                 ["message"] = JsonValue.Create("Webhook processed successfully."),
-                                ["id"] = JsonValue.Create(12345)
+                                ["result"]  = null,
+                                ["id"]      = JsonValue.Create(12345)
                             }
                         }
                     }

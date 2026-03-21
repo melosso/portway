@@ -89,11 +89,12 @@ GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price d
 
 ```json
 {
-  "Count": 25,
-  "Value": [
+  "success": true,
+  "count": 25,
+  "value": [
     { "ProductID": "abc123", "ProductName": "Gadget", "Price": 99.99 }
   ],
-  "NextLink": "/api/prod/Products?$top=25&$skip=25"
+  "nextLink": "/api/prod/Products?$top=25&$skip=25"
 }
 ```
 
