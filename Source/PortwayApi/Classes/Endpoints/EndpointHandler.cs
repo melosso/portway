@@ -226,11 +226,11 @@ public class EndpointDefinition
 public static class EndpointHandler
 {
     // Cache for loaded endpoints to avoid multiple loads
-    private static Dictionary<string, EndpointDefinition>? _loadedProxyEndpoints = null;
-    private static Dictionary<string, EndpointDefinition>? _loadedSqlEndpoints = null;
-    private static Dictionary<string, EndpointDefinition>? _loadedSqlWebhookEndpoints = null;
-    private static Dictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
-    private static Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
+    private static volatile Dictionary<string, EndpointDefinition>? _loadedProxyEndpoints = null;
+    private static volatile Dictionary<string, EndpointDefinition>? _loadedSqlEndpoints = null;
+    private static volatile Dictionary<string, EndpointDefinition>? _loadedSqlWebhookEndpoints = null;
+    private static volatile Dictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
+    private static volatile Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
 
     /// <summary>

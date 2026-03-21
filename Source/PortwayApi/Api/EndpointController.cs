@@ -249,7 +249,7 @@ public class EndpointController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public IActionResult HeadAsync(string env, string catchall)
+    public IActionResult Head(string env, string catchall)
     {
         try
         {
@@ -1206,7 +1206,6 @@ public class EndpointController : ControllerBase
     /// Handles proxy requests for any HTTP method with request caching
     /// </summary>
     private static readonly MemoryCache _proxyCache = new MemoryCache(new MemoryCacheOptions());
-    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _cacheLocks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
     private async Task<IActionResult> HandleProxyRequest(
         string env,
@@ -1773,8 +1772,8 @@ public class EndpointController : ControllerBase
         }
 
         // Send the request
-        var response = await client.SendAsync(requestMessage);
-        
+        var response = await client.SendAsync(requestMessage, HttpContext.RequestAborted);
+
         // Store response headers for cache and apply to current response
         var responseHeaders = new Dictionary<string, string>();
 
@@ -1814,7 +1813,7 @@ public class EndpointController : ControllerBase
 
         // Read and potentially rewrite response content
         var originalContent = response.Content != null
-            ? await response.Content.ReadAsStringAsync()
+            ? await response.Content.ReadAsStringAsync(HttpContext.RequestAborted)
             : string.Empty;
 
         // Extract content type
@@ -2484,139 +2483,139 @@ public class EndpointController : ControllerBase
 
 	/// <summary>
 	/// Handles SQL POST requests (Create)
-	/// </summary>
-	private async Task<IActionResult> HandleSqlPostRequest(
-		string env,
-		string endpointName,
-		JsonElement data)
-	{
-		try
-		{
-			// Check if this is a SQL endpoint
-			var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-			if (!sqlEndpoints.ContainsKey(endpointName))
-			{
-				return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
-			}
+    /// </summary>
+    private async Task<IActionResult> HandleSqlPostRequest(
+        string env,
+        string endpointName,
+        JsonElement data)
+    {
+        try
+        {
+            // Check if this is a SQL endpoint
+            var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
+            if (!sqlEndpoints.ContainsKey(endpointName))
+            {
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+            }
 
-			// Validate environment
-			var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
-			if (string.IsNullOrEmpty(connectionString))
-			{
-				return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
-			}
+            // Validate environment
+            var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
+            }
 
-			// Get endpoint configuration
-			var endpoint = sqlEndpoints[endpointName];
+            // Get endpoint configuration
+            var endpoint = sqlEndpoints[endpointName];
 
-			// Check method support and procedure definition
-			if (!(endpoint.Methods?.Contains("POST") ?? false))
-			{
-				return PortwayResults.MethodNotAllowed(this, "This endpoint does not support POST operations");
-			}
+            // Check method support and procedure definition
+            if (!(endpoint.Methods?.Contains("POST") ?? false))
+            {
+                return PortwayResults.MethodNotAllowed(this, "This endpoint does not support POST operations");
+            }
 
-			if (string.IsNullOrEmpty(endpoint.Procedure))
-			{
-				return PortwayResults.BadRequest(this, "This endpoint does not support insert operations");
-			}
+            if (string.IsNullOrEmpty(endpoint.Procedure))
+            {
+                return PortwayResults.BadRequest(this, "This endpoint does not support insert operations");
+            }
 
-			// Validate input data against allowed columns, required columns, and regex patterns
-			var (isValid, errorMessage, validationErrors) = ValidateSqlInput(data, endpoint, "POST");
-			if (!isValid)
-			{
-				if (validationErrors != null && validationErrors.Any())
-				{
-					return PortwayResults.ValidationFailed(this, validationErrors);
-				}
-				return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
-			}
+            // Validate input data against allowed columns, required columns, and regex patterns
+            var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "POST");
+            if (!isValid)
+            {
+                if (validationErrors != null && validationErrors.Any())
+                {
+                    return PortwayResults.ValidationFailed(this, validationErrors);
+                }
+                return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
+            }
 
-			// Prepare stored procedure parameters
-			var dynamicParams = new DynamicParameters();
-			dynamicParams.Add("@Method", "INSERT");
-			
-			if (User.Identity?.Name != null)
-			{
-				dynamicParams.Add("@UserName", User.Identity.Name);
-			}
+            // Prepare stored procedure parameters
+            var dynamicParams = new DynamicParameters();
+            dynamicParams.Add("@Method", "INSERT");
+            
+            if (User.Identity?.Name != null)
+            {
+                dynamicParams.Add("@UserName", User.Identity.Name);
+            }
 
-			// Extract and add parameters
-			foreach (var property in data.EnumerateObject())
-			{
-				dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-			}
+            // Extract and add parameters
+            foreach (var property in data.EnumerateObject())
+            {
+                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
+            }
 
-			// Execute stored procedure
-			await using var connection = _connectionPoolService.CreateConnection(connectionString);
-			await connection.OpenAsync();
-			
-			// Special handling for SqlException to catch RAISERROR messages
-			var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
-			try
-			{
-				var result = await connection.QueryAsync(
-					$"[{schema}].[{procedureName}]",
-					dynamicParams,
-					commandType: CommandType.StoredProcedure
-				);
+            // Execute stored procedure
+            await using var connection = _connectionPoolService.CreateConnection(connectionString);
+            await connection.OpenAsync();
+            
+            // Special handling for SqlException to catch RAISERROR messages
+            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
+            try
+            {
+                var result = await connection.QueryAsync(
+                    $"[{schema}].[{procedureName}]",
+                    dynamicParams,
+                    commandType: CommandType.StoredProcedure
+                );
 
-				var resultList = result.ToList();
-				
-				Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
-				
-				return PortwayResults.Create(this, $"/api/{env}/{endpointName}", "Record created successfully", resultList.FirstOrDefault());
-			}
+                var resultList = result.ToList();
+                
+                Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
+                
+                return PortwayResults.Create(this, $"/api/{env}/{endpointName}", "Record created successfully", resultList.FirstOrDefault());
+            }
             catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
             {
                 Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
                 return PortwayResults.BadRequest(this, sqlEx.Message);
             }
-		}
-		catch (SqlException sqlEx)
-		{
-			// Handle SQL-specific exceptions with more detail
-			// Generate a masked error reference for troubleshooting
-			var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
-			Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
-				errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
+        }
+        catch (SqlException sqlEx)
+        {
+            // Handle SQL-specific exceptions with more detail
+            // Generate a masked error reference for troubleshooting
+            var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
+            Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
+                errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
 
-			// Provide only generic error messages for all SQL errors to avoid leaking database details
-			string errorMessage = sqlEx.Number switch
-			{
-				2 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Connection error
-				53 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Network error
-				208 => $"A data error occurred. Please contact support with reference: T0{errorId}", // Invalid object name
-				547 => $"A data error occurred. Please contact support with reference: T{errorId}", // Constraint violation
-				1205 => $"A data error occurred. Please contact support with reference: T{errorId}", // Deadlock
-				2627 => $"A data error occurred. Please contact support with reference: T{errorId}", // Unique constraint
-				2601 => $"A data error occurred. Please contact support with reference: T{errorId}", // Duplicate key
-				4060 => $"A data error occurred. Please contact support with reference: T{errorId}", // Cannot open database
-				8152 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data too long
-				8114 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data conversion
-				18456 => $"A data error occurred. Please contact support with reference: T{errorId}", // Login failed
-				50000 => $"A data error occurred. Please contact support with reference: T{errorId}", // User-defined error
-				_ => $"An error occurred while processing your request. Reference: H{errorId}"
-			};
+            // Provide only generic error messages for all SQL errors to avoid leaking database details
+            string errorMessage = sqlEx.Number switch
+            {
+                2 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Connection error
+                53 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Network error
+                208 => $"A data error occurred. Please contact support with reference: T0{errorId}", // Invalid object name
+                547 => $"A data error occurred. Please contact support with reference: T{errorId}", // Constraint violation
+                1205 => $"A data error occurred. Please contact support with reference: T{errorId}", // Deadlock
+                2627 => $"A data error occurred. Please contact support with reference: T{errorId}", // Unique constraint
+                2601 => $"A data error occurred. Please contact support with reference: T{errorId}", // Duplicate key
+                4060 => $"A data error occurred. Please contact support with reference: T{errorId}", // Cannot open database
+                8152 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data too long
+                8114 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data conversion
+                18456 => $"A data error occurred. Please contact support with reference: T{errorId}", // Login failed
+                50000 => $"A data error occurred. Please contact support with reference: T{errorId}", // User-defined error
+                _ => $"An error occurred while processing your request. Reference: H{errorId}"
+            };
 
-			return Problem(
-				detail: errorMessage,
-				statusCode: StatusCodes.Status500InternalServerError,
-				title: "Internal Error"
-			);
-		}
-		catch (Exception ex)
-		{
-			if (ex is JsonException)
-			{
-				return PortwayResults.BadRequest(this, "Invalid JSON format in request");
-			}
+            return Problem(
+                detail: errorMessage,
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Internal Error"
+            );
+        }
+        catch (Exception ex)
+        {
+            if (ex is JsonException)
+            {
+                return PortwayResults.BadRequest(this, "Invalid JSON format in request");
+            }
 
-			Log.Error(ex, "Error processing request for endpoint {EndpointName}: {ErrorType}: {ErrorMessage}",
-				endpointName, ex.GetType().Name, ex.Message);
+            Log.Error(ex, "Error processing request for endpoint {EndpointName}: {ErrorType}: {ErrorMessage}",
+                endpointName, ex.GetType().Name, ex.Message);
 
-			return PortwayResults.ServerError(this, "An error occurred while processing your request");
-		}
-	}
+            return PortwayResults.ServerError(this, "An error occurred while processing your request");
+        }
+    }
 
  /// <summary>
 /// Determines if a SQL exception is an intentional user-facing error vs a system error
@@ -2667,7 +2666,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             }
 
             // Step 4: Validate input data against allowed columns, required columns, and regex patterns
-            var (isValid, errorMessage, validationErrors) = ValidateSqlInput(data, endpoint, "PUT");
+            var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "PUT");
             if (!isValid)
             {
                 if (validationErrors != null && validationErrors.Any())
@@ -2743,122 +2742,122 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-	/// <summary>
-	/// Handles SQL PATCH requests (partial updates)
-	/// </summary>
-	private async Task<IActionResult> HandleSqlPatchRequest(
-		string env,
-		string endpointName,
-		JsonDocument requestBody)
-	{
-		try
-		{
-			// Step 1: Check if this is a SQL endpoint
-			var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-			if (!sqlEndpoints.ContainsKey(endpointName))
-			{
-				return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
-			}
+    /// <summary>
+    /// Handles SQL PATCH requests (partial updates)
+    /// </summary>
+    private async Task<IActionResult> HandleSqlPatchRequest(
+        string env,
+        string endpointName,
+        JsonDocument requestBody)
+    {
+        try
+        {
+            // Step 1: Check if this is a SQL endpoint
+            var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
+            if (!sqlEndpoints.ContainsKey(endpointName))
+            {
+                return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+            }
 
-			// Step 2: Validate environment
-			var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
-			if (string.IsNullOrEmpty(connectionString))
-			{
-				return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
-			}
+            // Step 2: Validate environment
+            var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return PortwayResults.BadRequest(this, $"Invalid or missing environment: {env}");
+            }
 
-			// Step 3: Get endpoint configuration and check if PATCH is allowed
-			var endpoint = sqlEndpoints[endpointName];
+            // Step 3: Get endpoint configuration and check if PATCH is allowed
+            var endpoint = sqlEndpoints[endpointName];
 
-			if (!(endpoint.Methods?.Contains("PATCH") ?? false))
-			{
-				return PortwayResults.MethodNotAllowed(this);
-			}
+            if (!(endpoint.Methods?.Contains("PATCH") ?? false))
+            {
+                return PortwayResults.MethodNotAllowed(this);
+            }
 
-			if (string.IsNullOrEmpty(endpoint.Procedure))
-			{
-				return PortwayResults.BadRequest(this, "This endpoint does not support partial update operations");
-			}
+            if (string.IsNullOrEmpty(endpoint.Procedure))
+            {
+                return PortwayResults.BadRequest(this, "This endpoint does not support partial update operations");
+            }
 
-			// Step 4: Parse and validate request body
-			var data = requestBody.RootElement;
+            // Step 4: Parse and validate request body
+            var data = requestBody.RootElement;
 
-			// Validate against allowed columns, required columns, and regex patterns
-			var (isValid, errorMessage, validationErrors) = ValidateSqlInput(data, endpoint, "PATCH");
-			if (!isValid)
-			{
-				if (validationErrors != null && validationErrors.Any())
-				{
-					return PortwayResults.ValidationFailed(this, validationErrors);
-				}
-				return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
-			}
+            // Validate against allowed columns, required columns, and regex patterns
+            var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "PATCH");
+            if (!isValid)
+            {
+                if (validationErrors != null && validationErrors.Any())
+                {
+                    return PortwayResults.ValidationFailed(this, validationErrors);
+                }
+                return PortwayResults.BadRequest(this, errorMessage ?? "Validation failed");
+            }
 
-			// Step 5: Validate that required parameters are present (especially ID)
-			var (isParamsValid, paramsErrorMessage) = ValidateSqlParameters(data, "UPDATE");
-			if (!isParamsValid)
-			{
-				return PortwayResults.BadRequest(this, paramsErrorMessage ?? "Validation failed");
-			}
+            // Step 5: Validate that required parameters are present (especially ID)
+            var (isParamsValid, paramsErrorMessage) = ValidateSqlParameters(data, "UPDATE");
+            if (!isParamsValid)
+            {
+                return PortwayResults.BadRequest(this, paramsErrorMessage ?? "Validation failed");
+            }
 
-			// Step 6: Prepare stored procedure parameters
-			var dynamicParams = new DynamicParameters();
+            // Step 6: Prepare stored procedure parameters
+            var dynamicParams = new DynamicParameters();
 
-			// Add method parameter - use "PATCH" to differentiate from full UPDATE
-			dynamicParams.Add("@Method", "PATCH");
+            // Add method parameter - use "PATCH" to differentiate from full UPDATE
+            dynamicParams.Add("@Method", "PATCH");
 
-			// Add user parameter if available
-			if (User.Identity?.Name != null)
-			{
-				dynamicParams.Add("@UserName", User.Identity.Name);
-			}
+            // Add user parameter if available
+            if (User.Identity?.Name != null)
+            {
+                dynamicParams.Add("@UserName", User.Identity.Name);
+            }
 
-			// Step 7: Extract and add data parameters from the request. Only the fields provided in the request will be updated
-			foreach (var property in data.EnumerateObject())
-			{
-				dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-			}
+            // Step 7: Extract and add data parameters from the request. Only the fields provided in the request will be updated
+            foreach (var property in data.EnumerateObject())
+            {
+                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
+            }
 
-			// Step 8: Execute stored procedure
-			await using var connection = _connectionPoolService.CreateConnection(connectionString);
-			await connection.OpenAsync();
+            // Step 8: Execute stored procedure
+            await using var connection = _connectionPoolService.CreateConnection(connectionString);
+            await connection.OpenAsync();
 
-			// Special handling for SqlException to catch RAISERROR messages
-			var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
-			try
-			{
-				var result = await connection.QueryAsync(
-					$"[{schema}].[{procedureName}]",
-					dynamicParams,
-					commandType: CommandType.StoredProcedure
-				);
+            // Special handling for SqlException to catch RAISERROR messages
+            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
+            try
+            {
+                var result = await connection.QueryAsync(
+                    $"[{schema}].[{procedureName}]",
+                    dynamicParams,
+                    commandType: CommandType.StoredProcedure
+                );
 
-				// Convert result to a list
-				var resultList = result.ToList();
+                // Convert result to a list
+                var resultList = result.ToList();
 
-				Log.Debug("Successfully executed PATCH procedure for {Endpoint}", endpointName);
+                Log.Debug("Successfully executed PATCH procedure for {Endpoint}", endpointName);
 
-				// Return the results
-				return PortwayResults.Mutation(this, "Record partially updated successfully", resultList.FirstOrDefault());
-			}
+                // Return the results
+                return PortwayResults.Mutation(this, "Record partially updated successfully", resultList.FirstOrDefault());
+            }
             catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
             {
-				Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-				return PortwayResults.BadRequest(this, sqlEx.Message);
-			}
-		}
-		catch (SqlException sqlEx)
-		{
-			Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
-				endpointName, sqlEx.Number, sqlEx.Message);
-			return PortwayResults.ServerError(this, "Internal operation failed");
-		}
-		catch (Exception ex)
-		{
-			Log.Error(ex, "Error processing PATCH for {Endpoint}", endpointName);
-			return PortwayResults.ServerError(this, "An error occurred while processing your request");
-		}
-	}
+                Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
+                return PortwayResults.BadRequest(this, sqlEx.Message);
+            }
+        }
+        catch (SqlException sqlEx)
+        {
+            Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
+                endpointName, sqlEx.Number, sqlEx.Message);
+            return PortwayResults.ServerError(this, "Internal operation failed");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error processing PATCH for {Endpoint}", endpointName);
+            return PortwayResults.ServerError(this, "An error occurred while processing your request");
+        }
+    }
 
     /// <summary>
     /// Handles SQL DELETE requests
@@ -3225,12 +3224,12 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                         
                     var result = operation switch
                     {
-                        "eq" => CompareValues(fieldValue, value, "eq"),
-                        "ne" => CompareValues(fieldValue, value, "ne"),
-                        "gt" => CompareValues(fieldValue, value, "gt"),
-                        "lt" => CompareValues(fieldValue, value, "lt"),
-                        "ge" => CompareValues(fieldValue, value, "ge"),
-                        "le" => CompareValues(fieldValue, value, "le"),
+                        "eq" => JsonValueComparer.Compare(fieldValue, value, "eq"),
+                        "ne" => JsonValueComparer.Compare(fieldValue, value, "ne"),
+                        "gt" => JsonValueComparer.Compare(fieldValue, value, "gt"),
+                        "lt" => JsonValueComparer.Compare(fieldValue, value, "lt"),
+                        "ge" => JsonValueComparer.Compare(fieldValue, value, "ge"),
+                        "le" => JsonValueComparer.Compare(fieldValue, value, "le"),
                         "contains" => fieldValue.GetString()?.Contains(value, StringComparison.OrdinalIgnoreCase) == true,
                         "startswith" => fieldValue.GetString()?.StartsWith(value, StringComparison.OrdinalIgnoreCase) == true,
                         "endswith" => fieldValue.GetString()?.EndsWith(value, StringComparison.OrdinalIgnoreCase) == true,
@@ -3254,73 +3253,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             return items;
         }
     }
-    
-    /// <summary>
-    /// Compares JSON values for filtering
-    /// </summary>
-    private bool CompareValues(JsonElement fieldValue, string targetValue, string operation)
-    {
-        try
-        {
-            Log.Debug("CompareValues - FieldValue: {FieldValue} ({Type}), TargetValue: {TargetValue}, Operation: {Operation}", 
-                fieldValue, fieldValue.ValueKind, targetValue, operation);
-            
-            switch (fieldValue.ValueKind)
-            {
-                case JsonValueKind.String:
-                    var stringValue = fieldValue.GetString() ?? "";
-                    var result = operation switch
-                    {
-                        "eq" => stringValue.Equals(targetValue, StringComparison.OrdinalIgnoreCase),
-                        "ne" => !stringValue.Equals(targetValue, StringComparison.OrdinalIgnoreCase),
-                        "gt" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) > 0,
-                        "lt" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) < 0,
-                        "ge" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) >= 0,
-                        "le" => string.Compare(stringValue, targetValue, StringComparison.OrdinalIgnoreCase) <= 0,
-                        _ => false
-                    };
-                    Log.Debug("String comparison result: {Result}", result);
-                    return result;
-                    
-                case JsonValueKind.Number:
-                    if (double.TryParse(targetValue, out var targetNumber) && fieldValue.TryGetDouble(out var fieldNumber))
-                    {
-                        return operation switch
-                        {
-                            "eq" => Math.Abs(fieldNumber - targetNumber) < 0.0001,
-                            "ne" => Math.Abs(fieldNumber - targetNumber) >= 0.0001,
-                            "gt" => fieldNumber > targetNumber,
-                            "lt" => fieldNumber < targetNumber,
-                            "ge" => fieldNumber >= targetNumber,
-                            "le" => fieldNumber <= targetNumber,
-                            _ => false
-                        };
-                    }
-                    break;
-                    
-                case JsonValueKind.True:
-                case JsonValueKind.False:
-                    if (bool.TryParse(targetValue, out var targetBool))
-                    {
-                        var fieldBool = fieldValue.GetBoolean();
-                        return operation switch
-                        {
-                            "eq" => fieldBool == targetBool,
-                            "ne" => fieldBool != targetBool,
-                            _ => false
-                        };
-                    }
-                    break;
-            }
-            
-            return false;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-    
+
     /// <summary>
     /// Applies OData-style ordering to JSON items
     /// </summary>
@@ -3561,105 +3494,6 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     /// </summary>
     private string GetContentTypeFromExtension(string fileName) => ContentTypeHelper.GetContentType(fileName);
 
-    /// <summary>
-    /// Validates SQL input data against allowed columns, required columns, and regex patterns
-    /// </summary>
-    private (bool IsValid, string? ErrorMessage, List<ValidationDetail>? Errors) ValidateSqlInput(
-        JsonElement data,
-        EndpointDefinition endpoint,
-        string httpMethod)
-    {
-        var errors = new List<ValidationDetail>();
-
-        // Check for empty request body
-        if (data.ValueKind == JsonValueKind.Undefined || data.ValueKind == JsonValueKind.Null)
-        {
-            return (false, "Request body cannot be empty", null);
-        }
-
-        // Check required columns for POST (CREATE) operations
-        if (httpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase) && endpoint.RequiredColumns != null)
-        {
-            foreach (var requiredColumn in endpoint.RequiredColumns)
-            {
-                bool hasProperty = data.TryGetProperty(requiredColumn, out var propValue);
-                bool isEmpty = !hasProperty ||
-                            propValue.ValueKind == JsonValueKind.Null ||
-                            (propValue.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(propValue.GetString()));
-
-                if (isEmpty)
-                {
-                    errors.Add(new ValidationDetail(requiredColumn, $"{requiredColumn} is required"));
-                }
-            }
-        }
-
-        // Check allowed columns (with alias support)
-        if (endpoint.AllowedColumns != null && endpoint.AllowedColumns.Count > 0)
-        {
-            // Parse allowed columns to handle aliases (e.g., "EmployeeId;ID")
-            var allowedFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var column in endpoint.AllowedColumns)
-            {
-                var parts = column.Split(';');
-                allowedFields.Add(parts[0]); // Add primary column name
-                if (parts.Length > 1)
-                {
-                    allowedFields.Add(parts[1]); // Add alias if exists
-                }
-            }
-            
-            foreach (var property in data.EnumerateObject())
-            {
-                if (!allowedFields.Contains(property.Name))
-                {
-                    errors.Add(new ValidationDetail(property.Name, $"{property.Name} is not an allowed property"));
-                }
-            }
-        }
-        // Validate regex patterns
-        if (endpoint.ColumnValidation != null)
-        {
-            foreach (var validation in endpoint.ColumnValidation)
-            {
-                string columnName = validation.Key;
-
-                if (data.TryGetProperty(columnName, out var propValue) &&
-                    propValue.ValueKind == JsonValueKind.String)
-                {
-                    string? value = propValue.GetString();
-
-                    if (!string.IsNullOrEmpty(value) && !string.IsNullOrEmpty(validation.Value.Regex))
-                    {
-                        try
-                        {
-                            var regex = new System.Text.RegularExpressions.Regex(validation.Value.Regex);
-
-                            if (!regex.IsMatch(value))
-                            {
-                                errors.Add(new ValidationDetail(columnName,
-                                    string.IsNullOrEmpty(validation.Value.ValidationMessage)
-                                        ? $"{columnName} does not match the required format"
-                                        : validation.Value.ValidationMessage));
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Warning(ex, "Invalid regex pattern for column {Column}", columnName);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (errors.Any())
-        {
-            return (false, "Validation failed", errors);
-        }
-
-        return (true, null, null);
-    }
-    
     /// <summary>
     /// Common ID field names for validation
     /// </summary>

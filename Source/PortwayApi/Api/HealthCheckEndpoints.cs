@@ -2,6 +2,7 @@ namespace PortwayApi.Endpoints;
 
 using Microsoft.AspNetCore.Builder;
 using PortwayApi.Services;
+using PortwayApi.Services.Configuration;
 using System.Reflection;
 
 /// <summary>
@@ -18,7 +19,8 @@ public static class HealthCheckEndpointExtensions
             .Split('+')[0];
 
         app.MapGet("/health", async (HttpContext context,
-                                     HealthCheckService healthService) =>
+                                     HealthCheckService healthService,
+                                     ReloadTracker reloadTracker) =>
         {
             // Get cached health report
             var report = await healthService.CheckHealthAsync();
@@ -38,7 +40,9 @@ public static class HealthCheckEndpointExtensions
                 version,
                 uptime = $"{(long)(DateTime.UtcNow - startTime).TotalSeconds}s",
                 timestamp = DateTime.UtcNow,
-                cache_expires_in = "15 seconds"
+                cache_expires_in = "15 seconds",
+                last_endpoint_reload = reloadTracker.LastEndpointReload,
+                last_environment_reload = reloadTracker.LastEnvironmentReload
             });
         })
         .ExcludeFromDescription();

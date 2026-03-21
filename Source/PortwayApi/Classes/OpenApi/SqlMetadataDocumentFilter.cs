@@ -219,7 +219,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         // Set request body schema
         operation.RequestBody = new OpenApiRequestBody
         {
-            Description = GetRequestBodyDescription(method, definition),
+            Description = GetRequestBodyDescription(method),
             Required = true,
             Content = new Dictionary<string, OpenApiMediaType>
             {
@@ -656,7 +656,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Gets the request body description based on method
     /// </summary>
-    private string GetRequestBodyDescription(string method, EndpointDefinition definition)
+    private string GetRequestBodyDescription(string method)
     {
         return method switch
         {
@@ -840,23 +840,8 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Generates an example value based on column metadata
     /// </summary>
-    private JsonNode? GenerateExampleValue(ColumnMetadata column)
-    {
-        if (column.IsNullable)
-            return null;
-
-        return column.ClrType switch
-        {
-            "System.String" => JsonValue.Create(column.IsPrimaryKey ? "ABC123" : "example"),
-            "System.Int32" => JsonValue.Create(column.IsPrimaryKey ? 1 : 42),
-            "System.Int64" => JsonValue.Create(column.IsPrimaryKey ? 1L : 42L),
-            "System.Boolean" => JsonValue.Create(true),
-            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
-            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
-            _ => JsonValue.Create("value")
-        };
-    }
+    private static JsonNode? GenerateExampleValue(ColumnMetadata column)
+        => SqlExampleValueGenerator.FromColumn(column);
 
     /// <summary>
     /// Checks if a field name matches common ID field patterns (same logic as EndpointController)
@@ -877,60 +862,8 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Generates an example value based on parameter metadata and property name
     /// </summary>
-    private JsonNode? GenerateExampleValueFromParameter(
-        ParameterMetadata parameter,
-        string propertyName)
-    {
-        if (string.IsNullOrWhiteSpace(propertyName))
-        {
-            return null;
-        }
-
-        // Use property name for context-aware examples
-        var propName = propertyName.ToLowerInvariant();
-
-        if (propName.Contains("id") && parameter.ClrType == "System.Guid")
-        {
-            return JsonValue.Create(Guid.NewGuid().ToString());
-        }
-        else if (propName.Contains("id") && parameter.ClrType.Contains("Int"))
-        {
-            return JsonValue.Create(1);
-        }
-        else if (propName.Contains("name") || propName.Contains("title"))
-        {
-            return JsonValue.Create($"Example {propertyName}");
-        }
-        else if (propName.Contains("email"))
-        {
-            return JsonValue.Create("user@example.com");
-        }
-        else if (propName.Contains("date") || propName.Contains("time"))
-        {
-            return JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss"));
-        }
-        else if (propName.StartsWith("is") || propName.StartsWith("has") || propName.Contains("active"))
-        {
-            return JsonValue.Create(true);
-        }
-        else if (propName.Contains("amount") || propName.Contains("price") || propName.Contains("cost"))
-        {
-            return JsonValue.Create(99.99);
-        }
-
-        // Fallback to type-based examples
-        return parameter.ClrType switch
-        {
-            "System.String" => JsonValue.Create($"example {propertyName}"),
-            "System.Int32" => JsonValue.Create(42),
-            "System.Int64" => JsonValue.Create(42L),
-            "System.Boolean" => JsonValue.Create(true),
-            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
-            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
-            _ => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
-        };
-    }
+    private static JsonNode? GenerateExampleValueFromParameter(ParameterMetadata parameter, string propertyName)
+        => SqlExampleValueGenerator.FromParameter(parameter, propertyName);
 
     /// <summary>
     /// Maps CLR type to OpenAPI type

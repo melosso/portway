@@ -38,11 +38,12 @@ public class TokenService
     /// Generate a new token for a user with optional scopes and expiration
     /// </summary>
     public async Task<string> GenerateTokenAsync(
-        string username, 
+        string username,
         string allowedScopes = "*",
         string allowedEnvironments = "*",
-        string description = "", 
-        int? expiresInDays = null)
+        string description = "",
+        int? expiresInDays = null,
+        CancellationToken ct = default)
     {
         // Generate a random token
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -75,10 +76,10 @@ public class TokenService
         
         // Add to database
         _dbContext.Tokens.Add(tokenEntry);
-        await _dbContext.SaveChangesAsync();
-        
+        await _dbContext.SaveChangesAsync(ct);
+
         // Log the token creation in audit trail
-        await LogAuditAsync(tokenEntry.Id, username, "Created", null, hashedToken, 
+        await LogAuditAsync(tokenEntry.Id, username, "Created", null, hashedToken,
             JsonSerializer.Serialize(new 
             { 
                 AllowedScopes = allowedScopes,
@@ -365,7 +366,7 @@ public class TokenService
     /// Revoke (soft-delete / archive) a token by ID.
     /// Returns false when the token is not found or is protected by the last-token guard.
     /// </summary>
-    public async Task<bool> RevokeTokenAsync(int tokenId)
+    public async Task<bool> RevokeTokenAsync(int tokenId, CancellationToken ct = default)
     {
         // Enforce last-token guard even when called directly (e.g. from CLI)
         var blockReason = await GetRevokeBlockReasonAsync(tokenId);
@@ -379,8 +380,8 @@ public class TokenService
         if (token == null) return false;
 
         token.RevokedAt = DateTime.UtcNow;
-        await _dbContext.SaveChangesAsync();
-        
+        await _dbContext.SaveChangesAsync(ct);
+
         // Also append a .revoked suffix to the token file
         try
         {
@@ -411,13 +412,13 @@ public class TokenService
     /// Unarchive (restore) a previously revoked token by ID.
     /// Returns false when the token is not found or is not revoked.
     /// </summary>
-    public async Task<bool> UnarchiveTokenAsync(int tokenId)
+    public async Task<bool> UnarchiveTokenAsync(int tokenId, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null || token.RevokedAt == null) return false;
 
         token.RevokedAt = null;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(ct);
 
         // Rename .revoked.txt back to .txt
         try
@@ -447,27 +448,27 @@ public class TokenService
     /// <summary>
     /// Set token expiration by ID
     /// </summary>
-    public async Task<bool> SetTokenExpirationAsync(int tokenId, DateTime expirationDate)
+    public async Task<bool> SetTokenExpirationAsync(int tokenId, DateTime expirationDate, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null) return false;
         
         token.ExpiresAt = expirationDate;
-        await _dbContext.SaveChangesAsync();
-        
+        await _dbContext.SaveChangesAsync(ct);
+
         return true;
     }
-    
+
     /// <summary>
     /// Update token allowed environments by ID
     /// </summary>
-    public async Task<bool> UpdateTokenEnvironmentsAsync(int tokenId, string environments)
+    public async Task<bool> UpdateTokenEnvironmentsAsync(int tokenId, string environments, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null) return false;
         string old = token.AllowedEnvironments;
         token.AllowedEnvironments = environments;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(ct);
         await LogAuditAsync(token.Id, token.Username, "EnvironmentsUpdated", null, null,
             JsonSerializer.Serialize(new { OldEnvironments = old, NewEnvironments = environments,
                 UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
@@ -477,14 +478,14 @@ public class TokenService
     /// <summary>
     /// Update token scopes by ID
     /// </summary>
-    public async Task<bool> UpdateTokenScopesAsync(int tokenId, string scopes)
+    public async Task<bool> UpdateTokenScopesAsync(int tokenId, string scopes, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null) return false;
         
         string oldScopes = token.AllowedScopes;
         token.AllowedScopes = scopes;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(ct);
         
         // Log the token scope update in audit trail
         await LogAuditAsync(token.Id, token.Username, "ScopesUpdated", null, null,
@@ -501,13 +502,13 @@ public class TokenService
     /// <summary>
     /// Update token description by ID
     /// </summary>
-    public async Task<bool> UpdateTokenDescriptionAsync(int tokenId, string description)
+    public async Task<bool> UpdateTokenDescriptionAsync(int tokenId, string description, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
         if (token == null) return false;
         string old = token.Description ?? "";
         token.Description = description;
-        await _dbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync(ct);
         await LogAuditAsync(token.Id, token.Username, "DescriptionUpdated", null, null,
             JsonSerializer.Serialize(new { OldDescription = old, NewDescription = description,
                 UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
@@ -517,8 +518,9 @@ public class TokenService
     /// <summary>
     /// Log audit information for token operations
     /// </summary>
-    private async Task LogAuditAsync(int? tokenId, string username, string operation, 
-        string? oldTokenHash = null, string? newTokenHash = null, string details = "")
+    private async Task LogAuditAsync(int? tokenId, string username, string operation,
+        string? oldTokenHash = null, string? newTokenHash = null, string details = "",
+        CancellationToken ct = default)
     {
         try
         {
@@ -536,9 +538,9 @@ public class TokenService
                 UserAgent = Environment.MachineName + "/" + Environment.UserName
             };
             
-            await _dbContext.TokenAudits.AddAsync(auditEntry);
-            await _dbContext.SaveChangesAsync();
-            
+            await _dbContext.TokenAudits.AddAsync(auditEntry, ct);
+            await _dbContext.SaveChangesAsync(ct);
+
             Log.Debug("Audit log created: {Operation} for user {Username}", operation, username);
         }
         catch (Exception ex)
