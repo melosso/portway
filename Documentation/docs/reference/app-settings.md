@@ -393,6 +393,28 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 | `DebounceMs` | integer | `2000` | Minimum milliseconds between reloads for the same file (prevents double-fires from editors) |
 | `LogLevel` | string | `"Information"` | Log level for reload events (`"Debug"`, `"Information"`, `"Warning"`) |
 
+## Telemetry
+
+Controls OpenTelemetry export over OTLP (gRPC). Disabled by default — no collector connection is attempted unless `Enabled` is `true`.
+
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `Enabled` | No | boolean | Activates OTLP export. Defaults to `false` |
+| `OtlpEndpoint` | No | string | gRPC endpoint of your OTLP collector. Defaults to `http://localhost:4317` |
+| `ServiceName` | No | string | Service name reported to the collector. Defaults to `Portway.Api` |
+| `ResourceAttributes` | No | string | Comma-separated `key=value` pairs attached as resource attributes |
+
+```json
+"Telemetry": {
+  "Enabled": true,
+  "OtlpEndpoint": "http://otel-collector.internal:4317",
+  "ServiceName": "portway-prod",
+  "ResourceAttributes": "deployment.environment=production,host.name=gw01"
+}
+```
+
+`ResourceAttributes` follows the same key=value,key=value format as the OTEL_RESOURCE_ATTRIBUTES environment variable. Environment variables with the OTEL_ prefix still override appsettings.json values when set, following standard .NET configuration precedence.
+
 ## Log Settings
 
 ### Configuration Structure
