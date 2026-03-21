@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Serilog;
 using PortwayApi.Classes;
@@ -16,20 +18,29 @@ public class EndpointFileWatcher : IHostedService, IDisposable
     private readonly SqlMetadataService _sqlMetadataService;
     private readonly IOptionsMonitor<EndpointReloadingOptions> _optionsMonitor;
     private readonly SseBroadcaster? _broadcaster;
+    private readonly ReloadTracker _reloadTracker;
     private FileSystemWatcher? _fileWatcher;
-    private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
-    private readonly Dictionary<string, DateTime> _lastReloadTimes = new();
-    private CancellationTokenSource? _pollingCancellationTokenSource;
+    private readonly ConcurrentDictionary<string, DateTime> _lastReloadTimes = new();
+    private readonly Channel<(string Path, WatcherChangeTypes Type)> _eventChannel =
+        Channel.CreateBounded<(string, WatcherChangeTypes)>(new BoundedChannelOptions(200)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = true
+        });
+    private Task? _consumerTask;
+    private CancellationTokenSource? _consumerCts;
 
     public EndpointFileWatcher(
         SqlMetadataService sqlMetadataService,
         IOptionsMonitor<EndpointReloadingOptions> optionsMonitor,
+        ReloadTracker reloadTracker,
         SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
         _endpointsPath  = Path.Combine(baseDir, "endpoints");
         _sqlMetadataService = sqlMetadataService;
         _optionsMonitor = optionsMonitor;
+        _reloadTracker  = reloadTracker;
         _broadcaster    = broadcaster;
     }
 
@@ -48,6 +59,9 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             Log.Warning("Endpoints folder not found at {Path} - endpoint file watching disabled", _endpointsPath);
             return Task.CompletedTask;
         }
+
+        _consumerCts = new CancellationTokenSource();
+        _consumerTask = ConsumeEventsAsync(_consumerCts.Token);
 
         _fileWatcher = new FileSystemWatcher(_endpointsPath)
         {
@@ -75,67 +89,54 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _pollingCancellationTokenSource?.Cancel();
+        _eventChannel.Writer.TryComplete();
+        try { _consumerCts?.Cancel(); } catch (ObjectDisposedException) { }
         _fileWatcher?.Dispose();
+
+        if (_consumerTask != null)
+            await _consumerTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
         Log.Information("Endpoint file watcher stopped");
-        return Task.CompletedTask;
     }
 
     private void OnFileChanged(object sender, FileSystemEventArgs e)
-    {
-        // Proper async event handling - don't use fire-and-forget
-        Task.Run(async () =>
-        {
-            try
-            {
-                await HandleFileChangeAsync(e.FullPath, e.ChangeType);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled error in file change handler for {Path}", e.FullPath);
-            }
-        });
-    }
+        => _eventChannel.Writer.TryWrite((e.FullPath, e.ChangeType));
 
     private void OnFileRenamed(object sender, RenamedEventArgs e)
+        => _eventChannel.Writer.TryWrite((e.FullPath, e.ChangeType));
+
+    private async Task ConsumeEventsAsync(CancellationToken ct)
     {
-        // Proper async event handling - don't use fire-and-forget
-        Task.Run(async () =>
+        await foreach (var (path, type) in _eventChannel.Reader.ReadAllAsync(ct))
         {
             try
             {
-                await HandleFileChangeAsync(e.FullPath, e.ChangeType);
+                await HandleFileChangeAsync(path, type);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Unhandled error in file rename handler for {Path}", e.FullPath);
+                Log.Error(ex, "Unhandled error processing file change for {Path}", path);
             }
-        });
+        }
     }
 
     private async Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)
     {
         var options = _optionsMonitor.CurrentValue;
+        var now = DateTime.UtcNow;
+        var debounceTime = TimeSpan.FromMilliseconds(options.DebounceMs);
 
-        // Debounce: Prevent multiple rapid reloads for the same file
-        await _reloadSemaphore.WaitAsync();
+        if (_lastReloadTimes.TryGetValue(filePath, out var lastReload) && now - lastReload < debounceTime)
+        {
+            Log.Debug("Ignoring duplicate file change event for {Path} (debounced)", filePath);
+            return;
+        }
+        _lastReloadTimes[filePath] = now;
+
         try
         {
-            var now = DateTime.UtcNow;
-            var debounceTime = TimeSpan.FromMilliseconds(options.DebounceMs);
-
-            if (_lastReloadTimes.TryGetValue(filePath, out var lastReload))
-            {
-                if (now - lastReload < debounceTime)
-                {
-                    Log.Debug("Ignoring duplicate file change event for {Path} (debounced)", filePath);
-                    return;
-                }
-            }
-            _lastReloadTimes[filePath] = now;
-
             // Extract endpoint type from path
             var endpointType = EndpointHandler.GetEndpointTypeFromPath(filePath);
             if (endpointType == null)
@@ -151,14 +152,13 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Debug("Could not determine endpoint name from path: {Path}", filePath);
                 return;
             }
-            
+
             // Reload endpoint definitions
             EndpointHandler.ReloadEndpointType(endpointType.Value);
 
             // Invalidate SQL metadata cache if it's a SQL endpoint
             if (endpointType == EndpointType.SQL)
             {
-                // Use lazy reload strategy - clear cache, reload on next request
                 _sqlMetadataService.ClearEndpointMetadata(endpointName);
                 Log.Debug("SQL metadata cleared for endpoint '{Endpoint}'", endpointName);
             }
@@ -168,15 +168,12 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Information("Endpoint '{Name}' ({Type}, namespace: {Namespace}) changed, will reload on next request", endpointName, endpointType, ns);
             else
                 Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+            _reloadTracker.RecordEndpointReload();
             _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "endpoints" }));
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error handling endpoint file change for {Path}", filePath);
-        }
-        finally
-        {
-            _reloadSemaphore.Release();
         }
     }
 
@@ -226,38 +223,30 @@ public class EndpointFileWatcher : IHostedService, IDisposable
 
     private void StartPollingFallback()
     {
-        _pollingCancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = _pollingCancellationTokenSource.Token;
-
-        Task.Run(async () =>
+        var ct = _consumerCts!.Token;
+        _ = Task.Run(async () =>
         {
             var lastWriteTimes = new Dictionary<string, DateTime>();
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    if (!Directory.Exists(_endpointsPath))
+                    if (Directory.Exists(_endpointsPath))
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                        continue;
-                    }
-
-                    var files = Directory.GetFiles(_endpointsPath, "*.json", SearchOption.AllDirectories);
-                    foreach (var file in files)
-                    {
-                        if (cancellationToken.IsCancellationRequested) break;
-
-                        var lastWrite = File.GetLastWriteTimeUtc(file);
-                        if (lastWriteTimes.TryGetValue(file, out var previousWrite))
+                        var files = Directory.GetFiles(_endpointsPath, "*.json", SearchOption.AllDirectories);
+                        foreach (var file in files)
                         {
-                            if (lastWrite > previousWrite)
+                            if (ct.IsCancellationRequested) break;
+
+                            var lastWrite = File.GetLastWriteTimeUtc(file);
+                            if (lastWriteTimes.TryGetValue(file, out var previousWrite) && lastWrite > previousWrite)
                             {
                                 Log.Debug("Polling detected change: {File}", file);
-                                await HandleFileChangeAsync(file, WatcherChangeTypes.Changed);
+                                _eventChannel.Writer.TryWrite((file, WatcherChangeTypes.Changed));
                             }
+                            lastWriteTimes[file] = lastWrite;
                         }
-                        lastWriteTimes[file] = lastWrite;
                     }
                 }
                 catch (OperationCanceledException)
@@ -271,21 +260,20 @@ public class EndpointFileWatcher : IHostedService, IDisposable
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(3), ct);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
             }
-        }, cancellationToken);
+        }, ct);
     }
 
     public void Dispose()
     {
-        _pollingCancellationTokenSource?.Cancel();
-        _pollingCancellationTokenSource?.Dispose();
+        _consumerCts?.Cancel();
+        _consumerCts?.Dispose();
         _fileWatcher?.Dispose();
-        _reloadSemaphore?.Dispose();
     }
 }

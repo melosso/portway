@@ -197,6 +197,7 @@ try
     builder.Services.AddAuthorization();
 
     // Register configuration reload services for dynamic config updates
+    builder.Services.AddSingleton<PortwayApi.Services.Configuration.ReloadTracker>();
     builder.Services.AddHostedService<PortwayApi.Services.Configuration.ConfigurationReloadService>();
     builder.Services.AddHostedService<PortwayApi.Services.Configuration.EnvironmentFileWatcher>();
     builder.Services.AddHostedService<PortwayApi.Services.Configuration.EndpointFileWatcher>();

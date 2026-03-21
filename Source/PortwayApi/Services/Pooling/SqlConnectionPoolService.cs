@@ -18,7 +18,7 @@ namespace PortwayApi.Services;
 /// Configures and manages SQL connection pooling. Provider-aware: delegates connection
 /// creation to the registered ISqlProvider for the detected database type.
 /// </summary>
-public class SqlConnectionPoolService : IHostedService
+public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
 {
     private readonly SqlPoolingOptions _poolingOptions;
     private readonly ISqlProviderFactory _providerFactory;
@@ -26,6 +26,7 @@ public class SqlConnectionPoolService : IHostedService
     private readonly ConcurrentDictionary<string, DbConnection> _warmupConnections = new();
     private Timer? _maintenanceTimer;
     private readonly TimeSpan _maintenanceInterval = TimeSpan.FromMinutes(5);
+    private readonly CancellationTokenSource _cts = new();
 
     public SqlConnectionPoolService(SqlPoolingOptions poolingOptions, ISqlProviderFactory providerFactory)
     {
@@ -128,7 +129,7 @@ public class SqlConnectionPoolService : IHostedService
                     using var cmd = connection.CreateCommand();
                     cmd.CommandText = "SELECT 1";
                     cmd.CommandTimeout = 5;
-                    await cmd.ExecuteScalarAsync();
+                    await cmd.ExecuteScalarAsync(_cts.Token);
                 }
                 catch (Exception ex)
                 {
@@ -164,16 +165,17 @@ public class SqlConnectionPoolService : IHostedService
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
+        try { _cts.Cancel(); } catch (ObjectDisposedException) { }
         _maintenanceTimer?.Change(Timeout.Infinite, 0);
 
         foreach (var connection in _warmupConnections.Values)
         {
             try
             {
-                connection.Close();
-                connection.Dispose();
+                await connection.CloseAsync();
+                await connection.DisposeAsync();
             }
             catch { }
         }
@@ -181,7 +183,13 @@ public class SqlConnectionPoolService : IHostedService
         _warmupConnections.Clear();
 
         Log.Information("SQL Connection Pool Service stopped");
-        return Task.CompletedTask;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync(CancellationToken.None);
+        _cts.Dispose();
+        _maintenanceTimer?.Dispose();
     }
 }
 

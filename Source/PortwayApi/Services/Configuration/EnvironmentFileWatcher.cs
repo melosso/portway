@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Threading.Channels;
 using Serilog;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
@@ -15,21 +17,30 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
     private readonly CacheManager _cacheManager;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
     private readonly SseBroadcaster? _broadcaster;
+    private readonly ReloadTracker _reloadTracker;
     private FileSystemWatcher? _fileWatcher;
-    private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
-    private readonly Dictionary<string, DateTime> _lastReloadTimes = new();
+    private readonly ConcurrentDictionary<string, DateTime> _lastReloadTimes = new();
     private readonly TimeSpan _reloadDebounceTime = TimeSpan.FromSeconds(2);
-    private CancellationTokenSource? _pollingCancellationTokenSource;
+    private readonly Channel<(string Path, WatcherChangeTypes Type)> _eventChannel =
+        Channel.CreateBounded<(string, WatcherChangeTypes)>(new BoundedChannelOptions(200)
+        {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = true
+        });
+    private Task? _consumerTask;
+    private CancellationTokenSource? _consumerCts;
 
     public EnvironmentFileWatcher(
         CacheManager cacheManager,
         IEnvironmentSettingsProvider environmentSettingsProvider,
+        ReloadTracker reloadTracker,
         SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
         _environmentsPath            = Path.Combine(baseDir, "environments");
         _cacheManager                = cacheManager;
         _environmentSettingsProvider = environmentSettingsProvider;
+        _reloadTracker               = reloadTracker;
         _broadcaster                 = broadcaster;
     }
 
@@ -40,6 +51,9 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
             Log.Warning("Environments folder not found at {Path} - environment file watching disabled", _environmentsPath);
             return Task.CompletedTask;
         }
+
+        _consumerCts = new CancellationTokenSource();
+        _consumerTask = ConsumeEventsAsync(_consumerCts.Token);
 
         _fileWatcher = new FileSystemWatcher(_environmentsPath)
         {
@@ -67,63 +81,51 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _pollingCancellationTokenSource?.Cancel();
+        _eventChannel.Writer.TryComplete();
+        try { _consumerCts?.Cancel(); } catch (ObjectDisposedException) { }
         _fileWatcher?.Dispose();
+
+        if (_consumerTask != null)
+            await _consumerTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
         Log.Information("Environment file watcher stopped");
-        return Task.CompletedTask;
     }
 
     private void OnFileChanged(object sender, FileSystemEventArgs e)
-    {
-        // Proper async event handling - don't use fire-and-forget
-        Task.Run(async () =>
-        {
-            try
-            {
-                await HandleFileChangeAsync(e.FullPath, e.ChangeType);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled error in file change handler for {Path}", e.FullPath);
-            }
-        });
-    }
+        => _eventChannel.Writer.TryWrite((e.FullPath, e.ChangeType));
 
     private void OnFileRenamed(object sender, RenamedEventArgs e)
+        => _eventChannel.Writer.TryWrite((e.FullPath, e.ChangeType));
+
+    private async Task ConsumeEventsAsync(CancellationToken ct)
     {
-        // Proper async event handling - don't use fire-and-forget
-        Task.Run(async () =>
+        await foreach (var (path, type) in _eventChannel.Reader.ReadAllAsync(ct))
         {
             try
             {
-                await HandleFileChangeAsync(e.FullPath, e.ChangeType);
+                await HandleFileChangeAsync(path, type);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Unhandled error in file rename handler for {Path}", e.FullPath);
+                Log.Error(ex, "Unhandled error processing environment file change for {Path}", path);
             }
-        });
+        }
     }
 
     private async Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)
     {
-        // Debounce: Prevent multiple rapid reloads for the same file
-        await _reloadSemaphore.WaitAsync();
+        var now = DateTime.UtcNow;
+        if (_lastReloadTimes.TryGetValue(filePath, out var lastReload) && now - lastReload < _reloadDebounceTime)
+        {
+            Log.Debug("Ignoring duplicate file change event for {Path} (debounced)", filePath);
+            return;
+        }
+        _lastReloadTimes[filePath] = now;
+
         try
         {
-            var now = DateTime.UtcNow;
-            if (_lastReloadTimes.TryGetValue(filePath, out var lastReload))
-            {
-                if (now - lastReload < _reloadDebounceTime)
-                {
-                    Log.Debug("Ignoring duplicate file change event for {Path} (debounced)", filePath);
-                    return;
-                }
-            }
-            _lastReloadTimes[filePath] = now;
-
             // Extract environment name from path
             var environmentName = ExtractEnvironmentName(filePath);
             if (string.IsNullOrEmpty(environmentName))
@@ -143,15 +145,12 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
                 _environmentSettingsProvider.EncryptEnvironmentIfNeeded(environmentName);
 
             Log.Information("Environment '{Environment}' settings changed, definition will reload on next request", environmentName);
+            _reloadTracker.RecordEnvironmentReload();
             _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "environments" }));
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error handling environment file change for {Path}", filePath);
-        }
-        finally
-        {
-            _reloadSemaphore.Release();
         }
     }
 
@@ -203,38 +202,30 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
 
     private void StartPollingFallback()
     {
-        _pollingCancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = _pollingCancellationTokenSource.Token;
-
-        Task.Run(async () =>
+        var ct = _consumerCts!.Token;
+        _ = Task.Run(async () =>
         {
             var lastWriteTimes = new Dictionary<string, DateTime>();
 
-            while (!cancellationToken.IsCancellationRequested)
+            while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    if (!Directory.Exists(_environmentsPath))
+                    if (Directory.Exists(_environmentsPath))
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                        continue;
-                    }
-
-                    var files = Directory.GetFiles(_environmentsPath, "*.json", SearchOption.AllDirectories);
-                    foreach (var file in files)
-                    {
-                        if (cancellationToken.IsCancellationRequested) break;
-
-                        var lastWrite = File.GetLastWriteTimeUtc(file);
-                        if (lastWriteTimes.TryGetValue(file, out var previousWrite))
+                        var files = Directory.GetFiles(_environmentsPath, "*.json", SearchOption.AllDirectories);
+                        foreach (var file in files)
                         {
-                            if (lastWrite > previousWrite)
+                            if (ct.IsCancellationRequested) break;
+
+                            var lastWrite = File.GetLastWriteTimeUtc(file);
+                            if (lastWriteTimes.TryGetValue(file, out var previousWrite) && lastWrite > previousWrite)
                             {
                                 Log.Debug("Polling detected change: {File}", file);
-                                await HandleFileChangeAsync(file, WatcherChangeTypes.Changed);
+                                _eventChannel.Writer.TryWrite((file, WatcherChangeTypes.Changed));
                             }
+                            lastWriteTimes[file] = lastWrite;
                         }
-                        lastWriteTimes[file] = lastWrite;
                     }
                 }
                 catch (OperationCanceledException)
@@ -248,21 +239,20 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(3), ct);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
                 }
             }
-        }, cancellationToken);
+        }, ct);
     }
 
     public void Dispose()
     {
-        _pollingCancellationTokenSource?.Cancel();
-        _pollingCancellationTokenSource?.Dispose();
+        _consumerCts?.Cancel();
+        _consumerCts?.Dispose();
         _fileWatcher?.Dispose();
-        _reloadSemaphore?.Dispose();
     }
 }

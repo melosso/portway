@@ -304,8 +304,8 @@ public class TokenAuthMiddleware
                 UserAgent = context.Request.Headers.UserAgent.ToString()
             };
             
-            await dbContext.TokenAudits.AddAsync(auditEntry);
-            await dbContext.SaveChangesAsync();
+            await dbContext.TokenAudits.AddAsync(auditEntry, context.RequestAborted);
+            await dbContext.SaveChangesAsync(context.RequestAborted);
         }
         catch (Exception ex)
         {
@@ -345,8 +345,8 @@ public class TokenAuthMiddleware
                 UserAgent = context.Request.Headers.UserAgent.ToString()
             };
             
-            await dbContext.TokenAudits.AddAsync(auditEntry);
-            await dbContext.SaveChangesAsync();
+            await dbContext.TokenAudits.AddAsync(auditEntry, context.RequestAborted);
+            await dbContext.SaveChangesAsync(context.RequestAborted);
         }
         catch (Exception ex)
         {

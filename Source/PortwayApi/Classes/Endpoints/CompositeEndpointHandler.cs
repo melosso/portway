@@ -92,7 +92,7 @@ public class CompositeEndpointHandler
                     
                 try
                 {
-                    var stepResult = await ExecuteStepAsync(step, requestData, result.StepResults, executionContext, env);
+                    var stepResult = await ExecuteStepAsync(step, requestData, result.StepResults, executionContext, env, context.RequestAborted);
                     result.StepResults[step.Name] = stepResult;
                     completedSteps.Add(step.Name);
                 }
@@ -169,11 +169,12 @@ public class CompositeEndpointHandler
     /// Execute a single step in a composite endpoint
     /// </summary>
     private async Task<object> ExecuteStepAsync(
-        CompositeStep step, 
-        JsonNode requestData, 
-        Dictionary<string, object> previousResults, 
-        ExecutionContext context, 
-        string env)
+        CompositeStep step,
+        JsonNode requestData,
+        Dictionary<string, object> previousResults,
+        ExecutionContext context,
+        string env,
+        CancellationToken ct = default)
     {
         // Find the target endpoint for this step
         if (!_endpointMap.TryGetValue(step.Endpoint, out var endpoint))
@@ -228,7 +229,7 @@ public class CompositeEndpointHandler
                     var clonedItem = item?.DeepClone();
                     if (clonedItem != null)
                     {
-                        var itemResult = await ProcessSingleItemAsync(step, clonedItem, endpoint.Url, context, env, previousResults);
+                        var itemResult = await ProcessSingleItemAsync(step, clonedItem, endpoint.Url, context, env, previousResults, ct);
                         results.Add(itemResult);
                     }
                 }
@@ -268,7 +269,7 @@ public class CompositeEndpointHandler
                 nodeToProcess = requestData.DeepClone();
             }
             
-            return await ProcessSingleItemAsync(step, nodeToProcess, endpoint.Url, context, env, previousResults);
+            return await ProcessSingleItemAsync(step, nodeToProcess, endpoint.Url, context, env, previousResults, ct);
         }
     }
     
@@ -276,12 +277,13 @@ public class CompositeEndpointHandler
     /// Process a single item for a step (either a direct item or an item within an array)
     /// </summary>
     private async Task<object> ProcessSingleItemAsync(
-        CompositeStep step, 
-        JsonNode itemData, 
-        string endpointUrl, 
-        ExecutionContext context, 
+        CompositeStep step,
+        JsonNode itemData,
+        string endpointUrl,
+        ExecutionContext context,
         string env,
-        Dictionary<string, object> previousResults)
+        Dictionary<string, object> previousResults,
+        CancellationToken ct = default)
     {
         // Apply template transformations
         ApplyTemplateTransformations(step, itemData, context, previousResults);
@@ -314,10 +316,10 @@ public class CompositeEndpointHandler
         }
         
         // Execute the request
-        var response = await client.SendAsync(request);
-        
+        var response = await client.SendAsync(request, ct);
+
         // Read the response content now to include in error messages if needed
-        var responseContent = await response.Content.ReadAsStringAsync();
+        var responseContent = await response.Content.ReadAsStringAsync(ct);
         
         // Ensure success
         if (!response.IsSuccessStatusCode)

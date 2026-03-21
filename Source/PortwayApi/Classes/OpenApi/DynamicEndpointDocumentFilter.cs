@@ -1291,14 +1291,14 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                                 Type = JsonSchemaType.Object,
                                 Properties = new Dictionary<string, IOpenApiSchema>
                                 {
-                                    ["Success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                    ["Count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                    ["Value"] = new OpenApiSchema
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                    ["count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                    ["value"] = new OpenApiSchema
                                     {
                                         Type = JsonSchemaType.Array,
                                         Items = new OpenApiSchema { Type = JsonSchemaType.Object }
                                     },
-                                    ["NextLink"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String }
                                 }
                             },
                             "PUT" or "MERGE" => new OpenApiSchema
@@ -1326,10 +1326,10 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                                     Summary = "Successful data retrieval",
                                     Value = new JsonObject
                                     {
-                                        ["Success"] = JsonValue.Create(true),
-                                        ["Count"] = JsonValue.Create(0),
-                                        ["Value"] = new JsonArray(),
-                                        ["NextLink"] = JsonValue.Create($"/api/{endpointName}?$$top=10&$$skip=0")
+                                        ["success"] = JsonValue.Create(true),
+                                        ["count"] = JsonValue.Create(0),
+                                        ["value"] = new JsonArray(),
+                                        ["nextLink"] = JsonValue.Create($"/api/{endpointName}?$top=10&$skip=0")
                                     }
                                 }
                             },

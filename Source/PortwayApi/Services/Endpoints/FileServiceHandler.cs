@@ -72,6 +72,7 @@ public class FileHandlerService : IDisposable
     private readonly ConcurrentDictionary<string, DateTime> _lastAccessTimes = new();
     private readonly ConcurrentDictionary<string, bool> _dirtyFlags = new();
     private readonly Timer _flushTimer;
+    private readonly Timer _indexRefreshTimer;
     private readonly FileSystemIndex _fileSystemIndex;
     private readonly Serilog.ILogger _logger;
     private long _currentMemoryUsage = 0;
@@ -103,8 +104,7 @@ public class FileHandlerService : IDisposable
         _flushTimer = new Timer(FlushMemoryCache, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
         
         // Start a timer to refresh the file indices periodically
-        _ = new Timer(_ => _fileSystemIndex.RefreshAllIndicesAsync().ConfigureAwait(false), 
-            null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
+        _indexRefreshTimer = new Timer(RefreshIndices, null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
     }
 
     /// <summary>
@@ -533,6 +533,21 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>
+    /// Timer callback to refresh file system indices
+    /// </summary>
+    private async void RefreshIndices(object? state)
+    {
+        try
+        {
+            await _fileSystemIndex.RefreshAllIndicesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error refreshing file indices");
+        }
+    }
+
+    /// <summary>
     /// Timer callback to flush memory cache to disk
     /// </summary>
     private async void FlushMemoryCache(object? state)
@@ -739,8 +754,9 @@ public class FileHandlerService : IDisposable
             // Flush any dirty files before shutting down (synchronous to avoid blocking)
             FlushAll();
 
-            // Dispose the timer
+            // Dispose timers
             _flushTimer?.Dispose();
+            _indexRefreshTimer?.Dispose();
 
             // Dispose all memory streams
             foreach (var stream in _memoryCache.Values)
