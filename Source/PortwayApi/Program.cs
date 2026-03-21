@@ -156,7 +156,7 @@ try
         .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
         ?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
 
-    builder.Services.AddPortwayTelemetry(assemblyVersion);
+    builder.Services.AddPortwayTelemetry(builder.Configuration, assemblyVersion);
 
     // Define server name
     string serverName = Environment.MachineName;

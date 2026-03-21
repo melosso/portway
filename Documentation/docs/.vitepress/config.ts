@@ -61,6 +61,7 @@ export default withMermaid(
           text: 'Operations',
           items: [
             { text: 'Monitoring', link: '/guide/monitoring' },
+            { text: 'OpenTelemetry', link: '/guide/opentelemetry' },
             { text: 'Troubleshooting', link: '/guide/troubleshooting' },
             { text: 'Upgrading', link: '/guide/upgrading' }
           ]
