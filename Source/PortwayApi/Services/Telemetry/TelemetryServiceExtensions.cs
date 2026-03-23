@@ -5,13 +5,13 @@ using OpenTelemetry.Trace;
 
 namespace PortwayApi.Services.Telemetry;
 
-public sealed class TelemetryOptions
+public sealed record TelemetryOptions
 {
-    public bool   Enabled      { get; set; } = false;
-    public string OtlpEndpoint { get; set; } = "http://localhost:4317";
-    public string? ServiceName { get; set; }
+    public bool    Enabled            { get; init; } = false;
+    public string  OtlpEndpoint       { get; init; } = "http://localhost:4317";
+    public string? ServiceName        { get; init; }
     /// <summary>Additional resource attributes, e.g. "deployment.environment=production,host.name=gw01".</summary>
-    public string? ResourceAttributes { get; set; }
+    public string? ResourceAttributes { get; init; }
 }
 
 public static class TelemetryServiceExtensions

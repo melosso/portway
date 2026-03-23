@@ -143,13 +143,7 @@ public class RateLimiter
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    // Represents block information for a token or IP
-    private class BlockInfo
-    {
-        public DateTime BlockedUntil { get; set; }
-        public int ConsecutiveBlocks { get; set; }
-        public int BlockDuration { get; set; }
-    }
+    private sealed record BlockInfo(DateTime BlockedUntil, int ConsecutiveBlocks, int BlockDuration);
 
     private readonly RequestDelegate _next;
     private readonly RateLimitSettings _settings;
@@ -163,6 +157,7 @@ public class RateLimiter
     
     // Cache for token ID lookups to avoid repeated database calls
     private readonly ConcurrentDictionary<string, string> _tokenDisplayCache = new();
+    private readonly Timer _cleanupTimer;
     
     // Configuration for block tracking
     private readonly int _maxConsecutiveBlocks = 3;
@@ -188,7 +183,7 @@ public class RateLimiter
         }
 
         // Periodically remove expired entries to prevent unbounded dictionary growth
-        _ = new Timer(_ => CleanupExpiredEntries(), null,
+        _cleanupTimer = new Timer(_ => CleanupExpiredEntries(), null,
             TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
@@ -408,34 +403,21 @@ public class RateLimiter
 
     private BlockInfo CreateBlockInfo(DateTime now)
     {
-        return new BlockInfo
-        {
-            BlockedUntil = now.AddSeconds(_settings.TokenWindow),
-            ConsecutiveBlocks = 1,
-            BlockDuration = _settings.TokenWindow
-        };
+        return new BlockInfo(now.AddSeconds(_settings.TokenWindow), 1, _settings.TokenWindow);
     }
 
     // Update block info with exponential backoff
     private BlockInfo UpdateBlockInfo(BlockInfo existing, DateTime now)
     {
-        // Increment consecutive blocks
         int newConsecutiveBlocks = existing.ConsecutiveBlocks + 1;
 
-        // Calculate new block duration with exponential backoff
         int newBlockDuration = newConsecutiveBlocks > _maxConsecutiveBlocks
             ? _settings.TokenWindow * (int)Math.Pow(2, newConsecutiveBlocks - _maxConsecutiveBlocks)
             : _settings.TokenWindow;
 
-        // Cap the maximum block duration
         newBlockDuration = Math.Min(newBlockDuration, 3600); // Max 1 hour
 
-        return new BlockInfo
-        {
-            BlockedUntil = now.AddSeconds(newBlockDuration),
-            ConsecutiveBlocks = newConsecutiveBlocks,
-            BlockDuration = newBlockDuration
-        };
+        return new BlockInfo(now.AddSeconds(newBlockDuration), newConsecutiveBlocks, newBlockDuration);
     }
     private void AddRateLimitHeaders(HttpResponse response, TokenBucket bucket, string resourceName)
     {
