@@ -85,7 +85,7 @@ public class TelemetryConfigurationTests
     // ── Service registration ──────────────────────────────────────────────────
 
     [Fact]
-    public void AddPortwayTelemetry_WhenDisabled_DoesNotRegisterPortwayMetrics()
+    public void AddPortwayTelemetry_WhenDisabled_StillRegistersPortwayMetrics()
     {
         var config = BuildConfig(new() { ["Telemetry:Enabled"] = "false" });
 
@@ -93,8 +93,10 @@ public class TelemetryConfigurationTests
         services.AddPortwayTelemetry(config, "1.0.0");
         var provider = services.BuildServiceProvider();
 
-        // No PortwayMetrics registered — callers that resolve it will get null
-        Assert.Null(provider.GetService<PortwayMetrics>());
+        // PortwayMetrics is always registered so that services like CacheManager can depend
+        // on it unconditionally. When telemetry is disabled the meter counters are no-ops.
+        using var metrics = provider.GetService<PortwayMetrics>();
+        Assert.NotNull(metrics);
     }
 
     [Fact]
