@@ -137,6 +137,12 @@ public class TokenBucket
 
 public class RateLimiter
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     // Represents block information for a token or IP
     private class BlockInfo
     {
@@ -180,6 +186,30 @@ public class RateLimiter
             _logger.LogInformation("Rate limiter {InstanceId} initialized. Enabled: {Enabled}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
             _instanceId, _settings.Enabled, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
         }
+
+        // Periodically remove expired entries to prevent unbounded dictionary growth
+        _ = new Timer(_ => CleanupExpiredEntries(), null,
+            TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+    }
+
+    private void CleanupExpiredEntries()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var key in _blockedIps.Keys)
+            if (_blockedIps.TryGetValue(key, out var v) && now >= v.BlockedUntil)
+                _blockedIps.TryRemove(key, out _);
+
+        foreach (var key in _blockedTokens.Keys)
+            if (_blockedTokens.TryGetValue(key, out var b) && now >= b.BlockedUntil)
+                _blockedTokens.TryRemove(key, out _);
+
+        // Cap the display-name cache; entries are cheap to rebuild on next bucket creation
+        if (_tokenDisplayCache.Count > 500)
+            _tokenDisplayCache.Clear();
+
+        Log.Debug("RateLimiter cleanup: {Buckets} buckets, {BlockedIps} blocked IPs, {BlockedTokens} blocked tokens",
+            _buckets.Count, _blockedIps.Count, _blockedTokens.Count);
     }
 
     // Token masking method
@@ -313,7 +343,6 @@ public class RateLimiter
             
             if (!tokenAllowed)
             {
-                // Get or create block info
                 var localBlockInfo = _blockedTokens.AddOrUpdate(
                     tokenKey,
                     _ => CreateBlockInfo(now),
@@ -353,30 +382,7 @@ public class RateLimiter
                 // Add rate limit headers
                 AddRateLimitHeaders(context.Response, tokenBucket, "token");
 
-                var options = new JsonSerializerOptions
-                {
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-
-                await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, options));
-                return;
-            }
-            
-            // Validate token
-            bool isValidToken = await tokenService.VerifyTokenAsync(token);
-            if (!isValidToken)
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                context.Response.ContentType = "application/json";
-
-                Log.Debug("Invalid token: {MaskedToken}", maskedToken);
-
-                await context.Response.WriteAsync(JsonSerializer.Serialize(new
-                {
-                    error = "Invalid token",
-                    success = false
-                }));
+                await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, _jsonOptions));
                 return;
             }
         }
@@ -474,13 +480,7 @@ public class RateLimiter
             success = false
         };
 
-        var options = new JsonSerializerOptions
-        {
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
-        await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, options));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, _jsonOptions));
     }
         private TokenBucket CreateBucket(string key, int limit, int windowSeconds, string type, TokenService? tokenService = null)
     {

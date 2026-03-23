@@ -44,7 +44,7 @@ public class ApiTestBase : IDisposable
 
         _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(poolingOptions, mockProviderFactory.Object);
         _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object, mockProviderFactory.Object);
-        _mockTokenService = new Mock<TokenService>((AuthDbContext)null!);
+        _mockTokenService = new Mock<TokenService>((AuthDbContext)null!, (ITokenVerificationCache)null!);
         
         // Setup token service mock
         _mockTokenService.Setup(s => s.VerifyTokenAsync("test-token"))

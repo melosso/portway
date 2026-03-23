@@ -110,32 +110,20 @@ public class TokenAuthMiddleware
         // Extract endpoint name from request path
         string? endpointName = ExtractEndpointName(context.Request.Path);
         
-        // First validate token existence and active status
-        bool isValid = await tokenService.VerifyTokenAsync(tokenString);
-
-        if (!isValid)
-        {
-            Log.Warning("Invalid or expired token used for {Path} from {RemoteIP}", 
-                context.Request.Path, 
-                context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
-            
-            // Log failed authentication attempt in audit trail
-            await LogFailedAuthAttemptAsync(dbContext, tokenString, context);
-            
-            context.Response.StatusCode = 401;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token", success = false });
-            return;
-        }
-        
-        // Get token details for context and scoped access check
+        // Verify token and retrieve details in a single cache-backed call
         var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
         if (tokenDetails == null)
         {
-            Log.Error("Token verified but details could not be retrieved");
-            context.Response.StatusCode = 500;
+            Log.Warning("Invalid or expired token used for {Path} from {RemoteIP}",
+                context.Request.Path,
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+
+            // Log failed authentication attempt in audit trail
+            await LogFailedAuthAttemptAsync(dbContext, tokenString, context);
+
+            context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { error = "Authentication error", success = false });
+            await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token", success = false });
             return;
         }
 
