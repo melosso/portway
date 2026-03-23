@@ -112,7 +112,7 @@ public class TokenAuthMiddleware
         
         // Verify token and retrieve details in a single cache-backed call
         var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
-        if (tokenDetails == null)
+        if (tokenDetails is null)
         {
             Log.Warning("Invalid or expired token used for {Path} from {RemoteIP}",
                 context.Request.Path,

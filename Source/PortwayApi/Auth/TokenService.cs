@@ -172,7 +172,7 @@ public class TokenService
 
         if (_tokenCache.TryGet(cacheKey, out var cached))
         {
-            Log.Debug("Token cache hit: {Username} (ID: {TokenId})", cached!.Username, cached.Id);
+            Log.Debug("Token cache hit: {Username} (ID: {TokenId})", cached.Username, cached.Id);
             return cached;
         }
 
