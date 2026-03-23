@@ -9,10 +9,12 @@ public class TokenService
 {
     private readonly AuthDbContext _dbContext;
     private readonly string _tokenFolderPath;
-    
-    public TokenService(AuthDbContext dbContext)
+    private readonly ITokenVerificationCache _tokenCache;
+
+    public TokenService(AuthDbContext dbContext, ITokenVerificationCache tokenCache)
     {
         _dbContext = dbContext;
+        _tokenCache = tokenCache;
         _tokenFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "tokens");
         
         // Ensure tokens directory exists
@@ -29,6 +31,7 @@ public class TokenService
     public async Task<AuthToken?> GetFirstTokenAsync()
     {
         return await _dbContext.Tokens
+            .AsNoTracking()
             .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
             .OrderBy(t => t.Id)
             .FirstOrDefaultAsync();
@@ -98,33 +101,11 @@ public class TokenService
     }
     
     /// <summary>
-    /// Verify if a token is valid (not revoked or expired)
+    /// Verify if a token is valid (not revoked or expired).
+    /// Delegates to GetTokenDetailsByTokenAsync which is cache-backed.
     /// </summary>
-    public virtual async Task<bool> VerifyTokenAsync(string token)
-    {
-        // Get active tokens
-        var tokens = await _dbContext.Tokens
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-            .ToListAsync();
-        
-        // Check each token
-        foreach (var storedToken in tokens)
-        {
-            // Convert stored salt from string to bytes
-            byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-            
-            // Hash the provided token with the stored salt
-            string hashedToken = HashToken(token, salt);
-            
-            // Compare hashed tokens
-            if (hashedToken == storedToken.TokenHash)
-            {
-                return true;
-            }
-        }
-        
-        return false;
-    }
+    public virtual async Task<bool> VerifyTokenAsync(string token) =>
+        await GetTokenDetailsByTokenAsync(token) is not null;
     
     /// <summary>
     /// Verify if a token is valid for a specific username
@@ -133,8 +114,9 @@ public class TokenService
     {
         // Get active tokens for this user
         var tokens = await _dbContext.Tokens
-            .Where(t => t.Username == username && 
-                   t.RevokedAt == null && 
+            .AsNoTracking()
+            .Where(t => t.Username == username &&
+                   t.RevokedAt == null &&
                    (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
             .ToListAsync();
         
@@ -158,100 +140,62 @@ public class TokenService
     }
     
     /// <summary>
-    /// Verify if a token has access to a specific endpoint
+    /// Verify if a token has access to a specific endpoint.
+    /// Uses the cache-backed GetTokenDetailsByTokenAsync.
     /// </summary>
     public virtual async Task<bool> VerifyTokenForEndpointAsync(string token, string endpointName)
     {
         if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(endpointName))
             return false;
-            
-        // Get active tokens
-        var tokens = await _dbContext.Tokens
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-            .ToListAsync();
-            
-        // Check each token
-        foreach (var storedToken in tokens)
-        {
-            // Convert stored salt from string to bytes
-            byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-            
-            // Hash the provided token with the stored salt
-            string hashedToken = HashToken(token, salt);
-            
-            // Compare hashed tokens
-            if (hashedToken == storedToken.TokenHash)
-            {
-                // Check if token has access to endpoint
-                return storedToken.HasAccessToEndpoint(endpointName);
-            }
-        }
-        
-        return false;
+
+        var tokenDetails = await GetTokenDetailsByTokenAsync(token);
+        return tokenDetails?.HasAccessToEndpoint(endpointName) ?? false;
     }
 
     public virtual async Task<bool> VerifyTokenForEnvironmentAsync(string token, string environment)
     {
         if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(environment))
             return false;
-            
-        // Get active tokens
-        var tokens = await _dbContext.Tokens
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-            .ToListAsync();
-            
-        // Check each token
-        foreach (var storedToken in tokens)
-        {
-            // Convert stored salt from string to bytes
-            byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-            
-            // Hash the provided token with the stored salt
-            string hashedToken = HashToken(token, salt);
-            
-            // Compare hashed tokens
-            if (hashedToken == storedToken.TokenHash)
-            {
-                // Check if token has access to environment
-                return storedToken.HasAccessToEnvironment(environment);
-            }
-        }
-        
-        return false;
+
+        var tokenDetails = await GetTokenDetailsByTokenAsync(token);
+        return tokenDetails?.HasAccessToEnvironment(environment) ?? false;
     }
     
     /// <summary>
-    /// Get token details by token string (for middleware use)
+    /// Get token details by token string (for middleware use).
+    /// Results are cached for 30 seconds to eliminate repeated PBKDF2 hashing per request.
+    /// Cache is invalidated explicitly on revocation.
     /// </summary>
     public virtual async Task<AuthToken?> GetTokenDetailsByTokenAsync(string token)
     {
-        // Get active tokens
+        var cacheKey = TokenVerificationCache.BuildKey(token);
+
+        if (_tokenCache.TryGet(cacheKey, out var cached))
+        {
+            Log.Debug("Token cache hit: {Username} (ID: {TokenId})", cached!.Username, cached.Id);
+            return cached;
+        }
+
+        // Cache miss — load from DB with no tracking overhead (entities are never modified here)
         var tokens = await _dbContext.Tokens
+            .AsNoTracking()
             .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
             .ToListAsync();
-            
-        // Check each token
+
         foreach (var storedToken in tokens)
         {
-            // Convert stored salt from string to bytes
             byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-            
-            // Hash the provided token with the stored salt
-            string hashedToken = HashToken(token, salt);
-            
-            // Compare hashed tokens
-            if (hashedToken == storedToken.TokenHash)
+            if (HashToken(token, salt) == storedToken.TokenHash)
             {
-                // Log successful token access (debug level to avoid spam)
-                Log.Debug("Token access: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
+                Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
+                _tokenCache.Set(cacheKey, storedToken, storedToken.Id);
                 return storedToken;
             }
         }
-        
-        // Log failed token access attempt
-        Log.Warning("Failed token access attempt with token: {TokenPrefix}...", 
+
+        Log.Warning("Failed token access attempt with token: {TokenPrefix}...",
             token.Length > 10 ? token[..10] : token);
-        
+
         return null;
     }
     
@@ -323,8 +267,9 @@ public class TokenService
     public virtual async Task<IEnumerable<AuthToken>> GetActiveTokensAsync()
     {
         return await _dbContext.Tokens
+            .AsNoTracking()
             .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-            .OrderBy(t => t.Id) // Order by ID to show first token first
+            .OrderBy(t => t.Id)
             .ToListAsync();
     }
     
@@ -334,7 +279,8 @@ public class TokenService
     public async Task<IEnumerable<AuthToken>> GetAllTokensAsync()
     {
         return await _dbContext.Tokens
-            .OrderBy(t => t.Id) // Order by ID to show first token first
+            .AsNoTracking()
+            .OrderBy(t => t.Id)
             .ToListAsync();
     }
     
@@ -346,6 +292,7 @@ public class TokenService
     public async Task<string?> GetRevokeBlockReasonAsync(int tokenId)
     {
         var active = await _dbContext.Tokens
+            .AsNoTracking()
             .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
             .ToListAsync();
 
@@ -381,6 +328,10 @@ public class TokenService
 
         token.RevokedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(ct);
+
+        // Immediately invalidate the verification cache so the revoked token is rejected
+        // within the 30s TTL window rather than waiting for natural expiry
+        _tokenCache.Invalidate(tokenId);
 
         // Also append a .revoked suffix to the token file
         try

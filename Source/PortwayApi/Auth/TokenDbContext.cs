@@ -51,6 +51,18 @@ public class AuthDbContext : DbContext
                     }
                 }
                 
+                // Ensure the active-filter index exists on pre-existing databases
+                try
+                {
+                    Database.ExecuteSqlRaw(@"
+                        CREATE INDEX IF NOT EXISTS IX_AuthTokens_ActiveFilter
+                            ON Tokens (RevokedAt, ExpiresAt)");
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Could not create IX_AuthTokens_ActiveFilter index");
+                }
+
                 Log.Debug("All tables verified with correct schema");
                 return;
             }
@@ -98,9 +110,9 @@ public class AuthDbContext : DbContext
         {
             Database.ExecuteSqlRaw(@"
                 CREATE TABLE Tokens (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Username TEXT NOT NULL DEFAULT 'legacy',
-                    TokenHash TEXT NOT NULL DEFAULT '', 
+                    TokenHash TEXT NOT NULL DEFAULT '',
                     TokenSalt TEXT NOT NULL DEFAULT '',
                     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                     RevokedAt DATETIME NULL,
@@ -109,7 +121,11 @@ public class AuthDbContext : DbContext
                     AllowedEnvironments TEXT NOT NULL DEFAULT '*',
                     Description TEXT NOT NULL DEFAULT ''
                 )");
-            
+
+            Database.ExecuteSqlRaw(@"
+                CREATE INDEX IF NOT EXISTS IX_AuthTokens_ActiveFilter
+                    ON Tokens (RevokedAt, ExpiresAt)");
+
             Log.Debug("Created new Tokens table");
         }
         catch (Exception ex)
@@ -169,6 +185,9 @@ public class AuthDbContext : DbContext
             // Add indexes for performance
             entity.HasIndex(e => e.Username).IsUnique(false);
             entity.HasIndex(e => e.CreatedAt);
+            // Composite index on the two columns used in every active-token filter
+            entity.HasIndex(e => new { e.RevokedAt, e.ExpiresAt })
+                  .HasDatabaseName("IX_AuthTokens_ActiveFilter");
         });
         
         // Configure the TokenAudits table
