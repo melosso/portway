@@ -555,7 +555,7 @@ body:has(.drawer-backdrop.open) main {
 
 .drawer {
     position: fixed;
-    top: 0;
+    top: var(--promo-height);
     right: 0;
     width: 520px;
     max-width: 90vw;
