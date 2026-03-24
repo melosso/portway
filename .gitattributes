@@ -11,6 +11,7 @@ Documentation/* linguist-vendored
 *.conf linguist-vendored=true
 *.yml linguist-vendored=true
 *.sh linguist-vendored=true
+*.js linguist-vendored=true
 *.sln linguist-vendored=true
 *.slnx linguist-vendored=true
 *.sql linguist-vendored=true
