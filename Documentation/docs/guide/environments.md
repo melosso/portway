@@ -8,9 +8,10 @@ Each request URL includes an environment segment, `/api/{environment}/{endpoint}
 
 ```
 environments/
-├── settings.json       # Global: allowed environment names and server name
+├── settings.json              # Global: allowed environment names and server name
+├── network-access-policy.json # SSRF protection for Proxy endpoints
 ├── prod/
-│   └── settings.json   # Production connection string, headers, auth
+│   └── settings.json          # Production connection string, headers, auth
 ├── test/
 │   └── settings.json
 └── dev/
@@ -18,7 +19,7 @@ environments/
 ```
 
 :::info
-Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any identifier meaningful to your organisation, `WMS`, `Synergy`, `500`. The folder name becomes the URL segment.
+Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any identifier meaningful to your organisation e.g. `WMS`, `ERP`, `500`. The folder name becomes the URL segment.
 :::
 
 ### Global settings
@@ -205,7 +206,7 @@ Add an `Authentication` block to the environment's `settings.json`:
 | `HMAC` | `Name`, `Secret` |
 
 :::tip
-Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk.
+Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk. Encryption keys are stored in a `.core/` directory alongside your Portway installation. Back this up and do not delete it while you have active environments with encrypted secrets.
 :::
 
 For JWT and HMAC configuration, see the [Environment Authentication reference](../reference/environment-auth).
@@ -240,6 +241,50 @@ Headers defined in `settings.json` are added to all forwarded requests for that 
 }
 ```
 
+## Network access policy
+
+`environments/network-access-policy.json` controls which upstream hosts Proxy endpoints are allowed to call. This is Portway's SSRF (Server-Side Request Forgery) protection layer — it prevents endpoints from being used to reach internal infrastructure that callers shouldn't have access to.
+
+The file is **created automatically** on first startup with safe defaults. Edit it to match your deployment.
+
+```json
+{
+  "allowedHosts": [
+    "localhost",
+    "127.0.0.1",
+    "api.internal.example.com",
+    "*.services.corp"
+  ],
+  "blockedIpRanges": [
+    "10.0.0.0/8",
+    "172.16.0.0/12",
+    "192.168.0.0/16",
+    "169.254.0.0/16"
+  ]
+}
+```
+
+| Field | Description |
+|---|---|
+| `allowedHosts` | Hosts that Proxy endpoints may forward requests to. Supports `*` wildcards within a segment (e.g. `*.corp`). |
+| `blockedIpRanges` | CIDR ranges whose IPs are rejected, even for allowed hostnames. Applied after DNS resolution. |
+
+**How it works:** a proxy request is allowed only when (1) the target hostname matches an entry in `allowedHosts` **and** (2) none of the resolved IP addresses fall in `blockedIpRanges`. Both checks must pass.
+
+**Auto-discovery:** if `allowedHosts` contains only the two default localhost entries, Portway automatically discovers and adds the local machine's hostname and network interface addresses at startup. Add explicit entries to override this behaviour.
+
+**Wildcard patterns:** use `*` to match any single label, not across dots.
+- `*.corp` — matches `api.corp`, `db.corp`
+- `api.*.corp` — matches `api.v1.corp`, `api.v2.corp`
+
+:::warning
+Set `allowedHosts` explicitly in production. The auto-discovery fallback is intended for development only — it adds all local IP addresses, which may be broader than desired.
+:::
+
+:::tip
+The `ASPNETCORE_DOMAIN` environment variable adds an additional hostname to the allowed list at runtime, useful for dynamic or containerised deployments where the hostname isn't known at configuration time.
+:::
+
 ## Troubleshooting
 
 **"Environment not in the allowed list"**: Add the environment name to `AllowedEnvironments` in `environments/settings.json`.
@@ -247,6 +292,10 @@ Headers defined in `settings.json` are added to all forwarded requests for that 
 **"Settings.json not found for environment"**: Create `environments/{name}/settings.json`. The folder must exist and contain the file.
 
 **"Access denied to environment"**: The token does not have permission for this environment. Update token permissions in the [Web UI](./webui) under **Tokens**.
+
+**Proxy request blocked (host not in allowed list)**: The target host is not listed in `environments/network-access-policy.json`. Add it to `allowedHosts` and restart.
+
+**Proxy request blocked (IP in blocked range)**: The target hostname resolves to a private IP that is in `blockedIpRanges`. Either add a specific exception to `allowedHosts` or remove the conflicting range — but only if the target is genuinely safe to reach.
 
 **Unexpected SQL syntax errors**: The connection string may not contain enough signal for provider auto-detection. Check the [SQL Providers reference](/reference/sql-providers) for required keywords.
 
