@@ -190,25 +190,19 @@ Add an `Authentication` block to the environment's `settings.json`:
 }
 ```
 
-| Type | Key fields |
+| Field | Required | Type | Description |
+|---|---|---|---|
+| `Enabled` | Yes | boolean | Activates environment-specific authentication. When `false`, the block is ignored. |
+| `OverrideGlobalToken` | No | boolean | When `true`, the global Portway bearer token is rejected. Only the methods defined here are accepted. Defaults to `false`. |
+| `Methods` | Yes (when enabled) | array | One or more authentication method definitions. |
+
+| Method `Type` | Key fields |
 |---|---|
 | `ApiKey` | `Name`, `Value`, `In` (`Header` or `Query`) |
 | `Basic` | `Name`, `Value` |
 | `Bearer` | `Value` |
 | `JWT` | `Issuer`, `Secret`, `PublicKey` |
 | `HMAC` | `Name`, `Secret` |
-
-By default, both the environment-specific auth method and the global Portway token are accepted. Set `OverrideGlobalToken: true` to require only the environment-specific method:
-
-```json
-{
-  "Authentication": {
-    "Enabled": true,
-    "OverrideGlobalToken": true,
-    "Methods": [...]
-  }
-}
-```
 
 :::tip
 Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk.
