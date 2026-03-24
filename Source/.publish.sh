@@ -6,7 +6,6 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Run PortwayApi first, then Tools (which fans out to its own sub-scripts)
 SCRIPTS=(
     "$SOURCE_DIR/PortwayApi/.publish.sh"
-    "$SOURCE_DIR/Tools/.publish.sh"
 )
 
 for script in "${SCRIPTS[@]}"; do

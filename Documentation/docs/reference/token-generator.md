@@ -4,10 +4,6 @@
 
 All token management operations, e.g. create, rotate, revoke, update, are recorded automatically in the `TokenAudits` table of `auth.db`.
 
-:::info
-Token management (create, rotate, revoke) is handled through the [Web UI](/guide/webui) under **Tokens**. The `PortwayMgt.exe` CLI tool is deprecated.
-:::
-
 ## Audit Schema
 
 | Field | Type | Description |

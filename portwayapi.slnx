@@ -9,7 +9,4 @@
     <Project Path="Source/PortwayApi/PortwayApi.csproj" />
     <Project Path="Source/Tests/PortwayApi.Tests.csproj" />
   </Folder>
-  <Folder Name="/Source/Tools/">
-    <Project Path="Source/Tools/TokenGenerator/TokenGenerator.csproj" />
-  </Folder>
 </Solution>

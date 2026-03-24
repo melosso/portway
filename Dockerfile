@@ -7,28 +7,24 @@ WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies
 COPY Source/PortwayApi/PortwayApi.csproj Source/PortwayApi/
-COPY Source/Tools/TokenGenerator/TokenGenerator.csproj Source/Tools/TokenGenerator/
 COPY Source/Directory.Build.props Source/
 COPY Source/Directory.Packages.props Source/
 COPY Source/global.json Source/
 
 # Restore dependencies as distinct layers
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore "Source/PortwayApi/PortwayApi.csproj" && \
-    dotnet restore "Source/Tools/TokenGenerator/TokenGenerator.csproj"
+    dotnet restore "Source/PortwayApi/PortwayApi.csproj" 
     
 # Copy the rest of the source code
 COPY . .
 
 # Build projects
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/build && \
-    dotnet build "Source/Tools/TokenGenerator/TokenGenerator.csproj" -c Release -o /app/tools/build
+    dotnet build "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/build 
 
 # Publish the applications
 RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/publish /p:UseAppHost=false && \
-    dotnet publish "Source/Tools/TokenGenerator/TokenGenerator.csproj" -c Release -o /app/tools/publish /p:UseAppHost=false
+    dotnet publish "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/publish /p:UseAppHost=false 
 
 # Stage 2: Runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS final
@@ -52,7 +48,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Copy published output and tools
 COPY --from=build /app/publish .
-COPY --from=build /app/tools/publish /app/tools
 
 # Copy configuration files
 COPY Source/PortwayApi/environments/settings.json /app/environments/
@@ -76,15 +71,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 
 # Expose application port
 EXPOSE 8080
-
-# Create startup script that generates default token if needed
-RUN echo '#!/bin/sh\n\
-if [ ! -f /app/tokens/docker-default.txt ]; then\n\
-  echo "No tokens found. Generating default admin token..."\n\
-  dotnet /app/tools/TokenGenerator.dll --docker docker-default -s "*" -e "prod" --description "Auto-generated admin token" || echo "Token generation failed, continuing..."\n\
-  echo "Token generated at /app/tokens/docker-default.txt"\n\
-fi\n\
-exec dotnet PortwayApi.dll "$@"' > /app/start.sh && chmod +x /app/start.sh
 
 # Define entrypoint
 ENTRYPOINT ["/app/start.sh"]
