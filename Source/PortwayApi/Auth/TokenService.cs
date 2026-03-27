@@ -128,9 +128,11 @@ public class TokenService
             
             // Hash the provided token with the stored salt
             string hashedToken = HashToken(token, salt);
-            
-            // Compare hashed tokens
-            if (hashedToken == storedToken.TokenHash)
+
+            // Compare hashed tokens using constant-time comparison to prevent timing attacks
+            if (CryptographicOperations.FixedTimeEquals(
+                    Convert.FromBase64String(hashedToken),
+                    Convert.FromBase64String(storedToken.TokenHash)))
             {
                 return true;
             }
@@ -185,7 +187,10 @@ public class TokenService
         foreach (var storedToken in tokens)
         {
             byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-            if (HashToken(token, salt) == storedToken.TokenHash)
+            // Constant-time comparison to prevent timing attacks
+            if (CryptographicOperations.FixedTimeEquals(
+                    Convert.FromBase64String(HashToken(token, salt)),
+                    Convert.FromBase64String(storedToken.TokenHash)))
             {
                 Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
                 _tokenCache.Set(cacheKey, storedToken, storedToken.Id);

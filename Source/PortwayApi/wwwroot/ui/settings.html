@@ -75,6 +75,13 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="card-header"><span class="card-title">MCP (Model Context Protocol)</span></div>
+        <div class="card-body" id="mcpBody">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
     </div>
   </div>
 </main>
@@ -103,6 +110,7 @@ async function load() {
     const f = d.file_storage ?? {};
     const log = d.logging ?? {};
     const ep = d.endpoint_reloading ?? {};
+    const m = d.mcp ?? {};
 
     document.getElementById('rateLimitBody').innerHTML = [
       boolItem('Enabled', rl.enabled),
@@ -140,9 +148,17 @@ async function load() {
       settingItem('Debounce', ep.debounce_ms != null ? `${ep.debounce_ms}ms` : '—'),
     ].join('');
 
+    document.getElementById('mcpBody').innerHTML = [
+      boolItem('Enabled', m.enabled),
+      settingItem('Path', m.path ?? '—'),
+      boolItem('Require Authentication', m.require_authentication),
+      boolItem('MCP Apps (UI)', m.apps_enabled),
+      settingItem('MCP Apps Path', m.apps_path ?? '—'),
+    ].join('');
+
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody'].forEach(id => {
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody'].forEach(id => {
       document.getElementById(id).innerHTML = msg;
     });
   }

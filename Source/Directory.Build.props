@@ -12,7 +12,7 @@
     <RepositoryUrl>https://github.com/melosso/portway</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
-    <PackageProjectUrl>https://portway.melosso.com/</PackageProjectUrl>
+    <PackageProjectUrl>https://melosso.com/</PackageProjectUrl>
   </PropertyGroup>
 
   <PropertyGroup>
