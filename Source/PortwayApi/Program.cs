@@ -497,8 +497,7 @@ try
     app.UseRequestTrafficLogging();
     app.UseRouting();
 
-    // Initialise MCP config DB (mcp.db) — runs unconditionally so the setup wizard works
-    // even before Mcp:Enabled is set to true.
+    // Initialise MCP config DB (mcp.db), runs unconditionally so the setup wizard works even before Mcp:Enabled is set to true.
     using (var mcpScope = app.Services.CreateScope())
     {
         try

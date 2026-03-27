@@ -94,7 +94,7 @@
 
       // Backdrop click
       container.querySelector('[data-dialog-overlay]')?.addEventListener('click', (e) => {
-        if (e.target.hasAttribute('data-dialog-backdrop')) {
+        if (closeOnBackdrop && e.target.hasAttribute('data-dialog-backdrop')) {
           this.close(id);
         }
       });
@@ -121,11 +121,15 @@
       
       if (overlay) {
         overlay.classList.remove('open');
-        
+
         setTimeout(() => {
           container?.remove();
-          delete this._dialogs[id];
-          
+          // Guard against deleting a replacement dialog registered under the same ID
+          // during the animation window (e.g. stepping back in a wizard).
+          if (this._dialogs[id] === dialog) {
+            delete this._dialogs[id];
+          }
+
           if (onClose) onClose();
           
           // Dispatch close event
