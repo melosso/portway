@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Xunit;
 using Moq;
 using PortwayApi.Classes;
 using PortwayApi.Classes.Providers;
@@ -18,6 +20,14 @@ using System.Text;
 
 namespace PortwayApi.Tests.Base;
 
+/// <summary>
+/// xUnit collection that serializes all integration tests sharing WebApplicationFactory.
+/// Without this, parallel factory creation races on SQLite file access and the MCP HTTP transport.
+/// </summary>
+[CollectionDefinition("Integration")]
+public class IntegrationTestCollection { }
+
+[Collection("Integration")]
 public class ApiTestBase : IDisposable
 {
     protected readonly HttpClient _client;
@@ -94,6 +104,17 @@ public class ApiTestBase : IDisposable
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.ConfigureAppConfiguration(config =>
+                {
+                    // Use per-instance SQLite paths and disable the MCP HTTP server in tests.
+                    // The MCP HTTP transport registers a hosted service that conflicts when multiple
+                    // WebApplicationFactory instances start in parallel.
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Mcp:Enabled"] = "false"
+                    });
+                });
+
                 builder.ConfigureTestServices(services =>
                 {
                     // Isolate SQLite databases per test instance to prevent file-lock races.
