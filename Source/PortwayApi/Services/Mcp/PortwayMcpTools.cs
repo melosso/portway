@@ -6,14 +6,14 @@ using System.ComponentModel;
 // Named response types — avoid returning untyped object from MCP tool methods
 public sealed record EndpointInfoResult
 {
-    public string?                Error               { get; init; }
-    public string?                Name                { get; init; }
-    public string?                Ns                  { get; init; }
-    public string?                Method              { get; init; }
-    public string?                Url                 { get; init; }
-    public IReadOnlyList<string>  AllowedEnvironments { get; init; } = [];
-    public bool                   HasUi               { get; init; }
-    public string?                UiUri               { get; init; }
+    public string? Error { get; init; }
+    public string? Name { get; init; }
+    public string? Ns { get; init; }
+    public string? Method { get; init; }
+    public string? Url { get; init; }
+    public IReadOnlyList<string> AllowedEnvironments { get; init; } = [];
+    public bool HasUi { get; init; }
+    public string? UiUri { get; init; }
 }
 
 public sealed record UiEnabledEndpointsResult(
@@ -35,7 +35,7 @@ public static class PortwayMcpTools
         _appsProvider = appsProvider;
     }
 
-    [McpServerTool, Description("Browse available Portway endpoints with an interactive UI")]
+    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Browse available Portway endpoints with an interactive UI")]
     public static string ListEndpoints()
     {
         if (_registry is null) return "MCP not initialized";
@@ -62,7 +62,7 @@ public static class PortwayMcpTools
         return sb.ToString();
     }
 
-    [McpServerTool, Description("Get details about a specific endpoint including available methods and URL")]
+    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Get details about a specific endpoint including available methods and URL")]
     public static EndpointInfoResult GetEndpointInfo(string endpointName)
     {
         if (_registry is null)
@@ -76,17 +76,17 @@ public static class PortwayMcpTools
 
         return new EndpointInfoResult
         {
-            Name                = tool.EndpointName,
-            Ns                  = tool.Namespace,
-            Method              = tool.Method,
-            Url                 = tool.Url,
+            Name = tool.EndpointName,
+            Ns = tool.Namespace,
+            Method = tool.Method,
+            Url = tool.Url,
             AllowedEnvironments = tool.AllowedEnvironments ?? [],
-            HasUi               = !string.IsNullOrEmpty(tool.UiResourceUri),
-            UiUri               = tool.UiResourceUri
+            HasUi = !string.IsNullOrEmpty(tool.UiResourceUri),
+            UiUri = tool.UiResourceUri
         };
     }
 
-    [McpServerTool, Description("List endpoints that have MCP Apps UI support")]
+    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("List endpoints that have MCP Apps UI support")]
     public static UiEnabledEndpointsResult ListUiEnabledEndpoints()
     {
         if (_registry is null)
