@@ -11,5 +11,9 @@
             "PUT": "Update an account",
             "DELETE": "Delete an account"
         }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
     }
 }

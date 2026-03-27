@@ -28,5 +28,9 @@
     "MethodDocumentation": {
       "GET": "Browse warehouse location reference data stored in a local SQLite database (`demo.db`). These locations are referenced by `Product/Stock` and `Production/Lines`. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip`."
     }
-  }
+  },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    }
 }

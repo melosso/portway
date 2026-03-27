@@ -11,5 +11,9 @@
             "PUT": "Update product details",
             "DELETE": "Remove a product"
         }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
     }
 }

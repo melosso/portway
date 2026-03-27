@@ -11,5 +11,9 @@
             "PUT": "Update a company",
             "DELETE": "Delete a company"
         }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
     }
 }
