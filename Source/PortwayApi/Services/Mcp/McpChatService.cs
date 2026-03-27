@@ -1,5 +1,7 @@
 namespace PortwayApi.Services.Mcp;
 
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -23,13 +25,20 @@ public sealed partial class McpChatService
     };
 
     private readonly McpEndpointRegistry _registry;
-    private readonly ChatOptions         _options;
+    private readonly McpOptions          _mcpOptions;
+    private readonly McpConfigService    _configService;
     private readonly IHttpClientFactory  _httpFactory;
     private readonly SqlMetadataService? _sqlMetadata;
 
     // Source-generated zero-overhead regexes
     [GeneratedRegex(@"[^a-zA-Z0-9_]")]
     private static partial Regex SanitisePattern();
+
+    [GeneratedRegex(@"[?&]\$top=", RegexOptions.IgnoreCase)]
+    private static partial Regex TopParamPattern();
+
+    [GeneratedRegex(@"\$top=(\d+)", RegexOptions.IgnoreCase)]
+    private static partial Regex TopValuePattern();
 
     [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex ODataIdentifierPattern();
@@ -130,19 +139,43 @@ public sealed partial class McpChatService
 
     public McpChatService(
         McpEndpointRegistry registry,
-        IOptions<ChatOptions> options,
+        IOptions<McpOptions> mcpOptions,
+        McpConfigService configService,
         IHttpClientFactory httpFactory,
         SqlMetadataService? sqlMetadata = null)
     {
-        _registry    = registry;
-        _options     = options.Value;
-        _httpFactory = httpFactory;
-        _sqlMetadata = sqlMetadata;
+        _registry      = registry;
+        _mcpOptions    = mcpOptions.Value;
+        _configService = configService;
+        _httpFactory   = httpFactory;
+        _sqlMetadata   = sqlMetadata;
     }
 
-    public bool IsEnabled => _options.Enabled;
+    public bool IsEnabled => _mcpOptions.ChatEnabled;
 
-    public IReadOnlyList<ToolDefinition> GetToolDefinitions() =>
+    /// <summary>True when a provider and API key are configured in the encrypted DB store.</summary>
+    public async Task<bool> IsConfiguredAsync(CancellationToken ct = default)
+    {
+        var cfg = await _configService.GetConfigAsync(ct);
+        return cfg.IsConfigured;
+    }
+
+    /// <summary>
+    /// Returns tool definitions, using the registry's cached snapshot when available.
+    /// The cache is invalidated automatically when <see cref="McpEndpointRegistry.RegisterEndpoints"/> is called.
+    /// </summary>
+    public IReadOnlyList<ToolDefinition> GetToolDefinitions()
+    {
+        // Fast path: return cached list if the registry hasn't been re-populated since last call.
+        if (_registry.CachedToolDefinitions is IReadOnlyList<ToolDefinition> cached)
+            return cached;
+
+        var tools = BuildToolDefinitions();
+        _registry.CachedToolDefinitions = tools;
+        return tools;
+    }
+
+    private IReadOnlyList<ToolDefinition> BuildToolDefinitions() =>
         _registry.Tools
             .GroupBy(t => (t.Namespace, t.EndpointName))
             .Select(g =>
@@ -172,6 +205,11 @@ public sealed partial class McpChatService
                     ? string.Join(" / ", displayParts)
                     : first.EndpointName; // fallback: bare endpoint name
 
+                // Derive tool annotations from registered HTTP methods
+                var allMethods   = g.Select(t => t.Method.ToUpperInvariant()).ToHashSet();
+                var isReadOnly   = allMethods.All(m => m == "GET");
+                var isDestructive = allMethods.Any(m => m is "DELETE" or "POST" or "PUT" or "PATCH");
+
                 return new ToolDefinition(
                     // Sanitise name for LLM: namespace_endpoint, lowercase, underscores only
                     Name: SanitiseName(string.IsNullOrEmpty(first.Namespace)
@@ -179,7 +217,9 @@ public sealed partial class McpChatService
                         : $"{first.Namespace}_{first.EndpointName}"),
                     Description: $"{first.Description} (methods: {methods}){fieldInfo}{envInfo}{ctHint}",
                     InputSchema: _toolInputSchema,
-                    DisplayDescription: displayDesc
+                    DisplayDescription: displayDesc,
+                    ReadOnly: isReadOnly,
+                    Destructive: isDestructive
                 );
             })
             .ToList();
@@ -231,10 +271,10 @@ public sealed partial class McpChatService
         string? locale = null,
         CancellationToken ct = default)
     {
-        var provider = BuildProvider();
+        var provider = await BuildProviderAsync(ct);
         if (provider is null)
         {
-            await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Error, Delta = "Chat provider not configured. Set Chat:Enabled and Chat:ApiKeyEnvVar in appsettings." }, ct);
+            await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Error, Delta = "Chat not configured. Use the MCP Setup page (/ui/mcp/setup) to set a provider and API key." }, ct);
             await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Done }, ct);
             return;
         }
@@ -247,12 +287,16 @@ public sealed partial class McpChatService
         var mutableHistory = new List<ChatMessage> { systemPrompt };
         mutableHistory.AddRange(history);
 
+        // Per-turn deduplication: skip re-executing identical (toolName, inputJson) pairs
+        var seenToolCalls = new HashSet<(string, string)>();
+
         // Tool-use loop — LLM may request multiple sequential tool calls
         const int MaxToolRounds = 5;
         for (var round = 0; round < MaxToolRounds; round++)
         {
-            // After the first round the client has already seen the initial typing indicator.
-            // Signal it to re-show thinking dots while we call the LLM again after tool execution.
+            if (ct.IsCancellationRequested) break;
+
+            // After the first round, signal the client to re-show the thinking indicator
             if (round > 0)
                 await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Thinking }, ct);
 
@@ -263,13 +307,12 @@ public sealed partial class McpChatService
                 switch (delta.Type)
                 {
                     case ChatDeltaType.ToolCall:
-                        // Don't stream tool_call to client yet — execute first, then report result
+                        // Collect tool calls; execute after the stream ends for this round
                         pendingToolCalls.Add((delta.ToolName!, delta.ToolInput ?? "{}"));
                         break;
 
                     case ChatDeltaType.Done:
-                        // Provider stream ended — fall through to check pendingToolCalls below.
-                        // The final "done" for the client is sent after all tool rounds complete.
+                        // Provider stream ended — fall through to tool execution below.
                         break;
 
                     case ChatDeltaType.Error:
@@ -287,19 +330,33 @@ public sealed partial class McpChatService
 
             if (pendingToolCalls.Count == 0) break;
 
-            // Execute each tool call and feed results back into history
-            // Truncate large results to avoid exceeding the model's context window
-            const int MaxToolResultChars = 12_000;
+            // Execute tool calls and feed results back into history.
+            // Results are truncated to avoid blowing the model's context window.
+            var maxChars        = _mcpOptions.MaxToolResultChars;
             var toolResultParts = new StringBuilder();
+            var assistantParts  = new StringBuilder("I called the following tools:\n");
+
             foreach (var (name, inputJson) in pendingToolCalls)
             {
+                // Server-side deduplication: skip identical calls within this turn
+                var callKey = (name, inputJson);
+                if (!seenToolCalls.Add(callKey))
+                {
+                    Log.Debug("MCP: skipping duplicate tool call {Tool} with same parameters", name);
+                    continue;
+                }
+
                 var result = await ExecuteToolAsync(name, inputJson, defaultEnvironment, baseUrl, authToken, ct);
 
-                var historyResult = result.Length > MaxToolResultChars
-                    ? result[..MaxToolResultChars] + $"\n[...truncated: {result.Length - MaxToolResultChars} additional characters omitted. Ask for fewer results or apply a filter.]"
+                // Truncate for history to stay within context window limits
+                var historyResult = result.Length > maxChars
+                    ? result[..maxChars] + $"\n[...truncated: {result.Length - maxChars} additional characters omitted. Ask for fewer results or apply a filter.]"
                     : result;
-                toolResultParts.AppendLine($"[{name}]: {historyResult}");
 
+                toolResultParts.AppendLine($"[{name}]: {historyResult}");
+                assistantParts.AppendLine($"- {name}({inputJson}) → {historyResult}");
+
+                // Stream full (untruncated) result to the client for display
                 await WriteSseAsync(writer, new ChatDelta
                 {
                     Type       = ChatDeltaType.ToolCall,
@@ -309,12 +366,39 @@ public sealed partial class McpChatService
                 }, ct);
             }
 
-            // Append assistant tool-call message + tool results as user message
-            mutableHistory.Add(new ChatMessage("assistant", $"I called the following tools:\n{toolResultParts}"));
-            mutableHistory.Add(new ChatMessage("user", $"Tool results:\n{toolResultParts}\nPlease continue."));
+            // Append turn to history with correct role alternation.
+            // Earlier rounds: compress old tool results to a short summary to prevent history bloat.
+            if (round >= 2)
+                TrimEarlyToolResultsInHistory(mutableHistory, maxChars: 500);
+
+            mutableHistory.Add(new ChatMessage("assistant", assistantParts.ToString()));
+            mutableHistory.Add(new ChatMessage("user", "Please continue based on those tool results."));
         }
 
         await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Done }, ct);
+    }
+
+    /// <summary>
+    /// Truncates the content of tool-result history messages from early rounds to keep
+    /// the total history size manageable across many tool-use rounds.
+    /// </summary>
+    private static void TrimEarlyToolResultsInHistory(List<ChatMessage> history, int maxChars)
+    {
+        // Skip the system prompt (index 0) and the last 4 entries (current round's assistant + user pair,
+        // and the previous round's pair). Only compress messages before that window.
+        var trimBefore = history.Count - 4;
+        for (var i = 1; i < trimBefore; i++)
+        {
+            var msg = history[i];
+            if (msg.Role == "assistant" && msg.Content.StartsWith("I called", StringComparison.Ordinal)
+                && msg.Content.Length > maxChars)
+            {
+                history[i] = msg with
+                {
+                    Content = msg.Content[..maxChars] + "\n[...earlier tool results compressed]"
+                };
+            }
+        }
     }
 
     private async Task<string> ExecuteToolAsync(
@@ -325,11 +409,9 @@ public sealed partial class McpChatService
         string? authToken,
         CancellationToken ct)
     {
-        // Find the matching registered tool — match by namespaced name (e.g. wms_warehouses)
-        var tool = _registry.Tools.FirstOrDefault(t =>
-            SanitiseName(string.IsNullOrEmpty(t.Namespace)
-                ? t.EndpointName
-                : $"{t.Namespace}_{t.EndpointName}").Equals(toolName, StringComparison.OrdinalIgnoreCase));
+        // O(1) lookup via pre-built dictionary keyed by sanitized endpoint name
+        var sanitizedEndpointName = toolName; // tool names are already sanitized
+        var tool = _registry.FindByName(sanitizedEndpointName);
 
         if (tool is null)
             return $"Unknown tool: {toolName}";
@@ -352,6 +434,18 @@ public sealed partial class McpChatService
         var body   = input?["body"]?.GetValue<string>();
         var method = new HttpMethod(tool.Method.ToUpperInvariant());
 
+        // --- Server-side $top enforcement ---
+        // If the LLM generated a GET query without $top, auto-inject the configured default.
+        // If $top exceeds MaxPageSize, clamp it.  This prevents unbounded table scans.
+        if (method == HttpMethod.Get && !string.IsNullOrEmpty(query))
+        {
+            query = EnforceTopLimit(query, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
+        }
+        else if (method == HttpMethod.Get && string.IsNullOrEmpty(query))
+        {
+            query = $"$top={_mcpOptions.DefaultPageSize}";
+        }
+
         // Build the endpoint path, including namespace if present
         var endpointPath = string.IsNullOrEmpty(tool.Namespace)
             ? tool.EndpointName
@@ -361,10 +455,16 @@ public sealed partial class McpChatService
         if (!string.IsNullOrEmpty(query))
             url += $"?{query.TrimStart('?')}";
 
+        var sw = Stopwatch.StartNew();
         try
         {
-            // Resolve token: caller-forwarded > InternalApiToken config (decrypt if PWENC-encrypted)
-            var token = authToken ?? ResolveConfigSecret(_options.InternalApiToken);
+            // Resolve token: caller-forwarded Bearer > InternalApiToken from encrypted DB config.
+            string? token = authToken;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                var cfg = await _configService.GetConfigAsync(ct);
+                token = cfg.InternalApiToken;
+            }
 
             using var http = _httpFactory.CreateClient("internal");
             using var req  = new HttpRequestMessage(method, url);
@@ -375,8 +475,13 @@ public sealed partial class McpChatService
             if (body is not null && method != HttpMethod.Get)
                 req.Content = new StringContent(body, Encoding.UTF8, new MediaTypeHeaderValue("application/json"));
 
-            using var resp    = await http.SendAsync(req, ct);
-            var       content = await resp.Content.ReadAsStringAsync(ct);
+            // Use ResponseHeadersRead for early abort on large responses — avoids buffering
+            // the entire body into memory before we know if it exceeds MaxToolResultChars.
+            using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            sw.Stop();
+
+            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url})",
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url);
 
             if (resp.IsSuccessStatusCode)
             {
@@ -386,6 +491,11 @@ public sealed partial class McpChatService
                 if (IsBinaryContentType(mediaType))
                     return $"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
                            $"read in chat. The user should download it directly from the Portway API.";
+
+                // Size-capped read: stream only up to MaxToolResultChars + a small buffer,
+                // then discard the rest. This avoids loading huge responses into memory.
+                var maxChars = _mcpOptions.MaxToolResultChars;
+                var content  = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
 
                 // Prefix non-JSON text responses so the LLM knows the format
                 if (!string.IsNullOrEmpty(mediaType) && !mediaType.Contains("json"))
@@ -404,10 +514,12 @@ public sealed partial class McpChatService
                     }
                     catch { /* not valid JSON array — return as-is */ }
                 }
+
                 return content;
             }
 
             // Return a clear, actionable message so the LLM can relay it to the user
+            var errorBody = await ReadCappedAsync(resp.Content, 2000, ct);
             var hint = (int)resp.StatusCode switch
             {
                 401 => "The request was rejected because no valid Bearer token was provided. " +
@@ -421,8 +533,18 @@ public sealed partial class McpChatService
                 _   => $"The request failed with HTTP {(int)resp.StatusCode}."
             };
 
-            Log.Warning("Tool call {Tool} → {Status}: {Hint}", toolName, (int)resp.StatusCode, hint);
-            return $"[Tool error {(int)resp.StatusCode}] {hint}\nResponse body: {content}";
+            Log.Warning("Tool call {Tool} → {Status} in {Elapsed}ms: {Hint}",
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, hint);
+            return $"[Tool error {(int)resp.StatusCode}] {hint}\nResponse body: {errorBody}";
+        }
+        catch (TaskCanceledException) when (ct.IsCancellationRequested)
+        {
+            return $"[Tool cancelled] The request for {toolName} was cancelled.";
+        }
+        catch (TaskCanceledException)
+        {
+            Log.Warning("Tool call {Tool} timed out after {Elapsed}ms", toolName, sw.ElapsedMilliseconds);
+            return $"[Tool timeout] {toolName} did not respond within the configured timeout. Try a more specific query with $filter or $top.";
         }
         catch (Exception ex)
         {
@@ -431,12 +553,53 @@ public sealed partial class McpChatService
         }
     }
 
+    /// <summary>
+    /// Reads response content up to <paramref name="maxChars"/> characters.
+    /// Uses streaming to avoid buffering a gigantic response before checking its size.
+    /// </summary>
+    private static async Task<string> ReadCappedAsync(HttpContent content, int maxChars, CancellationToken ct)
+    {
+        await using var stream = await content.ReadAsStreamAsync(ct);
+        using var reader       = new StreamReader(stream, Encoding.UTF8);
+        var buffer             = new char[4096];
+        var sb                 = new StringBuilder(Math.Min(maxChars, 65536));
+
+        while (sb.Length < maxChars)
+        {
+            var remaining = maxChars - sb.Length;
+            var toRead    = Math.Min(buffer.Length, remaining);
+            var read      = await reader.ReadAsync(buffer.AsMemory(0, toRead), ct);
+            if (read == 0) break;
+            sb.Append(buffer, 0, read);
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Ensures the OData query string respects page size limits.
+    /// Auto-injects $top if absent; clamps if it exceeds MaxPageSize.
+    /// </summary>
+    private static string EnforceTopLimit(string query, int defaultPageSize, int maxPageSize)
+    {
+        var match = TopValuePattern().Match(query);
+        if (!match.Success)
+        {
+            // No $top present — inject default
+            return query.Length > 0 ? $"{query}&$top={defaultPageSize}" : $"$top={defaultPageSize}";
+        }
+
+        if (int.TryParse(match.Groups[1].Value, out var requestedTop) && requestedTop > maxPageSize)
+        {
+            // Clamp to max
+            return TopValuePattern().Replace(query, $"$top={maxPageSize}");
+        }
+
+        return query;
+    }
+
     private static ChatMessage BuildSystemPrompt(string? locale)
     {
-        // Locale is used ONLY for number formatting — not to infer response language.
-        // Response language is determined solely by the language the user typed (see LANGUAGE RULE above).
-        // Injecting "Always respond in Dutch" here caused the model to switch languages even when
-        // the user wrote in English about a Dutch topic (e.g. "Tell me about the Netherlands").
         var localeHint = string.Empty;
         if (!string.IsNullOrWhiteSpace(locale))
         {
@@ -454,44 +617,28 @@ public sealed partial class McpChatService
         return new ChatMessage("system", _systemPromptBase + localeHint);
     }
 
-    private IChatProvider? BuildProvider()
+    private async Task<IChatProvider?> BuildProviderAsync(CancellationToken ct)
     {
-        if (!_options.Enabled) return null;
+        if (!_mcpOptions.ChatEnabled) return null;
 
-        // Priority 1: environment variable
-        var apiKey = Environment.GetEnvironmentVariable(_options.ApiKeyEnvVar);
+        var cfg = await _configService.GetConfigAsync(ct);
 
-        // Priority 2: Chat:ApiKey in appsettings (may be PWENC-encrypted)
-        if (string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(_options.ApiKey))
+        if (!cfg.IsConfigured)
         {
-            var raw = _options.ApiKey;
-            if (PortwayApi.Helpers.SettingsEncryptionHelper.IsEncrypted(raw))
-            {
-                if (!PortwayApi.Helpers.SettingsEncryptionHelper.TryDecryptValue(raw, out var decrypted))
-                {
-                    Log.Error("Failed to decrypt Chat:ApiKey — check that PORTWAY_ENCRYPTION_KEY is set correctly");
-                    return null;
-                }
-                apiKey = decrypted;
-            }
-            else
-            {
-                apiKey = raw;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            Log.Warning("Chat API key not configured. Set the '{EnvVar}' environment variable or Chat:ApiKey in appsettings.", _options.ApiKeyEnvVar);
+            Log.Warning("MCP chat is not configured — use the /ui/mcp/setup page to set provider and API key");
             return null;
         }
 
-        return _options.Provider.ToLowerInvariant() switch
+        var apiKey   = cfg.ApiKey!;
+        var model    = string.IsNullOrWhiteSpace(cfg.Model) ? "claude-sonnet-4-6" : cfg.Model;
+        var provider = cfg.Provider;
+
+        return provider.ToLowerInvariant() switch
         {
-            "openai"  => new OpenAiChatProvider(apiKey, _options.Model, _httpFactory),
-            "gemini"  => new GeminiChatProvider(apiKey, _options.Model, _httpFactory),
-            "mistral" => new MistralChatProvider(apiKey, _options.Model, _httpFactory),
-            _         => new AnthropicChatProvider(apiKey, _options.Model, _httpFactory)
+            "openai"  => new OpenAiChatProvider(apiKey, model, _httpFactory),
+            "gemini"  => new GeminiChatProvider(apiKey, model, _httpFactory),
+            "mistral" => new MistralChatProvider(apiKey, model, _httpFactory),
+            _         => new AnthropicChatProvider(apiKey, model, _httpFactory)
         };
     }
 
@@ -508,8 +655,6 @@ public sealed partial class McpChatService
     /// <summary>
     /// Looks up auto-discovered column names from <see cref="SqlMetadataService"/>.
     /// Only applies to SQL endpoints (EndpointKind == "api" and metadata service available).
-    /// Tries "Namespace/EndpointName" first (the cache key used by SqlMetadataService),
-    /// then bare "EndpointName" as a fallback for non-namespaced endpoints.
     /// </summary>
     private IReadOnlyList<string>? ResolveFieldsFromMetadata(string? ns, string endpointName, string endpointKind)
     {
@@ -521,9 +666,6 @@ public sealed partial class McpChatService
 
         if (columns is { Count: > 0 })
         {
-            // Only expose columns whose names are valid OData identifiers (no spaces or special chars).
-            // Columns with spaces must be configured via AllowedColumns with alias syntax
-            // e.g. "Invoice Due Age;InvoiceDueAge" to be safely usable in $filter/$orderby.
             var safe = columns
                 .Select(c => c.ColumnName)
                 .Where(n => ODataIdentifierPattern().IsMatch(n))
@@ -548,13 +690,4 @@ public sealed partial class McpChatService
         mediaType is "application/pdf" or "application/octet-stream"
                   or "application/zip" or "application/x-zip-compressed";
 
-    /// <summary>Returns the plaintext value of a config secret, decrypting it if PWENC-prefixed.</summary>
-    private static string? ResolveConfigSecret(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-        if (!PortwayApi.Helpers.SettingsEncryptionHelper.IsEncrypted(value)) return value;
-        if (PortwayApi.Helpers.SettingsEncryptionHelper.TryDecryptValue(value, out var plain)) return plain;
-        Log.Warning("Failed to decrypt PWENC-encrypted config value — token will be empty");
-        return null;
-    }
 }

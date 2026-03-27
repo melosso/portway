@@ -13,7 +13,8 @@ Set `Mcp:Enabled` to `true` in `appsettings.json`. The server mounts at the path
   "Enabled": true,
   "Path": "/mcp",
   "RequireAuthentication": true,
-  "AppsEnabled": true
+  "AppsEnabled": true,
+  "ChatEnabled": true
 }
 ```
 
@@ -23,6 +24,7 @@ Set `Mcp:Enabled` to `true` in `appsettings.json`. The server mounts at the path
 | `Path` | No | string | HTTP path the MCP server is mounted on. Default: `/mcp`. |
 | `RequireAuthentication` | No | bool | Require a valid Portway Bearer token on MCP requests. Default: `true`. |
 | `AppsEnabled` | No | bool | Register embedded UI resources as MCP resource URIs. Default: `true`. |
+| `ChatEnabled` | No | bool | Activates the Chat UI and `/ui/api/mcp/chat` endpoint. Credentials are configured separately via the setup wizard. Default: `false`. |
 
 :::warning
 Set `RequireAuthentication: true` in any deployment accessible over a network. Disabling it exposes all registered tools without a credential check.

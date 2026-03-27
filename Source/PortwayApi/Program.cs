@@ -197,8 +197,6 @@ try
     
     // MCP services (conditionally enabled)
     builder.Services.AddMcpServices(builder.Configuration);
-    builder.Services.AddSingleton<PortwayApi.Services.Mcp.McpChatService>();
-    builder.Services.AddHttpClient("internal");
 
     // Initialize endpoints directories
     DirectoryHelper.EnsureDirectoryStructure();
@@ -249,9 +247,6 @@ try
 
     // Build the application
     var app = builder.Build();
-
-    // Auto-encrypt Chat:ApiKey if present as plaintext
-    AutoEncryptChatApiKey(builder.Configuration);
 
     var adminApiKey = builder.Configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
 
@@ -502,6 +497,24 @@ try
     app.UseRequestTrafficLogging();
     app.UseRouting();
 
+    // Initialise MCP config DB (mcp.db) — runs unconditionally so the setup wizard works
+    // even before Mcp:Enabled is set to true.
+    using (var mcpScope = app.Services.CreateScope())
+    {
+        try
+        {
+            var mcpDbFactory = mcpScope.ServiceProvider
+                .GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<PortwayApi.Services.Mcp.McpConfigDbContext>>();
+            await using var mcpDb = await mcpDbFactory.CreateDbContextAsync();
+            mcpDb.Database.EnsureCreated();
+            mcpDb.EnsureTablesCreated();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "MCP config database initialisation failed");
+        }
+    }
+
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -696,7 +709,8 @@ try
     }
     
     app.MapMcpEndpoints(builder.Configuration);
-    app.MapMcpChatEndpoints();
+    if (builder.Configuration.GetValue<bool>("Mcp:Enabled", false))
+        app.MapMcpChatEndpoints();
 
     // Web UI Routes
     if (!string.IsNullOrEmpty(adminApiKey))
@@ -805,47 +819,6 @@ finally
     Log.CloseAndFlush();
 }
 
-/// If Chat:ApiKey or Chat:InternalApiToken are present as plaintext, encrypt them in-place.
-void AutoEncryptChatApiKey(IConfiguration configuration)
-{
-    var appSettingsPath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json");
-    if (!File.Exists(appSettingsPath)) return;
-
-    EncryptSettingIfPlaintext(configuration, "Chat:ApiKey",           "ApiKey",           appSettingsPath);
-    EncryptSettingIfPlaintext(configuration, "Chat:InternalApiToken", "InternalApiToken", appSettingsPath);
-}
-
-/// Reads a config value; if it is plaintext (not PWENC-prefixed), encrypts it and patches
-/// only that property's value in the raw appsettings.json without reformatting anything else.
-void EncryptSettingIfPlaintext(IConfiguration configuration, string configKey, string jsonPropertyName, string appSettingsPath)
-{
-    var value = configuration.GetValue<string>(configKey);
-    if (string.IsNullOrWhiteSpace(value) || PortwayApi.Helpers.SettingsEncryptionHelper.IsEncrypted(value))
-        return;
-
-    try
-    {
-        var encrypted    = PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(value);
-        var raw          = File.ReadAllText(appSettingsPath, System.Text.Encoding.UTF8);
-        var plainEncoded = System.Text.Json.JsonSerializer.Serialize(value);
-        var encEncoded   = System.Text.Json.JsonSerializer.Serialize(encrypted);
-        var pattern      = $"\"{jsonPropertyName}\"\\s*:\\s*" + System.Text.RegularExpressions.Regex.Escape(plainEncoded);
-        var updated      = System.Text.RegularExpressions.Regex.Replace(raw, pattern, $"\"{jsonPropertyName}\": {encEncoded}");
-
-        if (updated == raw)
-        {
-            Log.Warning("AutoEncrypt: could not locate {Property} plaintext value in appsettings.json — file unchanged", jsonPropertyName);
-            return;
-        }
-
-        File.WriteAllText(appSettingsPath, updated, System.Text.Encoding.UTF8);
-        Log.Debug("Chat:{Property} has been auto-encrypted in appsettings.json", jsonPropertyName);
-    }
-    catch (Exception ex)
-    {
-        Log.Warning(ex, "Failed to auto-encrypt Chat:{Property}, remains plaintext in appsettings.json", jsonPropertyName);
-    }
-}
 
 /// Parses "/api/{env}/{name}" or "/webhook/{env}/{name}" → "{name}" (or "{env}/composite/{name}" → "composite/{name}")
 static string ParseEndpointName(string? path)

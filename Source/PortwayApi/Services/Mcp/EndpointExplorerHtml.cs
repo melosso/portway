@@ -10,7 +10,7 @@ public static class EndpointExplorerHtml
         ).ToList();
         var endpointJson = string.Join(",", endpointsList);
 
-        return string.Format(HtmlTemplate, endpointJson);
+        return HtmlTemplate.Replace("{0}", endpointJson);
     }
 
     private static string EscapeJs(string s) =>
