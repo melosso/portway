@@ -13,7 +13,6 @@ services:
       - ./keys:/app/.core
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
-      - HostOptions__BackgroundServiceExceptionBehavior=Ignore
       - AllowedHosts=*
       - WebUi__AdminApiKey=demo-admin-key
       - WebUi__PublicOrigins__0=https://portway-demo.melosso.com
