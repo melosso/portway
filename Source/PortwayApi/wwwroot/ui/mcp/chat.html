@@ -812,9 +812,9 @@ function _renderWizardStep1() {
     id: 'mcp-setup',
     title: 'Set up chat - Step 1 of 2',
     size: 'small',
-    showCloseButton: false,
-    closeOnBackdrop: false,
-    closeOnEscape: false,
+    showCloseButton: true,
+    closeOnBackdrop: true,
+    closeOnEscape: true,
     content: `
       <p class="wizard-intro">Choose the AI provider that will power the chat assistant. Your API key is stored encrypted on the server - it never leaves Portway.</p>
       <div class="wizard-providers">${rows}</div>
@@ -852,9 +852,9 @@ function _renderWizardStep2() {
     id: 'mcp-setup',
     title: `Set up chat - Step 2 of 2`,
     size: 'small',
-    showCloseButton: false,
-    closeOnBackdrop: false,
-    closeOnEscape: false,
+    showCloseButton: true,
+    closeOnBackdrop: true,
+    closeOnEscape: true,
     content: `
       <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
       <div class="dialog-field">
