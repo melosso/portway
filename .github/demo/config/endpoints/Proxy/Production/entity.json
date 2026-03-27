@@ -11,5 +11,9 @@
             "PUT": "Update production order status",
             "DELETE": "Cancel/Delete production order"
         }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
     }
 }
