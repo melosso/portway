@@ -211,6 +211,17 @@ public static class WebUiEndpointExtensions
             app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
         }
 
+        // MCP explorer page
+        var mcpExplorerPath = Path.Combine(wwwroot, "mcp", "explorer.html");
+        app.MapGet("/ui/mcp/explorer", (HttpContext ctx) => ServeHtml(mcpExplorerPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/ui/mcp/explorer.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/mcp/explorer")).ExcludeFromDescription();
+
+        // MCP chat page
+        var mcpChatPath = Path.Combine(wwwroot, "mcp", "chat.html");
+        app.MapGet("/ui/mcp", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/ui/mcp/chat", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/ui/mcp/chat.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/mcp/chat")).ExcludeFromDescription();
+
         // Data endpoints
         app.MapGet("/ui/api/customization", (IConfiguration config) =>
         {
@@ -269,44 +280,56 @@ public static class WebUiEndpointExtensions
             {
                 sql = sqlEps.Select(e => new
                 {
-                    name        = e.Key,
-                    methods     = e.Value.Methods,
-                    is_private  = e.Value.IsPrivate,
-                    schema      = e.Value.DatabaseSchema,
-                    object_name = e.Value.DatabaseObjectName,
-                    object_type = e.Value.DatabaseObjectType ?? "Table"
+                    name           = e.Key,
+                    methods        = e.Value.Methods,
+                    is_private     = e.Value.IsPrivate,
+                    is_mcp_exposed = e.Value.IsMcpExposed,
+                    @namespace     = e.Value.Namespace,
+                    schema         = e.Value.DatabaseSchema,
+                    object_name    = e.Value.DatabaseObjectName,
+                    object_type    = e.Value.DatabaseObjectType ?? "Table"
                 }).OrderBy(e => e.name),
                 proxy = proxyEps.Where(e => e.Value.Type.ToString() != "Composite").Select(e => new
                 {
-                    name       = e.Key,
-                    url        = e.Value.Url,
-                    methods    = e.Value.Methods,
-                    is_private = e.Value.IsPrivate
+                    name           = e.Key,
+                    url            = e.Value.Url,
+                    methods        = e.Value.Methods,
+                    is_private     = e.Value.IsPrivate,
+                    is_mcp_exposed = e.Value.IsMcpExposed,
+                    @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 composite = proxyEps.Where(e => e.Value.Type.ToString() == "Composite").Select(e => new
                 {
-                    name       = e.Key,
-                    url        = e.Value.Url,
-                    methods    = e.Value.Methods,
-                    is_private = e.Value.IsPrivate
+                    name           = e.Key,
+                    url            = e.Value.Url,
+                    methods        = e.Value.Methods,
+                    is_private     = e.Value.IsPrivate,
+                    is_mcp_exposed = e.Value.IsMcpExposed,
+                    @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 file = fileEps.Select(e => new
                 {
-                    name       = e.Key,
-                    methods    = e.Value.Methods,
-                    is_private = e.Value.IsPrivate
+                    name           = e.Key,
+                    methods        = e.Value.Methods,
+                    is_private     = e.Value.IsPrivate,
+                    is_mcp_exposed = e.Value.IsMcpExposed,
+                    @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 @static = staticEps.Select(e => new
                 {
-                    name       = e.Key,
-                    methods    = e.Value.Methods,
-                    is_private = e.Value.IsPrivate
+                    name           = e.Key,
+                    methods        = e.Value.Methods,
+                    is_private     = e.Value.IsPrivate,
+                    is_mcp_exposed = e.Value.IsMcpExposed,
+                    @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 webhook = webhookEps.Select(e => new
                 {
-                    name       = e.Key,
-                    methods    = e.Value.Methods,
-                    is_private = e.Value.IsPrivate
+                    name           = e.Key,
+                    methods        = e.Value.Methods,
+                    is_private     = e.Value.IsPrivate,
+                    is_mcp_exposed = e.Value.IsMcpExposed,
+                    @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name)
             });
         }).ExcludeFromDescription();
@@ -624,7 +647,16 @@ public static class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/settings", (IConfiguration config) => Results.Json(new
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Mcp.McpConfigService? mcpConfig) =>
+        {
+            PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
+            if (mcpConfig is not null)
+            {
+                try { chatCfg = await mcpConfig.GetConfigAsync(); }
+                catch { /* non-fatal — chat section will show defaults */ }
+            }
+
+            return Results.Json(new
         {
             rate_limiting = new
             {
@@ -667,8 +699,65 @@ public static class WebUiEndpointExtensions
             {
                 enabled     = config.GetValue<bool>("EndpointReloading:Enabled"),
                 debounce_ms = config.GetValue<int>("EndpointReloading:DebounceMs")
+            },
+            mcp = new
+            {
+                enabled               = config.GetValue<bool>("Mcp:Enabled"),
+                path                  = config.GetValue<string>("Mcp:Path") ?? "/mcp",
+                require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication"),
+                apps_enabled          = config.GetValue<bool>("Mcp:AppsEnabled", true),
+                apps_path             = "/mcp/apps"
+            },
+            chat = new
+            {
+                enabled    = config.GetValue<bool>("Mcp:ChatEnabled"),
+                configured = chatCfg?.IsConfigured ?? false,
+                provider   = chatCfg?.Provider ?? string.Empty,
+                model      = chatCfg?.Model ?? string.Empty
             }
-        })).ExcludeFromDescription();
+        });
+        }).ExcludeFromDescription();
+
+        // ── MCP Configuration endpoints ───────────────────────────────────────────
+        // Returns masked status (never returns the raw API key).
+        app.MapGet("/ui/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
+        {
+            var status = await mcpConfig.GetStatusAsync();
+            return Results.Json(status);
+        }).ExcludeFromDescription();
+
+        // Saves provider/model/apiKey/internalApiToken to the encrypted DB.
+        // Accepts partial updates — omit a field to leave it unchanged.
+        app.MapPost("/ui/api/mcp/config", async (
+            HttpRequest request,
+            PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
+        {
+            System.Text.Json.Nodes.JsonNode? body = null;
+            try { body = await System.Text.Json.Nodes.JsonNode.ParseAsync(request.Body); }
+            catch { return Results.BadRequest(new { error = "Invalid JSON body" }); }
+
+            var provider         = body?["provider"]?.GetValue<string>();
+            var model            = body?["model"]?.GetValue<string>();
+            var apiKey           = body?["apiKey"]?.GetValue<string>();
+            var internalApiToken = body?["internalApiToken"]?.GetValue<string>();
+
+            if (provider is not null && string.IsNullOrWhiteSpace(provider))
+                return Results.BadRequest(new { error = "provider cannot be blank" });
+            if (apiKey is not null && string.IsNullOrWhiteSpace(apiKey))
+                return Results.BadRequest(new { error = "apiKey cannot be blank" });
+
+            await mcpConfig.SaveConfigAsync(provider, model, apiKey, internalApiToken);
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
+        // Clears all stored MCP chat configuration (provider, model, key, token).
+        app.MapDelete("/ui/api/mcp/config", async (
+            PortwayApi.Services.Mcp.McpConfigService mcpConfig,
+            CancellationToken ct) =>
+        {
+            await mcpConfig.ClearConfigAsync(ct);
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
 
         // Token management endpoints
         app.MapGet("/ui/api/tokens", async (HttpRequest request, TokenService tokenService) =>

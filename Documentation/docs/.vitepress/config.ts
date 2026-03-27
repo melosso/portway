@@ -58,6 +58,13 @@ export default withMermaid(
           ]
         },
         {
+          text: 'MCP',
+          items: [
+            { text: 'MCP Server', link: '/guide/mcp' },
+            { text: 'Chat', link: '/guide/mcp-chat' }
+          ]
+        },
+        {
           text: 'Operations',
           items: [
             { text: 'Monitoring', link: '/guide/monitoring' },

@@ -5,6 +5,17 @@ using System.Text.Json.Nodes;
 using Serilog;
 
 /// <summary>
+/// MCP exposure settings for an endpoint
+/// </summary>
+public class McpSettings
+{
+    /// <summary>Whether this endpoint is exposed in MCP</summary>
+    public bool Exposed { get; set; } = false;
+    /// <summary>Usage instruction appended to the tool description when registered with MCP</summary>
+    public string? Instruction { get; set; }
+}
+
+/// <summary>
 /// OpenAPI documentation settings for an endpoint
 /// </summary>
 public class Documentation
@@ -45,6 +56,7 @@ public class ExtendedEndpointEntity
     public string Type { get; set; } = "Standard"; // "Standard" or "Composite"
     public CompositeDefinition? CompositeConfig { get; set; }
     public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
+    public McpSettings? Mcp { get; set; }
     public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
     
     // Namespace support properties
@@ -100,6 +112,7 @@ public class EndpointEntity
     
     // Shared properties
     public bool IsPrivate { get; set; } = false;
+    public McpSettings? Mcp { get; set; }
     public string Type { get; set; } = "Standard"; // Standard, SQL, Composite
     public CompositeDefinition? CompositeConfig { get; set; }
     public List<string>? AllowedEnvironments { get; set; }
@@ -243,11 +256,13 @@ public class FileEndpointEntity
     /// </summary>
     public bool IsPrivate { get; set; } = false;
     
+    public McpSettings? Mcp { get; set; }
+
     /// <summary>
     /// List of environments allowed to access this endpoint
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
-    
+
     // Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related file endpoints (e.g., "CRM", "HR")
@@ -298,11 +313,13 @@ public class StaticEndpointEntity
     /// </summary>
     public bool IsPrivate { get; set; } = false;
     
+    public McpSettings? Mcp { get; set; }
+
     /// <summary>
     /// List of environments allowed to access this endpoint
     /// </summary>
     public List<string>? AllowedEnvironments { get; set; }
-    
+
     // Namespace support properties
     /// <summary>
     /// Optional namespace for grouping related static endpoints (e.g., "Reports", "Templates")

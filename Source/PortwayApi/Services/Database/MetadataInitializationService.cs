@@ -82,8 +82,7 @@ public sealed class MetadataInitializationService : BackgroundService
         _lifetime.ApplicationStarted.Register(
             static s => ((TaskCompletionSource)s!).TrySetResult(), tcs);
 
-        stoppingToken.Register(
-            static s => ((TaskCompletionSource)s!).TrySetCanceled(), tcs);
+        stoppingToken.Register(() => tcs.TrySetCanceled(stoppingToken));
 
         return tcs.Task;
     }

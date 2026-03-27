@@ -14,7 +14,10 @@ public class EndpointDefinition
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
     public bool IsPrivate { get; set; } = false;
-    
+    public McpSettings? Mcp { get; set; }
+    /// <summary>Computed from Mcp.Exposed for backward compatibility with tuple consumers.</summary>
+    public bool IsMcpExposed => Mcp?.Exposed == true;
+
     // SQL endpoint properties
     public string? DatabaseObjectName { get; set; }
     public string? DatabaseSchema { get; set; }
@@ -211,12 +214,13 @@ public class EndpointDefinition
     /// <summary>
     /// Converts EndpointDefinition to legacy tuple format for backward compatibility
     /// </summary>
-    public (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments) ToTuple()
+    public (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments) ToTuple()
     {
         return (
             Url, 
             new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase), 
-            IsPrivate, 
+            IsPrivate,
+            IsMcpExposed,
             Type.ToString(),
             AllowedEnvironments
         );
@@ -275,7 +279,7 @@ public static class EndpointHandler
     /// <summary>
     /// Gets all composite endpoint definitions from the endpoints directory
     /// </summary>
-    public static Dictionary<string, CompositeDefinition> GetCompositeDefinitions(Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> endpointMap)
+    public static Dictionary<string, CompositeDefinition> GetCompositeDefinitions(Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpointMap)
     {
         // We already have endpoints loaded, so just extract the composite configs
         var compositeDefinitions = new Dictionary<string, CompositeDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -338,8 +342,8 @@ public static class EndpointHandler
     /// Scans the specified directory for endpoint definition files and returns a dictionary of endpoints.
     /// </summary>
     /// <param name="endpointsDirectory">Directory containing endpoint definitions</param>
-    /// <returns>Dictionary with endpoint names as keys and tuples of (url, methods, isPrivate, type) as values</returns>
-    public static Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> GetEndpoints(string endpointsDirectory)
+    /// <returns>Dictionary with endpoint names as keys and tuples of (url, methods, isPrivate, isMcpExposed, type) as values</returns>
+    public static Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> GetEndpoints(string endpointsDirectory)
     {
         // Check if the directory is for proxy or SQL endpoints
         bool isProxyEndpoint = endpointsDirectory.Contains("Proxy", StringComparison.OrdinalIgnoreCase);
@@ -350,7 +354,7 @@ public static class EndpointHandler
             LoadProxyEndpointsIfNeeded(endpointsDirectory);
 
             // Convert to the legacy format (includes AllowedEnvironments for composite step validation)
-            var endpointMap = new Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)>(StringComparer.OrdinalIgnoreCase);
+            var endpointMap = new Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)>(StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in _loadedProxyEndpoints!)
             {
                 endpointMap[kvp.Key] = kvp.Value.ToTuple();
@@ -361,7 +365,7 @@ public static class EndpointHandler
         else
         {
             // Create an empty dictionary for now - SQL endpoints are handled differently
-            return new Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)>(StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)>(StringComparer.OrdinalIgnoreCase);
         }
     }
 
@@ -929,6 +933,7 @@ public static class EndpointHandler
                     Methods = new List<string> { "GET", "POST", "DELETE" },
                     AllowedEnvironments = entity.AllowedEnvironments,
                     IsPrivate = entity.IsPrivate,
+                    Mcp = entity.Mcp,
                     // Store file-specific properties in Properties dictionary
                     Properties = new Dictionary<string, object>
                     {
@@ -965,6 +970,7 @@ public static class EndpointHandler
                     Methods = new List<string> { "GET" },
                     AllowedEnvironments = entity.AllowedEnvironments,
                     IsPrivate = entity.IsPrivate,
+                    Mcp = entity.Mcp,
                     Documentation = entity.Documentation,
                     Namespace = entity.Namespace,
                     DisplayName = entity.DisplayName,
@@ -1022,6 +1028,7 @@ public static class EndpointHandler
                     Url = extendedEntity.Url,
                     Methods = extendedEntity.Methods,
                     IsPrivate = extendedEntity.IsPrivate,
+                    Mcp = extendedEntity.Mcp,
                     Type = ParseEndpointType(extendedEntity.Type),
                     CompositeConfig = extendedEntity.CompositeConfig,
                     AllowedEnvironments = extendedEntity.AllowedEnvironments,
@@ -1045,6 +1052,7 @@ public static class EndpointHandler
                     Url = entity.Url,
                     Methods = entity.Methods,
                     IsPrivate = false,
+                    Mcp = entity.Mcp,
                     Type = EndpointType.Standard,
                     CompositeConfig = null,
                     AllowedEnvironments = entity.AllowedEnvironments,
@@ -1053,7 +1061,7 @@ public static class EndpointHandler
                     Namespace = entity.Namespace,
                     DisplayName = entity.DisplayName,
                     NamespaceDisplayName = entity.NamespaceDisplayName,
-                    DeletePatterns = entity.DeletePatterns 
+                    DeletePatterns = entity.DeletePatterns
                 };
             }
         }
@@ -1101,10 +1109,9 @@ public static class EndpointHandler
                     DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
                     FunctionParameters = entity.FunctionParameters,
                     Methods = allowedMethods,
+                    Mcp = entity.Mcp,
                     AllowedEnvironments = entity.AllowedEnvironments,
                     Documentation = entity.Documentation,
-                    
-                    // Copy namespace properties from entity
                     Namespace = entity.Namespace,
                     NamespaceDisplayName = entity.NamespaceDisplayName,
                     DisplayName = entity.DisplayName

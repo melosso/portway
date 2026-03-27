@@ -221,11 +221,16 @@ public class RateLimiter
         var path = context.Request.Path.ToString().ToLower();
         var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
 
-        // Skip rate limiting for exempted paths
+        // Skip rate limiting for exempted paths.
+        // NOTE: /ui/api/* is intentionally NOT exempt — MCP chat and data endpoints must be rate-limited.
+        // Only exempt static UI assets and infrastructure paths.
+        var isStaticUiAsset = context.Request.Path.StartsWithSegments("/ui") &&
+            !context.Request.Path.StartsWithSegments("/ui/api");
+
         if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health") ||
-            context.Request.Path.StartsWithSegments("/ui") ||
+            isStaticUiAsset ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))

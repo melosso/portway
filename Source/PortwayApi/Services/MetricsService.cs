@@ -99,7 +99,9 @@ public sealed class MetricsService
             else
             {
                 apiReqs++;
-                if (!string.IsNullOrEmpty(e.Endpoint))
+                // Only track endpoints that actually exist (exclude 404s so probes to
+                // nonexistent paths don't pollute the top-endpoints list).
+                if (!string.IsNullOrEmpty(e.Endpoint) && e.StatusCode != 404)
                 {
                     endpointCounts.TryGetValue(e.Endpoint, out var epCnt);
                     endpointCounts[e.Endpoint] = epCnt + 1;

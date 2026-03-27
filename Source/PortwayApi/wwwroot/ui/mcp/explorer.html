@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP · Portway</title>
+  <link href="/css/inter.css" rel="stylesheet">
+  <link href="/css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="/js/components/toast.js"></script>
+  <script src="/js/components/promobar.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script src="/js/shared.js"></script>
+</head>
+<body>
+
+<aside></aside>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">MCP Explorer</h1>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="card-header">
+        <span class="card-title">About MCP</span>
+      </div>
+      <div class="card-body">
+        <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
+          This page gives you a clear overview of all the endpoints available for MCP (Model Context Protocol) Apps. Whether you're building interactive tools or just exploring, the Endpoint Explorer below makes it easy to see what's possible with MCP.
+        </p>
+      </div>
+    </div>
+
+    <div class="card" id="infoCard">
+      <div class="card-header">
+        <span class="card-title">Settings</span>
+      </div>
+      <div class="card-body" id="mcpConfig">
+        <span class="muted" style="font-size:0.8rem">Loading...</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+      <div class="card-header">
+        <span class="card-title">What tools are available?</span>
+        <span id="toolCount" class="card-count"></span>
+      </div>
+      <div class="card-body" id="toolsBody">
+        <span class="muted" style="font-size:0.8rem">Loading endpoints...</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function settingItem(label, value, desc) {
+  return '<div class="settings-item">' +
+    '<div>' +
+      '<div class="settings-item-label">' + label + '</div>' +
+      (desc ? '<div class="settings-item-desc">' + esc(desc) + '</div>' : '') +
+    '</div>' +
+    '<span class="settings-item-value">' + esc(String(value ?? '—')) + '</span>' +
+  '</div>';
+}
+
+function boolItem(label, value, desc) {
+  return settingItem(label, value ? 'Enabled' : 'Disabled', desc);
+}
+
+async function load() {
+  try {
+    const settings = await fetch('/ui/api/settings').then(r => r.json());
+    const mcp  = settings.mcp  || {};
+    const chat = settings.chat || {};
+
+    // Show a setup banner if chat is enabled but not yet configured.
+    if (chat.enabled && !chat.configured) {
+      const banner = document.createElement('div');
+      banner.className = 'setup-banner';
+      banner.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '<span>Chat is enabled but not configured. <a href="/ui/mcp/chat">Open Chat</a> to complete setup.</span>';
+      document.querySelector('.page-body').prepend(banner);
+    }
+
+    document.getElementById('mcpConfig').innerHTML = [
+      settingItem('Accessible from path', mcp.path || '/mcp'),
+      boolItem('Require Authentication', mcp.require_authentication),
+      boolItem('Apps Enabled', mcp.apps_enabled),
+      settingItem('Apps Path', mcp.apps_path || '/mcp/apps'),
+    ].join('');
+
+    const [endpointsRes, toolsRes] = await Promise.all([
+      fetch('/ui/api/endpoints').then(r => r.json()),
+      fetch('/ui/api/mcp/tools').then(r => r.json()).catch(() => ({}))
+    ]);
+    // Build a Set of "Namespace/Name" keys that have no SQL field metadata
+    const missingMetadataKeys = new Set(toolsRes.missingMetadata ?? []);
+
+    const allEndpoints = [
+      ...(endpointsRes.sql || []),
+      ...(endpointsRes.proxy || []),
+      ...(endpointsRes.composite || []),
+      ...(endpointsRes.file || []),
+      ...(endpointsRes.static || []),
+      ...(endpointsRes.webhook || [])
+    ];
+    const mcpEndpoints = allEndpoints.filter(e => e.is_mcp_exposed);
+
+    document.getElementById('toolCount').textContent = mcpEndpoints.length + ' tools';
+
+    if (!mcpEndpoints.length) {
+      document.getElementById('toolsBody').innerHTML = 
+        '<p class="muted" style="font-size:0.875rem;">No endpoints exposed via MCP. Enable "Expose in MCP" on endpoints to see them here.</p>';
+      return;
+    }
+
+    const grouped = {};
+    mcpEndpoints.forEach(ep => {
+      const ns = ep.namespace || 'default';
+      if (!grouped[ns]) grouped[ns] = [];
+      grouped[ns].push(ep);
+    });
+
+    let html = '';
+    Object.keys(grouped).sort().forEach(ns => {
+      html += '<div style="margin-bottom: 1.25rem;">';
+      html += '<div style="font-weight: 600; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">' + esc(ns) + '</div>';
+      html += '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
+      grouped[ns].forEach(ep => {
+        const methodsHtml = (ep.methods || ['GET']).map(m =>
+          '<span class="method-badge method-' + m.toLowerCase() + '">' + m + '</span>'
+        ).join('');
+        // ep.name is already the full dict key e.g. "Finance/OutstandingItems"
+        const isUnhealthy = missingMetadataKeys.has(ep.name);
+        const unhealthyBadge = isUnhealthy
+          ? '<span class="badge-unhealthy" title="No SQL field metadata found — query hints will be limited for this tool">Unhealthy</span>'
+          : '';
+        html += '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem; background: var(--bg-secondary); border-radius: 6px;">';
+        html += '<div style="flex: 1;">';
+        html += '<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">';
+        html += methodsHtml;
+        html += '<span style="font-weight: 500;">' + esc(ep.name) + '</span>';
+        html += unhealthyBadge;
+        html += '</div>';
+        html += '<div style="font-size: 0.75rem; color: var(--text-secondary); word-break: break-all;">' + esc(ep.url) + '</div>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+    });
+
+    document.getElementById('toolsBody').innerHTML = html;
+
+  } catch(e) {
+    document.getElementById('toolsBody').innerHTML = 
+      '<p class="muted" style="font-size:0.875rem; color: var(--error);">Failed to load: ' + esc(e.message) + '</p>';
+  }
+}
+
+load();
+</script>
+
+<style>
+.setup-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  background: color-mix(in srgb, hsl(var(--warning, 38 92% 50%)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, hsl(var(--warning, 38 92% 50%)) 40%, transparent);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text-primary, hsl(var(--foreground)));
+}
+.setup-banner svg { flex-shrink: 0; color: hsl(var(--warning, 38 92% 50%)); }
+.setup-banner a { color: inherit; font-weight: 600; }
+.method-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.method-get { background: #e3f2fd; color: #1565c0; }
+.method-post { background: #f3e5f5; color: #7b1fa2; }
+.method-put { background: #fff3e0; color: #e65100; }
+.method-delete { background: #ffebee; color: #c62828; }
+.method-patch { background: #e8f5e9; color: #2e7d32; }
+.badge-unhealthy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background: color-mix(in srgb, var(--warning, #f59e0b) 15%, transparent);
+  color: color-mix(in srgb, var(--warning, #f59e0b) 80%, #000 20%);
+  border: 1px solid color-mix(in srgb, var(--warning, #f59e0b) 40%, transparent);
+}
+</style>
+
+</body>
+</html>

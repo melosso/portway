@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MCP · Portway</title>
+  <link href="/css/inter.css" rel="stylesheet">
+  <link href="/css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <script src="/js/components/toast.js"></script>
+  <script src="/js/components/promobar.js"></script>
+  <script src="/js/components/dialog.js"></script>
+  <script src="/js/components/alert-dialog.js"></script>
+  <script src="/js/sidebar.js"></script>
+  <script src="/js/shared.js"></script>
+</head>
+<body>
+
+<aside></aside>
+<div class="toast-container" id="toastContainer"></div>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">Chat</h1>
+      <span class="page-subtitle" id="chatStatus" hidden></span>
+    </div>
+    <div class="header-actions">
+      <span id="modelBadge" class="model-badge" hidden></span>
+      <select id="envSelect" class="select" title="Environment" style="min-width:8rem;"></select>
+      <button class="btn btn-outline" id="clearAuthBtn" disabled onclick="confirmClearAuth()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Clear authentication
+      </button>
+      <button class="btn btn-outline" id="clearBtn" title="Clear conversation">Clear</button>
+    </div>
+  </div>
+
+  <div class="chat-page-body">
+
+    <div class="chat-panel">
+
+      <!-- Thread -->
+      <div class="chat-thread" id="thread">
+        <div id="emptyState" class="chat-empty">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p>Start a conversation. Ask questions about your data or request operations on Portway endpoints.</p>
+          <div id="toolHints" class="chat-tool-hints"></div>
+        </div>
+      </div>
+
+      <!-- Composer -->
+      <div class="chat-composer">
+        <div class="chat-composer-inner">
+          <textarea id="input" rows="1" placeholder="Authenticate to start chatting…" disabled></textarea>
+          <div class="chat-composer-footer">
+            <span class="chat-hint">Shift+Enter for new line</span>
+            <button id="sendBtn" class="btn btn-outline chat-send-auth">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Authenticate
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const base = window.PortwayBase || '';
+let history         = [];
+let streaming       = false;
+let abortController = null;
+let chatToken = null; // Bearer token for internal tool calls - session only
+let chatReady = false; // true when MCP + Chat are enabled in config
+
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+function md(raw) {
+  if (!raw) return '';
+  const H = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function inline(s) {
+    s = H(s);
+    s = s.replace(/`([^`]+)`/g, '<code class="md-ic">$1</code>');
+    s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    s = s.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return s;
+  }
+  const segments = [];
+  const fenceRe = /```(\w*)\n?([\s\S]*?)```/g;
+  let last = 0, m;
+  while ((m = fenceRe.exec(raw)) !== null) {
+    if (m.index > last) segments.push({ code: false, text: raw.slice(last, m.index) });
+    segments.push({ code: true, lang: m[1], text: m[2].replace(/^\n/, '').replace(/\n$/, '') });
+    last = m.index + m[0].length;
+  }
+  if (last < raw.length) segments.push({ code: false, text: raw.slice(last) });
+  const out = [];
+  for (const seg of segments) {
+    if (seg.code) {
+      const lang = seg.lang ? ` data-lang="${H(seg.lang)}"` : '';
+      out.push(`<pre class="md-pre"${lang}><code>${H(seg.text)}</code></pre>`);
+      continue;
+    }
+    const lines = seg.text.split('\n');
+    let listType = '', listBuf = [];
+    let tableBuf = [];
+    function flushList() {
+      if (!listBuf.length) return;
+      out.push(`<${listType} class="md-list">${listBuf.join('')}</${listType}>`);
+      listBuf = []; listType = '';
+    }
+    function flushTable() {
+      if (!tableBuf.length) return;
+      // tableBuf[0] = header row, tableBuf[1] = separator, tableBuf[2..] = body rows
+      const parseRow = r => r.split('|').slice(1, -1).map(c => c.trim());
+      const headers = parseRow(tableBuf[0]);
+      const bodyRows = tableBuf.slice(2);
+      const thead = '<thead><tr>' + headers.map(h => `<th>${inline(h)}</th>`).join('') + '</tr></thead>';
+      const tbody = bodyRows.length
+        ? '<tbody>' + bodyRows.map(r => '<tr>' + parseRow(r).map(c => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody>'
+        : '';
+      out.push(`<div class="md-table-wrap"><table class="md-table">${thead}${tbody}</table></div>`);
+      tableBuf = [];
+    }
+    for (const line of lines) {
+      // Table rows start and end with |
+      if (/^\|.+\|$/.test(line.trim())) {
+        flushList();
+        tableBuf.push(line.trim());
+        continue;
+      }
+      flushTable();
+      const hm = line.match(/^(#{1,4}) (.+)/);
+      if (hm) { flushList(); out.push(`<p class="md-h${Math.min(hm[1].length, 4)}">${inline(hm[2])}</p>`); continue; }
+      if (/^-{3,}$/.test(line.trim())) { flushList(); out.push('<hr class="md-hr">'); continue; }
+      if (line.startsWith('> ')) { flushList(); out.push(`<blockquote class="md-bq">${inline(line.slice(2))}</blockquote>`); continue; }
+      const ulm = line.match(/^[*\-+] (.+)/);
+      if (ulm) { if (listType !== 'ul') { flushList(); listType = 'ul'; } listBuf.push(`<li>${inline(ulm[1])}</li>`); continue; }
+      const olm = line.match(/^\d+\. (.+)/);
+      if (olm) { if (listType !== 'ol') { flushList(); listType = 'ol'; } listBuf.push(`<li>${inline(olm[1])}</li>`); continue; }
+      flushList();
+      if (line.trim() === '') { out.push('<br>'); continue; }
+      out.push(`<span class="md-line">${inline(line)}</span><br>`);
+    }
+    flushTable();
+    flushList();
+  }
+  return out.join('');
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const SESSION_KEY = 'portway_chat_token';
+
+function loadStoredToken() {
+  const t = sessionStorage.getItem(SESSION_KEY);
+  if (t) { chatToken = t; }
+}
+
+function openAuthDialog() {
+  const existing = chatToken ?? '';
+  Dialog.open({
+    id: 'chat-auth',
+    title: 'Authenticate',
+    size: 'small',
+    content: `
+      <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.55;margin:0 0 1rem;">
+        Enter a Portway Bearer token. It must have access to the environments and endpoints you want to query.
+        The token is stored in <code style="font-family:var(--font-mono);font-size:0.78em;background:var(--bg-secondary);border:1px solid var(--border);border-radius:3px;padding:0.05em 0.35em;">sessionStorage</code>
+        and cleared when you close this tab.
+      </p>
+      <div class="dialog-field">
+        <label for="dlg-token-input">Bearer Token</label>
+        <div style="position:relative;display:flex;align-items:center;">
+          <input id="dlg-token-input" type="password" class="input"
+            style="flex:1;padding-right:2.5rem;font-family:var(--font-mono);font-size:0.82rem;"
+            placeholder="Paste your Bearer token…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="btn btn-ghost btn-sm"
+            style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;"
+            title="Show / hide token" onclick="toggleDlgTokenVis()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div id="dlg-token-error" style="display:none;font-size:0.8rem;color:var(--error);margin-top:0.5rem;padding:0.4rem 0.6rem;background:color-mix(in srgb,var(--error) 10%,transparent);border:1px solid color-mix(in srgb,var(--error) 30%,transparent);border-radius:5px;"></div>
+      </div>
+    `,
+    footer: `<button type="button" class="btn btn-primary" onclick="confirmAuthDialog()">Authenticate</button>`,
+    closeOnBackdrop: true,
+    closeOnEscape: true,
+    onOpen: () => {
+      const inp = document.getElementById('dlg-token-input');
+      if (inp) {
+        inp.value = existing;
+        inp.focus();
+        inp.selectionStart = inp.selectionEnd = inp.value.length;
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') confirmAuthDialog(); });
+      }
+    }
+  });
+}
+
+function toggleDlgTokenVis() {
+  const inp = document.getElementById('dlg-token-input');
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function confirmAuthDialog() {
+  const inp   = document.getElementById('dlg-token-input');
+  const token = (inp?.value ?? '').trim();
+  const errEl = document.getElementById('dlg-token-error');
+  if (errEl) errEl.style.display = 'none';
+
+  if (!token) {
+    if (errEl) { errEl.textContent = 'Token is required.'; errEl.style.display = ''; }
+    inp?.focus();
+    return;
+  }
+
+  // Lightweight validation: probe a protected endpoint
+  const envRes = await fetch(base + '/ui/api/environments').then(r => r.json()).catch(() => ({}));
+  const firstEnv = (envRes.allowed_environments || [])[0];
+  if (firstEnv) {
+    try {
+      const testResp = await fetch(base + '/api/' + encodeURIComponent(firstEnv) + '/ping', {
+        method: 'HEAD',
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      // 401 → invalid token; any other status → token accepted (endpoint may not exist)
+      if (testResp.status === 401) {
+        if (errEl) { errEl.textContent = 'Token rejected (401 Unauthorized). Check the token and try again.'; errEl.style.display = ''; }
+        return;
+      }
+    } catch { /* network error - proceed anyway */ }
+  }
+
+  chatToken = token;
+  sessionStorage.setItem(SESSION_KEY, token);
+  Dialog.close('chat-auth');
+  setAuthenticated(true);
+}
+
+function setAuthenticated(ok) {
+  const sendBtn      = document.getElementById('sendBtn');
+  const clearAuthBtn = document.getElementById('clearAuthBtn');
+
+  if (ok) {
+    sendBtn.className = 'btn btn-primary chat-send-ready';
+    sendBtn.title = 'Send (Enter)';
+    sendBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
+      ' Send';
+    clearAuthBtn.removeAttribute('disabled');
+    if (chatReady) {
+      const inputEl = document.getElementById('input');
+      inputEl.disabled = false;
+      inputEl.placeholder = 'Ask something…';
+    }
+  } else {
+    sendBtn.className = 'btn btn-outline chat-send-auth';
+    sendBtn.title = 'Authenticate to chat';
+    sendBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>' +
+      ' Authenticate';
+    clearAuthBtn.setAttribute('disabled', '');
+    if (chatReady) {
+      const inputEl = document.getElementById('input');
+      inputEl.disabled = true;
+      inputEl.placeholder = 'Authenticate to start chatting…';
+    }
+  }
+}
+
+function confirmClearAuth() {
+  Dialog.open({
+    id: 'clear-auth',
+    title: 'Clear authentication',
+    size: 'small',
+    content: '<p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">This will remove your stored Bearer token. You will need to authenticate again before you can chat.</p>',
+    footer: `
+      <button type="button" class="btn btn-outline" data-dialog-close>Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="clearAuth()">Clear</button>
+    `
+  });
+}
+
+function clearAuth() {
+  chatToken = null;
+  sessionStorage.removeItem(SESSION_KEY);
+  Dialog.close('clear-auth');
+  setAuthenticated(false);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  loadStoredToken();
+
+  const [settings, toolsRes] = await Promise.all([
+    fetch(base + '/ui/api/settings').then(r => r.json()).catch(() => ({})),
+    fetch(base + '/ui/api/mcp/tools').then(r => r.json()).catch(() => ({ count: 0, tools: [] }))
+  ]);
+
+  const chatEnabled    = settings?.chat?.enabled    ?? false;
+  const chatConfigured = settings?.chat?.configured ?? false;
+  const mcpEnabled     = settings?.mcp?.enabled     ?? false;
+
+  if (!mcpEnabled) {
+    const st = document.getElementById('chatStatus');
+    st.textContent = 'MCP disabled';
+    st.removeAttribute('hidden');
+    disableForConfig('MCP is disabled in configuration.');
+    return;
+  }
+
+  if (!chatEnabled) {
+    const st = document.getElementById('chatStatus');
+    st.textContent = 'Chat disabled';
+    st.style.color = 'hsl(var(--warning, 38 92% 50%))';
+    st.removeAttribute('hidden');
+    disableForConfig('Set Mcp:ChatEnabled = true in appsettings.json to enable chat.');
+    return;
+  }
+
+  // If chat is enabled but no provider/key has been configured, launch the setup wizard.
+  // The wizard is blocking - users cannot chat until setup is complete.
+  if (!chatConfigured) {
+    disableForConfig('Complete setup to start chatting…');
+    openSetupWizard(() => { window.location.reload(); });
+    return;
+  }
+
+  chatReady = true;
+
+  // Show model badge
+  const model    = settings?.chat?.model;
+  const provider = settings?.chat?.provider;
+  if (model) {
+    const badge = document.getElementById('modelBadge');
+    badge.textContent = model;
+    badge.title = provider ? 'Provider: ' + provider : '';
+    badge.removeAttribute('hidden');
+  }
+
+  // Status hidden when everything is working - only shown for error states
+
+  // Populate environment selector
+  const envRes = await fetch(base + '/ui/api/environments').then(r => r.json()).catch(() => ({}));
+  const envSelect = document.getElementById('envSelect');
+  (envRes.allowed_environments || []).forEach(env => {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = env;
+    envSelect.appendChild(opt);
+  });
+  if (!envSelect.options.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'No environments';
+    envSelect.appendChild(opt);
+  }
+
+  // Show tool hints in empty state
+  if (toolsRes.tools?.length) {
+    // Store full tool list for the modal
+    window._mcpTools = toolsRes.tools;
+    document.getElementById('toolHints').innerHTML =
+      '<button class="btn-link" onclick="showToolsModal()">Available tools</button>';
+  }
+
+  // Warn about tools with missing SQL metadata - single consolidated toast, shown once per load
+  const missing = toolsRes.missingMetadata ?? [];
+  if (missing.length) {
+    toast(
+      missing.length === 1
+        ? "Database field info missing for 1 tool. Check your connection."
+        : `Database field info missing for ${missing.length} tools. Check your connections.`,
+      'warning',
+      8000
+    );
+  }
+
+  if (chatToken) {
+    setAuthenticated(true);
+  }
+}
+
+function disableForConfig(placeholder) {
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('sendBtn');
+  inputEl.disabled = true;
+  inputEl.placeholder = placeholder;
+  sendBtn.disabled = true;
+}
+
+function prefill(text) {
+  document.getElementById('input').value = text;
+  document.getElementById('input').focus();
+}
+
+function capitalizeFirstLetterOfEachWord(str) {
+  return str.toLowerCase().split(' ').map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
+}
+
+function showToolsModal() {
+  const tools = window._mcpTools || [];
+  const rows = tools.map(t => {
+    const parts = t.name.split('_');
+    const displayName = parts.length > 1
+      ? parts.slice(0, -1).map(p => capitalizeFirstLetterOfEachWord(p)).join(' › ') + ' › ' + capitalizeFirstLetterOfEachWord(parts[parts.length - 1])
+      : capitalizeFirstLetterOfEachWord(t.name);
+
+    const desc = t.displayDescription || '';
+    return `
+      <div class="tool-row">
+        <div class="tool-row-name"><strong>${esc(displayName)}</strong></div>
+        ${desc ? `<div class="tool-row-desc">${esc(desc)}</div>` : ''}
+        <button class="btn btn-sm btn-outline tool-row-ask" onclick="askTool('${t.name}')">Ask</button>
+      </div>`;
+  }).join('');
+
+  Dialog.open({
+    id: 'tools-list',
+    title: 'Available tools (' + tools.length + ')',
+    size: 'medium',
+    content: `<div class="tools-list">${rows}</div>`,
+    closeOnBackdrop: true,
+    closeOnEscape: true
+  });
+}
+
+function askTool(name) {
+  Dialog.close('tools-list');
+  prefill('Tell me about ' + name);
+}
+
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+async function send(retryMessage) {
+  if (!chatToken) { openAuthDialog(); return; }
+
+  const input   = document.getElementById('input');
+  const message = retryMessage ?? input.value.trim();
+  if (!message || streaming) return;
+
+  if (!retryMessage) {
+    input.value = '';
+    input.style.height = '';
+  }
+
+  const env = document.getElementById('envSelect').value;
+
+  document.getElementById('emptyState')?.remove();
+
+  if (!retryMessage) {
+    appendMessage('user', message);
+    history.push({ role: 'user', content: message });
+  }
+
+  streaming = true;
+  abortController = new AbortController();
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = false;
+  sendBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Generating…';
+  sendBtn.onclick = () => cancelStream();
+
+  const assistantBubble = appendMessage('assistant', '');
+  const textNode = assistantBubble.querySelector('.msg-text');
+  let typingEl = null;
+  function showTyping() {
+    if (typingEl) return;
+    typingEl = document.createElement('span');
+    typingEl.className = 'msg-typing';
+    typingEl.innerHTML = '<span></span><span></span><span></span>';
+    textNode.appendChild(typingEl);
+  }
+  function hideTyping() {
+    if (typingEl) { typingEl.remove(); typingEl = null; }
+  }
+  showTyping();
+
+  try {
+    const resp = await fetch(base + '/ui/api/mcp/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + chatToken
+      },
+      body: JSON.stringify({ message, environment: env, locale: navigator.language, history: history.slice(0, -1) }),
+      signal: abortController.signal
+    });
+
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!resp.body) throw new Error('No response body');
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let   buf      = '';
+    let   fullText = '';
+
+    stream: while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let delta;
+        try { delta = JSON.parse(line.slice(6)); } catch { continue; }
+
+        if (delta.type === 'text') {
+          hideTyping();
+          fullText += delta.delta || '';
+          textNode.innerHTML = md(fullText);
+          scrollThread();
+        } else if (delta.type === 'thinking') {
+          showTyping();
+          scrollThread();
+        } else if (delta.type === 'tool_call') {
+          hideTyping();
+          appendToolCall(assistantBubble, delta);
+          scrollThread();
+        } else if (delta.type === 'error') {
+          hideTyping();
+          textNode.innerHTML = '<span style="color:hsl(var(--destructive))">' + esc(delta.delta || 'An error occurred.') + '</span>';
+        } else if (delta.type === 'done') {
+          break stream;
+        }
+      }
+    }
+
+    if (fullText) {
+      history.push({ role: 'assistant', content: fullText });
+      assistantBubble.dataset.assistantText = fullText;
+      assistantBubble.querySelector('.msg-actions').removeAttribute('hidden');
+    }
+
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      if (!fullText) assistantBubble.remove();
+      // partial text already rendered - leave it as-is
+    } else {
+      textNode.innerHTML = '<span style="color:var(--error)">' + esc('Error: ' + e.message) + '</span>';
+    }
+  } finally {
+    streaming = false;
+    abortController = null;
+    sendBtn.onclick = () => send();
+    sendBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send';
+  }
+}
+
+// ── Cancel stream ─────────────────────────────────────────────────────────────
+function cancelStream() {
+  if (abortController) abortController.abort();
+}
+
+// ── Retry ─────────────────────────────────────────────────────────────────────
+function retry(btn) {
+  if (streaming) return;
+  const assistantEl = btn.closest('.msg-assistant');
+  if (!assistantEl) return;
+  let userEl = assistantEl.previousElementSibling;
+  while (userEl && !userEl.classList.contains('msg-user')) userEl = userEl.previousElementSibling;
+  const userMessage = userEl?.dataset.raw;
+  if (!userMessage) return;
+  if (history.length >= 2 &&
+      history[history.length - 1].role === 'assistant' &&
+      history[history.length - 2].role === 'user') {
+    history.splice(-2);
+  }
+  assistantEl.remove();
+  history.push({ role: 'user', content: userMessage });
+  send(userMessage);
+}
+
+// ── Copy response ─────────────────────────────────────────────────────────────
+function copyResponse(btn) {
+  const msgText = btn.closest('.msg-bubble')?.querySelector('.msg-text');
+  if (!msgText) return;
+  const text = msgText.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const prev = btn.innerHTML;
+    btn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+      ' Copied';
+    btn.disabled = true;
+    setTimeout(() => { btn.innerHTML = prev; btn.disabled = false; }, 2000);
+  });
+}
+
+// ── Vote (stub) ───────────────────────────────────────────────────────────────
+function vote(btn, direction) {
+  const bar = btn.closest('.msg-actions');
+  bar.querySelectorAll('.vote-btn').forEach(b => { b.classList.remove('vote-active'); delete b.dataset.voted; });
+  if (btn.dataset.voted !== direction) {
+    btn.classList.add('vote-active');
+    btn.dataset.voted = direction;
+  }
+}
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+function appendMessage(role, text) {
+  const thread = document.getElementById('thread');
+  const isUser = role === 'user';
+  const el     = document.createElement('div');
+  el.className = 'msg msg-' + role;
+  if (isUser) el.dataset.raw = text;
+  if (isUser) {
+    el.innerHTML =
+      '<div class="msg-bubble">' +
+        '<span class="msg-role">You</span>' +
+        '<div class="msg-text">' + esc(text) + '</div>' +
+      '</div>';
+  } else {
+    el.innerHTML =
+      '<div class="msg-bubble">' +
+        '<span class="msg-role">Assistant</span>' +
+        '<div class="msg-text"></div>' +
+        '<div class="msg-actions" hidden>' +
+          '<button class="vote-btn" onclick="vote(this,\'up\')" title="Good response">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>' +
+          '</button>' +
+          '<button class="vote-btn" onclick="vote(this,\'down\')" title="Bad response">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3H10z"/><path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"/></svg>' +
+          '</button>' +
+          '<button class="copy-btn" onclick="copyResponse(this)" title="Copy response">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+            ' Copy' +
+          '</button>' +
+          '<button class="retry-btn" onclick="retry(this)" title="Retry">' +
+            '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.2"/></svg>' +
+            ' Retry' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+  }
+  thread.appendChild(el);
+  scrollThread();
+  return el;
+}
+
+function renderToolResult(raw) {
+  if (!raw) return '';
+  // Binary placeholder - render info card
+  if (raw.startsWith('[Binary content:')) {
+    return '<div class="tool-binary-notice">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+      ' ' + esc(raw) +
+      '</div>';
+  }
+  // Content-type prefixed response
+  const ctMatch = raw.match(/^\[Content-Type:\s*([^\]]+)\]\n/);
+  if (ctMatch) {
+    const ct = ctMatch[1].trim().toLowerCase();
+    const body = raw.slice(ctMatch[0].length);
+    if (ct.includes('csv')) return renderCsvAsTable(body);
+    if (ct.includes('xml')) return '<pre class="tool-pre lang-xml">' + esc(body) + '</pre>';
+    return '<pre class="tool-pre">' + esc(body) + '</pre>';
+  }
+  // Default: JSON or plain text
+  return '<pre class="tool-pre">' + esc(tryPrettyJson(raw)) + '</pre>';
+}
+
+function renderCsvAsTable(csv) {
+  const lines = csv.trim().split('\n').slice(0, 51); // header + up to 50 rows
+  if (lines.length === 0) return '<pre class="tool-pre">' + esc(csv) + '</pre>';
+  const parseRow = line => line.split(',').map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+  const headers = parseRow(lines[0]);
+  const rows = lines.slice(1).filter(l => l.trim());
+  let html = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
+  headers.forEach(h => { html += '<th>' + esc(h) + '</th>'; });
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    const cells = parseRow(row);
+    html += '<tr>';
+    cells.forEach(c => { html += '<td>' + esc(c) + '</td>'; });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  if (lines.length > 51) html += '<div class="tool-section-label">Showing first 50 rows</div>';
+  return html;
+}
+
+function appendToolCall(bubble, delta) {
+  const container = bubble.querySelector('.msg-bubble');
+  const id = 'tc-' + Math.random().toString(36).slice(2);
+  const el = document.createElement('div');
+  el.className = 'tool-call';
+  el.innerHTML =
+    '<button class="tool-call-header" onclick="toggleTool(\'' + id + '\')">' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
+      '<span>Tool: ' + esc(delta.toolName || '') + '</span>' +
+    '</button>' +
+    '<div id="' + id + '" class="tool-call-body" hidden>' +
+      '<div class="tool-section-label">Input</div>' +
+      '<pre class="tool-pre">' + esc(tryPrettyJson(delta.toolInput || '')) + '</pre>' +
+      (delta.toolResult
+        ? '<div class="tool-section-label">Result</div>' + renderToolResult(delta.toolResult)
+        : '') +
+    '</div>';
+  container.insertBefore(el, container.querySelector('.msg-actions'));
+}
+
+function toggleTool(id) {
+  const el = document.getElementById(id);
+  if (el) el.hidden = !el.hidden;
+}
+
+function scrollThread() {
+  const t = document.getElementById('thread');
+  t.scrollTop = t.scrollHeight;
+}
+
+function tryPrettyJson(s) {
+  try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
+}
+
+// ── Input auto-resize + keyboard shortcuts ────────────────────────────────────
+document.getElementById('input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 128) + 'px';
+});
+document.getElementById('input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && streaming) cancelStream(); });
+document.getElementById('sendBtn').addEventListener('click', () => send());
+document.getElementById('clearBtn').addEventListener('click', () => {
+  history = [];
+  const thread = document.getElementById('thread');
+  thread.innerHTML = '';
+  const empty = document.createElement('div');
+  empty.id = 'emptyState';
+  empty.style.cssText = 'margin:auto;text-align:center;color:var(--text-secondary);';
+  empty.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 0.75rem;display:block;opacity:.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><div style="font-size:0.875rem;">Conversation cleared.</div>';
+  thread.appendChild(empty);
+});
+
+init();
+
+// ── Navigation guard ───────────────────────────────────────────────────────────
+let _navConfirmed = false; // set true once user confirms leaving via AlertDialog
+
+// Hard navigation: tab close, F5, address-bar changes
+window.addEventListener('beforeunload', e => {
+  if (!history.length || _navConfirmed) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+
+// Soft navigation: sidebar links and any in-app <a> clicks
+document.addEventListener('click', e => {
+  if (!history.length) return;
+  const link = e.target.closest('a[href]');
+  if (!link) return;
+  const href = link.getAttribute('href');
+  if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+  if (link.target === '_blank') return;
+
+  e.preventDefault();
+  e.stopPropagation();
+  AlertDialog.show({
+    title: 'Leave conversation?',
+    description: 'You have an ongoing conversation. Leaving this page will clear it.',
+    actionLabel: 'Leave',
+    cancelLabel: 'Stop, I\'m not done yet',
+    variant: 'default',
+    onConfirm: () => { _navConfirmed = true; window.location.href = href; }
+  });
+});
+
+// ── MCP Setup Wizard ──────────────────────────────────────────────────────────
+// Shown when Chat is enabled but no provider/key is configured in the DB.
+// Two-step: (1) choose provider → (2) enter model + API key + optional token.
+
+const PROVIDERS = [
+  { id: 'mistral',   label: 'Mistral AI',    model: 'mistral-medium-latest',  hint: 'mistral-large-latest / mistral-medium-latest' },
+  { id: 'anthropic', label: 'Anthropic',     model: 'claude-sonnet-4-6',      hint: 'claude-sonnet-4-6 / claude-opus-4-6' },
+  { id: 'openai',    label: 'OpenAI',        model: 'gpt-4o',                 hint: 'gpt-4o / gpt-4o-mini / o3' },
+  { id: 'gemini',    label: 'Google Gemini', model: 'gemini-2.5-flash',       hint: 'gemini-2.5-pro / gemini-2.5-flash' },
+];
+
+let _wizardStep     = 1;
+let _wizardProvider = null;
+
+function openSetupWizard(onComplete) {
+  window._wizardOnComplete = onComplete;
+  _wizardStep     = 1;
+  _wizardProvider = null;
+  _renderWizardStep1();
+}
+
+function _renderWizardStep1() {
+  const rows = PROVIDERS.map(p => `
+    <label class="wizard-provider-option" data-id="${p.id}">
+      <input type="radio" name="wizard-provider" value="${p.id}" />
+      <span class="wizard-provider-label">${esc(p.label)}</span>
+    </label>`).join('');
+
+  Dialog.open({
+    id: 'mcp-setup',
+    title: 'Set up chat - Step 1 of 2',
+    size: 'small',
+    showCloseButton: false,
+    closeOnBackdrop: false,
+    closeOnEscape: false,
+    content: `
+      <p class="wizard-intro">Choose the AI provider that will power the chat assistant. Your API key is stored encrypted on the server - it never leaves Portway.</p>
+      <div class="wizard-providers">${rows}</div>
+      <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
+    footer: `
+      <button type="button" class="btn btn-primary" onclick="_wizardNext1()">Next →</button>`,
+    onOpen: () => {
+      document.querySelectorAll('.wizard-provider-option').forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.wizard-provider-option').forEach(o => o.classList.remove('selected'));
+          el.classList.add('selected');
+          el.querySelector('input').checked = true;
+        });
+      });
+    }
+  });
+}
+
+function _wizardNext1() {
+  const checked = document.querySelector('input[name="wizard-provider"]:checked');
+  const err = document.getElementById('wizard-step1-err');
+  if (!checked) {
+    err.textContent = 'Please select a provider.';
+    err.hidden = false;
+    return;
+  }
+  err.hidden = true;
+  _wizardProvider = PROVIDERS.find(p => p.id === checked.value);
+  _renderWizardStep2();
+}
+
+function _renderWizardStep2() {
+  const p = _wizardProvider;
+  Dialog.open({
+    id: 'mcp-setup',
+    title: `Set up chat - Step 2 of 2`,
+    size: 'small',
+    showCloseButton: false,
+    closeOnBackdrop: false,
+    closeOnEscape: false,
+    content: `
+      <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
+      <div class="dialog-field">
+        <label for="wiz-model">Model</label>
+        <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
+      </div>
+      <div class="dialog-field" style="margin-top:1rem;">
+        <label for="wiz-key">API Key <span style="color:var(--destructive)">*</span></label>
+        <div style="position:relative;display:flex;align-items:center;">
+          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;font-family:var(--font-mono);font-size:0.82rem;" placeholder="Paste your ${esc(p.label)} API key…" autocomplete="off" spellcheck="false" />
+          <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="dialog-field-hint">Encrypted at rest in <code>mcp.db</code> - never stored in config files.</div>
+      </div>
+      <details class="wizard-details">
+        <summary>Internal API token <span style="color:var(--text-secondary);font-weight:400;">(optional)</span></summary>
+        <div class="dialog-field" style="margin-top:0.75rem;">
+          <label for="wiz-token">Portway Bearer Token</label>
+          <input id="wiz-token" type="password" class="input" style="font-family:var(--font-mono);font-size:0.82rem;" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
+          <div class="dialog-field-hint">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
+        </div>
+      </details>
+      <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
+    footer: `
+      <button type="button" class="btn btn-outline" onclick="_renderWizardStep1()">← Back</button>
+      <button type="button" class="btn btn-primary" id="wiz-save-btn" onclick="_wizardSave()">Save configuration</button>`,
+    onOpen: () => {
+      document.getElementById('wiz-key')?.focus();
+      document.getElementById('wiz-key')?.addEventListener('keydown', e => { if (e.key === 'Enter') _wizardSave(); });
+    }
+  });
+}
+
+async function _wizardSave() {
+  const model  = document.getElementById('wiz-model')?.value.trim();
+  const apiKey = document.getElementById('wiz-key')?.value.trim();
+  const token  = document.getElementById('wiz-token')?.value.trim() ?? '';
+  const err    = document.getElementById('wizard-step2-err');
+  const btn    = document.getElementById('wiz-save-btn');
+
+  err.hidden = true;
+
+  if (!apiKey) {
+    err.textContent = 'API key is required.';
+    err.hidden = false;
+    document.getElementById('wiz-key').focus();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  try {
+    const res = await fetch(base + '/ui/api/mcp/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider:         _wizardProvider.id,
+        model:            model || _wizardProvider.model,
+        apiKey:           apiKey,
+        internalApiToken: token
+      })
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error ?? `HTTP ${res.status}`);
+    }
+
+    Dialog.close('mcp-setup');
+    if (window._wizardOnComplete) window._wizardOnComplete();
+
+  } catch (e) {
+    err.textContent = 'Failed to save: ' + e.message;
+    err.hidden = false;
+    btn.disabled = false;
+    btn.textContent = 'Save configuration';
+  }
+}
+</script>
+
+<style>
+/* Layout */
+.chat-page-body {
+  flex: 1;
+  overflow: hidden;
+  padding: 0 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+}
+.chat-panel {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--card));
+}
+
+/* Thread */
+.chat-thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.chat-empty {
+  margin: auto;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+  max-width: 28rem;
+}
+.chat-empty svg { margin: 0 auto 0.75rem; display: block; opacity: 0.35; }
+.chat-empty p { font-size: 0.875rem; line-height: 1.6; }
+.chat-tool-hints { margin-top: 0.75rem; font-size: 0.75rem; }
+
+/* Composer ────────────────────────────────────────────────────────────── */
+.chat-composer {
+  flex-shrink: 0;
+  padding: 0.75rem 1.25rem 1rem;
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+}
+.chat-composer-inner {
+  display: flex;
+  flex-direction: column;
+}
+.chat-composer-inner textarea {
+  border: none;
+  background: transparent;
+  outline: none;
+  resize: none;
+  width: 100%;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  max-height: 8rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.chat-composer-inner textarea::placeholder { color: hsl(var(--muted-foreground)); }
+.chat-composer-inner textarea:disabled { opacity: 0.5; cursor: not-allowed; }
+.chat-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.625rem;
+  gap: 0.5rem;
+}
+.chat-hint {
+  font-size: 0.72rem;
+  color: hsl(var(--muted-foreground));
+  user-select: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
+
+/* Model badge ─────────────────────────────────────────────────────────── */
+.model-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 999px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted));
+  white-space: nowrap;
+  font-family: ui-monospace, monospace;
+}
+
+/* Message bubbles */
+.msg { display: flex; }
+.msg-user      { justify-content: flex-end; }
+.msg-assistant { justify-content: flex-start; }
+.msg-bubble {
+  max-width: 72%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.msg-user .msg-bubble {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  padding: 0.625rem 0.875rem;
+}
+.msg-assistant .msg-bubble {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem 1rem 1rem 0.25rem;
+  padding: 0.625rem 0.875rem;
+}
+.msg-role {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.5;
+}
+.msg-text { font-size: 0.875rem; line-height: 1.6; word-break: break-word; }
+
+/* Message action bar */
+.msg-actions { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.375rem; }
+.vote-btn, .copy-btn, .retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  background: transparent;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.72rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.vote-btn:hover, .copy-btn:hover, .retry-btn:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.vote-active {
+  background: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.4);
+  color: hsl(var(--primary));
+}
+
+/* Typing indicator */
+.msg-typing { display: inline-flex; gap: 4px; align-items: center; padding: 2px 0; }
+.msg-typing span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: hsl(var(--muted-foreground));
+  animation: typing-dot 1.3s ease-in-out infinite;
+  opacity: 0.4;
+}
+.msg-typing span:nth-child(2) { animation-delay: 0.18s; }
+.msg-typing span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes typing-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+  40%           { opacity: 1;    transform: scale(1.1);  }
+}
+
+/* Markdown ────────────────────────────────────────────────────────────── */
+.msg-text .md-h1 { font-size: 1.1rem; font-weight: 700; margin: 0.5rem 0 0.25rem; }
+.msg-text .md-h2 { font-size: 1rem;   font-weight: 700; margin: 0.5rem 0 0.25rem; }
+.msg-text .md-h3 { font-size: 0.9rem; font-weight: 700; margin: 0.4rem 0 0.2rem; }
+.msg-text .md-h4 { font-size: 0.85rem; font-weight: 600; margin: 0.35rem 0 0.15rem; }
+.msg-text .md-pre {
+  font-family: ui-monospace, monospace; font-size: 0.78rem;
+  background: hsl(var(--muted)); color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border)); border-radius: 6px;
+  padding: 0.75rem 1rem; overflow-x: auto; white-space: pre; margin: 0.4rem 0; position: relative;
+}
+.msg-text .md-pre[data-lang]::before {
+  content: attr(data-lang); position: absolute; top: 0.35rem; right: 0.6rem;
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em;
+  opacity: 0.4; pointer-events: none;
+}
+.msg-text .md-ic {
+  font-family: ui-monospace, monospace; font-size: 0.82em;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  border-radius: 3px; padding: 0.05em 0.35em;
+}
+.msg-text .md-list { margin: 0.25rem 0 0.25rem 1.25rem; }
+.msg-text .md-list li { margin-bottom: 0.1rem; }
+.msg-text .md-bq {
+  border-left: 3px solid hsl(var(--primary) / 0.5);
+  padding: 0.15rem 0.75rem; margin: 0.35rem 0;
+  color: hsl(var(--muted-foreground)); font-style: italic;
+}
+.msg-text .md-hr { border: none; border-top: 1px solid hsl(var(--border)); margin: 0.5rem 0; }
+.msg-text a { color: hsl(var(--primary)); text-decoration: underline; }
+.msg-text strong { font-weight: 700; }
+.msg-text .md-table-wrap { overflow-x: auto; margin: 0.5rem 0; }
+.msg-text .md-table { border-collapse: collapse; font-size: 0.8rem; width: 100%; }
+.msg-text .md-table th,
+.msg-text .md-table td { padding: 0.35rem 0.65rem; border: 1px solid hsl(var(--border)); text-align: left; white-space: nowrap; }
+.msg-text .md-table th { background: hsl(var(--muted)); font-weight: 600; }
+.msg-text .md-table tbody tr:nth-child(even) { background: hsl(var(--muted) / 0.4); }
+
+/* Tool call panels */
+.tool-call { margin-top: 0.5rem; border: 1px solid hsl(var(--border)); border-radius: 6px; overflow: hidden; }
+.tool-call-header {
+  display: flex; align-items: center; gap: 0.375rem; width: 100%;
+  padding: 0.375rem 0.625rem; background: hsl(var(--muted));
+  border: none; cursor: pointer; text-align: left;
+  color: hsl(var(--muted-foreground)); font-size: 0.775rem; font-weight: 500;
+}
+.tool-call-header:hover { background: hsl(var(--muted) / 0.7); }
+.tool-call-body { padding: 0.625rem; background: hsl(var(--background)); }
+.tool-section-label {
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;
+}
+.tool-pre {
+  font-family: ui-monospace, monospace; font-size: 0.75rem;
+  background: hsl(var(--muted)); color: hsl(var(--foreground));
+  padding: 0.5rem; border-radius: 4px; overflow-x: auto; white-space: pre;
+  margin: 0 0 0.5rem;
+}
+.tool-pre:last-child { margin-bottom: 0; }
+.tool-binary-notice {
+  display: flex; align-items: flex-start; gap: 0.4rem;
+  font-size: 0.78rem; color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted) / 0.4); border: 1px solid hsl(var(--border));
+  border-radius: 4px; padding: 0.5rem 0.625rem; margin: 0 0 0.5rem;
+}
+.tool-binary-notice svg { flex-shrink: 0; margin-top: 1px; }
+
+/* Misc ──*/
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
+  font-size: 0.75rem; color: hsl(var(--muted-foreground));
+}
+.badge:hover { background: hsl(var(--muted) / 0.6); color: hsl(var(--foreground)); }
+
+.btn-link {
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: hsl(var(--primary)); font-size: inherit; font-family: inherit;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.btn-link:hover { color: hsl(var(--primary) / 0.8); }
+
+/* Tools modal ─────────────────────────────────────────────────────────── */
+.tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+.tool-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 0.2rem 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--card));
+  align-items: start;
+}
+.tool-row-name { grid-column: 1; grid-row: 1; }
+.tool-row-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  color: hsl(var(--foreground));
+}
+.tool-row-desc {
+  grid-column: 1; grid-row: 2;
+  font-size: 0.78rem;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+.tool-row-ask {
+  grid-column: 2; grid-row: 1 / 3;
+  align-self: center;
+  white-space: nowrap;
+}
+
+/* ── Setup wizard ──────────────────────────────────────────────────────── */
+.wizard-intro {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 1.25rem;
+}
+.wizard-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.wizard-provider-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  user-select: none;
+}
+.wizard-provider-option input[type="radio"] { display: none; }
+.wizard-provider-option:hover { background: hsl(var(--accent, 240 4.8% 95.9%)); }
+.wizard-provider-option.selected {
+  border-color: hsl(var(--primary));
+  background: color-mix(in srgb, hsl(var(--primary)) 6%, transparent);
+}
+.wizard-provider-label {
+  font-weight: 500;
+  font-size: 0.875rem;
+  flex: 0 0 auto;
+  min-width: 7rem;
+}
+.wizard-provider-model {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wizard-error {
+  font-size: 0.8rem;
+  color: hsl(var(--destructive));
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: color-mix(in srgb, hsl(var(--destructive)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, hsl(var(--destructive)) 30%, transparent);
+  border-radius: 5px;
+}
+.wizard-details {
+  margin-top: 1rem;
+  font-size: 0.82rem;
+}
+.wizard-details summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-secondary);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.wizard-details summary::before {
+  content: '›';
+  font-size: 1rem;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.wizard-details[open] summary::before { transform: rotate(90deg); }
+.dialog-field-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.35rem;
+  line-height: 1.5;
+}
+.dialog-field-hint code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78em;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+}
+</style>
+
+</body>
+</html>

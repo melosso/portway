@@ -340,15 +340,17 @@ function renderGlobalDetail() {
     </div>
     <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
       <button class="btn btn-outline btn-sm" onclick="selectGlobal()">Discard</button>
-      <button class="btn btn-primary btn-sm" onclick="saveGlobal()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save
+      <button id="globalSaveBtn" class="btn btn-primary btn-sm" onclick="saveGlobal()">
+        <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
+        <span class="btn-spinner"></span>
       </button>
     </div>`;
 }
 
 async function saveGlobal() {
   const serverName = document.getElementById('gServerName')?.value?.trim() ?? '';
+  const btn = document.getElementById('globalSaveBtn');
+  btn?.classList.add('is-loading');
   try {
     const r = await fetch('/ui/api/environments/settings', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -360,6 +362,7 @@ async function saveGlobal() {
     await loadGlobal();
     renderGlobalDetail();
   } catch(e) { toast(e.message, 'error'); }
+  finally { btn?.classList.remove('is-loading'); }
 }
 
 // Per-environment Detail ────────────────────────────────
@@ -419,13 +422,13 @@ function paintEnvDetail(name, d, rawMode) {
       <button class="btn btn-outline btn-sm" onclick="reloadEnv('${esc(name)}')">Discard</button>
       ${rawMode
         ? `<button class="btn btn-outline btn-sm" onclick="validateRaw(true)">Validate</button>
-           <button class="btn btn-primary btn-sm" onclick="saveRaw('${esc(name)}')">
-             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-             Save JSON
+           <button id="envSaveBtn" class="btn btn-primary btn-sm" onclick="saveRaw('${esc(name)}')">
+             <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save JSON</span>
+             <span class="btn-spinner"></span>
            </button>`
-        : `<button class="btn btn-primary btn-sm" onclick="saveEnv('${esc(name)}')">
-             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-             Save
+        : `<button id="envSaveBtn" class="btn btn-primary btn-sm" onclick="saveEnv('${esc(name)}')">
+             <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
+             <span class="btn-spinner"></span>
            </button>`}
     </div>`;
 }
@@ -773,6 +776,8 @@ async function saveEnv(name) {
   const body = { server_name: serverName, headers, authentication: auth };
   if (connStr) body.connection_string = connStr;
 
+  const btn = document.getElementById('envSaveBtn');
+  btn?.classList.add('is-loading');
   try {
     const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -791,6 +796,7 @@ async function saveEnv(name) {
     const d = await fetch(`/ui/api/environments/${encodeURIComponent(name)}`).then(r => r.json());
     state.envData[name] = d;
   } catch(e) { toast(e.message, 'error'); }
+  finally { btn?.classList.remove('is-loading'); }
 }
 
 // Raw JSON mode ─────────────────────────────────────────
@@ -832,6 +838,8 @@ function validateRaw(showMsg = false) {
 async function saveRaw(name) {
   if (!validateRaw(true)) return;
   const content = document.getElementById('rawTextarea')?.value ?? '';
+  const btn = document.getElementById('envSaveBtn');
+  btn?.classList.add('is-loading');
   try {
     const r = await fetch(`/ui/api/environments/${encodeURIComponent(name)}/raw`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -851,6 +859,7 @@ async function saveRaw(name) {
     const badge = document.getElementById(`badge-${name}`);
     if (badge) badge.innerHTML = '';
   } catch(e) { toast(e.message, 'error'); }
+  finally { btn?.classList.remove('is-loading'); }
 }
 
 // Hot-update polling

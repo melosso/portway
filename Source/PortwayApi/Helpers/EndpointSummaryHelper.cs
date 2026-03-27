@@ -13,7 +13,7 @@ public static class EndpointSummaryHelper
     /// </summary>
     public static void ValidateAndLogDuplicateEndpoints(
         Dictionary<string, EndpointDefinition> sqlEndpoints,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> proxyEndpointMap,
+        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> proxyEndpointMap,
         Dictionary<string, EndpointDefinition> webhookEndpoints,
         Dictionary<string, EndpointDefinition> fileEndpoints,
         Dictionary<string, EndpointDefinition> staticEndpoints)
@@ -91,7 +91,7 @@ public static class EndpointSummaryHelper
     /// <summary>
     /// Adds proxy endpoints to registry with composite filtering
     /// </summary>
-    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> endpoints, string type, bool excludeComposite = false, bool onlyComposite = false)
+    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpoints, string type, bool excludeComposite = false, bool onlyComposite = false)
     {
         foreach (var kvp in endpoints)
         {
@@ -132,7 +132,7 @@ public static class EndpointSummaryHelper
 
     public static void LogEndpointSummary(
         Dictionary<string, EndpointDefinition> sqlEndpoints,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> proxyEndpointMap,
+        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> proxyEndpointMap,
         Dictionary<string, EndpointDefinition> webhookEndpoints,
         Dictionary<string, EndpointDefinition> fileEndpoints,
         Dictionary<string, EndpointDefinition> staticEndpoints)
@@ -220,7 +220,7 @@ public static class EndpointSummaryHelper
                 
                 foreach (var entry in publicProxyEndpoints)
                 {
-                    var (url, methods, _, _, _) = entry.Value;
+                    var (url, methods, _, _, _, _) = entry.Value;
                     string prefix = entry.Key == lastPublicKey ? "└──" : "├──";
                     Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                         prefix, entry.Key, url, string.Join(", ", methods));
@@ -241,7 +241,7 @@ public static class EndpointSummaryHelper
                 
                 foreach (var entry in privateProxyEndpoints)
                 {
-                    var (url, methods, _, _, _) = entry.Value;
+                    var (url, methods, _, _, _, _) = entry.Value;
                     string prefix = entry.Key == lastPrivateKey ? "└──" : "├──";
                     Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                         prefix, entry.Key, url, string.Join(", ", methods));
@@ -263,7 +263,7 @@ public static class EndpointSummaryHelper
             var lastCompositeKey = compositeEndpoints.Last().Key;
             foreach (var entry in compositeEndpoints)
             {
-                var (url, methods, _, _, _) = entry.Value;
+                var (url, methods, _, _, _, _) = entry.Value;
                 string prefix = entry.Key == lastCompositeKey ? "└──" : "├──";
                 Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                     prefix, entry.Key, url, string.Join(", ", methods));

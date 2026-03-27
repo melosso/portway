@@ -1617,7 +1617,7 @@ public class EndpointController : ControllerBase
     /// </summary>
     private async Task<(bool IsSuccessful, string Content, Dictionary<string, string> Headers, int StatusCode, string? ContentType)> ExecuteProxyRequest(
         string method, string fullUrl, string env, 
-        (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments) endpointConfig,
+        (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments) endpointConfig,
         string endpointName,
         bool isSoapRequest = false,
         string? originalMethod = null,
@@ -1664,12 +1664,22 @@ public class EndpointController : ControllerBase
             }
         }
 
+        // Headers stripped from inbound client requests before proxying.
+        // Client-supplied X-Forwarded-* headers must never reach backend services — they would allow
+        // IP spoofing and bypass any backend IP-based access controls.
+        // Portway re-adds a clean X-Forwarded-For from the verified connection IP after this loop.
+        var headersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Host", "Connection",
+            "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Forwarded-Port",
+            "X-Real-IP", "X-Original-For", "Forwarded"
+        };
+
         // Copy headers
         foreach (var header in Request.Headers)
         {
-            // Skip certain headers that shouldn't be proxied
-            if (header.Key.Equals("Host", StringComparison.OrdinalIgnoreCase) ||
-                header.Key.Equals("Connection", StringComparison.OrdinalIgnoreCase))
+            // Skip headers that must not be forwarded verbatim from the client
+            if (headersToStrip.Contains(header.Key))
                 continue;
 
             try
@@ -1697,6 +1707,11 @@ public class EndpointController : ControllerBase
                 Log.Warning(ex, "Could not add header {HeaderKey}", header.Key);
             }
         }
+
+        // Re-add a clean X-Forwarded-For from the verified connection IP
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!string.IsNullOrEmpty(clientIp))
+            requestMessage.Headers.TryAddWithoutValidation("X-Forwarded-For", clientIp);
 
         // Load environment settings
         var (_, _, envHeaders) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
@@ -3198,6 +3213,30 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         {
             Log.Debug("Parsing filter: {Filter}", filter);
             
+            // OData function call syntax: contains(Field, 'value'), startswith(Field, 'value'), endswith(Field, 'value')
+            var fnMatch = System.Text.RegularExpressions.Regex.Match(
+                filter.Trim(),
+                @"^(contains|startswith|endswith)\((\w+),\s*'([^']*)'\)$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (fnMatch.Success)
+            {
+                var operation = fnMatch.Groups[1].Value.ToLower();
+                var field     = fnMatch.Groups[2].Value;
+                var value     = fnMatch.Groups[3].Value;
+                return items.Where(item =>
+                {
+                    if (!TryGetPropertyCI(item, field, out var fieldValue)) return false;
+                    var s = fieldValue.GetString() ?? string.Empty;
+                    return operation switch
+                    {
+                        "contains"    => s.Contains(value, StringComparison.OrdinalIgnoreCase),
+                        "startswith"  => s.StartsWith(value, StringComparison.OrdinalIgnoreCase),
+                        "endswith"    => s.EndsWith(value, StringComparison.OrdinalIgnoreCase),
+                        _             => false
+                    };
+                }).ToList();
+            }
+
             // Parse filter expression (simplified OData filter support). Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc.
             var filterParts = filter.Split(' ');
             if (filterParts.Length >= 3)
@@ -3213,7 +3252,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 
                 var filteredItems = items.Where(item =>
                 {
-                    if (!item.TryGetProperty(field, out var fieldValue))
+                    if (!TryGetPropertyCI(item, field, out var fieldValue))
                     {
                         Log.Debug("Field '{Field}' not found in item", field);
                         return false;
@@ -3277,11 +3316,30 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     }
     
     /// <summary>
+    /// Case-insensitive property lookup: tries exact name first, then falls back to a linear scan.
+    /// </summary>
+    private static bool TryGetPropertyCI(JsonElement item, string field, out JsonElement value)
+    {
+        if (item.TryGetProperty(field, out value))
+            return true;
+        foreach (var prop in item.EnumerateObject())
+        {
+            if (prop.Name.Equals(field, StringComparison.OrdinalIgnoreCase))
+            {
+                value = prop.Value;
+                return true;
+            }
+        }
+        value = default;
+        return false;
+    }
+
+    /// <summary>
     /// Gets a sortable value from a JSON element
     /// </summary>
     private object GetSortableValue(JsonElement item, string field)
     {
-        if (!item.TryGetProperty(field, out var fieldValue))
+        if (!TryGetPropertyCI(item, field, out var fieldValue))
             return "";
             
         return fieldValue.ValueKind switch
@@ -3310,7 +3368,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 
                 foreach (var field in fields)
                 {
-                    if (item.TryGetProperty(field, out var fieldValue))
+                    if (TryGetPropertyCI(item, field, out var fieldValue))
                     {
                         selectedObject[field] = SerializeJsonElement(fieldValue);
                     }

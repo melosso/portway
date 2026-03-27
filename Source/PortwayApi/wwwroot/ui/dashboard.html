@@ -14,13 +14,14 @@
   <script src="js/components/chart-period-selector.js"></script>
   <script src="js/components/area-chart.js"></script>
   <script src="js/components/error-chart.js"></script>
+  <script src="js/components/setup-guide.js"></script>
   <style>
-    /* ── Stacked-chart legend ─────────────────────────────── */
+    /* Stacked-chart legend */
     .chart-legend { display:flex; gap:1rem; align-items:center; }
     .chart-legend-item { display:flex; align-items:center; gap:0.35rem; font-size:0.72rem; color:hsl(var(--muted-foreground)); }
     .chart-legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-    /* ── Cache card ───────────────────────────────────────── */
+    /* Cache card */
     .cache-layout { display:flex; align-items:center; gap:1.25rem; }
     .cache-ring   { flex-shrink:0; }
     .cache-stats  { display:flex; flex-direction:column; gap:0.6rem; flex:1; min-width:0; }
@@ -28,7 +29,7 @@
     .cache-row-key{ color:hsl(var(--muted-foreground)); }
     .cache-row-val{ font-family:ui-monospace,monospace; font-weight:600; color:hsl(var(--foreground)); }
 
-    /* ── Top endpoints ────────────────────────────────────── */
+    /* Top endpoints */
     .ep-list  { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.6rem 1.25rem; }
     .ep-item  { display:grid; grid-template-columns:1.2rem 1fr auto; grid-template-rows:auto auto; gap:0.2rem 0.6rem; align-items:center; }
     .ep-rank  { font-size:0.7rem; font-variant-numeric:tabular-nums; color:hsl(var(--muted-foreground)); text-align:right; }
@@ -48,7 +49,7 @@
       <h1 class="select-none">Dashboard</h1>
     </div>
     <div class="header-actions">
-      <button class="btn btn-outline" onclick="load()">
+      <button id="refreshBtn" class="btn btn-outline" onclick="load()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
       </button>
@@ -56,6 +57,8 @@
   </div>
 
   <div class="page-body">
+
+    <div id="setupGuide"></div>
 
     <div class="stat-grid">
       <div class="stat-card">
@@ -149,6 +152,16 @@
         </div>
       </div>
 
+      <div class="card" style="display:flex;flex-direction:column" id="mcpCard" hidden>
+        <div class="card-header">
+          <span class="card-title">MCP (Model Context Protocol)</span>
+          <span class="badge badge-muted" id="mcpBadge">—</span>
+        </div>
+        <div class="card-body" id="mcpBody" style="flex:1">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -157,13 +170,15 @@
 <script>
 // ── Overview ──────────────────────────────────────────────
 async function load() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
   try {
     const d = await fetch('/ui/api/overview').then(r => r.json());
     const ep = d.endpoints ?? {};
-    document.getElementById('statSql').textContent = ep.sql ?? '0';
-    document.getElementById('statProxy').textContent = (ep.proxy ?? 0) + (ep.composite ? ` (+${ep.composite})` : '');
-    document.getElementById('statFile').textContent = ((ep.file ?? 0) + (ep.static ?? 0)) || '0';
-    document.getElementById('statEnvs').textContent = d.environments ?? '0';
+    animateCounter(document.getElementById('statSql'),   ep.sql ?? '0');
+    animateCounter(document.getElementById('statProxy'), (ep.proxy ?? 0) + (ep.composite ? ` (+${ep.composite})` : ''));
+    animateCounter(document.getElementById('statFile'),  ((ep.file ?? 0) + (ep.static ?? 0)) || '0');
+    animateCounter(document.getElementById('statEnvs'),  d.environments ?? '0');
 
     document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
     document.getElementById('healthUptime').textContent  = d.uptime ?? '—';
@@ -182,6 +197,38 @@ async function load() {
         '</div>'
       : '<span class="muted" style="font-size:0.8rem">No endpoints configured</span>';
   } catch(e) { console.error('overview', e); }
+
+  // ── MCP Status ────────────────────────────────────────────
+  try {
+    const settings = await fetch('/ui/api/settings').then(r => r.json());
+    const mcp = settings.mcp ?? {};
+    const mcpCard = document.getElementById('mcpCard');
+    const mcpBadge = document.getElementById('mcpBadge');
+    const mcpBody = document.getElementById('mcpBody');
+
+    if (mcp.enabled) {
+      mcpCard.hidden = false;
+      mcpBadge.textContent = 'Active';
+      mcpBadge.className = 'badge badge-success';
+      
+      const toolsRes = await fetch('/ui/api/mcp/tools').then(r => r.json()).catch(() => ({ count: 0 }));
+      const mcpCount = toolsRes.count ?? 0;
+      
+      mcpBody.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          <div class="kv-grid">
+            <span class="kv-key">Path</span><span class="kv-val">${esc(mcp.path || '/mcp')}</span>
+            <span class="kv-key">MCP Apps</span><span class="kv-val">${mcp.apps_enabled ? 'Enabled' : 'Disabled'}</span>
+            <span class="kv-key">Exposed Endpoints</span><span class="kv-val">${mcpCount}</span>
+          </div>
+        </div>`;
+    } else {
+      mcpCard.hidden = true;
+    }
+  } catch(e) {
+    document.getElementById('mcpCard').hidden = true;
+    console.error('mcp', e);
+  }
 }
 
 // ── SSE ────────────────────────────────────────────────────
@@ -234,11 +281,12 @@ function applyHealth(d) {
   document.getElementById('healthStatus').textContent = status || '—';
   const badge = document.getElementById('healthBadge');
   badge.textContent = status || 'unknown';
-  badge.className   = `badge ${ok ? 'badge-success' : status ? 'badge-warning' : 'badge-muted'}`;
+  badge.className   = `badge ${ok ? 'badge-success is-healthy' : status ? 'badge-warning' : 'badge-muted'}`;
 }
 
 load();
 connectSSE();
+SetupGuide.init('setupGuide');
 
 // ── Charts ─────────────────────────────────────────────────
 let _trafficChart, _errorChart;

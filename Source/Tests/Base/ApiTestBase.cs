@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -27,12 +28,20 @@ public class ApiTestBase : IDisposable
     protected readonly Mock<SqlMetadataService> _mockSqlMetadataService;
     protected readonly Mock<TokenService> _mockTokenService;
     protected readonly WebApplicationFactory<Program> _factory;
-    
+
     // Instead of mocking EnvironmentSettings, we'll create a test implementation
     protected readonly TestEnvironmentSettings _testEnvironmentSettings;
 
+    // Unique per-instance SQLite paths so parallel test runs don't race on the same file.
+    private readonly string _authDbPath;
+    private readonly string _mcpDbPath;
+
     public ApiTestBase()
     {
+        var id = Guid.NewGuid().ToString("N");
+        _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_auth.db");
+        _mcpDbPath  = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_mcp.db");
+
         _mockEnvironmentSettingsProvider = new Mock<IEnvironmentSettingsProvider>();
         _mockUrlValidator = new Mock<UrlValidator>(MockBehavior.Loose, "path");
         _mockODataToSqlConverter = new Mock<IODataToSqlConverter>();
@@ -87,6 +96,13 @@ public class ApiTestBase : IDisposable
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    // Isolate SQLite databases per test instance to prevent file-lock races.
+                    services.AddDbContext<PortwayApi.Auth.AuthDbContext>(opts =>
+                        opts.UseSqlite($"Data Source={_authDbPath}"),
+                        ServiceLifetime.Scoped, ServiceLifetime.Scoped);
+                    services.AddDbContextFactory<PortwayApi.Services.Mcp.McpConfigDbContext>(opts =>
+                        opts.UseSqlite($"Data Source={_mcpDbPath}"));
+
                     // Replace services with mocks
                     services.AddSingleton(_mockEnvironmentSettingsProvider.Object);
                     services.AddSingleton<EnvironmentSettings>(_testEnvironmentSettings); // Use our test implementation
@@ -122,6 +138,8 @@ public class ApiTestBase : IDisposable
     {
         _client.Dispose();
         _factory.Dispose();
+        if (File.Exists(_authDbPath)) File.Delete(_authDbPath);
+        if (File.Exists(_mcpDbPath))  File.Delete(_mcpDbPath);
     }
 
     // Helper method to add authorization header
