@@ -181,6 +181,39 @@ public static class SettingsEncryptionHelper
             return EncryptedHeader + Convert.ToBase64String(encryptedKeyIv) + "::" + Convert.ToBase64String(cipherBytes);
         }
 
+        /// <summary>
+        /// Decrypts a PWENC-encrypted value using the machine-bound private key.
+        /// Loads the private key automatically from .core/recovery.binlz4.
+        /// Returns false if the key cannot be loaded or decryption fails.
+        /// </summary>
+        public static bool TryDecryptValue(string encryptedContent, out string plainText)
+        {
+            plainText = encryptedContent;
+            if (!IsEncrypted(encryptedContent)) return false;
+
+            try
+            {
+                var certsPath      = Path.Combine(Directory.GetCurrentDirectory(), ".core");
+                var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
+                if (!File.Exists(privateKeyPath))
+                {
+                    Log.Warning("Cannot decrypt Chat:ApiKey — private key not found at {Path}", privateKeyPath);
+                    return false;
+                }
+
+                var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
+                var encryptionKey       = LoadEncryptionKey();
+                var privateKeyPem       = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
+                plainText = Decrypt(encryptedContent, privateKeyPem);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to decrypt PWENC value");
+                return false;
+            }
+        }
+
         public static string Decrypt(string encryptedContent, string privateKeyPem)
         {
             if (!IsEncrypted(encryptedContent))

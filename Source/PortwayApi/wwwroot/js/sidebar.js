@@ -103,14 +103,35 @@ function icon(paths) {
   return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
 }
 
-function renderSidebar() {
+function renderSidebar(mcpEnabled) {
   const aside = document.querySelector('aside');
   if (!aside) return;
 
   const currentPath = location.pathname.replace(/\/$/, '');
   const base = window.PortwayBase || '';
 
-  const groupsHtml = NAV_GROUPS.map((group, i) => {
+  let groups = [...NAV_GROUPS];
+
+  // Add MCP group if enabled
+  if (mcpEnabled) {
+    groups.splice(1, 0, {
+      label: 'MCP',
+      items: [
+        {
+          href: '/ui/mcp/chat',
+          label: 'Chat',
+          icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        },
+        {
+          href: '/ui/mcp/explorer',
+          label: 'Explorer',
+          icon: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+        },
+      ],
+    });
+  }
+
+  const groupsHtml = groups.map((group, i) => {
     const sep = i > 0 ? '<div class="nav-sep"></div>' : '';
     const items = group.items.map(item => {
       const href   = item.external ? item.href : base + item.href;
@@ -125,6 +146,9 @@ function renderSidebar() {
   }).join('\n  ');
 
   const currentTheme = _getTheme();
+  const isDarkNow = currentTheme === 'dark' ||
+    (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const nextTheme = isDarkNow ? 'light' : 'dark';
 
   aside.innerHTML = `
   <div class="brand select-none" onclick="toggleSidebar()" style="cursor:pointer;" title="Toggle sidebar">
@@ -141,42 +165,65 @@ function renderSidebar() {
         <a href="https://github.com/melosso/portway" target="_blank" rel="noopener" class="github-link">${GITHUB_SVG}</a>
         <span class="tooltip tooltip-above tooltip-right">View on GitHub</span>
       </span>
-      <button class="theme-toggle" onclick="cycleTheme()" title="Theme: ${currentTheme}">${_themeIcon(currentTheme)}</button>
+      <span class="tooltip-wrapper">
+        <button class="theme-toggle" onclick="cycleTheme()">${_themeIcon(currentTheme)}</button>
+        <span class="tooltip tooltip-above tooltip-right" id="themeTooltip">Theme: ${nextTheme}</span>
+      </span>
     </div>
     <button class="btn-logout" onclick="logout()">Log Out</button>
   </div>`;
-
-  // Populate version + OpenAPI icon
-  fetch((window.PortwayBase || '') + '/ui/api/overview')
-    .then(r => r.json())
-    .then(d => {
-      const v = (d.version ?? '').split('+')[0];
-      const el = document.getElementById('sidebarVersion');
-      if (el) el.textContent = v ? `v${v}` : '';
-
-      if (d.openapi_enabled) {
-        const meta = document.querySelector('.sidebar-footer-meta');
-        if (meta) {
-          const link = document.createElement('span');
-          link.className = 'tooltip-wrapper';
-          link.innerHTML = `<a href="${window.PortwayBase || ''}/docs" target="_blank" rel="noopener" class="github-link" aria-label="API Documentation">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-          </a>
-          <span class="tooltip tooltip-above tooltip-right">API Documentation</span>`;
-          // Insert before the GitHub link wrapper
-          const githubWrapper = meta.querySelector('.tooltip-wrapper');
-          meta.insertBefore(link, githubWrapper);
-        }
-      }
-    })
-    .catch(() => {});
 }
+
+// Fetch settings + overview, then render
+Promise.all([
+  fetch((window.PortwayBase || '') + '/ui/api/overview').then(r => r.json()),
+  fetch((window.PortwayBase || '') + '/ui/api/settings').then(r => r.json()).catch(() => ({ mcp: { enabled: false } }))
+]).then(([d, settings]) => {
+  const mcpEnabled = settings?.mcp?.enabled ?? false;
+
+  if (!mcpEnabled && location.pathname.startsWith((window.PortwayBase || '') + '/ui/mcp')) {
+    location.href = (window.PortwayBase || '') + '/ui/dashboard';
+    return;
+  }
+
+  renderSidebar(mcpEnabled);
+
+  const v = (d.version ?? '').split('+')[0];
+  const el = document.getElementById('sidebarVersion');
+  if (el && v) {
+    const label = `v${v}`;
+    const maxLen = 12;
+    if (label.length > maxLen) {
+      el.textContent = label.slice(0, maxLen) + '…';
+      el.title = label;
+      el.style.cursor = 'default';
+    } else {
+      el.textContent = label;
+    }
+  }
+
+  if (d.openapi_enabled) {
+    const meta = document.querySelector('.sidebar-footer-meta');
+    if (meta) {
+      const link = document.createElement('span');
+      link.className = 'tooltip-wrapper';
+      link.innerHTML = `<a href="${window.PortwayBase || ''}/docs" target="_blank" rel="noopener" class="github-link" aria-label="API Documentation">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+      </a>
+      <span class="tooltip tooltip-above tooltip-right">API Documentation</span>`;
+      const githubWrapper = meta.querySelector('.tooltip-wrapper');
+      meta.insertBefore(link, githubWrapper);
+    }
+  }
+}).catch(() => {
+  renderSidebar(false);
+});
 
 function logout() {
   var base = window.PortwayBase || '';
@@ -224,7 +271,9 @@ function cycleTheme() {
   _saveTheme(next);
   document.documentElement.setAttribute('data-theme', next);
   const btn = document.querySelector('.theme-toggle');
-  if (btn) { btn.innerHTML = _themeIcon(next); btn.title = `Theme: ${next}`; }
+  if (btn) { btn.innerHTML = _themeIcon(next); }
+  const tip = document.getElementById('themeTooltip');
+  if (tip) { tip.textContent = `Theme: ${next === 'dark' ? 'light' : 'dark'}`; }
 }
 
 function _themeIcon(theme) {

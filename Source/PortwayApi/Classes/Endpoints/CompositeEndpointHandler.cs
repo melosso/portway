@@ -13,12 +13,12 @@ using Serilog;
 public class CompositeEndpointHandler
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> _endpointMap;
+    private readonly Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> _endpointMap;
     private readonly string _serverName;
     
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type, List<string>? AllowedEnvironments)> endpointMap,
+        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpointMap,
         string serverName)
     {
         _httpClientFactory = httpClientFactory;
