@@ -48,6 +48,7 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Copy published output and tools
 COPY --from=build /app/publish .
+COPY start.sh /app/start.sh
 
 # Copy configuration files
 COPY Source/PortwayApi/environments/settings.json /app/environments/
