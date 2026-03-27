@@ -101,32 +101,32 @@
 const ENDPOINT_TYPES = [
   {
     key: 'sql', label: 'SQL', dotClass: 'dot-sql',
-    fields: ['name','methods','schema','object_name','object_type','allowed_columns','is_private','allowed_environments','documentation'],
-    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], IsPrivate: false }
+    fields: ['name','methods','schema','object_name','object_type','allowed_columns','is_private','is_mcp_exposed','allowed_environments','documentation'],
+    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false }
   },
   {
     key: 'proxy', label: 'Proxy', dotClass: 'dot-proxy',
-    fields: ['name','url','methods','is_private','allowed_environments','documentation'],
-    defaultContent: { Url: '', AllowedMethods: ['GET'], IsPrivate: false }
+    fields: ['name','url','methods','is_private','is_mcp_exposed','allowed_environments','documentation'],
+    defaultContent: { Url: '', AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false }
   },
   {
     key: 'composite', label: 'Composite', dotClass: 'dot-composite',
-    fields: ['name','methods','is_private','allowed_environments','composite_steps','documentation'],
-    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], IsPrivate: false, CompositeConfig: { Steps: [] } }
+    fields: ['name','methods','is_private','is_mcp_exposed','allowed_environments','composite_steps','documentation'],
+    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false, CompositeConfig: { Steps: [] } }
   },
   {
     key: 'file', label: 'File', dotClass: 'dot-file',
-    fields: ['name','methods','storage_type','base_directory','allowed_extensions','is_private','allowed_environments'],
-    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], IsPrivate: false }
+    fields: ['name','methods','storage_type','base_directory','allowed_extensions','is_private','is_mcp_exposed','allowed_environments'],
+    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], IsPrivate: false, IsMcpExposed: false }
   },
   {
     key: 'static', label: 'Static', dotClass: 'dot-static',
-    fields: ['name','methods','is_private','allowed_environments'],
-    defaultContent: { AllowedMethods: ['GET'], IsPrivate: false }
+    fields: ['name','methods','is_private','is_mcp_exposed','allowed_environments'],
+    defaultContent: { AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false }
   },
   {
     key: 'webhook', label: 'Webhook', dotClass: 'dot-webhook',
-    fields: ['methods','schema','object_name','allowed_columns','is_private','documentation'],
+    fields: ['methods','schema','object_name','allowed_columns','is_private','is_mcp_exposed','documentation'],
     defaultContent: null // fixed file
   }
 ];
@@ -236,7 +236,27 @@ function renderList() {
   const items = getFilteredItems();
 
   if (!items.length) {
-    scroll.innerHTML = `<div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">No endpoints found</div>`;
+    const totalAll = Object.values(_allData).reduce((s, a) => s + (a?.length ?? 0), 0);
+    const isFiltered = (document.getElementById('epSearch')?.value ?? '').length > 0 || _activeTab !== 'all';
+    if (isFiltered || totalAll > 0) {
+      scroll.innerHTML = `<div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">No endpoints found</div>`;
+    } else {
+      scroll.innerHTML =
+        `<div style="padding:1.75rem 1.5rem;display:flex;flex-direction:column;gap:0.6rem">` +
+          `<div style="font-size:0.82rem;font-weight:500;color:hsl(var(--foreground))">No endpoints configured</div>` +
+          `<div style="font-size:0.76rem;color:hsl(var(--muted-foreground));line-height:1.5">` +
+            `Add an <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">entity.json</code> ` +
+            `file inside the <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">endpoints/</code> directory to register a SQL, Proxy, or Static endpoint.` +
+          `</div>` +
+          `<pre style="font-size:0.72rem;color:hsl(var(--muted-foreground));line-height:1.6;margin:0.25rem 0 0;` +
+            `background:hsl(var(--muted));border-radius:4px;padding:0.65rem 0.75rem;overflow:hidden">` +
+            `endpoints/\n` +
+            `└── SQL/\n` +
+            `    └── Products/\n` +
+            `        └── entity.json` +
+          `</pre>` +
+        `</div>`;
+    }
     return;
   }
 
@@ -328,9 +348,9 @@ function renderDetail() {
     </div>
     <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">
       <button class="btn btn-outline btn-sm" onclick="reloadDetail()">Discard</button>
-      <button class="btn btn-primary btn-sm" onclick="saveEndpoint()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save
+      <button id="epSaveBtn" class="btn btn-primary btn-sm" onclick="saveEndpoint()">
+        <span class="btn-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</span>
+        <span class="btn-spinner"></span>
       </button>
     </div>`;
 }
@@ -585,6 +605,13 @@ function renderSqlForm(c) {
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldMethods(c.AllowedMethods)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
+      </div>
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
@@ -616,6 +643,13 @@ function renderProxyForm(c) {
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
+      </div>
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
@@ -643,6 +677,13 @@ function renderCompositeForm(c) {
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
+      </div>
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
@@ -673,6 +714,13 @@ function renderFileForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
+      </div>
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
@@ -697,6 +745,13 @@ function renderStaticForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
+      </div>
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
@@ -723,6 +778,13 @@ function renderWebhookForm(c) {
       ${fieldColumns('allowedCols', 'Allowed Tables', c.AllowedColumns)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
+        <label class="switch" onclick="event.stopPropagation()">
+          <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
+          <span class="slider"></span>
+        </label>
+        <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
+      </div>
     </div>
     <div class="ep-section">
       <div class="ep-section-title">Metadata</div>
@@ -811,6 +873,7 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         AllowedEnvironments:  envs,
         AllowedMethods:       methods,
         Procedure:            document.getElementById('procedure')?.value?.trim() || undefined,
@@ -841,6 +904,7 @@ function collectFormConfig(type, existingContent) {
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
         Documentation:        doc ?? undefined,
@@ -858,6 +922,7 @@ function collectFormConfig(type, existingContent) {
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         CompositeConfig: {
           ...c.CompositeConfig,
           Name:        document.getElementById('compositeConfigName')?.value?.trim() || undefined,
@@ -880,6 +945,7 @@ function collectFormConfig(type, existingContent) {
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         Documentation:        doc ?? undefined,
       };
     }
@@ -895,6 +961,7 @@ function collectFormConfig(type, existingContent) {
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         Documentation:        doc ?? undefined,
       };
     }
@@ -913,6 +980,7 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         RequiredColumns:      reqCols.length ? reqCols : undefined,
         ColumnValidation:     readJsonField('columnValidation'),
         Documentation:        doc ?? undefined,
@@ -922,38 +990,39 @@ function collectFormConfig(type, existingContent) {
   return {};
 }
 
-// Save 
+// Save
 async function saveEndpoint() {
   if (!_selected || !_detailData) return;
   const { type, name } = _selected;
+  const saveBtn = document.getElementById('epSaveBtn');
+  saveBtn?.classList.add('is-loading');
 
   let body;
-  if (_rawMode) {
-    const raw = document.getElementById('rawContent')?.value ?? '';
-    try { JSON.parse(raw); } catch(e) { showToast('Invalid JSON: ' + e.message, 'error'); return; }
-    body = { content: raw };
-    try {
+  try {
+    if (_rawMode) {
+      const raw = document.getElementById('rawContent')?.value ?? '';
+      try { JSON.parse(raw); } catch(e) { showToast('Invalid JSON: ' + e.message, 'error'); return; }
+      body = { content: raw };
       const r = await fetch(`/ui/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? r.statusText);
       showToast('Saved', 'success');
       _dirty = false;
       await refreshAll();
-    } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
-  } else {
-    const errs = validateForm(type);
-    if (errs.length) { showToast(errs[0], 'error'); return; }
-    const cfg = collectFormConfig(type, _detailData.content);
-    body = { content: cfg };
-    try {
+    } else {
+      const errs = validateForm(type);
+      if (errs.length) { showToast(errs[0], 'error'); return; }
+      const cfg = collectFormConfig(type, _detailData.content);
+      body = { content: cfg };
       const r = await fetch(`/ui/api/endpoints/${type}/${name}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? r.statusText);
       showToast('Saved', 'success');
       _dirty = false;
       await refreshAll();
-    } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
-  }
+    }
+  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+  finally { saveBtn?.classList.remove('is-loading'); }
 }
 
 function toggleRawMode() {

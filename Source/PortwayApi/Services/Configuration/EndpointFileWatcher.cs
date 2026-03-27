@@ -6,6 +6,7 @@ using Serilog;
 using PortwayApi.Classes;
 using PortwayApi.Classes.Configuration;
 using PortwayApi.Services;
+using PortwayApi.Services.Mcp;
 
 namespace PortwayApi.Services.Configuration;
 
@@ -19,6 +20,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
     private readonly IOptionsMonitor<EndpointReloadingOptions> _optionsMonitor;
     private readonly SseBroadcaster? _broadcaster;
     private readonly ReloadTracker _reloadTracker;
+    private readonly McpEndpointRegistry? _mcpRegistry;
     private FileSystemWatcher? _fileWatcher;
     private readonly ConcurrentDictionary<string, DateTime> _lastReloadTimes = new();
     private readonly Channel<(string Path, WatcherChangeTypes Type)> _eventChannel =
@@ -34,7 +36,8 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         SqlMetadataService sqlMetadataService,
         IOptionsMonitor<EndpointReloadingOptions> optionsMonitor,
         ReloadTracker reloadTracker,
-        SseBroadcaster? broadcaster = null)
+        SseBroadcaster? broadcaster = null,
+        McpEndpointRegistry? mcpRegistry = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
         _endpointsPath  = Path.Combine(baseDir, "endpoints");
@@ -42,6 +45,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         _optionsMonitor = optionsMonitor;
         _reloadTracker  = reloadTracker;
         _broadcaster    = broadcaster;
+        _mcpRegistry    = mcpRegistry;
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
@@ -168,6 +172,10 @@ public class EndpointFileWatcher : IHostedService, IDisposable
                 Log.Information("Endpoint '{Name}' ({Type}, namespace: {Namespace}) changed, will reload on next request", endpointName, endpointType, ns);
             else
                 Log.Information("Endpoint '{Name}' ({Type}) changed, will reload on next request", endpointName, endpointType);
+
+            // Re-populate the MCP registry so IsMcpExposed changes take effect without restart
+            _mcpRegistry?.Refresh();
+
             _reloadTracker.RecordEndpointReload();
             _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "endpoints" }));
         }

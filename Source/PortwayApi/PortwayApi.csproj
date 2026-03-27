@@ -41,6 +41,7 @@
     <!-- Entity Framework & Databases -->
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="MySqlConnector" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />

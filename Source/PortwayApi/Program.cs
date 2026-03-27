@@ -16,6 +16,7 @@ using PortwayApi.Services;
 using PortwayApi.Services.Caching;
 using PortwayApi.Services.Configuration;
 using PortwayApi.Services.Health;
+using PortwayApi.Services.Mcp;
 using PortwayApi.Services.Providers;
 using PortwayApi.Services.Telemetry;
 using Serilog;
@@ -137,18 +138,28 @@ try
     builder.Services.AddRequestTrafficLogging(builder.Configuration);
     builder.Services.AddHttpContextAccessor();
 
-    // Configure CORS
+    // Configure CORS — never use AllowAnyOrigin() in production; require explicit allowlist.
+    // Operators configure allowed origins via WebUi:CorsOrigins in appsettings.json or env vars.
+    var corsOrigins = builder.Configuration.GetSection("WebUi:CorsOrigins").Get<string[]>() ?? [];
     if (!builder.Environment.IsDevelopment())
     {
         builder.Services.AddCors(options =>
         {
-            options.AddPolicy("AllowAllOrigins",
-                builder =>
+            options.AddPolicy("AllowConfiguredOrigins", policy =>
+            {
+                if (corsOrigins.Length > 0)
                 {
-                    builder.AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader();
-                });
+                    policy.WithOrigins(corsOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader()
+                          .AllowCredentials();
+                }
+                else
+                {
+                    // No origins configured — block all cross-origin requests
+                    policy.SetIsOriginAllowed(_ => false);
+                }
+            });
         });
     }
 
@@ -183,6 +194,9 @@ try
     // HTTP client and SQL/OData services
     builder.Services.AddPortwayProxyHttpClient(builder.Configuration);
     builder.Services.AddPortwaySqlServices(builder.Configuration);
+    
+    // MCP services (conditionally enabled)
+    builder.Services.AddMcpServices(builder.Configuration);
 
     // Initialize endpoints directories
     DirectoryHelper.EnsureDirectoryStructure();
@@ -233,7 +247,23 @@ try
 
     // Build the application
     var app = builder.Build();
+
     var adminApiKey = builder.Configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
+
+    // Reject the shipped placeholder key in production — disable Web UI auth and warn loudly.
+    // In Development the placeholder is intentionally allowed for local testing convenience.
+    const string PlaceholderKey = "INSECURE-CHANGE-ME-admin-api-key";
+    if (adminApiKey == PlaceholderKey && !app.Environment.IsDevelopment())
+    {
+        Log.Error("WebUi:AdminApiKey is set to the default placeholder value. " +
+                  "Web UI authentication has been DISABLED. Set a strong, unique key (≥32 chars) to enable it.");
+        adminApiKey = "";
+    }
+    else if (!string.IsNullOrEmpty(adminApiKey) && adminApiKey.Length < 32 && !app.Environment.IsDevelopment())
+    {
+        Log.Warning("WebUi:AdminApiKey is shorter than 32 characters. Consider using a longer, randomly generated key.");
+    }
+
     var publicOrigins = builder.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
     var enableLandingPage = builder.Configuration.GetValue<bool>("WebUi:EnableLandingPage", true);
     var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE") 
@@ -442,15 +472,16 @@ try
 
     if (!builder.Environment.IsDevelopment())
     {
-        app.UseCors("AllowAllOrigins");
+        app.UseCors("AllowConfiguredOrigins");
     }
     else
     {
-        app.UseCors(builder =>
+        // Development only: allow all origins for local testing convenience
+        app.UseCors(corsBuilder =>
         {
-            builder.AllowAnyOrigin()
-                   .AllowAnyMethod()
-                   .AllowAnyHeader();
+            corsBuilder.AllowAnyOrigin()
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
         });
     }
 
@@ -465,6 +496,24 @@ try
     app.UseAuthenticatedCaching();
     app.UseRequestTrafficLogging();
     app.UseRouting();
+
+    // Initialise MCP config DB (mcp.db) — runs unconditionally so the setup wizard works
+    // even before Mcp:Enabled is set to true.
+    using (var mcpScope = app.Services.CreateScope())
+    {
+        try
+        {
+            var mcpDbFactory = mcpScope.ServiceProvider
+                .GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<PortwayApi.Services.Mcp.McpConfigDbContext>>();
+            await using var mcpDb = await mcpDbFactory.CreateDbContextAsync();
+            mcpDb.Database.EnsureCreated();
+            mcpDb.EnsureTablesCreated();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "MCP config database initialisation failed");
+        }
+    }
 
     using (var scope = app.Services.CreateScope())
     {
@@ -538,6 +587,130 @@ try
 
     // Map health check endpoints
     PortwayApi.Endpoints.HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
+    
+    // Map MCP endpoints (conditionally enabled)
+    var mcpEnabled = builder.Configuration.GetValue<bool>("Mcp:Enabled", false);
+    if (mcpEnabled)
+    {
+        var mcpRegistry     = app.Services.GetRequiredService<McpEndpointRegistry>();
+        var mcpAppsProvider = app.Services.GetRequiredService<McpAppsResourceProvider>();
+        
+        // Collect all MCP-exposed endpoints
+        var mcpEndpoints = new List<EndpointMcpInfo>();
+        
+        // Helper to add MCP-exposed endpoints from EndpointDefinition dictionaries
+        void AddMcpEndpoints(Dictionary<string, EndpointDefinition> endpoints)
+        {
+            foreach (var kvp in endpoints)
+            {
+                if (kvp.Value.IsMcpExposed)
+                {
+                    var endpointKind = kvp.Value.Type switch {
+                        EndpointType.Static => "static",
+                        EndpointType.Files  => "file",
+                        _                   => "api"
+                    };
+                    mcpEndpoints.Add(new EndpointMcpInfo
+                    {
+                        Name = kvp.Value.EndpointName,
+                        Namespace = kvp.Value.EffectiveNamespace,
+                        Url = kvp.Value.Url,
+                        // File endpoints: POST (upload) and DELETE are not useful in chat — GET only
+                        Methods = kvp.Value.Type == EndpointType.Files
+                            ? kvp.Value.Methods.Where(m => m.Equals("GET", StringComparison.OrdinalIgnoreCase)).ToList()
+                            : kvp.Value.Methods,
+                        AllowedEnvironments = kvp.Value.AllowedEnvironments,
+                        MethodDescriptions = kvp.Value.Documentation?.MethodDescriptions,
+                        Description = kvp.Value.Documentation?.TagDescription ?? kvp.Value.Documentation?.Description,
+                        AvailableFields = kvp.Value.AllowedColumns is { Count: > 0 }
+                            // Strip Portway alias syntax (e.g. "ItemCode;ProductNumber" → "ProductNumber")
+                            ? kvp.Value.AllowedColumns
+                                .Select(c => c.Contains(';') ? c[(c.IndexOf(';') + 1)..] : c)
+                                .ToList()
+                            : null,
+                        ContentType = kvp.Value.Properties?.TryGetValue("ContentType", out var ct) == true
+                            ? ct?.ToString() : null,
+                        EndpointKind = endpointKind,
+                        Instruction = kvp.Value.Mcp?.Instruction
+                    });
+                }
+            }
+        }
+        
+        // Helper for GetEndpoints which returns tuples
+        void AddMcpEndpointsFromTuple(Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpoints)
+        {
+            foreach (var kvp in endpoints)
+            {
+                if (kvp.Value.IsMcpExposed)
+                {
+                    mcpEndpoints.Add(new EndpointMcpInfo
+                    {
+                        Name = kvp.Key,
+                        Url = kvp.Value.Url,
+                        Methods = kvp.Value.Methods.ToList(),
+                        AllowedEnvironments = kvp.Value.AllowedEnvironments
+                    });
+                }
+            }
+        }
+        
+        // Local function: builds the full MCP endpoint list and registers it.
+        // Stored as a delegate so EndpointFileWatcher can re-run it after hot-reload.
+        void RefreshMcpRegistry()
+        {
+            mcpEndpoints.Clear();
+            AddMcpEndpoints(EndpointHandler.GetSqlEndpoints());
+            AddMcpEndpointsFromTuple(EndpointHandler.GetEndpoints(proxyEndpointsDirectory));
+            AddMcpEndpoints(EndpointHandler.GetSqlWebhookEndpoints());
+            AddMcpEndpoints(EndpointHandler.GetFileEndpoints());
+            AddMcpEndpoints(EndpointHandler.GetStaticEndpoints());
+            mcpRegistry.RegisterEndpoints(mcpEndpoints);
+            var html = McpAppsResourceProvider.GenerateEndpointExplorerHtml(mcpEndpoints);
+            mcpAppsProvider.RegisterUiResource("ui://portway/endpoint-explorer", html);
+            Log.Information("MCP registry refreshed: {Count} tools registered", mcpEndpoints.Count);
+        }
+
+        AddMcpEndpoints(sqlEndpointList);
+        AddMcpEndpointsFromTuple(proxyEndpointMap);
+        AddMcpEndpoints(webhookEndpoints);
+        AddMcpEndpoints(fileEndpoints);
+        AddMcpEndpoints(staticEndpoints);
+
+        mcpRegistry.RegisterEndpoints(mcpEndpoints);
+
+        // Wire up hot-reload: when endpoint files change, re-build the registry from disk
+        mcpRegistry.RefreshAction = RefreshMcpRegistry;
+
+        // Register MCP Apps UI resources
+        var explorerHtml = McpAppsResourceProvider.GenerateEndpointExplorerHtml(mcpEndpoints);
+        mcpAppsProvider.RegisterUiResource("ui://portway/endpoint-explorer", explorerHtml);
+
+        // Initialize the MCP protocol tools
+        PortwayMcpTools.Initialize(mcpRegistry, mcpAppsProvider);
+
+        // Add MCP Apps UI resource endpoint
+        app.MapGet("/mcp/apps/{*path}", async (HttpContext context, CancellationToken ct) =>
+        {
+            var path = context.Request.RouteValues["path"]?.ToString() ?? "";
+            var resourceUri = $"ui://portway/{path.TrimStart('/')}";
+
+            if (mcpAppsProvider.GetUiResource(resourceUri) is { } html)
+            {
+                context.Response.ContentType = "text/html; profile=mcp-app";
+                await context.Response.WriteAsync(html, ct);
+                return;
+            }
+
+            context.Response.StatusCode = 404;
+        }).ExcludeFromDescription();
+
+        Log.Information("MCP Apps support enabled, resources registered: {Count}", mcpAppsProvider.GetAllResources().Count);
+    }
+    
+    app.MapMcpEndpoints(builder.Configuration);
+    if (builder.Configuration.GetValue<bool>("Mcp:Enabled", false))
+        app.MapMcpChatEndpoints();
 
     // Web UI Routes
     if (!string.IsNullOrEmpty(adminApiKey))
@@ -560,6 +733,37 @@ try
             timestamp = DateTime.UtcNow
         });
     });
+
+    // Pre-flight: verify configured ports are available before Kestrel tries to bind.
+    // Resolves the same URL list that the else-branch below uses as a fallback.
+    var urlsToCheck = app.Urls.Count > 0
+        ? app.Urls
+        : (Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
+            ?? builder.Configuration["Kestrel:Endpoints:Http:Url"]
+            ?? builder.Configuration["urls"]
+            ?? "http://localhost:5000").Split(';');
+
+    foreach (var rawUrl in urlsToCheck)
+    {
+        if (!Uri.TryCreate(rawUrl.Trim(), UriKind.Absolute, out var uri)) continue;
+        if (uri.Scheme is not ("http" or "https")) continue;
+
+        try
+        {
+            var address = uri.Host is "localhost" or "0.0.0.0" or "*" or "+"
+                ? System.Net.IPAddress.Loopback
+                : System.Net.IPAddress.Parse(uri.Host);
+
+            using var probe = new System.Net.Sockets.TcpListener(address, uri.Port);
+            probe.Start();
+            probe.Stop();
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            Log.Fatal("Port {Port} is already in use. Stop the existing process and try again.", uri.Port);
+            return;
+        }
+    }
 
     // Log application URLs
     var urls = app.Urls;
@@ -614,6 +818,7 @@ finally
 {
     Log.CloseAndFlush();
 }
+
 
 /// Parses "/api/{env}/{name}" or "/webhook/{env}/{name}" → "{name}" (or "{env}/composite/{name}" → "composite/{name}")
 static string ParseEndpointName(string? path)

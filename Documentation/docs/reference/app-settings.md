@@ -415,6 +415,46 @@ Controls OpenTelemetry export over OTLP (gRPC). Disabled by default — no colle
 
 `ResourceAttributes` follows the same key=value,key=value format as the OTEL_RESOURCE_ATTRIBUTES environment variable. Environment variables with the OTEL_ prefix still override appsettings.json values when set, following standard .NET configuration precedence.
 
+## MCP Configuration
+
+Controls the Model Context Protocol server and built-in Chat feature.
+
+### Configuration Structure
+
+```json
+{
+  "Mcp": {
+    "Enabled": true,
+    "Path": "/mcp",
+    "RequireAuthentication": true,
+    "AppsEnabled": true,
+    "ChatEnabled": false,
+    "DefaultPageSize": 50,
+    "MaxPageSize": 200,
+    "ToolTimeoutSeconds": 30,
+    "MaxToolResultChars": 12000
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Enabled` | boolean | `false` | Activate the MCP HTTP server |
+| `Path` | string | `"/mcp"` | HTTP path the MCP server is mounted on |
+| `RequireAuthentication` | boolean | `true` | Require a valid Portway Bearer token on MCP requests |
+| `AppsEnabled` | boolean | `true` | Register embedded UI resources as MCP resource URIs |
+| `ChatEnabled` | boolean | `false` | Activate the Chat UI and SSE endpoint. Provider and credentials are configured via the setup wizard, not in this file |
+| `DefaultPageSize` | integer | `50` | Rows added as `$top` when the AI model omits a page size |
+| `MaxPageSize` | integer | `200` | Maximum `$top` value; the server clamps higher values to this limit |
+| `ToolTimeoutSeconds` | integer | `30` | HTTP timeout for internal tool-execution calls |
+| `MaxToolResultChars` | integer | `12000` | Maximum characters kept from a single tool result; longer results are truncated |
+
+:::info
+Chat credentials (provider, model, API key) are stored in the encrypted `mcp.db` database and managed through the Chat setup wizard. They are not configured in `appsettings.json`. An environment variable `PORTWAY_CHAT_API_KEY` can be used instead of the database entry; it takes precedence if set.
+:::
+
 ## Log Settings
 
 ### Configuration Structure
@@ -615,6 +655,7 @@ For production, restrict to specific domains:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
+| `PORTWAY_CHAT_API_KEY` | AI provider API key for Chat. Takes precedence over the encrypted database entry when set. | `sk-ant-...` |
 | `Use_HTTPS` | Whether Kestrel serves HTTPS directly (see note) | `false` |
 | `KEYVAULT_URI` | Azure Key Vault URI | `https://vault.azure.net` |
 | `PROXY_USERNAME` | Proxy authentication user | `domain\user` |
@@ -622,6 +663,7 @@ For production, restrict to specific domains:
 | `PROXY_DOMAIN` | Proxy domain | `CONTOSO` |
 | `AllowedHosts` | Allowed host names | `*` |
 | `PathBase` | Base path | `/api` |
+| `Mcp__ChatEnabled` | Override `Mcp:ChatEnabled` at runtime | `true` |
 | `WebUi__AdminApiKey` | Web UI password | `secret` |
 | `WebUi__PublicOrigins__0` | CORS origin (array) | `https://example.com` |
 | `WebUi__SecureCookies` | Secure cookies | `true` |

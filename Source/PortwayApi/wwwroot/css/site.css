@@ -250,7 +250,7 @@ body.sidebar-expanding main {
     white-space: nowrap;
 }
 
-.nav-item svg { flex-shrink: 0; opacity: 0.7; }
+.nav-item svg { flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
 .nav-item:hover { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); }
 .nav-item.active { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); font-weight: 500; }
 .nav-item.active svg { opacity: 1; }
@@ -334,9 +334,14 @@ h1 {
     align-items: center;
     gap: 0.375rem;
     font-family: inherit;
-    transition: background 0.15s, opacity 0.15s;
+    transition: background 0.15s, opacity 0.15s, transform 0.08s ease;
     text-decoration: none;
     white-space: nowrap;
+}
+
+.btn:active:not(:disabled) {
+    transform: translateY(1px);
+    opacity: 0.82;
 }
 
 .btn svg { flex-shrink: 0; }
@@ -956,8 +961,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: hsl(var(--primary));
 .sidebar-footer-meta {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 0.25rem;
     padding: 0 0.25rem 0 0;
+}
+
+.sidebar-footer-meta .sidebar-version {
+    margin-right: auto;
 }
 
 .btn-logout {
@@ -2464,16 +2473,19 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 .dialog-wrapper {
     position: fixed;
     inset: 0;
-    z-index: 300;
+    z-index: 9000;
 }
 
 .dialog-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
+    z-index: 9000;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     opacity: 0;
-    transition: opacity 0.2s;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2482,6 +2494,7 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 
 .dialog-overlay.open {
     opacity: 1;
+    pointer-events: auto;
 }
 
 .dialog {
@@ -2496,12 +2509,15 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transform: scale(0.95);
-    transition: transform 0.2s;
 }
 
 .dialog-overlay.open .dialog {
-    transform: scale(1);
+    animation: dialogIn 0.15s ease;
+}
+
+@keyframes dialogIn {
+    from { transform: scale(0.96) translateY(6px); opacity: 0; }
+    to   { transform: scale(1)    translateY(0);   opacity: 1; }
 }
 
 .dialog-small { max-width: 360px; }
@@ -2817,7 +2833,7 @@ body.has-promo .auth-overlay {
     opacity: 0.8;
 }
 
-/* ── Chart Period Selector ──────────────────────────────── */
+/* Chart Period Selector */
 
 .cps-tabs {
     display: flex;
@@ -2851,7 +2867,7 @@ body.has-promo .auth-overlay {
     box-shadow: 0 1px 3px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--border));
 }
 
-/* ── Chart Tooltip ──────────────────────────────────────── */
+/* Chart Tooltip */
 
 .chart-tooltip {
     position: absolute;
@@ -2878,4 +2894,57 @@ body.has-promo .auth-overlay {
 .chart-tooltip-value {
     color: hsl(var(--foreground));
     font-weight: 600;
+}
+/* ── Delight: micro-interactions ─────────────────────────────────────────── */
+
+/* Refresh icon — spins while data loads */
+@keyframes portway-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.btn.is-refreshing svg {
+    animation: portway-spin 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+}
+
+/* Health badge — gentle breathing pulse when system is healthy */
+@keyframes portway-health-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+
+.badge-success.is-healthy {
+    animation: portway-health-pulse 2.8s ease-in-out infinite;
+}
+
+/* Copy button — brief scale pop when clipboard write succeeds */
+@keyframes portway-check-pop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+}
+
+.btn.is-check {
+    animation: portway-check-pop 0.22s ease-out forwards;
+    color: hsl(var(--success));
+}
+
+/* Page entrance — single-frame fade so content doesn't flash in */
+@keyframes portway-fadein {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+main {
+    animation: portway-fadein 0.18s ease-out both;
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .btn.is-refreshing svg          { animation: none; }
+    .badge-success.is-healthy       { animation: none; }
+    .btn:active:not(:disabled)      { transform: none; }
+    .btn.is-check                   { animation: none; }
+    main                            { animation: none; }
 }

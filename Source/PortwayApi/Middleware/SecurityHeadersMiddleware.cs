@@ -56,8 +56,6 @@ public class SecurityHeadersMiddleware
             // Minimal, restrictive permissions policy
             { "Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=()" },
             
-            // HTTP Strict Transport Security (HSTS)
-            { "Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload" }
         };
     }
 
@@ -94,6 +92,13 @@ public class SecurityHeadersMiddleware
 
             // Add security headers
             AddSecurityHeaders(context.Response.Headers);
+
+            // HSTS: only emit over HTTPS to prevent browsers caching it for HTTP-only deployments
+            // (e.g. Docker behind a TLS-terminating reverse proxy with plain HTTP internally)
+            if (context.Request.IsHttps)
+            {
+                context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+            }
 
             return Task.CompletedTask;
         });

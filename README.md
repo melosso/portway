@@ -4,11 +4,11 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-**Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in OData support, handling critical requirements like environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting automatically.
+**Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in MCP, OData-support, and native environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting.
 
 Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
-> 📍 <a href="https://portway.melosso.com/" target="_blank" rel="noopener noreferrer">Landing Page</a>   |   📜 <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">Documentation</a>   |   🐋 <a href="https://portway-docs.melosso.com/guide/docker-compose.html" target="_blank" rel="noopener noreferrer">Docker Compose</a>   |   ✨ <a href="https://portway-demo.melosso.com/" target="_blank" rel="noopener noreferrer">Live demo</a>
+> 📜 <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">Documentation</a>   |   🐋 <a href="https://portway-docs.melosso.com/guide/docker-compose.html" target="_blank" rel="noopener noreferrer">Docker Compose</a>   |   ✨ <a href="https://portway-demo.melosso.com/" target="_blank" rel="noopener noreferrer">Live demo</a>
 
 A quick example to give you an idea of what this is all about:
 
@@ -442,6 +442,9 @@ The application uses <a href="https://github.com/scalar/scalar" target="_blank" 
 ### Schema discovery
 Portway automatically generates API documentation by reading your **database objects** at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. 
 If you're using Windows Authentication with `Trusted_Connection=True`, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. This isn't necessary when you use SQL Authentication, but make sure each environment uses its own credentials.
+
+### Model Context Protocol (MCP)
+The application also can act as a MCP server over HTTP. Your endpoints can appear in the MCP tool registry and becomes callable by any MCP-compatible client, e.g. Mistral, VS Code Copilot, custom agents, or the built-in Chat UI. Beware that this is opt-in, meaning all endpoints are not exposed as tool by default. Portway's own authentication and environment scoping apply to every tool call. Please read more on MCP integration at <a href="https://portway-docs.melosso.com/guide/mcp.html" target="_blank" rel="noopener noreferrer">MCP documentation</a>.
 
 ### Walkthrough
 Our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
