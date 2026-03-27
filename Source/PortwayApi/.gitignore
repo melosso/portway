@@ -72,6 +72,8 @@ auth.db-wal
 metrics.db
 metrics.db-shm
 metrics.db-wal
+*.db-shm
+*.db-wal
 *.local.json
 *.Development.json
 
