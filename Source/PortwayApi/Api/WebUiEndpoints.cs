@@ -647,7 +647,16 @@ public static class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/settings", (IConfiguration config) => Results.Json(new
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Mcp.McpConfigService? mcpConfig) =>
+        {
+            PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
+            if (mcpConfig is not null)
+            {
+                try { chatCfg = await mcpConfig.GetConfigAsync(); }
+                catch { /* non-fatal — chat section will show defaults */ }
+            }
+
+            return Results.Json(new
         {
             rate_limiting = new
             {
@@ -701,11 +710,45 @@ public static class WebUiEndpointExtensions
             },
             chat = new
             {
-                enabled  = config.GetValue<bool>("Chat:Enabled"),
-                provider = config.GetValue<string>("Chat:Provider") ?? "Anthropic",
-                model    = config.GetValue<string>("Chat:Model") ?? "claude-sonnet-4-6"
+                enabled    = config.GetValue<bool>("Mcp:ChatEnabled"),
+                configured = chatCfg?.IsConfigured ?? false,
+                provider   = chatCfg?.Provider ?? string.Empty,
+                model      = chatCfg?.Model ?? string.Empty
             }
-        })).ExcludeFromDescription();
+        });
+        }).ExcludeFromDescription();
+
+        // ── MCP Configuration endpoints ───────────────────────────────────────────
+        // Returns masked status (never returns the raw API key).
+        app.MapGet("/ui/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
+        {
+            var status = await mcpConfig.GetStatusAsync();
+            return Results.Json(status);
+        }).ExcludeFromDescription();
+
+        // Saves provider/model/apiKey/internalApiToken to the encrypted DB.
+        // Accepts partial updates — omit a field to leave it unchanged.
+        app.MapPost("/ui/api/mcp/config", async (
+            HttpRequest request,
+            PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
+        {
+            System.Text.Json.Nodes.JsonNode? body = null;
+            try { body = await System.Text.Json.Nodes.JsonNode.ParseAsync(request.Body); }
+            catch { return Results.BadRequest(new { error = "Invalid JSON body" }); }
+
+            var provider         = body?["provider"]?.GetValue<string>();
+            var model            = body?["model"]?.GetValue<string>();
+            var apiKey           = body?["apiKey"]?.GetValue<string>();
+            var internalApiToken = body?["internalApiToken"]?.GetValue<string>();
+
+            if (provider is not null && string.IsNullOrWhiteSpace(provider))
+                return Results.BadRequest(new { error = "provider cannot be blank" });
+            if (apiKey is not null && string.IsNullOrWhiteSpace(apiKey))
+                return Results.BadRequest(new { error = "apiKey cannot be blank" });
+
+            await mcpConfig.SaveConfigAsync(provider, model, apiKey, internalApiToken);
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
 
         // Token management endpoints
         app.MapGet("/ui/api/tokens", async (HttpRequest request, TokenService tokenService) =>

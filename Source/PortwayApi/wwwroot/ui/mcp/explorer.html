@@ -74,7 +74,18 @@ function boolItem(label, value, desc) {
 async function load() {
   try {
     const settings = await fetch('/ui/api/settings').then(r => r.json());
-    const mcp = settings.mcp || {};
+    const mcp  = settings.mcp  || {};
+    const chat = settings.chat || {};
+
+    // Show a setup banner if chat is enabled but not yet configured.
+    if (chat.enabled && !chat.configured) {
+      const banner = document.createElement('div');
+      banner.className = 'setup-banner';
+      banner.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '<span>Chat is enabled but not configured. <a href="/ui/mcp/chat">Open Chat</a> to complete setup.</span>';
+      document.querySelector('.page-body').prepend(banner);
+    }
 
     document.getElementById('mcpConfig').innerHTML = [
       settingItem('Accessible from path', mcp.path || '/mcp'),
@@ -155,6 +166,20 @@ load();
 </script>
 
 <style>
+.setup-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  background: color-mix(in srgb, hsl(var(--warning, 38 92% 50%)) 10%, transparent);
+  border: 1px solid color-mix(in srgb, hsl(var(--warning, 38 92% 50%)) 40%, transparent);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--text-primary, hsl(var(--foreground)));
+}
+.setup-banner svg { flex-shrink: 0; color: hsl(var(--warning, 38 92% 50%)); }
+.setup-banner a { color: inherit; font-weight: 600; }
 .method-badge {
   padding: 2px 6px;
   border-radius: 4px;

@@ -86,6 +86,22 @@ public static class McpChatEndpoints
             await chat.StreamAsync(history, environment, writer, baseUrl, bearerToken, locale, context.RequestAborted);
         }).ExcludeFromDescription();
 
+        // MCP health — exposes operational status without requiring full tool enumeration.
+        // Used by ops dashboards and monitoring tools to verify MCP is healthy.
+        app.MapGet("/ui/api/mcp/health", (McpChatService chat) =>
+        {
+            var tools   = chat.GetToolDefinitions();
+            var missing = chat.GetMissingMetadataEndpoints();
+            return Results.Json(new
+            {
+                enabled             = chat.IsEnabled,
+                toolCount           = tools.Count,
+                missingMetadata     = missing.Count,
+                missingMetadataKeys = missing,
+                providerConfigured  = chat.IsEnabled
+            });
+        }).ExcludeFromDescription();
+
         return app;
     }
 }

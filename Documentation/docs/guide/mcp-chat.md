@@ -8,54 +8,39 @@ MCP Chat connects an AI model to the Portway MCP tool registry. When you send a 
 MCP Chat requires the MCP server to be enabled. Set `Mcp:Enabled: true` and expose at least one endpoint with `"Mcp": { "Exposed": true }` before configuring Chat.
 :::
 
-## Configure a provider
+## Enable Chat
 
-Set `Chat:Enabled` to `true` and choose a provider in `appsettings.json`:
+Set `Mcp:ChatEnabled` to `true` in `appsettings.json`. This activates the Chat UI and the `/ui/api/mcp/chat` SSE endpoint. The MCP server must also be enabled.
 
 ```json
-"Chat": {
+"Mcp": {
   "Enabled": true,
-  "Provider": "Mistral",
-  "Model": "mistral-medium-latest",
-  "ApiKeyEnvVar": "PORTWAY_CHAT_API_KEY"
+  "ChatEnabled": true
 }
 ```
 
-| Field | Required | Type | Description |
-|---|---|---|---|
-| `Enabled` | Yes | bool | Activates the Chat endpoint and UI. Default: `false`. |
-| `Provider` | Yes | string | AI provider name. One of: `Anthropic`, `OpenAI`, `Gemini`, `Mistral`. |
-| `Model` | Yes | string | Model identifier passed to the provider's API. |
-| `ApiKeyEnvVar` | No | string | Name of the environment variable holding the API key. Default: `PORTWAY_CHAT_API_KEY`. |
-| `ApiKey` | No | string | API key stored directly in config. Portway encrypts this automatically on first startup. |
+Provider, model, and API key are **not** stored in `appsettings.json`. They are configured through the setup wizard and stored in the encrypted `mcp.db` database.
 
-## Supply the API key
+## Configure a provider
 
-Two options are available. Use the environment variable approach when deploying via Docker or a process manager — the key never touches the filesystem:
+On first visit to the Chat UI (`/ui/mcp/chat`), a setup wizard opens automatically. It walks through two steps:
+
+1. **Choose a provider** — select Anthropic, OpenAI, Gemini, or Mistral and pick a model.
+2. **Enter credentials** — paste the API key. Portway encrypts it using the machine-bound PWENC key before writing it to `mcp.db`. The plaintext key is never stored.
+
+The wizard can be re-opened at any time from the Chat page if credentials need to change.
+
+## Supply the API key via environment variable
+
+When deploying via Docker or a process manager, set the API key as an environment variable instead of entering it through the wizard. Portway checks this variable first and uses it if present, ignoring the database value.
 
 ```bash
-# Set before starting Portway
 export PORTWAY_CHAT_API_KEY=sk-ant-...
 ```
 
-Alternatively, write the plaintext key directly into `appsettings.json` under `Chat:ApiKey`. Portway detects the plaintext value on startup, encrypts it using the machine-bound PWENC key, and writes the encrypted value back to the file. Subsequent restarts read the encrypted form. The plaintext key does not persist.
+The wizard and the status endpoint will report `api_key_source: environment` when the variable is set.
 
-```json
-"Chat": {
-  "Enabled": true,
-  "Provider": "Mistral",
-  "Model": "mistral-medium-latest",
-  "ApiKey": "sk-ant-..."
-}
-```
-
-After first startup the file contains:
-
-```json
-"ApiKey": "PWENC:..."
-```
-
-See [Secret Encryption](/reference/secrets) for how PWENC encryption works.
+See [Secret Encryption](/reference/secrets) for how PWENC database encryption works.
 
 ## Supported providers
 
