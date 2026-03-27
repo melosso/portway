@@ -74,7 +74,7 @@ const base = window.PortwayBase || '';
 let history         = [];
 let streaming       = false;
 let abortController = null;
-let chatToken = null; // Bearer token for internal tool calls — session only
+let chatToken = null; // Bearer token for internal tool calls - session only
 let chatReady = false; // true when MCP + Chat are enabled in config
 
 // ── Markdown renderer ─────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ async function confirmAuthDialog() {
         if (errEl) { errEl.textContent = 'Token rejected (401 Unauthorized). Check the token and try again.'; errEl.style.display = ''; }
         return;
       }
-    } catch { /* network error — proceed anyway */ }
+    } catch { /* network error - proceed anyway */ }
   }
 
   chatToken = token;
@@ -327,7 +327,7 @@ async function init() {
   }
 
   // If chat is enabled but no provider/key has been configured, launch the setup wizard.
-  // The wizard is blocking — users cannot chat until setup is complete.
+  // The wizard is blocking - users cannot chat until setup is complete.
   if (!chatConfigured) {
     disableForConfig('Complete setup to start chatting…');
     openSetupWizard(() => { window.location.reload(); });
@@ -346,7 +346,7 @@ async function init() {
     badge.removeAttribute('hidden');
   }
 
-  // Status hidden when everything is working — only shown for error states
+  // Status hidden when everything is working - only shown for error states
 
   // Populate environment selector
   const envRes = await fetch(base + '/ui/api/environments').then(r => r.json()).catch(() => ({}));
@@ -371,7 +371,7 @@ async function init() {
       '<button class="btn-link" onclick="showToolsModal()">Available tools</button>';
   }
 
-  // Warn about tools with missing SQL metadata — single consolidated toast, shown once per load
+  // Warn about tools with missing SQL metadata - single consolidated toast, shown once per load
   const missing = toolsRes.missingMetadata ?? [];
   if (missing.length) {
     toast(
@@ -547,7 +547,7 @@ async function send(retryMessage) {
   } catch(e) {
     if (e.name === 'AbortError') {
       if (!fullText) assistantBubble.remove();
-      // partial text already rendered — leave it as-is
+      // partial text already rendered - leave it as-is
     } else {
       textNode.innerHTML = '<span style="color:var(--error)">' + esc('Error: ' + e.message) + '</span>';
     }
@@ -652,7 +652,7 @@ function appendMessage(role, text) {
 
 function renderToolResult(raw) {
   if (!raw) return '';
-  // Binary placeholder — render info card
+  // Binary placeholder - render info card
   if (raw.startsWith('[Binary content:')) {
     return '<div class="tool-binary-notice">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
@@ -785,10 +785,10 @@ document.addEventListener('click', e => {
 // Two-step: (1) choose provider → (2) enter model + API key + optional token.
 
 const PROVIDERS = [
-  { id: 'anthropic', label: 'Anthropic',  model: 'claude-sonnet-4-6',      hint: 'claude-sonnet-4-6 / claude-opus-4-6' },
-  { id: 'openai',    label: 'OpenAI',     model: 'gpt-4o',                 hint: 'gpt-4o / gpt-4o-mini / o3' },
-  { id: 'gemini',    label: 'Google Gemini', model: 'gemini-2.5-flash',    hint: 'gemini-2.5-pro / gemini-2.5-flash' },
-  { id: 'mistral',   label: 'Mistral AI', model: 'mistral-medium-latest',  hint: 'mistral-large-latest / mistral-medium-latest' },
+  { id: 'mistral',   label: 'Mistral AI',    model: 'mistral-medium-latest',  hint: 'mistral-large-latest / mistral-medium-latest' },
+  { id: 'anthropic', label: 'Anthropic',     model: 'claude-sonnet-4-6',      hint: 'claude-sonnet-4-6 / claude-opus-4-6' },
+  { id: 'openai',    label: 'OpenAI',        model: 'gpt-4o',                 hint: 'gpt-4o / gpt-4o-mini / o3' },
+  { id: 'gemini',    label: 'Google Gemini', model: 'gemini-2.5-flash',       hint: 'gemini-2.5-pro / gemini-2.5-flash' },
 ];
 
 let _wizardStep     = 1;
@@ -806,16 +806,17 @@ function _renderWizardStep1() {
     <label class="wizard-provider-option" data-id="${p.id}">
       <input type="radio" name="wizard-provider" value="${p.id}" />
       <span class="wizard-provider-label">${esc(p.label)}</span>
-      <span class="wizard-provider-model">${esc(p.hint)}</span>
     </label>`).join('');
 
   Dialog.open({
     id: 'mcp-setup',
-    title: 'Set up chat — Step 1 of 2',
+    title: 'Set up chat - Step 1 of 2',
     size: 'small',
-    closable: false,
+    showCloseButton: false,
+    closeOnBackdrop: false,
+    closeOnEscape: false,
     content: `
-      <p class="wizard-intro">Choose the AI provider that will power the chat assistant. Your API key is stored encrypted on the server — it never leaves Portway.</p>
+      <p class="wizard-intro">Choose the AI provider that will power the chat assistant. Your API key is stored encrypted on the server - it never leaves Portway.</p>
       <div class="wizard-providers">${rows}</div>
       <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
     footer: `
@@ -849,16 +850,18 @@ function _renderWizardStep2() {
   const p = _wizardProvider;
   Dialog.open({
     id: 'mcp-setup',
-    title: `Set up chat — Step 2 of 2`,
+    title: `Set up chat - Step 2 of 2`,
     size: 'small',
-    closable: false,
+    showCloseButton: false,
+    closeOnBackdrop: false,
+    closeOnEscape: false,
     content: `
       <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
       <div class="dialog-field">
         <label for="wiz-model">Model</label>
         <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
       </div>
-      <div class="dialog-field">
+      <div class="dialog-field" style="margin-top:1rem;">
         <label for="wiz-key">API Key <span style="color:var(--destructive)">*</span></label>
         <div style="position:relative;display:flex;align-items:center;">
           <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;font-family:var(--font-mono);font-size:0.82rem;" placeholder="Paste your ${esc(p.label)} API key…" autocomplete="off" spellcheck="false" />
@@ -866,7 +869,7 @@ function _renderWizardStep2() {
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <div class="dialog-field-hint">Encrypted at rest in <code>mcp.db</code> — never stored in config files.</div>
+        <div class="dialog-field-hint">Encrypted at rest in <code>mcp.db</code> - never stored in config files.</div>
       </div>
       <details class="wizard-details">
         <summary>Internal API token <span style="color:var(--text-secondary);font-weight:400;">(optional)</span></summary>

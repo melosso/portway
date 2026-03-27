@@ -750,6 +750,15 @@ public static class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
+        // Clears all stored MCP chat configuration (provider, model, key, token).
+        app.MapDelete("/ui/api/mcp/config", async (
+            PortwayApi.Services.Mcp.McpConfigService mcpConfig,
+            CancellationToken ct) =>
+        {
+            await mcpConfig.ClearConfigAsync(ct);
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
         // Token management endpoints
         app.MapGet("/ui/api/tokens", async (HttpRequest request, TokenService tokenService) =>
         {
