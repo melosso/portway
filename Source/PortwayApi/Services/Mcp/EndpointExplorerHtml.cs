@@ -14,7 +14,8 @@ public static class EndpointExplorerHtml
     }
 
     private static string EscapeJs(string s) =>
-        s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t");
+        s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t")
+         .Replace("<", "\\u003C").Replace(">", "\\u003E");
 
     private const string HtmlTemplate = """
         <!DOCTYPE html>

@@ -125,6 +125,19 @@ public sealed class McpConfigService
         Log.Information("McpConfig: configuration saved");
     }
 
+    /// <summary>
+    /// Removes all stored configuration entries and invalidates the cache.
+    /// Chat will be unavailable until <see cref="SaveConfigAsync"/> is called again.
+    /// </summary>
+    public async Task ClearConfigAsync(CancellationToken ct = default)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        db.Config.RemoveRange(db.Config);
+        await db.SaveChangesAsync(ct);
+        _cache = null;
+        Log.Information("McpConfig: configuration cleared");
+    }
+
     /// <summary>Returns a masked view of the config for safe display in the UI (API key is never returned).</summary>
     public async Task<object> GetStatusAsync(CancellationToken ct = default)
     {
