@@ -22,6 +22,10 @@ services:
       #- WebUi__PublicOrigins__1=https://api.example.com
       #- WebUi__SecureCookies=false
       
+      # Model Context Protocol (MCP)
+      - Mcp__Enabled=true
+      - Mcp__Path=/mcp
+
       # Proxy settings for Kerberos/NTLM
       # - PROXY_USERNAME=serviceaccount
       # - PROXY_PASSWORD=password
