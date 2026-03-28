@@ -76,14 +76,14 @@ public static class SqlProviderDetector
         if (string.IsNullOrWhiteSpace(connectionString))
             return SqlProviderType.SqlServer;
 
-        // ── 1. SQL Server positive keywords ───────────────────────────────────
+        // 1. SQL Server positive keywords
         foreach (var keyword in SqlServerKeywords)
         {
             if (connectionString.Contains(keyword, StringComparison.OrdinalIgnoreCase))
                 return SqlProviderType.SqlServer;
         }
 
-        // ── 2. SQL Server OLE DB providers ────────────────────────────────────
+        // 2. SQL Server OLE DB providers
         // Matches SQLOLEDB, MSOLEDBSQL, SQLNCLI / SQLNCLI10 / SQLNCLI11, SQLXMLOLEDB
         if (connectionString.Contains("provider=sqloledb",   StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("provider=msoledbsql", StringComparison.OrdinalIgnoreCase)
@@ -91,7 +91,7 @@ public static class SqlProviderDetector
          || connectionString.Contains("provider=sqlxmloledb",StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.SqlServer;
 
-        // ── 3. SQL Server ODBC drivers ────────────────────────────────────────
+        // 3. SQL Server ODBC drivers
         // "Driver={SQL Server}", "Driver={SQL Native Client …}", "Driver={SQL Server Native Client …}"
         // "Driver={ODBC Driver 17/13/11 for SQL Server}", needs "sql server" in driver name
         if (connectionString.Contains("driver={sql", StringComparison.OrdinalIgnoreCase))
@@ -101,23 +101,23 @@ public static class SqlProviderDetector
          && connectionString.Contains("sql server",          StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.SqlServer;
 
-        // ── 4. PostgreSQL URI ─────────────────────────────────────────────────
+        // 4. PostgreSQL URI
         if (connectionString.StartsWith("postgres://",   StringComparison.OrdinalIgnoreCase)
          || connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.PostgreSql;
 
-        // ── 5. MySQL URI ──────────────────────────────────────────────────────
+        // 5. MySQL URI
         if (connectionString.StartsWith("mysql://", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.MySql;
 
-        // ── 6. Npgsql key-value: Host= ────────────────────────────────────────
+        // 6. Npgsql key-value: Host=
         // SQL Server uses Server= or Data Source=, never Host= for the server address.
         if (connectionString.Contains("Host=",        StringComparison.OrdinalIgnoreCase)
          && !connectionString.Contains("Server=",     StringComparison.OrdinalIgnoreCase)
          && !connectionString.Contains("Data Source=",StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.PostgreSql;
 
-        // ── 7. MySQL-unambiguous keywords ─────────────────────────────────────
+        // 7. MySQL-unambiguous keywords
         // AllowUserVariables and AllowPublicKeyRetrieval are MySqlConnector-only.
         // SslMode= is used by MySqlConnector (not Npgsql, which uses SSL*= keywords).
         if (connectionString.Contains("AllowUserVariables=",    StringComparison.OrdinalIgnoreCase)
@@ -125,14 +125,14 @@ public static class SqlProviderDetector
          || connectionString.Contains("SslMode=",               StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.MySql;
 
-        // ── 8. SQLite ─────────────────────────────────────────────────────────
+        // 8. SQLite
         // Parse "Data Source=<value>" without allocating; check file extension or :memory:.
         if (IsSqliteDataSource(connectionString.AsSpan())
          || connectionString.Contains("Mode=Memory", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains(":memory:",   StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.Sqlite;
 
-        // ── 9. Default ────────────────────────────────────────────────────────
+        // 9. Default
         // Ambiguous strings (e.g. Server=x;Database=y;User Id=z;Password=w) fall through
         // to SQL Server, the safest default since Portway originated as a SQL Server gateway.
         return SqlProviderType.SqlServer;

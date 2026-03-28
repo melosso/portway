@@ -2895,7 +2895,7 @@ body.has-promo .auth-overlay {
     color: hsl(var(--foreground));
     font-weight: 600;
 }
-/* ── Delight: micro-interactions ─────────────────────────────────────────── */
+/* Delight: micro-interactions */
 
 /* Refresh icon — spins while data loads */
 @keyframes portway-spin {
@@ -2940,11 +2940,95 @@ main {
     animation: portway-fadein 0.18s ease-out both;
 }
 
+/* Staggered stat card entrance */
+.stat-grid .stat-card:nth-child(1) { animation: portway-fadein 0.22s ease-out 0ms   both; }
+.stat-grid .stat-card:nth-child(2) { animation: portway-fadein 0.22s ease-out 50ms  both; }
+.stat-grid .stat-card:nth-child(3) { animation: portway-fadein 0.22s ease-out 100ms both; }
+.stat-grid .stat-card:nth-child(4) { animation: portway-fadein 0.22s ease-out 150ms both; }
+
+/* Stat card hover lift */
+.stat-card {
+    transition: box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.stat-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+    transform: translateY(-1px);
+}
+
+/* Stat value pop on counter completion */
+@keyframes portway-value-pop {
+    0%   { transform: scale(1); }
+    38%  { transform: scale(1.07); }
+    100% { transform: scale(1); }
+}
+.stat-value.pw-popped { animation: portway-value-pop 0.22s cubic-bezier(0.25, 1, 0.5, 1); }
+
+/* Status dot — heartbeat halo when healthy */
+.status-dot { position: relative; }
+.status-dot.ok::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: hsl(var(--success));
+    animation: portway-dot-halo 2.8s ease-out infinite;
+    pointer-events: none;
+}
+
+@keyframes portway-dot-halo {
+    0%   { opacity: 0.45; transform: scale(1); }
+    55%  { opacity: 0;    transform: scale(2.6); }
+    100% { opacity: 0;    transform: scale(2.6); }
+}
+
+/* Tooltip slide in from below */
+.tooltip {
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.tooltip-wrapper:hover .tooltip {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Drawer snap-in with spring easing */
+.drawer { transition: transform 0.26s cubic-bezier(0.25, 1, 0.5, 1); }
+
+/* Dropdown & accordion body entrance */
+.dropdown-menu.open { animation: portway-fadein 0.14s ease-out both; }
+.accordion.open .accordion-body { animation: portway-fadein 0.18s ease-out both; }
+
+/* Login page — brand, box, and footer enter as a staggered sequence */
+@keyframes portway-auth-enter {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.auth-brand  { animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0s    both; }
+.auth-box    { animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.08s both; }
+.auth-footer { animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.16s both; }
+
+/* Keyboard focus ring */
+:focus-visible {
+    outline: 2px solid hsl(var(--primary) / 0.4);
+    outline-offset: 2px;
+    border-radius: var(--radius);
+}
+
 /* Respect reduced-motion preferences */
 @media (prefers-reduced-motion: reduce) {
-    .btn.is-refreshing svg          { animation: none; }
-    .badge-success.is-healthy       { animation: none; }
-    .btn:active:not(:disabled)      { transform: none; }
-    .btn.is-check                   { animation: none; }
-    main                            { animation: none; }
+    .btn.is-refreshing svg              { animation: none; }
+    .badge-success.is-healthy           { animation: none; }
+    .btn:active:not(:disabled)          { transform: none; }
+    .btn.is-check                       { animation: none; }
+    main                                { animation: none; }
+    .stat-grid .stat-card               { animation: none; }
+    .stat-card:hover                    { transform: none; }
+    .stat-value.pw-popped               { animation: none; }
+    .status-dot.ok::after               { animation: none; }
+    .tooltip                            { transform: none; transition: opacity 0.15s; }
+    .tooltip-wrapper:hover .tooltip     { transform: none; }
+    .drawer                             { transition: transform 0.15s ease; }
+    .dropdown-menu.open                 { animation: none; }
+    .accordion.open .accordion-body     { animation: none; }
+    .auth-brand, .auth-box, .auth-footer { animation: none; }
 }

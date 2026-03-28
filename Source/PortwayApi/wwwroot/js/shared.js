@@ -39,7 +39,12 @@ function animateCounter(el, target, duration) {
     var p = Math.min((now - start) / duration, 1);
     var eased = 1 - Math.pow(1 - p, 3); // ease-out-cubic
     el.textContent = Math.round(fromNum + (targetNum - fromNum) * eased) + (p < 1 ? '' : suffix);
-    if (p < 1) requestAnimationFrame(step);
+    if (p < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.classList.add('pw-popped');
+      setTimeout(function() { el.classList.remove('pw-popped'); }, 250);
+    }
   }
   requestAnimationFrame(step);
 }

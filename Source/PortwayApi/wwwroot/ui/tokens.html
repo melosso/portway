@@ -218,7 +218,7 @@
   </div>
 </div>
 
-<!-- Token Reveal Modal ────────────────────────────────── -->
+<!-- Token Reveal Modal -->
 <div id="revealBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;">
   <div style="background:hsl(var(--background)); border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:2rem; width:540px; max-width:92vw; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);">
     <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.875rem;">
@@ -581,7 +581,7 @@ function toggleSelectAll(checked) {
   document.querySelectorAll('.row-check').forEach(cb => cb.checked = checked);
 }
 
-// Create Drawer ─────────────────────────────────────────
+// Create Drawer
 function openCreateDrawer() {
   createScopesTI.clear();
   createEnvsTI.clear();
@@ -646,7 +646,7 @@ async function createToken() {
   }
 }
 
-// Edit Drawer ───────────────────────────────────────────
+// Edit Drawer
 function openEditDrawer(id) {
   const token = allTokens.find(t => t.id === id);
   if (!token) return;
@@ -755,7 +755,7 @@ async function loadAudit(id) {
   }
 }
 
-// Revoke ────────────────────────────────────────────────
+// Revoke
 function confirmRevoke(id, btn) {
   const cell = btn.closest('td');
   cell.innerHTML = `
@@ -794,7 +794,7 @@ async function unarchiveToken(id) {
   }
 }
 
-// Rotate ────────────────────────────────────────────────
+// Rotate
 function confirmRotate(id, btn) {
   const cell = btn.closest('td');
   cell.innerHTML = `
@@ -819,7 +819,7 @@ async function rotateToken(id) {
   }
 }
 
-// Token Reveal Modal ────────────────────────────────────
+// Token Reveal Modal
 function showRevealModal(token, data) {
   revealData = { ...data, token };
   document.getElementById('revealTokenValue').textContent = token;

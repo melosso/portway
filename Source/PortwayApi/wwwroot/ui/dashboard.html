@@ -168,7 +168,7 @@
 </main>
 
 <script>
-// ── Overview ──────────────────────────────────────────────
+// Overview
 async function load() {
   const btn = document.getElementById('refreshBtn');
   if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
@@ -182,6 +182,10 @@ async function load() {
 
     document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
     document.getElementById('healthUptime').textContent  = d.uptime ?? '—';
+
+    // Fetch health directly so the badge shows even when the SSE initial push is delayed
+    // (e.g. while connectivity checks against unavailable services are timing out).
+    fetch('/health').then(r => r.json()).then(applyHealth).catch(() => {});
 
     const rows = [
       ['SQL', ep.sql ?? 0], ['Proxy', ep.proxy ?? 0], ['Composite', ep.composite ?? 0],
@@ -198,7 +202,7 @@ async function load() {
       : '<span class="muted" style="font-size:0.8rem">No endpoints configured</span>';
   } catch(e) { console.error('overview', e); }
 
-  // ── MCP Status ────────────────────────────────────────────
+  // MCP Status
   try {
     const settings = await fetch('/ui/api/settings').then(r => r.json());
     const mcp = settings.mcp ?? {};
@@ -231,7 +235,7 @@ async function load() {
   }
 }
 
-// ── SSE ────────────────────────────────────────────────────
+// SSE
 let _sseAbort = null, _sseDelay = 1000;
 
 function connectSSE() {
@@ -288,7 +292,7 @@ load();
 connectSSE();
 SetupGuide.init('setupGuide');
 
-// ── Charts ─────────────────────────────────────────────────
+// Charts
 let _trafficChart, _errorChart;
 let _trafficPeriod = '24h', _errorPeriod = '24h';
 
@@ -312,7 +316,7 @@ async function loadMetrics(period, target) {
   } catch(e) { console.error('metrics', e); }
 }
 
-// ── Cache ring ─────────────────────────────────────────────
+// Cache ring
 function renderCache(d) {
   const c  = d.cache;
   const el = document.getElementById('cacheBody');
@@ -352,7 +356,7 @@ function renderCache(d) {
     </div>`;
 }
 
-// ── Top endpoints ──────────────────────────────────────────
+// Top endpoints
 function renderTopEndpoints(d) {
   const eps = d.top_endpoints ?? [];
   document.getElementById('topEpPeriodLabel').textContent = d.period ?? '24h';

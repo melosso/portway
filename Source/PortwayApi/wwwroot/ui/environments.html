@@ -285,7 +285,7 @@ function setActiveItem(id) {
   if (el) el.classList.add('active');
 }
 
-// Navigation ────────────────────────────────────────────
+// Navigation
 function trySelect(target) {
   if (state.selected === target) return;
   confirmNavigate(() => {
@@ -313,7 +313,7 @@ async function selectEnv(name) {
   startPoll(name);
 }
 
-// Global Settings Detail ────────────────────────────────
+// Global Settings Detail
 function renderGlobalDetail() {
   const d = state.globalData;
   document.getElementById('envDetail').innerHTML = `
@@ -365,7 +365,7 @@ async function saveGlobal() {
   finally { btn?.classList.remove('is-loading'); }
 }
 
-// Per-environment Detail ────────────────────────────────
+// Per-environment Detail
 async function renderEnvDetail(name) {
   const detail = document.getElementById('envDetail');
   detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
@@ -734,7 +734,7 @@ function toggleReplaceCs() {
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-// Test connection ───────────────────────────────────────
+// Test connection
 async function testConnection(name) {
   const btn = document.getElementById('testBtn');
   const result = document.getElementById('testResult');
@@ -763,7 +763,7 @@ async function testConnection(name) {
   }
 }
 
-// Save form ─────────────────────────────────────────────
+// Save form
 async function saveEnv(name) {
   const serverName = document.getElementById('editServerName')?.value?.trim() ?? null;
   const csEl = document.getElementById('editConnStr');
@@ -799,7 +799,7 @@ async function saveEnv(name) {
   finally { btn?.classList.remove('is-loading'); }
 }
 
-// Raw JSON mode ─────────────────────────────────────────
+// Raw JSON mode
 async function toggleRaw(name) {
   confirmNavigate(async () => {
     state.rawMode = !state.rawMode;
@@ -910,7 +910,7 @@ function confirmAlertDialog() {
   // Handled by AlertDialog component
 }
 
-// Remove environment ────────────────────────────────────
+// Remove environment
 
 function startRemove(name) {
   showAlertDialog({
@@ -944,7 +944,7 @@ async function doRemove(name) {
   } catch(e) { toast(e.message, 'error'); }
 }
 
-// Rename environment ────────────────────────────────────
+// Rename environment
 
 function startEnvRename() {
   _envRenaming = true;
@@ -986,7 +986,7 @@ async function confirmEnvRename(oldName) {
   } catch(e) { toast('Rename failed: ' + e.message, 'error'); }
 }
 
-// Create environment drawer ─────────────────────────────
+// Create environment drawer
 let _preDrawerDirty = false;
 function openCreateDrawer() {
   _preDrawerDirty = state.isDirty;

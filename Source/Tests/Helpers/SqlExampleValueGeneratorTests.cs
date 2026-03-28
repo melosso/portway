@@ -6,7 +6,7 @@ namespace PortwayApi.Tests.Helpers;
 
 public class SqlExampleValueGeneratorTests
 {
-    // ── FromColumn ────────────────────────────────────────────────────────────
+    // FromColumn
 
     [Fact]
     public void FromColumn_Nullable_ReturnsNull()
@@ -63,7 +63,7 @@ public class SqlExampleValueGeneratorTests
         Assert.Equal("\"value\"", result.ToJsonString());
     }
 
-    // ── FromParameter ─────────────────────────────────────────────────────────
+    // FromParameter
 
     [Fact]
     public void FromParameter_EmptyPropertyName_ReturnsNull()

@@ -12,8 +12,7 @@ namespace PortwayApi.Tests.Endpoints;
 /// </summary>
 public class ResponseShapeTests : ApiTestBase
 {
-    // ── Error shape tests ─────────────────────────────────────────────────────
-
+    // Error shape tests
     [Fact]
     public async Task BadEnv_Returns400_WithErrorShape()
     {
@@ -83,8 +82,7 @@ public class ResponseShapeTests : ApiTestBase
         Assert.Contains("error", keys);
     }
 
-    // ── Collection shape tests ────────────────────────────────────────────────
-
+    // Collection shape tests
     [Fact]
     public async Task FileList_Returns_CollectionShape_AllKeysLowercase()
     {
@@ -141,8 +139,7 @@ public class ResponseShapeTests : ApiTestBase
         Assert.False(root.TryGetProperty("Success", out _));
     }
 
-    // ── Mutation shape tests ──────────────────────────────────────────────────
-
+    // Mutation shape tests
     [Fact]
     public async Task FileDelete_MutationShape_HasSuccessAndMessage()
     {
@@ -172,8 +169,7 @@ public class ResponseShapeTests : ApiTestBase
         }
     }
 
-    // ── 405 response has body ─────────────────────────────────────────────────
-
+    // 405 response has body
     [Fact]
     public async Task WebhookGet_Returns405_WithBody()
     {
@@ -194,8 +190,7 @@ public class ResponseShapeTests : ApiTestBase
         Assert.True(body.RootElement.TryGetProperty("error", out _));
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
-
+    // Helper
     private static async Task<JsonDocument> ParseBody(HttpResponseMessage response)
     {
         var content = await response.Content.ReadAsStringAsync();

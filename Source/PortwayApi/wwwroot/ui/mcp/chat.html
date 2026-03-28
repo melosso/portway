@@ -30,7 +30,7 @@
       <select id="envSelect" class="select" title="Environment" style="min-width:8rem;"></select>
       <button class="btn btn-outline" id="clearAuthBtn" disabled onclick="confirmClearAuth()">
         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        Clear authentication
+        Remove token
       </button>
       <button class="btn btn-outline" id="clearBtn" title="Clear conversation">Clear</button>
     </div>
@@ -69,7 +69,7 @@
 </main>
 
 <script>
-// ── State ─────────────────────────────────────────────────────────────────────
+// State
 const base = window.PortwayBase || '';
 let history         = [];
 let streaming       = false;
@@ -77,7 +77,7 @@ let abortController = null;
 let chatToken = null; // Bearer token for internal tool calls - session only
 let chatReady = false; // true when MCP + Chat are enabled in config
 
-// ── Markdown renderer ─────────────────────────────────────────────────────────
+// Markdown renderer
 function md(raw) {
   if (!raw) return '';
   const H = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -155,7 +155,7 @@ function md(raw) {
   return out.join('');
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// Auth
 const SESSION_KEY = 'portway_chat_token';
 
 function loadStoredToken() {
@@ -167,16 +167,15 @@ function openAuthDialog() {
   const existing = chatToken ?? '';
   Dialog.open({
     id: 'chat-auth',
-    title: 'Authenticate',
+    title: 'Enter access token',
     size: 'small',
     content: `
       <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.55;margin:0 0 1rem;">
-        Enter a Portway Bearer token. It must have access to the environments and endpoints you want to query.
-        The token is stored in <code style="font-family:var(--font-mono);font-size:0.78em;background:var(--bg-secondary);border:1px solid var(--border);border-radius:3px;padding:0.05em 0.35em;">sessionStorage</code>
-        and cleared when you close this tab.
+        Enter a Portway API token with access to the environments and endpoints you want to query.
+        The token is kept for this browser tab only and cleared when you close it.
       </p>
       <div class="dialog-field">
-        <label for="dlg-token-input">Bearer Token</label>
+        <label for="dlg-token-input">API Token</label>
         <div style="position:relative;display:flex;align-items:center;">
           <input id="dlg-token-input" type="password" class="input"
             style="flex:1;padding-right:2.5rem;font-family:var(--font-mono);font-size:0.82rem;"
@@ -190,7 +189,7 @@ function openAuthDialog() {
         <div id="dlg-token-error" style="display:none;font-size:0.8rem;color:var(--error);margin-top:0.5rem;padding:0.4rem 0.6rem;background:color-mix(in srgb,var(--error) 10%,transparent);border:1px solid color-mix(in srgb,var(--error) 30%,transparent);border-radius:5px;"></div>
       </div>
     `,
-    footer: `<button type="button" class="btn btn-primary" onclick="confirmAuthDialog()">Authenticate</button>`,
+    footer: `<button type="button" class="btn btn-primary" onclick="confirmAuthDialog()">Connect</button>`,
     closeOnBackdrop: true,
     closeOnEscape: true,
     onOpen: () => {
@@ -233,7 +232,7 @@ async function confirmAuthDialog() {
       });
       // 401 → invalid token; any other status → token accepted (endpoint may not exist)
       if (testResp.status === 401) {
-        if (errEl) { errEl.textContent = 'Token rejected (401 Unauthorized). Check the token and try again.'; errEl.style.display = ''; }
+        if (errEl) { errEl.textContent = 'Token not accepted. Check that it is valid and has access to at least one environment.'; errEl.style.display = ''; }
         return;
       }
     } catch { /* network error - proceed anyway */ }
@@ -279,12 +278,12 @@ function setAuthenticated(ok) {
 function confirmClearAuth() {
   Dialog.open({
     id: 'clear-auth',
-    title: 'Clear authentication',
+    title: 'Remove access token',
     size: 'small',
-    content: '<p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">This will remove your stored Bearer token. You will need to authenticate again before you can chat.</p>',
+    content: '<p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">Your saved token will be removed. You\'ll need to enter it again to continue chatting.</p>',
     footer: `
       <button type="button" class="btn btn-outline" data-dialog-close>Cancel</button>
-      <button type="button" class="btn btn-primary" onclick="clearAuth()">Clear</button>
+      <button type="button" class="btn btn-primary" onclick="clearAuth()">Remove token</button>
     `
   });
 }
@@ -296,7 +295,7 @@ function clearAuth() {
   setAuthenticated(false);
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
+// Init
 async function init() {
   loadStoredToken();
 
@@ -322,7 +321,7 @@ async function init() {
     st.textContent = 'Chat disabled';
     st.style.color = 'hsl(var(--warning, 38 92% 50%))';
     st.removeAttribute('hidden');
-    disableForConfig('Set Mcp:ChatEnabled = true in appsettings.json to enable chat.');
+    disableForConfig('Chat is disabled. Set Mcp:ChatEnabled = true in appsettings.json to enable it.');
     return;
   }
 
@@ -376,8 +375,8 @@ async function init() {
   if (missing.length) {
     toast(
       missing.length === 1
-        ? "Database field info missing for 1 tool. Check your connection."
-        : `Database field info missing for ${missing.length} tools. Check your connections.`,
+        ? "Database metadata is missing for 1 tool. Check your logs."
+        : `Database metadata is missing for ${missing.length} tools. Check your logs.`,
       'warning',
       8000
     );
@@ -436,12 +435,12 @@ function showToolsModal() {
 
 function askTool(name) {
   Dialog.close('tools-list');
-  prefill('Tell me about ' + name);
+  prefill('Show me data from ' + name);
 }
 
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+// Chat
 async function send(retryMessage) {
   if (!chatToken) { openAuthDialog(); return; }
 
@@ -560,12 +559,12 @@ async function send(retryMessage) {
   }
 }
 
-// ── Cancel stream ─────────────────────────────────────────────────────────────
+// Cancel stream
 function cancelStream() {
   if (abortController) abortController.abort();
 }
 
-// ── Retry ─────────────────────────────────────────────────────────────────────
+// Retry
 function retry(btn) {
   if (streaming) return;
   const assistantEl = btn.closest('.msg-assistant');
@@ -584,7 +583,7 @@ function retry(btn) {
   send(userMessage);
 }
 
-// ── Copy response ─────────────────────────────────────────────────────────────
+// Copy response
 function copyResponse(btn) {
   const msgText = btn.closest('.msg-bubble')?.querySelector('.msg-text');
   if (!msgText) return;
@@ -599,7 +598,7 @@ function copyResponse(btn) {
   });
 }
 
-// ── Vote (stub) ───────────────────────────────────────────────────────────────
+// Vote (stub)
 function vote(btn, direction) {
   const bar = btn.closest('.msg-actions');
   bar.querySelectorAll('.vote-btn').forEach(b => { b.classList.remove('vote-active'); delete b.dataset.voted; });
@@ -609,7 +608,7 @@ function vote(btn, direction) {
   }
 }
 
-// ── DOM helpers ───────────────────────────────────────────────────────────────
+// DOM helpers
 function appendMessage(role, text) {
   const thread = document.getElementById('thread');
   const isUser = role === 'user';
@@ -726,7 +725,7 @@ function tryPrettyJson(s) {
   try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
 }
 
-// ── Input auto-resize + keyboard shortcuts ────────────────────────────────────
+// Input auto-resize + keyboard shortcuts
 document.getElementById('input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 128) + 'px';
@@ -749,7 +748,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 
 init();
 
-// ── Navigation guard ───────────────────────────────────────────────────────────
+// Navigation guard
 let _navConfirmed = false; // set true once user confirms leaving via AlertDialog
 
 // Hard navigation: tab close, F5, address-bar changes
@@ -774,13 +773,13 @@ document.addEventListener('click', e => {
     title: 'Leave conversation?',
     description: 'You have an ongoing conversation. Leaving this page will clear it.',
     actionLabel: 'Leave',
-    cancelLabel: 'Stop, I\'m not done yet',
+    cancelLabel: 'Stay here',
     variant: 'default',
     onConfirm: () => { _navConfirmed = true; window.location.href = href; }
   });
 });
 
-// ── MCP Setup Wizard ──────────────────────────────────────────────────────────
+// MCP Setup Wizard
 // Shown when Chat is enabled but no provider/key is configured in the DB.
 // Two-step: (1) choose provider → (2) enter model + API key + optional token.
 
@@ -974,7 +973,7 @@ async function _wizardSave() {
 .chat-empty p { font-size: 0.875rem; line-height: 1.6; }
 .chat-tool-hints { margin-top: 0.75rem; font-size: 0.75rem; }
 
-/* Composer ────────────────────────────────────────────────────────────── */
+/* Composer */
 .chat-composer {
   flex-shrink: 0;
   padding: 0.75rem 1.25rem 1rem;
@@ -1017,7 +1016,7 @@ async function _wizardSave() {
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; }
 
-/* Model badge ─────────────────────────────────────────────────────────── */
+/* Model badge */
 .model-badge {
   font-size: 0.72rem;
   font-weight: 500;
@@ -1102,7 +1101,7 @@ async function _wizardSave() {
   40%           { opacity: 1;    transform: scale(1.1);  }
 }
 
-/* Markdown ────────────────────────────────────────────────────────────── */
+/* Markdown */
 .msg-text .md-h1 { font-size: 1.1rem; font-weight: 700; margin: 0.5rem 0 0.25rem; }
 .msg-text .md-h2 { font-size: 1rem;   font-weight: 700; margin: 0.5rem 0 0.25rem; }
 .msg-text .md-h3 { font-size: 0.9rem; font-weight: 700; margin: 0.4rem 0 0.2rem; }
@@ -1184,7 +1183,7 @@ async function _wizardSave() {
 }
 .btn-link:hover { color: hsl(var(--primary) / 0.8); }
 
-/* Tools modal ─────────────────────────────────────────────────────────── */
+/* Tools modal */
 .tools-list {
   display: flex;
   flex-direction: column;
@@ -1226,7 +1225,7 @@ async function _wizardSave() {
   white-space: nowrap;
 }
 
-/* ── Setup wizard ──────────────────────────────────────────────────────── */
+/* Setup wizard */
 .wizard-intro {
   font-size: 0.82rem;
   color: var(--text-secondary);

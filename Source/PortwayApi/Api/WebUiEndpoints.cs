@@ -718,7 +718,7 @@ public static class WebUiEndpointExtensions
         });
         }).ExcludeFromDescription();
 
-        // ── MCP Configuration endpoints ───────────────────────────────────────────
+        // MCP Configuration endpoints
         // Returns masked status (never returns the raw API key).
         app.MapGet("/ui/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
         {

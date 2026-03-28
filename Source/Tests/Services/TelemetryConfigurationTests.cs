@@ -14,7 +14,7 @@ namespace PortwayApi.Tests.Services;
 /// </summary>
 public class TelemetryConfigurationTests
 {
-    // ── Option binding ────────────────────────────────────────────────────────
+    // Option binding
 
     [Fact]
     public void TelemetryOptions_DefaultsToDisabled()
@@ -82,7 +82,7 @@ public class TelemetryConfigurationTests
         Assert.Equal("Portway.Api", PortwayTelemetry.ServiceName);
     }
 
-    // ── Service registration ──────────────────────────────────────────────────
+    // Service registration
 
     [Fact]
     public void AddPortwayTelemetry_WhenDisabled_StillRegistersPortwayMetrics()
@@ -139,7 +139,7 @@ public class TelemetryConfigurationTests
         a!.Dispose();
     }
 
-    // ── Span name constants (breaking-change guard) ───────────────────────────
+    // Span name constants (breaking-change guard)
     // Span names are part of the telemetry API surface. Renaming them silently
     // would break any dashboards or alerts that downstream teams have built.
 
@@ -155,7 +155,7 @@ public class TelemetryConfigurationTests
     public void OperationNames_CacheGet_IsStable()
         => Assert.Equal("portway.cache.get", PortwayTelemetry.Operations.CacheGet);
 
-    // ── Metric recording (smoke) ──────────────────────────────────────────────
+    // Metric recording (smoke)
 
     [Fact]
     public void PortwayMetrics_CacheHit_DoesNotThrow()
@@ -183,7 +183,7 @@ public class TelemetryConfigurationTests
         Assert.Null(ex);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // Helpers
 
     private static IConfiguration BuildConfig(Dictionary<string, string?> values)
         => new ConfigurationBuilder()

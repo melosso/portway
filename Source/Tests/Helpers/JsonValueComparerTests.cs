@@ -9,8 +9,7 @@ public class JsonValueComparerTests
     private static JsonElement Field(string json)
         => JsonDocument.Parse(json).RootElement;
 
-    // ── string comparisons ────────────────────────────────────────────────────
-
+    // String comparisons
     [Theory]
     [InlineData("\"apple\"", "apple", "eq", true)]
     [InlineData("\"apple\"", "APPLE", "eq", true)]   // case-insensitive
@@ -27,8 +26,7 @@ public class JsonValueComparerTests
         Assert.Equal(expected, result);
     }
 
-    // ── numeric comparisons ───────────────────────────────────────────────────
-
+    // Numeric comparisons
     [Theory]
     [InlineData("42",   "42",  "eq", true)]
     [InlineData("42",   "43",  "eq", false)]
@@ -51,8 +49,7 @@ public class JsonValueComparerTests
         Assert.False(result);
     }
 
-    // ── boolean comparisons ───────────────────────────────────────────────────
-
+    // Boolean comparisons
     [Theory]
     [InlineData("true",  "true",  "eq", true)]
     [InlineData("true",  "false", "eq", false)]
@@ -71,8 +68,7 @@ public class JsonValueComparerTests
         Assert.False(result);
     }
 
-    // ── unknown / null ────────────────────────────────────────────────────────
-
+    // Unknown / null
     [Fact]
     public void Compare_NullValue_ReturnsFalse()
     {

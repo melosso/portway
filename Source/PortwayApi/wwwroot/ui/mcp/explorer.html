@@ -26,18 +26,18 @@
   <div class="page-body">
     <div class="card" style="margin-bottom: 1.5rem;">
       <div class="card-header">
-        <span class="card-title">About MCP</span>
+        <span class="card-title">How MCP works</span>
       </div>
       <div class="card-body">
         <p style="color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6;">
-          This page gives you a clear overview of all the endpoints available for MCP (Model Context Protocol) Apps. Whether you're building interactive tools or just exploring, the Endpoint Explorer below makes it easy to see what's possible with MCP.
+          Endpoints marked <strong>Expose in MCP</strong> are published as callable tools at the MCP server path below. AI clients connect to that path and can invoke these tools during chat. Endpoints not listed here will not be visible to AI clients.
         </p>
       </div>
     </div>
 
     <div class="card" id="infoCard">
       <div class="card-header">
-        <span class="card-title">Settings</span>
+        <span class="card-title">MCP Configuration</span>
       </div>
       <div class="card-body" id="mcpConfig">
         <span class="muted" style="font-size:0.8rem">Loading...</span>
@@ -46,7 +46,7 @@
 
     <div class="card" style="margin-top: 1.5rem;">
       <div class="card-header">
-        <span class="card-title">What tools are available?</span>
+        <span class="card-title">Exposed Tools</span>
         <span id="toolCount" class="card-count"></span>
       </div>
       <div class="card-body" id="toolsBody">
@@ -88,7 +88,7 @@ async function load() {
     }
 
     document.getElementById('mcpConfig').innerHTML = [
-      settingItem('Accessible from path', mcp.path || '/mcp'),
+      settingItem('Server path', mcp.path || '/mcp'),
       boolItem('Require Authentication', mcp.require_authentication),
       boolItem('Apps Enabled', mcp.apps_enabled),
       settingItem('Apps Path', mcp.apps_path || '/mcp/apps'),
@@ -138,7 +138,7 @@ async function load() {
         // ep.name is already the full dict key e.g. "Finance/OutstandingItems"
         const isUnhealthy = missingMetadataKeys.has(ep.name);
         const unhealthyBadge = isUnhealthy
-          ? '<span class="badge-unhealthy" title="No SQL field metadata found — query hints will be limited for this tool">Unhealthy</span>'
+          ? '<span class="badge-unhealthy" title="No SQL field metadata found — query hints will be limited for this tool">No metadata</span>'
           : '';
         html += '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem; background: var(--bg-secondary); border-radius: 6px;">';
         html += '<div style="flex: 1;">';

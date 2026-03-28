@@ -6,7 +6,7 @@
 
   const DISMISSED_KEY = 'portway_setup_dismissed';
 
-  // ── Public API ─────────────────────────────────────────────────────────────
+  // Public API
   window.SetupGuide = {
     /** Mount the guide into the element with the given id, if not yet dismissed. */
     init(containerId) {
@@ -30,7 +30,7 @@
     }
   };
 
-  // ── Mount ──────────────────────────────────────────────────────────────────
+  // Mount
   function _mount(container) {
     const root = document.createElement('div');
     root.id = '_sgRoot';
@@ -57,7 +57,7 @@
     }).join('');
   }
 
-  // ── Load ───────────────────────────────────────────────────────────────────
+  // Load
   async function _load() {
     try {
       const d = await fetch('/ui/api/overview').then(function (r) { return r.json(); });
@@ -69,7 +69,7 @@
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Render
   function _render(hasEnvs, hasEps) {
     const el = document.getElementById('_sgSteps');
     if (!el) return;
@@ -136,7 +136,7 @@
     '</div>';
   }
 
-  // ── Icons ──────────────────────────────────────────────────────────────────
+  // Icons
   function _iconDone() {
     return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" ' +
       'stroke="hsl(var(--success))" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
