@@ -1387,10 +1387,11 @@ public class EndpointController : ControllerBase
                 
                 // Acquire a distributed lock to prevent duplicate requests
                 using var lockHandle = await _cacheManager.AcquireLockAsync(
-                    cacheKey, 
+                    cacheKey,
                     TimeSpan.FromSeconds(30),
                     TimeSpan.FromSeconds(10),
-                    TimeSpan.FromMilliseconds(200));
+                    TimeSpan.FromMilliseconds(200),
+                    HttpContext!.RequestAborted);
                 
                 if (lockHandle != null)
                 {
