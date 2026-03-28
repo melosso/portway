@@ -5,11 +5,11 @@ import taskLists from 'markdown-it-task-checkbox';
 
 export default withMermaid(
   defineConfig({
-  title: 'Portway',
-  description: 'A lightweight API gateway for Windows environments',
-  head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
-  themeConfig: {
-    logo: '/logo.svg',
+    title: 'Portway',
+    description: 'A lightweight API gateway for Windows environments',
+    head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
+    themeConfig: {
+      logo: '/logo.svg',
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/' },
@@ -87,90 +87,90 @@ export default withMermaid(
           text: 'Integrations', link: '/reference/integrations/' 
         }
       ],
-      '/reference/': [
-        {
-          text: 'API Reference',
-          items: [
-            { text: 'Overview', link: '/reference/' },
-            { text: 'API Authentication', link: '/reference/api-auth' },
-            { text: 'HTTP Headers', link: '/reference/headers' }
-          ]
-        },
-        {
-          text: 'Configuration',
-          items: [
-            { text: 'Entity', link: '/reference/entity-config' },
-            { text: 'Environment', link: '/reference/environment-settings' },
-            { text: 'SQL Providers', link: '/reference/sql-providers' },
-            { text: 'Authentication', link: '/reference/environment-auth' },
-            { text: 'Namespaces', link: '/reference/namespaces' }
-          ]
-        },
-        {         
-          text: 'Settings',
-          items: [
-            { text: 'Application', link: '/reference/app-settings' },
-            { text: 'OpenAPI', link: '/reference/openapi-settings' },
-          ]
-        },
-        {
-          text: 'Query Language',
-          items: [
-            { text: 'OData Syntax', link: '/reference/odata' },
-            { text: 'Filter Operations', link: '/reference/filters' },
-            { text: 'Sorting & Pagination', link: '/reference/sorting-pagination' }
-          ]
-        },
-        {
-          text: 'Tools & Options',
-          items: [
-            { text: 'Token Generator', link: '/reference/token-generator' },
-            { text: 'Secret Encryption', link: '/reference/secrets' },
-            { text: 'Health Checks', link: '/reference/health-checks' },
-            { text: 'Caching', link: '/reference/caching' },
-            { text: 'Logging', link: '/reference/logging' },
-            { text: 'Audit', link: '/reference/audit' }
-          ]
-        },
-        {
-          text: 'Integrations',
-          items: [
-            { text: 'Exact Globe+', link: '/reference/integrations/exact-globe' },
-            { text: 'Exact Synergy', link: '/reference/integrations/exact-synergy' },
-            { text: 'NAV Business Central', link: '/reference/integrations/nav-business-central' }
-          ]
-        }
-      ]
+        '/reference/': [
+          {
+            text: 'API Reference',
+            items: [
+              { text: 'Overview', link: '/reference/' },
+              { text: 'API Authentication', link: '/reference/api-auth' },
+              { text: 'HTTP Headers', link: '/reference/headers' }
+            ]
+          },
+          {
+            text: 'Configuration',
+            items: [
+              { text: 'Entity', link: '/reference/entity-config' },
+              { text: 'Environment', link: '/reference/environment-settings' },
+              { text: 'SQL Providers', link: '/reference/sql-providers' },
+              { text: 'Authentication', link: '/reference/environment-auth' },
+              { text: 'Namespaces', link: '/reference/namespaces' }
+            ]
+          },
+          {         
+            text: 'Settings',
+            items: [
+              { text: 'Application', link: '/reference/app-settings' },
+              { text: 'OpenAPI', link: '/reference/openapi-settings' },
+            ]
+          },
+          {
+            text: 'Query Language',
+            items: [
+              { text: 'OData Syntax', link: '/reference/odata' },
+              { text: 'Filter Operations', link: '/reference/filters' },
+              { text: 'Sorting & Pagination', link: '/reference/sorting-pagination' }
+            ]
+          },
+          {
+            text: 'Tools & Options',
+            items: [
+              { text: 'Token Generator', link: '/reference/token-generator' },
+              { text: 'Secret Encryption', link: '/reference/secrets' },
+              { text: 'Health Checks', link: '/reference/health-checks' },
+              { text: 'Caching', link: '/reference/caching' },
+              { text: 'Logging', link: '/reference/logging' },
+              { text: 'Audit', link: '/reference/audit' }
+            ]
+          },
+          {
+            text: 'Integrations',
+            items: [
+              { text: 'Exact Globe+', link: '/reference/integrations/exact-globe' },
+              { text: 'Exact Synergy', link: '/reference/integrations/exact-synergy' },
+              { text: 'NAV Business Central', link: '/reference/integrations/nav-business-central' }
+            ]
+          }
+        ]
+      },
+      socialLinks: [
+        { icon: 'github', link: 'https://github.com/melosso/portway' }
+      ],
+      search: {
+        provider: 'local'
+      },
+      footer: {
+        message: 'Released under the GNU AGPL (3.0) License.',
+        copyright: 'Copyright © 2026 Melosso.com'
+      }
     },
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/melosso/portway' }
-    ],
-    search: {
-      provider: 'local'
-    },
-    footer: {
-      message: 'Released under the GNU AGPL (3.0) License.',
-      copyright: 'Copyright © 2026 Melosso.com'
-    }
-  },
-  vite: {
-    server: {
+    vite: {
+      server: {
       host: true, // This allows external access
-      allowedHosts: ['localhost', '0.0.0.0', 'portway-docs.melosso.com']
+        allowedHosts: ['localhost', '0.0.0.0', 'portway-docs.melosso.com']
+      }
+    },
+    markdown: {
+      config(md) {
+        md.use(footnote);
+        md.use(taskLists, {
+          disabled: true,
+          divWrap: false,
+          divClass: 'checkbox',
+          idPrefix: 'cbx_',
+          ulClass: 'task-list',
+          liClass: 'task-list-item',
+        });
+      }
     }
-  },
-  markdown: {
-    config(md) {
-      md.use(footnote);
-      md.use(taskLists, {
-        disabled: true,
-        divWrap: false,
-        divClass: 'checkbox',
-        idPrefix: 'cbx_',
-        ulClass: 'task-list',
-        liClass: 'task-list-item',
-      });
-    }
-  }
-})
+  })
 );

@@ -1,4 +1,4 @@
-# Deploying to Windows Server (IIS)
+# Deploying
 
 > Deploy Portway as an IIS website on Windows Server with HTTPS and a dedicated Application Pool.
 
