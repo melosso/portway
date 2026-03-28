@@ -359,14 +359,16 @@ function renderCache(d) {
 // Top endpoints
 function renderTopEndpoints(d) {
   const eps = d.top_endpoints ?? [];
+  // Remove 'ping' from the list since it's not a user-defined endpoint and would typically dominate the top endpoints list, overshadowing other endpoints that are more relevant for users to see here.
+  const filteredEps = eps.filter(ep => ep.name.toLowerCase() !== 'ping');
   document.getElementById('topEpPeriodLabel').textContent = d.period ?? '24h';
   const el = document.getElementById('topEndpointsBody');
-  if (eps.length === 0) {
+  if (filteredEps.length === 0) {
     el.innerHTML = '<span class="muted" style="font-size:0.8rem">No API requests yet</span>';
     return;
   }
-  const max = eps[0].count;
-  el.innerHTML = `<div class="ep-list">${eps.map((ep, i) => `
+  const max = filteredEps[0].count;
+  el.innerHTML = `<div class="ep-list">${filteredEps.map((ep, i) => `
     <div class="ep-item">
       <span class="ep-rank">${i+1}</span>
       <span class="ep-name" title="${esc(ep.name)}">${esc(ep.name)}</span>

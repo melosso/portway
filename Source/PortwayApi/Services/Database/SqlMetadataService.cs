@@ -25,7 +25,8 @@ public class SqlMetadataService
     public virtual async Task InitializeAsync(
         Dictionary<string, Classes.EndpointDefinition> sqlEndpoints,
         EnvironmentSettings environmentSettings,
-        Func<string, Task<string>> getConnectionStringAsync)
+        Func<string, Task<string>> getConnectionStringAsync,
+        CancellationToken cancellationToken = default)
     {
         if (_isInitialized)
         {
@@ -76,7 +77,8 @@ public class SqlMetadataService
                 endpointName,
                 definition,
                 environmentsToTry,
-                getConnectionStringAsync));
+                getConnectionStringAsync,
+                cancellationToken));
         }
 
         try
@@ -102,13 +104,15 @@ public class SqlMetadataService
         string endpointName,
         Classes.EndpointDefinition definition,
         List<string> environments,
-        Func<string, Task<string>> getConnectionStringAsync)
+        Func<string, Task<string>> getConnectionStringAsync,
+        CancellationToken cancellationToken = default)
     {
         foreach (var environment in environments)
         {
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
                 var connectionString = await getConnectionStringAsync(environment);
                 if (string.IsNullOrEmpty(connectionString))

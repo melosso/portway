@@ -148,6 +148,7 @@ public class RateLimiter
     private readonly RequestDelegate _next;
     private readonly RateLimitSettings _settings;
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
+    private readonly bool _uiAuthEnabled;
     private readonly ConcurrentDictionary<string, TokenBucket> _buckets = new();
     private readonly ConcurrentDictionary<string, BlockInfo> _blockedTokens = new();
     private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
@@ -175,6 +176,7 @@ public class RateLimiter
         
         _settings = new RateLimitSettings();
         configuration.GetSection("RateLimiting").Bind(_settings);
+        _uiAuthEnabled = !string.IsNullOrEmpty(configuration.GetValue<string>("Portway:AdminApiKey"));
         
         if (_settings.Enabled)
         {
@@ -221,16 +223,27 @@ public class RateLimiter
         var path = context.Request.Path.ToString().ToLower();
         var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
 
-        // Skip rate limiting for exempted paths.
-        // NOTE: /ui/api/* is intentionally NOT exempt — MCP chat and data endpoints must be rate-limited.
-        // Only exempt static UI assets and infrastructure paths.
-        var isStaticUiAsset = context.Request.Path.StartsWithSegments("/ui") &&
-            !context.Request.Path.StartsWithSegments("/ui/api");
+        // Exempt authenticated admin UI requests from rate limiting.
+        // When auth is disabled, all /ui/* traffic is trusted.
+        // When auth is enabled, only requests that carry the session cookie are exempt —
+        // unauthenticated paths (login page, auth API) still run through the rate limiter
+        // to guard against brute-force attacks. The auth middleware upstream redirects
+        // invalid cookies before they reach here, so cookie presence implies valid auth.
+        if (context.Request.Path.StartsWithSegments("/ui"))
+        {
+            bool isAuthenticatedUiRequest = !_uiAuthEnabled ||
+                context.Request.Cookies.ContainsKey("portway_auth");
+            if (isAuthenticatedUiRequest)
+            {
+                Log.Debug("Skipping rate limiting for authenticated UI request {Path}", context.Request.Path);
+                await _next(context);
+                return;
+            }
+        }
 
         if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health") ||
-            isStaticUiAsset ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))

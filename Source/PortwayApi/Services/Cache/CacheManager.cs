@@ -146,20 +146,20 @@ public class CacheManager : ICacheProvider
     /// <summary>
     /// Acquires a distributed lock for the specified key
     /// </summary>
-    public Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime)
+    public Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default)
     {
         if (!_optionsMonitor.CurrentValue.Enabled)
         {
             return Task.FromResult<IDisposable?>(null);
         }
 
-        return _provider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime);
+        return _provider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime, cancellationToken);
     }
 
     /// <summary>
     /// Acquires a distributed lock with default timeout values
     /// </summary>
-    public Task<IDisposable?> AcquireLockAsync(string lockKey)
+    public Task<IDisposable?> AcquireLockAsync(string lockKey, CancellationToken cancellationToken = default)
     {
         if (!_optionsMonitor.CurrentValue.Enabled)
         {
@@ -170,7 +170,8 @@ public class CacheManager : ICacheProvider
             lockKey,
             TimeSpan.FromSeconds(30), // Default lock expiry
             TimeSpan.FromSeconds(10), // Default wait time
-            TimeSpan.FromMilliseconds(200)); // Default retry interval
+            TimeSpan.FromMilliseconds(200), // Default retry interval
+            cancellationToken);
     }
 
     /// <summary>
