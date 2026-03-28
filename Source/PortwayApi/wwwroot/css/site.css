@@ -254,6 +254,8 @@ body.sidebar-expanding main {
 .nav-item:hover { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); }
 .nav-item.active { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); font-weight: 500; }
 .nav-item.active svg { opacity: 1; }
+.nav-external { margin-left: auto; opacity: 0.35; flex-shrink: 0; }
+.nav-item:hover .nav-external { opacity: 0.55; }
 
 .sidebar-footer {
     margin-top: auto;
