@@ -4,7 +4,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-**Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in MCP, OData-support, and native environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting.
+**Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in MCP-server, OData-support, and native environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting.
 
 Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
 
@@ -12,7 +12,7 @@ Portway bridges internal services with external partners, making it ideal for mo
 
 A quick example to give you an idea of what this is all about:
 
-![Screenshot of Portway](.github/images/example.png)
+![Screenshot of Portway](.github/images/example.webp)
 
 ---
 
