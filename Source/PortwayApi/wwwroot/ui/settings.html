@@ -14,6 +14,7 @@
   <script src="js/sidebar.js"></script>
   <script src="js/shared.js"></script>
   <style>
+  /* Wizard & dialog styles */
   .wizard-intro {
     font-size: 0.82rem;
     color: var(--text-secondary);
@@ -38,32 +39,26 @@
     user-select: none;
   }
   .wizard-provider-option input[type="radio"] { display: none; }
-  .wizard-provider-option:hover { background: hsl(var(--accent, 240 4.8% 95.9%)); }
+  .wizard-provider-option:hover { background: hsl(var(--muted)); }
   .wizard-provider-option.selected {
     border-color: hsl(var(--primary));
-    background: color-mix(in srgb, hsl(var(--primary)) 6%, transparent);
+    background: hsl(var(--primary) / 0.06);
   }
-  .wizard-provider-label {
-    font-weight: 500;
-    font-size: 0.875rem;
-  }
+  .wizard-provider-label { font-weight: 500; font-size: 0.875rem; }
   .wizard-error {
     font-size: 0.8rem;
     color: hsl(var(--destructive));
     margin-top: 0.5rem;
     padding: 0.4rem 0.6rem;
-    background: color-mix(in srgb, hsl(var(--destructive)) 10%, transparent);
-    border: 1px solid color-mix(in srgb, hsl(var(--destructive)) 30%, transparent);
+    background: hsl(var(--destructive) / 0.08);
+    border: 1px solid hsl(var(--destructive) / 0.25);
     border-radius: 5px;
   }
-  .wizard-details {
-    margin-top: 1rem;
-    font-size: 0.82rem;
-  }
+  .wizard-details { margin-top: 1rem; font-size: 0.82rem; }
   .wizard-details summary {
     cursor: pointer;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: hsl(var(--muted-foreground));
     list-style: none;
     display: flex;
     align-items: center;
@@ -78,7 +73,7 @@
   .wizard-details[open] summary::before { transform: rotate(90deg); }
   .dialog-field-hint {
     font-size: 0.75rem;
-    color: var(--text-secondary);
+    color: hsl(var(--muted-foreground));
     margin-top: 0.35rem;
     line-height: 1.5;
   }
@@ -90,20 +85,63 @@
     border-radius: 3px;
     padding: 0.1em 0.3em;
   }
+
+  /* Section groupings */
+  .settings-section { display: flex; flex-direction: column; gap: 0.75rem; }
+  .settings-section-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+    user-select: none;
+  }
+  .settings-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  .settings-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .settings-grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 800px) {
+    .settings-grid-3,
+    .settings-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* Setting value variants */
+  .setting-on  { color: hsl(var(--success)); font-weight: 600; }
+  .setting-off { color: hsl(var(--muted-foreground)); }
+
+  /* AI Provider card */
+  .card-featured .ai-clear-row {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 0px solid hsl(var(--border));
+  }
   </style>
 </head>
 <body>
 
 <aside></aside>
+<div class="toast-container" id="toastContainer"></div>
 
 <main>
   <div class="page-header">
     <div class="page-title">
       <h1 class="select-none">Settings</h1>
-      <span class="page-subtitle">Configuration</span>
     </div>
     <div class="header-actions">
-      <button class="btn btn-outline" onclick="load()">
+      <button class="btn btn-outline" id="refreshBtn" onclick="load()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
       </button>
@@ -111,72 +149,106 @@
   </div>
 
   <div class="page-body">
-    <div class="settings-grid">
 
-      <div class="card">
-        <div class="card-header"><span class="card-title">Rate Limiting</span></div>
-        <div class="card-body" id="rateLimitBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
+    <!-- Section: Performance -->
+    <div class="settings-section">
+      <div class="settings-section-label">Performance</div>
+      <div class="settings-grid-3">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Rate Limiting</span>
+          </div>
+          <div class="card-body" id="rateLimitBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
         </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Caching</span>
+          </div>
+          <div class="card-body" id="cachingBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">SQL Connection Pooling</span>
+          </div>
+          <div class="card-body" id="sqlBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
       </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">Caching</span></div>
-        <div class="card-body" id="cachingBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">SQL Connection Pooling</span></div>
-        <div class="card-body" id="sqlBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">File Storage</span></div>
-        <div class="card-body" id="fileBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">Logging</span></div>
-        <div class="card-body" id="loggingBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">Endpoint Reloading</span></div>
-        <div class="card-body" id="reloadBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">MCP (Model Context Protocol)</span></div>
-        <div class="card-body" id="mcpBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">AI Provider (Chat)</span>
-          <div id="aiProviderActions"></div>
-        </div>
-        <div class="card-body" id="aiBody">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-
     </div>
+
+    <!-- Section: Storage & Observability -->
+    <div class="settings-section">
+      <div class="settings-section-label">Storage &amp; Observability</div>
+      <div class="settings-grid-3">
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">File Storage</span></div>
+          <div class="card-body" id="fileBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Logging</span></div>
+          <div class="card-body" id="loggingBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Endpoint Reloading</span>
+          </div>
+          <div class="card-body" id="reloadBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section: Integrations -->
+    <div class="settings-section">
+      <div class="settings-section-label">Integrations</div>
+      <div class="settings-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">MCP (Model Context Protocol)</span>
+          </div>
+          <div class="card-body" id="mcpBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card card-featured">
+          <div class="card-header">
+            <span class="card-title">AI Provider (Chat)</span>
+            <div id="aiProviderActions"></div>
+          </div>
+          <div class="card-body" id="aiBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 </main>
 
 <script>
+// Helpers
+
 function settingItem(label, value, desc) {
   return `<div class="settings-item">
     <div>
@@ -187,63 +259,81 @@ function settingItem(label, value, desc) {
   </div>`;
 }
 
-function boolItem(label, value, desc) {
-  return settingItem(label, value ? 'Enabled' : 'Disabled', desc);
+function settingItemRaw(label, valueHtml, desc) {
+  return `<div class="settings-item">
+    <div>
+      <div class="settings-item-label">${label}</div>
+      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
+    </div>
+    <span class="settings-item-value">${valueHtml}</span>
+  </div>`;
 }
 
+function boolItem(label, value, desc) {
+  const html = value
+    ? '<span class="setting-on">Enabled</span>'
+    : '<span class="setting-off">Disabled</span>';
+  return settingItemRaw(label, html, desc);
+}
+
+// Settings load
+
 async function load() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+
   try {
-    const d = await fetch('/ui/api/settings').then(r => r.json());
-    const rl = d.rate_limiting ?? {};
-    const c = d.caching ?? {};
-    const sql = d.sql_pooling ?? {};
-    const f = d.file_storage ?? {};
-    const log = d.logging ?? {};
-    const ep = d.endpoint_reloading ?? {};
-    const m = d.mcp ?? {};
+    const d   = await fetch('/ui/api/settings').then(r => r.json());
+    const rl  = d.rate_limiting      ?? {};
+    const c   = d.caching            ?? {};
+    const sql = d.sql_pooling        ?? {};
+    const f   = d.file_storage       ?? {};
+    const log = d.logging            ?? {};
+    const ep  = d.endpoint_reloading ?? {};
+    const m   = d.mcp                ?? {};
 
     document.getElementById('rateLimitBody').innerHTML = [
       boolItem('Enabled', rl.enabled),
-      settingItem('IP Limit', rl.ip_limit != null ? `${rl.ip_limit} req / ${rl.ip_window_seconds}s` : '—'),
+      settingItem('IP Limit',    rl.ip_limit    != null ? `${rl.ip_limit} req / ${rl.ip_window_seconds}s`       : '—'),
       settingItem('Token Limit', rl.token_limit != null ? `${rl.token_limit} req / ${rl.token_window_seconds}s` : '—'),
     ].join('');
 
     document.getElementById('cachingBody').innerHTML = [
       boolItem('Enabled', c.enabled),
-      settingItem('Provider', c.provider ?? '—'),
+      settingItem('Provider',         c.provider                 ?? '—'),
       settingItem('Default Duration', c.default_duration_seconds != null ? `${c.default_duration_seconds}s` : '—'),
-      settingItem('Max Items', c.max_items ?? '—'),
-      settingItem('Max Size', c.max_size_mb != null ? `${c.max_size_mb} MB` : '—'),
+      settingItem('Max Items',        c.max_items                ?? '—'),
+      settingItem('Max Size',         c.max_size_mb              != null ? `${c.max_size_mb} MB`             : '—'),
     ].join('');
 
     document.getElementById('sqlBody').innerHTML = [
       boolItem('Enabled', sql.enabled),
-      settingItem('Pool Size', sql.min_pool_size != null ? `${sql.min_pool_size} – ${sql.max_pool_size}` : '—'),
-      settingItem('Connection Timeout', sql.connection_timeout != null ? `${sql.connection_timeout}s` : '—'),
-      settingItem('Command Timeout', sql.command_timeout != null ? `${sql.command_timeout}s` : '—'),
+      settingItem('Pool Size',           sql.min_pool_size        != null ? `${sql.min_pool_size} – ${sql.max_pool_size}` : '—'),
+      settingItem('Connection Timeout',  sql.connection_timeout   != null ? `${sql.connection_timeout}s`                  : '—'),
+      settingItem('Command Timeout',     sql.command_timeout      != null ? `${sql.command_timeout}s`                     : '—'),
     ].join('');
 
     document.getElementById('fileBody').innerHTML = [
-      settingItem('Storage Directory', f.directory || '—'),
-      settingItem('Max File Size', f.max_file_size_mb != null ? `${f.max_file_size_mb} MB` : '—'),
+      settingItem('Storage Directory', f.directory        || '—'),
+      settingItem('Max File Size',     f.max_file_size_mb != null ? `${f.max_file_size_mb} MB` : '—'),
     ].join('');
 
     document.getElementById('loggingBody').innerHTML = [
-      settingItem('Minimum Level', log.min_level ?? '—'),
-      settingItem('Sinks', (log.sinks ?? []).join(', ') || '—'),
+      settingItem('Minimum Level', log.min_level              ?? '—'),
+      settingItem('Sinks',         (log.sinks ?? []).join(', ') || '—'),
     ].join('');
 
     document.getElementById('reloadBody').innerHTML = [
-      boolItem('Enabled', ep.enabled),
+      boolItem('Enabled',  ep.enabled),
       settingItem('Debounce', ep.debounce_ms != null ? `${ep.debounce_ms}ms` : '—'),
     ].join('');
 
     document.getElementById('mcpBody').innerHTML = [
-      boolItem('Enabled', m.enabled),
-      settingItem('Path', m.path ?? '—'),
-      boolItem('Require Authentication', m.require_authentication),
-      boolItem('MCP Apps (UI)', m.apps_enabled),
-      settingItem('MCP Apps Path', m.apps_path ?? '—'),
+      boolItem('Enabled',              m.enabled),
+      settingItem('Path',              m.path  ?? '—'),
+      boolItem('Require Auth',         m.require_authentication),
+      boolItem('MCP Apps (UI)',        m.apps_enabled),
+      settingItem('MCP Apps Path',     m.apps_path ?? '—'),
     ].join('');
 
   } catch(e) {
@@ -256,7 +346,7 @@ async function load() {
 
 load();
 
-// ── AI Provider card ───────────────────────────────────────────────────────
+// AI Provider card
 
 const PROVIDERS = [
   { id: 'mistral',   label: 'Mistral AI',    model: 'mistral-medium-latest', hint: 'mistral-large-latest / mistral-medium-latest' },
@@ -266,18 +356,6 @@ const PROVIDERS = [
 ];
 const PROVIDER_LABELS = Object.fromEntries(PROVIDERS.map(p => [p.id, p.label]));
 
-// settingItem variant that takes pre-built HTML for the value (used for badges).
-// Only call this with server-controlled values that have been escaped where needed.
-function settingItemRaw(label, valueHtml, desc) {
-  return `<div class="settings-item">
-    <div>
-      <div class="settings-item-label">${label}</div>
-      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
-    </div>
-    <span class="settings-item-value">${valueHtml}</span>
-  </div>`;
-}
-
 async function loadAiConfig() {
   const aiBody    = document.getElementById('aiBody');
   const aiActions = document.getElementById('aiProviderActions');
@@ -286,7 +364,7 @@ async function loadAiConfig() {
 
     if (!cfg.configured) {
       aiBody.innerHTML = `<div class="settings-item">
-        <span class="settings-item-label" style="color:var(--text-secondary);font-size:0.8rem;">Not configured</span>
+        <span class="settings-item-label" style="color:hsl(var(--muted-foreground));font-size:0.8rem;">Not configured</span>
       </div>`;
       aiActions.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openAiReconfigure()">Configure</button>`;
       return;
@@ -309,13 +387,12 @@ async function loadAiConfig() {
 
     aiBody.innerHTML = [
       settingItemRaw('Provider', providerLabel),
-      settingItemRaw('Model',    `<span style="font-family:var(--font-mono);font-size:0.82rem;">${esc(cfg.model || '-')}</span>`),
+      settingItemRaw('Model',    `<span style="font-family:ui-monospace,monospace;font-size:0.82rem;">${esc(cfg.model || '—')}</span>`),
       settingItemRaw('API Key',  apiKeyHtml, envDesc),
-      settingItemRaw('Internal Token', cfg.has_internal_token ? 'Configured' : 'Not set'),
-    ].join('') + `
-      <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid hsl(var(--border))">
-        <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" onclick="confirmClearAiConfig()">Clear configuration</button>
-      </div>`;
+      settingItemRaw('Internal Token', cfg.has_internal_token ? 'Configured' : '<span class="setting-off">Not set</span>'),
+    ].join('') + `<div class="ai-clear-row">
+      <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" onclick="confirmClearAiConfig()">Clear configuration</button>
+    </div>`;
 
     aiActions.innerHTML = `<button class="btn btn-outline btn-sm" onclick="openAiReconfigure()">Reconfigure</button>`;
 
@@ -325,7 +402,8 @@ async function loadAiConfig() {
   }
 }
 
-// Wizard state
+// AI wizard
+
 let _wizardStep     = 1;
 let _wizardProvider = null;
 
@@ -346,9 +424,6 @@ function _aiWizardStep1() {
     id: 'ai-setup',
     title: 'Configure chat provider - Step 1 of 2',
     size: 'small',
-    showCloseButton: false,
-    closeOnBackdrop: false,
-    closeOnEscape: false,
     content: `
       <p class="wizard-intro">Choose the AI provider for the chat assistant. The API key is stored encrypted on the server - it never leaves Portway.</p>
       <div class="wizard-providers">${rows}</div>
@@ -387,9 +462,6 @@ function _aiWizardStep2() {
     id: 'ai-setup',
     title: 'Configure chat provider - Step 2 of 2',
     size: 'small',
-    showCloseButton: false,
-    closeOnBackdrop: false,
-    closeOnEscape: false,
     content: `
       <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
       <div class="dialog-field">
@@ -397,9 +469,9 @@ function _aiWizardStep2() {
         <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
       </div>
       <div class="dialog-field" style="margin-top:1rem;">
-        <label for="wiz-key">API Key <span style="color:var(--destructive)">*</span></label>
+        <label for="wiz-key">API Key <span style="color:hsl(var(--destructive))">*</span></label>
         <div style="position:relative;display:flex;align-items:center;">
-          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;font-family:var(--font-mono);font-size:0.82rem;" placeholder="Paste your ${esc(p.label)} API key..." autocomplete="off" spellcheck="false" />
+          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;font-family:ui-monospace,monospace;font-size:0.82rem;" placeholder="Paste your ${esc(p.label)} API key..." autocomplete="off" spellcheck="false" />
           <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
@@ -407,10 +479,10 @@ function _aiWizardStep2() {
         <div class="dialog-field-hint">Your keys are safely encrypted.</div>
       </div>
       <details class="wizard-details">
-        <summary>Internal API token <span style="color:var(--text-secondary);font-weight:400;">(optional)</span></summary>
+        <summary>Internal API token <span style="color:hsl(var(--muted-foreground));font-weight:400;">(optional)</span></summary>
         <div class="dialog-field" style="margin-top:0.75rem;">
           <label for="wiz-token">Portway Bearer Token</label>
-          <input id="wiz-token" type="password" class="input" style="font-family:var(--font-mono);font-size:0.82rem;" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
+          <input id="wiz-token" type="password" class="input" style="font-family:ui-monospace,monospace;font-size:0.82rem;" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
           <div class="dialog-field-hint">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
         </div>
       </details>

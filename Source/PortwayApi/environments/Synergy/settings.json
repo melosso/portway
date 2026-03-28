@@ -1,5 +1,5 @@
 {
-  "ConnectionString": "Server=localhost;Database=Synergy;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
+  "ConnectionString": "PWENC:QVdCJve8b2gCl41PRXw82HzjNLuFL/eBKkZxonA0O9YmkNkSSSDaUqfvXIiOn2sBKBdnZBE8bCkS6Ifk7zZRxspH8OJ3HdPWAKZHqYuyK98EkVTm54I4vfkO4FgnrSpdyTuaovD1TNZNQUFt9kS6IWExiG/042lsRgUE/DyrcnmLMH/Q9hGvp8zYH63NPAwY/zoxS/dv3GkwMDhQZpLvHGH+uGD3KDfi23G91gpIjZdyNHzXxB41jJOVsIxtAhZ/7pYkHC6OI/BtZpwmLUcHGhcw0Mvo/AeI43Zaujx88gGyqZX9HA33hQXV79jrEJ2jFjwhu4W2TLHuy4aSY8oUjA==::M9Ivm8tJZsaesSC9qcH/pZG7xoKQ3f8ftys4g6AS2Ieo/fRNofvnA+Kz9L6Krthx+IS2MRkSJVIPDXNmt8G9xf6qBf7fdVE6I7zTByBvaUZTxIOJ65lYwrEYBPkKddXUpqQO7Csw1gDLGu7B06UmKQ==",
   "ServerName": "localhost",
   "Headers": {
     "Origin": "Portway"

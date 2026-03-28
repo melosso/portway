@@ -2,7 +2,7 @@
 // Depends on: shared.js (esc)
 // Contract: pages using this must define markDirty() (or no-op it).
 
-// ── Render existing key-value pairs as editable rows ─────
+// Render existing key-value pairs as editable rows
 function buildKvEditor(headers) {
   return Object.entries(headers).map(([k, v]) =>
     `<div class="kv-row">
@@ -15,7 +15,7 @@ function buildKvEditor(headers) {
   ).join('');
 }
 
-// ── Append a blank editable row to a container ───────────
+// Append a blank editable row to a container 
 // options.onValueInput, optional listener attached to the value input (e.g. to track user edits)
 function addKvRow(containerId, options = {}) {
   const c = document.getElementById(containerId);
@@ -33,7 +33,7 @@ function addKvRow(containerId, options = {}) {
   c.appendChild(row);
 }
 
-// ── Extract headers from all rows in a container ─────────
+// Extract headers from all rows in a container 
 function collectHeaders(containerId) {
   const headers = {};
   document.querySelectorAll(`#${containerId} .kv-row`).forEach(row => {
@@ -44,7 +44,7 @@ function collectHeaders(containerId) {
   return headers;
 }
 
-// ── Validate that every row with a key also has a value ──
+// Validate that every row with a key also has a value
 // Returns an error string, or null if valid.
 function validateHeaders(containerId) {
   let err = null;

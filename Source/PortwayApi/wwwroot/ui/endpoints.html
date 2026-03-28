@@ -97,7 +97,7 @@
 </div>
 
 <script>
-// Config ────────────────────────────────────────────────
+// Config
 const ENDPOINT_TYPES = [
   {
     key: 'sql', label: 'SQL', dotClass: 'dot-sql',
@@ -377,7 +377,7 @@ function renderStructuredForm(type, content) {
   return `<div class="ep-form">${inner}</div>`;
 }
 
-// Field helpers ─────────────────────────────────────────
+// Field helpers
 
 function fieldText(id, label, value) {
   return `<div class="ep-field">
@@ -584,7 +584,7 @@ function fieldDocumentation(c) {
   );
 }
 
-// Structured forms per type ─────────────────────────────
+// Structured forms per type
 
 // SQL, order matches file convention:
 // DatabaseSchema, DatabaseObjectName, Namespace, NamespaceDisplayName, IsPrivate,
@@ -1090,7 +1090,7 @@ async function confirmDelete() {
   }
 }
 
-// Rename ────────────────────────────────────────────────
+// Rename
 
 function startRename() {
   _renaming = true;
@@ -1123,7 +1123,7 @@ async function confirmRename() {
   } catch(e) { showToast('Rename failed: ' + e.message, 'error'); }
 }
 
-// Create Drawer ─────────────────────────────────────────
+// Create Drawer
 let _preDrawerDirty = false;
 function openCreateDrawer() {
   _preDrawerDirty = _dirty;

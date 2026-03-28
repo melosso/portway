@@ -44,10 +44,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         await FlushRemainingAsync();
     }
 
-    // ──────────────────────────────────────────────────────────────────
-    // DB init / migration
-    // ──────────────────────────────────────────────────────────────────
-
+    // Database init / migration
     private void EnsureDbCreated()
     {
         using var conn = new SqliteConnection(_connectionString);
@@ -79,10 +76,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────
     // Startup hydration
-    // ──────────────────────────────────────────────────────────────────
-
     private async Task HydrateAsync()
     {
         var cutoff = DateTime.UtcNow.AddDays(-31).ToString("yyyy-MM-ddTHH:mm:ssZ");
@@ -114,10 +108,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────
     // Channel processing loop
-    // ──────────────────────────────────────────────────────────────────
-
     private async Task ProcessChannelAsync(CancellationToken ct)
     {
         var reader = _metrics.PersistenceChannel.Reader;
@@ -146,10 +137,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────
     // SQLite helpers
-    // ──────────────────────────────────────────────────────────────────
-
     private async Task WriteBatchAsync(List<MetricsService.RequestEntry> batch)
     {
         try

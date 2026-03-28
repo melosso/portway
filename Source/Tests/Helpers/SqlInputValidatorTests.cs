@@ -12,7 +12,7 @@ public class SqlInputValidatorTests
 
     private static EndpointDefinition EmptyEndpoint() => new EndpointDefinition();
 
-    // ── null/empty body ───────────────────────────────────────────────────────
+    // null/empty body
 
     [Fact]
     public void Validate_NullBody_ReturnsFalse()
@@ -23,7 +23,7 @@ public class SqlInputValidatorTests
         Assert.Equal("Request body cannot be empty", msg);
     }
 
-    // ── required columns ──────────────────────────────────────────────────────
+    // required columns
 
     [Fact]
     public void Validate_MissingRequiredColumn_ReturnsError()
@@ -71,7 +71,7 @@ public class SqlInputValidatorTests
         Assert.True(isValid);
     }
 
-    // ── allowed columns ───────────────────────────────────────────────────────
+    // allowed columns
 
     [Fact]
     public void Validate_DisallowedColumn_ReturnsError()
@@ -99,7 +99,7 @@ public class SqlInputValidatorTests
         Assert.True(isValid);
     }
 
-    // ── regex validation ──────────────────────────────────────────────────────
+    // regex validation
 
     [Fact]
     public void Validate_RegexMatch_Passes()

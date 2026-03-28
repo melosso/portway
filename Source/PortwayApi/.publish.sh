@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ── Health checks ─────────────────────────────────────────────────────────────
+# Health checks
 if ! command -v dotnet &>/dev/null; then
     echo "ERROR: dotnet SDK not found. Install it from https://dot.net and re-run."
     exit 1
 fi
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEPLOYMENT_PATH="$ROOT_DIR/Deployment/PortwayApi"
 SOURCE_PROJECT_PATH="$SCRIPT_DIR"
 
-# ── Deployment directory ───────────────────────────────────────────────────────
+# Deployment directory
 if [ ! -d "$DEPLOYMENT_PATH" ]; then
     echo "Creating deployment folder at $DEPLOYMENT_PATH..."
     mkdir -p "$DEPLOYMENT_PATH"
@@ -22,11 +22,11 @@ else
     find "$DEPLOYMENT_PATH" -mindepth 1 -delete 2>/dev/null || true
 fi
 
-# ── Publish ───────────────────────────────────────────────────────────────────
+# Publish
 echo "Publishing application..."
 dotnet publish "$SOURCE_PROJECT_PATH" -c Release -r win-x64 --self-contained false -o "$DEPLOYMENT_PATH"
 
-# ── Remove dev files ──────────────────────────────────────────────────────────
+# Remove dev files
 echo "Removing development files..."
 find "$DEPLOYMENT_PATH" \( \
     -name "*.pdb" \
@@ -47,13 +47,13 @@ fi
 # Remove tokens folder(s)
 find "$DEPLOYMENT_PATH" -type d -name "tokens" -exec rm -rf {} + 2>/dev/null || true
 
-# ── Remove XML docs (keep Endpoints content) ──────────────────────────────────
+# Remove XML docs (keep Endpoints content)
 find "$DEPLOYMENT_PATH" -name "*.xml" \
     ! -path "*/Endpoints/*" \
     ! -path "*/endpoints/*" \
     -delete 2>/dev/null || true
 
-# ── Remove localised SqlClient resource folders (keep en / nl) ────────────────
+# Remove localised SqlClient resource folders (keep en / nl)
 find "$DEPLOYMENT_PATH" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
     name="$(basename "$dir")"
     if [ "$name" != "en" ] && [ "$name" != "nl" ]; then
@@ -63,7 +63,7 @@ find "$DEPLOYMENT_PATH" -mindepth 1 -maxdepth 1 -type d | while read -r dir; do
     fi
 done
 
-# ── Process Proxy endpoints ───────────────────────────────────────────────────
+# Process Proxy endpoints
 ENDPOINTS_PATH="$DEPLOYMENT_PATH/Endpoints"
 PROXY_PATH="$ENDPOINTS_PATH/Proxy"
 
@@ -83,7 +83,7 @@ if [ -d "$PROXY_PATH" ]; then
     find "$ENDPOINTS_PATH" -type d -name "definitions" -exec rm -rf {} + 2>/dev/null || true
 fi
 
-# ── Generate web.config ───────────────────────────────────────────────────────
+# Generate web.config
 WEB_CONFIG_PATH="$DEPLOYMENT_PATH/web.config"
 cat > "$WEB_CONFIG_PATH" <<'XML'
 <?xml version="1.0" encoding="utf-8"?>
@@ -119,7 +119,7 @@ cat > "$WEB_CONFIG_PATH" <<'XML'
 </configuration>
 XML
 
-# ── LICENSE ───────────────────────────────────────────────────────────────────
+# LICENSE
 LICENSE_DIR="$DEPLOYMENT_PATH/license"
 mkdir -p "$LICENSE_DIR"
 
@@ -131,7 +131,7 @@ fi
 
 echo "https://github.com/melosso/portway" > "$LICENSE_DIR/source.txt"
 
-# ── .gitignore auto-heal ──────────────────────────────────────────────────────
+# .gitignore auto-heal
 GITIGNORE_PATH="$ROOT_DIR/.gitignore"
 touch "$GITIGNORE_PATH"
 

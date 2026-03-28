@@ -62,7 +62,7 @@ class AreaChart {
     this._svg?.remove();
   }
 
-  // ── Rendering ─────────────────────────────────────────────
+  // Rendering
 
   _render() {
     const svg = this._svg;
@@ -102,7 +102,7 @@ class AreaChart {
       ? this._s2.map((d, i) => ({ x: PAD.left + i * step, y: yOf(d.count), count: d.count }))
       : null;
 
-    // ── Defs: gradients ──────────────────────────────────────
+    // Defs: gradients
     const defs  = this._el('defs');
     const gMain = `ag-${this._colorVar}`;
     const gUi   = `ag-${this._colorVar}-ui`;
@@ -119,7 +119,7 @@ class AreaChart {
     if (pts2) defs.appendChild(makeGrad(gUi, 'hsl(var(--muted-foreground))', 0.15, 0.02));
     svg.appendChild(defs);
 
-    // ── Gridlines ────────────────────────────────────────────
+    // Gridlines
     const gridG = this._el('g');
     for (let i = 0; i <= 4; i++) {
       const y = PAD.top + cH * (1 - i / 4);
@@ -136,7 +136,7 @@ class AreaChart {
     }
     svg.appendChild(gridG);
 
-    // ── X-axis labels ─────────────────────────────────────────
+    // X-axis labels
     const maxLbls  = Math.floor(cW / 52);
     const lblEvery = Math.max(1, Math.ceil(n / maxLbls));
     const xG = this._el('g');
@@ -151,13 +151,13 @@ class AreaChart {
     }
     svg.appendChild(xG);
 
-    // ── UI base fill ──────────────────────────────────────────
+    // UI base fill
     if (pts2) {
       const uiPath = this._cubic(pts2) + ` L${pts2[n-1].x},${bot} L${pts2[0].x},${bot} Z`;
       svg.appendChild(this._el('path', { d: uiPath, fill: `url(#${gUi})`, stroke: 'none' }));
     }
 
-    // ── API / primary fill ────────────────────────────────────
+    // API / primary fill
     // When stacked: band between pts2 (linear bottom) and pts1 (cubic top)
     // When single:  area from baseline to pts1
     let apiPath;
@@ -171,14 +171,14 @@ class AreaChart {
     }
     svg.appendChild(this._el('path', { d: apiPath, fill: `url(#${gMain})`, stroke: 'none' }));
 
-    // ── Top stroke ────────────────────────────────────────────
+    // Top stroke
     svg.appendChild(this._el('path', {
       d: this._cubic(pts1), fill: 'none',
       stroke: `hsl(var(--${this._colorVar}))`, 'stroke-width': '1.5',
       'stroke-linecap': 'round', 'stroke-linejoin': 'round'
     }));
 
-    // ── Crosshair (hidden until hover) ────────────────────────
+    // Crosshair (hidden until hover)
     const xhair = this._el('line', {
       x1: 0, y1: PAD.top, x2: 0, y2: bot,
       stroke: 'hsl(var(--muted-foreground))', 'stroke-width': '1',
@@ -187,7 +187,7 @@ class AreaChart {
     svg.appendChild(xhair);
     this._crosshair = xhair;
 
-    // ── Dots: secondary UI series ─────────────────────────────
+    // Dots: secondary UI series
     if (pts2) {
       const dotG2 = this._el('g', { 'pointer-events': 'none' });
       pts2.forEach(pt => {
@@ -201,7 +201,7 @@ class AreaChart {
       this._dotGroup2 = dotG2;
     }
 
-    // ── Dots: primary API series ──────────────────────────────
+    // Dots: primary API series
     const dotG = this._el('g', { 'pointer-events': 'none' });
     pts1.forEach(pt => {
       dotG.appendChild(this._el('circle', {
@@ -213,7 +213,7 @@ class AreaChart {
     svg.appendChild(dotG);
     this._dotGroup = dotG;
 
-    // ── Hover hit-test rects ──────────────────────────────────
+    // Hover hit-test rects
     const colW   = cW / n;
     const hoverG = this._el('g');
     pts1.forEach((pt, i) => {
@@ -229,7 +229,7 @@ class AreaChart {
     svg.appendChild(hoverG);
   }
 
-  // ── Hover handlers ────────────────────────────────────────
+  // Hover handlers
 
   _enter(ev, pt, pt2, idx) {
     if (this._crosshair) {
@@ -288,7 +288,7 @@ class AreaChart {
     svg.appendChild(t);
   }
 
-  // ── Monotone cubic bezier (Fritsch-Carlson) ───────────────
+  // Monotone cubic bezier (Fritsch-Carlson)
 
   _cubic(pts) {
     const n = pts.length;

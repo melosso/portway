@@ -37,7 +37,7 @@ public sealed class MetadataInitializationService : BackgroundService
         if (stoppingToken.IsCancellationRequested)
             return;
 
-        Log.Information("Starting background SQL metadata initialization...");
+        Log.Debug("Starting background SQL metadata initialization...");
 
         try
         {
