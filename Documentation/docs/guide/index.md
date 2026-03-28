@@ -5,7 +5,7 @@ outline: [2, 3]
 keywords: [API Gateway, Windows, SQL Server, REST, OData]
 ---
 
-# Guide
+# What is Portway?
 
 > Practical context for setting up Portway, what it is, how it works, and where to start.
 
