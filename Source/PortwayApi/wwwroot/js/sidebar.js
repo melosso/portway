@@ -137,7 +137,10 @@ function renderSidebar(mcpEnabled) {
       const href   = item.external ? item.href : base + item.href;
       const active = !item.external && (currentPath === href || currentPath.startsWith(href + '/'));
       const ext    = item.external ? ' target="_blank" rel="noopener"' : '';
-      return `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}">${icon(item.icon)}<span>${item.label}</span></a>`;
+      const extBadge = item.external
+        ? `<svg class="nav-external" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
+        : '';
+      return `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}">${icon(item.icon)}<span>${item.label}</span>${extBadge}</a>`;
     }).join('\n    ');
     return `${sep}<div class="nav-group">
     <div class="nav-label">${group.label}</div>
