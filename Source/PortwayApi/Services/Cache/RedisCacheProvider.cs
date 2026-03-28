@@ -384,22 +384,22 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     /// <summary>
     /// Acquires a distributed lock for the specified key
     /// </summary>
-    public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime)
+    public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default)
     {
         string redisLockKey = GetFormattedKey($"lock:{lockKey}");
         string lockValue = Guid.NewGuid().ToString();
         var startTime = DateTime.UtcNow;
-        
+
         try
         {
             if (!IsConnected)
             {
                 await TryReconnectAsync();
-                
+
                 // If still not connected and fallback enabled, use memory cache
                 if (!IsConnected && _redisOptions.FallbackToMemoryCache)
                 {
-                    return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime);
+                    return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime, cancellationToken);
                 }
                 else if (!IsConnected)
                 {
@@ -411,6 +411,8 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             // Try to acquire the lock with retry until timeout
             while (DateTime.UtcNow - startTime < waitTime)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 // Use retry policy for Redis operations
                 bool acquired = await _retryPolicy.ExecuteAsync(async () =>
                 {
@@ -420,40 +422,40 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                         expiryTime,
                         When.NotExists);
                 });
-                
+
                 if (acquired)
                 {
                     Log.Debug("Acquired Redis lock for key: {LockKey}", redisLockKey);
                     return new RedisLockHandle(this, redisLockKey, lockValue, expiryTime);
                 }
-                
+
                 // Wait before trying again
-                await Task.Delay(retryTime);
+                await Task.Delay(retryTime, cancellationToken);
             }
-            
-            Log.Warning("⏱️ Timed out waiting for Redis lock: {LockKey}", redisLockKey);
-            
+
+            Log.Warning("Timed out waiting for Redis lock: {LockKey}", redisLockKey);
+
             // If fallback is enabled, try memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
                 Log.Information("Falling back to memory lock for key: {Key}", lockKey);
-                return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime);
+                return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime, cancellationToken);
             }
-            
+
             return null;
         }
-        catch (Exception ex) when (ex is not RedisConnectionException)
+        catch (Exception ex) when (ex is not RedisConnectionException and not OperationCanceledException)
         {
             Log.Error(ex, "Error acquiring Redis lock for key: {Key}", redisLockKey);
-            
+
             // If fallback is enabled, try memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
                 Log.Information("Falling back to memory lock for key: {Key}", lockKey);
-                return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime);
+                return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime, cancellationToken);
             }
         }
-        
+
         return null;
     }
 

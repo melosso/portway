@@ -42,7 +42,7 @@ namespace PortwayApi.Services.Caching
         /// <param name="waitTime">How long to wait for the lock</param>
         /// <param name="retryTime">Time between retry attempts</param>
         /// <returns>Lock handle that should be disposed to release the lock</returns>
-        Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime);
+        Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Checks if a cache key exists

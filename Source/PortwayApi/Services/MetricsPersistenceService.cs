@@ -29,7 +29,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         try
         {
             EnsureDbCreated();
-            await HydrateAsync();
+            await HydrateAsync(stoppingToken);
             await ProcessChannelAsync(stoppingToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -41,7 +41,7 @@ public sealed class MetricsPersistenceService : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         await base.StopAsync(cancellationToken);
-        await FlushRemainingAsync();
+        await FlushRemainingAsync(cancellationToken);
     }
 
     // Database init / migration
@@ -77,20 +77,20 @@ public sealed class MetricsPersistenceService : BackgroundService
     }
 
     // Startup hydration
-    private async Task HydrateAsync()
+    private async Task HydrateAsync(CancellationToken ct = default)
     {
         var cutoff = DateTime.UtcNow.AddDays(-31).ToString("yyyy-MM-ddTHH:mm:ssZ");
         var entries = new List<MetricsService.RequestEntry>();
 
         await using var conn = new SqliteConnection(_connectionString);
-        await conn.OpenAsync();
+        await conn.OpenAsync(ct);
 
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = "SELECT Timestamp, StatusCode, Method, Source, Endpoint FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp";
         cmd.Parameters.AddWithValue("@cutoff", cutoff);
 
-        await using var reader = await cmd.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
         {
             if (DateTime.TryParse(reader.GetString(0), null, System.Globalization.DateTimeStyles.RoundtripKind, out var ts))
                 entries.Add(new MetricsService.RequestEntry(
@@ -128,22 +128,22 @@ public sealed class MetricsPersistenceService : BackgroundService
 
             if (batch.Count == 0) continue;
 
-            await WriteBatchAsync(batch);
+            await WriteBatchAsync(batch, ct);
             flushCount++;
             batch.Clear();
 
             if (flushCount % PruneEveryNFlushes == 0)
-                await PruneOldRowsAsync();
+                await PruneOldRowsAsync(ct);
         }
     }
 
     // SQLite helpers
-    private async Task WriteBatchAsync(List<MetricsService.RequestEntry> batch)
+    private async Task WriteBatchAsync(List<MetricsService.RequestEntry> batch, CancellationToken ct = default)
     {
         try
         {
             await using var conn = new SqliteConnection(_connectionString);
-            await conn.OpenAsync();
+            await conn.OpenAsync(ct);
             await using var tx = conn.BeginTransaction();
 
             await using var cmd = conn.CreateCommand();
@@ -161,10 +161,10 @@ public sealed class MetricsPersistenceService : BackgroundService
                 pM.Value   = e.Method;
                 pSrc.Value = e.Source;
                 pEp.Value  = e.Endpoint;
-                await cmd.ExecuteNonQueryAsync();
+                await cmd.ExecuteNonQueryAsync(ct);
             }
 
-            await tx.CommitAsync();
+            await tx.CommitAsync(ct);
         }
         catch (Exception ex)
         {
@@ -172,17 +172,17 @@ public sealed class MetricsPersistenceService : BackgroundService
         }
     }
 
-    private async Task PruneOldRowsAsync()
+    private async Task PruneOldRowsAsync(CancellationToken ct = default)
     {
         try
         {
             var cutoff = DateTime.UtcNow.AddDays(-31).ToString("yyyy-MM-ddTHH:mm:ssZ");
             await using var conn = new SqliteConnection(_connectionString);
-            await conn.OpenAsync();
+            await conn.OpenAsync(ct);
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM RequestMetrics WHERE Timestamp < @cutoff";
             cmd.Parameters.AddWithValue("@cutoff", cutoff);
-            var deleted = await cmd.ExecuteNonQueryAsync();
+            var deleted = await cmd.ExecuteNonQueryAsync(ct);
             if (deleted > 0)
                 Log.Debug("MetricsPersistenceService: pruned {Count} old metric rows", deleted);
         }
@@ -192,7 +192,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         }
     }
 
-    private async Task FlushRemainingAsync()
+    private async Task FlushRemainingAsync(CancellationToken ct = default)
     {
         var reader = _metrics.PersistenceChannel.Reader;
         var remaining = new List<MetricsService.RequestEntry>();
@@ -200,7 +200,7 @@ public sealed class MetricsPersistenceService : BackgroundService
 
         if (remaining.Count > 0)
         {
-            await WriteBatchAsync(remaining);
+            await WriteBatchAsync(remaining, ct);
             Log.Debug("MetricsPersistenceService: flushed {Count} entries on shutdown", remaining.Count);
         }
     }

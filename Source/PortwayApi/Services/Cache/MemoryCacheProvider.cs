@@ -120,15 +120,15 @@ public class MemoryCacheProvider : ICacheProvider
     /// <summary>
     /// Acquires a distributed lock for the specified key
     /// </summary>
-    public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime)
+    public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default)
     {
         string actualLockKey = $"lock:{lockKey}";
-        
+
         // Get or create a semaphore for this lock key
         var lockObj = _locks.GetOrAdd(actualLockKey, _ => new SemaphoreSlim(1, 1));
-        
+
         // Try to acquire the lock
-        var waitTask = lockObj.WaitAsync(waitTime);
+        var waitTask = lockObj.WaitAsync(waitTime, cancellationToken);
         
         try
         {

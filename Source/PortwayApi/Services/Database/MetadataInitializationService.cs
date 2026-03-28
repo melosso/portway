@@ -57,7 +57,8 @@ public sealed class MetadataInitializationService : BackgroundService
                     {
                         return string.Empty;
                     }
-                });
+                },
+                stoppingToken);
 
             Log.Information("SQL metadata initialization complete ({Count} endpoints cached)",
                 _metadataService.GetCachedEndpoints().Count());
