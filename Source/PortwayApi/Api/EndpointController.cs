@@ -1665,15 +1665,21 @@ public class EndpointController : ControllerBase
             }
         }
 
-        // Headers stripped from inbound client requests before proxying.
-        // Client-supplied X-Forwarded-* headers must never reach backend services — they would allow
-        // IP spoofing and bypass any backend IP-based access controls.
-        // Portway re-adds a clean X-Forwarded-For from the verified connection IP after this loop.
+        // Strip client-supplied headers that could enable IP spoofing or HTTP desync attacks.
+        // X-Forwarded-* headers are rebuilt from the verified connection IP.
+        // Transfer-Encoding and Content-Length are recalculated by HttpClient after body buffering.
         var headersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "Host", "Connection",
+            // Hop-by-hop headers (RFC 2616)
+            "Host", "Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy-Authorization",
+            "TE", "Trailers", "Transfer-Encoding", "Upgrade",
+            
+            // Client-supplied forwarding headers (IP spoofing risk)
             "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Forwarded-Port",
-            "X-Real-IP", "X-Original-For", "Forwarded"
+            "X-Real-IP", "X-Original-For", "Forwarded",
+            
+            // Content-Length - we buffer and recalculate to prevent desync
+            "Content-Length"
         };
 
         // Copy headers

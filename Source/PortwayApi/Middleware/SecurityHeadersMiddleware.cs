@@ -61,6 +61,13 @@ public class SecurityHeadersMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Inbound request validation
+        if (!ValidateInboundRequest(context.Request))
+        {
+            context.Response.StatusCode = 400;
+            return;
+        }
+
         // Skip security headers for specific routes
         if (ShouldSkipSecurityHeaders(context.Request.Path))
         {
@@ -113,6 +120,30 @@ public class SecurityHeadersMiddleware
                (p.EndsWith(".woff2", StringComparison.OrdinalIgnoreCase) ||
                 p.EndsWith(".woff", StringComparison.OrdinalIgnoreCase) ||
                 p.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ValidateInboundRequest(HttpRequest request)
+    {
+        var hasContentLength = request.Headers.ContainsKey("Content-Length");
+        var hasTransferEncoding = request.Headers.ContainsKey("Transfer-Encoding");
+
+        // Block conflicting Content-Length and Transfer-Encoding headers
+        if (hasContentLength && hasTransferEncoding)
+        {
+            return false;
+        }
+
+        // Normalize Transfer-Encoding header value
+        if (hasTransferEncoding)
+        {
+            var te = request.Headers.TransferEncoding.ToString();
+            if (!te.Equals("chunked", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static bool ShouldSkipSecurityHeaders(PathString path)
