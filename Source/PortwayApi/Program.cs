@@ -1,6 +1,6 @@
 using System.IO.Compression;
+using System.Net;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
@@ -12,7 +12,6 @@ using PortwayApi.Interfaces;
 using PortwayApi.Services.Files;
 using PortwayApi.Helpers;
 using PortwayApi.Middleware;
-using PortwayApi.Services;
 using PortwayApi.Services.Caching;
 using PortwayApi.Services.Configuration;
 using PortwayApi.Services.Health;
@@ -298,40 +297,54 @@ try
     app.UseSecurityHeaders();
     app.UseContentNegotiation();
 
-    // HTTPS redirection and forwarded headers
+    // Configure forwarded headers with security best practices to prevent
     var forwardedHeadersOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor |
                         ForwardedHeaders.XForwardedProto |
                         ForwardedHeaders.XForwardedHost,
-        RequireHeaderSymmetry = false,
+        
+        // Enforce header symmetry to prevent desync between front-end and back-end
+        RequireHeaderSymmetry = true,
+        
+        // Support deep proxy chains
         ForwardLimit = null
     };
-    forwardedHeadersOptions.KnownIPNetworks.Clear();
-    forwardedHeadersOptions.KnownProxies.Clear();
+
+    // Configure known proxies based on environment
+    var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+        ?.Equals("Production", StringComparison.OrdinalIgnoreCase) ?? false;
+
+    if (!isProduction)
+    {
+        forwardedHeadersOptions.KnownIPNetworks.Clear();
+        forwardedHeadersOptions.KnownProxies.Clear();
+        Log.Warning("ForwardedHeaders: No known proxies configured. Add trusted proxies in production.");
+    }
+    else
+    {
+        // Production: cleared by default; configure via config file if needed
+        forwardedHeadersOptions.KnownIPNetworks.Clear();
+        forwardedHeadersOptions.KnownProxies.Clear();
+    }
+
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
-
-    // Proxy-specific middleware
+    // Trust Cloudflare headers only if CF-Ray is present (added by Cloudflare edge, not clients)
     app.Use((context, next) =>
     {
-        // Check for CF headers
-        if (context.Request.Headers.TryGetValue("CF-Visitor", out var cfVisitor))
+        if (context.Request.Headers.TryGetValue("CF-Ray", out _))
         {
-            if (cfVisitor.ToString().Contains("\"scheme\":\"https\""))
+            if (context.Request.Headers.TryGetValue("CF-Visitor", out var cfVisitor) &&
+                cfVisitor.ToString().Contains("\"scheme\":\"https\""))
             {
                 context.Request.Scheme = "https";
             }
-        }
 
-        // Also check for CF connecting protocol
-        if (context.Request.Headers.TryGetValue("CF-Connecting-IP", out var _))
-        {
-            // We're behind CF, so trust the X-Forwarded-Proto header
-            if (context.Request.Headers.TryGetValue("X-Forwarded-Proto", out var proto) &&
-                proto == "https")
+            if (context.Request.Headers.TryGetValue("CF-Connecting-IP", out var cfIp) &&
+                IPAddress.TryParse(cfIp.ToString(), out var cfIpAddress))
             {
-                context.Request.Scheme = "https";
+                context.Connection.RemoteIpAddress = cfIpAddress;
             }
         }
 
