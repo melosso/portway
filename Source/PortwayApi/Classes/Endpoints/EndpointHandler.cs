@@ -525,9 +525,13 @@ public static class EndpointHandler
                         Log.Warning("Failed to load endpoint from {File}", file);
                     }
                 }
+                catch (JsonException ex)
+                {
+                    Log.Warning("Invalid JSON in proxy endpoint {File}: {Message}", file, ex.Message);
+                }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error parsing endpoint file: {File}", file);
+                    Log.Error(ex, "Unexpected error reading proxy endpoint file: {File}", file);
                 }
             }
 
@@ -643,9 +647,13 @@ public static class EndpointHandler
                         Log.Warning("Failed to load SQL endpoint from {File}", file);
                     }
                 }
+                catch (JsonException ex)
+                {
+                    Log.Warning("Invalid JSON in SQL endpoint {File}: {Message}", file, ex.Message);
+                }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error parsing SQL endpoint file: {File}", file);
+                    Log.Error(ex, "Unexpected error reading SQL endpoint file: {File}", file);
                 }
             }
 
@@ -698,9 +706,13 @@ public static class EndpointHandler
                         Log.Warning("Failed to load SQL webhook endpoint from {File}", file);
                     }
                 }
+                catch (JsonException ex)
+                {
+                    Log.Warning("Invalid JSON in SQL webhook endpoint {File}: {Message}", file, ex.Message);
+                }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error parsing SQL webhook endpoint file: {File}", file);
+                    Log.Error(ex, "Unexpected error reading SQL webhook endpoint file: {File}", file);
                 }
             }
             else
@@ -775,9 +787,13 @@ public static class EndpointHandler
                         Log.Warning("Failed to load file endpoint from {File}", file);
                     }
                 }
+                catch (JsonException ex)
+                {
+                    Log.Warning("Invalid JSON in file endpoint {File}: {Message}", file, ex.Message);
+                }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error parsing file endpoint file: {File}", file);
+                    Log.Error(ex, "Unexpected error reading file endpoint file: {File}", file);
                 }
             }
 
@@ -899,9 +915,13 @@ public static class EndpointHandler
                         Log.Warning("Failed to load static endpoint from {File}", file);
                     }
                 }
+                catch (JsonException ex)
+                {
+                    Log.Warning("Invalid JSON in static endpoint {File}: {Message}", file, ex.Message);
+                }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Error parsing static endpoint file: {File}", file);
+                    Log.Error(ex, "Unexpected error reading static endpoint file: {File}", file);
                 }
             }
 
@@ -920,36 +940,30 @@ public static class EndpointHandler
     /// </summary>
     private static EndpointDefinition? ParseFileEndpointDefinition(string json)
     {
-        try
-        {
-            var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
 
-            if (entity != null)
+        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (entity == null)
+            return null;
+
+        return new EndpointDefinition
+        {
+            Type = EndpointType.Files,
+            Methods = new List<string> { "GET", "POST", "DELETE" },
+            AllowedEnvironments = entity.AllowedEnvironments,
+            IsPrivate = entity.IsPrivate,
+            Mcp = entity.Mcp,
+            // Store file-specific properties in Properties dictionary
+            Properties = new Dictionary<string, object>
             {
-                return new EndpointDefinition
-                {
-                    Type = EndpointType.Files,
-                    Methods = new List<string> { "GET", "POST", "DELETE" },
-                    AllowedEnvironments = entity.AllowedEnvironments,
-                    IsPrivate = entity.IsPrivate,
-                    Mcp = entity.Mcp,
-                    // Store file-specific properties in Properties dictionary
-                    Properties = new Dictionary<string, object>
-                    {
-                        ["StorageType"] = entity.StorageType,
-                        ["BaseDirectory"] = entity.BaseDirectory ?? "",
-                        ["AllowedExtensions"] = entity.AllowedExtensions ?? new List<string>()
-                    }
-                };
+                ["StorageType"] = entity.StorageType,
+                ["BaseDirectory"] = entity.BaseDirectory ?? "",
+                ["AllowedExtensions"] = entity.AllowedExtensions ?? new List<string>()
             }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error parsing file endpoint definition");
-        }
-
-        return null;
+        };
     }
 
     /// <summary>
@@ -957,40 +971,34 @@ public static class EndpointHandler
     /// </summary>
     private static EndpointDefinition? ParseStaticEndpointDefinition(string json)
     {
-        try
-        {
-            var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
 
-            if (entity != null)
+        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (entity == null)
+            return null;
+
+        return new EndpointDefinition
+        {
+            Type = EndpointType.Static,
+            Methods = new List<string> { "GET" },
+            AllowedEnvironments = entity.AllowedEnvironments,
+            IsPrivate = entity.IsPrivate,
+            Mcp = entity.Mcp,
+            Documentation = entity.Documentation,
+            Namespace = entity.Namespace,
+            DisplayName = entity.DisplayName,
+            NamespaceDisplayName = entity.NamespaceDisplayName,
+            // Store static-specific properties in Properties dictionary
+            Properties = new Dictionary<string, object>
             {
-                return new EndpointDefinition
-                {
-                    Type = EndpointType.Static,
-                    Methods = new List<string> { "GET" },
-                    AllowedEnvironments = entity.AllowedEnvironments,
-                    IsPrivate = entity.IsPrivate,
-                    Mcp = entity.Mcp,
-                    Documentation = entity.Documentation,
-                    Namespace = entity.Namespace,
-                    DisplayName = entity.DisplayName,
-                    NamespaceDisplayName = entity.NamespaceDisplayName,
-                    // Store static-specific properties in Properties dictionary
-                    Properties = new Dictionary<string, object>
-                    {
-                        ["ContentType"] = entity.ContentType,
-                        ["ContentFile"] = entity.ContentFile,
-                        ["EnableFiltering"] = entity.EnableFiltering
-                    }
-                };
+                ["ContentType"] = entity.ContentType,
+                ["ContentFile"] = entity.ContentFile,
+                ["EnableFiltering"] = entity.EnableFiltering
             }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error parsing static endpoint definition");
-        }
-
-        return null;
+        };
     }
 
     public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
@@ -1015,59 +1023,55 @@ public static class EndpointHandler
     /// </summary>
     private static EndpointDefinition? ParseProxyEndpointDefinition(string json)
     {
-        try
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        // First try to parse as an ExtendedEndpointEntity (preferred format)
+        var extendedEntity = JsonSerializer.Deserialize<ExtendedEndpointEntity>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (extendedEntity != null && !string.IsNullOrWhiteSpace(extendedEntity.Url) && extendedEntity.Methods != null)
         {
-            // First try to parse as an ExtendedEndpointEntity (preferred format)
-            var extendedEntity = JsonSerializer.Deserialize<ExtendedEndpointEntity>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (extendedEntity != null && !string.IsNullOrWhiteSpace(extendedEntity.Url) && extendedEntity.Methods != null)
+            return new EndpointDefinition
             {
-                return new EndpointDefinition
-                {
-                    Url = extendedEntity.Url,
-                    Methods = extendedEntity.Methods,
-                    IsPrivate = extendedEntity.IsPrivate,
-                    Mcp = extendedEntity.Mcp,
-                    Type = ParseEndpointType(extendedEntity.Type),
-                    CompositeConfig = extendedEntity.CompositeConfig,
-                    AllowedEnvironments = extendedEntity.AllowedEnvironments,
-                    Documentation = extendedEntity.Documentation,
-                    CustomProperties = extendedEntity.CustomProperties,
-                    Namespace = extendedEntity.Namespace,
-                    NamespaceDisplayName = extendedEntity.NamespaceDisplayName,
-                    DisplayName = extendedEntity.DisplayName,
-                    DeletePatterns = extendedEntity.DeletePatterns
-                };
-            }
-
-            // Try to parse as a standard EndpointEntity as fallback
-            var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (entity != null && !string.IsNullOrWhiteSpace(entity.Url) && entity.Methods != null)
-            {
-                return new EndpointDefinition
-                {
-                    Url = entity.Url,
-                    Methods = entity.Methods,
-                    IsPrivate = false,
-                    Mcp = entity.Mcp,
-                    Type = EndpointType.Standard,
-                    CompositeConfig = null,
-                    AllowedEnvironments = entity.AllowedEnvironments,
-                    Documentation = entity.Documentation,
-                    CustomProperties = entity.CustomProperties,
-                    Namespace = entity.Namespace,
-                    DisplayName = entity.DisplayName,
-                    NamespaceDisplayName = entity.NamespaceDisplayName,
-                    DeletePatterns = entity.DeletePatterns
-                };
-            }
+                Url = extendedEntity.Url,
+                Methods = extendedEntity.Methods,
+                IsPrivate = extendedEntity.IsPrivate,
+                Mcp = extendedEntity.Mcp,
+                Type = ParseEndpointType(extendedEntity.Type),
+                CompositeConfig = extendedEntity.CompositeConfig,
+                AllowedEnvironments = extendedEntity.AllowedEnvironments,
+                Documentation = extendedEntity.Documentation,
+                CustomProperties = extendedEntity.CustomProperties,
+                Namespace = extendedEntity.Namespace,
+                NamespaceDisplayName = extendedEntity.NamespaceDisplayName,
+                DisplayName = extendedEntity.DisplayName,
+                DeletePatterns = extendedEntity.DeletePatterns
+            };
         }
-        catch (Exception ex)
+
+        // Try to parse as a standard EndpointEntity as fallback
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (entity != null && !string.IsNullOrWhiteSpace(entity.Url) && entity.Methods != null)
         {
-            Log.Error(ex, "Error parsing proxy endpoint definition");
+            return new EndpointDefinition
+            {
+                Url = entity.Url,
+                Methods = entity.Methods,
+                IsPrivate = false,
+                Mcp = entity.Mcp,
+                Type = EndpointType.Standard,
+                CompositeConfig = null,
+                AllowedEnvironments = entity.AllowedEnvironments,
+                Documentation = entity.Documentation,
+                CustomProperties = entity.CustomProperties,
+                Namespace = entity.Namespace,
+                DisplayName = entity.DisplayName,
+                NamespaceDisplayName = entity.NamespaceDisplayName,
+                DeletePatterns = entity.DeletePatterns
+            };
         }
 
         return null;
@@ -1078,52 +1082,43 @@ public static class EndpointHandler
     /// </summary>
     private static EndpointDefinition? ParseSqlEndpointDefinition(string json)
     {
-        try
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        if (entity == null || string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
+            return null;
+
+        var allowedMethods = entity.AllowedMethods ?? new List<string> { "GET" };
+        var schema = entity.DatabaseSchema ?? "dbo";
+
+        var validationResults = ValidateSqlEndpointConfiguration(entity);
+        if (validationResults.Any())
         {
-            // Parse as EndpointEntity
-            var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (entity != null && !string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
-            {
-                var allowedMethods = entity.AllowedMethods ?? new List<string> { "GET" };
-                var schema = entity.DatabaseSchema ?? "dbo";
-
-                // Validate the endpoint configuration before creating the definition
-                var validationResults = ValidateSqlEndpointConfiguration(entity);
-                if (validationResults.Any())
-                {
-                    var errors = string.Join(", ", validationResults);
-                    Log.Error("SQL endpoint validation failed: {Errors}", errors);
-                    throw new InvalidOperationException($"Endpoint configuration is invalid: {errors}");
-                }
-
-                return new EndpointDefinition
-                {
-                    Type = EndpointType.SQL,
-                    DatabaseObjectName = entity.DatabaseObjectName,
-                    DatabaseSchema = schema,
-                    AllowedColumns = entity.AllowedColumns ?? new List<string>(),
-                    Procedure = entity.Procedure,
-                    PrimaryKey = entity.PrimaryKey,
-                    DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
-                    FunctionParameters = entity.FunctionParameters,
-                    Methods = allowedMethods,
-                    Mcp = entity.Mcp,
-                    AllowedEnvironments = entity.AllowedEnvironments,
-                    Documentation = entity.Documentation,
-                    Namespace = entity.Namespace,
-                    NamespaceDisplayName = entity.NamespaceDisplayName,
-                    DisplayName = entity.DisplayName
-                };
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error parsing SQL endpoint definition");
+            var errors = string.Join(", ", validationResults);
+            throw new InvalidOperationException($"Endpoint configuration is invalid: {errors}");
         }
 
-        return null;
+        return new EndpointDefinition
+        {
+            Type = EndpointType.SQL,
+            DatabaseObjectName = entity.DatabaseObjectName,
+            DatabaseSchema = schema,
+            AllowedColumns = entity.AllowedColumns ?? new List<string>(),
+            Procedure = entity.Procedure,
+            PrimaryKey = entity.PrimaryKey,
+            DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
+            FunctionParameters = entity.FunctionParameters,
+            Methods = allowedMethods,
+            Mcp = entity.Mcp,
+            AllowedEnvironments = entity.AllowedEnvironments,
+            Documentation = entity.Documentation,
+            Namespace = entity.Namespace,
+            NamespaceDisplayName = entity.NamespaceDisplayName,
+            DisplayName = entity.DisplayName
+        };
     }
 
     /// <summary>
