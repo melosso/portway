@@ -525,20 +525,16 @@ public class RateLimiter
             key);
     }
     
+    // Use RemoteIpAddress set by UseForwardedHeaders middleware rather than reading
+    // X-Forwarded-For directly — direct header reads are spoofable by clients.
     private string GetClientIpAddress(HttpContext context)
     {
-        string? ip = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        
-        if (string.IsNullOrEmpty(ip))
-        {
-            ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        }
-        else
-        {
-            ip = ip.Split(',').FirstOrDefault()?.Trim() ?? "unknown";
-        }
-        
-        return ip;
+        var remoteIp = context.Connection.RemoteIpAddress;
+        if (remoteIp == null) return "unknown";
+        // Unwrap IPv4-mapped IPv6 addresses (e.g. ::ffff:192.168.1.1)
+        if (remoteIp.IsIPv4MappedToIPv6)
+            remoteIp = remoteIp.MapToIPv4();
+        return remoteIp.ToString();
     }
 }
 

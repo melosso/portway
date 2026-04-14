@@ -1090,6 +1090,23 @@ public static class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
+        // Receive and log client-side JS errors for production visibility.
+        // Exempt from auth (sendBeacon fires from any page state); rate-limited by the IP limiter.
+        app.MapPost("/ui/api/client-error", async (HttpContext context) =>
+        {
+            try
+            {
+                var body = await new System.IO.StreamReader(context.Request.Body).ReadToEndAsync();
+                if (!string.IsNullOrWhiteSpace(body) && body.Length < 4096)
+                {
+                    Log.Warning("Client-side JS error from {IP}: {Body}",
+                        context.Connection.RemoteIpAddress, body);
+                }
+            }
+            catch { /* never let client errors throw */ }
+            return Results.Ok();
+        }).ExcludeFromDescription();
+
         app.MapGet("/ui/api/logs", async (HttpRequest request) =>
         {
             var limit       = int.TryParse(request.Query["limit"], out var l) ? Math.Min(l, 2000) : 200;

@@ -55,9 +55,11 @@
     <div class="auth-box select-none">
       <h2>Sign In</h2>
       <p>Enter your admin API key to access the dashboard.</p>
-      <input type="password" id="apiKeyInput" placeholder="X-Api-Key" autocomplete="current-password"
+      <label for="apiKeyInput" class="sr-only">Admin API Key</label>
+      <input type="password" id="apiKeyInput" placeholder="Admin API Key" autocomplete="current-password"
+             aria-describedby="authError"
              onkeydown="if(event.key==='Enter')signIn()">
-      <div class="auth-error" id="authError">Invalid API key</div>
+      <div class="auth-error" id="authError" role="alert" aria-live="assertive">Invalid API key</div>
       <button class="btn btn-primary" id="signInBtn" style="width:100%;justify-content:center" onclick="signIn()">
         <span class="btn-label"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle;margin-right:0.4rem"><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>Sign In</span><span class="btn-spinner"></span>
       </button>

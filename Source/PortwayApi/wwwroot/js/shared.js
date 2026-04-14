@@ -64,6 +64,33 @@ function animateCounter(el, target, duration) {
   );
 })();
 
+// Capture unhandled client-side errors and report them to the server log.
+// Errors are rate-limited to avoid flooding.
+(function () {
+  var _reported = 0, _maxReports = 10;
+  function reportError(msg, source, lineno, colno, err) {
+    if (_reported >= _maxReports) return;
+    _reported++;
+    try {
+      navigator.sendBeacon('/ui/api/client-error', JSON.stringify({
+        message: String(msg).slice(0, 500),
+        source: String(source || '').slice(0, 200),
+        line: lineno,
+        col: colno,
+        stack: err && err.stack ? String(err.stack).slice(0, 1000) : null,
+        url: location.pathname,
+        ts: Date.now()
+      }));
+    } catch (_) {}
+  }
+  window.onerror = function(msg, source, lineno, colno, err) {
+    reportError(msg, source, lineno, colno, err);
+  };
+  window.addEventListener('unhandledrejection', function(e) {
+    reportError('Unhandled promise rejection: ' + (e.reason || ''), '', 0, 0, null);
+  });
+})();
+
 // Auto-prepend PortwayBase to all absolute fetch paths so the UI works
 // correctly when the app is hosted under a sub-path (PathBase) like /v1.
 (function () {
