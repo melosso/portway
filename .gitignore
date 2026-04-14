@@ -1,5 +1,9 @@
 Deployment/
 /Deployment/
+!README.md
+!CONTRIBUTING.md
+!SECURITY.md
+*.md
 *.log
 *.tmp
 *.cache
