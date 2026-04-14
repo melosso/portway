@@ -19,16 +19,29 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // Ensure the toast container has aria-live so screen readers announce notifications.
+  function ensureAriaLive() {
+    const c = document.getElementById('toastContainer');
+    if (c && !c.getAttribute('aria-live')) {
+      c.setAttribute('aria-live', 'polite');
+      c.setAttribute('aria-atomic', 'false');
+    }
+  }
+
   function toast(msg, type = 'success', duration = DEFAULT_DURATION) {
     const c = document.getElementById('toastContainer');
     if (!c) {
       console.warn('Toast: toastContainer not found');
       return;
     }
+    ensureAriaLive();
 
     const t = document.createElement('div');
     t.className = `toast ${type}`;
-    t.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[type] || icons.info}</svg><span>${esc(msg)}</span>`;
+    // role="status" for success/info; role="alert" for error/warning (assertive)
+    const role = (type === 'error' || type === 'warning') ? 'alert' : 'status';
+    t.setAttribute('role', role);
+    t.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[type] || icons.info}</svg><span>${esc(msg)}</span>`;
     
     c.appendChild(t);
     

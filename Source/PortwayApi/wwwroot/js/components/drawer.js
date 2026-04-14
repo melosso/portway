@@ -17,7 +17,9 @@
 
   const Drawer = {
     _closeCallbacks: {},
-  
+    // Track dirty state per drawer to warn on unsaved edits
+    _dirtyState: {},
+
   _findBackdrop: function(drawerId) {
     return document.querySelector(`[data-drawer-backdrop="${drawerId}"]`)
         || document.getElementById(drawerId + 'Backdrop');
@@ -30,6 +32,9 @@
     if (backdrop) backdrop.classList.add('open');
     if (drawer) drawer.classList.add('open');
 
+    // Reset dirty state when drawer opens
+    this._dirtyState[drawerId] = false;
+
     // Add body class for blur effect
     document.body.classList.add('drawer-open');
 
@@ -37,19 +42,37 @@
     this._trapFocus(drawer);
   },
 
-  close: function(drawerId) {
+  // Mark a drawer as having unsaved changes
+  markDirty: function(drawerId) {
+    this._dirtyState[drawerId] = true;
+  },
+
+  clearDirty: function(drawerId) {
+    this._dirtyState[drawerId] = false;
+  },
+
+  close: function(drawerId, force = false) {
+    // Warn before closing with unsaved changes
+    if (!force && this._dirtyState[drawerId]) {
+      if (!window.confirm('You have unsaved changes. Close without saving?')) {
+        return;
+      }
+    }
+
     const backdrop = this._findBackdrop(drawerId);
     const drawer = document.getElementById(drawerId);
-    
+
     if (backdrop) backdrop.classList.remove('open');
     if (drawer) drawer.classList.remove('open');
-    
+
+    this._dirtyState[drawerId] = false;
+
     // Remove body class if no other drawers are open
     const openDrawers = document.querySelectorAll('.drawer-backdrop.open');
     if (openDrawers.length === 0) {
       document.body.classList.remove('drawer-open');
     }
-    
+
     // Call close callback if registered
     if (this._closeCallbacks[drawerId]) {
       this._closeCallbacks[drawerId]();

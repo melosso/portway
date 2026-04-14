@@ -82,20 +82,16 @@ public class TokenAuthMiddleware
         // Continue with global authentication logic
         if (!context.Request.Headers.TryGetValue("Authorization", out var providedToken))
         {
-            var remoteIp = context.Connection.RemoteIpAddress;
-            var validator = context.RequestServices.GetRequiredService<UrlValidator>();
-
             Log.Debug("Authorization header missing for {Path}", context.Request.Path);
-            
+
+            // Omit clientIp and requestedPath
             context.Response.StatusCode = 401;
             context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new 
-            { 
+            await context.Response.WriteAsJsonAsync(new
+            {
                 error = "Authentication required",
-                clientIp = remoteIp?.ToString() ?? "Unknown",
-                requestedPath = context.Request.Path.Value,
-                success = false 
-            });            
+                success = false
+            });
             return;
         }
 
