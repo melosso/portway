@@ -1,28 +1,23 @@
 # Licensing
 
-Portway is completely **open source** and **free to use** for all purposes, including commercial use. It's released under the **GNU Affero General Public License (AGPL) v3**, which means:
+Portway is **free, open-source software** released under the **GNU Affero General Public License (AGPL) v3**. This license ensures that the software stays open and that improvements are shared with the community.
 
-- **Free to use** - No cost for any use case
-- **Commercial use permitted** - Use in commercial projects without restrictions
-- **All features included** - No feature limitations or tiers
-- **Modify and distribute** - Fork, modify, and redistribute as needed
-- **Community driven** - Open source development and support
+## How it Works
 
-The source code is publicly available on GitHub.
+The AGPL v3 is a "copyleft" license. It is designed specifically for network software to prevent "private" forks that are never shared back.
 
-## What This Means For You
+### 1. Using Portway "As Is"
+If you use Portway exactly as it is provided, you have **no extra obligations**. You can use it for your business, your home, or your clients without any requirement to share your internal data or setup.
 
-The AGPL v3 license has simple requirements. If you modify Portway and distribute it, you must share your modifications under the same license. If you run a modified version as a network service, you must provide the source code to users. If you use Portway without modifications, no additional obligations apply.
+### 2. The "Network" Rule
+The AGPL v3 has a specific rule: If you modify Portway and let people use that modified version over a network (like the internet or a company Intranet), you **must** make your modified source code available to those users. 
 
-### Contributing
+### 3. Commercial Use
+You are free to use Portway for commercial purposes, but there are specific conditions:
+*   **Hosting:** You can charge clients to host or manage Portway instances.
+*   **Customization:** You can modify Portway to fit your business needs.
+*   **The Catch:** If you sell access to a modified version of Portway as a service (SaaS), your customers have the legal right to request the source code of your modified version. You cannot keep those software improvements "secret", and we'll make sure to verify this.
 
-We welcome contributions from the community including bug fixes, feature improvements, documentation updates, example configurations, and testing feedback. See our contributing guidelines in the repository for details.
+## Contributing
 
-### Commercial Use
-
-Portway can be used commercially under the AGPL v3 license:
-
-- **Use in commercial products** - Include Portway in your commercial offerings
-- **Deploy for customers** - Run Portway instances for your clients
-- **Modify for business needs** - Customize Portway for your use case
-- **Share modifications** - If you modify and distribute Portway, share the source code
+We welcome all help. If you find a bug, want to suggest a feature, or improve the documentation, please open a Pull Request on GitHub. Check our contributing guidelines in the repository for more details.
