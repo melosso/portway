@@ -63,7 +63,7 @@ const NAV_GROUPS = [
         external: true,
       },
       {
-        href: 'https://github.com/melosso/portway/blob/main/README.md',
+        href: 'https://portway-docs.melosso.com/',
         label: 'Documentation',
         icon: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
         external: true,

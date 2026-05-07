@@ -1,8 +1,8 @@
 # Folder structure and routing
 
-> Portway derives API routes from the `endpoints/` folder hierarchy, no route registration required.
-
 Each subfolder under `endpoints/` corresponds to an endpoint type. The folder name within each type becomes the endpoint name in the API URL. Portway watches these folders and reloads configuration when files change.
+
+Meaning by default, Portway derives API routes from the `endpoints/` folder hierarchy, meaning no route registration is required. This can be overridden if using the `Namespace` and `DisplayName` attributes, which is an advanced configuration.
 
 ## Directory layout
 
@@ -10,11 +10,11 @@ Each subfolder under `endpoints/` corresponds to an endpoint type. The folder na
 PortwayApi/
 ├── appsettings.json
 ├── web.config
-├── auth.db                         # Authentication database (auto-created)
-├── log/                            # Application logs (daily rotation)
-├── tokens/                         # Token files (remove after recording)
+├── *.db
+├── log/
+├── tokens/
 ├── environments/
-│   ├── settings.json               # Global: server name and allowed environments
+│   ├── settings.json
 │   ├── dev/
 │   │   └── settings.json
 │   ├── test/
@@ -28,7 +28,7 @@ PortwayApi/
     ├── Proxy/
     │   ├── Accounts/
     │   │   └── entity.json
-    │   └── SalesOrder/             # Composite (Type: "Composite" in entity.json)
+    │   └── SalesOrder/
     │       └── entity.json
     ├── Webhooks/
     │   └── entity.json
