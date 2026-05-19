@@ -233,7 +233,12 @@ public class FileHandlerService : IDisposable
         }
 
         // File not in memory, check on disk
-        string filePath = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename);
+        string storageRoot = Path.GetFullPath(_optionsMonitor.CurrentValue.StorageDirectory);
+        string filePath    = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
+
+        if (!filePath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+            filePath != storageRoot)
+            throw new UnauthorizedAccessException($"Access denied: resolved path escapes storage root.");
 
         if (!File.Exists(filePath))
         {
@@ -307,8 +312,13 @@ public class FileHandlerService : IDisposable
             Log.Debug("File {Filename} removed from memory cache with ID {FileId}", filename, fileId);
         }
 
-        // Delete from disk if it exists
-        string filePath = Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename);
+        // Delete from disk if it exists — verify path stays within storage root
+        string storageRoot = Path.GetFullPath(_optionsMonitor.CurrentValue.StorageDirectory);
+        string filePath    = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
+
+        if (!filePath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+            filePath != storageRoot)
+            throw new UnauthorizedAccessException($"Access denied: resolved path escapes storage root.");
 
         if (File.Exists(filePath))
         {
@@ -671,29 +681,68 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>
-    /// Parses a file ID into environment and filename
+    /// Validates the environment and filename components decoded from a fileId.
+    /// Both components must be non-empty single-segment values with no path separators or traversal sequences.
+    /// </summary>
+    internal static bool ValidateFileIdComponents(string? environment, string? filename)
+    {
+        if (string.IsNullOrWhiteSpace(environment) || string.IsNullOrWhiteSpace(filename))
+            return false;
+
+        // Environment must be a single path segment — no separators, no traversal
+        if (environment.Contains('/') || environment.Contains('\\') || environment.Contains(".."))
+            return false;
+
+        // Reject absolute paths and traversal sequences regardless of platform
+        if (Path.IsPathRooted(filename))
+            return false;
+
+        // Reject backslashes explicitly — on Linux Path.GetFileName does not treat them
+        // as separators, so a Windows-style path would otherwise slip through
+        if (filename.Contains('\\'))
+            return false;
+
+        // Path.GetFileName returns only the last segment; if it differs, the original
+        // contained forward-slash path components
+        string safeFilename = Path.GetFileName(filename);
+        if (string.IsNullOrEmpty(safeFilename) || safeFilename != filename)
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a file ID into environment and filename, rejecting any path traversal in either component.
     /// </summary>
     private bool ParseFileId(string fileId, out string environment, out string filename)
     {
         try
         {
-            // Decode the file ID
             string decoded = fileId
                 .Replace('-', '+')
                 .Replace('_', '/');
-            // Add padding if needed
             while (decoded.Length % 4 != 0)
-            {
                 decoded += "=";
-            }
+
             byte[] bytes = Convert.FromBase64String(decoded);
             string combined = Encoding.UTF8.GetString(bytes);
-            // Split on first colon to separate environment from filepath
+
             int colonIndex = combined.IndexOf(':');
             if (colonIndex > 0)
             {
-                environment = combined.Substring(0, colonIndex);
-                filename = combined.Substring(colonIndex + 1);
+                string rawEnv  = combined[..colonIndex];
+                string rawFile = combined[(colonIndex + 1)..];
+
+                if (!ValidateFileIdComponents(rawEnv, rawFile))
+                {
+                    Log.Warning("Rejected fileId with invalid components — possible path traversal attempt");
+                    environment = string.Empty;
+                    filename    = string.Empty;
+                    return false;
+                }
+
+                environment = rawEnv;
+                filename    = rawFile;
                 return true;
             }
         }
@@ -702,7 +751,7 @@ public class FileHandlerService : IDisposable
             Log.Debug(ex, "Failed to parse file ID");
         }
         environment = string.Empty;
-        filename = string.Empty;
+        filename    = string.Empty;
         return false;
     }
 
