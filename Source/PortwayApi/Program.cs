@@ -330,10 +330,11 @@ try
 
     app.UseForwardedHeaders(forwardedHeadersOptions);
 
-    // Trust Cloudflare headers only if CF-Ray is present (added by Cloudflare edge, not clients)
+    // Trust CF-Connecting-IP / CF-Visitor only when the TCP connection originates from a real Cloudflare IP. CF-Ray alone is not sufficient , any client can send it.
     app.Use((context, next) =>
     {
-        if (context.Request.Headers.TryGetValue("CF-Ray", out _))
+        if (context.Request.Headers.TryGetValue("CF-Ray", out _) &&
+            CloudflareIpRanges.IsCloudflareIp(context.Connection.RemoteIpAddress))
         {
             if (context.Request.Headers.TryGetValue("CF-Visitor", out var cfVisitor) &&
                 cfVisitor.ToString().Contains("\"scheme\":\"https\""))

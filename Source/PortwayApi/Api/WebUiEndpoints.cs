@@ -1340,24 +1340,6 @@ public static class WebUiEndpointExtensions
         return Results.Content(html, "text/html; charset=utf-8");
     }
 
-    private static string ParseMarkdownToHtml(string md)
-    {
-        if (string.IsNullOrEmpty(md)) return "";
-        
-        // Simple server-side markdown parser (same logic as client-side)
-        var html = System.Net.WebUtility.HtmlEncode(md);
-        
-        // Bold
-        html = Regex.Replace(html, @"\*\*(.*?)\*\*", "<strong>$1</strong>");
-        html = Regex.Replace(html, @"__(.*?)__", "<strong>$1</strong>");
-        
-        // Italic
-        html = Regex.Replace(html, @"\*(.*?)\*", "<em>$1</em>");
-        html = Regex.Replace(html, @"_(.*?)_", "<em>$1</em>");
-        
-        // Links: [text](url)
-        html = Regex.Replace(html, @"\[(.*?)\]\((.*?)\)", "<a href=\"$2\" target=\"_blank\" rel=\"noopener noreferrer\">$1</a>");
-        
-        return html;
-    }
+    private static string ParseMarkdownToHtml(string md) =>
+        PortwayApi.Helpers.MarkdownParser.ParseMarkdownToHtml(md);
 }
