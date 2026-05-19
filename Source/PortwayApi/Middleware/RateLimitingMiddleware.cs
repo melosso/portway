@@ -215,13 +215,12 @@ public class RateLimiter
         if (string.IsNullOrEmpty(token) || token.Length <= 8)
             return "token";
 
-        return $"{token.Substring(0, 4)}...{token.Substring(token.Length - 4)}";
+        return $"{token[..4]}...{token[^4..]}";
     }
 
     public async Task InvokeAsync(HttpContext context, AuthDbContext dbContext, TokenService tokenService)
     {
-        var path = context.Request.Path.ToString().ToLower();
-        var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
+        var pathBase = context.Request.PathBase.Value ?? "";
 
         // Exempt authenticated admin UI requests from rate limiting.
         // When auth is disabled, all /ui/* traffic is trusted.
@@ -248,7 +247,7 @@ public class RateLimiter
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))
         {
-            Log.Debug("Skipping rate limiting for for {Path} (basePath: {pathBase})", path, pathBase);
+            Log.Debug("Skipping rate limiting for for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
             await _next(context);
             return;
         }
@@ -317,10 +316,11 @@ public class RateLimiter
         // Auth enforcement is handled exclusively by TokenAuthMiddleware.
         string? token = null;
         TokenBucket? tokenBucket = null;
-        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader) &&
-            authHeader.ToString().StartsWith("Bearer "))
+        if (context.Request.Headers.TryGetValue("Authorization", out var authHeader))
         {
-            token = authHeader.ToString().Substring("Bearer ".Length).Trim();
+            var auth = authHeader.ToString();
+            if (auth.StartsWith("Bearer ", StringComparison.Ordinal))
+                token = auth["Bearer ".Length..].Trim();
         }
 
         if (token != null)
@@ -458,10 +458,10 @@ public class RateLimiter
         context.Response.Headers.Append("Retry-After", retryAfterSeconds.ToString());
         
         // Add rate limit headers if we have the bucket
-        string bucketKey = identifier.StartsWith("token:") ? identifier : $"ip:{identifier}";
+        string bucketKey = identifier.StartsWith("token:", StringComparison.Ordinal) ? identifier : $"ip:{identifier}";
         if (_buckets.TryGetValue(bucketKey, out var bucket))
         {
-            string resourceType = identifier.StartsWith("token:") ? "token" : "ip";
+            string resourceType = identifier.StartsWith("token:", StringComparison.Ordinal) ? "token" : "ip";
             AddRateLimitHeaders(context.Response, bucket, resourceType);
         }
         
@@ -487,7 +487,7 @@ public class RateLimiter
         string displayKey = key;
         
         // For token buckets, try to get the token ID instead of showing the masked token
-        if (type == "TOKEN" && tokenService != null && key.StartsWith("token:"))
+        if (type == "TOKEN" && tokenService != null && key.StartsWith("token:", StringComparison.Ordinal))
         {
             // Check cache first
             if (_tokenDisplayCache.TryGetValue(key, out var cachedDisplay))
@@ -496,7 +496,7 @@ public class RateLimiter
             }
             else
             {
-                var token = key.Substring("token:".Length);
+                var token = key["token:".Length..];
                 var maskedToken = MaskToken(token);
                 displayKey = $"TOKEN:{maskedToken[..Math.Min(8, maskedToken.Length)]}...";
                 _tokenDisplayCache.TryAdd(key, displayKey);
@@ -513,7 +513,7 @@ public class RateLimiter
             if (string.IsNullOrEmpty(key) || key.Length <= visibleChars)
                 return key;
                 
-            return key.Substring(0, visibleChars) + new string(maskChar, key.Length - visibleChars);
+            return key[..visibleChars] + new string(maskChar, key.Length - visibleChars);
         }
 
         _logger.LogInformation("Created {Type} rate limit bucket for {Key} with limit: {Limit}/{Window}s",

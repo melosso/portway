@@ -12,6 +12,7 @@ public class UrlValidator
     private readonly List<string> _blockedRanges;
     private readonly ConcurrentDictionary<string, bool> _hostCache;
     private readonly ConcurrentDictionary<string, IPAddress[]> _dnsCache = new();
+    private readonly ConcurrentDictionary<string, Regex> _regexCache = new();
 
     public UrlValidator(string configPath)
     {
@@ -279,12 +280,9 @@ public class UrlValidator
     /// </summary>
     private bool MatchHostPattern(string host, string pattern)
     {
-        // Compiled regex for performance
-        var regex = new Regex(
-            "^" + Regex.Escape(pattern)
-                .Replace(@"\*", "[^.]*") + "$", 
-            RegexOptions.Compiled | RegexOptions.IgnoreCase
-        );
+        var regex = _regexCache.GetOrAdd(pattern, p => new Regex(
+            "^" + Regex.Escape(p).Replace(@"\*", "[^.]*") + "$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase));
         return regex.IsMatch(host);
     }
 
