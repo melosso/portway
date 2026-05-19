@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.IO;
 
 namespace PortwayApi.Helpers;
@@ -94,7 +95,7 @@ public static class ContentTypeHelper
     /// </summary>
     public static IReadOnlyDictionary<string, string> StaticFileExtensions => _staticFileExtensions;
 
-    private static readonly Dictionary<string, string> _staticFileExtensions = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, string> _staticFileExtensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         // Images
         { ".jpg", "image/jpeg" },
@@ -168,7 +169,7 @@ public static class ContentTypeHelper
         { ".mov", "video/quicktime" },
         { ".wmv", "video/x-ms-wmv" },
         { ".mkv", "video/x-matroska" },
-    };
+    }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Gets cache duration based on file extension category
