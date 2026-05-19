@@ -25,19 +25,19 @@ public static class StaticFilesMiddlewareExtensions
                 var path = context.Context.Request.Path.Value?.ToLowerInvariant() ?? "";
 
                 // Set appropriate cache headers based on file type
-                if (path.EndsWith(".html") || path.EndsWith(".htm"))
+                if (path.EndsWith(".html", StringComparison.Ordinal) || path.EndsWith(".htm", StringComparison.Ordinal))
                 {
                     // Short cache for HTML files to allow updates
                     context.Context.Response.Headers.CacheControl = "public, max-age=300"; // 5 minutes
                     Log.Debug("Serving HTML file: {Path}", path);
                 }
-                else if (path.EndsWith(".js") || path.EndsWith(".css"))
+                else if (path.EndsWith(".js", StringComparison.Ordinal) || path.EndsWith(".css", StringComparison.Ordinal))
                 {
                     // Longer cache for static assets
                     context.Context.Response.Headers.CacheControl = "public, max-age=3600"; // 1 hour
                 }
-                else if (path.EndsWith(".png") || path.EndsWith(".jpg") || path.EndsWith(".jpeg") ||
-                        path.EndsWith(".gif") || path.EndsWith(".ico") || path.EndsWith(".svg"))
+                else if (path.EndsWith(".png", StringComparison.Ordinal) || path.EndsWith(".jpg", StringComparison.Ordinal) || path.EndsWith(".jpeg", StringComparison.Ordinal) ||
+                        path.EndsWith(".gif", StringComparison.Ordinal) || path.EndsWith(".ico", StringComparison.Ordinal) || path.EndsWith(".svg", StringComparison.Ordinal))
                 {
                     // Long cache for images
                     context.Context.Response.Headers.CacheControl = "public, max-age=86400"; // 24 hours

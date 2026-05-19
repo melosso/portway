@@ -690,7 +690,7 @@ public class ProxyTrafficLoggerMiddleware
                 if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 {
                     // Extract the actual token value
-                    token = token.Substring("Bearer ".Length).Trim();
+                    token = token["Bearer ".Length..].Trim();
                     
                     // Use the token service to get the username for this token
                     using var scope = _serviceProvider.CreateScope();

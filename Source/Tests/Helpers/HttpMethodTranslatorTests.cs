@@ -155,6 +155,19 @@ namespace PortwayApi.Tests.Helpers
             Assert.Equal("MERGE", result);
         }
 
+        [Fact]
+        public void TranslateMethod_LowercaseMethod_UppercaseConfig_ReturnsTranslatedMethod()
+        {
+            var customProperties = new Dictionary<string, object>
+            {
+                {"HttpMethodTranslation", "PUT;MERGE"}
+            };
+
+            var result = HttpMethodTranslator.TranslateMethod("put", customProperties);
+
+            Assert.Equal("MERGE", result);
+        }
+
         [Theory]
         [InlineData("GET", true)]
         [InlineData("POST", true)]

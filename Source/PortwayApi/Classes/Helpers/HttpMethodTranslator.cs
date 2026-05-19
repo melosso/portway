@@ -49,7 +49,7 @@ public static class HttpMethodTranslator
             // Parse translation mappings in format "FROM;TO,FROM2;TO2"
             var translations = ParseTranslationMappings(translationString);
             
-            if (translations.TryGetValue(originalMethod.ToUpper(), out var translatedMethod))
+            if (translations.TryGetValue(originalMethod, out var translatedMethod))
             {
                 Log.Debug("Translating HTTP method: {OriginalMethod} -> {TranslatedMethod}", originalMethod, translatedMethod);
                 return translatedMethod;
@@ -93,7 +93,7 @@ public static class HttpMethodTranslator
             
             if (parts.Length == 2)
             {
-                var fromMethod = parts[0].Trim().ToUpper();
+                var fromMethod = parts[0].Trim();
                 var toMethod = parts[1].Trim().ToUpper();
                 
                 if (!string.IsNullOrWhiteSpace(fromMethod) && !string.IsNullOrWhiteSpace(toMethod))

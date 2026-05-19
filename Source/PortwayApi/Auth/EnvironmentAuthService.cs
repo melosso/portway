@@ -83,7 +83,7 @@ public class EnvironmentAuthService
 
         try
         {
-            var parameter = authHeader.Substring("Basic ".Length).Trim();
+            var parameter = authHeader["Basic ".Length..].Trim();
             var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(parameter)).Split(':', 2);
             
             if (credentials.Length != 2) return false;
@@ -105,7 +105,7 @@ public class EnvironmentAuthService
         if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        var token = authHeader.Substring("Bearer ".Length).Trim();
+        var token = authHeader["Bearer ".Length..].Trim();
         return token == method.Value;
     }
 
@@ -115,7 +115,7 @@ public class EnvironmentAuthService
         if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
             return false;
 
-        var token = authHeader.Substring("Bearer ".Length).Trim();
+        var token = authHeader["Bearer ".Length..].Trim();
         var handler = new JwtSecurityTokenHandler();
 
         try
