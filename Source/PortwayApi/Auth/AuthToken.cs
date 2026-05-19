@@ -68,9 +68,9 @@ public class AuthToken
             return true;
             
         // Check for wildcard matches (e.g., "Products*" should match "ProductsDetails")
-        return scopes.Any(s => 
-            s.EndsWith("*") && 
-            endpointName.StartsWith(s.Substring(0, s.Length - 1), StringComparison.OrdinalIgnoreCase));
+        return scopes.Any(s =>
+            s.EndsWith('*') &&
+            endpointName.StartsWith(s[..^1], StringComparison.OrdinalIgnoreCase));
     }
     public bool HasAccessToEnvironment(string environment)
     {
@@ -88,9 +88,9 @@ public class AuthToken
             return true;
             
         // Check for wildcard matches (e.g., "6*" should match "500")
-        return environments.Any(e => 
-            e.EndsWith("*") && 
-            environment.StartsWith(e.Substring(0, e.Length - 1), StringComparison.OrdinalIgnoreCase));
+        return environments.Any(e =>
+            e.EndsWith('*') &&
+            environment.StartsWith(e[..^1], StringComparison.OrdinalIgnoreCase));
     }
     
     // Helper method to parse allowed environments

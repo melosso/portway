@@ -26,9 +26,7 @@ public class TokenAuthMiddleware
         IEnvironmentSettingsProvider environmentProvider,
         EnvironmentAuthService environmentAuthService)
     {
-        // Extract path
-        var path = context.Request.Path.Value?.ToLowerInvariant(); 
-        var pathBase = context.Request.PathBase.Value ?? ""; // e.g. for versioning like /v1, /v2
+        var pathBase = context.Request.PathBase.Value ?? "";
         string env = ExtractEnvironmentFromPath(context.Request.Path);
         
         // Skip token validation for specific routes
@@ -42,7 +40,7 @@ public class TokenAuthMiddleware
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))
         {
-            Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", path, pathBase);
+            Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
             await _next(context);
             return;
         }
@@ -100,7 +98,7 @@ public class TokenAuthMiddleware
         // Extract the token from "Bearer token"
         if (tokenString.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
-            tokenString = tokenString.Substring("Bearer ".Length).Trim();
+            tokenString = tokenString["Bearer ".Length..].Trim();
         }
 
         // Extract endpoint name from request path

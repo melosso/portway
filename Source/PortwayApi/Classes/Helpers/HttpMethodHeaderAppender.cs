@@ -84,7 +84,7 @@ public static class HttpMethodHeaderAppender
             var headerMappings = ParseHeaderAppendMappings(appendHeadersString);
             
             // Check if we have mappings for the original method
-            if (headerMappings.TryGetValue(originalMethod.ToUpper(), out var methodHeaders))
+            if (headerMappings.TryGetValue(originalMethod, out var methodHeaders))
             {
                 foreach (var header in methodHeaders)
                 {
@@ -150,7 +150,7 @@ public static class HttpMethodHeaderAppender
             
             if (parts.Length == 2)
             {
-                var method = parts[0].Trim().ToUpper();
+                var method = parts[0].Trim();
                 var headersString = parts[1].Trim();
                 
                 if (!string.IsNullOrWhiteSpace(method) && !string.IsNullOrWhiteSpace(headersString))
