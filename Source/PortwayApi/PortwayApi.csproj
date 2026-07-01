@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <!-- Versioning -->
+    <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="MinVer" PrivateAssets="All" IncludeAssets="runtime;build;native;contentfiles;analyzers" />
 
     <!-- Authentication & Identity -->

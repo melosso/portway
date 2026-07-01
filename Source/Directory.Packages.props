@@ -17,6 +17,7 @@
     <MicrosoftExtensionsVersion>10.0.7</MicrosoftExtensionsVersion>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
     <!-- Versioning -->
     <PackageVersion Include="MinVer" Version="7.0.0" />
   </ItemGroup>
