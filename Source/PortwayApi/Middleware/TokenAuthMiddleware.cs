@@ -177,9 +177,7 @@ public class TokenAuthMiddleware
         await _next(context);
     }
 
-    /// <summary>
-    /// Extract the endpoint name from the request path
-    /// </summary>
+    /// <summary>Extract the endpoint name from the request path</summary>
     private string? ExtractEndpointName(PathString path)
     {
         // Parse patterns like:
@@ -238,9 +236,7 @@ public class TokenAuthMiddleware
         return null;
     }
 
-    /// <summary>
-    /// Extract the environment from the request path
-    /// </summary>
+    /// <summary>Extract the environment from the request path</summary>
     private string ExtractEnvironmentFromPath(PathString path)
     {
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -258,9 +254,7 @@ public class TokenAuthMiddleware
         return string.Empty;
     }
     
-    /// <summary>
-    /// Log failed authentication attempts for security auditing
-    /// </summary>
+    /// <summary>Log failed authentication attempts for security auditing</summary>
     private static async Task LogFailedAuthAttemptAsync(AuthDbContext dbContext, string tokenString, HttpContext context)
     {
         try
@@ -296,9 +290,7 @@ public class TokenAuthMiddleware
         }
     }
     
-    /// <summary>
-    /// Log authorization failures for security auditing
-    /// </summary>
+    /// <summary>Log authorization failures for security auditing</summary>
     private static async Task LogAuthorizationFailureAsync(AuthDbContext dbContext, AuthToken tokenDetails, 
         HttpContext context, string resourceType, string resourceName)
     {

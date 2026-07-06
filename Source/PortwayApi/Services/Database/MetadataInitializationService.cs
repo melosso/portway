@@ -5,10 +5,7 @@ using Serilog;
 
 namespace PortwayApi.Services;
 
-/// <summary>
-/// Background service that initializes the SQL metadata cache after the application
-/// has started listening, so startup is never blocked by database connectivity.
-/// </summary>
+/// <summary>Background service that initializes the SQL metadata cache after the application has started listening, so startup is never blocked by database connectivity</summary>
 public sealed class MetadataInitializationService : BackgroundService
 {
     private readonly SqlMetadataService _metadataService;
@@ -31,7 +28,7 @@ public sealed class MetadataInitializationService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Wait until the HTTP server is fully started before touching the database,
-        // so the app is always ready to serve requests (health, UI, OpenAPI) immediately.
+        // so the app is always ready to serve requests (health, UI, OpenAPI) immediately
         await WaitForApplicationStartedAsync(stoppingToken);
 
         if (stoppingToken.IsCancellationRequested)

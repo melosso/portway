@@ -7,11 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
 
-/// <summary>
-/// Mistral AI chat completions API with streaming and tool/function calling.
-/// Compatible with all Mistral models including Codestral (codestral-latest).
-/// Codestral uses a separate endpoint: codestral.mistral.ai
-/// </summary>
+/// <summary>Mistral AI chat completions API with streaming and tool/function calling. Compatible with all Mistral models including Codestral (codestral-latest). Codestral uses a separate endpoint: codestral.mistral.ai</summary>
 public sealed class MistralChatProvider(string apiKey, string model, IHttpClientFactory httpFactory) : IChatProvider
 {
     // Codestral models use a dedicated endpoint

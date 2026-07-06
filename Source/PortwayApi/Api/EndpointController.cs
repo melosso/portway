@@ -24,9 +24,7 @@ using System.Runtime.CompilerServices;
 
 namespace PortwayApi.Api;
 
-/// <summary>
-/// Unified controller that handles all endpoint types (SQL, Proxy, Composite, Webhook)
-/// </summary>
+/// <summary>Unified controller that handles all endpoint types (SQL, Proxy, Composite, Webhook)</summary>
 [ApiController]
 [Route("api")] // Base route only, we'll use action-level routing
 public class EndpointController : ControllerBase
@@ -41,9 +39,7 @@ public class EndpointController : ControllerBase
     private readonly SqlConnectionPoolService _connectionPoolService; 
     private readonly Services.Caching.CacheManager _cacheManager; 
 
-    /// <summary>
-    /// Validates if the environment is allowed both globally and for the specific endpoint
-    /// </summary>
+    /// <summary>Validates if the environment is allowed both globally and for the specific endpoint</summary>
     private (bool IsAllowed, IActionResult? ErrorResponse) ValidateEnvironmentRestrictions(
         string env,
         string? namespaceName,
@@ -136,9 +132,7 @@ public class EndpointController : ControllerBase
         _fileHandlerService = fileHandlerService;
     }
 
-    /// <summary>
-    /// Helper method to try resolving an endpoint with namespace-aware lookup
-    /// </summary>
+    /// <summary>Helper method to try resolving an endpoint with namespace-aware lookup</summary>
     /// <typeparam name="T">The type of endpoint entity</typeparam>
     /// <param name="endpoints">The dictionary of endpoints to search</param>
     /// <param name="namespaceName">The namespace from the parsed URL (can be null)</param>
@@ -163,9 +157,7 @@ public class EndpointController : ControllerBase
         return endpoints.TryGetValue(endpointName, out endpoint);
     }
 
-    /// <summary>
-    /// Handles GET requests to endpoints
-    /// </summary>
+    /// <summary>Handles GET requests to endpoints</summary>
     [HttpGet("{env}/{**catchall}")]
     [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -238,9 +230,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handles HEAD requests to static endpoints
-    /// </summary>
+    /// <summary>Handles HEAD requests to static endpoints</summary>
     [HttpHead("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status304NotModified)]
@@ -330,9 +320,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handles POST requests to endpoints
-    /// </summary>
+    /// <summary>Handles POST requests to endpoints</summary>
     [HttpPost("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -414,9 +402,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handles PUT requests to endpoints
-    /// </summary>
+    /// <summary>Handles PUT requests to endpoints</summary>
     [HttpPut("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -478,9 +464,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handles DELETE requests to endpoints
-    /// </summary>
+    /// <summary>Handles DELETE requests to endpoints</summary>
     [HttpDelete("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -552,9 +536,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handles PATCH requests to endpoints
-    /// </summary>
+    /// <summary>Handles PATCH requests to endpoints</summary>
     [HttpPatch("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -606,9 +588,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handle file uploads
-    /// </summary>
+    /// <summary>Handle file uploads</summary>
     [HttpPost("{env}/files/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -642,8 +622,7 @@ public class EndpointController : ControllerBase
             // Check if we have namespace/endpoint format (2+ segments)
             if (segments.Length >= 2)
             {
-                // Could be namespace/endpoint/subpath or just endpoint/subpath
-                // Try to determine if first segment is a namespace by checking if namespace/endpoint exists
+                // Could be namespace/endpoint/subpath or just endpoint/subpath; Try to determine if first segment is a namespace by checking if namespace/endpoint exists
                 var potentialNamespace = segments[0];
                 var potentialEndpoint = segments[1];
                 var allFileEndpoints = EndpointHandler.GetFileEndpoints();
@@ -774,9 +753,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handle file downloads
-    /// </summary>
+    /// <summary>Handle file downloads</summary>
     [HttpGet("{env}/files/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status206PartialContent)]
@@ -838,9 +815,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handle file deletions
-    /// </summary>
+    /// <summary>Handle file deletions</summary>
     [HttpDelete("{env}/files/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -895,9 +870,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// List files in an endpoint
-    /// </summary>
+    /// <summary>List files in an endpoint</summary>
     [HttpGet("{env}/files/{endpointName}/list")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -976,9 +949,7 @@ public class EndpointController : ControllerBase
 
     #region Helper Methods and Handlers
 
-    /// <summary>
-    /// Parses the catchall segment to determine endpoint type and name with namespace support
-    /// </summary>
+    /// <summary>Parses the catchall segment to determine endpoint type and name with namespace support</summary>
     private (EndpointType Type, string? Namespace, string Name, string? Id, string RemainingPath) ParseEndpoint(string catchall)
     {
         var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -1128,9 +1099,7 @@ public class EndpointController : ControllerBase
         return (fallbackEndpointType, null, endpointName, fallbackId, fallbackRemainingPath);
     }
 
-    /// <summary>
-    /// Checks if a namespaced endpoint exists
-    /// </summary>
+    /// <summary>Checks if a namespaced endpoint exists</summary>
     private bool NamespaceEndpointExists(string key)
     {
         return EndpointHandler.GetSqlEndpoints().ContainsKey(key) ||
@@ -1139,9 +1108,7 @@ public class EndpointController : ControllerBase
                EndpointHandler.GetStaticEndpoints().ContainsKey(key);
     }
     
-    /// <summary>
-    /// Determines endpoint type for a given key (supports both namespaced and non-namespaced)
-    /// </summary>
+    /// <summary>Determines endpoint type for a given key (supports both namespaced and non-namespaced)</summary>
     private EndpointType DetermineEndpointType(string key)
     {
         return key switch
@@ -1159,9 +1126,7 @@ public class EndpointController : ControllerBase
         };
     }
 
-    /// <summary>
-    /// Replaces placeholders in the base directory with actual values
-    /// </summary>
+    /// <summary>Replaces placeholders in the base directory with actual values</summary>
     private string ProcessBaseDirectory(string baseDirectory, string environment)
     {
         if (string.IsNullOrEmpty(baseDirectory))
@@ -1178,9 +1143,7 @@ public class EndpointController : ControllerBase
         return processedDirectory;
     }
 
-    /// <summary>
-    /// Resolves the storage path, supporting both relative and absolute BaseDirectory paths
-    /// </summary>
+    /// <summary>Resolves the storage path, supporting both relative and absolute BaseDirectory paths</summary>
     private string ResolveStoragePath(string baseDirectory, string environment, string filename)
     {
         // If BaseDirectory is an absolute path, use it directly
@@ -1202,9 +1165,7 @@ public class EndpointController : ControllerBase
         return filename;
     }
 
-    /// <summary>
-    /// Handles proxy requests for any HTTP method with request caching
-    /// </summary>
+    /// <summary>Handles proxy requests for any HTTP method with request caching</summary>
     private static readonly MemoryCache _proxyCache = new MemoryCache(new MemoryCacheOptions());
 
     private async Task<IActionResult> HandleProxyRequest(
@@ -1256,7 +1217,7 @@ public class EndpointController : ControllerBase
             }
 
             // Convert endpoint definition to tuple format for legacy compatibility
-            var endpointConfig = endpointDefinition.ToTuple();
+            var endpointConfig = endpointDefinition.ToProxyEndpointInfo();
 
             // Construct full URL
             var queryString = HttpContext?.Request?.QueryString.Value ?? string.Empty;
@@ -1475,9 +1436,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Constructs the DELETE URL based on configured DeletePattern
-    /// </summary>
+    /// <summary>Constructs the DELETE URL based on configured DeletePattern</summary>
     private string ConstructDeleteUrl(
         string baseUrl,
         string? id,
@@ -1584,9 +1543,7 @@ public class EndpointController : ControllerBase
         return baseUrl;
     }
 
-    /// <summary>
-    /// Creates a cache key based on request details
-    /// </summary>
+    /// <summary>Creates a cache key based on request details</summary>
     private string CreateCacheKey(string env, string endpointName, string path, string queryString, IHeaderDictionary headers)
     {
         var keyBuilder = new StringBuilder();
@@ -1613,12 +1570,10 @@ public class EndpointController : ControllerBase
         return keyBuilder.ToString();
     }
 
-    /// <summary>
-    /// Executes the actual proxy request and writes the response
-    /// </summary>
+    /// <summary>Executes the actual proxy request and writes the response</summary>
     private async Task<(bool IsSuccessful, string Content, Dictionary<string, string> Headers, int StatusCode, string? ContentType)> ExecuteProxyRequest(
         string method, string fullUrl, string env, 
-        (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments) endpointConfig,
+        ProxyEndpointInfo endpointConfig,
         string endpointName,
         bool isSoapRequest = false,
         string? originalMethod = null,
@@ -1665,9 +1620,7 @@ public class EndpointController : ControllerBase
             }
         }
 
-        // Strip client-supplied headers that could enable IP spoofing or HTTP desync attacks.
-        // X-Forwarded-* headers are rebuilt from the verified connection IP.
-        // Transfer-Encoding and Content-Length are recalculated by HttpClient after body buffering.
+        // Strip client-supplied headers that could enable IP spoofing or HTTP desync attacks; X-Forwarded-* headers are rebuilt from the verified connection IP; Transfer-Encoding and Content-Length are recalculated by HttpClient after body buffering
         var headersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             // Hop-by-hop headers (RFC 2616)
@@ -1903,9 +1856,7 @@ public class EndpointController : ControllerBase
         );
     }
 
-    /// <summary>
-    /// Handles composite endpoint requests
-    /// </summary>
+    /// <summary>Handles composite endpoint requests</summary>
     private async Task<IActionResult> HandleCompositeRequest(
         string env,
         string endpointName,
@@ -1962,9 +1913,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Handles webhook requests
-    /// </summary>
+    /// <summary>Handles webhook requests</summary>
     private async Task<IActionResult> HandleWebhookRequest(
         string env,
         string webhookEndpointKey,
@@ -2035,9 +1984,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Helper method to build next link for pagination
-    /// </summary>
+    /// <summary>Helper method to build next link for pagination</summary>
     private string BuildNextLink(
         string env, 
         string endpointPath, 
@@ -2061,9 +2008,7 @@ public class EndpointController : ControllerBase
         return nextLink;
     }
 
-    /// <summary>
-    /// Sets standard pagination headers on the response for consistency across endpoint types.
-    /// </summary>
+    /// <summary>Sets standard pagination headers on the response for consistency across endpoint types</summary>
     /// <param name="totalCount">Total number of items before pagination (if known)</param>
     /// <param name="returnedCount">Number of items being returned in this response</param>
     /// <param name="hasMore">Whether there are more items available</param>
@@ -2077,9 +2022,7 @@ public class EndpointController : ControllerBase
         Response.Headers["X-Has-More"] = hasMore.ToString().ToLowerInvariant();
     }
 
-    /// <summary>
-    /// Sets Cache-Control header for GET responses.
-    /// </summary>
+    /// <summary>Sets Cache-Control header for GET responses</summary>
     /// <param name="maxAgeSeconds">Cache duration in seconds (default: 300 = 5 minutes)</param>
     /// <param name="isPublic">Whether the cache is public or private (default: public)</param>
     private void SetCacheControlHeader(int maxAgeSeconds = 300, bool isPublic = true)
@@ -2088,9 +2031,7 @@ public class EndpointController : ControllerBase
         Response.Headers["Cache-Control"] = $"{cacheType}, max-age={maxAgeSeconds}";
     }
 
-    /// <summary>
-    /// Helper method to convert JsonElement to appropriate parameter value
-    /// </summary>
+    /// <summary>Helper method to convert JsonElement to appropriate parameter value</summary>
     private static object? GetParameterValue(JsonElement element)
     {
         return element.ValueKind switch
@@ -2106,10 +2047,7 @@ public class EndpointController : ControllerBase
         };
     }
 
-    /// <summary>
-    /// Parses a stored procedure name into schema and procedure name parts.
-    /// Handles both "schema.procedure" and plain "procedure" formats, stripping brackets.
-    /// </summary>
+    /// <summary>Parses a stored procedure name into schema and procedure name parts. Handles both "schema.procedure" and plain "procedure" formats, stripping brackets</summary>
     private static (string Schema, string ProcedureName) ParseProcedureName(string procedure)
     {
         if (procedure.Contains('.'))
@@ -2120,9 +2058,7 @@ public class EndpointController : ControllerBase
         return ("dbo", procedure);
     }
 
-    /// <summary>
-    /// Handles SQL GET requests
-    /// </summary>
+    /// <summary>Handles SQL GET requests</summary>
     private async Task<IActionResult> HandleSqlGetRequest(
         string env, 
         string endpointName,
@@ -2254,8 +2190,7 @@ public class EndpointController : ControllerBase
             // Step 4: Handle ID-based filtering
             if (!string.IsNullOrEmpty(id))
             {
-                // Get the actual database column name for the primary key
-                // The primaryKey could be an alias, so we need to resolve it to the database column name
+                // Get the actual database column name for the primary key; The primaryKey could be an alias, so we need to resolve it to the database column name
                 string actualPrimaryKey = primaryKey;
                 
                 if (allowedColumns.Count > 0)
@@ -2268,8 +2203,7 @@ public class EndpointController : ControllerBase
                     }
                 }
                 
-                // Create appropriate filter expression by primary key
-                // Check if the ID is a GUID
+                // Create appropriate filter expression by primary key; Check if the ID is a GUID
                 if (Guid.TryParse(id, out _))
                 {
                     filter = $"{actualPrimaryKey} eq guid'{id}'";
@@ -2460,8 +2394,7 @@ public class EndpointController : ControllerBase
         }
         catch (SqlException sqlEx)
         {
-            // Handle SQL-specific exceptions with more detail
-            // Generate a masked error reference for troubleshooting
+            // Handle SQL-specific exceptions with more detail; Generate a masked error reference for troubleshooting
             var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
             Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
                 errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
@@ -2503,9 +2436,7 @@ public class EndpointController : ControllerBase
         }
     }
 
-	/// <summary>
-	/// Handles SQL POST requests (Create)
-    /// </summary>
+	/// <summary>Handles SQL POST requests (Create)</summary>
     private async Task<IActionResult> HandleSqlPostRequest(
         string env,
         string endpointName,
@@ -2595,8 +2526,7 @@ public class EndpointController : ControllerBase
         }
         catch (SqlException sqlEx)
         {
-            // Handle SQL-specific exceptions with more detail
-            // Generate a masked error reference for troubleshooting
+            // Handle SQL-specific exceptions with more detail; Generate a masked error reference for troubleshooting
             var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
             Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
                 errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
@@ -2639,19 +2569,14 @@ public class EndpointController : ControllerBase
         }
     }
 
- /// <summary>
-/// Determines if a SQL exception is an intentional user-facing error vs a system error
-/// </summary>
+ /// <summary>Determines if a SQL exception is an intentional user-facing error vs a system error</summary>
 private bool IsIntentionalUserError(SqlException sqlEx)
 {
-    // Only error 50000 is the default for intentional RAISERROR without specific error number
-    // Other error numbers in 50000+ range could be system or custom errors
+    // Only error 50000 is the default for intentional RAISERROR without specific error number; Other error numbers in 50000+ range could be system or custom errors
     return sqlEx.Number == 50000;
 }
 
-    /// <summary>
-    /// Handles SQL PUT requests (Update)
-    /// </summary>
+    /// <summary>Handles SQL PUT requests (Update)</summary>
     private async Task<IActionResult> HandleSqlPutRequest(
         string env,
         string endpointName,
@@ -2764,9 +2689,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Handles SQL PATCH requests (partial updates)
-    /// </summary>
+    /// <summary>Handles SQL PATCH requests (partial updates)</summary>
     private async Task<IActionResult> HandleSqlPatchRequest(
         string env,
         string endpointName,
@@ -2881,9 +2804,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Handles SQL DELETE requests
-    /// </summary>
+    /// <summary>Handles SQL DELETE requests</summary>
     private async Task<IActionResult> HandleSqlDeleteRequest(
         string env,
         string endpointName,
@@ -2989,9 +2910,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     }
 
 
-    /// <summary>
-    /// Handles Static GET requests
-    /// </summary>
+    /// <summary>Handles Static GET requests</summary>
     private async Task<IActionResult> HandleStaticGetRequest(
         string env,
         string endpointName,
@@ -3112,9 +3031,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Applies JSON filtering using OData-style parameters
-    /// </summary>
+    /// <summary>Applies JSON filtering using OData-style parameters</summary>
     private Task<IActionResult> ApplyJsonFiltering(
         byte[] jsonBytes,
         string contentType,
@@ -3211,9 +3128,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
     
-    /// <summary>
-    /// Applies OData-style filtering to JSON items
-    /// </summary>
+    /// <summary>Applies OData-style filtering to JSON items</summary>
     private List<JsonElement> ApplyFilter(List<JsonElement> items, string filter)
     {
         try
@@ -3244,7 +3159,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 }).ToList();
             }
 
-            // Parse filter expression (simplified OData filter support). Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc.
+            // Parse filter expression (simplified OData filter support). Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc
             var filterParts = filter.Split(' ');
             if (filterParts.Length >= 3)
             {
@@ -3300,9 +3215,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Applies OData-style ordering to JSON items
-    /// </summary>
+    /// <summary>Applies OData-style ordering to JSON items</summary>
     private List<JsonElement> ApplyOrderBy(List<JsonElement> items, string orderby)
     {
         try
@@ -3322,9 +3235,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
     
-    /// <summary>
-    /// Case-insensitive property lookup: tries exact name first, then falls back to a linear scan.
-    /// </summary>
+    /// <summary>Case-insensitive property lookup: tries exact name first, then falls back to a linear scan</summary>
     private static bool TryGetPropertyCI(JsonElement item, string field, out JsonElement value)
     {
         if (item.TryGetProperty(field, out value))
@@ -3341,9 +3252,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         return false;
     }
 
-    /// <summary>
-    /// Gets a sortable value from a JSON element
-    /// </summary>
+    /// <summary>Gets a sortable value from a JSON element</summary>
     private object GetSortableValue(JsonElement item, string field)
     {
         if (!TryGetPropertyCI(item, field, out var fieldValue))
@@ -3359,9 +3268,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         };
     }
     
-    /// <summary>
-    /// Applies field selection to JSON items
-    /// </summary>
+    /// <summary>Applies field selection to JSON items</summary>
     private List<JsonElement> ApplySelect(List<JsonElement> items, string select)
     {
         try
@@ -3395,9 +3302,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Applies XML filtering using OData-style parameters
-    /// </summary>
+    /// <summary>Applies XML filtering using OData-style parameters</summary>
     private Task<IActionResult> ApplyXmlFiltering(
         byte[] xmlBytes,
         string contentType,
@@ -3536,9 +3441,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Serializes a JsonElement to an object for JSON output
-    /// </summary>
+    /// <summary>Serializes a JsonElement to an object for JSON output</summary>
     private object? SerializeJsonElement(JsonElement element)
     {
         return element.ValueKind switch
@@ -3554,14 +3457,10 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         };
     }
 
-    /// <summary>
-    /// Auto-detects content type based on file extension (uses shared ContentTypeHelper)
-    /// </summary>
+    /// <summary>Auto-detects content type based on file extension (uses shared ContentTypeHelper)</summary>
     private string GetContentTypeFromExtension(string fileName) => ContentTypeHelper.GetContentType(fileName);
 
-    /// <summary>
-    /// Common ID field names for validation
-    /// </summary>
+    /// <summary>Common ID field names for validation</summary>
     private static readonly string[] IdFieldNames = new[]
     {
         "id", "Id", "ID", "IdField", "IDField",
@@ -3570,9 +3469,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         "recordId", "RecordId"
     };
 
-    /// <summary>
-    /// Validates SQL parameters for update and delete operations
-    /// </summary>
+    /// <summary>Validates SQL parameters for update and delete operations</summary>
     private (bool IsValid, string? ErrorMessage) ValidateSqlParameters(JsonElement data, string operation)
     {
 
@@ -3590,9 +3487,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     }
 
 
-    /// <summary>
-    /// Applies XML filtering using OData $filter syntax
-    /// </summary>
+    /// <summary>Applies XML filtering using OData $filter syntax</summary>
     private List<XElement> ApplyXmlFilter(List<XElement> items, string filter)
     {
         try
@@ -3657,9 +3552,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Applies XML ordering using OData $orderby syntax
-    /// </summary>
+    /// <summary>Applies XML ordering using OData $orderby syntax</summary>
     private List<XElement> ApplyXmlOrderBy(List<XElement> items, string orderby)
     {
         try
@@ -3694,9 +3587,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         }
     }
 
-    /// <summary>
-    /// Applies XML field selection using OData $select syntax
-    /// </summary>
+    /// <summary>Applies XML field selection using OData $select syntax</summary>
     private List<XElement> ApplyXmlSelect(List<XElement> items, string select)
     {
         try
@@ -3744,9 +3635,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
 
     #region Endpoint Property Override Helpers
 
-    /// <summary>
-    /// Applies the MaxPageSize limit from endpoint properties, overriding the requested top value if necessary
-    /// </summary>
+    /// <summary>Applies the MaxPageSize limit from endpoint properties, overriding the requested top value if necessary</summary>
     private int ApplyMaxPageSizeLimit(int requestedTop, EndpointDefinition endpoint)
     {
         // Check if MaxPageSize is defined in endpoint properties
@@ -3767,9 +3656,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         return requestedTop; // No limit defined, use original value
     }
 
-    /// <summary>
-    /// Applies the DefaultSort from endpoint properties if no orderby is provided
-    /// </summary>
+    /// <summary>Applies the DefaultSort from endpoint properties if no orderby is provided</summary>
     private string? ApplyDefaultSorting(string? requestedOrderBy, EndpointDefinition endpoint)
     {
         // Only apply default if no orderby was requested
@@ -3792,9 +3679,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         return requestedOrderBy; // No default defined, use original value
     }
 
-    /// <summary>
-    /// Checks if caching is enabled for the endpoint
-    /// </summary>
+    /// <summary>Checks if caching is enabled for the endpoint</summary>
     private bool IsCacheEnabled(EndpointDefinition endpoint)
     {
         if (endpoint.Properties?.TryGetValue("CacheEnabled", out var cacheEnabledObj) == true)
@@ -3809,15 +3694,13 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             }
         }
 
-        // Fall back to global cache setting — CacheManager.GetAsync already guards
+        // Fall back to global cache setting; CacheManager.GetAsync already guards
         // against the global Enabled=false case, so returning true here means
-        // "defer to the global setting" rather than hard-disabling per endpoint.
+        // "defer to the global setting" rather than hard-disabling per endpoint
         return true;
     }
 
-    /// <summary>
-    /// Gets the cache duration in minutes for the endpoint
-    /// </summary>
+    /// <summary>Gets the cache duration in minutes for the endpoint</summary>
     private int GetCacheDurationMinutes(EndpointDefinition endpoint)
     {
         if (endpoint.Properties?.TryGetValue("CacheDurationMinutes", out var durationObj) == true)
@@ -3835,9 +3718,7 @@ private bool IsIntentionalUserError(SqlException sqlEx)
         return 5; // Default: 5 minutes
     }
 
-    /// <summary>
-    /// Gets the DELETE pattern for a proxy endpoint (with default fallback)
-    /// </summary>
+    /// <summary>Gets the DELETE pattern for a proxy endpoint (with default fallback)</summary>
     private DeletePattern GetDeletePatternForProxy(string endpointName)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();

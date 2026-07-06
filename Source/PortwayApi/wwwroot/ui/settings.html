@@ -150,6 +150,32 @@
 
   <div class="page-body">
 
+    <!-- Section: Security & Change Controls -->
+    <div class="settings-section">
+      <div class="settings-section-label">Security &amp; Change Controls</div>
+      <div class="settings-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Security Posture</span>
+          </div>
+          <div class="card-body" id="securityBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent Configuration Changes</span>
+          </div>
+          <div class="card-body" id="auditBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Section: Performance -->
     <div class="settings-section">
       <div class="settings-section-label">Performance</div>
@@ -291,6 +317,21 @@ async function load() {
     const log = d.logging            ?? {};
     const ep  = d.endpoint_reloading ?? {};
     const m   = d.mcp                ?? {};
+    const sec = d.security           ?? {};
+
+    const strengthLabels = { 'strong': 'Strong', 'weak': 'Weak (< 32 chars)', 'placeholder': 'Placeholder (auth disabled)', 'not-set': 'Not set (auth disabled)' };
+    const strengthOk = sec.admin_key_strength === 'strong';
+    document.getElementById('securityBody').innerHTML = [
+      boolItem('Web UI Authentication', sec.webui_auth_enabled),
+      settingItemRaw('Admin Key Strength',
+        `<span class="${strengthOk ? 'setting-on' : 'setting-off'}">${esc(strengthLabels[sec.admin_key_strength] ?? '—')}</span>`,
+        'Set WebUi:AdminApiKey to a random value of 32+ characters'),
+      boolItem('HTTPS', sec.https_enabled),
+      boolItem('Secure Cookies', sec.secure_cookies, 'Enable WebUi:SecureCookies when serving over HTTPS'),
+      boolItem('CSRF Protection', sec.csrf_protection),
+      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
+      settingItem('Public UI Origins', sec.public_origins_count ?? 0),
+    ].join('');
 
     document.getElementById('rateLimitBody').innerHTML = [
       boolItem('Enabled', rl.enabled),
@@ -338,9 +379,53 @@ async function load() {
 
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody'].forEach(id => {
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody'].forEach(id => {
       document.getElementById(id).innerHTML = msg;
     });
+  }
+
+  loadAudit();
+}
+
+// Recent configuration changes with restore of pre-change backups
+
+async function loadAudit() {
+  const el = document.getElementById('auditBody');
+  try {
+    const d = await fetch('/ui/api/audit?limit=15').then(r => r.json());
+    const entries = d.entries ?? [];
+    if (!entries.length) {
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No configuration changes recorded yet</span>';
+      return;
+    }
+    el.innerHTML = entries.map(e => {
+      const when = new Date(e.timestamp).toLocaleString();
+      const restore = e.restorable
+        ? `<button class="btn btn-outline btn-sm" onclick="restoreChange(${e.id})">Restore</button>`
+        : '';
+      return `<div class="settings-item">
+        <div>
+          <div class="settings-item-label">${esc(e.action)} · ${esc(e.target_type)} · ${esc(e.target)}</div>
+          <div class="settings-item-desc">${esc(when)}${e.client_ip ? ' · ' + esc(e.client_ip) : ''}${e.details ? ' · ' + esc(e.details) : ''}</div>
+        </div>
+        <span class="settings-item-value">${restore}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
+  }
+}
+
+async function restoreChange(id) {
+  if (!confirm('Restore the configuration file to its state before this change? The current state is backed up first.')) return;
+  try {
+    const r = await fetch(`/ui/api/audit/${id}/restore`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Restore failed');
+    if (typeof showToast === 'function') showToast('Configuration restored', 'success');
+    loadAudit();
+  } catch(e) {
+    if (typeof showToast === 'function') showToast(e.message, 'error'); else alert(e.message);
   }
 }
 

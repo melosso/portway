@@ -12,129 +12,6 @@ using System.Text.Json;
 using Serilog;
 using PortwayApi.Auth;
 
-public class RateLimitSettings
-{
-    public bool Enabled { get; set; } = true;
-    public int IpLimit { get; set; } = 100;
-    public int IpWindow { get; set; } = 60; // seconds
-    public int TokenLimit { get; set; } = 1000;
-    public int TokenWindow { get; set; } = 60; // seconds
-}
-
-// Token bucket algorithm implementation
-public class TokenBucket
-{
-    private readonly int _capacity;
-    private readonly TimeSpan _refillTime;
-    private readonly object _syncLock = new object();
-    private readonly string _bucketId;
-
-    private double _tokens;
-    private DateTime _lastRefill;
-    private int _requestCount = 0;
-    
-    // Logging suppression mechanism
-    private DateTime _lastLoggedBlockTime = DateTime.MinValue;
-    private readonly TimeSpan _logSuppressDuration = TimeSpan.FromSeconds(5);
-
-    public TokenBucket(int capacity, TimeSpan refillTime, string bucketId)
-    {
-        _capacity = capacity;
-        _refillTime = refillTime;
-        _tokens = capacity;
-        _lastRefill = DateTime.UtcNow;
-        _bucketId = bucketId;
-        
-        Log.Debug("Token bucket created for a bucket: Capacity={Capacity}, RefillTime={RefillTime}s", 
-            capacity, refillTime.TotalSeconds);
-    }
-
-    public bool TryConsume(int tokenCount, Microsoft.Extensions.Logging.ILogger? logger)
-    {
-        lock (_syncLock)
-        {
-            var requestNum = Interlocked.Increment(ref _requestCount);
-            
-            RefillTokens(logger);
-            
-            if (_tokens >= tokenCount)
-            {
-                _tokens -= tokenCount;
-                if (logger != null)
-                {
-                    logger.LogDebug("Request #{RequestNum} for a bucket ALLOWED", requestNum);
-                }
-                return true;
-            }
-
-            // Suppress repeated logging for the same bucket
-            var now = DateTime.UtcNow;
-            if (logger != null && (now - _lastLoggedBlockTime) >= _logSuppressDuration)
-            {
-                logger.LogWarning(
-                    "Request #{RequestNum} for a bucket BLOCKED - Tokens: {Tokens:F2}/{Capacity} < {TokenCount}", 
-                    requestNum, _tokens, _capacity, tokenCount
-                );
-                
-                Log.Warning(
-                    "Rate limit reached for a bucket: {Tokens:F2}/{Capacity} tokens available, {TokenCount} required", 
-                    _tokens, _capacity, tokenCount
-                );
-
-                _lastLoggedBlockTime = now;
-            }
-                    
-            return false;
-        }
-    }
-
-    public int GetRemainingTokens()
-    {
-        lock (_syncLock)
-        {
-            RefillTokens(null); // Ensure tokens are up-to-date before reporting
-            return (int)Math.Floor(_tokens);
-        }
-    }
-
-    public int GetCapacity()
-    {
-        return _capacity;
-    }
-
-    public DateTime GetResetTime()
-    {
-        lock (_syncLock)
-        {
-            RefillTokens(null);
-            // Calculate when tokens will fully replenish
-            var secondsToFull = (_capacity - _tokens) * _refillTime.TotalSeconds / _capacity;
-            return DateTime.UtcNow.AddSeconds(secondsToFull);
-        }
-    }
-
-    private void RefillTokens(Microsoft.Extensions.Logging.ILogger? logger)
-    {
-        var now = DateTime.UtcNow;
-        var elapsed = (now - _lastRefill).TotalSeconds;
-        
-        if (elapsed <= 0)
-            return;
-
-        // Calculate tokens to add based on elapsed time
-        var tokensToAdd = elapsed * (_capacity / _refillTime.TotalSeconds);
-        
-        if (tokensToAdd > 0.01 && logger != null) // Only log meaningful refills
-        {
-            logger.LogDebug("Refilling tokens for a bucket: +{TokensToAdd:F2} after {Elapsed:F2}s", 
-                tokensToAdd, elapsed);
-        }
-        
-        _tokens = Math.Min(_capacity, _tokens + tokensToAdd);
-        _lastRefill = now;
-    }
-}
-
 public class RateLimiter
 {
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -222,12 +99,12 @@ public class RateLimiter
     {
         var pathBase = context.Request.PathBase.Value ?? "";
 
-        // Exempt authenticated admin UI requests from rate limiting.
-        // When auth is disabled, all /ui/* traffic is trusted.
-        // When auth is enabled, only requests that carry the session cookie are exempt —
+        // Exempt authenticated admin UI requests from rate limiting
+        // When auth is disabled, all /ui/* traffic is trusted
+        // When auth is enabled, only requests that carry the session cookie are exempt -
         // unauthenticated paths (login page, auth API) still run through the rate limiter
         // to guard against brute-force attacks. The auth middleware upstream redirects
-        // invalid cookies before they reach here, so cookie presence implies valid auth.
+        // invalid cookies before they reach here, so cookie presence implies valid auth
         if (context.Request.Path.StartsWithSegments("/ui"))
         {
             bool isAuthenticatedUiRequest = !_uiAuthEnabled ||
@@ -312,8 +189,8 @@ public class RateLimiter
             return;
         }
         
-        // Extract token for per-token rate limiting (if present).
-        // Auth enforcement is handled exclusively by TokenAuthMiddleware.
+        // Extract token for per-token rate limiting (if present)
+        // Auth enforcement is handled exclusively by TokenAuthMiddleware
         string? token = null;
         TokenBucket? tokenBucket = null;
         if (context.Request.Headers.TryGetValue("Authorization", out var authHeader))
@@ -526,7 +403,7 @@ public class RateLimiter
     }
     
     // Use RemoteIpAddress set by UseForwardedHeaders middleware rather than reading
-    // X-Forwarded-For directly — direct header reads are spoofable by clients.
+    // X-Forwarded-For directly; direct header reads are spoofable by clients
     private string GetClientIpAddress(HttpContext context)
     {
         var remoteIp = context.Connection.RemoteIpAddress;
@@ -535,43 +412,5 @@ public class RateLimiter
         if (remoteIp.IsIPv4MappedToIPv6)
             remoteIp = remoteIp.MapToIPv4();
         return remoteIp.ToString();
-    }
-}
-
-// Extension methods for adding RateLimiter middleware
-public static class RateLimiterExtensions
-{
-    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<RateLimiter>();
-    }
-}
-
-/// <summary>
-/// Extension methods for Rate Limiting
-/// </summary>
-public static class RateLimitingExtensions
-{
-    /// <summary>
-    /// Adds rate limiting configuration to the service collection
-    /// </summary>
-    public static IServiceCollection AddRateLimiting(this IServiceCollection services, IConfiguration configuration)
-    {
-        // Configure RateLimitSettings from configuration
-        var rateLimitSettings = new RateLimitSettings();
-        configuration.GetSection("RateLimiting").Bind(rateLimitSettings);
-        
-        // Add settings as singleton for potential future DI
-        services.AddSingleton(rateLimitSettings);
-        
-        return services;
-    }
-
-    /// <summary>
-    /// Adds rate limiting middleware to the application pipeline
-    /// </summary>
-    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<RateLimiter>();
     }
 }

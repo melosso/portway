@@ -181,11 +181,7 @@ public static class SettingsEncryptionHelper
             return EncryptedHeader + Convert.ToBase64String(encryptedKeyIv) + "::" + Convert.ToBase64String(cipherBytes);
         }
 
-        /// <summary>
-        /// Decrypts a PWENC-encrypted value using the machine-bound private key.
-        /// Loads the private key automatically from .core/recovery.binlz4.
-        /// Returns false if the key cannot be loaded or decryption fails.
-        /// </summary>
+        /// <summary>Decrypts a PWENC-encrypted value using the machine-bound private key. Loads the private key automatically from .core/recovery.binlz4. Returns false if the key cannot be loaded or decryption fails</summary>
         public static bool TryDecryptValue(string encryptedContent, out string plainText)
         {
             plainText = encryptedContent;

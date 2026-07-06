@@ -14,10 +14,7 @@ using Serilog;
 
 namespace PortwayApi.Services;
 
-/// <summary>
-/// Configures and manages SQL connection pooling. Provider-aware: delegates connection
-/// creation to the registered ISqlProvider for the detected database type.
-/// </summary>
+/// <summary>Configures and manages SQL connection pooling. Provider-aware: delegates connection creation to the registered ISqlProvider for the detected database type</summary>
 public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
 {
     private readonly SqlPoolingOptions _poolingOptions;
@@ -40,9 +37,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
             _poolingOptions.MinPoolSize, _poolingOptions.MaxPoolSize, _poolingOptions.ConnectionTimeout, _poolingOptions.ApplicationName);
     }
 
-    /// <summary>
-    /// Returns an optimized connection string for the detected provider.
-    /// </summary>
+    /// <summary>Returns an optimized connection string for the detected provider</summary>
     public string OptimizeConnectionString(string connectionString)
     {
         if (_connectionStringCache.TryGetValue(connectionString, out var optimized))
@@ -54,10 +49,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         return result;
     }
 
-    /// <summary>
-    /// Creates an open-ready connection for the detected provider.
-    /// Returns DbConnection to support all ADO.NET providers.
-    /// </summary>
+    /// <summary>Creates an open-ready connection for the detected provider. Returns DbConnection to support all ADO.NET providers</summary>
     public DbConnection CreateConnection(string connectionString)
     {
         var optimized = OptimizeConnectionString(connectionString);
@@ -65,9 +57,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         return provider.CreateConnection(optimized);
     }
 
-    /// <summary>
-    /// Prewarms the connection pool for a given connection string.
-    /// </summary>
+    /// <summary>Prewarms the connection pool for a given connection string</summary>
     public async Task PrewarmConnectionPoolAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         if (!_poolingOptions.EnablePooling)

@@ -10,9 +10,7 @@ using PortwayApi.Classes.OpenApi;
 
 namespace PortwayApi.Classes;
 
-/// <summary>
-/// This adds dynamic example loading while keeping all existing hardcoded examples as fallback
-/// </summary>
+/// <summary>This adds dynamic example loading while keeping all existing hardcoded examples as fallback</summary>
 public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<CompositeEndpointDocumentFilter> _logger;
@@ -229,9 +227,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Try to load dynamic example from file system. Returns null if file not found, allowing fallback to hardcoded examples
-    /// </summary>
+    /// <summary>Try to load dynamic example from file system. Returns null if file not found, allowing fallback to hardcoded examples</summary>
     private JsonNode? TryLoadDynamicExample(EndpointDefinition definition, string endpointKey)
     {
         try
@@ -261,9 +257,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>
-    /// Specialized example for SalesOrder composite endpoint. This is kept as a fallback when no example.json file exists
-    /// </summary>
+    /// <summary>Specialized example for SalesOrder composite endpoint. This is kept as a fallback when no example.json file exists</summary>
     private void AddSalesOrderExample(OpenApiOperation operation, OpenApiSchema requestSchema)
     {
         // Add Header property
@@ -334,9 +328,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.RequestBody.Content["application/json"].Example = example;
     }
 
-    /// <summary>
-    /// Get allowed environments
-    /// </summary>
+    /// <summary>Get allowed environments</summary>
     private List<string> GetAllowedEnvironments()
     {
         try
@@ -360,10 +352,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>
-    /// Gets the effective list of allowed environments for an endpoint.
-    /// Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings.
-    /// </summary>
+    /// <summary>Gets the effective list of allowed environments for an endpoint. Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings</summary>
     private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
     {
         if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())

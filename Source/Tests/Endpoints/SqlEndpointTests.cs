@@ -20,8 +20,7 @@ public class SqlEndpointTests : ApiTestBase
         // Ensure the environment is allowed
         SetAllowedEnvironments("500", "700");
         
-        // Mock ODataToSqlConverter to return a simple query
-        // Note: The endpoint name is "Products" but it maps to "dbo.Items" in the database
+        // Mock ODataToSqlConverter to return a simple query; Note: The endpoint name is "Products" but it maps to "dbo.Items" in the database
         var mockQueryResult = ("SELECT * FROM [dbo].[Items] WHERE [ItemCode] = @p0", 
             new Dictionary<string, object> { { "p0", "TEST001" } });
             
@@ -32,8 +31,7 @@ public class SqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}?$filter=ItemCode eq 'TEST001'");
         
-        // Assert
-        // If the server is not reachable, we might get InternalServerError, which is expected in this environment
+        // Assert; If the server is not reachable, we might get InternalServerError, which is expected in this environment
         if (response.StatusCode == HttpStatusCode.InternalServerError)
         {
             Log.Warning("SQL Server not reachable during test, skipping full validation of OK status.");
@@ -141,8 +139,7 @@ public class SqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.SendAsync(request);
         
-        // Assert
-        // We expect OK or InternalServerError (SQL unavailable), but NOT Unauthorized
+        // Assert; We expect OK or InternalServerError (SQL unavailable), but NOT Unauthorized
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

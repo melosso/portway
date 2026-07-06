@@ -6,14 +6,10 @@ using PortwayApi.Classes;
 
 namespace PortwayApi.Classes.Helpers;
 
-/// <summary>
-/// Helper class for handling Table Valued Function (TVF) parameter extraction and SQL generation
-/// </summary>
+/// <summary>Helper class for handling Table Valued Function (TVF) parameter extraction and SQL generation</summary>
 public static class TableValuedFunctionHelper
 {
-    /// <summary>
-    /// Determines if an endpoint is a Table Valued Function
-    /// </summary>
+    /// <summary>Determines if an endpoint is a Table Valued Function</summary>
     /// <param name="endpoint">Endpoint definition</param>
     /// <returns>True if it's a TVF endpoint</returns>
     public static bool IsTableValuedFunction(EndpointDefinition endpoint)
@@ -22,9 +18,7 @@ public static class TableValuedFunctionHelper
                endpoint.DatabaseObjectType.Equals("TableValuedFunction", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Extracts parameter values from HTTP request based on TVF parameter configuration
-    /// </summary>
+    /// <summary>Extracts parameter values from HTTP request based on TVF parameter configuration</summary>
     /// <param name="functionParameters">TVF parameter definitions</param>
     /// <param name="request">HTTP request</param>
     /// <param name="pathSegments">URL path segments after the endpoint name</param>
@@ -76,8 +70,7 @@ public static class TableValuedFunctionHelper
                 // Use default value if parameter not found and default is specified
                 if (!found && !string.IsNullOrEmpty(param.DefaultValue))
                 {
-                    // Don't add SQL keywords like "DEFAULT" to parameters dictionary
-                    // They will be handled directly in BuildFunctionCall
+                    // Don't add SQL keywords like "DEFAULT" to parameters dictionary; They will be handled directly in BuildFunctionCall
                     if (!param.DefaultValue.Equals("DEFAULT", StringComparison.OrdinalIgnoreCase))
                     {
                         parameters[param.Name] = param.DefaultValue;
@@ -111,9 +104,7 @@ public static class TableValuedFunctionHelper
         return (parameters, errors);
     }
 
-    /// <summary>
-    /// Builds the SQL function call with parameters
-    /// </summary>
+    /// <summary>Builds the SQL function call with parameters</summary>
     /// <param name="schema">Database schema</param>
     /// <param name="functionName">Function name</param>
     /// <param name="parameterValues">Parameter values</param>
@@ -163,9 +154,7 @@ public static class TableValuedFunctionHelper
         return (sqlBuilder.ToString(), sqlParameters);
     }
 
-    /// <summary>
-    /// Extracts a parameter value from the URL path
-    /// </summary>
+    /// <summary>Extracts a parameter value from the URL path</summary>
     private static object? ExtractPathParameter(TVFParameter param, string[] pathSegments)
     {
         if (param.Position <= 0 || param.Position > pathSegments.Length)
@@ -178,9 +167,7 @@ public static class TableValuedFunctionHelper
         return string.IsNullOrEmpty(segment) ? null : segment;
     }
 
-    /// <summary>
-    /// Extracts a parameter value from query parameters
-    /// </summary>
+    /// <summary>Extracts a parameter value from query parameters</summary>
     private static object? ExtractQueryParameter(TVFParameter param, IQueryCollection query)
     {
         var queryKey = param.QueryParameterName ?? param.Name;
@@ -194,9 +181,7 @@ public static class TableValuedFunctionHelper
         return null;
     }
 
-    /// <summary>
-    /// Extracts a parameter value from request headers
-    /// </summary>
+    /// <summary>Extracts a parameter value from request headers</summary>
     private static object? ExtractHeaderParameter(TVFParameter param, IHeaderDictionary headers)
     {
         var headerKey = param.HeaderName ?? param.Name;
@@ -210,9 +195,7 @@ public static class TableValuedFunctionHelper
         return null;
     }
 
-    /// <summary>
-    /// Validates a parameter value against its configuration
-    /// </summary>
+    /// <summary>Validates a parameter value against its configuration</summary>
     private static (bool IsValid, string? Error) ValidateParameterValue(TVFParameter param, string value)
     {
         // Check validation pattern if specified
@@ -236,9 +219,7 @@ public static class TableValuedFunctionHelper
         return ValidateSqlType(value, param.SqlType);
     }
 
-    /// <summary>
-    /// Validates that a value can be converted to the specified SQL type
-    /// </summary>
+    /// <summary>Validates that a value can be converted to the specified SQL type</summary>
     private static (bool IsValid, string? Error) ValidateSqlType(string value, string sqlType)
     {
         var normalizedType = sqlType.ToUpper();
@@ -291,9 +272,7 @@ public static class TableValuedFunctionHelper
         }
     }
 
-    /// <summary>
-    /// Converts a string value to the appropriate .NET type for SQL parameters
-    /// </summary>
+    /// <summary>Converts a string value to the appropriate .NET type for SQL parameters</summary>
     private static object ConvertToSqlType(object value, string sqlType)
     {
         var stringValue = value.ToString()!;
@@ -328,7 +307,7 @@ public static class TableValuedFunctionHelper
             }
             else
             {
-                // Default to string for NVARCHAR, VARCHAR, CHAR, etc.
+                // Default to string for NVARCHAR, VARCHAR, CHAR, etc
                 return stringValue;
             }
         }
@@ -342,9 +321,7 @@ public static class TableValuedFunctionHelper
 
     // Removed ApplyODataToTVF: now handled securely in TableValuedFunctionSqlHandler using IODataToSqlConverter
 
-    /// <summary>
-    /// Converts OData filter syntax to SQL WHERE clause (simplified)
-    /// </summary>
+    /// <summary>Converts OData filter syntax to SQL WHERE clause (simplified)</summary>
     private static string ConvertODataFilterToSQL(string filter, Dictionary<string, string>? aliasToDb = null)
     {
         // This is a very basic conversion. For production use, consider using
@@ -372,9 +349,7 @@ public static class TableValuedFunctionHelper
         return sqlFilter;
     }
 
-    /// <summary>
-    /// Converts OData orderby syntax to SQL ORDER BY clause (simplified)
-    /// </summary>
+    /// <summary>Converts OData orderby syntax to SQL ORDER BY clause (simplified)</summary>
     private static string ConvertODataOrderByToSQL(string orderby, Dictionary<string, string>? aliasToDb = null)
     {
         // Basic conversion for ORDER BY

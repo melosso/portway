@@ -2,6 +2,31 @@
 // sidebar.js handles: renderSidebar(), logout(), sidebarVersion fetch.
 // Toast functionality moved to /js/components/toast.js
 
+// CSRF: echo the portway_csrf cookie on every mutating /ui/api request (double-submit pattern)
+(function () {
+  function csrfToken() {
+    var m = document.cookie.match(/(?:^|;\s*)portway_csrf=([^;]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  var origFetch = window.fetch;
+  window.fetch = function (input, init) {
+    try {
+      var url = typeof input === 'string' ? input : (input && input.url) || '';
+      var method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      if (method !== 'GET' && method !== 'HEAD' && url.indexOf('/ui/api/') !== -1) {
+        var token = csrfToken();
+        if (token) {
+          init = init || {};
+          var headers = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {});
+          if (!headers.has('X-CSRF-Token')) headers.set('X-CSRF-Token', token);
+          init.headers = headers;
+        }
+      }
+    } catch (e) { /* never block the request */ }
+    return origFetch.call(this, input, init);
+  };
+})();
+
 // Sanitizer
 function esc(s) {
   if (s == null) return '';

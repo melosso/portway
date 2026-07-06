@@ -4,9 +4,7 @@ using System.Text.Json;
 using Serilog;
 using PortwayApi.Helpers;
 
-/// <summary>
-/// Unified endpoint definition that handles all endpoint types
-/// </summary>
+/// <summary>Unified endpoint definition that handles all endpoint types</summary>
 public class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
@@ -77,33 +75,19 @@ public class EndpointDefinition
     // DELETE operation patterns
     public List<DeletePattern>? DeletePatterns { get; set; }
 
-    /// <summary>
-    /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory")
-    /// Takes precedence over folder-inferred namespace
-    /// </summary>
+    /// <summary>Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory") Takes precedence over folder-inferred namespace</summary>
     public string? Namespace { get; set; }
     
-    /// <summary>
-    /// Display name for this specific endpoint (e.g., "Account Management")
-    /// Used in OpenAPI documentation and UI displays
-    /// </summary>
+    /// <summary>Display name for this specific endpoint (e.g., "Account Management") Used in OpenAPI documentation and UI displays</summary>
     public string? DisplayName { get; set; }
     
-    /// <summary>
-    /// Display name for the namespace (e.g., "Customer Relationship Management")
-    /// Used as documentation tag description and documentation grouping
-    /// </summary>
+    /// <summary>Display name for the namespace (e.g., "Customer Relationship Management") Used as documentation tag description and documentation grouping</summary>
     public string? NamespaceDisplayName { get; set; }
 
-    /// <summary>
-    /// Folder name where the endpoint definition is located (for backward compatibility)
-    /// Used as fallback for DocumentationTag when DisplayName is not specified
-    /// </summary>
+    /// <summary>Folder name where the endpoint definition is located (for backward compatibility) Used as fallback for DocumentationTag when DisplayName is not specified</summary>
     public string? FolderName { get; set; }
     
-    /// <summary>
-    /// Namespace inferred from folder structure (for internal use)
-    /// </summary>
+    /// <summary>Namespace inferred from folder structure (for internal use)</summary>
     public string? InferredNamespace { get; set; }
 
     // Helper properties to simplify type checking
@@ -114,36 +98,24 @@ public class EndpointDefinition
     public bool IsStatic => Type == EndpointType.Static;
     
     // Namespace helper properties
-    /// <summary>
-    /// Gets the effective namespace (explicit namespace takes precedence over inferred)
-    /// </summary>
+    /// <summary>Gets the effective namespace (explicit namespace takes precedence over inferred)</summary>
     public string? EffectiveNamespace => Namespace ?? InferredNamespace;
     
-    /// <summary>
-    /// Indicates if this endpoint has a namespace (explicit or inferred)
-    /// </summary>
+    /// <summary>Indicates if this endpoint has a namespace (explicit or inferred)</summary>
     public bool HasNamespace => !string.IsNullOrEmpty(EffectiveNamespace);
     
-    /// <summary>
-    /// Gets the endpoint name for URL and key generation
-    /// </summary>
+    /// <summary>Gets the endpoint name for URL and key generation</summary>
     public string EndpointName => FolderName ?? (IsSql ? DatabaseObjectName : Path.GetFileNameWithoutExtension(Url)) ?? "Unknown";
     
-    /// <summary>
-    /// Gets the full path including namespace (for routing keys)
-    /// </summary>
+    /// <summary>Gets the full path including namespace (for routing keys)</summary>
     public string FullPath => HasNamespace ? $"{EffectiveNamespace}/{EndpointName}" : EndpointName;
     
-    /// <summary>
-    /// Gets the display path for documentation and UI
-    /// </summary>
+    /// <summary>Gets the display path for documentation and UI</summary>
     public string DisplayPath => HasNamespace && !string.IsNullOrEmpty(DisplayName) 
         ? $"{NamespaceDisplayName ?? EffectiveNamespace} - {DisplayName}" 
         : DisplayName ?? EndpointName;
     
-    /// <summary>
-    /// Gets the appropriate documentation tag name for OpenAPI grouping
-    /// </summary>
+    /// <summary>Gets the appropriate documentation tag name for OpenAPI grouping</summary>
     public string DocumentationTag
     {
         get
@@ -158,9 +130,7 @@ public class EndpointDefinition
         }
     }
 
-    /// <summary>
-    /// Creates URL patterns for routing (supports both namespaced and non-namespaced)
-    /// </summary>
+    /// <summary>Creates URL patterns for routing (supports both namespaced and non-namespaced)</summary>
     public List<string> GetUrlPatterns()
     {
         var patterns = new List<string>();
@@ -179,9 +149,7 @@ public class EndpointDefinition
         return patterns;
     }
 
-    /// <summary>
-    /// Validates namespace naming conventions
-    /// </summary>
+    /// <summary>Validates namespace naming conventions</summary>
     public List<string> ValidateNamespace()
     {
         var errors = new List<string>();
@@ -211,14 +179,12 @@ public class EndpointDefinition
         return errors;
     }
     
-    /// <summary>
-    /// Converts EndpointDefinition to legacy tuple format for backward compatibility
-    /// </summary>
-    public (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments) ToTuple()
+    /// <summary>Converts EndpointDefinition to the ProxyEndpointInfo snapshot used by composite and MCP consumers</summary>
+    public ProxyEndpointInfo ToProxyEndpointInfo()
     {
-        return (
-            Url, 
-            new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase), 
+        return new ProxyEndpointInfo(
+            Url,
+            new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase),
             IsPrivate,
             IsMcpExposed,
             Type.ToString(),
@@ -237,18 +203,14 @@ public static class EndpointHandler
     private static volatile Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
 
-    /// <summary>
-    /// Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility
-    /// </summary>
+    /// <summary>Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility</summary>
     private static string GetEndpointsBasePath()
     {
         var baseDir = Directory.GetCurrentDirectory();
         return Path.Combine(baseDir, "endpoints");
     }
 
-    /// <summary>
-    /// Gets SQL endpoints from the /endpoints/SQL directory
-    /// </summary>
+    /// <summary>Gets SQL endpoints from the /endpoints/SQL directory</summary>
     public static Dictionary<string, EndpointDefinition> GetSqlEndpoints()
     {
         string sqlEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "SQL");
@@ -256,9 +218,7 @@ public static class EndpointHandler
         return _loadedSqlEndpoints!;
     }
 
-    /// <summary>
-    /// Gets SQL webhook endpoints from the /endpoints/Webhooks directory
-    /// </summary>
+    /// <summary>Gets SQL webhook endpoints from the /endpoints/Webhooks directory</summary>
     public static Dictionary<string, EndpointDefinition> GetSqlWebhookEndpoints()
     {
         string sqlWebhookEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Webhooks");
@@ -266,9 +226,7 @@ public static class EndpointHandler
         return _loadedSqlWebhookEndpoints!;
     }
 
-    /// <summary>
-    /// Gets Proxy endpoints from the /endpoints/Proxy directory
-    /// </summary>
+    /// <summary>Gets Proxy endpoints from the /endpoints/Proxy directory</summary>
     public static Dictionary<string, EndpointDefinition> GetProxyEndpoints()
     {
         string proxyEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Proxy");
@@ -276,10 +234,8 @@ public static class EndpointHandler
         return _loadedProxyEndpoints!;
     }
 
-    /// <summary>
-    /// Gets all composite endpoint definitions from the endpoints directory
-    /// </summary>
-    public static Dictionary<string, CompositeDefinition> GetCompositeDefinitions(Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpointMap)
+    /// <summary>Gets all composite endpoint definitions from the endpoints directory</summary>
+    public static Dictionary<string, CompositeDefinition> GetCompositeDefinitions(Dictionary<string, ProxyEndpointInfo> endpointMap)
     {
         // We already have endpoints loaded, so just extract the composite configs
         var compositeDefinitions = new Dictionary<string, CompositeDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -302,9 +258,7 @@ public static class EndpointHandler
         return compositeDefinitions;
     }
 
-    /// <summary>
-    /// Loads file endpoints if they haven't been loaded yet
-    /// </summary>
+    /// <summary>Loads file endpoints if they haven't been loaded yet</summary>
     private static void LoadFileEndpointsIfNeeded(string endpointsDirectory)
     {
         // Use double-check locking pattern to ensure thread safety
@@ -320,9 +274,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Loads static endpoints if they haven't been loaded yet
-    /// </summary>
+    /// <summary>Loads static endpoints if they haven't been loaded yet</summary>
     private static void LoadStaticEndpointsIfNeeded(string endpointsDirectory)
     {
         // Use double-check locking pattern to ensure thread safety
@@ -338,12 +290,10 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Scans the specified directory for endpoint definition files and returns a dictionary of endpoints.
-    /// </summary>
+    /// <summary>Scans the specified directory for endpoint definition files and returns a dictionary of endpoints</summary>
     /// <param name="endpointsDirectory">Directory containing endpoint definitions</param>
     /// <returns>Dictionary with endpoint names as keys and tuples of (url, methods, isPrivate, isMcpExposed, type) as values</returns>
-    public static Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> GetEndpoints(string endpointsDirectory)
+    public static Dictionary<string, ProxyEndpointInfo> GetEndpoints(string endpointsDirectory)
     {
         // Check if the directory is for proxy or SQL endpoints
         bool isProxyEndpoint = endpointsDirectory.Contains("Proxy", StringComparison.OrdinalIgnoreCase);
@@ -354,10 +304,10 @@ public static class EndpointHandler
             LoadProxyEndpointsIfNeeded(endpointsDirectory);
 
             // Convert to the legacy format (includes AllowedEnvironments for composite step validation)
-            var endpointMap = new Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)>(StringComparer.OrdinalIgnoreCase);
+            var endpointMap = new Dictionary<string, ProxyEndpointInfo>(StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in _loadedProxyEndpoints!)
             {
-                endpointMap[kvp.Key] = kvp.Value.ToTuple();
+                endpointMap[kvp.Key] = kvp.Value.ToProxyEndpointInfo();
             }
 
             return endpointMap;
@@ -365,13 +315,11 @@ public static class EndpointHandler
         else
         {
             // Create an empty dictionary for now - SQL endpoints are handled differently
-            return new Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)>(StringComparer.OrdinalIgnoreCase);
+            return new Dictionary<string, ProxyEndpointInfo>(StringComparer.OrdinalIgnoreCase);
         }
     }
 
-    /// <summary>
-    /// Internal method to load proxy endpoints if they haven't been loaded yet
-    /// </summary>
+    /// <summary>Internal method to load proxy endpoints if they haven't been loaded yet</summary>
     private static void LoadProxyEndpointsIfNeeded(string endpointsDirectory)
     {
         // Use double-check locking pattern to ensure thread safety
@@ -387,9 +335,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Internal method to load SQL endpoints if they haven't been loaded yet
-    /// </summary>
+    /// <summary>Internal method to load SQL endpoints if they haven't been loaded yet</summary>
     private static void LoadSqlEndpointsIfNeeded(string endpointsDirectory)
     {
         // Use double-check locking pattern to ensure thread safety
@@ -405,9 +351,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Internal method to load SQL endpoints if they haven't been loaded yet
-    /// </summary>
+    /// <summary>Internal method to load SQL endpoints if they haven't been loaded yet</summary>
     private static void LoadSqlWebhookEndpointsIfNeeded(string endpointsDirectory)
     {
         // Use double-check locking pattern to ensure thread safety
@@ -423,9 +367,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Internal method to load all proxy endpoints from the endpoints directory
-    /// </summary>
+    /// <summary>Internal method to load all proxy endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadProxyEndpoints(string endpointsDirectory)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -478,14 +420,14 @@ public static class EndpointHandler
                                         "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
                                         endpointName, definition.Namespace, inferredNamespace);
                                 }
-                                // else: matches folder — redundant but harmless, no warning
+                                // else: matches folder; redundant but harmless, no warning
                             }
                             else
                             {
                                 // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
                                 if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    // Namespace equals folder name → doubled key (e.g. Products/Products) — almost certainly a mistake
+                                    // Namespace equals folder name → doubled key (e.g. Products/Products); almost certainly a mistake
                                     Log.Warning(
                                         "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
                                         endpointName, definition.Namespace);
@@ -545,9 +487,7 @@ public static class EndpointHandler
         return endpoints;
     }
 
-    /// <summary>
-    /// Internal method to load all SQL endpoints from the endpoints directory
-    /// </summary>
+    /// <summary>Internal method to load all SQL endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -600,14 +540,14 @@ public static class EndpointHandler
                                         "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
                                         endpointName, definition.Namespace, inferredNamespace);
                                 }
-                                // else: matches folder — redundant but harmless, no warning
+                                // else: matches folder; redundant but harmless, no warning
                             }
                             else
                             {
                                 // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
                                 if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    // Namespace equals folder name → doubled key (e.g. Products/Products) — almost certainly a mistake
+                                    // Namespace equals folder name → doubled key (e.g. Products/Products); almost certainly a mistake
                                     Log.Warning(
                                         "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
                                         endpointName, definition.Namespace);
@@ -667,9 +607,7 @@ public static class EndpointHandler
         return endpoints;
     }
 
-    /// <summary>
-    /// Internal method to load all SQL webhook endpoints from the endpoints directory
-    /// </summary>
+    /// <summary>Internal method to load all SQL webhook endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -735,9 +673,7 @@ public static class EndpointHandler
         return endpoints;
     }
 
-    /// <summary>
-    /// Internal method to load all file endpoints from the endpoints directory
-    /// </summary>
+    /// <summary>Internal method to load all file endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -807,9 +743,7 @@ public static class EndpointHandler
         return endpoints;
     }
 
-    /// <summary>
-    /// Internal method to load all static endpoints from the endpoints directory
-    /// </summary>
+    /// <summary>Internal method to load all static endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -862,14 +796,14 @@ public static class EndpointHandler
                                         "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
                                         endpointName, definition.Namespace, inferredNamespace);
                                 }
-                                // else: matches folder — redundant but harmless, no warning
+                                // else: matches folder; redundant but harmless, no warning
                             }
                             else
                             {
                                 // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
                                 if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    // Namespace equals folder name → doubled key (e.g. Products/Products) — almost certainly a mistake
+                                    // Namespace equals folder name → doubled key (e.g. Products/Products); almost certainly a mistake
                                     Log.Warning(
                                         "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
                                         endpointName, definition.Namespace);
@@ -935,9 +869,7 @@ public static class EndpointHandler
         return endpoints;
     }
 
-    /// <summary>
-    /// Parses a file endpoint definition from JSON
-    /// </summary>
+    /// <summary>Parses a file endpoint definition from JSON</summary>
     private static EndpointDefinition? ParseFileEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -966,9 +898,7 @@ public static class EndpointHandler
         };
     }
 
-    /// <summary>
-    /// Parses a static endpoint definition from JSON
-    /// </summary>
+    /// <summary>Parses a static endpoint definition from JSON</summary>
     private static EndpointDefinition? ParseStaticEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -1008,9 +938,7 @@ public static class EndpointHandler
         return _loadedFileEndpoints!;
     }
 
-    /// <summary>
-    /// Gets Static endpoints from the /endpoints/Static directory
-    /// </summary>
+    /// <summary>Gets Static endpoints from the /endpoints/Static directory</summary>
     public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
     {
         string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
@@ -1018,9 +946,7 @@ public static class EndpointHandler
         return _loadedStaticEndpoints!;
     }
 
-    /// <summary>
-    /// Parses a proxy endpoint definition from JSON, handling both legacy and extended formats
-    /// </summary>
+    /// <summary>Parses a proxy endpoint definition from JSON, handling both legacy and extended formats</summary>
     private static EndpointDefinition? ParseProxyEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -1077,9 +1003,7 @@ public static class EndpointHandler
         return null;
     }
 
-    /// <summary>
-    /// Parses a SQL endpoint definition from JSON
-    /// </summary>
+    /// <summary>Parses a SQL endpoint definition from JSON</summary>
     private static EndpointDefinition? ParseSqlEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -1121,9 +1045,7 @@ public static class EndpointHandler
         };
     }
 
-    /// <summary>
-    /// Validates SQL endpoint configuration to prevent runtime errors
-    /// </summary>
+    /// <summary>Validates SQL endpoint configuration to prevent runtime errors</summary>
     private static List<string> ValidateSqlEndpointConfiguration(EndpointEntity entity)
     {
         var errors = new List<string>();
@@ -1191,9 +1113,7 @@ public static class EndpointHandler
         return errors;
     }
 
-    /// <summary>
-    /// Converts a string type to the EndpointType enum
-    /// </summary>
+    /// <summary>Converts a string type to the EndpointType enum</summary>
     private static EndpointType ParseEndpointType(string? typeString)
     {
         if (string.IsNullOrWhiteSpace(typeString))
@@ -1208,9 +1128,7 @@ public static class EndpointHandler
         };
     }
 
-    /// <summary>
-    /// Logs information about a loaded endpoint with appropriate emoji based on type
-    /// </summary>
+    /// <summary>Logs information about a loaded endpoint with appropriate emoji based on type</summary>
     private static void LogEndpointLoading(string endpointName, EndpointDefinition definition)
     {
         if (definition.IsPrivate)
@@ -1231,9 +1149,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Creates sample endpoint definitions if none exist
-    /// </summary>
+    /// <summary>Creates sample endpoint definitions if none exist</summary>
     public static void CreateSampleEndpoints(string baseDirectory)
     {
         try
@@ -1443,9 +1359,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Reloads all endpoint definitions from disk
-    /// </summary>
+    /// <summary>Reloads all endpoint definitions from disk</summary>
     public static void ReloadAllEndpoints()
     {
         lock (_loadLock)
@@ -1460,9 +1374,7 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Reloads a specific endpoint type
-    /// </summary>
+    /// <summary>Reloads a specific endpoint type</summary>
     public static void ReloadEndpointType(EndpointType type)
     {
         lock (_loadLock)
@@ -1495,45 +1407,35 @@ public static class EndpointHandler
         }
     }
 
-    /// <summary>
-    /// Forces immediate reload of SQL endpoints
-    /// </summary>
+    /// <summary>Forces immediate reload of SQL endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadSqlEndpoints()
     {
         var sqlEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "SQL");
         return LoadSqlEndpoints(sqlEndpointsDirectory);
     }
 
-    /// <summary>
-    /// Forces immediate reload of proxy endpoints
-    /// </summary>
+    /// <summary>Forces immediate reload of proxy endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadProxyEndpoints()
     {
         var proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
         return LoadProxyEndpoints(proxyEndpointsDirectory);
     }
 
-    /// <summary>
-    /// Forces immediate reload of file endpoints
-    /// </summary>
+    /// <summary>Forces immediate reload of file endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadFileEndpoints()
     {
         var fileEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Files");
         return LoadFileEndpoints(fileEndpointsDirectory);
     }
 
-    /// <summary>
-    /// Forces immediate reload of static endpoints
-    /// </summary>
+    /// <summary>Forces immediate reload of static endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadStaticEndpoints()
     {
         var staticEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static");
         return LoadStaticEndpoints(staticEndpointsDirectory);
     }
 
-    /// <summary>
-    /// Extracts endpoint type from file path
-    /// </summary>
+    /// <summary>Extracts endpoint type from file path</summary>
     public static EndpointType? GetEndpointTypeFromPath(string filePath)
     {
         if (filePath.Contains("endpoints/SQL", StringComparison.OrdinalIgnoreCase) ||

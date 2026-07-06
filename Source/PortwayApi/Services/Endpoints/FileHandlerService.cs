@@ -11,59 +11,7 @@ using Serilog;
 
 namespace PortwayApi.Services.Files;
 
-/// <summary>
-/// Configuration options for file storage
-/// </summary>
-public class FileStorageOptions
-{
-    /// <summary>
-    /// Root directory for file storage
-    /// </summary>
-    public string StorageDirectory { get; set; } = "files";
-
-    /// <summary>
-    /// Maximum file size in bytes (default: 50MB)
-    /// </summary>
-    public long MaxFileSizeBytes { get; set; } = 50 * 1024 * 1024;
-
-    /// <summary>
-    /// Cache files in memory before writing to disk
-    /// </summary>
-    public bool UseMemoryCache { get; set; } = true;
-
-    /// <summary>
-    /// How long to keep files in memory cache before flushing to disk (seconds)
-    /// </summary>
-    public int MemoryCacheTimeSeconds { get; set; } = 60;
-
-    /// <summary>
-    /// Maximum size of all files to keep in memory (in MB)
-    /// </summary>
-    public int MaxTotalMemoryCacheMB { get; set; } = 200;
-
-    /// <summary>
-    /// Allowed file extensions (empty eq. all are allowed)
-    /// </summary>
-    public List<string> AllowedExtensions { get; set; } = new List<string>();
-
-    /// <summary>
-    /// Blocked file extensions 
-    /// </summary>
-    public List<string> BlockedExtensions { get; set; } = new List<string> 
-        { 
-            ".exe", ".dll", ".bat", ".sh", ".cmd", ".msi", ".vbs",
-            ".ps1", ".scr", ".wsf", ".hta", ".cpl", ".msc", ".pif", ".reg", ".com", ".vbe", ".wsh",
-            ".php", ".php3", ".php4", ".php5", ".phtml", 
-            ".asp", ".aspx", ".ashx", ".asmx", 
-            ".jsp", ".jspx", ".cgi", ".pl", ".py", ".rb",
-            ".jar", ".bin", ".elf", ".app", ".dmg", ".run",
-            ".docm", ".xlsm", ".pptm"
-        };
-}
-
-/// <summary>
-/// Service for handling file operations
-/// </summary>
+/// <summary>Service for handling file operations</summary>
 public class FileHandlerService : IDisposable
 {
     private readonly IOptionsMonitor<FileStorageOptions> _optionsMonitor;
@@ -107,9 +55,7 @@ public class FileHandlerService : IDisposable
         _indexRefreshTimer = new Timer(RefreshIndices, null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
     }
 
-    /// <summary>
-    /// Uploads a file to storage
-    /// </summary>
+    /// <summary>Uploads a file to storage</summary>
     public async Task<string> UploadFileAsync(string environment, string filename, Stream fileStream, bool overwrite = false)
     {
         // Validate file
@@ -204,9 +150,7 @@ public class FileHandlerService : IDisposable
         return fileId;
     }
 
-    /// <summary>
-    /// Downloads a file from storage
-    /// </summary>
+    /// <summary>Downloads a file from storage</summary>
     public async Task<(Stream FileStream, string Filename, string ContentType)> DownloadFileAsync(string fileId)
     {
         // Parse the file ID to get environment and filename
@@ -287,9 +231,7 @@ public class FileHandlerService : IDisposable
         return (fileStream, filename, GetContentType(filename));
     }
 
-    /// <summary>
-    /// Deletes a file from storage
-    /// </summary>
+    /// <summary>Deletes a file from storage</summary>
     public async Task DeleteFileAsync(string fileId)
     {
         // Parse the file ID to get environment and filename
@@ -312,7 +254,7 @@ public class FileHandlerService : IDisposable
             Log.Debug("File {Filename} removed from memory cache with ID {FileId}", filename, fileId);
         }
 
-        // Delete from disk if it exists — verify path stays within storage root
+        // Delete from disk if it exists; verify path stays within storage root
         string storageRoot = Path.GetFullPath(_optionsMonitor.CurrentValue.StorageDirectory);
         string filePath    = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
 
@@ -329,9 +271,7 @@ public class FileHandlerService : IDisposable
         await _fileSystemIndex.UpdateIndexAsync(environment, filename, isDeleted: true);
     }
 
-    /// <summary>
-    /// Lists files in an environment
-    /// </summary>
+    /// <summary>Lists files in an environment</summary>
     public async Task<IEnumerable<FileInfo>> ListFilesAsync(string environment, string? prefix = null)
     {
         // Use the cached index instead of filesystem operations
@@ -350,9 +290,7 @@ public class FileHandlerService : IDisposable
         });
     }
 
-    /// <summary>
-    /// Uploads a file to an absolute path location
-    /// </summary>
+    /// <summary>Uploads a file to an absolute path location</summary>
     public async Task<string> UploadFileToAbsolutePathAsync(
         string environment, 
         string absoluteFilePath, 
@@ -393,9 +331,7 @@ public class FileHandlerService : IDisposable
         return fileId;
     }
 
-    /// <summary>
-    /// Generates a special file ID for absolute path files
-    /// </summary>
+    /// <summary>Generates a special file ID for absolute path files</summary>
     private string GenerateAbsoluteFileId(string environment, string absolutePath)
     {
         // Special encoding for absolute paths
@@ -407,9 +343,7 @@ public class FileHandlerService : IDisposable
             .TrimEnd('=');
     }
 
-    /// <summary>
-    /// Flushes all dirty files from memory to disk
-    /// </summary>
+    /// <summary>Flushes all dirty files from memory to disk</summary>
     public async Task FlushAllAsync()
     {
         foreach (var fileId in _memoryCache.Keys)
@@ -424,10 +358,7 @@ public class FileHandlerService : IDisposable
         Log.Information("Flushed all dirty files from memory cache to disk");
     }
 
-    /// <summary>
-    /// Synchronously flushes all dirty files from memory to disk
-    /// Use this during application shutdown
-    /// </summary>
+    /// <summary>Synchronously flushes all dirty files from memory to disk Use this during application shutdown</summary>
     public void FlushAll()
     {
         foreach (var fileId in _memoryCache.Keys.ToList())
@@ -442,9 +373,7 @@ public class FileHandlerService : IDisposable
         Log.Information("Flushed all dirty files from memory cache to disk (sync)");
     }
 
-    /// <summary>
-    /// Synchronously flushes a specific file to disk
-    /// </summary>
+    /// <summary>Synchronously flushes a specific file to disk</summary>
     private void FlushFileToDisk(string fileId)
     {
         if (!_memoryCache.TryGetValue(fileId, out var memoryStream))
@@ -491,9 +420,7 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Flushes a specific file from memory to disk
-    /// </summary>
+    /// <summary>Flushes a specific file from memory to disk</summary>
     private async Task FlushFileToDiskAsync(string fileId)
     {
         // Check if file is in memory cache
@@ -542,9 +469,7 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Timer callback to refresh file system indices
-    /// </summary>
+    /// <summary>Timer callback to refresh file system indices</summary>
     private async void RefreshIndices(object? state)
     {
         try
@@ -557,9 +482,7 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Timer callback to flush memory cache to disk
-    /// </summary>
+    /// <summary>Timer callback to flush memory cache to disk</summary>
     private async void FlushMemoryCache(object? state)
     {
         try
@@ -612,9 +535,7 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>
-    /// Flushes oldest files from memory until the specified amount of space is freed
-    /// </summary>
+    /// <summary>Flushes oldest files from memory until the specified amount of space is freed</summary>
     private async Task FlushOldestFilesAsync(long bytesToFree)
     {
         if (bytesToFree <= 0)
@@ -666,9 +587,7 @@ public class FileHandlerService : IDisposable
         Log.Debug("Freed {FreedBytes} bytes from memory cache by removing oldest files", freedBytes);
     }
 
-    /// <summary>
-    /// Generates a file ID from environment and filename
-    /// </summary>
+    /// <summary>Generates a file ID from environment and filename</summary>
     private string GenerateFileId(string environment, string filename)
     {
         // Ensure fileName can contain subdirectory paths
@@ -680,16 +599,13 @@ public class FileHandlerService : IDisposable
             .TrimEnd('=');
     }
 
-    /// <summary>
-    /// Validates the environment and filename components decoded from a fileId.
-    /// Both components must be non-empty single-segment values with no path separators or traversal sequences.
-    /// </summary>
+    /// <summary>Validates the environment and filename components decoded from a fileId. Both components must be non-empty single-segment values with no path separators or traversal sequences</summary>
     internal static bool ValidateFileIdComponents(string? environment, string? filename)
     {
         if (string.IsNullOrWhiteSpace(environment) || string.IsNullOrWhiteSpace(filename))
             return false;
 
-        // Environment must be a single path segment — no separators, no traversal
+        // Environment must be a single path segment; no separators, no traversal
         if (environment.Contains('/') || environment.Contains('\\') || environment.Contains(".."))
             return false;
 
@@ -697,7 +613,7 @@ public class FileHandlerService : IDisposable
         if (Path.IsPathRooted(filename))
             return false;
 
-        // Reject backslashes explicitly — on Linux Path.GetFileName does not treat them
+        // Reject backslashes explicitly; on Linux Path.GetFileName does not treat them
         // as separators, so a Windows-style path would otherwise slip through
         if (filename.Contains('\\'))
             return false;
@@ -711,9 +627,7 @@ public class FileHandlerService : IDisposable
         return true;
     }
 
-    /// <summary>
-    /// Parses a file ID into environment and filename, rejecting any path traversal in either component.
-    /// </summary>
+    /// <summary>Parses a file ID into environment and filename, rejecting any path traversal in either component</summary>
     private bool ParseFileId(string fileId, out string environment, out string filename)
     {
         try
@@ -755,9 +669,7 @@ public class FileHandlerService : IDisposable
         return false;
     }
 
-    /// <summary>
-    /// Sanitizes a filename to prevent path traversal attacks
-    /// </summary>
+    /// <summary>Sanitizes a filename to prevent path traversal attacks</summary>
     private string SanitizeFileName(string filename)
     {
         filename = Path.GetFileName(filename);
@@ -771,9 +683,7 @@ public class FileHandlerService : IDisposable
         return filename;
     }
 
-    /// <summary>
-    /// Determines the content type for a filename
-    /// </summary>
+    /// <summary>Determines the content type for a filename</summary>
     private string GetContentType(string filename) => ContentTypeHelper.GetContentType(filename);
 
     public class FileInfo
@@ -819,183 +729,5 @@ public class FileHandlerService : IDisposable
         }
 
         _disposed = true;
-    }
-}
-
-public class FileSystemIndex
-{
-    private readonly string _baseDirectory;
-    private readonly ICacheProvider _cacheProvider;
-    private readonly SemaphoreSlim _indexLock = new SemaphoreSlim(1, 1);
-    private readonly Serilog.ILogger _logger;
-    private readonly ConcurrentDictionary<string, Dictionary<string, FileMetadata>> _environmentIndices = new();
-    private readonly Func<string, string, string> _fileIdGenerator;
-    private readonly Func<string, string> _contentTypeResolver;
-    
-    public FileSystemIndex(
-        string baseDirectory, 
-        ICacheProvider cacheProvider, 
-        Serilog.ILogger logger,
-        Func<string, string, string> fileIdGenerator,
-        Func<string, string> contentTypeResolver)
-    {
-        _baseDirectory = baseDirectory;
-        _cacheProvider = cacheProvider;
-        _logger = logger;
-        _fileIdGenerator = fileIdGenerator;
-        _contentTypeResolver = contentTypeResolver;
-    }
-    
-    // File metadata stored in cache
-    public class FileMetadata
-    {
-        public string FileId { get; set; } = string.Empty;
-        public string FileName { get; set; } = string.Empty;
-        public string ContentType { get; set; } = string.Empty;
-        public long Size { get; set; }
-        public DateTime LastModified { get; set; }
-        public bool IsInMemoryOnly { get; set; }
-    }
-    
-    public async Task<Dictionary<string, FileMetadata>> GetDirectoryIndexAsync(string environment, bool forceRefresh = false)
-    {
-        string cacheKey = $"file:index:{environment}";
-        // Try to get from cache first if not forcing refresh
-        if (!forceRefresh)
-        {
-            var cachedIndex = await _cacheProvider.GetAsync<Dictionary<string, FileMetadata>>(cacheKey);
-            if (cachedIndex != null)
-            {
-                return cachedIndex;
-            }
-        }
-        
-        // Cache miss or force refresh - rebuild index from filesystem
-        await _indexLock.WaitAsync();
-        try
-        {
-            return await GetDirectoryIndexInternalAsync(environment, forceRefresh);
-        }
-        finally
-        {
-            _indexLock.Release();
-        }
-    }
-
-    private async Task<Dictionary<string, FileMetadata>> GetDirectoryIndexInternalAsync(string environment, bool forceRefresh = false)
-    {
-        string cacheKey = $"file:index:{environment}";
-        
-        // Double-check after acquiring lock
-        if (!forceRefresh)
-        {
-            var cachedIndex = await _cacheProvider.GetAsync<Dictionary<string, FileMetadata>>(cacheKey);
-            if (cachedIndex != null)
-            {
-                return cachedIndex;
-            }
-        }
-        
-        string environmentDir = Path.Combine(_baseDirectory, environment);
-        Dictionary<string, FileMetadata> index = new();
-        if (Directory.Exists(environmentDir))
-        {
-            // Use recursive enumeration to scan ALL subdirectories
-            foreach (var file in Directory.EnumerateFiles(environmentDir, "*", SearchOption.AllDirectories))
-            {
-                var fileInfo = new System.IO.FileInfo(file);
-                // Calculate relative path from environment directory
-                string relativePath = Path.GetRelativePath(environmentDir, file);
-                // Normalize path separators to forward slashes for consistency
-                string normalizedPath = relativePath.Replace('\\', '/');
-                index[normalizedPath] = new FileMetadata
-                {
-                    FileId = _fileIdGenerator(environment, normalizedPath),
-                    FileName = normalizedPath,
-                    ContentType = _contentTypeResolver(normalizedPath),
-                    Size = fileInfo.Length,
-                    LastModified = fileInfo.LastWriteTimeUtc,
-                    IsInMemoryOnly = false
-                };
-            }
-        }
-        
-        // Cache the index with expiration
-        await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
-        // Also store in memory for very fast access
-        _environmentIndices[environment] = index;
-        _logger.Debug("📂 Built file index for environment {Environment}: {Count} files", environment, index.Count);
-        return index;
-    }
-    
-    // Update index when files are added/modified/deleted
-    public async Task UpdateIndexAsync(string environment, string fileName, FileMetadata? metadata = null, bool isDeleted = false)
-    {
-        string cacheKey = $"file:index:{environment}";
-        
-        await _indexLock.WaitAsync();
-        try
-        {
-            // Get current index (from memory or rebuild if needed)
-            Dictionary<string, FileMetadata> index;
-            if (_environmentIndices.TryGetValue(environment, out var existingIndex))
-            {
-                index = existingIndex;
-            }
-            else
-            {
-                // Load from cache or rebuild (using internal method to avoid deadlock)
-                index = await GetDirectoryIndexInternalAsync(environment);
-            }
-            
-            if (isDeleted)
-            {
-                index.Remove(fileName);
-                _logger.Debug("Removed {FileName} from file index for {Environment}", fileName, environment);
-            }
-            else if (metadata != null)
-            {
-                index[fileName] = metadata;
-                _logger.Debug("📝 Updated index for {FileName} in {Environment}", fileName, environment);
-            }
-            
-            // Update cache
-            await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
-            
-            // Update in-memory index
-            _environmentIndices[environment] = index;
-        }
-        finally
-        {
-            _indexLock.Release();
-        }
-    }
-    
-    // List files with efficient filtering using the index
-    public async Task<IEnumerable<FileMetadata>> ListFilesAsync(string environment, string? prefix = null)
-    {
-        var index = await GetDirectoryIndexAsync(environment);
-        // Efficiently filter in memory - handle both filename and path prefixes
-        if (string.IsNullOrEmpty(prefix))
-        {
-            return index.Values;
-        }
-        // Normalize prefix to use forward slashes
-        string normalizedPrefix = prefix.Replace('\\', '/');
-        return index.Values.Where(f =>
-            f.FileName.StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) ||
-            Path.GetFileName(f.FileName).StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase)
-        );
-    }
-    
-    // Periodic refresh to catch files added outside the API
-    public async Task RefreshAllIndicesAsync()
-    {
-        foreach (var environment in _environmentIndices.Keys.ToList())
-        {
-            await GetDirectoryIndexAsync(environment, forceRefresh: true);
-        }
-        
-        _logger.Information("Refreshed all file indices");
     }
 }

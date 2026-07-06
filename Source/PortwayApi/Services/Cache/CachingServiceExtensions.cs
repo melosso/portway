@@ -7,14 +7,10 @@ using Serilog;
 
 namespace PortwayApi.Services.Caching;
 
-/// <summary>
-/// Extensions for registering caching services
-/// </summary>
+/// <summary>Extensions for registering caching services</summary>
 public static class CachingServiceExtensions
 {
-    /// <summary>
-    /// Adds caching services to the application
-    /// </summary>
+    /// <summary>Adds caching services to the application</summary>
     public static IServiceCollection AddCachingServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Load configuration

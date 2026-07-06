@@ -7,10 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
 
-/// <summary>
-/// Anthropic Messages API (claude-* models) with streaming and tool use.
-/// Uses the raw REST API — no SDK dependency.
-/// </summary>
+/// <summary>Anthropic Messages API (claude-* models) with streaming and tool use. Uses the raw REST API; no SDK dependency</summary>
 public sealed class AnthropicChatProvider(string apiKey, string model, IHttpClientFactory httpFactory) : IChatProvider
 {
     private const string BaseUrl          = "https://api.anthropic.com/v1/messages";

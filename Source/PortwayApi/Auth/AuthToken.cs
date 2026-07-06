@@ -1,8 +1,6 @@
 namespace PortwayApi.Auth;
 
-/// <summary>
-/// Represents an authentication token in the system with enhanced security features
-/// </summary>
+/// <summary>Represents an authentication token in the system with enhanced security features</summary>
 public class AuthToken
 {
     public int Id { get; set; }
@@ -13,31 +11,19 @@ public class AuthToken
     public DateTime? ExpiresAt { get; set; } = null;
     public DateTime? RevokedAt { get; set; } = null;
     
-    /// <summary>
-    /// Comma-separated list of allowed endpoint scopes (e.g., "Products,Customers,*")
-    /// Use "*" for full access to all endpoints
-    /// </summary>
+    /// <summary>Comma-separated list of allowed endpoint scopes (e.g., "Products,Customers,*") Use "*" for full access to all endpoints</summary>
     public string AllowedScopes { get; set; } = "*";
 
-    /// <summary>
-    /// Comma-separated list of allowed environments (e.g., "Production,Staging")
-    /// Use "*" for full access to all environments
-    /// </summary>
+    /// <summary>Comma-separated list of allowed environments (e.g., "Production,Staging") Use "*" for full access to all environments</summary>
     public string AllowedEnvironments { get; set; } = "*"; // "*" means all environments
     
-    /// <summary>
-    /// Token description for administrative purposes
-    /// </summary>
+    /// <summary>Token description for administrative purposes</summary>
     public string Description { get; set; } = string.Empty;
     
-    /// <summary>
-    /// Indicates if token is currently active
-    /// </summary>
+    /// <summary>Indicates if token is currently active</summary>
     public bool IsActive => RevokedAt == null && (ExpiresAt == null || ExpiresAt > DateTime.UtcNow);
     
-    /// <summary>
-    /// Parses allowed scopes into a list
-    /// </summary>
+    /// <summary>Parses allowed scopes into a list</summary>
     public List<string> GetScopesList()
     {
         if (string.IsNullOrWhiteSpace(AllowedScopes))
@@ -49,9 +35,7 @@ public class AuthToken
             .ToList();
     }
     
-    /// <summary>
-    /// Checks if token has access to specified endpoint
-    /// </summary>
+    /// <summary>Checks if token has access to specified endpoint</summary>
     public bool HasAccessToEndpoint(string endpointName)
     {
         if (string.IsNullOrWhiteSpace(endpointName))

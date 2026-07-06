@@ -25,9 +25,7 @@ public class TokenService
         }
     }
 
-    /// <summary>
-    /// Get the first token ever created (lowest ID) for Free mode restrictions
-    /// </summary>
+    /// <summary>Get the first token ever created (lowest ID) for Free mode restrictions</summary>
     public async Task<AuthToken?> GetFirstTokenAsync()
     {
         return await _dbContext.Tokens
@@ -37,9 +35,7 @@ public class TokenService
             .FirstOrDefaultAsync();
     }
     
-    /// <summary>
-    /// Generate a new token for a user with optional scopes and expiration
-    /// </summary>
+    /// <summary>Generate a new token for a user with optional scopes and expiration</summary>
     public async Task<string> GenerateTokenAsync(
         string username,
         string allowedScopes = "*",
@@ -100,16 +96,11 @@ public class TokenService
         return token;
     }
     
-    /// <summary>
-    /// Verify if a token is valid (not revoked or expired).
-    /// Delegates to GetTokenDetailsByTokenAsync which is cache-backed.
-    /// </summary>
+    /// <summary>Verify if a token is valid (not revoked or expired). Delegates to GetTokenDetailsByTokenAsync which is cache-backed</summary>
     public virtual async Task<bool> VerifyTokenAsync(string token) =>
         await GetTokenDetailsByTokenAsync(token) is not null;
     
-    /// <summary>
-    /// Verify if a token is valid for a specific username
-    /// </summary>
+    /// <summary>Verify if a token is valid for a specific username</summary>
     public virtual async Task<bool> VerifyTokenAsync(string token, string username)
     {
         // Get active tokens for this user
@@ -141,10 +132,7 @@ public class TokenService
         return false;
     }
     
-    /// <summary>
-    /// Verify if a token has access to a specific endpoint.
-    /// Uses the cache-backed GetTokenDetailsByTokenAsync.
-    /// </summary>
+    /// <summary>Verify if a token has access to a specific endpoint. Uses the cache-backed GetTokenDetailsByTokenAsync</summary>
     public virtual async Task<bool> VerifyTokenForEndpointAsync(string token, string endpointName)
     {
         if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(endpointName))
@@ -163,11 +151,7 @@ public class TokenService
         return tokenDetails?.HasAccessToEnvironment(environment) ?? false;
     }
     
-    /// <summary>
-    /// Get token details by token string (for middleware use).
-    /// Results are cached for 30 seconds to eliminate repeated PBKDF2 hashing per request.
-    /// Cache is invalidated explicitly on revocation.
-    /// </summary>
+    /// <summary>Get token details by token string (for middleware use). Results are cached for 30 seconds to eliminate repeated PBKDF2 hashing per request. Cache is invalidated explicitly on revocation</summary>
     public virtual async Task<AuthToken?> GetTokenDetailsByTokenAsync(string token)
     {
         var cacheKey = TokenVerificationCache.BuildKey(token);
@@ -178,7 +162,7 @@ public class TokenService
             return cached;
         }
 
-        // Cache miss — load from DB with no tracking overhead (entities are never modified here)
+        // Cache miss; load from DB with no tracking overhead (entities are never modified here)
         var tokens = await _dbContext.Tokens
             .AsNoTracking()
             .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
@@ -204,18 +188,14 @@ public class TokenService
         return null;
     }
     
-    /// <summary>
-    /// Helper method to hash a token using PBKDF2 with SHA256
-    /// </summary>
+    /// <summary>Helper method to hash a token using PBKDF2 with SHA256</summary>
     private string HashToken(string token, byte[] salt)
     {
         byte[] hash = Rfc2898DeriveBytes.Pbkdf2(token, salt, 10000, HashAlgorithmName.SHA256, 32);
         return Convert.ToBase64String(hash);
     }
     
-    /// <summary>
-    /// Helper method to generate a random salt
-    /// </summary>
+    /// <summary>Helper method to generate a random salt</summary>
     private byte[] GenerateSalt()
     {
         byte[] salt = new byte[16];
@@ -226,9 +206,7 @@ public class TokenService
         return salt;
     }
     
-    /// <summary>
-    /// Helper method to save a token to a file with enhanced details
-    /// </summary>
+    /// <summary>Helper method to save a token to a file with enhanced details</summary>
     private async Task SaveTokenToFileAsync(
         string username, 
         string token, 
@@ -266,9 +244,7 @@ public class TokenService
         }
     }
     
-    /// <summary>
-    /// Get all active tokens (not revoked and not expired)
-    /// </summary>
+    /// <summary>Get all active tokens (not revoked and not expired)</summary>
     public virtual async Task<IEnumerable<AuthToken>> GetActiveTokensAsync()
     {
         return await _dbContext.Tokens
@@ -278,9 +254,7 @@ public class TokenService
             .ToListAsync();
     }
     
-    /// <summary>
-    /// Get all tokens (including expired and revoked)
-    /// </summary>
+    /// <summary>Get all tokens (including expired and revoked)</summary>
     public async Task<IEnumerable<AuthToken>> GetAllTokensAsync()
     {
         return await _dbContext.Tokens
@@ -289,11 +263,7 @@ public class TokenService
             .ToListAsync();
     }
     
-    /// <summary>
-    /// Returns null if the token can be revoked, or an error message if it is protected.
-    /// A token is protected when it is the last active token, or the last active token
-    /// that holds full wildcard (*/*)  permissions.
-    /// </summary>
+    /// <summary>Returns null if the token can be revoked, or an error message if it is protected. A token is protected when it is the last active token, or the last active token that holds full wildcard (*/*)  permissions</summary>
     public async Task<string?> GetRevokeBlockReasonAsync(int tokenId)
     {
         var active = await _dbContext.Tokens
@@ -314,10 +284,7 @@ public class TokenService
         return null;
     }
 
-    /// <summary>
-    /// Revoke (soft-delete / archive) a token by ID.
-    /// Returns false when the token is not found or is protected by the last-token guard.
-    /// </summary>
+    /// <summary>Revoke (soft-delete / archive) a token by ID. Returns false when the token is not found or is protected by the last-token guard</summary>
     public async Task<bool> RevokeTokenAsync(int tokenId, CancellationToken ct = default)
     {
         // Enforce last-token guard even when called directly (e.g. from CLI)
@@ -364,10 +331,7 @@ public class TokenService
         return true;
     }
     
-    /// <summary>
-    /// Unarchive (restore) a previously revoked token by ID.
-    /// Returns false when the token is not found or is not revoked.
-    /// </summary>
+    /// <summary>Unarchive (restore) a previously revoked token by ID. Returns false when the token is not found or is not revoked</summary>
     public async Task<bool> UnarchiveTokenAsync(int tokenId, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
@@ -401,9 +365,7 @@ public class TokenService
         return true;
     }
 
-    /// <summary>
-    /// Set token expiration by ID
-    /// </summary>
+    /// <summary>Set token expiration by ID</summary>
     public async Task<bool> SetTokenExpirationAsync(int tokenId, DateTime expirationDate, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
@@ -415,9 +377,7 @@ public class TokenService
         return true;
     }
 
-    /// <summary>
-    /// Update token allowed environments by ID
-    /// </summary>
+    /// <summary>Update token allowed environments by ID</summary>
     public async Task<bool> UpdateTokenEnvironmentsAsync(int tokenId, string environments, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
@@ -431,9 +391,7 @@ public class TokenService
         return true;
     }
 
-    /// <summary>
-    /// Update token scopes by ID
-    /// </summary>
+    /// <summary>Update token scopes by ID</summary>
     public async Task<bool> UpdateTokenScopesAsync(int tokenId, string scopes, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
@@ -455,9 +413,7 @@ public class TokenService
         return true;
     }
     
-    /// <summary>
-    /// Update token description by ID
-    /// </summary>
+    /// <summary>Update token description by ID</summary>
     public async Task<bool> UpdateTokenDescriptionAsync(int tokenId, string description, CancellationToken ct = default)
     {
         var token = await _dbContext.Tokens.FindAsync(tokenId);
@@ -471,9 +427,7 @@ public class TokenService
         return true;
     }
 
-    /// <summary>
-    /// Log audit information for token operations
-    /// </summary>
+    /// <summary>Log audit information for token operations</summary>
     private async Task LogAuditAsync(int? tokenId, string username, string operation,
         string? oldTokenHash = null, string? newTokenHash = null, string details = "",
         CancellationToken ct = default)
@@ -506,9 +460,7 @@ public class TokenService
         }
     }
     
-    /// <summary>
-    /// Get audit log entries for a specific token or user
-    /// </summary>
+    /// <summary>Get audit log entries for a specific token or user</summary>
     public async Task<List<AuthTokenAudit>> GetAuditLogAsync(string? username = null, int? tokenId = null, int maxRecords = 100)
     {
         var query = _dbContext.TokenAudits.AsQueryable();
@@ -529,9 +481,7 @@ public class TokenService
             .ToListAsync();
     }
     
-    /// <summary>
-    /// Check for recent token operations (useful for detecting rotations)
-    /// </summary>
+    /// <summary>Check for recent token operations (useful for detecting rotations)</summary>
     public async Task<bool> HasRecentTokenActivity(string username, TimeSpan timeSpan)
     {
         var cutoffTime = DateTime.UtcNow - timeSpan;
@@ -542,9 +492,7 @@ public class TokenService
                           (a.Operation == "Rotated" || a.Operation == "Created" || a.Operation == "Revoked"));
     }
     
-    /// <summary>
-    /// Get the most recent audit entry for a username (useful for detecting recent changes)
-    /// </summary>
+    /// <summary>Get the most recent audit entry for a username (useful for detecting recent changes)</summary>
     public async Task<AuthTokenAudit?> GetLatestAuditEntryAsync(string username)
     {
         return await _dbContext.TokenAudits

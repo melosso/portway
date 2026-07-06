@@ -7,9 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
 
-/// <summary>
-/// OpenAI Chat Completions API with streaming and function calling.
-/// </summary>
+/// <summary>OpenAI Chat Completions API with streaming and function calling</summary>
 public sealed class OpenAiChatProvider(string apiKey, string model, IHttpClientFactory httpFactory) : IChatProvider
 {
     private const string BaseUrl = "https://api.openai.com/v1/chat/completions";

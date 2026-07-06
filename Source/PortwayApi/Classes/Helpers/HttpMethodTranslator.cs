@@ -3,14 +3,10 @@ namespace PortwayApi.Classes.Helpers;
 using System.Text.Json;
 using Serilog;
 
-/// <summary>
-/// Helper class for translating HTTP methods based on custom properties
-/// </summary>
+/// <summary>Helper class for translating HTTP methods based on custom properties</summary>
 public static class HttpMethodTranslator
 {
-    /// <summary>
-    /// Translates an HTTP method based on the HttpMethodTranslation custom property
-    /// </summary>
+    /// <summary>Translates an HTTP method based on the HttpMethodTranslation custom property</summary>
     /// <param name="originalMethod">The original HTTP method (e.g., "PUT")</param>
     /// <param name="customProperties">Custom properties from the endpoint definition</param>
     /// <returns>The translated HTTP method or the original method if no translation is configured</returns>
@@ -63,9 +59,7 @@ public static class HttpMethodTranslator
         return originalMethod;
     }
 
-    /// <summary>
-    /// Parses translation mappings from a string format like "PUT:MERGE,POST:CREATE" (preferred) or "PUT;MERGE,POST;CREATE" (legacy)
-    /// </summary>
+    /// <summary>Parses translation mappings from a string format like "PUT:MERGE,POST:CREATE" (preferred) or "PUT;MERGE,POST;CREATE" (legacy)</summary>
     /// <param name="translationString">The translation configuration string</param>
     /// <returns>Dictionary mapping original methods to translated methods</returns>
     private static Dictionary<string, string> ParseTranslationMappings(string translationString)
@@ -111,9 +105,7 @@ public static class HttpMethodTranslator
         return translations;
     }
 
-    /// <summary>
-    /// Validates that a translated HTTP method is supported
-    /// </summary>
+    /// <summary>Validates that a translated HTTP method is supported</summary>
     /// <param name="method">The HTTP method to validate</param>
     /// <returns>True if the method is supported, false otherwise</returns>
     public static bool IsValidHttpMethod(string method)

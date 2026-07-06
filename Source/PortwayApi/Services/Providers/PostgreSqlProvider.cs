@@ -57,8 +57,8 @@ public class PostgreSqlProvider : ISqlProvider
     public Task<List<ColumnMetadata>> GetTvfColumnsAsync(
         DbConnection connection, string schema, string functionName, CancellationToken cancellationToken)
     {
-        // PostgreSQL set-returning function metadata requires complex pg_catalog queries.
-        // Return empty list so the endpoint still works; OpenAPI schema will be generated without column info.
+        // PostgreSQL set-returning function metadata requires complex pg_catalog queries
+        // Return empty list so the endpoint still works; OpenAPI schema will be generated without column info
         Log.Information("PostgreSQL TVF column metadata inspection not implemented for {Schema}.{Function}; endpoint will work but OpenAPI schema will be missing column details", schema, functionName);
         return Task.FromResult(new List<ColumnMetadata>());
     }
