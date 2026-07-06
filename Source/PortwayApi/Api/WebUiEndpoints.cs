@@ -238,11 +238,21 @@ public static class WebUiEndpointExtensions
         app.MapGet("/ui", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
             .ExcludeFromDescription();
 
-        foreach (var page in new[] { "dashboard", "endpoints", "environments", "tokens", "settings", "logs" })
+        // Pages render Beacon-style: _shell.html + views/{page}.html + _footer.html streamed as one document
+        var pageTitles = new Dictionary<string, string>
         {
-            var p        = page;
-            var filePath = Path.Combine(wwwroot, $"{p}.html");
-            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeHtml(filePath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+            ["dashboard"]    = "Dashboard",
+            ["endpoints"]    = "Endpoints",
+            ["environments"] = "Environments",
+            ["tokens"]       = "Access Tokens",
+            ["settings"]     = "Settings",
+            ["logs"]         = "Logs"
+        };
+        foreach (var (page, title) in pageTitles)
+        {
+            var p = page;
+            var t = title;
+            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
             app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
         }
 
@@ -1449,14 +1459,27 @@ public static class WebUiEndpointExtensions
             Encoding.UTF8.GetBytes(token[(dot + 1)..]));
     }
 
+    /// <summary>Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing</summary>
+    private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)
+    {
+        var shellPath  = Path.Combine(wwwroot, "_shell.html");
+        var viewPath   = Path.Combine(wwwroot, "views", $"{page}.html");
+        var footerPath = Path.Combine(wwwroot, "_footer.html");
+        if (!File.Exists(shellPath) || !File.Exists(viewPath)) return Results.NotFound();
+
+        var html = File.ReadAllText(shellPath)
+            .Replace("<!-- PAGE_TITLE -->", $"{title} · Portway")
+            + File.ReadAllText(viewPath)
+            + (File.Exists(footerPath) ? File.ReadAllText(footerPath) : "\n</body>\n</html>\n");
+
+        return FinishHtml(html, pathBase, version);
+    }
+
     private static IResult ServeHtml(string filePath, PathString pathBase, string version, IConfiguration? config = null)
     {
         if (!File.Exists(filePath)) return Results.NotFound();
-        var pb = pathBase.Value ?? "";
-        var v  = Uri.EscapeDataString(version);
         var html = File.ReadAllText(filePath);
-        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
-        
+
         // Inject Login Footer if this is the login page
         if (filePath.EndsWith("login.html") && config != null)
         {
@@ -1464,12 +1487,20 @@ public static class WebUiEndpointExtensions
             if (!string.IsNullOrEmpty(footerMd))
             {
                 var footerHtml = ParseMarkdownToHtml(footerMd);
-                html = html.Replace("<!-- LOGIN_FOOTER_PLACEHOLDER -->", 
+                html = html.Replace("<!-- LOGIN_FOOTER_PLACEHOLDER -->",
                     $"<div class=\"auth-footer\">{footerHtml}</div>");
             }
         }
 
-        // Cache-bust local CSS and JS so browsers always fetch the latest version
+        return FinishHtml(html, pathBase, version);
+    }
+
+    /// <summary>Shared post-processing: base href + PortwayBase injection and cache-busting of local assets</summary>
+    private static IResult FinishHtml(string html, PathString pathBase, string version)
+    {
+        var pb = pathBase.Value ?? "";
+        var v  = Uri.EscapeDataString(version);
+        html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
         html = System.Text.RegularExpressions.Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",

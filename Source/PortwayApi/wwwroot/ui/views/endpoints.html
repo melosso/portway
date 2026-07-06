@@ -1,13 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Endpoints · Portway</title>
-  <link href="css/inter.css" rel="stylesheet">
-  <link href="css/site.css" rel="stylesheet" />
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <script src="js/components/toast.js"></script>
   <script src="js/components/tooltip.js"></script>
   <script src="js/components/drawer.js"></script>
   <script src="js/components/alert-dialog.js"></script>
@@ -18,10 +8,6 @@
     main { display: flex; flex-direction: column; }
     .page-body-fill { flex: 1; display: flex; flex-direction: column; }
   </style>
-</head>
-<body>
-
-<aside></aside>
 
 <main>
   <div class="page-header">
@@ -72,7 +58,7 @@
   </div>
 </main>
 
-<div class="toast-container" id="toastContainer"></div>
+
 
 <!-- Create Drawer -->
 <div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
@@ -1353,5 +1339,3 @@ function showToast(msg, type = 'success') { toast(msg, type); }
 Drawer.onClose('createDrawer', () => { _dirty = _preDrawerDirty; });
 refreshAll();
 </script>
-</body>
-</html>

@@ -1,16 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard · Portway</title>
-  <link href="css/inter.css" rel="stylesheet">
-  <link href="css/site.css" rel="stylesheet" />
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <script src="js/components/toast.js"></script>
-  <script src="js/components/promobar.js"></script>
-  <script src="js/sidebar.js"></script>
-  <script src="js/shared.js"></script>
   <script src="js/components/chart-period-selector.js"></script>
   <script src="js/components/area-chart.js"></script>
   <script src="js/components/error-chart.js"></script>
@@ -38,10 +25,6 @@
     .ep-bar-track { grid-column:2/-1; height:4px; background:hsl(var(--muted)); border-radius:999px; overflow:hidden; }
     .ep-bar-fill  { height:100%; background:hsl(var(--info)); border-radius:999px; transition:width .3s; }
   </style>
-</head>
-<body>
-
-<aside></aside>
 
 <main>
   <div class="page-header">
@@ -399,5 +382,3 @@ document.addEventListener('DOMContentLoaded', () => {
   loadMetrics('24h', 'error');
 });
 </script>
-</body>
-</html>
