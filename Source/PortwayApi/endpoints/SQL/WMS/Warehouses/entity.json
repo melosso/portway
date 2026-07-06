@@ -2,9 +2,12 @@
   "DatabaseObjectName": "Warehouses",
   "Namespace": "WMS",
   "NamespaceDisplayName": "WMS",
-  "IsPrivate": false,
-  "AllowedEnvironments": ["WMS"],
-  "AllowedMethods": ["GET"],
+  "AllowedEnvironments": [
+    "WMS"
+  ],
+  "AllowedMethods": [
+    "GET"
+  ],
   "AllowedColumns": [
     "Id",
     "Code",
@@ -28,5 +31,10 @@
     "MethodDocumentation": {
       "GET": "Browse warehouse location reference data stored in a local SQLite database (`demo.db`). These locations are referenced by `Product/Stock` and `Production/Lines`. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip`."
     }
+  },
+  "DatabaseSchema": "dbo",
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
   }
 }

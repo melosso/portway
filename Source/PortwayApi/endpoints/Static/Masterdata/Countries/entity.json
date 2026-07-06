@@ -4,7 +4,11 @@
   "EnableFiltering": true,
   "Namespace": "Masterdata",
   "NamespaceDisplayName": "Masterdata",
-  "AllowedEnvironments": ["500", "700", "Synergy"],
+  "AllowedEnvironments": [
+    "500",
+    "700",
+    "Synergy"
+  ],
   "Documentation": {
     "TagDescription": "**Mock Countries API**\n\nStatic country data for testing frontend applications and API simulation.\n\nSupports OData filtering: $filter, $select, $orderby, $top, $skip",
     "MethodDescriptions": {
@@ -13,5 +17,9 @@
     "MethodDocumentation": {
       "GET": "Returns static country information for testing and development purposes. Supports OData filtering for flexible data retrieval.\n\n> [!TIP]\n> Supports OData filtering: Use `$filter`, `$select`, `$orderby`, `$top`, and `$skip` parameters for flexible data retrieval."
     }
+  },
+  "Mcp": {
+    "Exposed": true,
+    "Instruction": ""
   }
 }
