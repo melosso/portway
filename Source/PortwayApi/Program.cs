@@ -87,6 +87,9 @@ try
     builder.Services.AddPortwayAuth();
     builder.Services.AddPortwayConfigurationReload(builder.Configuration);
 
+    // Nightly SQLite self-tuning for auth, metrics, MCP and traffic databases
+    builder.Services.AddPortwayDatabaseMaintenance(builder.Configuration);
+
     // Register route constraint for ProxyConstraint
     builder.Services.Configure<RouteOptions>(options =>
     {

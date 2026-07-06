@@ -318,6 +318,7 @@ async function load() {
     const ep  = d.endpoint_reloading ?? {};
     const m   = d.mcp                ?? {};
     const sec = d.security           ?? {};
+    const dbm = d.database_maintenance ?? {};
 
     const strengthLabels = { 'strong': 'Strong', 'weak': 'Weak (< 32 chars)', 'placeholder': 'Placeholder (auth disabled)', 'not-set': 'Not set (auth disabled)' };
     const strengthOk = sec.admin_key_strength === 'strong';
@@ -331,6 +332,9 @@ async function load() {
       boolItem('CSRF Protection', sec.csrf_protection),
       settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
       settingItem('Public UI Origins', sec.public_origins_count ?? 0),
+      settingItem('DB Maintenance', dbm.enabled
+        ? (dbm.last_run_utc ? `Last run ${new Date(dbm.last_run_utc).toLocaleString()}` : `Scheduled ${dbm.schedule}`)
+        : 'Disabled', 'Nightly SQLite ANALYZE and conditional VACUUM'),
     ].join('');
 
     document.getElementById('rateLimitBody').innerHTML = [
