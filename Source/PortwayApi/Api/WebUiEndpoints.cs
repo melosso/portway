@@ -692,7 +692,7 @@ public static class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Mcp.McpConfigService? mcpConfig) =>
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -712,6 +712,17 @@ public static class WebUiEndpointExtensions
 
             return Results.Json(new
         {
+            database_maintenance = new
+            {
+                enabled      = config.GetValue<bool>("DatabaseMaintenance:Enabled", true),
+                schedule     = config.GetValue<string>("DatabaseMaintenance:Schedule") ?? "03:00",
+                last_run_utc = dbMaintenance?.LastRunUtc,
+                last_results = dbMaintenance?.LastRunResults.Select(r => new
+                {
+                    database = r.Database, vacuumed = r.Vacuumed,
+                    reclaimed_bytes = r.BytesBefore - r.BytesAfter, skip_reason = r.SkipReason
+                })
+            },
             security = new
             {
                 webui_auth_enabled = !string.IsNullOrEmpty(adminKey) && adminKey != "INSECURE-CHANGE-ME-admin-api-key",
