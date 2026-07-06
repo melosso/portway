@@ -1,3 +1,8 @@
+---
+title: HTTP Headers
+description: "Headers carry a surprising amount of Portway's conversation with your clients: authentication, content negotiation, request tracking, and service configuration all travel there"
+---
+
 # HTTP Headers
 
 Headers carry a surprising amount of Portway's conversation with your clients: authentication, content negotiation, request tracking, and service configuration all travel there. This page collects every header Portway reads or writes, so you have one place to look things up.
@@ -273,4 +278,3 @@ curl -X POST \
 - [API Overview](/reference/) - General API reference
 - [Environment Settings](/reference/environment-settings) - Environment-specific headers
 - [Security Guide](/guide/security) - Security header configuration
-

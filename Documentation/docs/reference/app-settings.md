@@ -1,3 +1,8 @@
+---
+title: Application Settings
+description: "When you want to shape how Portway behaves at its core (logging, security, rate limiting, and service wiring), appsettings.json is where you'll spend your time"
+---
+
 # Application Settings
 
 When you want to shape how Portway behaves at its core (logging, security, rate limiting, and service wiring), `appsettings.json` is where you'll spend your time. This page walks through each section, explains what it controls, and shows how you can override values per deployment without touching the base file.

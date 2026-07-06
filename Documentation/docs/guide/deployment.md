@@ -1,12 +1,13 @@
+---
+title: Deploying
+description: "Deploy Portway as an IIS website on Windows Server with HTTPS and a dedicated Application Pool"
+---
+
 # Deploying
 
-> Deploy Portway as an IIS website on Windows Server with HTTPS and a dedicated Application Pool.
+This guide walks you through deploying Portway on Windows Server behind IIS, from prerequisites to a running gateway with a backup routine. If you're deploying with containers instead, [Docker Installation](docker-compose.md) covers that path.
 
-For Docker-based deployment, see [Docker Installation](docker-compose.md).
-
-:::info
-This guide assumes working knowledge of IIS and your network/data sources. The steps cover the required configuration, some details depend on your existing environment.
-:::
+The steps assume working knowledge of IIS and your network and data sources; the essentials are all here, though some details will depend on your existing environment.
 
 ## Prerequisites
 

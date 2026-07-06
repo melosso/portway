@@ -1,6 +1,9 @@
-# Health Checks
+---
+title: Health Checks
+description: "Health check endpoints, response format, component checks, and load balancer / container integration"
+---
 
-> Health check endpoints, response format, component checks, and load balancer / container integration.
+# Health Checks
 
 Whether it's a load balancer deciding where to send traffic or you checking in on a quiet Sunday evening, something will regularly ask Portway how it's doing. These endpoints provide the answer at three levels of detail.
 
@@ -413,4 +416,3 @@ $response.Content | ConvertFrom-Json | Format-List
 [10:30:01 WRN] Health check failed: Low disk space: 10% remaining
 [10:30:02 ERR] Proxy endpoint 'Products' failed: Connection timeout
 ```
-

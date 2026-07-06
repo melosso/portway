@@ -1,3 +1,8 @@
+---
+title: Exact Synergy Enterprise Integration
+description: "While Synergy Enterprise ships a native REST API, you may not want to expose all of it"
+---
+
 # Exact Synergy Enterprise Integration
 
 While Synergy Enterprise ships a native REST API, you may not want to expose all of it. Portway shines when you need only specific database sections available, or when Synergy sits behind a firewall on your internal network. Proxy endpoints give you that selective, controlled access.

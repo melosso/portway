@@ -1,8 +1,11 @@
+---
+title: Web UI
+description: "Browser-based interface for monitoring endpoints, managing tokens, and browsing logs"
+---
+
 # Web UI
 
-> Browser-based interface for monitoring endpoints, managing tokens, and browsing logs.
-
-The Web UI is disabled by default. Set `WebUi__AdminApiKey` to enable it. Without this setting, `/ui` is not served.
+When you'd rather click through your gateway than query it, the Web UI gives you a browser view of your endpoints, tokens, logs, and settings. It stays disabled until you set `WebUi__AdminApiKey`; without that setting, `/ui` is simply not served.
 
 ## Configuration
 

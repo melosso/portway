@@ -1,3 +1,8 @@
+---
+title: Web UI API Reference
+description: "Everything you can do by clicking through the Web UI, you can also do programmatically"
+---
+
 # Web UI API Reference
 
 Everything you can do by clicking through the Web UI, you can also do programmatically. The UI is built on the same REST endpoints documented here, which makes them a convenient surface for scripting your admin tasks.

@@ -1,3 +1,8 @@
+---
+title: Entity Configuration
+description: "Every endpoint you create starts life as an entity.json file"
+---
+
 # Entity Configuration
 
 Every endpoint you create starts life as an `entity.json` file. This page is your dictionary for those files: what each property does, which ones apply to which endpoint type (SQL, Proxy, Static, Composite, Webhook, File), and the patterns that tend to work well in practice.

@@ -1,6 +1,9 @@
-# Environment Authentication
+---
+title: Environment Authentication
+description: "Per-environment authentication methods that augment or replace the global Portway token system"
+---
 
-> Per-environment authentication methods that augment or replace the global Portway token system.
+# Environment Authentication
 
 Sometimes the global token system isn't quite the right fit for one environment: perhaps a partner needs an API key, or an upstream system already speaks JWT. Environment-specific authentication lets you handle those cases in that environment's `settings.json`, with ApiKey, Basic, Bearer, JWT, and HMAC methods available. Sensitive fields you write in plaintext are encrypted to `PWENC:` format on the next startup, so there is no need to pre-encrypt anything yourself.
 

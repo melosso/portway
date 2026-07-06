@@ -1,3 +1,8 @@
+---
+title: Exact Globe+ Integration
+description: "Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of"
+---
+
 # Exact Globe+ Integration
 
 Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of. Through proxy endpoints, your external applications talk to Globe+ data and services, while environment-specific headers route each request to the correct database instance.

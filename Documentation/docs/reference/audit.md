@@ -1,3 +1,8 @@
+---
+title: Auditing
+description: "Sooner or later you'll want to know exactly what passed through your gateway and when"
+---
+
 # Auditing
 
 Sooner or later you'll want to know exactly what passed through your gateway and when. Request traffic logging is built for that moment: it captures per-request detail (timing, payloads, headers, and response data) and writes it to file or SQLite storage so you can query it later at your own pace.

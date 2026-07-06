@@ -1,6 +1,9 @@
-# Environments
+---
+title: Environments
+description: "Route API requests to different servers, databases, and configurations by environment name"
+---
 
-> Route API requests to different servers, databases, and configurations by environment name.
+# Environments
 
 Each request URL includes an environment segment, `/api/{environment}/{endpoint}`. Portway maps that name to a folder under `environments/`, which defines the connection string, server name, custom headers, and access rules for that target. Development, testing, and production configurations are completely separate.
 

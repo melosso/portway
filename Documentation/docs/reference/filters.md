@@ -1,3 +1,8 @@
+---
+title: Filter Operations
+description: "Filtering is where OData starts to feel powerful: you describe the rows you want, and Portway translates that into SQL for you"
+---
+
 # Filter Operations
 
 Filtering is where OData starts to feel powerful: you describe the rows you want, and Portway translates that into SQL for you. This reference covers every supported filter operation, with examples you can adapt and a few practices that keep queries fast.
