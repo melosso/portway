@@ -1,5 +1,5 @@
 {
-  "ConnectionString": "PWENC:IIZTdUztBTT2zmHmqz/6bHGYKizoPvozZF2zJ5d2EDI98usTGOe+gCsAEI5KdbhJntqOtYBYkdggQN//7e037gt6ukcLuOmfSB0dmqyyTlDyFzD87B9Fbr22b5HY3Hpcg78gJBKFwqwQ2pR9Eqnh3y655IyJWOAbPLoXgDRRXM0zTBl5YK1gq0nakMgOearPkqdDypp6FAol5ZEwLdSKmDtAFU2d+6eWyIdwuyguNt8GMLcA9izq/RSN5kycqAmmu5crC+0MeVD4BYTmZwtmZv232XWAic0rRM2w76EdzYRX7xOcdMZd3NrK/XI6KOJAQM0InbB4hae3BLgL9iUfyg==::Mpo5Dv/05Q1/xHgSVtvV/5XQ48Ej95J5A/MW/WZe/rAjZXNgwpr1Z+SwrUPQJlUG2XJgj/7BltV0SPwT6MZLM9RdF+hEukEcO2SsTZyIVEa86LyJZY2WKrhPT7EuCRwugNnffaxL9j9QLdAMfRJD1w==",
+  "ConnectionString": "Server=localhost;Database=500;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
   "ServerName": "localhost",
   "Headers": {
     "DatabaseName": "500",
