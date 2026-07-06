@@ -1,6 +1,6 @@
 # Filter Operations
 
-Filter operations allow you to query specific data from SQL endpoints using OData syntax. This reference covers all supported filter operations with examples and best practices.
+Filtering is where OData starts to feel powerful: you describe the rows you want, and Portway translates that into SQL for you. This reference covers every supported filter operation, with examples you can adapt and a few practices that keep queries fast.
 
 ## Filter Syntax
 
@@ -124,7 +124,7 @@ All string comparisons are case-sensitive. `startswith` is typically faster than
 
 ### String Values
 
-Strings must be enclosed in single quotes:
+Strings are enclosed in single quotes:
 
 ```http
 # Correct

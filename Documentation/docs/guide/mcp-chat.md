@@ -25,8 +25,8 @@ Provider, model, and API key are **not** stored in `appsettings.json`. They are 
 
 On first visit to the Chat UI (`/ui/mcp/chat`), a setup wizard opens automatically. It walks through two steps:
 
-1. **Choose a provider** — select Anthropic, OpenAI, Gemini, or Mistral and pick a model.
-2. **Enter credentials** — paste the API key. Portway encrypts it using the machine-bound PWENC key before writing it to `mcp.db`. The plaintext key is never stored.
+1. **Choose a provider**: select Anthropic, OpenAI, Gemini, or Mistral and pick a model.
+2. **Enter credentials**: paste the API key. Portway encrypts it using the machine-bound PWENC key before writing it to `mcp.db`. The plaintext key is never stored.
 
 The wizard can be re-opened at any time from the Chat page if credentials need to change.
 
@@ -78,7 +78,7 @@ Uses the Google Generative Language API (`streamGenerateContent`) with function 
 "Model": "codestral-latest"
 ```
 
-Uses the Mistral Chat Completions API. Codestral models (`codestral-*`) route to `codestral.mistral.ai`; all other Mistral models route to `api.mistral.ai`. Codestral requires a Codestral-specific API key — general Mistral API keys do not work against the Codestral endpoint.
+Uses the Mistral Chat Completions API. Codestral models (`codestral-*`) route to `codestral.mistral.ai`; all other Mistral models route to `api.mistral.ai`. Codestral requires a Codestral-specific API key; general Mistral API keys do not work against the Codestral endpoint.
 
 ## How tool calls work
 

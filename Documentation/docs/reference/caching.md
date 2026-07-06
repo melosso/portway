@@ -2,7 +2,7 @@
 
 > Configuration reference for Portway's in-memory and Redis caching.
 
-Portway caches GET responses from SQL and Proxy endpoints to reduce backend load. Only `2xx` responses with cacheable content types are stored.
+If the same GET requests keep hitting your backends, caching is the easiest win available. Portway stores successful responses from SQL and Proxy endpoints so repeat requests are answered from memory (or Redis) instead of your database. Only `2xx` responses with cacheable content types are stored, so errors never linger.
 
 ## Cache Flow
 

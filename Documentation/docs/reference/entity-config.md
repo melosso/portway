@@ -1,6 +1,6 @@
 # Entity Configuration
 
-Entity configuration files define how endpoints behave and what data they expose. Each endpoint type (SQL, Proxy, Static, Composite, Webhook, File) has specific configuration options.
+Every endpoint you create starts life as an `entity.json` file. This page is your dictionary for those files: what each property does, which ones apply to which endpoint type (SQL, Proxy, Static, Composite, Webhook, File), and the patterns that tend to work well in practice.
 
 ## File Structure
 

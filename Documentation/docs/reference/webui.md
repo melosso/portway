@@ -1,6 +1,6 @@
 # Web UI API Reference
 
-The Web UI exposes REST endpoints for programmatic access to admin features.
+Everything you can do by clicking through the Web UI, you can also do programmatically. The UI is built on the same REST endpoints documented here, which makes them a convenient surface for scripting your admin tasks.
 
 ## Authentication
 

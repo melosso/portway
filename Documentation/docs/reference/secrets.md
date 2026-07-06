@@ -91,7 +91,7 @@ If you need to regenerate encryption keys:
 
 ## Validation
 
-Connection strings are validated before encryption. They must have:
+Connection strings are validated before encryption. They need to include:
 - `DataSource` (server name)
 - `InitialCatalog` (database name)
 - Either `IntegratedSecurity=true` OR valid `UserID` and `Password`

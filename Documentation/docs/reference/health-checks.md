@@ -2,6 +2,8 @@
 
 > Health check endpoints, response format, component checks, and load balancer / container integration.
 
+Whether it's a load balancer deciding where to send traffic or you checking in on a quiet Sunday evening, something will regularly ask Portway how it's doing. These endpoints provide the answer at three levels of detail.
+
 ## Available Endpoints
 
 ### Basic Health Check

@@ -1,6 +1,6 @@
 # Integrations
 
-Configuration guides for connecting Portway to third-party systems.
+Portway tends to live next to other systems, and these guides walk you through the ones we see most often. Each covers the environment setup, the endpoint definitions, and the quirks worth knowing in advance.
 
 ## Enterprise Resource Planning (ERP) Systems
 

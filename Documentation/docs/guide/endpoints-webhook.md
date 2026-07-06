@@ -123,7 +123,7 @@ ORDER BY ReceivedAt DESC;
 ## Limitations
 
 - POST only, webhook endpoints do not respond to GET, PUT, or DELETE
-- JSON only, payloads must be valid JSON; non-JSON bodies are rejected
+- JSON only, payloads need to be valid JSON; non-JSON bodies are rejected
 - No payload validation beyond JSON syntax and webhook ID matching
 - No automatic retry on insert failure
 - Default payload size limit: 10MB
