@@ -3,16 +3,10 @@ using PortwayApi.Classes;
 
 namespace PortwayApi.Classes.OpenApi;
 
-/// <summary>
-/// Generates example JSON values for OpenAPI documentation based on SQL column/parameter metadata.
-/// Extracted from SqlMetadataDocumentFilter to enable unit testing.
-/// </summary>
+/// <summary>Generates example JSON values for OpenAPI documentation based on SQL column/parameter metadata. Extracted from SqlMetadataDocumentFilter to enable unit testing</summary>
 public static class SqlExampleValueGenerator
 {
-    /// <summary>
-    /// Generates an example value based on column metadata.
-    /// Returns null for nullable columns.
-    /// </summary>
+    /// <summary>Generates an example value based on column metadata. Returns null for nullable columns</summary>
     public static JsonNode? FromColumn(ColumnMetadata column)
     {
         if (column.IsNullable)
@@ -31,9 +25,7 @@ public static class SqlExampleValueGenerator
         };
     }
 
-    /// <summary>
-    /// Generates an example value based on parameter metadata and property name heuristics.
-    /// </summary>
+    /// <summary>Generates an example value based on parameter metadata and property name heuristics</summary>
     public static JsonNode? FromParameter(ParameterMetadata parameter, string propertyName)
     {
         if (string.IsNullOrWhiteSpace(propertyName))

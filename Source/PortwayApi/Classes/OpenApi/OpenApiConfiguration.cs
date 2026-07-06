@@ -17,51 +17,6 @@ using Serilog;
 
 namespace PortwayApi.Classes;
 
-public class OpenApiSettings
-{
-    public bool Enabled { get; set; } = true;
-    public string? BaseProtocol { get; set; } = "https";
-    public string Title { get; set; } = "API Documentation";
-    public string Version { get; set; } = "v1";
-    public string Description { get; set; } = "A summary of the API documentation.";
-    public ContactInfo Contact { get; set; } = new ContactInfo();
-    public SecurityDefinitionInfo SecurityDefinition { get; set; } = new SecurityDefinitionInfo();
-    public bool ForceHttpsInProduction { get; set; } = true; // Always use HTTPS in production environments
-
-    // Scalar-specific
-    public FooterInfo Footer { get; set; } = new FooterInfo();
-    public string ScalarTheme { get; set; } = "purple"; // alternate, default, moon, purple, solarized, bluePlanet, saturn, kepler, mars, deepSpace
-    public string ScalarLayout { get; set; } = "modern"; // modern, classic
-    public bool ScalarShowSidebar { get; set; } = true;
-    public bool ScalarHideDownloadButton { get; set; } = false;
-    public bool ScalarHideModels { get; set; } = true; // Hide the Models/Schemas section
-    public bool ScalarHideClientButton { get; set; } = true; // Hide the client generation button
-    public bool ScalarHideTestRequestButton { get; set; } = false; // Hide the test request button
-}
-
-public class ContactInfo
-{
-    public string Name { get; set; } = "Support";
-    public string Email { get; set; } = "support@yourcompany.com";
-}
-
-public class FooterInfo
-{
-    public string Text { get; set; } = "Powered by Scalar";
-    public string Target { get; set; } = "_blank";
-    public string Url { get; set; } = "#";
-    public bool ShowSourceIcon { get; set; } = true;
-}
-
-public class SecurityDefinitionInfo
-{
-    public string Name { get; set; } = "Bearer";
-    public string Description { get; set; } = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"";
-    public string In { get; set; } = "Header";
-    public string Type { get; set; } = "ApiKey";
-    public string Scheme { get; set; } = "Bearer";
-}
-
 public static class OpenApiConfiguration
 {
     public static void ConfigureOpenApi(WebApplicationBuilder builder)
@@ -242,9 +197,9 @@ public static class OpenApiConfiguration
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi/{documentName}/openapi.json");
 
-        // Serve stub source maps for Scalar's vendor JS (which embeds /sm/... sourceMappingURL comments).
+        // Serve stub source maps for Scalar's vendor JS (which embeds /sm/... sourceMappingURL comments)
         // Scalar's own middleware normally handles these, but we serve the JS as a static vendor file,
-        // so we return a minimal valid source map to suppress DevTools 404 warnings.
+        // so we return a minimal valid source map to suppress DevTools 404 warnings
         app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
 

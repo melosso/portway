@@ -10,14 +10,10 @@ using PortwayApi.Services.Providers;
 
 namespace PortwayApi.Classes.Handlers;
 
-/// <summary>
-/// Handler for Table Valued Function (TVF) SQL endpoints
-/// </summary>
+/// <summary>Handler for Table Valued Function (TVF) SQL endpoints</summary>
 public static class TableValuedFunctionSqlHandler
 {
-    /// <summary>
-    /// Handles GET requests for Table Valued Function endpoints
-    /// </summary>
+    /// <summary>Handles GET requests for Table Valued Function endpoints</summary>
     /// <param name="endpoint">Endpoint definition</param>
     /// <param name="request">HTTP request</param>
     /// <param name="pathSegments">URL path segments after endpoint name</param>
@@ -213,9 +209,7 @@ public static class TableValuedFunctionSqlHandler
         }
     }
 
-    /// <summary>
-    /// Validates that a TVF endpoint configuration is correct
-    /// </summary>
+    /// <summary>Validates that a TVF endpoint configuration is correct</summary>
     /// <param name="endpoint">Endpoint definition to validate</param>
     /// <returns>List of validation errors</returns>
     public static List<string> ValidateTVFConfiguration(EndpointDefinition endpoint)
@@ -279,9 +273,7 @@ public static class TableValuedFunctionSqlHandler
         return errors;
     }
 
-    /// <summary>
-    /// Validates a single TVF parameter configuration
-    /// </summary>
+    /// <summary>Validates a single TVF parameter configuration</summary>
     private static List<string> ValidateTVFParameter(TVFParameter parameter, int index)
     {
         var errors = new List<string>();
@@ -327,9 +319,7 @@ public static class TableValuedFunctionSqlHandler
         return errors;
     }
 
-    /// <summary>
-    /// Builds URL pattern documentation for a TVF endpoint
-    /// </summary>
+    /// <summary>Builds URL pattern documentation for a TVF endpoint</summary>
     /// <param name="endpoint">TVF endpoint definition</param>
     /// <returns>URL pattern examples</returns>
     public static List<string> BuildUrlPatternExamples(EndpointDefinition endpoint)
@@ -405,9 +395,7 @@ public static class TableValuedFunctionSqlHandler
         return examples;
     }
 
-    /// <summary>
-    /// Gets an example value for a parameter based on its SQL type
-    /// </summary>
+    /// <summary>Gets an example value for a parameter based on its SQL type</summary>
     private static string GetExampleValue(TVFParameter parameter)
     {
         var sqlType = parameter.SqlType.ToUpper();

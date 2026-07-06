@@ -3,21 +3,14 @@ namespace PortwayApi.Services.Mcp;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
-/// <summary>
-/// EF Core context for the MCP configuration store (mcp.db).
-/// Stores provider, model, and encrypted credentials outside of appsettings.json
-/// so that sensitive keys are never exposed in configuration files.
-/// </summary>
+/// <summary>EF Core context for the MCP configuration store (mcp.db). Stores provider, model, and encrypted credentials outside of appsettings.json so that sensitive keys are never exposed in configuration files</summary>
 public class McpConfigDbContext : DbContext
 {
     public McpConfigDbContext(DbContextOptions<McpConfigDbContext> options) : base(options) { }
 
     public DbSet<McpConfigEntry> Config { get; set; }
 
-    /// <summary>
-    /// Idempotent schema initialisation — safe to call on every startup.
-    /// Creates the table on first run; adds missing columns on upgrades.
-    /// </summary>
+    /// <summary>Idempotent schema initialisation; safe to call on every startup. Creates the table on first run; adds missing columns on upgrades</summary>
     public void EnsureTablesCreated()
     {
         try
@@ -79,11 +72,7 @@ public class McpConfigDbContext : DbContext
     }
 }
 
-/// <summary>
-/// A single key-value configuration entry.
-/// Sensitive entries (ApiKey, InternalApiToken) are encrypted at rest using
-/// <see cref="PortwayApi.Helpers.SettingsEncryptionHelper"/> before being stored.
-/// </summary>
+/// <summary>A single key-value configuration entry. Sensitive entries (ApiKey, InternalApiToken) are encrypted at rest using <see cref="PortwayApi.Helpers.SettingsEncryptionHelper"/> before being stored</summary>
 public class McpConfigEntry
 {
     public string   Key         { get; set; } = string.Empty;

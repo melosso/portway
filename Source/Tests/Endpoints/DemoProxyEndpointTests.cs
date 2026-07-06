@@ -5,17 +5,16 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Integration tests for the demo Proxy endpoint: Account/Accounts.
-///
+/// <summary>Integration tests for the demo Proxy endpoint: Account/Accounts</summary>
+/// <remarks>
 /// Config: endpoints/Proxy/Account/Accounts/entity.json
-///   - Url: http://localhost:8020/.../Account
-///   - Methods: GET, POST, PUT, DELETE
-///   - CustomProperties.HttpMethodTranslation: "PUT:MERGE"
-///   - CustomProperties.HttpMethodAppendHeaders: "PUT:X-Custom-Original-Method={ORIGINAL_METHOD}"
-///   - DeletePatterns: [{Style: "ODataGuid"}]
-///   - No AllowedEnvironments restriction (inherits global)
-/// </summary>
+/// - Url: http://localhost:8020/.../Account
+/// - Methods: GET, POST, PUT, DELETE
+/// - CustomProperties.HttpMethodTranslation: "PUT:MERGE"
+/// - CustomProperties.HttpMethodAppendHeaders: "PUT:X-Custom-Original-Method={ORIGINAL_METHOD}"
+/// - DeletePatterns: [{Style: "ODataGuid"}]
+/// - No AllowedEnvironments restriction (inherits global)
+/// </remarks>
 public class DemoProxyEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";
@@ -33,7 +32,7 @@ public class DemoProxyEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync(ApiPath);
 
-        // Assert: auth and routing succeeded — backend failure is acceptable
+        // Assert: auth and routing succeeded; backend failure is acceptable
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -79,7 +78,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     [Fact]
     public async Task PutAccounts_ValidEnvironment_NotUnauthorizedOrBadRequest()
     {
-        // Arrange: PUT is an allowed method — it will be translated to MERGE by CustomProperties
+        // Arrange: PUT is an allowed method; it will be translated to MERGE by CustomProperties
         var body = new StringContent("""{"Name":"Updated Corp"}""", Encoding.UTF8, "application/json");
 
         // Act
@@ -94,8 +93,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     [Fact]
     public async Task DeleteAccounts_ValidEnvironment_NotUnauthorizedOrBadRequest()
     {
-        // Arrange: DELETE is an allowed method
-        // Act
+        // Arrange: DELETE is an allowed method; Act
         var response = await _client.DeleteAsync($"{ApiPath}/guid'some-guid'");
 
         // Assert
@@ -120,8 +118,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     [Fact]
     public async Task GetAccounts_AltValidEnvironment_NotUnauthorizedOrBadRequest()
     {
-        // Arrange: Account/Accounts has no AllowedEnvironments restriction, so 700 is valid
-        // Act
+        // Arrange: Account/Accounts has no AllowedEnvironments restriction, so 700 is valid; Act
         var response = await _client.GetAsync($"/api/700/{EndpointPath}");
 
         // Assert

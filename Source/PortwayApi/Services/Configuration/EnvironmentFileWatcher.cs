@@ -8,9 +8,7 @@ using PortwayApi.Services.Caching;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>
-/// Monitors the environments folder for changes and invalidates cached environment settings
-/// </summary>
+/// <summary>Monitors the environments folder for changes and invalidates cached environment settings</summary>
 public class EnvironmentFileWatcher : IHostedService, IDisposable
 {
     private readonly string _environmentsPath;
@@ -179,12 +177,9 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
     {
         try
         {
-            // The EnvironmentSettingsProvider reloads from disk on next request
-            // We need to clear any cached connection strings or environment-specific data
-            // Most importantly, trigger reload of environment settings on next access
+            // The EnvironmentSettingsProvider reloads from disk on next request; We need to clear any cached connection strings or environment-specific data; Most importantly, trigger reload of environment settings on next access
 
-            // Clear provider's internal cache if it has one
-            // Note: EnvironmentSettingsProvider loads from disk each time, so no cache to clear there
+            // Clear provider's internal cache if it has one; Note: EnvironmentSettingsProvider loads from disk each time, so no cache to clear there
 
             // However, SQL metadata cache uses environment names in keys
             // Format: "{environment}:{schema}.{object}" or similar

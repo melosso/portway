@@ -3,9 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace PortwayApi.Classes.OpenApi;
 
-/// <summary>
-/// Utility to generate randomized, context-aware mock data for OpenAPI examples
-/// </summary>
+/// <summary>Utility to generate randomized, context-aware mock data for OpenAPI examples</summary>
 public static class MockDataGenerator
 {
     public static JsonNode? GenerateValue(string? propertyName = null, JsonValueKind kind = JsonValueKind.String, string decimalSeparator = ".")

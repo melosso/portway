@@ -2,10 +2,7 @@ using Microsoft.AspNetCore.Routing;
 
 namespace PortwayApi.Api;
 
-/// <summary>
-/// Custom constraint for proxy endpoint routing
-/// This allows the route to be skipped when SQL endpoints should handle the request
-/// </summary>
+/// <summary>Custom constraint for proxy endpoint routing This allows the route to be skipped when SQL endpoints should handle the request</summary>
 public class ProxyConstraintAttribute : Attribute, IRouteConstraint
 {
     public bool Match(

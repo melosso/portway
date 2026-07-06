@@ -8,14 +8,10 @@ using Serilog;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>
-/// Helper class for XML operations to support OData metadata processing
-/// </summary>
+/// <summary>Helper class for XML operations to support OData metadata processing</summary>
 public static class XmlHelper
 {
-    /// <summary>
-    /// Creates an XmlReader from a string containing XML
-    /// </summary>
+    /// <summary>Creates an XmlReader from a string containing XML</summary>
     public static XmlReader CreateReader(string xml)
     {
         try
@@ -36,9 +32,7 @@ public static class XmlHelper
         }
     }
 
-    /// <summary>
-    /// Parses a string into an XDocument
-    /// </summary>
+    /// <summary>Parses a string into an XDocument</summary>
     public static XDocument ParseXml(string xml)
     {
         try
@@ -52,9 +46,7 @@ public static class XmlHelper
         }
     }
 
-    /// <summary>
-    /// Extracts namespace information from XML document
-    /// </summary>
+    /// <summary>Extracts namespace information from XML document</summary>
     public static Dictionary<string, string> ExtractNamespaces(XDocument doc)
     {
         try
@@ -86,9 +78,7 @@ public static class XmlHelper
         }
     }
 
-    /// <summary>
-    /// Creates an XmlNamespaceManager with the namespaces from an XDocument
-    /// </summary>
+    /// <summary>Creates an XmlNamespaceManager with the namespaces from an XDocument</summary>
     public static XmlNamespaceManager CreateNamespaceManager(XDocument doc)
     {
         var namespaceManager = new XmlNamespaceManager(new NameTable());

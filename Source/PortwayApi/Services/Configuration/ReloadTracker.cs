@@ -1,9 +1,6 @@
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>
-/// Tracks the last successful configuration reload for endpoints and environments.
-/// Exposed via /health to let ops detect stale config.
-/// </summary>
+/// <summary>Tracks the last successful configuration reload for endpoints and environments. Exposed via /health to let ops detect stale config</summary>
 public class ReloadTracker
 {
     private long _lastEndpointReloadTicks;

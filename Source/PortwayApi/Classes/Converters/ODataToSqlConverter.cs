@@ -5,10 +5,7 @@ using Serilog;
 
 namespace PortwayApi.Classes;
 
-/// <summary>
-/// Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect
-/// based on the connection string provider type.
-/// </summary>
+/// <summary>Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect based on the connection string provider type</summary>
 public class ODataToSqlConverter : IODataToSqlConverter
 {
     private readonly IEdmModelBuilder _edmModelBuilder;
@@ -60,7 +57,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             Log.Debug("No endpoint definition found, using parsed values: Schema={Schema}, Table={Table}", schema, tableName);
         }
 
-        // SQLite has no schema namespacing, we'll hav to omit schema prefix entirely.
+        // SQLite has no schema namespacing, we'll hav to omit schema prefix entirely
         string fullTableName = providerType == SqlProviderType.Sqlite
             ? tableName
             : $"{schema}.{tableName}";

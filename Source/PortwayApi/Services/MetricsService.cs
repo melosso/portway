@@ -3,11 +3,7 @@ namespace PortwayApi.Services;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-/// <summary>
-/// Thread-safe in-memory ring buffer for HTTP request metrics.
-/// Records status code, method, source (api/ui/other) and endpoint name per request.
-/// Auto-prunes entries older than 31 days, capped at MaxEntries to bound memory.
-/// </summary>
+/// <summary>Thread-safe in-memory ring buffer for HTTP request metrics. Records status code, method, source (api/ui/other) and endpoint name per request. Auto-prunes entries older than 31 days, capped at MaxEntries to bound memory</summary>
 public sealed class MetricsService
 {
     internal readonly record struct RequestEntry(DateTime Timestamp, int StatusCode, string Method, string Source, string Endpoint);
@@ -100,7 +96,7 @@ public sealed class MetricsService
             {
                 apiReqs++;
                 // Only track endpoints that actually exist (exclude 404s so probes to
-                // nonexistent paths don't pollute the top-endpoints list).
+                // nonexistent paths don't pollute the top-endpoints list)
                 if (!string.IsNullOrEmpty(e.Endpoint) && e.StatusCode != 404)
                 {
                     endpointCounts.TryGetValue(e.Endpoint, out var epCnt);
@@ -137,22 +133,3 @@ public sealed class MetricsService
 
     private readonly DateTime _startTime = DateTime.UtcNow;
 }
-
-public sealed record TrafficBucket(string Label, string Timestamp, long Count);
-
-public sealed record EndpointStat(string Name, long Count);
-
-public sealed record MetricsSnapshot(
-    string Period,
-    List<TrafficBucket> ApiTraffic,
-    List<TrafficBucket> UiTraffic,
-    Dictionary<string, long> Errors,
-    long Total,
-    double ErrorRate,
-    long CollectingForSeconds,
-    long ApiRequests,
-    long UiRequests,
-    List<EndpointStat> TopEndpoints,
-    long CacheHits,
-    long CacheMisses
-);

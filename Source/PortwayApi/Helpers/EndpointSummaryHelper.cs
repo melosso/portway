@@ -8,12 +8,10 @@ namespace PortwayApi.Helpers;
 
 public static class EndpointSummaryHelper
 {
-    /// <summary>
-    /// Validates endpoint configuration for naming conflicts
-    /// </summary>
+    /// <summary>Validates endpoint configuration for naming conflicts</summary>
     public static void ValidateAndLogDuplicateEndpoints(
         Dictionary<string, EndpointDefinition> sqlEndpoints,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> proxyEndpointMap,
+        Dictionary<string, ProxyEndpointInfo> proxyEndpointMap,
         Dictionary<string, EndpointDefinition> webhookEndpoints,
         Dictionary<string, EndpointDefinition> fileEndpoints,
         Dictionary<string, EndpointDefinition> staticEndpoints)
@@ -61,9 +59,7 @@ public static class EndpointSummaryHelper
         }
     }
     
-    /// <summary>
-    /// Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility
-    /// </summary>
+    /// <summary>Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility</summary>
     private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, EndpointDefinition> endpoints, string type)
     {
         foreach (var kvp in endpoints)
@@ -88,10 +84,8 @@ public static class EndpointSummaryHelper
         }
     }
     
-    /// <summary>
-    /// Adds proxy endpoints to registry with composite filtering
-    /// </summary>
-    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpoints, string type, bool excludeComposite = false, bool onlyComposite = false)
+    /// <summary>Adds proxy endpoints to registry with composite filtering</summary>
+    private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, ProxyEndpointInfo> endpoints, string type, bool excludeComposite = false, bool onlyComposite = false)
     {
         foreach (var kvp in endpoints)
         {
@@ -132,7 +126,7 @@ public static class EndpointSummaryHelper
 
     public static void LogEndpointSummary(
         Dictionary<string, EndpointDefinition> sqlEndpoints,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> proxyEndpointMap,
+        Dictionary<string, ProxyEndpointInfo> proxyEndpointMap,
         Dictionary<string, EndpointDefinition> webhookEndpoints,
         Dictionary<string, EndpointDefinition> fileEndpoints,
         Dictionary<string, EndpointDefinition> staticEndpoints)

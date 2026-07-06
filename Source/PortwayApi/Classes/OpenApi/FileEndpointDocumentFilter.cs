@@ -780,10 +780,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>
-    /// Gets the effective list of allowed environments for an endpoint.
-    /// Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings.
-    /// </summary>
+    /// <summary>Gets the effective list of allowed environments for an endpoint. Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings</summary>
     private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
     {
         if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())

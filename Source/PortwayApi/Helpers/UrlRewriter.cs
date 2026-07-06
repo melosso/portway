@@ -4,14 +4,10 @@ using System;
 using System.Text.RegularExpressions;
 using Serilog;
 
-/// <summary>
-/// Helper class for rewriting URLs in API responses
-/// </summary>
+/// <summary>Helper class for rewriting URLs in API responses</summary>
 public static class UrlRewriter
 {
-    /// <summary>
-    /// Rewrites URLs in a JSON string to use proxy URLs
-    /// </summary>
+    /// <summary>Rewrites URLs in a JSON string to use proxy URLs</summary>
     /// <param name="content">The original content with URLs</param>
     /// <param name="originalBaseUrl">The original base URL to replace</param>
     /// <param name="originalPath">The original path segment</param>

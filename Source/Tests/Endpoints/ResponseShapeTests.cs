@@ -6,10 +6,7 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Verifies standardized HTTP response shapes from EndpointController.
-/// Uses JsonDocument to assert body shape without coupling to record types.
-/// </summary>
+/// <summary>Verifies standardized HTTP response shapes from EndpointController. Uses JsonDocument to assert body shape without coupling to record types</summary>
 public class ResponseShapeTests : ApiTestBase
 {
     // Error shape tests
@@ -70,7 +67,7 @@ public class ResponseShapeTests : ApiTestBase
     [Fact]
     public async Task ErrorShape_HasExactlyTwoTopLevelKeys()
     {
-        // Error shape must be { success, error } — nothing else
+        // Error shape must be { success, error }; nothing else
         var response = await _client.GetAsync("/api/notallowed/SomeEndpoint");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -89,9 +86,9 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         // The demo file endpoint "attachments" requires environment "500"
-        // We just need a file endpoint that exists; shape check is what matters.
+        // We just need a file endpoint that exists; shape check is what matters
         // /api/500/files/attachments/list may 404 (no endpoint configured in tests)
-        // but if it returns 200 the shape must conform. If 404 we skip shape check.
+        // but if it returns 200 the shape must conform. If 404 we skip shape check
         var response = await _client.GetAsync("/api/500/files/attachments/list");
 
         if (response.StatusCode != HttpStatusCode.OK)
@@ -146,11 +143,11 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         // DELETE on a non-existent file returns 404 with error shape,
-        // but a successful delete must return mutation shape.
-        // We test the error path here to verify shape correctness.
+        // but a successful delete must return mutation shape
+        // We test the error path here to verify shape correctness
         var response = await _client.DeleteAsync("/api/500/files/attachments/nonexistent-file-id");
 
-        // Either 404 (file not found) or 400/500 — both should have { success, error }
+        // Either 404 (file not found) or 400/500; both should have { success, error }
         if (response.StatusCode == HttpStatusCode.NotFound ||
             response.StatusCode == HttpStatusCode.BadRequest)
         {
@@ -175,7 +172,7 @@ public class ResponseShapeTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        // Webhook endpoints don't support GET — should return 405 with a body
+        // Webhook endpoints don't support GET; should return 405 with a body
         var response = await _client.GetAsync("/api/500/webhook/somewebhook");
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);

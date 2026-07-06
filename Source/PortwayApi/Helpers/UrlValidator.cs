@@ -59,9 +59,7 @@ public class UrlValidator
             string.Join(", ", _allowedHosts));
     }
 
-    /// <summary>
-    /// Discovers allowed hosts based on the local machine name and network interfaces.
-    /// </summary>
+    /// <summary>Discovers allowed hosts based on the local machine name and network interfaces</summary>
     private List<string> DiscoverAllowedHosts()
     {
         var discoveredHosts = new HashSet<string>();
@@ -140,7 +138,7 @@ public class UrlValidator
     }
 
     /// <summary>  
-    /// Validates if the given URL is safe to access.  
+    /// Validates if the given URL is safe to access
     /// </summary>
     public virtual bool IsUrlSafe(string url)
     {
@@ -152,7 +150,7 @@ public class UrlValidator
             Log.Debug("Validating URL: {Url}", url);
             Log.Debug("Host to validate: {Host}", host);
             
-            // Check allowedHosts first — explicit allowlist bypasses IP range checks
+            // Check allowedHosts first; explicit allowlist bypasses IP range checks
             bool isHostAllowed = _allowedHosts.Any(allowed =>
                 string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
                 MatchHostPattern(host, allowed));
@@ -203,13 +201,10 @@ public class UrlValidator
         }
     }
 
-    /// <summary>
-    /// Returns true if the given remote IP is loopback or matches one of the allowed hosts.
-    /// Used to restrict the administration UI to the local network.
-    /// </summary>
+    /// <summary>Returns true if the given remote IP is loopback or matches one of the allowed hosts. Used to restrict the administration UI to the local network</summary>
     public virtual bool IsClientIpAllowed(IPAddress ip)
     {
-        // Map IPv4-in-IPv6 (::ffff:x.x.x.x) back to plain IPv4 before comparing.
+        // Map IPv4-in-IPv6 (::ffff:x.x.x.x) back to plain IPv4 before comparing
         if (ip.IsIPv4MappedToIPv6)
             ip = ip.MapToIPv4();
 
@@ -219,9 +214,7 @@ public class UrlValidator
         return _allowedHosts.Any(h => string.Equals(h, ipStr, StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// Validates if the given host is allowed based on the configuration.
-    /// </summary>
+    /// <summary>Validates if the given host is allowed based on the configuration</summary>
     public virtual bool IsHostAllowed(string host)
     {
         if (_hostCache.TryGetValue(host, out bool isAllowed))
@@ -238,9 +231,7 @@ public class UrlValidator
         return isValid;
     }
     
-    /// <summary>
-    /// Ensures that the configuration file exists. If not, creates a default one.
-    /// </summary>
+    /// <summary>Ensures that the configuration file exists. If not, creates a default one</summary>
     private void EnsureConfigFileExists(string configPath)
     {
         if (!File.Exists(configPath))
@@ -256,9 +247,7 @@ public class UrlValidator
         }
     }
 
-    /// <summary>
-    /// Validates the host against the allowed hosts and blocked IP ranges.
-    /// </summary>
+    /// <summary>Validates the host against the allowed hosts and blocked IP ranges</summary>
     private bool ValidateHost(string host)
     {
          // Resolve DNS and check IP ranges
@@ -266,18 +255,14 @@ public class UrlValidator
         return addresses.All(IsIpAllowed);
     }
 
-    /// <summary>
-    /// Checks if the host matches any of the allowed patterns.
-    /// </summary>
+    /// <summary>Checks if the host matches any of the allowed patterns</summary>
     private bool IsHostPatternAllowed(string host)
     {
         return _allowedHosts.Any(pattern => 
             MatchHostPattern(host, pattern));
     }
 
-    /// <summary>
-    /// Helper method to match host against a pattern.
-    /// </summary>
+    /// <summary>Helper method to match host against a pattern</summary>
     private bool MatchHostPattern(string host, string pattern)
     {
         var regex = _regexCache.GetOrAdd(pattern, p => new Regex(
@@ -286,9 +271,7 @@ public class UrlValidator
         return regex.IsMatch(host);
     }
 
-    /// <summary>
-    /// Resolves the DNS for the given host and caches the result.
-    /// </summary>
+    /// <summary>Resolves the DNS for the given host and caches the result</summary>
     private IPAddress[] ResolveDnsWithCache(string host)
     {
         return _dnsCache.GetOrAdd(host, key => 
@@ -304,9 +287,7 @@ public class UrlValidator
         });
     }
 
-    /// <summary>
-    /// Helper method to check if the given IP address is allowed based on the blocked ranges.
-    /// </summary>
+    /// <summary>Helper method to check if the given IP address is allowed based on the blocked ranges</summary>
     private bool IsIpAllowed(IPAddress ip)
     {
         // Check against blocked ranges with detailed logging
@@ -324,9 +305,7 @@ public class UrlValidator
         return true;
     }
 
-    /// <summary>
-    /// Checks if the given IP address is within the specified CIDR range.
-    /// </summary>
+    /// <summary>Checks if the given IP address is within the specified CIDR range</summary>
     private bool IsIpInRange(IPAddress ip, string cidrRange)
     {
         try

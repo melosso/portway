@@ -1064,7 +1064,7 @@ function startDelete() {
   const { name } = _selected;
   showAlertDialog({
     title: `Delete "${name}"?`,
-    description: 'This action cannot be undone. The endpoint files will be permanently removed.',
+    description: 'The endpoint files will be removed. A backup of entity.json is kept and can be restored from Settings > Recent Configuration Changes.',
     actionLabel: 'Delete',
     onConfirm: confirmDelete
   });

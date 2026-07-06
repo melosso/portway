@@ -3,35 +3,23 @@ namespace PortwayApi.Classes.Helpers;
 using System.Text.Json;
 using Serilog;
 
-/// <summary>
-/// Defines how to handle conflicts when custom headers already exist
-/// </summary>
+/// <summary>Defines how to handle conflicts when custom headers already exist</summary>
 public enum HeaderConflictResolution
 {
-    /// <summary>
-    /// Skip adding the custom header if it already exists
-    /// </summary>
+    /// <summary>Skip adding the custom header if it already exists</summary>
     Skip,
     
-    /// <summary>
-    /// Overwrite the existing header with the custom value
-    /// </summary>
+    /// <summary>Overwrite the existing header with the custom value</summary>
     Overwrite,
     
-    /// <summary>
-    /// Log the conflict but still add the header (may create duplicates)
-    /// </summary>
+    /// <summary>Log the conflict but still add the header (may create duplicates)</summary>
     LogAndAdd
 }
 
-/// <summary>
-/// Helper class for appending HTTP headers based on custom properties and method translation
-/// </summary>
+/// <summary>Helper class for appending HTTP headers based on custom properties and method translation</summary>
 public static class HttpMethodHeaderAppender
 {
-    /// <summary>
-    /// Gets additional headers to append based on the HttpMethodAppendHeaders custom property
-    /// </summary>
+    /// <summary>Gets additional headers to append based on the HttpMethodAppendHeaders custom property</summary>
     /// <param name="originalMethod">The original HTTP method before translation (e.g., "PUT")</param>
     /// <param name="translatedMethod">The translated HTTP method (e.g., "POST")</param>
     /// <param name="customProperties">Custom properties from the endpoint definition</param>
@@ -126,9 +114,7 @@ public static class HttpMethodHeaderAppender
         return headers;
     }
 
-    /// <summary>
-    /// Parses header append mappings from a string format like "PUT:X-HTTP-Method={ORIGINAL_METHOD},Content-Type=application/merge-patch+json"
-    /// </summary>
+    /// <summary>Parses header append mappings from a string format like "PUT:X-HTTP-Method={ORIGINAL_METHOD},Content-Type=application/merge-patch+json"</summary>
     /// <param name="appendHeadersString">The header append configuration string</param>
     /// <returns>Dictionary mapping HTTP methods to their additional headers</returns>
     private static Dictionary<string, Dictionary<string, string>> ParseHeaderAppendMappings(string appendHeadersString)
@@ -173,9 +159,7 @@ public static class HttpMethodHeaderAppender
         return mappings;
     }
 
-    /// <summary>
-    /// Parses headers for a specific method from comma-separated format like "X-HTTP-Method={ORIGINAL_METHOD},Content-Type=application/merge-patch+json"
-    /// </summary>
+    /// <summary>Parses headers for a specific method from comma-separated format like "X-HTTP-Method={ORIGINAL_METHOD},Content-Type=application/merge-patch+json"</summary>
     /// <param name="headersString">The headers string for a specific method</param>
     /// <returns>Dictionary of header name to header value</returns>
     private static Dictionary<string, string> ParseMethodHeaders(string headersString)
@@ -215,9 +199,7 @@ public static class HttpMethodHeaderAppender
         return headers;
     }
 
-    /// <summary>
-    /// Validates that header names are valid HTTP header names
-    /// </summary>
+    /// <summary>Validates that header names are valid HTTP header names</summary>
     /// <param name="headerName">The header name to validate</param>
     /// <returns>True if the header name is valid, false otherwise</returns>
     public static bool IsValidHeaderName(string headerName)
@@ -225,8 +207,7 @@ public static class HttpMethodHeaderAppender
         if (string.IsNullOrWhiteSpace(headerName))
             return false;
 
-        // Basic validation - HTTP header names should not contain spaces, control characters, etc.
-        // For simplicity, we'll allow alphanumeric, hyphens, and underscores
+        // Basic validation - HTTP header names should not contain spaces, control characters, etc; For simplicity, we'll allow alphanumeric, hyphens, and underscores
         return headerName.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
     }
 }

@@ -21,6 +21,10 @@ environment:
 
 Once configured, access the UI at `http://localhost:8080/ui` and log in with the admin key.
 
+::: warning Admin key handling
+Set the admin key via the `WebUi__AdminApiKey` environment variable or Azure Key Vault, never in `appsettings.json` — that file is not covered by Portway's automatic encryption. The shipped placeholder value is rejected in production (authentication stays disabled until replaced). Use a random key of 32+ characters; see [Security → Web UI admin key](/guide/security#web-ui-admin-key).
+:::
+
 ## Pages
 
 | Page | Description |
@@ -55,6 +59,10 @@ All `/ui/api/*` endpoints require the `portway_auth` session cookie (set at logi
 
 ## Security
 
-Session cookies are HMAC-SHA256 signed with a 24-hour expiry. By default, the UI is accessible only from the local network. Set `WebUi__PublicOrigins` to allow access from external origins and enable `WebUi__SecureCookies` for HTTPS-only deployments.
+Session cookies are HMAC-SHA256 signed with a 12-hour expiry. By default, the UI is accessible only from the local network. Set `WebUi__PublicOrigins` to allow access from external origins and enable `WebUi__SecureCookies` for HTTPS-only deployments.
+
+All mutating UI API calls (POST/PUT/PATCH/DELETE) are protected by a CSRF double-submit check: the `portway_csrf` cookie issued at login must be echoed in the `X-CSRF-Token` header. The bundled pages handle this automatically; external automation must send the header itself.
+
+Every configuration change made through the UI (environments, endpoints, MCP settings) is recorded in an audit trail, and the previous file version is backed up automatically. Both are visible on the Settings page under **Security & Change Controls**, where changes can also be restored.
 
 The Web UI is optional. The gateway API functions without it.

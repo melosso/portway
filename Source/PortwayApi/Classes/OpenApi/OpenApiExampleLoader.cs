@@ -7,9 +7,7 @@ using Microsoft.Extensions.Logging;
 
 namespace PortwayApi.Classes.OpenApi;
 
-/// <summary>
-/// Loads and caches OpenAPI examples from JSON files
-/// </summary>
+/// <summary>Loads and caches OpenAPI examples from JSON files</summary>
 public class OpenApiExampleLoader
 {
     private static readonly ConcurrentDictionary<string, JsonNode> _exampleCache = new();
@@ -22,9 +20,7 @@ public class OpenApiExampleLoader
         _logger = null; // Logger is optional
     }
 
-    /// <summary>
-    /// Load an example from a .example file and cache it
-    /// </summary>
+    /// <summary>Load an example from a .example file and cache it</summary>
     /// <param name="endpointPath">The path to the endpoint (e.g., "Proxy/SalesOrder" or "Proxy/Financial/SalesOrder")</param>
     /// <param name="forceReload">Force reload from disk, bypassing cache</param>
     /// <returns>The parsed OpenAPI example or null if not found</returns>
@@ -85,9 +81,7 @@ public class OpenApiExampleLoader
         return null;
     }
 
-    /// <summary>
-    /// Load an example specifically for a composite endpoint
-    /// </summary>
+    /// <summary>Load an example specifically for a composite endpoint</summary>
     /// <param name="compositeEndpointName">Name of the composite endpoint (e.g., "SalesOrder")</param>
     /// <param name="namespacePath">Optional namespace path (e.g., "Financial")</param>
     /// <returns>The parsed OpenAPI example or null if not found</returns>
@@ -101,9 +95,7 @@ public class OpenApiExampleLoader
         return LoadExample(endpointPath);
     }
 
-    /// <summary>
-    /// Convert JSON string to JsonNode object
-    /// </summary>
+    /// <summary>Convert JSON string to JsonNode object</summary>
     private JsonNode? ConvertJsonToJsonNode(string jsonContent)
     {
         if (string.IsNullOrWhiteSpace(jsonContent))
@@ -120,9 +112,7 @@ public class OpenApiExampleLoader
         }
     }
 
-    /// <summary>
-    /// Clear the example cache
-    /// </summary>
+    /// <summary>Clear the example cache</summary>
     /// <param name="endpointPath">Optional specific endpoint to clear, or null to clear all</param>
     public static void ClearCache(string? endpointPath = null)
     {
@@ -137,14 +127,10 @@ public class OpenApiExampleLoader
         }
     }
 
-    /// <summary>
-    /// Get count of cached examples
-    /// </summary>
+    /// <summary>Get count of cached examples</summary>
     public static int GetCacheCount() => _exampleCache.Count;
 
-    /// <summary>
-    /// Check if an example exists for an endpoint
-    /// </summary>
+    /// <summary>Check if an example exists for an endpoint</summary>
     public bool ExampleExists(string endpointPath)
     {
         var cacheKey = endpointPath.ToLowerInvariant();
@@ -176,10 +162,7 @@ public class OpenApiExampleLoader
         return false;
     }
 
-    /// <summary>
-    /// Resolve a path in a case-insensitive manner. Returns the actual path if found, otherwise null.
-    /// Works for files and directories.
-    /// </summary>
+    /// <summary>Resolve a path in a case-insensitive manner. Returns the actual path if found, otherwise null. Works for files and directories</summary>
     private string? ResolvePathCaseInsensitive(string path)
     {
         if (string.IsNullOrEmpty(path))
@@ -244,9 +227,7 @@ public class OpenApiExampleLoader
         return File.Exists(current) || Directory.Exists(current) ? current : null;
     }
 
-    /// <summary>
-    /// Preload examples for multiple endpoints
-    /// </summary>
+    /// <summary>Preload examples for multiple endpoints</summary>
     public void PreloadExamples(IEnumerable<string> endpointPaths)
     {
         foreach (var path in endpointPaths)

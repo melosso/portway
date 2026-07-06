@@ -13,12 +13,12 @@ using Serilog;
 public class CompositeEndpointHandler
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> _endpointMap;
+    private readonly Dictionary<string, ProxyEndpointInfo> _endpointMap;
     private readonly string _serverName;
     
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
-        Dictionary<string, (string Url, HashSet<string> Methods, bool IsPrivate, bool IsMcpExposed, string Type, List<string>? AllowedEnvironments)> endpointMap,
+        Dictionary<string, ProxyEndpointInfo> endpointMap,
         string serverName)
     {
         _httpClientFactory = httpClientFactory;
@@ -26,9 +26,7 @@ public class CompositeEndpointHandler
         _serverName = serverName;
     }
     
-    /// <summary>
-    /// Process a composite endpoint request
-    /// </summary>
+    /// <summary>Process a composite endpoint request</summary>
     public async Task<IResult> ProcessCompositeEndpointAsync(
         HttpContext context, 
         string env, 
@@ -165,9 +163,7 @@ public class CompositeEndpointHandler
         }
     }
 
-    /// <summary>
-    /// Execute a single step in a composite endpoint
-    /// </summary>
+    /// <summary>Execute a single step in a composite endpoint</summary>
     private async Task<object> ExecuteStepAsync(
         CompositeStep step,
         JsonNode requestData,
@@ -273,9 +269,7 @@ public class CompositeEndpointHandler
         }
     }
     
-    /// <summary>
-    /// Process a single item for a step (either a direct item or an item within an array)
-    /// </summary>
+    /// <summary>Process a single item for a step (either a direct item or an item within an array)</summary>
     private async Task<object> ProcessSingleItemAsync(
         CompositeStep step,
         JsonNode itemData,
@@ -333,8 +327,7 @@ public class CompositeEndpointHandler
                 parsedError = JsonSerializer.Deserialize<object>(responseContent, 
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     
-                // For responses that are already JSON, don't store them as strings
-                // This way they'll be properly serialized in the error response
+                // For responses that are already JSON, don't store them as strings; This way they'll be properly serialized in the error response
                 errorDetail = "See structured error details";
             }
             catch
@@ -374,9 +367,7 @@ public class CompositeEndpointHandler
         }
     }
     
-    /// <summary>
-    /// Apply template transformations to the request data
-    /// </summary>
+    /// <summary>Apply template transformations to the request data</summary>
     private void ApplyTemplateTransformations(
         CompositeStep step, 
         JsonNode data, 
@@ -485,9 +476,7 @@ public class CompositeEndpointHandler
         return newValue;
     }
 
-    /// <summary>
-    /// Rewrites URLs in the composite result to use the proxy URL
-    /// </summary>
+    /// <summary>Rewrites URLs in the composite result to use the proxy URL</summary>
     private void RewriteUrlsInResult(CompositeResult result, HttpContext context, string env, string endpointName)
     {
         try
@@ -553,9 +542,7 @@ public class CompositeEndpointHandler
         }
     }
 
-    /// <summary>
-    /// Extract the raw value from a JsonValue
-    /// </summary>
+    /// <summary>Extract the raw value from a JsonValue</summary>
     private object? ExtractRawValue(JsonValue jsonValue)
     {
         if (jsonValue.TryGetValue<string>(out var stringValue))
@@ -579,9 +566,7 @@ public class CompositeEndpointHandler
         return null;
     }
     
-    /// <summary>
-    /// Get a nested value from a JSON node using a property path (e.g., "prop1.prop2.prop3")
-    /// </summary>
+    /// <summary>Get a nested value from a JSON node using a property path (e.g., "prop1.prop2.prop3")</summary>
     private JsonNode? GetNestedValue(JsonNode? node, string propertyPath)
     {
         if (node == null || string.IsNullOrEmpty(propertyPath))

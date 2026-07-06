@@ -3,15 +3,10 @@ using System.Text.RegularExpressions;
 
 namespace PortwayApi.Classes.Helpers;
 
-/// <summary>
-/// Helper class for handling column alias mappings in SQL endpoints
-/// </summary>
+/// <summary>Helper class for handling column alias mappings in SQL endpoints</summary>
 public static class ColumnMappingHelper
 {
-    /// <summary>
-    /// Parses semicolon-separated column mappings and returns dictionaries for both directions
-    /// Format: "DatabaseColumn;Alias" or just "DatabaseColumn" (falls back to same name)
-    /// </summary>
+    /// <summary>Parses semicolon-separated column mappings and returns dictionaries for both directions Format: "DatabaseColumn;Alias" or just "DatabaseColumn" (falls back to same name)</summary>
     /// <param name="allowedColumns">List of column definitions with optional semicolon aliases</param>
     /// <returns>Tuple with (AliasToDatabase, DatabaseToAlias) dictionaries</returns>
     public static (Dictionary<string, string> AliasToDatabase, Dictionary<string, string> DatabaseToAlias) 
@@ -96,9 +91,7 @@ public static class ColumnMappingHelper
         return (aliasToDatabase, databaseToAlias);
     }
 
-    /// <summary>
-    /// Converts alias column names to database column names for SQL queries
-    /// </summary>
+    /// <summary>Converts alias column names to database column names for SQL queries</summary>
     /// <param name="aliasColumns">Comma-separated list of alias column names</param>
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
     /// <returns>Comma-separated list of database column names</returns>
@@ -133,9 +126,7 @@ public static class ColumnMappingHelper
         return string.Join(",", databaseColumns);
     }
 
-    /// <summary>
-    /// Converts database column names to alias column names for API responses
-    /// </summary>
+    /// <summary>Converts database column names to alias column names for API responses</summary>
     /// <param name="databaseColumns">List of database column names</param>
     /// <param name="databaseToAlias">Mapping from database to alias column names</param>
     /// <returns>List of alias column names</returns>
@@ -166,9 +157,7 @@ public static class ColumnMappingHelper
         return aliasColumns;
     }
 
-    /// <summary>
-    /// Validates that all requested alias columns are allowed
-    /// </summary>
+    /// <summary>Validates that all requested alias columns are allowed</summary>
     /// <param name="requestedAliases">Comma-separated list of requested alias column names</param>
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
     /// <returns>Tuple with (IsValid, InvalidAliases)</returns>
@@ -206,9 +195,7 @@ public static class ColumnMappingHelper
         return (isValid, invalidAliases);
     }
 
-    /// <summary>
-    /// Gets all allowed alias column names
-    /// </summary>
+    /// <summary>Gets all allowed alias column names</summary>
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
     /// <returns>List of all allowed alias column names</returns>
     public static List<string> GetAllowedAliases(Dictionary<string, string> aliasToDatabase)
@@ -216,9 +203,7 @@ public static class ColumnMappingHelper
         return aliasToDatabase.Keys.ToList();
     }
 
-    /// <summary>
-    /// Gets all database column names
-    /// </summary>
+    /// <summary>Gets all database column names</summary>
     /// <param name="databaseToAlias">Mapping from database to alias column names</param>
     /// <returns>List of all database column names</returns>
     public static List<string> GetDatabaseColumns(Dictionary<string, string> databaseToAlias)
@@ -226,9 +211,7 @@ public static class ColumnMappingHelper
         return databaseToAlias.Keys.ToList();
     }
 
-    /// <summary>
-    /// Converts alias column references in OData filter expressions to database column names
-    /// </summary>
+    /// <summary>Converts alias column references in OData filter expressions to database column names</summary>
     /// <param name="filterExpression">OData filter expression that may contain alias column names</param>
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
     /// <returns>Filter expression with database column names</returns>
@@ -258,9 +241,7 @@ public static class ColumnMappingHelper
         return convertedFilter;
     }
 
-    /// <summary>
-    /// Converts alias column references in OData orderby expressions to database column names
-    /// </summary>
+    /// <summary>Converts alias column references in OData orderby expressions to database column names</summary>
     /// <param name="orderByExpression">OData orderby expression that may contain alias column names</param>
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
     /// <returns>OrderBy expression with database column names</returns>
@@ -290,9 +271,7 @@ public static class ColumnMappingHelper
         return convertedOrderBy;
     }
 
-    /// <summary>
-    /// Transforms query results by converting database column names to aliases in the response
-    /// </summary>
+    /// <summary>Transforms query results by converting database column names to aliases in the response</summary>
     /// <param name="results">Raw query results with database column names</param>
     /// <param name="databaseToAlias">Mapping from database to alias column names</param>
     /// <returns>Transformed results with alias column names</returns>
@@ -339,9 +318,7 @@ public static class ColumnMappingHelper
         return transformedResults;
     }
 
-    /// <summary>
-    /// Converts an object to a dictionary representation
-    /// </summary>
+    /// <summary>Converts an object to a dictionary representation</summary>
     /// <param name="obj">Object to convert (typically a Dapper result)</param>
     /// <returns>Dictionary representation of the object</returns>
     private static Dictionary<string, object> ConvertToDictionary(object obj)

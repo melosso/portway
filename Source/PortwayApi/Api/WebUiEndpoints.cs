@@ -22,12 +22,11 @@ using PortwayApi.Services;
 public static class WebUiEndpointExtensions
 {
     private const string CookieName = "portway_auth";
+    private const string CsrfCookieName = "portway_csrf";
     private const int TokenExpiryHours = 12;
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
 
-    /// <summary>
-    /// Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
-    /// </summary>
+    /// <summary>Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...</summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
     {
         var uiAuthEnabled = !string.IsNullOrEmpty(adminApiKey);
@@ -38,8 +37,7 @@ public static class WebUiEndpointExtensions
             var path = context.Request.Path;
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
 
-            // Allow external clients whose origin matches a configured PublicOrigins pattern.
-            // Otherwise restrict to local network only.
+            // Allow external clients whose origin matches a configured PublicOrigins pattern; Otherwise restrict to local network only
             var isPublicOrigin = publicOrigins.Length > 0 && IsPublicOriginAllowed(context.Request, publicOrigins);
 
             if (!isPublicOrigin)
@@ -64,7 +62,7 @@ public static class WebUiEndpointExtensions
                 }
             }
 
-            // Cookie auth check, skip for the login page and the auth endpoints themselves.
+            // Cookie auth check, skip for the login page and the auth endpoints themselves
             if (uiAuthEnabled &&
                 !path.StartsWithSegments("/ui/login") &&
                 !path.StartsWithSegments("/ui/api/auth") &&
@@ -76,6 +74,25 @@ public static class WebUiEndpointExtensions
                     context.Response.Redirect($"{context.Request.PathBase}/ui/login");
                     return;
                 }
+
+                // CSRF double-submit check on mutating UI API calls; client-error is sendBeacon and cannot set headers
+                if (path.StartsWithSegments("/ui/api") &&
+                    !path.StartsWithSegments("/ui/api/client-error") &&
+                    (HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) ||
+                     HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method)))
+                {
+                    var headerToken = context.Request.Headers["X-CSRF-Token"].FirstOrDefault();
+                    context.Request.Cookies.TryGetValue(CsrfCookieName, out var csrfCookie);
+                    if (string.IsNullOrEmpty(headerToken) || string.IsNullOrEmpty(csrfCookie) ||
+                        !CryptographicOperations.FixedTimeEquals(
+                            Encoding.UTF8.GetBytes(headerToken), Encoding.UTF8.GetBytes(csrfCookie)))
+                    {
+                        context.Response.StatusCode = 403;
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsJsonAsync(new { error = "CSRF token missing or invalid" });
+                        return;
+                    }
+                }
             }
 
             await next();
@@ -84,13 +101,10 @@ public static class WebUiEndpointExtensions
         return app;
     }
 
-    /// <summary>
-    /// Returns true if the request's effective origin matches any of the configured PublicOrigins patterns.
-    /// Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com".
-    /// </summary>
+    /// <summary>Returns true if the request's effective origin matches any of the configured PublicOrigins patterns. Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com"</summary>
     internal static bool IsPublicOriginAllowed(HttpRequest request, string[] patterns)
     {
-        // Origin header is present on XHR/fetch; for navigation requests fall back to scheme+host.
+        // Origin header is present on XHR/fetch; for navigation requests fall back to scheme+host
         var origin = request.Headers.Origin.FirstOrDefault();
         if (string.IsNullOrEmpty(origin))
         {
@@ -107,14 +121,12 @@ public static class WebUiEndpointExtensions
             return string.Equals(origin.TrimEnd('/'), pattern.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
 
         // * matches a single host label (no dots), e.g. https://*.melosso.com matches
-        // https://foo.melosso.com but NOT https://a.b.melosso.com.
+        // https://foo.melosso.com but NOT https://a.b.melosso.com
         var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", "[^.]+") + "/?$";
         return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
     }
 
-    /// <summary>
-    /// Maps all /ui/* page routes and /ui/api/* data endpoints.
-    /// </summary>
+    /// <summary>Maps all /ui/* page routes and /ui/api/* data endpoints</summary>
     public static WebApplication MapWebUiEndpoints(this WebApplication app, string adminApiKey)
     {
         var uiAuthEnabled = !string.IsNullOrEmpty(adminApiKey);
@@ -125,6 +137,11 @@ public static class WebUiEndpointExtensions
 
         // Get security settings from configuration
         var secureCookies = app.Configuration.GetValue<bool>("WebUi:SecureCookies", false);
+
+        // Change-controls: audit every config mutation, back up files before UI writes
+        var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
+        void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
+            => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
         
         // Login
         app.MapGet("/ui/login", (HttpContext ctx) =>
@@ -183,6 +200,16 @@ public static class WebUiEndpointExtensions
                 Path     = "/",
                 Expires  = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours)
             });
+            // Session CSRF cookie for the double-submit check; readable by page JS so fetches can echo it in X-CSRF-Token
+            var sessionCsrf = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+            context.Response.Cookies.Append(CsrfCookieName, sessionCsrf, new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = secureCookies,
+                SameSite = SameSiteMode.Lax,
+                Path     = "/",
+                Expires  = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours)
+            });
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -191,6 +218,14 @@ public static class WebUiEndpointExtensions
             context.Response.Cookies.Append(CookieName, "", new CookieOptions
             {
                 HttpOnly = true,
+                Secure = secureCookies,
+                SameSite = SameSiteMode.Lax,
+                Path     = "/",
+                Expires  = DateTimeOffset.UnixEpoch
+            });
+            context.Response.Cookies.Append(CsrfCookieName, "", new CookieOptions
+            {
+                HttpOnly = false,
                 Secure = secureCookies,
                 SameSite = SameSiteMode.Lax,
                 Path     = "/",
@@ -362,9 +397,11 @@ public static class WebUiEndpointExtensions
                 ? ae.EnumerateArray().Select(e => e.GetString() ?? "").Where(e => !string.IsNullOrEmpty(e)).ToList()
                 : envSettings.AllowedEnvironments;
 
+            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(globalPath);
             var model = new { Environment = new { ServerName = serverName, AllowedEnvironments = allowedEnvs } };
             await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
+            Audit(context, "update", "environment-settings", "environments/settings.json", null, backupPath);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -476,7 +513,9 @@ public static class WebUiEndpointExtensions
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
+            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(envPath);
             await File.WriteAllTextAsync(envPath, raw);
+            Audit(context, "update-raw", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
@@ -552,6 +591,7 @@ public static class WebUiEndpointExtensions
             await File.WriteAllTextAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
+            Audit(context, "create", "environment", name);
             return Results.Json(new { ok = true, name }, statusCode: 201);
         }).ExcludeFromDescription();
 
@@ -589,9 +629,11 @@ public static class WebUiEndpointExtensions
                     headers[h.Name] = h.Value.GetString() ?? "";
 
             Directory.CreateDirectory(envDir);
+            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(envSettingsPath);
             var envModel = new { ConnectionString = newCs, ServerName = serverName, Headers = headers };
             await File.WriteAllTextAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
+            Audit(context, "update", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envSettingsPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
@@ -624,6 +666,7 @@ public static class WebUiEndpointExtensions
             await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
 
+            Audit(context, "rename", "environment", $"{name} -> {newName}");
             return Results.Ok(new { ok = true, name = newName });
         }).ExcludeFromDescription();
 
@@ -638,12 +681,14 @@ public static class WebUiEndpointExtensions
             var deleteFiles  = request.Query["delete_files"] == "true";
             var newAllowed   = envSettings.AllowedEnvironments
                 .Where(e => !e.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+            var backupPath   = PortwayApi.Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
             var globalModel  = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
             await File.WriteAllTextAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
             if (deleteFiles && Directory.Exists(envDir))
                 Directory.Delete(envDir, true);
+            Audit(request.HttpContext, "delete", "environment", name, deleteFiles ? "files deleted" : "files kept", backupPath);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -656,8 +701,29 @@ public static class WebUiEndpointExtensions
                 catch { /* non-fatal — chat section will show defaults */ }
             }
 
+            var adminKey = config.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
+            var corsOriginsCount   = config.GetSection("WebUi:CorsOrigins").Get<string[]>()?.Length ?? 0;
+            var publicOriginsCount = config.GetSection("WebUi:PublicOrigins").Get<string[]>()?.Length ?? 0;
+            var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+            var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
+            var httpsOn = inContainer
+                ? string.Equals(useHttpsEnv, "true", StringComparison.OrdinalIgnoreCase)
+                : !string.Equals(useHttpsEnv, "false", StringComparison.OrdinalIgnoreCase);
+
             return Results.Json(new
         {
+            security = new
+            {
+                webui_auth_enabled = !string.IsNullOrEmpty(adminKey) && adminKey != "INSECURE-CHANGE-ME-admin-api-key",
+                admin_key_strength = string.IsNullOrEmpty(adminKey) ? "not-set"
+                    : adminKey == "INSECURE-CHANGE-ME-admin-api-key" ? "placeholder"
+                    : adminKey.Length < 32 ? "weak" : "strong",
+                https_enabled       = httpsOn,
+                secure_cookies      = config.GetValue<bool>("WebUi:SecureCookies", false),
+                cors_origins_count  = corsOriginsCount,
+                public_origins_count = publicOriginsCount,
+                csrf_protection     = true
+            },
             rate_limiting = new
             {
                 enabled              = config.GetValue<bool>("RateLimiting:Enabled"),
@@ -719,15 +785,15 @@ public static class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // MCP Configuration endpoints
-        // Returns masked status (never returns the raw API key).
+        // Returns masked status (never returns the raw API key)
         app.MapGet("/ui/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
         {
             var status = await mcpConfig.GetStatusAsync();
             return Results.Json(status);
         }).ExcludeFromDescription();
 
-        // Saves provider/model/apiKey/internalApiToken to the encrypted DB.
-        // Accepts partial updates — omit a field to leave it unchanged.
+        // Saves provider/model/apiKey/internalApiToken to the encrypted DB
+        // Accepts partial updates; omit a field to leave it unchanged
         app.MapPost("/ui/api/mcp/config", async (
             HttpRequest request,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
@@ -747,15 +813,69 @@ public static class WebUiEndpointExtensions
                 return Results.BadRequest(new { error = "apiKey cannot be blank" });
 
             await mcpConfig.SaveConfigAsync(provider, model, apiKey, internalApiToken);
+            Audit(request.HttpContext, "update", "mcp-config", "chat configuration",
+                provider is not null ? $"provider={provider}" : null);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        // Clears all stored MCP chat configuration (provider, model, key, token).
+        // Clears all stored MCP chat configuration (provider, model, key, token)
         app.MapDelete("/ui/api/mcp/config", async (
+            HttpContext context,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig,
             CancellationToken ct) =>
         {
             await mcpConfig.ClearConfigAsync(ct);
+            Audit(context, "delete", "mcp-config", "chat configuration");
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
+        // Change-controls: audit trail of UI config changes
+        app.MapGet("/ui/api/audit", (HttpRequest request) =>
+        {
+            var limit = int.TryParse(request.Query["limit"], out var l) ? l : 50;
+            var entries = configAudit.GetRecent(limit).Select(e => new
+            {
+                id = e.Id, timestamp = e.Timestamp, client_ip = e.ClientIp,
+                action = e.Action, target_type = e.TargetType, target = e.Target,
+                details = e.Details, restorable = e.BackupPath != null && File.Exists(e.BackupPath)
+            });
+            return Results.Json(new { entries });
+        }).ExcludeFromDescription();
+
+        // Restores the pre-change backup recorded on an audit entry
+        app.MapPost("/ui/api/audit/{id:long}/restore", (long id, HttpContext context) =>
+        {
+            var entry = configAudit.GetById(id);
+            if (entry?.BackupPath is null || !File.Exists(entry.BackupPath))
+                return Results.Json(new { error = "No backup available for this change" }, statusCode: 404);
+
+            string? targetPath = entry.TargetType switch
+            {
+                "environment-settings" => Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json"),
+                "environment" => Path.Combine(Directory.GetCurrentDirectory(), "environments", entry.Target, "settings.json"),
+                "endpoint" => entry.Target.IndexOf('/') is var slash && slash > 0
+                    ? ResolveEndpointPath(entry.Target[..slash], entry.Target[(slash + 1)..]).Item1
+                    : null,
+                _ => null
+            };
+            if (targetPath is null)
+                return Results.Json(new { error = "This change type cannot be restored" }, statusCode: 400);
+
+            if (!PortwayApi.Services.Configuration.ConfigBackupService.Restore(entry.BackupPath, targetPath))
+                return Results.Json(new { error = "Restore failed" }, statusCode: 500);
+
+            // Reload affected config
+            if (entry.TargetType == "endpoint" && entry.Target.IndexOf('/') is var s && s > 0)
+            {
+                var epType = TypeStringToEndpointType(entry.Target[..s]);
+                if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+            }
+            else
+            {
+                app.Services.GetRequiredService<EnvironmentSettings>().Reload();
+            }
+
+            Audit(context, "restore", entry.TargetType, entry.Target, $"restored audit entry {id}");
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -844,7 +964,7 @@ public static class WebUiEndpointExtensions
                 expiresInDays = Math.Max(1, remaining);
             }
 
-            // Create the replacement token first so the last-token guard won't block the revoke.
+            // Create the replacement token first so the last-token guard won't block the revoke
             var newToken = await tokenService.GenerateTokenAsync(
                 existing.Username,
                 existing.AllowedScopes,
@@ -890,7 +1010,7 @@ public static class WebUiEndpointExtensions
             var healthService = app.Services.GetRequiredService<PortwayApi.Services.HealthCheckService>();
             var ct = context.RequestAborted;
 
-            // Push current health state immediately so the client doesn't wait for the next scheduled refresh.
+            // Push current health state immediately so the client doesn't wait for the next scheduled refresh
             try
             {
                 var report = await healthService.CheckHealthAsync(ct);
@@ -940,7 +1060,7 @@ public static class WebUiEndpointExtensions
             Directory.Move(oldDir, newDir);
 
             // If the entity.json Namespace equals the old folder name (doubled-key pattern, e.g. Accounts/Accounts),
-            // clear it so the routing key after rename is simply newName instead of "Accounts/newName".
+            // clear it so the routing key after rename is simply newName instead of "Accounts/newName"
             var actualName = newName;
             try
             {
@@ -961,6 +1081,7 @@ public static class WebUiEndpointExtensions
             var epType = TypeStringToEndpointType(type);
             if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
 
+            Audit(context, "rename", "endpoint", $"{type}/{name} -> {type}/{actualName}");
             return Results.Ok(new { ok = true, name = actualName });
         }).ExcludeFromDescription();
 
@@ -1021,12 +1142,14 @@ public static class WebUiEndpointExtensions
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
+            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(filePath!);
             await File.WriteAllTextAsync(filePath!, rawContent);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
             var epType = TypeStringToEndpointType(type);
             if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
 
+            Audit(context, "update", "endpoint", $"{type}/{name}", null, backupPath);
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
 
@@ -1062,11 +1185,12 @@ public static class WebUiEndpointExtensions
             var epType = TypeStringToEndpointType(type);
             if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
 
+            Audit(context, "create", "endpoint", $"{type}/{name}");
             return Results.Json(new { ok = true, name }, statusCode: 201);
         }).ExcludeFromDescription();
 
         // DELETE /ui/api/endpoints/{type}/{**name} , remove an endpoint
-        app.MapDelete("/ui/api/endpoints/{type}/{**name}", (string type, string name) =>
+        app.MapDelete("/ui/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
@@ -1078,6 +1202,7 @@ public static class WebUiEndpointExtensions
             if (typeNorm == "webhook")
                 return Results.Json(new { error = "Webhook endpoint cannot be deleted (shared entity.json)" }, statusCode: 400);
 
+            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(filePath!);
             var dir = Path.GetDirectoryName(filePath!);
             if (dir != null && Directory.Exists(dir))
                 Directory.Delete(dir, true);
@@ -1087,11 +1212,12 @@ public static class WebUiEndpointExtensions
             var epType = TypeStringToEndpointType(type);
             if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
 
+            Audit(context, "delete", "endpoint", $"{type}/{name}", null, backupPath);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        // Receive and log client-side JS errors for production visibility.
-        // Exempt from auth (sendBeacon fires from any page state); rate-limited by the IP limiter.
+        // Receive and log client-side JS errors for production visibility
+        // Exempt from auth (sendBeacon fires from any page state); rate-limited by the IP limiter
         app.MapPost("/ui/api/client-error", async (HttpContext context) =>
         {
             try
@@ -1271,8 +1397,8 @@ public static class WebUiEndpointExtensions
             return (null, "Invalid path");
 
         // Fallback: if path doesn't exist and name is namespaced (e.g. NS/Name), retry with just the
-        // leaf folder — handles the doubled-key case where Namespace == folder name (e.g. Production/Production → Production/)
-        // and the explicit-namespace case (e.g. Catalog/Products → Products/).
+        // leaf folder; handles the doubled-key case where Namespace == folder name (e.g. Production/Production → Production/)
+        // and the explicit-namespace case (e.g. Catalog/Products → Products/)
         if (!isFixed && !File.Exists(filePath) && name.Contains('/'))
         {
             var leafName     = name.Split('/')[^1];

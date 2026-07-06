@@ -20,10 +20,7 @@ using System.Text;
 
 namespace PortwayApi.Tests.Base;
 
-/// <summary>
-/// xUnit collection that serializes all integration tests sharing WebApplicationFactory.
-/// Without this, parallel factory creation races on SQLite file access and the MCP HTTP transport.
-/// </summary>
+/// <summary>xUnit collection that serializes all integration tests sharing WebApplicationFactory. Without this, parallel factory creation races on SQLite file access and the MCP HTTP transport</summary>
 [CollectionDefinition("Integration")]
 public class IntegrationTestCollection { }
 
@@ -42,7 +39,7 @@ public class ApiTestBase : IDisposable
     // Instead of mocking EnvironmentSettings, we'll create a test implementation
     protected readonly TestEnvironmentSettings _testEnvironmentSettings;
 
-    // Unique per-instance SQLite paths so parallel test runs don't race on the same file.
+    // Unique per-instance SQLite paths so parallel test runs don't race on the same file
     private readonly string _authDbPath;
     private readonly string _mcpDbPath;
 
@@ -106,9 +103,7 @@ public class ApiTestBase : IDisposable
             {
                 builder.ConfigureAppConfiguration(config =>
                 {
-                    // Use per-instance SQLite paths and disable the MCP HTTP server in tests.
-                    // The MCP HTTP transport registers a hosted service that conflicts when multiple
-                    // WebApplicationFactory instances start in parallel.
+                    // Use per-instance SQLite paths and disable the MCP HTTP server in tests; The MCP HTTP transport registers a hosted service that conflicts when multiple; WebApplicationFactory instances start in parallel
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["Mcp:Enabled"] = "false"
@@ -117,7 +112,7 @@ public class ApiTestBase : IDisposable
 
                 builder.ConfigureTestServices(services =>
                 {
-                    // Isolate SQLite databases per test instance to prevent file-lock races.
+                    // Isolate SQLite databases per test instance to prevent file-lock races
                     services.AddDbContext<PortwayApi.Auth.AuthDbContext>(opts =>
                         opts.UseSqlite($"Data Source={_authDbPath}"),
                         ServiceLifetime.Scoped, ServiceLifetime.Scoped);
