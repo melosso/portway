@@ -1,10 +1,8 @@
 # Exact Synergy Enterprise Integration
 
-Portway provides selective integration with Exact Synergy Enterprise through proxy endpoints, enabling controlled access to specific Synergy data and services. While Synergy Enterprise has a native REST API, Portway is particularly useful when you need to expose only specific database sections or when Synergy is deployed behind a firewall within your internal network.
+While Synergy Enterprise ships a native REST API, you may not want to expose all of it. Portway shines when you need only specific database sections available, or when Synergy sits behind a firewall on your internal network. Proxy endpoints give you that selective, controlled access.
 
-:::warning
-When deploying in IIS with on-premise Synergy, the Application Pool Identity must be a domain user with Synergy permissions. On-premise Synergy uses Windows/NTLM authentication.
-:::
+> **Note:** On-premise Synergy uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Synergy permissions gives Portway the access it needs.
 
 ## Overview
 
@@ -18,7 +16,7 @@ Synergy Enterprise uses standard HTTP authentication and doesn't require special
 
 ### Environment Settings
 
-Each environment must be properly configured in the settings:
+Each environment needs to be configured in its settings:
 
 ```json
 // environments/Synergy/settings.json

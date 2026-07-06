@@ -260,7 +260,7 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 
 ### Namespace Naming Rules
 
-Namespaces must follow these naming conventions:
+Namespace names follow these conventions:
 
 - **Start with a letter** (A-Z, a-z)
 - **Contain only** letters, numbers, and underscores

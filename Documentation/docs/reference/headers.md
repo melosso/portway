@@ -1,12 +1,12 @@
 # HTTP Headers
 
-Portway uses HTTP headers for authentication, content negotiation, request tracking, and service configuration. This reference guide covers all supported headers for requests and responses.
+Headers carry a surprising amount of Portway's conversation with your clients: authentication, content negotiation, request tracking, and service configuration all travel there. This page collects every header Portway reads or writes, so you have one place to look things up.
 
 ## Required Headers
 
 ### Authentication Header
 
-All API requests must include authentication:
+Every API request needs to include authentication:
 
 ```http
 Authorization: Bearer your_token_here

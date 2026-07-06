@@ -2,7 +2,9 @@
 
 > Token properties, scope patterns, and the authentication flow for Portway API requests.
 
-All API requests require a bearer token:
+Every request you send to Portway carries a bearer token, and everything else in the authentication story builds on that. This page covers how tokens are structured, what their scopes and environment restrictions mean, and how a request makes its way through the authentication flow.
+
+A token travels in the standard Authorization header:
 
 ```http
 Authorization: Bearer your_token_here

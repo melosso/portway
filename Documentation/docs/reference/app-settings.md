@@ -1,6 +1,6 @@
 # Application Settings
 
-Application settings control the core behavior of Portway, including logging, security, rate limiting, and service configuration. These settings are defined in `appsettings.json` and can be overridden for different environments.
+When you want to shape how Portway behaves at its core (logging, security, rate limiting, and service wiring), `appsettings.json` is where you'll spend your time. This page walks through each section, explains what it controls, and shows how you can override values per deployment without touching the base file.
 
 ## Configuration Files
 
@@ -395,7 +395,7 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 
 ## Telemetry
 
-Controls OpenTelemetry export over OTLP (gRPC). Disabled by default — no collector connection is attempted unless `Enabled` is `true`.
+Controls OpenTelemetry export over OTLP (gRPC). Disabled by default; no collector connection is attempted unless `Enabled` is `true`.
 
 | Field | Required | Type | Description |
 |---|---|---|---|

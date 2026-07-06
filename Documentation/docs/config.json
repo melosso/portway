@@ -1,0 +1,314 @@
+{
+  "title": "Portway",
+  "description": "A lightweight API gateway for Windows environments",
+  "lang": "en",
+  "brand": "Portway",
+  "favicon": "🔌",
+  "lastUpdated": true,
+  "footer": "Released under [GNU AGPL (3.0)](LICENSE) · Copyright © 2026 Melosso.com",
+  "editLink": {
+    "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
+    "text": "Edit this page on GitHub"
+  },
+  "head": [],
+  "topNav": [
+    {
+      "text": "Home",
+      "link": "/"
+    },
+    {
+      "text": "Guide",
+      "link": "/guide/"
+    },
+    {
+      "text": "Reference",
+      "link": "/reference/"
+    },
+    {
+      "text": "More",
+      "items": [
+        {
+          "text": "Download",
+          "link": "https://github.com/melosso/portway/releases/"
+        },
+        {
+          "text": "Demo page",
+          "link": "https://portway-demo.melosso.com/"
+        }
+      ]
+    }
+  ],
+  "sidebar": {
+    "/guide/": [
+      {
+        "title": "Introduction",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "What is Portway?",
+            "path": "guide/"
+          },
+          {
+            "title": "Getting Started",
+            "path": "guide/getting-started"
+          },
+          {
+            "title": "Structure",
+            "path": "guide/routing"
+          },
+          {
+            "title": "Deploying",
+            "path": "guide/deployment"
+          }
+        ]
+      },
+      {
+        "title": "Endpoints",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "SQL",
+            "path": "guide/endpoints-sql"
+          },
+          {
+            "title": "Proxy",
+            "path": "guide/endpoints-proxy"
+          },
+          {
+            "title": "Static",
+            "path": "guide/endpoints-static"
+          },
+          {
+            "title": "Composite",
+            "path": "guide/endpoints-composite"
+          },
+          {
+            "title": "File System",
+            "path": "guide/endpoints-file"
+          },
+          {
+            "title": "Webhook",
+            "path": "guide/endpoints-webhook"
+          }
+        ]
+      },
+      {
+        "title": "Configuration",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Environments",
+            "path": "guide/environments"
+          },
+          {
+            "title": "Access Tokens",
+            "path": "guide/tokens"
+          },
+          {
+            "title": "Security",
+            "path": "guide/security"
+          },
+          {
+            "title": "Rate Limiting",
+            "path": "guide/rate-limiting"
+          },
+          {
+            "title": "Versioning",
+            "path": "guide/versioning"
+          },
+          {
+            "title": "Licensing",
+            "path": "guide/licensing"
+          }
+        ]
+      },
+      {
+        "title": "MCP",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "MCP Server",
+            "path": "guide/mcp"
+          },
+          {
+            "title": "Chat",
+            "path": "guide/mcp-chat"
+          }
+        ]
+      },
+      {
+        "title": "Operations",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Monitoring",
+            "path": "guide/monitoring"
+          },
+          {
+            "title": "OpenTelemetry",
+            "path": "guide/opentelemetry"
+          },
+          {
+            "title": "Troubleshooting",
+            "path": "guide/troubleshooting"
+          },
+          {
+            "title": "Upgrading",
+            "path": "guide/upgrading"
+          }
+        ]
+      },
+      {
+        "title": "Contributing",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Bugs",
+            "path": "https://github.com/melosso/portway/issues"
+          },
+          {
+            "title": "Suggestions",
+            "path": "https://github.com/melosso/portway/issues/"
+          }
+        ]
+      },
+      {
+        "title": "Coding & API Reference",
+        "path": "reference/"
+      }
+    ],
+    "/reference/": [
+      {
+        "title": "API Reference",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Overview",
+            "path": "reference/"
+          },
+          {
+            "title": "API Authentication",
+            "path": "reference/api-auth"
+          },
+          {
+            "title": "HTTP Headers",
+            "path": "reference/headers"
+          }
+        ]
+      },
+      {
+        "title": "Configuration",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Entity",
+            "path": "reference/entity-config"
+          },
+          {
+            "title": "Environment",
+            "path": "reference/environment-settings"
+          },
+          {
+            "title": "SQL Providers",
+            "path": "reference/sql-providers"
+          },
+          {
+            "title": "Authentication",
+            "path": "reference/environment-auth"
+          },
+          {
+            "title": "Namespaces",
+            "path": "reference/namespaces"
+          }
+        ]
+      },
+      {
+        "title": "Settings",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Application",
+            "path": "reference/app-settings"
+          },
+          {
+            "title": "OpenAPI",
+            "path": "reference/openapi-settings"
+          }
+        ]
+      },
+      {
+        "title": "Query Language",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "OData Syntax",
+            "path": "reference/odata"
+          },
+          {
+            "title": "Filter Operations",
+            "path": "reference/filters"
+          },
+          {
+            "title": "Sorting & Pagination",
+            "path": "reference/sorting-pagination"
+          }
+        ]
+      },
+      {
+        "title": "Tools & Options",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Token Generator",
+            "path": "reference/token-generator"
+          },
+          {
+            "title": "Secret Encryption",
+            "path": "reference/secrets"
+          },
+          {
+            "title": "Health Checks",
+            "path": "reference/health-checks"
+          },
+          {
+            "title": "Caching",
+            "path": "reference/caching"
+          },
+          {
+            "title": "Logging",
+            "path": "reference/logging"
+          },
+          {
+            "title": "Audit",
+            "path": "reference/audit"
+          }
+        ]
+      },
+      {
+        "title": "Integrations",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Exact Globe+",
+            "path": "reference/integrations/exact-globe"
+          },
+          {
+            "title": "Exact Synergy",
+            "path": "reference/integrations/exact-synergy"
+          },
+          {
+            "title": "NAV Business Central",
+            "path": "reference/integrations/nav-business-central"
+          }
+        ]
+      }
+    ]
+  },
+  "socialLinks": [
+    {
+      "icon": "github",
+      "url": "https://github.com/melosso/portway",
+      "title": "GitHub"
+    }
+  ]
+}

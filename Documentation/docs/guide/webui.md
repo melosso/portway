@@ -22,7 +22,7 @@ environment:
 Once configured, access the UI at `http://localhost:8080/ui` and log in with the admin key.
 
 ::: warning Admin key handling
-Set the admin key via the `WebUi__AdminApiKey` environment variable or Azure Key Vault, never in `appsettings.json` — that file is not covered by Portway's automatic encryption. The shipped placeholder value is rejected in production (authentication stays disabled until replaced). Use a random key of 32+ characters; see [Security → Web UI admin key](/guide/security#web-ui-admin-key).
+Set the admin key via the `WebUi__AdminApiKey` environment variable or Azure Key Vault, never in `appsettings.json`, because that file is not covered by Portway's automatic encryption. The shipped placeholder value is rejected in production (authentication stays disabled until replaced). Use a random key of 32+ characters; see [Security → Web UI admin key](/guide/security#web-ui-admin-key).
 :::
 
 ## Pages

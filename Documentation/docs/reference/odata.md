@@ -1,6 +1,6 @@
 # OData Syntax
 
-Portway's SQL endpoints support OData query syntax for flexible data retrieval. This reference covers the supported OData query options and their syntax.
+OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely. This reference covers each supported query option and its syntax.
 
 ## Query Options Overview
 
@@ -233,7 +233,7 @@ $filter=AssignedTo ne null
 ## Special Characters and Encoding
 
 ### URL Encoding
-Special characters must be URL encoded:
+Special characters need to be URL encoded:
 
 | Character | Encoded | Example |
 |-----------|---------|---------|

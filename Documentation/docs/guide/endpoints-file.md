@@ -36,7 +36,7 @@ Create `endpoints/File/{EndpointName}/entity.json`:
 |---|---|
 | `{env}` | Environment name |
 | `{year}` | Current year (`2025`) |
-| `{month}` | Current month (`01`–`12`) |
+| `{month}` | Current month (`01` to `12`) |
 | `{date}` | Current date (`2025-01-15`) |
 
 ```json

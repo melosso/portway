@@ -1,14 +1,12 @@
 # Microsoft Dynamics NAV/Business Central Integration
 
-Portway provides integration with Microsoft Dynamics NAV/Business Central on-premise installations through proxy endpoints, enabling external applications to interact with NAV/BC data and services. This integration relies on environment-specific headers to route requests to the correct database instance.
+Portway connects to on-premise Microsoft Dynamics NAV/Business Central through proxy endpoints, so your external applications can reach NAV/BC data and services without talking to the ERP directly. Environment-specific headers route each request to the correct database instance.
 
-:::warning
-When deploying in IIS, the Application Pool Identity must be a domain user with NAV/BC OData permissions. On-premise NAV/BC uses Windows/NTLM authentication.
-:::
+> **Note:** On-premise NAV/BC uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with NAV/BC OData permissions gives Portway the access it needs.
 
 ## Overview
 
-The Microsoft Dynamics NAV/Business Central integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request must include proper environment configuration to ensure data is accessed from the correct company database and server instance.
+The Microsoft Dynamics NAV/Business Central integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request carries its environment configuration, which is how data ends up coming from the correct company database and server instance.
 
 ## Configuration Requirements
 
@@ -26,7 +24,7 @@ These headers are configured in the environment settings and automatically injec
 
 ### Environment Settings
 
-Each environment must be properly configured in the settings:
+Each environment needs to be configured in its settings:
 
 ```json
 // environments/PROD/settings.json
@@ -94,7 +92,7 @@ Composite endpoints handle complex operations that require multiple related tran
 The proxy endpoints handle NAV/BC authentication transparently:
 
 1. Requests are forwarded with Windows authentication or NAV/BC service authentication
-2. The service account running Portway must have NAV/BC database access
+2. The service account running Portway needs NAV/BC database access
 3. Individual API tokens control access to specific OData services
 
 ## Error Handling
@@ -119,5 +117,5 @@ NAV/BC specific error responses are preserved and forwarded:
 ## Notes
 
 - NAV/BC OData field names use underscores (e.g., `Sell_to_Customer_No`), use these exact names in `$filter` and `$select` expressions.
-- The `Company` header value must be URL-encoded (e.g., `CRONUS%20International%20Ltd.`).
+- The `Company` header value needs to be URL-encoded (e.g., `CRONUS%20International%20Ltd.`).
 - Test against a NAV/BC test company before connecting to production.

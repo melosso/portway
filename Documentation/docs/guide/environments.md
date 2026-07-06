@@ -41,7 +41,7 @@ Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any ident
 | `AllowedEnvironments` | Yes | Names of environments accessible via the API. Requests to any name not listed return 404 |
 
 :::warning
-Adding a folder under `environments/` is not enough, the name must also appear in `AllowedEnvironments` before Portway will route requests to it.
+Adding a folder under `environments/` is not enough, the name also needs to appear in `AllowedEnvironments` before Portway will route requests to it.
 :::
 
 ### Environment settings
@@ -243,7 +243,7 @@ Headers defined in `settings.json` are added to all forwarded requests for that 
 
 ## Network access policy
 
-`environments/network-access-policy.json` controls which upstream hosts Proxy endpoints are allowed to call. This is Portway's SSRF (Server-Side Request Forgery) protection layer — it prevents endpoints from being used to reach internal infrastructure that callers shouldn't have access to.
+`environments/network-access-policy.json` controls which upstream hosts Proxy endpoints are allowed to call. This is Portway's SSRF (Server-Side Request Forgery) protection layer; it prevents endpoints from being used to reach internal infrastructure that callers shouldn't have access to.
 
 The file is **created automatically** on first startup with safe defaults. Edit it to match your deployment.
 
@@ -274,11 +274,11 @@ The file is **created automatically** on first startup with safe defaults. Edit 
 **Auto-discovery:** if `allowedHosts` contains only the two default localhost entries, Portway automatically discovers and adds the local machine's hostname and network interface addresses at startup. Add explicit entries to override this behaviour.
 
 **Wildcard patterns:** use `*` to match any single label, not across dots.
-- `*.corp` — matches `api.corp`, `db.corp`
-- `api.*.corp` — matches `api.v1.corp`, `api.v2.corp`
+- `*.corp`: matches `api.corp`, `db.corp`
+- `api.*.corp`: matches `api.v1.corp`, `api.v2.corp`
 
 :::warning
-Set `allowedHosts` explicitly in production. The auto-discovery fallback is intended for development only — it adds all local IP addresses, which may be broader than desired.
+Set `allowedHosts` explicitly in production. The auto-discovery fallback is intended for development only; it adds all local IP addresses, which may be broader than desired.
 :::
 
 :::tip
@@ -289,13 +289,13 @@ The `ASPNETCORE_DOMAIN` environment variable adds an additional hostname to the 
 
 **"Environment not in the allowed list"**: Add the environment name to `AllowedEnvironments` in `environments/settings.json`.
 
-**"Settings.json not found for environment"**: Create `environments/{name}/settings.json`. The folder must exist and contain the file.
+**"Settings.json not found for environment"**: Create `environments/{name}/settings.json`. The folder needs to exist and contain the file.
 
 **"Access denied to environment"**: The token does not have permission for this environment. Update token permissions in the [Web UI](./webui) under **Tokens**.
 
 **Proxy request blocked (host not in allowed list)**: The target host is not listed in `environments/network-access-policy.json`. Add it to `allowedHosts` and restart.
 
-**Proxy request blocked (IP in blocked range)**: The target hostname resolves to a private IP that is in `blockedIpRanges`. Either add a specific exception to `allowedHosts` or remove the conflicting range — but only if the target is genuinely safe to reach.
+**Proxy request blocked (IP in blocked range)**: The target hostname resolves to a private IP that is in `blockedIpRanges`. Either add a specific exception to `allowedHosts` or remove the conflicting range, but only if the target is genuinely safe to reach.
 
 **Unexpected SQL syntax errors**: The connection string may not contain enough signal for provider auto-detection. Check the [SQL Providers reference](/reference/sql-providers) for required keywords.
 
