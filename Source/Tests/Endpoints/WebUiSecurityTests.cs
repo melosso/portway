@@ -151,6 +151,23 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task ComposedPage_ContainsShellViewAndTitle()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Get, "/ui/settings", authCookie);
+        var resp = await client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+        var html = await resp.Content.ReadAsStringAsync();
+        Assert.Contains("<title>Settings · Portway</title>", html);
+        Assert.Contains("toastContainer", html);          // shell
+        Assert.Contains("id=\"securityBody\"", html);     // view fragment
+        Assert.EndsWith("</html>", html.TrimEnd());       // footer
+    }
+
+    [Fact]
     public async Task SettingsEndpoint_ReportsSecurityPosture()
     {
         var client = CreateClient();

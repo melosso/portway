@@ -1,13 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Settings · Portway</title>
-  <link href="css/inter.css" rel="stylesheet">
-  <link href="css/site.css" rel="stylesheet" />
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <script src="js/components/toast.js"></script>
   <script src="js/components/dialog.js"></script>
   <script src="js/components/alert-dialog.js"></script>
   <script src="js/components/promobar.js"></script>
@@ -86,8 +76,37 @@
     padding: 0.1em 0.3em;
   }
 
+  /* Beacon-style settings layout: left sub-nav, one section visible at a time */
+  .settings-layout { display: flex; gap: 3rem; align-items: flex-start; }
+  .settings-subnav { width: 200px; flex-shrink: 0; position: sticky; top: 1rem; }
+  .settings-subnav-nav { display: flex; flex-direction: column; gap: 2px; }
+  .settings-subnav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .settings-subnav-item:hover { background: hsl(var(--muted)); }
+  .settings-subnav-item:focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: -2px; }
+  .settings-subnav-item.active { background: hsl(var(--muted)); }
+  .settings-subnav-item svg { color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+  .settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  @media (max-width: 900px) {
+    .settings-layout { flex-direction: column; gap: 1rem; }
+    .settings-subnav { width: 100%; position: static; }
+    .settings-subnav-nav { flex-direction: row; flex-wrap: wrap; }
+  }
+
   /* Section groupings */
-  .settings-section { display: flex; flex-direction: column; gap: 0.75rem; }
+  .settings-section { display: none; flex-direction: column; gap: 0.75rem; }
+  .settings-section.active { display: flex; }
   .settings-section-label {
     font-size: 0.68rem;
     font-weight: 600;
@@ -129,11 +148,6 @@
     border-top: 0px solid hsl(var(--border));
   }
   </style>
-</head>
-<body>
-
-<aside></aside>
-<div class="toast-container" id="toastContainer"></div>
 
 <main>
   <div class="page-header">
@@ -150,8 +164,33 @@
 
   <div class="page-body">
 
+    <div class="settings-layout">
+
+    <aside class="settings-subnav select-none">
+      <nav class="settings-subnav-nav">
+        <a href="#security" class="settings-subnav-item active" data-section="security" onclick="showSettingsSection('security');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security
+        </a>
+        <a href="#performance" class="settings-subnav-item" data-section="performance" onclick="showSettingsSection('performance');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Performance
+        </a>
+        <a href="#storage" class="settings-subnav-item" data-section="storage" onclick="showSettingsSection('storage');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Storage &amp; Logs
+        </a>
+        <a href="#integrations" class="settings-subnav-item" data-section="integrations" onclick="showSettingsSection('integrations');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Integrations
+        </a>
+      </nav>
+    </aside>
+
+    <div class="settings-content">
+
     <!-- Section: Security & Change Controls -->
-    <div class="settings-section">
+    <div class="settings-section active" id="section-security">
       <div class="settings-section-label">Security &amp; Change Controls</div>
       <div class="settings-grid-2">
 
@@ -177,7 +216,7 @@
     </div>
 
     <!-- Section: Performance -->
-    <div class="settings-section">
+    <div class="settings-section" id="section-performance">
       <div class="settings-section-label">Performance</div>
       <div class="settings-grid-3">
 
@@ -212,7 +251,7 @@
     </div>
 
     <!-- Section: Storage & Observability -->
-    <div class="settings-section">
+    <div class="settings-section" id="section-storage">
       <div class="settings-section-label">Storage &amp; Observability</div>
       <div class="settings-grid-3">
 
@@ -243,7 +282,7 @@
     </div>
 
     <!-- Section: Integrations -->
-    <div class="settings-section">
+    <div class="settings-section" id="section-integrations">
       <div class="settings-section-label">Integrations</div>
       <div class="settings-grid-2">
 
@@ -267,6 +306,10 @@
         </div>
 
       </div>
+    </div>
+
+    </div>
+
     </div>
 
   </div>
@@ -656,6 +699,18 @@ async function clearAiConfig() {
 }
 
 loadAiConfig();
+
+// Beacon-style section navigation; one section visible at a time, deep-linkable via hash
+function showSettingsSection(key) {
+  document.querySelectorAll('.settings-section').forEach(el =>
+    el.classList.toggle('active', el.id === 'section-' + key));
+  document.querySelectorAll('.settings-subnav-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.section === key));
+  if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
+}
+
+(function initSettingsSection() {
+  const key = (location.hash || '').replace('#', '');
+  if (key && document.getElementById('section-' + key)) showSettingsSection(key);
+})();
 </script>
-</body>
-</html>
