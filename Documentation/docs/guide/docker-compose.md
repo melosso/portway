@@ -1,3 +1,8 @@
+---
+title: Docker Installation
+description: "This guide explains how to deploy Portway using Docker Compose for quick development, testing and/or Home Lab environments"
+---
+
 # Docker Installation
 
 This guide explains how to deploy Portway using Docker Compose for quick development, testing and/or Home Lab environments. Before you begin, ensure you have [Docker](https://www.docker.com/get-started) installed and running.
@@ -209,8 +214,6 @@ If you're behind a corporate proxy:
 1. Update the proxy settings in the environment variables
 2. Ensure your proxy credentials are correct
 3. Contact your network administrator for proxy details
-
-
 
 ## Managing tokens
 

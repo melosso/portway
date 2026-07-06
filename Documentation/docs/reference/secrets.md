@@ -1,3 +1,8 @@
+---
+title: Secrets encryption
+description: "Portway automatically encrypts sensitive data in your environment settings files on startup"
+---
+
 # Secrets encryption
 
 Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.

@@ -1,10 +1,13 @@
+---
+title: Security
+description: "Token authentication, scope control, network restrictions, and encryption for a Portway deployment"
+---
+
 # Security
 
-> Token authentication, scope control, network restrictions, and encryption for a Portway deployment.
+Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go. This page walks through each layer in turn, from authentication down to a pre-deployment checklist you can run before going live.
 
-:::warning
-Configure Portway in accordance with your organisation's security policies before exposing it to production traffic. The defaults are sensible starting points, not a finished security posture.
-:::
+> **Note:** The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
 
 ## Authentication
 

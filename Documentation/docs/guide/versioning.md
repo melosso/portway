@@ -1,3 +1,8 @@
+---
+title: Versioning
+description: "Versioning in Portway allows you to manage multiple versions of your API gateway, enabling transitions between versions and ensuring backward compatibility"
+---
+
 # Versioning
 
 Versioning in Portway allows you to manage multiple versions of your API gateway, enabling transitions between versions and ensuring backward compatibility. This guide explains how to set up versioning using IIS (Internet Information Services) and environment variables.
@@ -81,7 +86,6 @@ In the root folder of your IIS site, add the following files (e.g. `C:\path\to\y
 	  </rules>
 	</rewrite>
 
-
     <!-- Serve index.html as the default document -->
     <defaultDocument>
       <files>
@@ -145,7 +149,6 @@ In each version folder, update the `PathBase` property in the `appsettings.json`
 > Make sure to set-up different instance names for the various data sources that you may be working with (Redis, SQL Server), to make sure you can differentiate traffic from the (now) multiple versions.
 
 This ensures that the application correctly identifies the base path for each version.
-
 
 ### 4. Create Seperate Application Pools
 

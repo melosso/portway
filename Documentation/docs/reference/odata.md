@@ -1,3 +1,8 @@
+---
+title: OData Syntax
+description: "OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely"
+---
+
 # OData Syntax
 
 OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely. This reference covers each supported query option and its syntax.

@@ -1,6 +1,9 @@
-# OpenAPI Documentation Settings
+---
+title: OpenAPI Documentation Settings
+description: "Configuration reference for OpenAPI schema generation and the Scalar documentation UI"
+---
 
-> Configuration reference for OpenAPI schema generation and the Scalar documentation UI.
+# OpenAPI Documentation Settings
 
 Your endpoint definitions do double duty: besides routing requests, they feed the OpenAPI documentation that Scalar serves at `/docs`. SQL endpoints even get schema discovery for free, with column names and types read from the database at startup. Other endpoint types describe themselves through the `Documentation` block in `entity.json`. This page covers the settings you can adjust.
 

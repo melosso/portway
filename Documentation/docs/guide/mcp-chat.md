@@ -1,6 +1,9 @@
-# MCP Chat
+---
+title: MCP Chat
+description: "Ask questions and trigger operations against your Portway endpoints through a conversational AI interface"
+---
 
-> Ask questions and trigger operations against your Portway endpoints through a conversational AI interface.
+# MCP Chat
 
 MCP Chat connects an AI model to the Portway MCP tool registry. When you send a message, the model decides which tools to call, executes them through Portway's normal API layer (authentication, rate limiting, and environment scoping all apply), and incorporates the results into its response. The chat interface streams responses and shows each tool call as a collapsible panel.
 

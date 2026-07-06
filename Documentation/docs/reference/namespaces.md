@@ -1,6 +1,9 @@
-# Namespaces
+---
+title: Namespaces
+description: "Directory-based grouping for SQL, Proxy, Static, and Composite endpoints that exposes them under /{namespace}/{endpoint} URL paths"
+---
 
-> Directory-based grouping for SQL, Proxy, Static, and Composite endpoints that exposes them under `/{namespace}/{endpoint}` URL paths.
+# Namespaces
 
 Namespaces let you organise related endpoints into logical groups, for example, `CRM`, `Finance`, or `Account`, using the directory structure under each endpoint type folder. The folder name becomes the namespace segment in the request URL.
 
@@ -320,7 +323,6 @@ In the generated OpenAPI specification:
   ]
 }
 ```
-
 
 ## Migration from Non-Namespaced
 

@@ -1,6 +1,9 @@
-# API Reference
+---
+title: API Reference
+description: "Routes, endpoint types, authentication, response codes, and query parameters for Portway API requests"
+---
 
-> Routes, endpoint types, authentication, response codes, and query parameters for Portway API requests.
+# API Reference
 
 This is the map of Portway's API surface: routes, endpoint types, response codes, and the query parameters available to you. If you're integrating a client, this page and its siblings are where you'll find the contract.
 

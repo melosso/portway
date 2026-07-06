@@ -1,3 +1,8 @@
+---
+title: Integrations
+description: "Portway tends to live next to other systems, and these guides walk you through the ones we see most often"
+---
+
 # Integrations
 
 Portway tends to live next to other systems, and these guides walk you through the ones we see most often. Each covers the environment setup, the endpoint definitions, and the quirks worth knowing in advance.

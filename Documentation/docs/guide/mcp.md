@@ -1,6 +1,9 @@
-# MCP Server
+---
+title: MCP Server
+description: "Expose Portway endpoints as Model Context Protocol tools that AI agents can discover and call"
+---
 
-> Expose Portway endpoints as Model Context Protocol tools that AI agents can discover and call.
+# MCP Server
 
 Portway implements an MCP server over HTTP. When you flag an endpoint with `Exposed: true`, it appears in the MCP tool registry and becomes callable by any MCP-compatible client: Claude Desktop, VS Code Copilot, custom agents, or the built-in [Chat UI](/guide/mcp-chat). Portway's own authentication and environment scoping apply to every tool call.
 

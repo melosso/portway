@@ -1,6 +1,9 @@
-# OpenTelemetry
+---
+title: OpenTelemetry
+description: "Connect Portway to any OTLP-compatible collector for traces, metrics, and distributed request visibility"
+---
 
-> Connect Portway to any OTLP-compatible collector for traces, metrics, and distributed request visibility.
+# OpenTelemetry
 
 Portway exports telemetry over OTLP (gRPC) by default. Set an endpoint and your collector receives data immediately, no code changes or restarts required beyond configuration. The service name reported to your backend is `Portway.Api`.
 

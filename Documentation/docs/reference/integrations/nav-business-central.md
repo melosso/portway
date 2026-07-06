@@ -1,3 +1,8 @@
+---
+title: Microsoft Dynamics NAV/Business Central Integration
+description: "Portway connects to on-premise Microsoft Dynamics NAV/Business Central through proxy endpoints, so your external applications can reach NAV/BC data and services without talking to the ERP directly"
+---
+
 # Microsoft Dynamics NAV/Business Central Integration
 
 Portway connects to on-premise Microsoft Dynamics NAV/Business Central through proxy endpoints, so your external applications can reach NAV/BC data and services without talking to the ERP directly. Environment-specific headers route each request to the correct database instance.

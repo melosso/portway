@@ -1,8 +1,13 @@
+---
+title: Folder structure and routing
+description: "Each subfolder under endpoints/ corresponds to an endpoint type"
+---
+
 # Folder structure and routing
 
 Each subfolder under `endpoints/` corresponds to an endpoint type. The folder name within each type becomes the endpoint name in the API URL. Portway watches these folders and reloads configuration when files change.
 
-Meaning by default, Portway derives API routes from the `endpoints/` folder hierarchy, meaning no route registration is required. This can be overridden if using the `Namespace` and `DisplayName` attributes, which is an advanced configuration.
+In practice this means Portway derives your API routes from the `endpoints/` folder hierarchy, so there is no route registration step at all. When you want different naming, the `Namespace` and `DisplayName` attributes let you override the derived route; that's an advanced setup covered further down.
 
 ## Directory layout
 

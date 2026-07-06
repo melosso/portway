@@ -1,8 +1,11 @@
+---
+title: Access Token Management
+description: "Create, scope, rotate, and revoke the Bearer tokens that control API access"
+---
+
 # Access Token Management
 
-> Create, scope, rotate, and revoke the Bearer tokens that control API access.
-
-Every request to Portway requires a Bearer token. Tokens are managed in the Web UI under **Access Tokens** (`/ui`) and are never stored in plaintext, only a PBKDF2-SHA256 hash is persisted.
+Every request to Portway carries a Bearer token, so token management is a place you'll visit regularly. Tokens live in the Web UI under **Access Tokens** (`/ui`) and are never stored in plaintext; only a PBKDF2-SHA256 hash is persisted.
 
 :::warning
 Save the token value shown at creation time. It is only displayed once and cannot be retrieved later.
