@@ -79,6 +79,7 @@ All GET requests support OData query parameters:
 | `$orderby` | Sort results | `$orderby=ProductName desc` |
 | `$top` | Limit row count | `$top=50` |
 | `$skip` | Skip rows (for pagination) | `$skip=20` |
+| `$count` | Add the total matching count as `totalCount` | `$count=true` |
 
 Filter operators: `eq`, `ne`, `gt`, `lt`, `ge`, `le`, `and`, `or`, `contains()`
 

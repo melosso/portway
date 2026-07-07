@@ -162,21 +162,31 @@ When Portway acts as a reverse proxy:
 
 ## Caching Headers
 
-### Request Cache Control
+### ETag revalidation
+
+Every successful `GET` response under `/api` carries a strong `ETag`, computed from the response body:
 
 ```http
-Cache-Control: no-cache
-If-None-Match: "etag-value"
-If-Modified-Since: Wed, 21 Oct 2023 07:28:00 GMT
+HTTP/1.1 200 OK
+ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4..."
 ```
+
+When your client sends that value back in `If-None-Match` and the data hasn't changed, Portway answers with `304 Not Modified` and an empty body, saving the transfer entirely:
+
+```http
+GET /api/prod/Products?$top=10
+If-None-Match: "33a64df551425fcc55e4d42a148795d9f25f89d4..."
+
+HTTP/1.1 304 Not Modified
+```
+
+Because the tag is derived from the actual response content, any change in the underlying data produces a new tag and a fresh `200` with the full body. Polling clients benefit the most: a poll loop that sends `If-None-Match` costs almost nothing while nothing changes.
 
 ### Response Cache Control
 
 ```http
 Cache-Control: private, max-age=300
 ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
-Last-Modified: Wed, 21 Oct 2023 07:28:00 GMT
-Expires: Wed, 21 Oct 2023 07:33:00 GMT
 ```
 
 ### Cache Control Directives
