@@ -3,18 +3,13 @@ using Serilog;
 
 namespace PortwayApi.Api;
 
-/// <summary>
-/// Controller to provide OpenAPI metadata only, not for actual request handling
-/// </summary>
+/// <summary>Controller to provide OpenAPI metadata only, not for actual request handling</summary>
 [ApiController]
 [Route("api/openapi-docs")]
 [ApiExplorerSettings(IgnoreApi = true)]
 public class OpenApiDocsController : ControllerBase
 {
-    /// <summary>
-    /// This controller doesn't actually handle requests, but only exists to provide properly formatted OpenAPI metadata for the API explorer.
-    /// The real implementation is in EndpointController, but this helps populate the API structure.
-    /// </summary>
+    /// <summary>This controller doesn't actually handle requests, but only exists to provide properly formatted OpenAPI metadata for the API explorer. The real implementation is in EndpointController, but this helps populate the API structure</summary>
     [HttpGet]
     [Route("info")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]

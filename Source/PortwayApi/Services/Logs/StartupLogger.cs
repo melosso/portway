@@ -4,9 +4,7 @@ using System.Text;
 
 namespace PortwayApi.Services;
 
-/// <summary>
-/// Background service that logs application startup information
-/// </summary>
+/// <summary>Background service that logs application startup information</summary>
 public class StartupLogger : IHostedService
 {
     private readonly IHostApplicationLifetime _appLifetime;

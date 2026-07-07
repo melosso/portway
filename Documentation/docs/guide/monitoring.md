@@ -1,8 +1,11 @@
+---
+title: Monitoring
+description: "Health checks, traffic logging, and connection pool visibility for a running Portway instance"
+---
+
 # Monitoring
 
-> Health checks, traffic logging, and connection pool visibility for a running Portway instance.
-
-Portway exposes health check endpoints for uptime probes and optionally logs per-request traffic to file or SQLite. SQL connection pool statistics are emitted to the application log on a scheduled interval.
+Knowing your gateway is healthy shouldn't require guesswork. Portway exposes health check endpoints for your uptime probes, optionally logs per-request traffic to file or SQLite, and emits SQL connection pool statistics to the application log on a schedule.
 
 ## Health checks
 

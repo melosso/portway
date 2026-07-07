@@ -5,10 +5,7 @@ namespace PortwayApi.Helpers;
 
 public static class JsonValueComparer
 {
-    /// <summary>
-    /// Compares a JSON field value against a target string using OData filter operators.
-    /// Supported operations: eq, ne, gt, lt, ge, le.
-    /// </summary>
+    /// <summary>Compares a JSON field value against a target string using OData filter operators. Supported operations: eq, ne, gt, lt, ge, le</summary>
     public static bool Compare(JsonElement fieldValue, string targetValue, string operation)
     {
         try

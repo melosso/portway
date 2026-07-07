@@ -35,9 +35,7 @@ public static class DirectoryHelper
             Directory.CreateDirectory(staticDir);
     }
     
-    /// <summary>
-    /// Creates namespace directory structure for an endpoint type
-    /// </summary>
+    /// <summary>Creates namespace directory structure for an endpoint type</summary>
     private static void CreateNamespaceStructure(string endpointType, string[] namespaces)
     {
         var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", endpointType);
@@ -49,10 +47,7 @@ public static class DirectoryHelper
         }
     }
     
-    /// <summary>
-    /// Extracts namespace and endpoint name from a file path
-    /// Returns (namespace, endpointName) where namespace can be null for non-namespaced endpoints
-    /// </summary>
+    /// <summary>Extracts namespace and endpoint name from a file path Returns (namespace, endpointName) where namespace can be null for non-namespaced endpoints</summary>
     public static (string? Namespace, string EndpointName) ExtractNamespaceAndEndpoint(string filePath, string baseDirectory)
     {
         var relativePath = Path.GetRelativePath(baseDirectory, Path.GetDirectoryName(filePath)!);
@@ -70,8 +65,7 @@ public static class DirectoryHelper
         }
         else if (parts.Length > 2)
         {
-            // Handle deeper nesting: endpoints/SQL/CRM/Sales/Accounts/entity.json
-            // Use all but last part as namespace, last as endpoint
+            // Handle deeper nesting: endpoints/SQL/CRM/Sales/Accounts/entity.json; Use all but last part as namespace, last as endpoint
             var ns = string.Join("/", parts.Take(parts.Length - 1));
             return (ns, parts.Last());
         }
@@ -80,9 +74,7 @@ public static class DirectoryHelper
         return (null, "Unknown");
     }
     
-    /// <summary>
-    /// Validates namespace naming conventions
-    /// </summary>
+    /// <summary>Validates namespace naming conventions</summary>
     public static List<string> ValidateNamespaceName(string namespaceName)
     {
         var errors = new List<string>();
@@ -114,9 +106,7 @@ public static class DirectoryHelper
         return errors;
     }
     
-    /// <summary>
-    /// Creates a new namespace directory structure for an endpoint type
-    /// </summary>
+    /// <summary>Creates a new namespace directory structure for an endpoint type</summary>
     public static bool CreateNamespaceDirectory(string endpointType, string namespaceName)
     {
         var validationErrors = ValidateNamespaceName(namespaceName);

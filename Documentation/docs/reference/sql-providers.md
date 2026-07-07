@@ -7,7 +7,7 @@ keywords: [SQL Server, PostgreSQL, MySQL, SQLite, connection string, provider de
 
 # SQL Providers
 
-Portway supports four relational database backends. The active provider for each environment is determined automatically from the connection string in `settings.json`, no extra configuration key is required.
+Portway speaks to four relational database backends, and you rarely have to tell it which one you're using: the active provider for each environment is detected automatically from the connection string in `settings.json`, with no extra configuration key required. This page covers each provider, the detection logic, and what to keep in mind per backend.
 
 ## Supported Providers
 

@@ -1,6 +1,9 @@
-# MCP Chat
+---
+title: MCP Chat
+description: "Ask questions and trigger operations against your Portway endpoints through a conversational AI interface"
+---
 
-> Ask questions and trigger operations against your Portway endpoints through a conversational AI interface.
+# MCP Chat
 
 MCP Chat connects an AI model to the Portway MCP tool registry. When you send a message, the model decides which tools to call, executes them through Portway's normal API layer (authentication, rate limiting, and environment scoping all apply), and incorporates the results into its response. The chat interface streams responses and shows each tool call as a collapsible panel.
 
@@ -25,8 +28,8 @@ Provider, model, and API key are **not** stored in `appsettings.json`. They are 
 
 On first visit to the Chat UI (`/ui/mcp/chat`), a setup wizard opens automatically. It walks through two steps:
 
-1. **Choose a provider** — select Anthropic, OpenAI, Gemini, or Mistral and pick a model.
-2. **Enter credentials** — paste the API key. Portway encrypts it using the machine-bound PWENC key before writing it to `mcp.db`. The plaintext key is never stored.
+1. **Choose a provider**: select Anthropic, OpenAI, Gemini, or Mistral and pick a model.
+2. **Enter credentials**: paste the API key. Portway encrypts it using the machine-bound PWENC key before writing it to `mcp.db`. The plaintext key is never stored.
 
 The wizard can be re-opened at any time from the Chat page if credentials need to change.
 
@@ -78,7 +81,7 @@ Uses the Google Generative Language API (`streamGenerateContent`) with function 
 "Model": "codestral-latest"
 ```
 
-Uses the Mistral Chat Completions API. Codestral models (`codestral-*`) route to `codestral.mistral.ai`; all other Mistral models route to `api.mistral.ai`. Codestral requires a Codestral-specific API key — general Mistral API keys do not work against the Codestral endpoint.
+Uses the Mistral Chat Completions API. Codestral models (`codestral-*`) route to `codestral.mistral.ai`; all other Mistral models route to `api.mistral.ai`. Codestral requires a Codestral-specific API key; general Mistral API keys do not work against the Codestral endpoint.
 
 ## How tool calls work
 

@@ -1,27 +1,23 @@
 namespace PortwayApi.Classes.Providers;
 
-/// <summary>
-/// Detects the SQL provider type from a connection string without allocating
-/// any intermediate strings. All comparisons use OrdinalIgnoreCase.
+/// <summary>Detects the SQL provider type from a connection string without allocating</summary>
+/// <remarks>
+/// any intermediate strings. All comparisons use OrdinalIgnoreCase
 ///
 /// Detection priority (first match wins):
-///   1. SQL Server positive keywords, unambiguous, checked before everything else
-///   2. SQL Server OLE DB provider names  (Provider=SQLOLEDB / MSOLEDBSQL / SQLNCLI*)
-///   3. SQL Server ODBC driver names      (Driver={SQL Server} / {SQL Native Client})
-///   4. PostgreSQL URI prefix             (postgres:// / postgresql://)
-///   5. MySQL URI prefix                  (mysql://)
-///   6. Npgsql key-value                  (Host= without Server= / Data Source=)
-///   7. MySQL-unambiguous keywords        (AllowUserVariables= / SslMode=)
-///   8. SQLite Data Source value          (*.db / *.sqlite / :memory:)
-///   9. Default → SQL Server
-/// </summary>
+/// 1. SQL Server positive keywords, unambiguous, checked before everything else
+/// 2. SQL Server OLE DB provider names  (Provider=SQLOLEDB / MSOLEDBSQL / SQLNCLI*)
+/// 3. SQL Server ODBC driver names      (Driver={SQL Server} / {SQL Native Client})
+/// 4. PostgreSQL URI prefix             (postgres:// / postgresql://)
+/// 5. MySQL URI prefix                  (mysql://)
+/// 6. Npgsql key-value                  (Host= without Server= / Data Source=)
+/// 7. MySQL-unambiguous keywords        (AllowUserVariables= / SslMode=)
+/// 8. SQLite Data Source value          (*.db / *.sqlite / :memory:)
+/// 9. Default → SQL Server
+/// </remarks>
 public static class SqlProviderDetector
 {
-    /// <summary>
-    /// Keywords that appear exclusively in SQL Server connection strings.
-    /// Any single hit is conclusive, SQL Server doesn't share these with other providers.
-    /// Source: https://www.connectionstrings.com/sql-server/
-    /// </summary>
+    /// <summary>Keywords that appear exclusively in SQL Server connection strings. Any single hit is conclusive, SQL Server doesn't share these with other providers. Source: https://www.connectionstrings.com/sql-server/</summary>
     private static readonly string[] SqlServerKeywords =
     [
         // SqlClient encryption / auth
@@ -83,8 +79,7 @@ public static class SqlProviderDetector
                 return SqlProviderType.SqlServer;
         }
 
-        // 2. SQL Server OLE DB providers
-        // Matches SQLOLEDB, MSOLEDBSQL, SQLNCLI / SQLNCLI10 / SQLNCLI11, SQLXMLOLEDB
+        // 2. SQL Server OLE DB providers; Matches SQLOLEDB, MSOLEDBSQL, SQLNCLI / SQLNCLI10 / SQLNCLI11, SQLXMLOLEDB
         if (connectionString.Contains("provider=sqloledb",   StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("provider=msoledbsql", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("provider=sqlncli",    StringComparison.OrdinalIgnoreCase)
@@ -111,15 +106,15 @@ public static class SqlProviderDetector
             return SqlProviderType.MySql;
 
         // 6. Npgsql key-value: Host=
-        // SQL Server uses Server= or Data Source=, never Host= for the server address.
+        // SQL Server uses Server= or Data Source=, never Host= for the server address
         if (connectionString.Contains("Host=",        StringComparison.OrdinalIgnoreCase)
          && !connectionString.Contains("Server=",     StringComparison.OrdinalIgnoreCase)
          && !connectionString.Contains("Data Source=",StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.PostgreSql;
 
         // 7. MySQL-unambiguous keywords
-        // AllowUserVariables and AllowPublicKeyRetrieval are MySqlConnector-only.
-        // SslMode= is used by MySqlConnector (not Npgsql, which uses SSL*= keywords).
+        // AllowUserVariables and AllowPublicKeyRetrieval are MySqlConnector-only
+        // SslMode= is used by MySqlConnector (not Npgsql, which uses SSL*= keywords)
         if (connectionString.Contains("AllowUserVariables=",    StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("AllowPublicKeyRetrieval=",StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("SslMode=",               StringComparison.OrdinalIgnoreCase))
@@ -134,14 +129,11 @@ public static class SqlProviderDetector
 
         // 9. Default
         // Ambiguous strings (e.g. Server=x;Database=y;User Id=z;Password=w) fall through
-        // to SQL Server, the safest default since Portway originated as a SQL Server gateway.
+        // to SQL Server, the safest default since Portway originated as a SQL Server gateway
         return SqlProviderType.SqlServer;
     }
 
-    /// <summary>
-    /// Span-based, zero-allocation parser that checks whether the "Data Source" value
-    /// in a connection string points to an SQLite file or in-memory database.
-    /// </summary>
+    /// <summary>Span-based, zero-allocation parser that checks whether the "Data Source" value in a connection string points to an SQLite file or in-memory database</summary>
     private static bool IsSqliteDataSource(ReadOnlySpan<char> connectionString)
     {
         var remaining = connectionString;

@@ -1,14 +1,17 @@
+---
+title: Exact Globe+ Integration
+description: "Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of"
+---
+
 # Exact Globe+ Integration
 
-Portway provides integration with the API-layer of Exact Globe+ (previously known as Globe Next) through proxy endpoints, enabling external applications to interact with Globe+ data and services. This integration relies on environment-specific headers to route requests to the correct database instance.
+Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of. Through proxy endpoints, your external applications talk to Globe+ data and services, while environment-specific headers route each request to the correct database instance.
 
-:::warning
-When deploying in IIS, the Application Pool Identity must be a domain user with Globe+ permissions. Globe+ uses Windows/NTLM authentication, so the service account running Portway must have access.
-:::
+> **Note:** Globe+ uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Globe+ permissions gives Portway the access it needs.
 
 ## Overview
 
-The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request must include proper environment configuration to ensure data is accessed from the correct database and server.
+The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request carries its environment configuration, which is how data ends up coming from the correct database and server.
 
 ## Configuration Requirements
 
@@ -25,7 +28,7 @@ These headers are configured in the environment settings and automatically injec
 
 ### Environment Settings
 
-Each environment must be properly configured in the settings:
+Each environment needs to be configured in its settings:
 
 ```json
 // environments/500/settings.json
@@ -117,7 +120,7 @@ This composite endpoint:
 The proxy endpoints handle Globe+ authentication transparently:
 
 1. Requests are forwarded with Windows authentication
-2. The service account running Portway must have Globe+ access
+2. The service account running Portway needs Globe+ access
 3. Individual API tokens control access to specific endpoints
 
 ## Error Handling

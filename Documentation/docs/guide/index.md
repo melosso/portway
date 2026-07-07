@@ -9,7 +9,7 @@ keywords: [API Gateway, Windows, SQL Server, REST, OData]
 
 > Practical context for setting up Portway, what it is, how it works, and where to start.
 
-Portway is an **API gateway built for Windows environments**. It sits in front of your SQL databases, internal services, and static content, exposing them through a consistent REST interface. If you're running a mix of legacy systems and newer services, Portway surfaces them without rewriting anything.
+Portway is an API gateway. It sits in front of your SQL databases, internal services, and static content, exposing them through a consistent REST interface. If you're running a mix of legacy systems and newer services, Portway surfaces them without rewriting anything.
 
 ## Quick links
 

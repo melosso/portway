@@ -1,10 +1,13 @@
+---
+title: Security
+description: "Token authentication, scope control, network restrictions, and encryption for a Portway deployment"
+---
+
 # Security
 
-> Token authentication, scope control, network restrictions, and encryption for a Portway deployment.
+Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go. This page walks through each layer in turn, from authentication down to a pre-deployment checklist you can run before going live.
 
-:::warning
-Configure Portway in accordance with your organisation's security policies before exposing it to production traffic. The defaults are sensible starting points, not a finished security posture.
-:::
+> **Note:** The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
 
 ## Authentication
 
@@ -113,6 +116,39 @@ Portway adds these headers to all responses automatically:
 
 Portway encrypts plaintext secrets in `settings.json` files on next startup. Connection strings and authentication values written in plaintext become `PWENC:...` format. The original value is no longer stored.
 
+Automatic encryption applies only to per-environment `settings.json` files and the MCP configuration store (`mcp.db`). It does **not** rewrite `appsettings.json`, so values placed there (such as `WebUi:AdminApiKey`) stay in plaintext.
+
+### Web UI admin key
+
+Never store a real admin key in `appsettings.json`. The shipped file intentionally contains the placeholder `INSECURE-CHANGE-ME-admin-api-key`, which Portway rejects in production: Web UI authentication is disabled and an error is logged until a real key is provided.
+
+Supply the key through the environment instead:
+
+```yaml
+# docker-compose.yml
+environment:
+  - WebUi__AdminApiKey=${PORTWAY_ADMIN_KEY}
+```
+
+```powershell
+# Windows Server / IIS
+[Environment]::SetEnvironmentVariable("WebUi__AdminApiKey", "<your-key>", "Machine")
+```
+
+Generate a strong key (32+ characters; shorter keys log a warning at startup):
+
+```bash
+openssl rand -base64 48
+```
+
+```powershell
+[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+With Azure Key Vault configured (`KEYVAULT_URI`), the key can also be served from the vault through the standard ASP.NET Core configuration pipeline. Environment variables and Key Vault values override anything in `appsettings.json`.
+
+The Settings page in the Web UI shows the current key strength (not set / placeholder / weak / strong) under **Security Posture**.
+
 ### Azure Key Vault
 
 Store connection strings and server names in Azure Key Vault instead of `settings.json`:
@@ -183,6 +219,7 @@ See [Monitoring](./monitoring) for traffic logging configuration details.
 
 - [ ] HTTPS binding configured in IIS
 - [ ] IIS Application Pool using minimum-privilege identity
+- [ ] `WebUi__AdminApiKey` set via environment variable or Key Vault (32+ random characters, never in `appsettings.json`)
 - [ ] Azure Key Vault configured (if applicable)
 - [ ] Initial token file removed from disk
 - [ ] Tokens created with specific scopes and environments

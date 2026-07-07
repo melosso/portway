@@ -4,13 +4,13 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-**Portway** is a fast, lightweight **API gateway** optimized for Windows Server that adapts to your infrastructure with secure, high-performance routing. It unifies multiple endpoint types (SQL, Proxy, Static, Webhooks) with built-in MCP-server, OData-support, and native environment isolation, token-based authentication (with Azure Key Vault), and granular rate limiting.
+Portway is a lightweight **API gateway** for Windows and Linux containers that simplifies secure service routing and infrastructure management. It unifies SQL, proxy, and webhook endpoints with built-in documentation, MCP and OData support, Azure Key Vault authentication, and granular rate limiting.
 
-Portway bridges internal services with external partners, making it ideal for modernizing legacy systems and unlocking SQL data without rewrites. It ensures reliability through caching, rate limiting, extensive logging & tracing capabilities and automatic documentation. With simple filesystem-based configuration, you gain complete control over service orchestration and data exposure.
+Portway modernizes legacy systems by exposing SQL data as APIs without requiring code changes. It ensures reliability through caching, full audit logging, and automated documentation. Its file-based configuration provides simple, centralized control over your service orchestration and data access.
 
 > 📜 <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">Documentation</a>   |   🐋 <a href="https://portway-docs.melosso.com/guide/docker-compose.html" target="_blank" rel="noopener noreferrer">Docker Compose</a>   |   ✨ <a href="https://portway-demo.melosso.com/" target="_blank" rel="noopener noreferrer">Live demo</a>
 
-A quick example to give you an idea of what this is all about:
+A quick example to give you an idea:
 
 ![Screenshot of Portway](.github/images/example.webp)
 

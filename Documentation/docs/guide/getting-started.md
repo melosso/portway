@@ -1,8 +1,11 @@
+---
+title: Getting Started
+description: "Install Portway and make your first authenticated API call"
+---
+
 # Getting Started
 
-> Install Portway and make your first authenticated API call.
-
-Portway runs as an ASP.NET Core application behind IIS on Windows Server, or as a Docker container on any platform. This guide covers both paths through to a working endpoint.
+Portway is an ASP.NET Core application. On Windows Server it is typically hosted behind IIS, though running it standalone on Kestrel works just as well; on any other platform it runs as a Docker container. This guide covers the IIS and Docker paths through to a working endpoint.
 
 ## Prerequisites
 
@@ -18,11 +21,13 @@ Download the **Hosting Bundle**, not the x64 runtime installer. The Hosting Bund
 **Docker:**
 - Docker Engine with Compose support
 
-A SQL database is only required if you plan to use SQL endpoints.
+A SQL database only comes into play if you plan to use SQL endpoints, so it's fine to skip that for now.
 
 ## Installation
 
 ### Docker Compose
+
+The quickest way to a running gateway is a small compose file:
 
 ```yaml
 services:
@@ -54,11 +59,7 @@ Portway starts on port 8080. Adjust the port mapping and volume paths to suit yo
 
 ### Windows Server (IIS)
 
-:::info
-This guide assumes working knowledge of IIS and your data sources. The steps cover the required configuration, some details will depend on your existing environment.
-:::
-
-Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
+The steps assume working knowledge of IIS and your data sources; the essentials are all covered here, though some details will depend on your existing environment. Start by downloading the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
 
 **1. Install the .NET 10 Hosting Bundle:**
 
@@ -96,7 +97,7 @@ Portway is now accessible at the configured binding address.
 
 ### Retrieve your access token
 
-On first run, Portway generates a token file at:
+Portway greets you on first run by generating an access token and writing it to:
 
 ```
 tokens/YOUR_SERVER_NAME.txt
@@ -121,7 +122,7 @@ This file contains a plaintext secret. Remove it from disk immediately after rec
 
 ### Configure environments
 
-Create `environments/settings.json` to define which environments are active:
+Environments are how Portway keeps your targets separate (think `dev`, `test`, `prod`). Start by declaring which ones are active in `environments/settings.json`:
 
 ```json
 {
@@ -159,7 +160,7 @@ Example `environments/prod/settings.json`:
 
 ### Create your first endpoint
 
-Create `endpoints/SQL/Products/entity.json`:
+With an environment in place, you're ready for the fun part. An endpoint is just a JSON file. Create `endpoints/SQL/Products/entity.json`:
 
 ```json
 {
@@ -176,11 +177,11 @@ Create `endpoints/SQL/Products/entity.json`:
 }
 ```
 
-Portway detects the new file and loads it without restarting.
+Portway notices the new file and loads it without a restart. Saving the file is the deployment.
 
 ### Test your API
 
-Open the OpenAPI UI at `https://localhost/docs`, authorize with your Bearer token, and make your first call:
+Time to see it respond. Open the OpenAPI UI at `https://localhost/docs`, authorize with your Bearer token, and make your first call:
 
 ```http
 GET /api/prod/Products
@@ -188,6 +189,8 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ## Next steps
+
+From here, a few natural directions:
 
 - [Configure SQL Endpoints](./endpoints-sql)
 - [Set up Proxy Endpoints](./endpoints-proxy)

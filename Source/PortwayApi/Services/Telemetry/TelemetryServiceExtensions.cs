@@ -25,7 +25,7 @@ public static class TelemetryServiceExtensions
 
         // Always register PortwayMetrics so that CacheManager and other services can depend on
         // it unconditionally. When telemetry is disabled, the Meter counters are no-ops
-        // (nothing is listening), but DI graph validation succeeds in all configurations.
+        // (nothing is listening), but DI graph validation succeeds in all configurations
         services.AddSingleton<PortwayMetrics>();
 
         if (!options.Enabled)

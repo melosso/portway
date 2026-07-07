@@ -1,8 +1,11 @@
+---
+title: Rate Limiting
+description: "Control request volume per IP address and per authentication token"
+---
+
 # Rate Limiting
 
-> Control request volume per IP address and per authentication token.
-
-Rate limiting is enabled by default. Portway applies two independent limits in sequence: an IP-based check on all traffic, then a token-based check on authenticated requests. Both use a sliding window token bucket algorithm, each client gets a bucket that refills at a constant rate and depletes by one per request.
+Rate limiting protects your backends from both accidents and abuse, and it is enabled by default. Portway applies two independent limits in sequence: an IP-based check on all traffic, then a token-based check on authenticated requests. Both use a sliding window token bucket algorithm, each client gets a bucket that refills at a constant rate and depletes by one per request.
 
 ```mermaid
 graph TD

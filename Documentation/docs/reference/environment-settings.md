@@ -1,6 +1,11 @@
+---
+title: Environment Settings
+description: "Environments are how Portway keeps your development, testing, and production worlds from bleeding into each other"
+---
+
 # Environment Settings
 
-Environment settings control database connections, allowed environments, and environment-specific configurations. These settings ensure proper isolation between development, testing, and production environments.
+Environments are how Portway keeps your development, testing, and production worlds from bleeding into each other. Their settings control database connections, the allowed environment list, and per-environment behavior. This page covers the files involved and what you can configure in each.
 
 ## File Structure
 

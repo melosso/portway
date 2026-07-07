@@ -7,14 +7,10 @@ using Serilog;
 
 namespace PortwayApi.Middleware;
 
-/// <summary>
-/// Extension methods for configuring static files and routing middleware
-/// </summary>
+/// <summary>Extension methods for configuring static files and routing middleware</summary>
 public static class StaticFilesMiddlewareExtensions
 {
-    /// <summary>
-    /// Configures static file serving with proper caching and security headers
-    /// </summary>
+    /// <summary>Configures static file serving with proper caching and security headers</summary>
     public static IApplicationBuilder UseStaticFilesWithFallback(this IApplicationBuilder app, IWebHostEnvironment env)
     {
         // Configure static files with proper caching headers
@@ -61,9 +57,7 @@ public static class StaticFilesMiddlewareExtensions
         return app;
     }
 
-    /// <summary>
-    /// Configures default document options for serving index files
-    /// </summary>
+    /// <summary>Configures default document options for serving index files</summary>
     public static IApplicationBuilder UseDefaultFilesWithOptions(this IApplicationBuilder app)
     {
         var defaultFilesOptions = new DefaultFilesOptions();
@@ -76,9 +70,7 @@ public static class StaticFilesMiddlewareExtensions
         return app;
     }
 
-    /// <summary>
-    /// Simple static files configuration without any custom logic (useful for testing)
-    /// </summary>
+    /// <summary>Simple static files configuration without any custom logic (useful for testing)</summary>
     public static IApplicationBuilder UseBasicStaticFiles(this IApplicationBuilder app)
     {
         app.UseStaticFiles();
@@ -86,10 +78,7 @@ public static class StaticFilesMiddlewareExtensions
         return app;
     }
 
-    /// <summary>
-    /// Configuration for static files with just caching headers (no redirect logic)
-    /// Uses ContentTypeHelper for consistent content types and cache durations
-    /// </summary>
+    /// <summary>Configuration for static files with just caching headers (no redirect logic) Uses ContentTypeHelper for consistent content types and cache durations</summary>
     public static IApplicationBuilder UseStaticFilesWithCaching(this IApplicationBuilder app)
     {
         var staticFileOptions = new StaticFileOptions

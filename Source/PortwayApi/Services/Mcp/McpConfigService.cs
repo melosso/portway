@@ -4,26 +4,26 @@ using Microsoft.EntityFrameworkCore;
 using PortwayApi.Helpers;
 using Serilog;
 
-/// <summary>
-/// Singleton service that reads and writes MCP chat configuration from the encrypted SQLite store (mcp.db).
+/// <summary>Singleton service that reads and writes MCP chat configuration from the encrypted SQLite store (mcp.db)</summary>
+/// <remarks>
 /// Sensitive values (ApiKey, InternalApiToken) are encrypted at rest using
-/// <see cref="SettingsEncryptionHelper"/> before being persisted.
+/// <see cref="SettingsEncryptionHelper"/> before being persisted
 ///
-/// An in-memory cache avoids hitting the DB on every chat turn.
-/// The cache is invalidated whenever <see cref="SaveConfigAsync"/> is called.
-/// </summary>
+/// An in-memory cache avoids hitting the DB on every chat turn
+/// The cache is invalidated whenever <see cref="SaveConfigAsync"/> is called
+/// </remarks>
 public sealed class McpConfigService
 {
-    // Keys whose values are encrypted with PWENC before storage.
+    // Keys whose values are encrypted with PWENC before storage
     private static readonly HashSet<string> _sensitiveKeys =
         new(StringComparer.OrdinalIgnoreCase) { "ApiKey", "InternalApiToken" };
 
-    // Environment variable that overrides the DB api key — checked first.
+    // Environment variable that overrides the DB api key; checked first
     private const string ApiKeyEnvVar = "PORTWAY_CHAT_API_KEY";
 
     private readonly IDbContextFactory<McpConfigDbContext> _dbFactory;
 
-    // Volatile reference — assignment is atomic on 64-bit .NET, safe without locks for this pattern.
+    // Volatile reference; assignment is atomic on 64-bit .NET, safe without locks for this pattern
     private volatile ConfigSnapshot? _cache;
 
     public McpConfigService(IDbContextFactory<McpConfigDbContext> dbFactory)
@@ -31,9 +31,7 @@ public sealed class McpConfigService
         _dbFactory = dbFactory;
     }
 
-    /// <summary>
-    /// Immutable snapshot of the current MCP chat configuration.
-    /// </summary>
+    /// <summary>Immutable snapshot of the current MCP chat configuration</summary>
     public sealed record ConfigSnapshot(
         string  Provider,
         string  Model,
@@ -46,11 +44,7 @@ public sealed class McpConfigService
                                  && !string.IsNullOrWhiteSpace(ApiKey);
     }
 
-    /// <summary>
-    /// Returns the current config snapshot, reading from DB on the first call
-    /// and after each <see cref="SaveConfigAsync"/> call.
-    /// The environment variable <c>PORTWAY_CHAT_API_KEY</c> overrides the stored API key.
-    /// </summary>
+    /// <summary>Returns the current config snapshot, reading from DB on the first call and after each <see cref="SaveConfigAsync"/> call. The environment variable <c>PORTWAY_CHAT_API_KEY</c> overrides the stored API key</summary>
     public async Task<ConfigSnapshot> GetConfigAsync(CancellationToken ct = default)
     {
         if (_cache is { } cached) return cached;
@@ -71,7 +65,7 @@ public sealed class McpConfigService
             return string.Empty;
         }
 
-        // Environment variable takes priority over DB for the API key.
+        // Environment variable takes priority over DB for the API key
         var apiKey = Environment.GetEnvironmentVariable(ApiKeyEnvVar);
         if (string.IsNullOrWhiteSpace(apiKey))
             apiKey = Resolve("ApiKey").NullIfEmpty();
@@ -89,11 +83,7 @@ public sealed class McpConfigService
         return snapshot;
     }
 
-    /// <summary>
-    /// Persists chat configuration to the DB.
-    /// <para>ApiKey and InternalApiToken are encrypted before storage.</para>
-    /// Pass <c>null</c> to leave a value unchanged.
-    /// </summary>
+    /// <summary>Persists chat configuration to the DB. <para>ApiKey and InternalApiToken are encrypted before storage.</para> Pass <c>null</c> to leave a value unchanged</summary>
     public async Task SaveConfigAsync(
         string? provider,
         string? model,
@@ -125,10 +115,7 @@ public sealed class McpConfigService
         Log.Information("McpConfig: configuration saved");
     }
 
-    /// <summary>
-    /// Removes all stored configuration entries and invalidates the cache.
-    /// Chat will be unavailable until <see cref="SaveConfigAsync"/> is called again.
-    /// </summary>
+    /// <summary>Removes all stored configuration entries and invalidates the cache. Chat will be unavailable until <see cref="SaveConfigAsync"/> is called again</summary>
     public async Task ClearConfigAsync(CancellationToken ct = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);

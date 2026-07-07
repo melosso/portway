@@ -9,9 +9,7 @@ using Serilog;
 
 namespace PortwayApi.Services.Health;
 
-/// <summary>
-/// Health check for Redis cache
-/// </summary>
+/// <summary>Health check for Redis cache</summary>
 public class RedisCacheHealthCheck : IHealthCheck
 {
     private readonly Caching.CacheOptions _options;
@@ -42,9 +40,7 @@ public class RedisCacheHealthCheck : IHealthCheck
         }
     }
 
-    /// <summary>
-    /// Performs the health check
-    /// </summary>
+    /// <summary>Performs the health check</summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         // If Redis is not configured, return healthy

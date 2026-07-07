@@ -8,9 +8,9 @@ public static class McpChatEndpoints
 {
     public static IEndpointRouteBuilder MapMcpChatEndpoints(this IEndpointRouteBuilder app)
     {
-        // List available MCP tools as JSON (used by chat.html and explorer.html on load).
-        // missingMetadata: tool keys whose SQL field metadata could not be resolved — used by the UI
-        // to surface a health warning without additional server-side log flooding.
+        // List available MCP tools as JSON (used by chat.html and explorer.html on load)
+        // missingMetadata: tool keys whose SQL field metadata could not be resolved; used by the UI
+        // to surface a health warning without additional server-side log flooding
         app.MapGet("/ui/api/mcp/tools", (McpChatService chat) =>
         {
             var tools   = chat.GetToolDefinitions();
@@ -23,7 +23,7 @@ public static class McpChatEndpoints
             });
         }).ExcludeFromDescription();
 
-        // Streaming chat endpoint — SSE
+        // Streaming chat endpoint; SSE
         app.MapPost("/ui/api/mcp/chat", async (HttpContext context, McpChatService chat) =>
         {
             JsonNode? body = null;
@@ -59,15 +59,14 @@ public static class McpChatEndpoints
             }
             history.Add(new Services.Mcp.ChatMessage("user", message));
 
-            // Resolve base URL for internal tool calls.
+            // Resolve base URL for internal tool calls
             // Use localhost bound to the server's actual port rather than the untrusted Host header
-            // to prevent Host-header injection from redirecting tool calls to an arbitrary host (SSRF).
+            // to prevent Host-header injection from redirecting tool calls to an arbitrary host (SSRF)
             var req = context.Request;
             var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
             var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
 
-            // Forward the caller's Bearer token so tool execution can authenticate against the API.
-            // Falls back to Chat:InternalApiToken in appsettings if no token is present on this request.
+            // Forward the caller's Bearer token so tool execution can authenticate against the API; Falls back to Chat:InternalApiToken in appsettings if no token is present on this request
             var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
             string? bearerToken = null;
             if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
@@ -86,8 +85,8 @@ public static class McpChatEndpoints
             await chat.StreamAsync(history, environment, writer, baseUrl, bearerToken, locale, context.RequestAborted);
         }).ExcludeFromDescription();
 
-        // MCP health — exposes operational status without requiring full tool enumeration.
-        // Used by ops dashboards and monitoring tools to verify MCP is healthy.
+        // MCP health; exposes operational status without requiring full tool enumeration
+        // Used by ops dashboards and monitoring tools to verify MCP is healthy
         app.MapGet("/ui/api/mcp/health", (McpChatService chat) =>
         {
             var tools   = chat.GetToolDefinitions();

@@ -1,6 +1,11 @@
+---
+title: OData Syntax
+description: "OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely"
+---
+
 # OData Syntax
 
-Portway's SQL endpoints support OData query syntax for flexible data retrieval. This reference covers the supported OData query options and their syntax.
+OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely. This reference covers each supported query option and its syntax.
 
 ## Query Options Overview
 
@@ -11,6 +16,7 @@ Portway's SQL endpoints support OData query syntax for flexible data retrieval. 
 | `$orderby` | Sort results | `$orderby=Name desc` |
 | `$top` | Limit results | `$top=10` |
 | `$skip` | Skip results | `$skip=20` |
+| `$count` | Include the total matching count | `$count=true` |
 
 ## Basic Query Structure
 
@@ -171,6 +177,32 @@ GET /api/prod/Products?$top=25&$skip=50
 
 Always include `$orderby` when paginating to ensure consistent results across pages. Use the `NextLink` in the response for easy sequential navigation.
 
+## $count - Total Result Count
+
+When you're paginating, it helps to know how many rows match in total, not just how many came back on this page. Adding `$count=true` asks Portway to run an additional COUNT query with the same `$filter`, and the result arrives as a `totalCount` property in the response:
+
+```http
+GET /api/prod/Products?$filter=Price gt 100&$top=10&$count=true
+```
+
+```json
+{
+  "success": true,
+  "count": 10,
+  "totalCount": 342,
+  "value": [ "..." ]
+}
+```
+
+A few things worth knowing:
+
+- `count` is the number of items on this page; `totalCount` is the unpaged total that matches your filter
+- `$top`, `$skip`, `$select`, and `$orderby` have no effect on `totalCount`; only `$filter` shapes it
+- The extra COUNT query only runs when you ask for it, so requests without `$count` pay nothing
+- `totalCount` is omitted from the response entirely when `$count` is not requested
+
+Since the count is one more round-trip to your database, it's most useful on the first page of a listing; subsequent pages can usually reuse it.
+
 ## Combining Query Options
 
 Multiple query options can be combined in a single request:
@@ -233,7 +265,7 @@ $filter=AssignedTo ne null
 ## Special Characters and Encoding
 
 ### URL Encoding
-Special characters must be URL encoded:
+Special characters need to be URL encoded:
 
 | Character | Encoded | Example |
 |-----------|---------|---------|

@@ -1,0 +1,63 @@
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  line-height: 1.7;
+}
+
+a {
+  text-decoration: none;
+}
+
+code {
+  font-size: 0.875em;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    color-scheme: dark;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+}
+
+/* Portway brand accent; Bark's base theme defaults --accent to green tones
+   (#2e4a36 light / #6b8e74 dark) which theme.json's primaryColor does not cover */
+:root,
+[data-theme="light"] {
+  --accent: #3E63DD;
+  --accent-light: rgba(62, 99, 221, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --accent: #8CA3F5;
+    --accent-light: rgba(140, 163, 245, 0.16);
+  }
+}
+
+[data-theme="dark"] {
+  --accent: #8CA3F5;
+  --accent-light: rgba(140, 163, 245, 0.16);
+}

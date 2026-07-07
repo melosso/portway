@@ -5,18 +5,17 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Integration tests for the demo Composite endpoint: Financial/SalesInvoice.
-///
+/// <summary>Integration tests for the demo Composite endpoint: Financial/SalesInvoice</summary>
+/// <remarks>
 /// Config: endpoints/Proxy/Financial/SalesInvoice/entity.json
-///   - Type: Composite
-///   - Methods: ["POST"]
-///   - Namespace: Financial
-///   - CompositeConfig.Steps:
-///       1. CreateInvoiceLines (POST InvoiceLine array, TemplateTransformations: InvoiceID → $guid)
-///       2. CreateInvoiceHeader (POST InvoiceHeader, TemplateTransformations: InvoiceID → $prev.CreateInvoiceLines.0.d.InvoiceID)
-///   - AllowedEnvironments: ["500", "700"]
-/// </summary>
+/// - Type: Composite
+/// - Methods: ["POST"]
+/// - Namespace: Financial
+/// - CompositeConfig.Steps:
+/// 1. CreateInvoiceLines (POST InvoiceLine array, TemplateTransformations: InvoiceID → $guid)
+/// 2. CreateInvoiceHeader (POST InvoiceHeader, TemplateTransformations: InvoiceID → $prev.CreateInvoiceLines.0.d.InvoiceID)
+/// - AllowedEnvironments: ["500", "700"]
+/// </remarks>
 public class DemoCompositeEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";

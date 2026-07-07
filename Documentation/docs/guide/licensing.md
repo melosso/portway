@@ -1,3 +1,8 @@
+---
+title: Licensing
+description: "Portway is free, open-source software released under the GNU Affero General Public License (AGPL) v3"
+---
+
 # Licensing
 
 Portway is **free, open-source software** released under the **GNU Affero General Public License (AGPL) v3**. This license ensures that the software stays open and that improvements are shared with the community.

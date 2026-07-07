@@ -4,9 +4,7 @@ using PortwayApi.Services.Caching;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>
-/// Monitors configuration changes and handles cache invalidation
-/// </summary>
+/// <summary>Monitors configuration changes and handles cache invalidation</summary>
 public class ConfigurationReloadService : IHostedService, IDisposable
 {
     private readonly IOptionsMonitor<CacheOptions> _cacheOptionsMonitor;

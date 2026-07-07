@@ -1,6 +1,9 @@
 services:
-  docs:
-    image: ghcr.io/melosso/documentation:latest
+  portway_documentation:
+    image: ghcr.io/melosso/bark:latest
+    container_name: portway_documentation
     ports:
-      - "5173:80"
-    restart: unless-stopped
+      - "5991:8080"
+    volumes:
+      - ./docs:/app/docs
+      - ./wwwroot:/app/wwwroot

@@ -1,11 +1,14 @@
+---
+title: Composite Endpoints
+description: "Orchestrate multiple proxy endpoint calls into a single transaction, with data passing between steps"
+---
+
 # Composite Endpoints
 
-> Orchestrate multiple proxy endpoint calls into a single transaction, with data passing between steps.
-
-Composite endpoints chain existing proxy endpoints into a sequence. Each step calls a named proxy endpoint, receives its response, and can pass extracted values to subsequent steps. The caller sends one request and receives a combined result. Steps execute in order, if any step fails, execution stops.
+When one call needs to become several, composite endpoints chain existing proxy endpoints into a sequence. Each step calls a named proxy endpoint, receives its response, and can hand extracted values to the steps that follow. Your caller sends one request and receives one combined result; steps execute in order, and if any step fails, execution stops there.
 
 :::warning
-Composite endpoints do not provide automatic rollback. Steps that complete before a failure remain committed. Design your operations accordingly, idempotent steps and a clean-up procedure for partial failures are both worth implementing.
+Composite endpoints do not provide automatic rollback: steps that complete before a failure remain committed. It pays to design for this up front, with idempotent steps and a clean-up procedure for partial failures.
 :::
 
 :::info

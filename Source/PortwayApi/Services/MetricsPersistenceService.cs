@@ -4,10 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
-/// <summary>
-/// Background service that persists in-memory request metrics to SQLite and hydrates the
-/// in-memory buffer on startup so 7-day / 30-day chart periods survive restarts.
-/// </summary>
+/// <summary>Background service that persists in-memory request metrics to SQLite and hydrates the in-memory buffer on startup so 7-day / 30-day chart periods survive restarts</summary>
 public sealed class MetricsPersistenceService : BackgroundService
 {
     private readonly MetricsService _metrics;

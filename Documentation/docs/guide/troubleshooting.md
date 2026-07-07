@@ -1,3 +1,8 @@
+---
+title: Troubleshooting
+description: "This guide is designed for consultants, administrators, and technical support staff who need to diagnose and resolve issues with Portway gateway deployments"
+---
+
 # Troubleshooting
 
 This guide is designed for consultants, administrators, and technical support staff who need to diagnose and resolve issues with Portway gateway deployments. Rather than just listing fixes, this guide helps you understand the underlying causes of problems so you can more effectively support your users and prevent recurring issues.

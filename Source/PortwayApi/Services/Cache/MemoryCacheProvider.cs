@@ -8,9 +8,7 @@ using Serilog;
 
 namespace PortwayApi.Services.Caching;
 
-/// <summary>
-/// In-memory implementation of the cache provider
-/// </summary>
+/// <summary>In-memory implementation of the cache provider</summary>
 public class MemoryCacheProvider : ICacheProvider
 {
     private readonly IMemoryCache _cache;
@@ -30,19 +28,13 @@ public class MemoryCacheProvider : ICacheProvider
         _cache = new MemoryCache(memoryCacheOptions);
     }
 
-    /// <summary>
-    /// Gets the cache provider type
-    /// </summary>
+    /// <summary>Gets the cache provider type</summary>
     public string ProviderType => "Memory";
 
-    /// <summary>
-    /// Memory cache is always connected
-    /// </summary>
+    /// <summary>Memory cache is always connected</summary>
     public bool IsConnected => true;
 
-    /// <summary>
-    /// Gets a value from the cache
-    /// </summary>
+    /// <summary>Gets a value from the cache</summary>
     public Task<T?> GetAsync<T>(string key) where T : class
     {
         if (_cache.TryGetValue(key, out T? result))
@@ -55,9 +47,7 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.FromResult<T?>(null);
     }
 
-    /// <summary>
-    /// Sets a value in the cache
-    /// </summary>
+    /// <summary>Sets a value in the cache</summary>
     public Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class
     {
         // Set cache options with appropriate size
@@ -73,9 +63,7 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Removes an item from the cache
-    /// </summary>
+    /// <summary>Removes an item from the cache</summary>
     public Task RemoveAsync(string key)
     {
         _cache.Remove(key);
@@ -84,21 +72,16 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Checks if a cache key exists
-    /// </summary>
+    /// <summary>Checks if a cache key exists</summary>
     public Task<bool> ExistsAsync(string key)
     {
         return Task.FromResult(_cache.TryGetValue(key, out _));
     }
 
-    /// <summary>
-    /// Refreshes the expiration time for a cached item
-    /// </summary>
+    /// <summary>Refreshes the expiration time for a cached item</summary>
     public Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration)
     {
-        // Memory cache doesn't directly support changing expiration.
-        // We'd need to get the item and re-set it with new expiration.
+        // Memory cache doesn't directly support changing expiration; We'd need to get the item and re-set it with new expiration
         if (_cache.TryGetValue(key, out object? value))
         {
             var entryOptions = new MemoryCacheEntryOptions
@@ -117,9 +100,7 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.FromResult(false);
     }
 
-    /// <summary>
-    /// Acquires a distributed lock for the specified key
-    /// </summary>
+    /// <summary>Acquires a distributed lock for the specified key</summary>
     public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default)
     {
         string actualLockKey = $"lock:{lockKey}";
@@ -148,9 +129,7 @@ public class MemoryCacheProvider : ICacheProvider
         }
     }
 
-    /// <summary>
-    /// Private method to release a lock, called by the lock handle
-    /// </summary>
+    /// <summary>Private method to release a lock, called by the lock handle</summary>
     internal void ReleaseLock(string lockKey)
     {
         if (_locks.TryGetValue(lockKey, out var lockObj))
@@ -167,9 +146,7 @@ public class MemoryCacheProvider : ICacheProvider
         }
     }
 
-    /// <summary>
-    /// Memory-based lock handle implementation
-    /// </summary>
+    /// <summary>Memory-based lock handle implementation</summary>
     private class MemoryLockHandle : ILockHandle
     {
         private readonly MemoryCacheProvider _provider;

@@ -7,7 +7,7 @@ public static class PortwayTelemetry
     public const string ServiceName = "Portway.Api";
     public const string MeterName   = "Portway.Api";
 
-    // Versioned ActivitySource — pre-1.0 until telemetry schema is proven stable
+    // Versioned ActivitySource; pre-1.0 until telemetry schema is proven stable
     public static readonly ActivitySource Source = new(ServiceName, "0.1.0");
 
     // Span operation name constants (kept under test to prevent silent renames becoming breaking changes)

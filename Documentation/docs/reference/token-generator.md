@@ -1,8 +1,11 @@
+---
+title: Token Audit Log
+description: "Schema and queries for the token operations audit trail stored in auth.db"
+---
+
 # Token Audit Log
 
-> Schema and queries for the token operations audit trail stored in `auth.db`.
-
-All token management operations, e.g. create, rotate, revoke, update, are recorded automatically in the `TokenAudits` table of `auth.db`.
+Every token operation you perform (create, rotate, revoke, update) is recorded automatically in the `TokenAudits` table of `auth.db`, so there is always a trail to consult when you're wondering who changed what. This page documents the schema, along with some queries to get you started.
 
 ## Audit Schema
 

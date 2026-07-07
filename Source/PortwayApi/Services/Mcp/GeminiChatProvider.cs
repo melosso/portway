@@ -6,9 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
 
-/// <summary>
-/// Google Gemini API (generateContent with streaming) with function declarations.
-/// </summary>
+/// <summary>Google Gemini API (generateContent with streaming) with function declarations</summary>
 public sealed class GeminiChatProvider(string apiKey, string model, IHttpClientFactory httpFactory) : IChatProvider
 {
     private string BaseUrl =>

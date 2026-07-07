@@ -1,8 +1,6 @@
 namespace PortwayApi.Auth;
 
-/// <summary>
-/// Represents an audit log entry for token operations
-/// </summary>
+/// <summary>Represents an audit log entry for token operations</summary>
 public class AuthTokenAudit
 {
     public int Id { get; set; }

@@ -1,0 +1,716 @@
+  <script src="js/components/dialog.js"></script>
+  <script src="js/components/alert-dialog.js"></script>
+  <script src="js/components/promobar.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/shared.js"></script>
+  <style>
+  /* Wizard & dialog styles */
+  .wizard-intro {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 1.25rem;
+  }
+  .wizard-providers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .wizard-provider-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+    user-select: none;
+  }
+  .wizard-provider-option input[type="radio"] { display: none; }
+  .wizard-provider-option:hover { background: hsl(var(--muted)); }
+  .wizard-provider-option.selected {
+    border-color: hsl(var(--primary));
+    background: hsl(var(--primary) / 0.06);
+  }
+  .wizard-provider-label { font-weight: 500; font-size: 0.875rem; }
+  .wizard-error {
+    font-size: 0.8rem;
+    color: hsl(var(--destructive));
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: hsl(var(--destructive) / 0.08);
+    border: 1px solid hsl(var(--destructive) / 0.25);
+    border-radius: 5px;
+  }
+  .wizard-details { margin-top: 1rem; font-size: 0.82rem; }
+  .wizard-details summary {
+    cursor: pointer;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .wizard-details summary::before {
+    content: '>';
+    font-size: 1rem;
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+  .wizard-details[open] summary::before { transform: rotate(90deg); }
+  .dialog-field-hint {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+    margin-top: 0.35rem;
+    line-height: 1.5;
+  }
+  .dialog-field-hint code {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.78em;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 3px;
+    padding: 0.1em 0.3em;
+  }
+
+  /* Beacon-style settings layout: left sub-nav, one section visible at a time */
+  .settings-layout { display: flex; gap: 3rem; align-items: flex-start; }
+  .settings-subnav { width: 200px; flex-shrink: 0; position: sticky; top: 1rem; }
+  .settings-subnav-nav { display: flex; flex-direction: column; gap: 2px; }
+  .settings-subnav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .settings-subnav-item:hover { background: hsl(var(--muted)); }
+  .settings-subnav-item:focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: -2px; }
+  .settings-subnav-item.active { background: hsl(var(--muted)); }
+  .settings-subnav-item svg { color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+  .settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  @media (max-width: 900px) {
+    .settings-layout { flex-direction: column; gap: 1rem; }
+    .settings-subnav { width: 100%; position: static; }
+    .settings-subnav-nav { flex-direction: row; flex-wrap: wrap; }
+  }
+
+  /* Section groupings */
+  .settings-section { display: none; flex-direction: column; gap: 0.75rem; }
+  .settings-section.active { display: flex; }
+  .settings-section-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: hsl(var(--muted-foreground));
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid hsl(var(--border));
+    user-select: none;
+  }
+  .settings-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  .settings-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  @media (max-width: 1100px) {
+    .settings-grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 800px) {
+    .settings-grid-3,
+    .settings-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* Setting value variants */
+  .setting-on  { color: hsl(var(--success)); font-weight: 600; }
+  .setting-off { color: hsl(var(--muted-foreground)); }
+
+  /* AI Provider card */
+  .card-featured .ai-clear-row {
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 0px solid hsl(var(--border));
+  }
+  </style>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <h1 class="select-none">Settings</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" id="refreshBtn" onclick="load()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <div class="settings-layout">
+
+    <aside class="settings-subnav select-none">
+      <nav class="settings-subnav-nav">
+        <a href="#security" class="settings-subnav-item active" data-section="security" onclick="showSettingsSection('security');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security
+        </a>
+        <a href="#performance" class="settings-subnav-item" data-section="performance" onclick="showSettingsSection('performance');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Performance
+        </a>
+        <a href="#storage" class="settings-subnav-item" data-section="storage" onclick="showSettingsSection('storage');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Storage &amp; Logs
+        </a>
+        <a href="#integrations" class="settings-subnav-item" data-section="integrations" onclick="showSettingsSection('integrations');return false;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          Integrations
+        </a>
+      </nav>
+    </aside>
+
+    <div class="settings-content">
+
+    <!-- Section: Security & Change Controls -->
+    <div class="settings-section active" id="section-security">
+      <div class="settings-section-label">Security &amp; Change Controls</div>
+      <div class="settings-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Security Posture</span>
+          </div>
+          <div class="card-body" id="securityBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent Configuration Changes</span>
+          </div>
+          <div class="card-body" id="auditBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section: Performance -->
+    <div class="settings-section" id="section-performance">
+      <div class="settings-section-label">Performance</div>
+      <div class="settings-grid-3">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Rate Limiting</span>
+          </div>
+          <div class="card-body" id="rateLimitBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Caching</span>
+          </div>
+          <div class="card-body" id="cachingBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">SQL Connection Pooling</span>
+          </div>
+          <div class="card-body" id="sqlBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section: Storage & Observability -->
+    <div class="settings-section" id="section-storage">
+      <div class="settings-section-label">Storage &amp; Observability</div>
+      <div class="settings-grid-3">
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">File Storage</span></div>
+          <div class="card-body" id="fileBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-title">Logging</span></div>
+          <div class="card-body" id="loggingBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Endpoint Reloading</span>
+          </div>
+          <div class="card-body" id="reloadBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section: Integrations -->
+    <div class="settings-section" id="section-integrations">
+      <div class="settings-section-label">Integrations</div>
+      <div class="settings-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">MCP (Model Context Protocol)</span>
+          </div>
+          <div class="card-body" id="mcpBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card card-featured">
+          <div class="card-header">
+            <span class="card-title">AI Provider (Chat)</span>
+            <div id="aiProviderActions"></div>
+          </div>
+          <div class="card-body" id="aiBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    </div>
+
+    </div>
+
+  </div>
+</main>
+
+<script>
+// Helpers
+
+function settingItem(label, value, desc) {
+  return `<div class="settings-item">
+    <div>
+      <div class="settings-item-label">${label}</div>
+      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
+    </div>
+    <span class="settings-item-value">${esc(String(value ?? '—'))}</span>
+  </div>`;
+}
+
+function settingItemRaw(label, valueHtml, desc) {
+  return `<div class="settings-item">
+    <div>
+      <div class="settings-item-label">${label}</div>
+      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
+    </div>
+    <span class="settings-item-value">${valueHtml}</span>
+  </div>`;
+}
+
+function boolItem(label, value, desc) {
+  const html = value
+    ? '<span class="setting-on">Enabled</span>'
+    : '<span class="setting-off">Disabled</span>';
+  return settingItemRaw(label, html, desc);
+}
+
+// Settings load
+
+async function load() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+
+  try {
+    const d   = await fetch('/ui/api/settings').then(r => r.json());
+    const rl  = d.rate_limiting      ?? {};
+    const c   = d.caching            ?? {};
+    const sql = d.sql_pooling        ?? {};
+    const f   = d.file_storage       ?? {};
+    const log = d.logging            ?? {};
+    const ep  = d.endpoint_reloading ?? {};
+    const m   = d.mcp                ?? {};
+    const sec = d.security           ?? {};
+    const dbm = d.database_maintenance ?? {};
+
+    const strengthLabels = { 'strong': 'Strong', 'weak': 'Weak (< 32 chars)', 'placeholder': 'Placeholder (auth disabled)', 'not-set': 'Not set (auth disabled)' };
+    const strengthOk = sec.admin_key_strength === 'strong';
+    document.getElementById('securityBody').innerHTML = [
+      boolItem('Web UI Authentication', sec.webui_auth_enabled),
+      settingItemRaw('Admin Key Strength',
+        `<span class="${strengthOk ? 'setting-on' : 'setting-off'}">${esc(strengthLabels[sec.admin_key_strength] ?? '—')}</span>`,
+        'Set WebUi:AdminApiKey to a random value of 32+ characters'),
+      boolItem('HTTPS', sec.https_enabled),
+      boolItem('Secure Cookies', sec.secure_cookies, 'Enable WebUi:SecureCookies when serving over HTTPS'),
+      boolItem('CSRF Protection', sec.csrf_protection),
+      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
+      settingItem('Public UI Origins', sec.public_origins_count ?? 0),
+      settingItem('DB Maintenance', dbm.enabled
+        ? (dbm.last_run_utc ? `Last run ${new Date(dbm.last_run_utc).toLocaleString()}` : `Scheduled ${dbm.schedule}`)
+        : 'Disabled', 'Nightly SQLite ANALYZE and conditional VACUUM'),
+    ].join('');
+
+    document.getElementById('rateLimitBody').innerHTML = [
+      boolItem('Enabled', rl.enabled),
+      settingItem('IP Limit',    rl.ip_limit    != null ? `${rl.ip_limit} req / ${rl.ip_window_seconds}s`       : '—'),
+      settingItem('Token Limit', rl.token_limit != null ? `${rl.token_limit} req / ${rl.token_window_seconds}s` : '—'),
+    ].join('');
+
+    document.getElementById('cachingBody').innerHTML = [
+      boolItem('Enabled', c.enabled),
+      settingItem('Provider',         c.provider                 ?? '—'),
+      settingItem('Default Duration', c.default_duration_seconds != null ? `${c.default_duration_seconds}s` : '—'),
+      settingItem('Max Items',        c.max_items                ?? '—'),
+      settingItem('Max Size',         c.max_size_mb              != null ? `${c.max_size_mb} MB`             : '—'),
+    ].join('');
+
+    document.getElementById('sqlBody').innerHTML = [
+      boolItem('Enabled', sql.enabled),
+      settingItem('Pool Size',           sql.min_pool_size        != null ? `${sql.min_pool_size} – ${sql.max_pool_size}` : '—'),
+      settingItem('Connection Timeout',  sql.connection_timeout   != null ? `${sql.connection_timeout}s`                  : '—'),
+      settingItem('Command Timeout',     sql.command_timeout      != null ? `${sql.command_timeout}s`                     : '—'),
+    ].join('');
+
+    document.getElementById('fileBody').innerHTML = [
+      settingItem('Storage Directory', f.directory        || '—'),
+      settingItem('Max File Size',     f.max_file_size_mb != null ? `${f.max_file_size_mb} MB` : '—'),
+    ].join('');
+
+    document.getElementById('loggingBody').innerHTML = [
+      settingItem('Minimum Level', log.min_level              ?? '—'),
+      settingItem('Sinks',         (log.sinks ?? []).join(', ') || '—'),
+    ].join('');
+
+    document.getElementById('reloadBody').innerHTML = [
+      boolItem('Enabled',  ep.enabled),
+      settingItem('Debounce', ep.debounce_ms != null ? `${ep.debounce_ms}ms` : '—'),
+    ].join('');
+
+    document.getElementById('mcpBody').innerHTML = [
+      boolItem('Enabled',              m.enabled),
+      settingItem('Path',              m.path  ?? '—'),
+      boolItem('Require Auth',         m.require_authentication),
+      boolItem('MCP Apps (UI)',        m.apps_enabled),
+      settingItem('MCP Apps Path',     m.apps_path ?? '—'),
+    ].join('');
+
+  } catch(e) {
+    const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody'].forEach(id => {
+      document.getElementById(id).innerHTML = msg;
+    });
+  }
+
+  loadAudit();
+}
+
+// Recent configuration changes with restore of pre-change backups
+
+async function loadAudit() {
+  const el = document.getElementById('auditBody');
+  try {
+    const d = await fetch('/ui/api/audit?limit=15').then(r => r.json());
+    const entries = d.entries ?? [];
+    if (!entries.length) {
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No configuration changes recorded yet</span>';
+      return;
+    }
+    el.innerHTML = entries.map(e => {
+      const when = new Date(e.timestamp).toLocaleString();
+      const restore = e.restorable
+        ? `<button class="btn btn-outline btn-sm" onclick="restoreChange(${e.id})">Restore</button>`
+        : '';
+      return `<div class="settings-item">
+        <div>
+          <div class="settings-item-label">${esc(e.action)} · ${esc(e.target_type)} · ${esc(e.target)}</div>
+          <div class="settings-item-desc">${esc(when)}${e.client_ip ? ' · ' + esc(e.client_ip) : ''}${e.details ? ' · ' + esc(e.details) : ''}</div>
+        </div>
+        <span class="settings-item-value">${restore}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
+  }
+}
+
+async function restoreChange(id) {
+  if (!confirm('Restore the configuration file to its state before this change? The current state is backed up first.')) return;
+  try {
+    const r = await fetch(`/ui/api/audit/${id}/restore`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Restore failed');
+    if (typeof showToast === 'function') showToast('Configuration restored', 'success');
+    loadAudit();
+  } catch(e) {
+    if (typeof showToast === 'function') showToast(e.message, 'error'); else alert(e.message);
+  }
+}
+
+load();
+
+// AI Provider card
+
+const PROVIDERS = [
+  { id: 'mistral',   label: 'Mistral AI',    model: 'mistral-medium-latest', hint: 'mistral-large-latest / mistral-medium-latest' },
+  { id: 'anthropic', label: 'Anthropic',     model: 'claude-sonnet-4-6',     hint: 'claude-sonnet-4-6 / claude-opus-4-6' },
+  { id: 'openai',    label: 'OpenAI',        model: 'gpt-4o',                hint: 'gpt-4o / gpt-4o-mini / o3' },
+  { id: 'gemini',    label: 'Google Gemini', model: 'gemini-2.5-flash',      hint: 'gemini-2.5-pro / gemini-2.5-flash' },
+];
+const PROVIDER_LABELS = Object.fromEntries(PROVIDERS.map(p => [p.id, p.label]));
+
+async function loadAiConfig() {
+  const aiBody    = document.getElementById('aiBody');
+  const aiActions = document.getElementById('aiProviderActions');
+  try {
+    const cfg = await fetch('/ui/api/mcp/config').then(r => r.json());
+
+    if (!cfg.configured) {
+      aiBody.innerHTML = `<div class="settings-item">
+        <span class="settings-item-label" style="color:hsl(var(--muted-foreground));font-size:0.8rem;">Not configured</span>
+      </div>`;
+      aiActions.innerHTML = `<button class="btn btn-primary btn-sm" onclick="openAiReconfigure()">Configure</button>`;
+      return;
+    }
+
+    const providerLabel = esc(PROVIDER_LABELS[cfg.provider] ?? cfg.provider);
+
+    let apiKeyHtml;
+    if (!cfg.has_api_key) {
+      apiKeyHtml = `<span style="color:hsl(var(--destructive))">Not set</span>`;
+    } else if (cfg.api_key_source === 'environment') {
+      apiKeyHtml = `Stored <span class="badge" style="margin-left:0.35rem;color:hsl(var(--warning));border-color:hsl(var(--warning));background:transparent;font-size:0.7rem;">.env override</span>`;
+    } else {
+      apiKeyHtml = `Saved`;
+    }
+
+    const envDesc = cfg.api_key_source === 'environment'
+      ? 'PORTWAY_CHAT_API_KEY environment variable overrides the stored value.'
+      : null;
+
+    aiBody.innerHTML = [
+      settingItemRaw('Provider', providerLabel),
+      settingItemRaw('Model',    esc(cfg.model || '—')),
+      settingItemRaw('API Key',  apiKeyHtml, envDesc),
+      settingItemRaw('Internal Token', cfg.has_internal_token ? 'Configured' : '<span class="setting-off">Not set</span>'),
+    ].join('') + `<div class="ai-clear-row">
+      <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" onclick="confirmClearAiConfig()">Clear configuration</button>
+    </div>`;
+
+    aiActions.innerHTML = `<button class="btn btn-outline btn-sm" onclick="openAiReconfigure()">Reconfigure</button>`;
+
+  } catch(e) {
+    aiBody.innerHTML = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
+    aiActions.innerHTML = '';
+  }
+}
+
+// AI wizard
+
+let _wizardStep     = 1;
+let _wizardProvider = null;
+
+function openAiReconfigure() {
+  _wizardStep     = 1;
+  _wizardProvider = null;
+  _aiWizardStep1();
+}
+
+function _aiWizardStep1() {
+  const rows = PROVIDERS.map(p => `
+    <label class="wizard-provider-option" data-id="${p.id}">
+      <input type="radio" name="wizard-provider" value="${p.id}" />
+      <span class="wizard-provider-label">${esc(p.label)}</span>
+    </label>`).join('');
+
+  Dialog.open({
+    id: 'ai-setup',
+    title: 'Configure chat provider - Step 1 of 2',
+    size: 'small',
+    content: `
+      <p class="wizard-intro">Choose the AI provider for the chat assistant. The API key is stored encrypted on the server - it never leaves Portway.</p>
+      <div class="wizard-providers">${rows}</div>
+      <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
+    footer: `
+      <button type="button" class="btn btn-outline" onclick="Dialog.close('ai-setup')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="_aiWizardNext1()">Next</button>`,
+    onOpen: () => {
+      document.querySelectorAll('.wizard-provider-option').forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.wizard-provider-option').forEach(o => o.classList.remove('selected'));
+          el.classList.add('selected');
+          el.querySelector('input').checked = true;
+        });
+      });
+    }
+  });
+}
+
+function _aiWizardNext1() {
+  const checked = document.querySelector('input[name="wizard-provider"]:checked');
+  const err     = document.getElementById('wizard-step1-err');
+  if (!checked) {
+    err.textContent = 'Please select a provider.';
+    err.hidden = false;
+    return;
+  }
+  err.hidden      = true;
+  _wizardProvider = PROVIDERS.find(p => p.id === checked.value);
+  _aiWizardStep2();
+}
+
+function _aiWizardStep2() {
+  const p = _wizardProvider;
+  Dialog.open({
+    id: 'ai-setup',
+    title: 'Configure chat provider - Step 2 of 2',
+    size: 'small',
+    content: `
+      <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
+      <div class="dialog-field">
+        <label for="wiz-model">Model</label>
+        <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
+      </div>
+      <div class="dialog-field" style="margin-top:1rem;">
+        <label for="wiz-key">API Key <span style="color:hsl(var(--destructive))">*</span></label>
+        <div style="position:relative;display:flex;align-items:center;">
+          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;" placeholder="Paste your ${esc(p.label)} API key..." autocomplete="off" spellcheck="false" />
+          <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="dialog-field-hint">Your keys are safely encrypted.</div>
+      </div>
+      <details class="wizard-details">
+        <summary>Internal API token <span style="color:hsl(var(--muted-foreground));font-weight:400;">(optional)</span></summary>
+        <div class="dialog-field" style="margin-top:0.75rem;">
+          <label for="wiz-token">Portway Bearer Token</label>
+          <input id="wiz-token" type="password" class="input" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
+          <div class="dialog-field-hint">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
+        </div>
+      </details>
+      <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
+    footer: `
+      <button type="button" class="btn btn-outline" onclick="_aiWizardStep1()">Back</button>
+      <button type="button" class="btn btn-primary" id="wiz-save-btn" onclick="_aiWizardSave()">Save configuration</button>`,
+    onOpen: () => {
+      document.getElementById('wiz-key')?.focus();
+      document.getElementById('wiz-key')?.addEventListener('keydown', e => { if (e.key === 'Enter') _aiWizardSave(); });
+    }
+  });
+}
+
+async function _aiWizardSave() {
+  const model  = document.getElementById('wiz-model')?.value.trim();
+  const apiKey = document.getElementById('wiz-key')?.value.trim();
+  const token  = document.getElementById('wiz-token')?.value.trim() ?? '';
+  const err    = document.getElementById('wizard-step2-err');
+  const btn    = document.getElementById('wiz-save-btn');
+
+  err.hidden = true;
+
+  if (!apiKey) {
+    err.textContent = 'API key is required.';
+    err.hidden = false;
+    document.getElementById('wiz-key').focus();
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const res = await fetch('/ui/api/mcp/config', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        provider:         _wizardProvider.id,
+        model:            model || _wizardProvider.model,
+        apiKey:           apiKey,
+        internalApiToken: token
+      })
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error ?? `HTTP ${res.status}`);
+    }
+
+    Dialog.close('ai-setup');
+    await loadAiConfig();
+    toast('AI provider configuration saved.', 'success');
+
+  } catch(e) {
+    err.textContent = 'Failed to save: ' + e.message;
+    err.hidden      = false;
+    btn.disabled    = false;
+    btn.textContent = 'Save configuration';
+  }
+}
+
+function confirmClearAiConfig() {
+  AlertDialog.show({
+    title:       'Clear AI configuration?',
+    description: 'The provider, model, and API key will be deleted. Chat will be unavailable until you reconfigure.',
+    actionLabel: 'Clear configuration',
+    variant:     'destructive',
+    onConfirm:   clearAiConfig
+  });
+}
+
+async function clearAiConfig() {
+  try {
+    const res = await fetch('/ui/api/mcp/config', { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await loadAiConfig();
+    toast('AI provider configuration cleared.', 'success');
+  } catch(e) {
+    toast('Failed to clear: ' + e.message, 'error');
+  }
+}
+
+loadAiConfig();
+
+// Beacon-style section navigation; one section visible at a time, deep-linkable via hash
+function showSettingsSection(key) {
+  document.querySelectorAll('.settings-section').forEach(el =>
+    el.classList.toggle('active', el.id === 'section-' + key));
+  document.querySelectorAll('.settings-subnav-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.section === key));
+  if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
+}
+
+(function initSettingsSection() {
+  const key = (location.hash || '').replace('#', '');
+  if (key && document.getElementById('section-' + key)) showSettingsSection(key);
+})();
+</script>

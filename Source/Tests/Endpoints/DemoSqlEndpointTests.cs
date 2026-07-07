@@ -7,17 +7,16 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>
-/// Integration tests for the demo SQL endpoint: WMS/Warehouses.
-///
+/// <summary>Integration tests for the demo SQL endpoint: WMS/Warehouses</summary>
+/// <remarks>
 /// Config: endpoints/SQL/WMS/Warehouses/entity.json
-///   - DatabaseObjectName: Warehouses
-///   - AllowedEnvironments: ["WMS"]
-///   - AllowedMethods: ["GET"]
-///   - AllowedColumns: Id, Code, Name, City, Country, Region, CapacityM2, IsActive (no aliases)
-///   - Properties.MaxPageSize: 50
-///   - Properties.DefaultSort: "Code ASC"
-/// </summary>
+/// - DatabaseObjectName: Warehouses
+/// - AllowedEnvironments: ["WMS"]
+/// - AllowedMethods: ["GET"]
+/// - AllowedColumns: Id, Code, Name, City, Country, Region, CapacityM2, IsActive (no aliases)
+/// - Properties.MaxPageSize: 50
+/// - Properties.DefaultSort: "Code ASC"
+/// </remarks>
 public class DemoSqlEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "WMS";
@@ -43,7 +42,7 @@ public class DemoSqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync(ApiPath);
 
-        // Assert: auth and routing succeeded — backend failure is acceptable
+        // Assert: auth and routing succeeded; backend failure is acceptable
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);
     }

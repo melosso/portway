@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <!-- Versioning -->
+    <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="MinVer" PrivateAssets="All" IncludeAssets="runtime;build;native;contentfiles;analyzers" />
 
     <!-- Authentication & Identity -->
@@ -61,6 +62,7 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Serilog.Settings.Configuration" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
     <PackageReference Include="SqlKata" />
     <PackageReference Include="SqlKata.Execution" />
     <PackageReference Include="Microsoft.OData.Core" />

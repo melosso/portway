@@ -1,12 +1,15 @@
+---
+title: File Endpoints
+description: "Upload, download, and list files through authenticated API calls"
+---
+
 # File Endpoints
 
-> Upload, download, and list files through authenticated API calls.
-
-File endpoints expose a storage directory as a REST API. Callers upload files via multipart form POST, retrieve them by file ID, and list available files by endpoint. File type restrictions, environment scoping, and a configurable base directory path are all defined in the endpoint configuration.
+File endpoints expose a storage directory as a REST API, so your callers can upload files via multipart form POST, retrieve them by file ID, and list what's available per endpoint. File type restrictions, environment scoping, and the base directory all live in the endpoint configuration.
 
 ## Configuration
 
-Create `endpoints/File/{EndpointName}/entity.json`:
+You define one with `endpoints/File/{EndpointName}/entity.json`:
 
 ```json
 {
@@ -36,7 +39,7 @@ Create `endpoints/File/{EndpointName}/entity.json`:
 |---|---|
 | `{env}` | Environment name |
 | `{year}` | Current year (`2025`) |
-| `{month}` | Current month (`01`–`12`) |
+| `{month}` | Current month (`01` to `12`) |
 | `{date}` | Current date (`2025-01-15`) |
 
 ```json

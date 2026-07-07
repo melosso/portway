@@ -1,8 +1,11 @@
+---
+title: Webhook Endpoints
+description: "Receive HTTP POST payloads from external services and persist them to a SQL table"
+---
+
 # Webhook Endpoints
 
-> Receive HTTP POST payloads from external services and persist them to a SQL table.
-
-Webhook endpoints accept incoming POST requests and store the JSON payload in a configured database table. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. No parsing or transformation occurs, the raw payload is stored as-is for downstream processing.
+Webhook endpoints give external services a place to deliver events: they accept incoming POST requests and store the JSON payload in a database table you configure. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. Nothing is parsed or transformed along the way; the raw payload is stored as-is, ready for downstream processing at your own pace.
 
 ```mermaid
 sequenceDiagram
@@ -123,7 +126,7 @@ ORDER BY ReceivedAt DESC;
 ## Limitations
 
 - POST only, webhook endpoints do not respond to GET, PUT, or DELETE
-- JSON only, payloads must be valid JSON; non-JSON bodies are rejected
+- JSON only, payloads need to be valid JSON; non-JSON bodies are rejected
 - No payload validation beyond JSON syntax and webhook ID matching
 - No automatic retry on insert failure
 - Default payload size limit: 10MB

@@ -1,8 +1,11 @@
+---
+title: Environment Authentication
+description: "Per-environment authentication methods that augment or replace the global Portway token system"
+---
+
 # Environment Authentication
 
-> Per-environment authentication methods that augment or replace the global Portway token system.
-
-Environment-specific authentication is configured in each environment's `settings.json`. It supports ApiKey, Basic, Bearer, JWT, and HMAC methods. Sensitive fields are automatically encrypted to `PWENC:` format on next startup.
+Sometimes the global token system isn't quite the right fit for one environment: perhaps a partner needs an API key, or an upstream system already speaks JWT. Environment-specific authentication lets you handle those cases in that environment's `settings.json`, with ApiKey, Basic, Bearer, JWT, and HMAC methods available. Sensitive fields you write in plaintext are encrypted to `PWENC:` format on the next startup, so there is no need to pre-encrypt anything yourself.
 
 If multiple methods are defined, a request is authorised if it satisfies **any** of them.
 
@@ -113,7 +116,7 @@ By default (`OverrideGlobalToken: false`), Portway uses the following logic:
 3. If it fails, attempt to authorize using a standard Portway Bearer token.
 4. If both fail, return `401 Unauthorized`.
 
-If `OverrideGlobalToken` is set to `true`, the request **must** satisfy the environment-specific rules; global tokens will be rejected.
+If `OverrideGlobalToken` is set to `true`, only requests that satisfy the environment-specific rules are authorised; global tokens are rejected for that environment.
 
 ## Security Notes
 

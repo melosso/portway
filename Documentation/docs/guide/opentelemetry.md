@@ -1,6 +1,9 @@
-# OpenTelemetry
+---
+title: OpenTelemetry
+description: "Connect Portway to any OTLP-compatible collector for traces, metrics, and distributed request visibility"
+---
 
-> Connect Portway to any OTLP-compatible collector for traces, metrics, and distributed request visibility.
+# OpenTelemetry
 
 Portway exports telemetry over OTLP (gRPC) by default. Set an endpoint and your collector receives data immediately, no code changes or restarts required beyond configuration. The service name reported to your backend is `Portway.Api`.
 
@@ -49,8 +52,8 @@ Errors caught by Portway's exception handler are recorded on the active span wit
 | Metric | Type | Unit | Dimensions |
 |---|---|---|---|
 | `portway.request.duration` | Histogram | `s` | `http.method`, `http.response.status_code`, `portway.request_source` |
-| `portway.cache.hit.count` | Counter | `{hit}` | — |
-| `portway.cache.miss.count` | Counter | `{miss}` | — |
+| `portway.cache.hit.count` | Counter | `{hit}` | None |
+| `portway.cache.miss.count` | Counter | `{miss}` | None |
 
 `portway.request_source` distinguishes traffic by origin: `api` for endpoint calls, `ui` for dashboard calls, `other` for everything else.
 
@@ -152,7 +155,7 @@ For IIS hosting, `web.config` `<environmentVariables>` can override individual v
 ```
 
 :::info
-IIS worker processes do not inherit system environment variables. Use `appsettings.json` or `web.config` `<environmentVariables>` — not the Windows system environment or application pool advanced settings, which are unreliable across IIS resets.
+IIS worker processes do not inherit system environment variables. Use `appsettings.json` or `web.config` `<environmentVariables>`, not the Windows system environment or application pool advanced settings, which are unreliable across IIS resets.
 :::
 
 ## Next steps

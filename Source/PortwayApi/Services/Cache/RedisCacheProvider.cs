@@ -12,9 +12,7 @@ using System.Net.Sockets;
 
 namespace PortwayApi.Services.Caching;
 
-/// <summary>
-/// Redis implementation of the cache provider
-/// </summary>
+/// <summary>Redis implementation of the cache provider</summary>
 public class RedisCacheProvider : ICacheProvider, IDisposable
 {
     private readonly CacheOptions _options;
@@ -86,19 +84,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
     }
 
-    /// <summary>
-    /// Gets the cache provider type
-    /// </summary>
+    /// <summary>Gets the cache provider type</summary>
     public string ProviderType => "Redis";
 
-    /// <summary>
-    /// Whether the Redis connection is active
-    /// </summary>
+    /// <summary>Whether the Redis connection is active</summary>
     public bool IsConnected => _isConnected;
 
-    /// <summary>
-    /// Gets a value from the cache
-    /// </summary>
+    /// <summary>Gets a value from the cache</summary>
     public async Task<T?> GetAsync<T>(string key) where T : class
     {
         string redisKey = GetFormattedKey(key);
@@ -160,9 +152,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         return null;
     }
 
-    /// <summary>
-    /// Sets a value in the cache
-    /// </summary>
+    /// <summary>Sets a value in the cache</summary>
     public async Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class
     {
         string redisKey = GetFormattedKey(key);
@@ -221,9 +211,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
     }
 
-    /// <summary>
-    /// Removes an item from the cache
-    /// </summary>
+    /// <summary>Removes an item from the cache</summary>
     public async Task RemoveAsync(string key)
     {
         string redisKey = GetFormattedKey(key);
@@ -276,9 +264,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
     }
 
-    /// <summary>
-    /// Checks if a cache key exists
-    /// </summary>
+    /// <summary>Checks if a cache key exists</summary>
     public async Task<bool> ExistsAsync(string key)
     {
         string redisKey = GetFormattedKey(key);
@@ -321,9 +307,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         return false;
     }
 
-    /// <summary>
-    /// Refreshes the expiration time for a cached item
-    /// </summary>
+    /// <summary>Refreshes the expiration time for a cached item</summary>
     public async Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration)
     {
         string redisKey = GetFormattedKey(key);
@@ -381,9 +365,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         return false;
     }
 
-    /// <summary>
-    /// Acquires a distributed lock for the specified key
-    /// </summary>
+    /// <summary>Acquires a distributed lock for the specified key</summary>
     public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default)
     {
         string redisLockKey = GetFormattedKey($"lock:{lockKey}");
@@ -459,17 +441,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         return null;
     }
 
-    /// <summary>
-    /// Formats a key with the Redis instance prefix
-    /// </summary>
+    /// <summary>Formats a key with the Redis instance prefix</summary>
     private string GetFormattedKey(string key)
     {
         return $"{_instanceName}{key}";
     }
 
-    /// <summary>
-    /// Handler for Redis connection failed event
-    /// </summary>
+    /// <summary>Handler for Redis connection failed event</summary>
     private void OnConnectionFailed(object? sender, ConnectionFailedEventArgs args)
     {
         _isConnected = false;
@@ -477,18 +455,14 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             args.FailureType, args.Exception?.Message);
     }
 
-    /// <summary>
-    /// Handler for Redis connection restored event
-    /// </summary>
+    /// <summary>Handler for Redis connection restored event</summary>
     private void OnConnectionRestored(object? sender, ConnectionFailedEventArgs args)
     {
         _isConnected = true;
         Log.Information("Redis connection restored");
     }
 
-    /// <summary>
-    /// Try to reconnect to Redis if needed
-    /// </summary>
+    /// <summary>Try to reconnect to Redis if needed</summary>
     private async Task TryReconnectAsync()
     {
         // Avoid too frequent reconnection attempts
@@ -530,9 +504,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
     }
 
-    /// <summary>
-    /// Releases the lock directly (used by LockHandle)
-    /// </summary>
+    /// <summary>Releases the lock directly (used by LockHandle)</summary>
     internal async Task<bool> ReleaseLockAsync(string lockKey, string lockValue)
     {
         try
@@ -547,8 +519,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 }
             }
 
-            // Script to release the lock only if it belongs to us
-            // This ensures we don't accidentally release someone else's lock if ours expired
+            // Script to release the lock only if it belongs to us; This ensures we don't accidentally release someone else's lock if ours expired
             string script = @"
                 if redis.call('get', KEYS[1]) == ARGV[1] then
                     return redis.call('del', KEYS[1])
@@ -578,9 +549,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
     }
 
-    /// <summary>
-    /// Extends the lock expiry time (used by LockHandle)
-    /// </summary>
+    /// <summary>Extends the lock expiry time (used by LockHandle)</summary>
     internal async Task<bool> ExtendLockAsync(string lockKey, string lockValue, TimeSpan expiryTime)
     {
         try
@@ -625,9 +594,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
     }
 
-    /// <summary>
-    /// Disposes the Redis connection
-    /// </summary>
+    /// <summary>Disposes the Redis connection</summary>
     public void Dispose()
     {
         _connectionLock.Dispose();
@@ -650,9 +617,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <summary>
-    /// Redis-based lock handle implementation
-    /// </summary>
+    /// <summary>Redis-based lock handle implementation</summary>
     private class RedisLockHandle : ILockHandle
     {
         private readonly RedisCacheProvider _provider;

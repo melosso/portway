@@ -1,12 +1,13 @@
+---
+title: SQL Endpoints
+description: "Expose SQL tables, views, stored procedures, and table-valued functions as REST endpoints with OData filtering"
+---
+
 # SQL Endpoints
 
-> Expose SQL tables, views, stored procedures, and table-valued functions as REST endpoints with OData filtering.
+SQL endpoints turn a table, view, or stored procedure into a REST resource with OData querying, without you writing any SQL. Four backends are supported (SQL Server, PostgreSQL, MySQL, and SQLite), and Portway picks the correct driver automatically from the connection string in the environment's `settings.json`, so your endpoint configuration stays identical across providers.
 
-:::warning
-Before exposing any table or view through Portway, verify you understand the database permissions in play and the data contained in those objects. Portway enforces column-level restrictions, but only for columns you explicitly configure.
-:::
-
-SQL endpoints support four backends, SQL Server, PostgreSQL, MySQL, and SQLite. Portway selects the correct driver automatically from the connection string in the environment's `settings.json`. No changes to endpoint configuration are needed when working across providers.
+> **Note:** Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
 
 :::info
 Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full capability matrix.
@@ -78,6 +79,7 @@ All GET requests support OData query parameters:
 | `$orderby` | Sort results | `$orderby=ProductName desc` |
 | `$top` | Limit row count | `$top=50` |
 | `$skip` | Skip rows (for pagination) | `$skip=20` |
+| `$count` | Add the total matching count as `totalCount` | `$count=true` |
 
 Filter operators: `eq`, `ne`, `gt`, `lt`, `ge`, `le`, `and`, `or`, `contains()`
 

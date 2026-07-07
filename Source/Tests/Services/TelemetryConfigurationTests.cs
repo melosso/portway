@@ -5,13 +5,12 @@ using Xunit;
 
 namespace PortwayApi.Tests.Services;
 
-/// <summary>
-/// Tests for telemetry configuration binding and service registration.
-///
-/// Uses the demo environment (WMS) as a reference configuration.
+/// <summary>Tests for telemetry configuration binding and service registration</summary>
+/// <remarks>
+/// Uses the demo environment (WMS) as a reference configuration
 /// Telemetry is opt-in (Enabled: false by default), so these tests verify
-/// both the disabled fast-path and the enabled registration path.
-/// </summary>
+/// both the disabled fast-path and the enabled registration path
+/// </remarks>
 public class TelemetryConfigurationTests
 {
     // Option binding
@@ -94,7 +93,7 @@ public class TelemetryConfigurationTests
         var provider = services.BuildServiceProvider();
 
         // PortwayMetrics is always registered so that services like CacheManager can depend
-        // on it unconditionally. When telemetry is disabled the meter counters are no-ops.
+        // on it unconditionally. When telemetry is disabled the meter counters are no-ops
         using var metrics = provider.GetService<PortwayMetrics>();
         Assert.NotNull(metrics);
     }
@@ -141,7 +140,7 @@ public class TelemetryConfigurationTests
 
     // Span name constants (breaking-change guard)
     // Span names are part of the telemetry API surface. Renaming them silently
-    // would break any dashboards or alerts that downstream teams have built.
+    // would break any dashboards or alerts that downstream teams have built
 
     [Fact]
     public void OperationNames_SqlExecute_IsStable()

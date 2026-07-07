@@ -1,12 +1,15 @@
+---
+title: Static Endpoints
+description: "Serve pre-defined JSON, XML, or CSV files with optional OData filtering"
+---
+
 # Static Endpoints
 
-> Serve pre-defined JSON, XML, or CSV files with optional OData filtering.
-
-Static endpoints return the contents of a file stored alongside the endpoint configuration. They support the same OData query parameters as SQL endpoints when `EnableFiltering` is enabled, making them suitable for mock data, reference datasets, and read-only configuration responses.
+Sometimes the data you want to serve doesn't live in a database at all. Static endpoints return the contents of a file stored alongside the endpoint configuration, and when `EnableFiltering` is on they answer the same OData query parameters as SQL endpoints. That makes them a natural fit for mock data, reference datasets, and read-only configuration responses.
 
 ## Configuration
 
-Create a folder under `endpoints/Static/{EndpointName}/` containing `entity.json` and the content file:
+Setting one up takes a folder under `endpoints/Static/{EndpointName}/` containing `entity.json` and the content file:
 
 ```
 endpoints/Static/ProductionMachine/

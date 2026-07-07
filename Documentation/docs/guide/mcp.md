@@ -1,8 +1,11 @@
+---
+title: MCP Server
+description: "Expose Portway endpoints as Model Context Protocol tools that AI agents can discover and call"
+---
+
 # MCP Server
 
-> Expose Portway endpoints as Model Context Protocol tools that AI agents can discover and call.
-
-Portway implements an MCP server over HTTP. When you flag an endpoint with `Exposed: true`, it appears in the MCP tool registry and becomes callable by any MCP-compatible client — Claude Desktop, VS Code Copilot, custom agents, or the built-in [Chat UI](/guide/mcp-chat). Portway's own authentication and environment scoping apply to every tool call.
+Portway implements an MCP server over HTTP. When you flag an endpoint with `Exposed: true`, it appears in the MCP tool registry and becomes callable by any MCP-compatible client: Claude Desktop, VS Code Copilot, custom agents, or the built-in [Chat UI](/guide/mcp-chat). Portway's own authentication and environment scoping apply to every tool call.
 
 ## Enable the MCP server
 
@@ -42,7 +45,7 @@ Add `"Exposed": true` to the endpoint's `entity.json` under the `Mcp` object. Po
   "AllowedMethods": ["GET"],
   "Mcp": {
     "Exposed": true,
-    "Instruction": "Always include a $filter on AccountCode. Results are paginated — use $top and $skip."
+    "Instruction": "Always include a $filter on AccountCode. Results are paginated; use $top and $skip."
   }
 }
 ```
@@ -56,7 +59,7 @@ The tool name in the registry is derived from the endpoint's namespace and name:
 
 Endpoints where `Exposed` is absent or `false` do not appear in the tool list.
 
-`Instruction` does not affect the human-readable summary shown in the Explorer UI — it only extends the description the AI model receives when deciding whether and how to call the tool.
+`Instruction` does not affect the human-readable summary shown in the Explorer UI; it only extends the description the AI model receives when deciding whether and how to call the tool.
 
 ## Namespaces
 
@@ -105,8 +108,8 @@ Tokens are managed through the Web UI or the token API. Scope tokens to the envi
 
 The Web UI provides two views under **MCP** in the sidebar:
 
-- **Explorer** (`/ui/mcp/explorer`) — lists all registered tools grouped by namespace, shows allowed methods, and links to endpoint detail
-- **Chat** (`/ui/mcp/chat`) — conversational interface where an AI model calls Portway tools on your behalf
+- **Explorer** (`/ui/mcp/explorer`): lists all registered tools grouped by namespace, shows allowed methods, and links to endpoint detail
+- **Chat** (`/ui/mcp/chat`): conversational interface where an AI model calls Portway tools on your behalf
 
 The Explorer requires no additional configuration beyond `Mcp:Enabled: true`. The Chat view requires [Chat configuration](/guide/mcp-chat).
 

@@ -7,9 +7,7 @@ using System.Xml;
 
 namespace PortwayApi.Classes;
 
-/// <summary>
-/// Implements the IEdmModelBuilder interface to provide EDM model building for OData to SQL queries
-/// </summary>
+/// <summary>Implements the IEdmModelBuilder interface to provide EDM model building for OData to SQL queries</summary>
 public class EdmModelBuilder : IEdmModelBuilder
 {
     private readonly Dictionary<string, IEdmModel> _modelCache 
@@ -80,9 +78,7 @@ public class EdmModelBuilder : IEdmModelBuilder
         return model;
     }
     
-    /// <summary>
-    /// Parses an EDM model from CSDL 
-    /// </summary>
+    /// <summary>Parses an EDM model from CSDL</summary>
     public IEdmModel? ParseMetadata(string csdl)
     {
         try

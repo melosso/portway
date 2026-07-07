@@ -1,10 +1,11 @@
+---
+title: Upgrading Portway
+description: "Replace application files and restore configuration to move to a new release"
+---
+
 # Upgrading Portway
 
-> Replace application files and restore configuration to move to a new release.
-
-:::warning
-Portway may include application and database changes between versions. Read the [release notes](https://github.com/melosso/portway/releases/) before upgrading, particularly for major version changes. Verify no breaking changes apply to your configuration before proceeding.
-:::
+Upgrading Portway is usually a matter of replacing the binaries and letting it start back up, but a little preparation goes a long way. Releases may include application and database changes, so it is recommended to read the [release notes](https://github.com/melosso/portway/releases/) first, particularly for major versions, and to check that no breaking changes apply to your configuration.
 
 ## Steps
 

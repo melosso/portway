@@ -1,6 +1,11 @@
+---
+title: Logging
+description: "Serilog configuration reference for log levels, file rotation, and structured output"
+---
+
 # Logging
 
-> Serilog configuration reference for log levels, file rotation, and structured output.
+When something behaves unexpectedly, logs are usually your first stop. Portway logs through Serilog, which gives you structured output, sensible file rotation, and per-namespace level control. Here is how the pieces fit together.
 
 ## Log Outputs
 
@@ -26,7 +31,6 @@
 | Warning | Unexpected but handled situations | Missing configuration, fallback behavior |
 | Error | Failures and exceptions | Database errors, API failures |
 | Fatal | Critical failures | Application startup failures |
-
 
 ## Configuration
 

@@ -6,10 +6,7 @@ using System.IO;
 
 namespace PortwayApi.Tests.Base;
 
-/// <summary>
-/// Test fixture to provide shared setup and teardown for all tests
-/// This ensures consistent test environment configuration
-/// </summary>
+/// <summary>Test fixture to provide shared setup and teardown for all tests This ensures consistent test environment configuration</summary>
 public class PortwayApiTestFixture : IDisposable
 {
     public IConfiguration Configuration { get; }
@@ -71,10 +68,7 @@ public class PortwayApiTestFixture : IDisposable
         }
     }
     
-    /// <summary>
-    /// Creates necessary directory structure for tests to run properly
-    /// This mimics the directory structure of the actual application
-    /// </summary>
+    /// <summary>Creates necessary directory structure for tests to run properly This mimics the directory structure of the actual application</summary>
     private void EnsureDirectoryStructure()
     {
         string endpointsDir = Path.Combine(_tempDirectory, "endpoints");
@@ -128,9 +122,7 @@ public class PortwayApiTestFixture : IDisposable
         Logger.LogInformation("Created sample endpoint and environment configurations for tests");
     }
     
-    /// <summary>
-    /// Gets the path to the temporary test directory
-    /// </summary>
+    /// <summary>Gets the path to the temporary test directory</summary>
     public string GetTempDirectory()
     {
         return _tempDirectory;

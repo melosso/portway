@@ -1,6 +1,11 @@
+---
+title: Sorting & Pagination
+description: "Once an endpoint returns more rows than fit comfortably in one response, sorting and pagination become your tools of choice"
+---
+
 # Sorting & Pagination
 
-Efficiently sort and paginate large datasets using OData query parameters. This reference covers ordering results and implementing pagination patterns for optimal performance.
+Once an endpoint returns more rows than fit comfortably in one response, sorting and pagination become your tools of choice. This page shows how `$orderby`, `$top`, and `$skip` work together, and which patterns stay fast as your data grows.
 
 ## Sorting with $orderby
 
@@ -440,4 +445,3 @@ Response Headers:
 X-Query-Time: 45ms
 X-Total-Records: 5000
 ```
-

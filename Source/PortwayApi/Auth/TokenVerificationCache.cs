@@ -14,22 +14,14 @@ public interface ITokenVerificationCache
     void Invalidate(int tokenId);
 }
 
-/// <summary>
-/// Singleton cache for token verification results. Reduces per-request PBKDF2 hashing
-/// and SQLite round-trips from 3 to 0 on cache hit (30s TTL).
-/// Supports explicit invalidation by token ID on revocation.
-/// </summary>
+/// <summary>Singleton cache for token verification results. Reduces per-request PBKDF2 hashing and SQLite round-trips from 3 to 0 on cache hit (30s TTL). Supports explicit invalidation by token ID on revocation</summary>
 public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificationCache
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(30);
     // Maps tokenId → cache key to enable invalidation when a token is revoked by ID
     private readonly ConcurrentDictionary<int, string> _idToKey = new();
 
-    /// <summary>
-    /// Builds a stable, fixed-length cache key from the raw bearer token using SHA-256.
-    /// The raw token is never stored; only its hash is used as the key.
-    /// Uses a stack buffer for tokens ≤256 UTF-8 bytes, ArrayPool otherwise.
-    /// </summary>
+    /// <summary>Builds a stable, fixed-length cache key from the raw bearer token using SHA-256. The raw token is never stored; only its hash is used as the key. Uses a stack buffer for tokens ≤256 UTF-8 bytes, ArrayPool otherwise</summary>
     public static string BuildKey(string rawToken)
     {
         const int StackLimit = 256;
