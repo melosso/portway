@@ -203,6 +203,36 @@ public static class EndpointHandler
     private static volatile Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
 
+    private static readonly EndpointLoaderSpec ProxyLoaderSpec = new(
+        "Proxy", "proxy", "", "*.json", NamespaceAware: true,
+        ParseProxyEndpointDefinition,
+        d => !string.IsNullOrWhiteSpace(d.Url) && d.Methods.Any(),
+        LogEndpointLoading);
+
+    private static readonly EndpointLoaderSpec SqlLoaderSpec = new(
+        "SQL", "SQL", "SQL ", "*.json", NamespaceAware: true,
+        ParseSqlEndpointDefinition,
+        d => !string.IsNullOrWhiteSpace(d.DatabaseObjectName),
+        (key, d) => Log.Debug($"SQL Endpoint: {key}; Object: {d.DatabaseSchema}.{d.DatabaseObjectName}; Namespace: {d.EffectiveNamespace ?? "None"}"));
+
+    private static readonly EndpointLoaderSpec StaticLoaderSpec = new(
+        "Static", "static", "static ", "entity.json", NamespaceAware: true,
+        ParseStaticEndpointDefinition,
+        _ => true,
+        (key, d) => Log.Debug("Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | DocumentationTag: {DocumentationTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
+            key,
+            d.IsPrivate ? "Private" : "Public",
+            d.Properties?.GetValueOrDefault("ContentType", "unknown"),
+            d.DocumentationTag,
+            d.Namespace ?? "null",
+            d.InferredNamespace ?? "null"));
+
+    private static readonly EndpointLoaderSpec FileLoaderSpec = new(
+        "File", "file", "file ", "*.json", NamespaceAware: false,
+        ParseFileEndpointDefinition,
+        _ => true,
+        (key, d) => Log.Debug("File Endpoint: {Name} ({IsPrivate})", key, d.IsPrivate ? "Private" : "Public"));
+
     /// <summary>Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility</summary>
     private static string GetEndpointsBasePath()
     {
@@ -261,33 +291,17 @@ public static class EndpointHandler
     /// <summary>Loads file endpoints if they haven't been loaded yet</summary>
     private static void LoadFileEndpointsIfNeeded(string endpointsDirectory)
     {
-        // Use double-check locking pattern to ensure thread safety
         if (_loadedFileEndpoints == null)
-        {
             lock (_loadLock)
-            {
-                if (_loadedFileEndpoints == null)
-                {
-                    _loadedFileEndpoints = LoadFileEndpoints(endpointsDirectory);
-                }
-            }
-        }
+                _loadedFileEndpoints ??= LoadFileEndpoints(endpointsDirectory);
     }
 
     /// <summary>Loads static endpoints if they haven't been loaded yet</summary>
     private static void LoadStaticEndpointsIfNeeded(string endpointsDirectory)
     {
-        // Use double-check locking pattern to ensure thread safety
         if (_loadedStaticEndpoints == null)
-        {
             lock (_loadLock)
-            {
-                if (_loadedStaticEndpoints == null)
-                {
-                    _loadedStaticEndpoints = LoadStaticEndpoints(endpointsDirectory);
-                }
-            }
-        }
+                _loadedStaticEndpoints ??= LoadStaticEndpoints(endpointsDirectory);
     }
 
     /// <summary>Scans the specified directory for endpoint definition files and returns a dictionary of endpoints</summary>
@@ -322,290 +336,34 @@ public static class EndpointHandler
     /// <summary>Internal method to load proxy endpoints if they haven't been loaded yet</summary>
     private static void LoadProxyEndpointsIfNeeded(string endpointsDirectory)
     {
-        // Use double-check locking pattern to ensure thread safety
         if (_loadedProxyEndpoints == null)
-        {
             lock (_loadLock)
-            {
-                if (_loadedProxyEndpoints == null)
-                {
-                    _loadedProxyEndpoints = LoadProxyEndpoints(endpointsDirectory);
-                }
-            }
-        }
+                _loadedProxyEndpoints ??= LoadProxyEndpoints(endpointsDirectory);
     }
 
     /// <summary>Internal method to load SQL endpoints if they haven't been loaded yet</summary>
     private static void LoadSqlEndpointsIfNeeded(string endpointsDirectory)
     {
-        // Use double-check locking pattern to ensure thread safety
         if (_loadedSqlEndpoints == null)
-        {
             lock (_loadLock)
-            {
-                if (_loadedSqlEndpoints == null)
-                {
-                    _loadedSqlEndpoints = LoadSqlEndpoints(endpointsDirectory);
-                }
-            }
-        }
+                _loadedSqlEndpoints ??= LoadSqlEndpoints(endpointsDirectory);
     }
 
     /// <summary>Internal method to load SQL endpoints if they haven't been loaded yet</summary>
     private static void LoadSqlWebhookEndpointsIfNeeded(string endpointsDirectory)
     {
-        // Use double-check locking pattern to ensure thread safety
         if (_loadedSqlWebhookEndpoints == null)
-        {
             lock (_loadLock)
-            {
-                if (_loadedSqlWebhookEndpoints == null)
-                {
-                    _loadedSqlWebhookEndpoints = LoadSqlWebhookEndpoints(endpointsDirectory);
-                }
-            }
-        }
+                _loadedSqlWebhookEndpoints ??= LoadSqlWebhookEndpoints(endpointsDirectory);
     }
 
     /// <summary>Internal method to load all proxy endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadProxyEndpoints(string endpointsDirectory)
-    {
-        var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            if (!Directory.Exists(endpointsDirectory))
-            {
-                Log.Warning($"Proxy endpoints directory not found: {endpointsDirectory}");
-                Directory.CreateDirectory(endpointsDirectory);
-                return endpoints;
-            }
-
-            // Get all JSON files in the endpoints directory and subdirectories
-            foreach (var file in Directory.GetFiles(endpointsDirectory, "*.json", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    // Read and parse the endpoint definition
-                    var json = File.ReadAllText(file);
-                    var definition = ParseProxyEndpointDefinition(json);
-
-                    if (definition != null && !string.IsNullOrWhiteSpace(definition.Url) && definition.Methods.Any())
-                    {
-                        // Extract namespace and endpoint name from directory structure
-                        var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
-                        
-                        // Set inferred namespace (entity.json namespace takes precedence)
-                        definition.InferredNamespace = inferredNamespace;
-
-                        // Set folder name for backward compatibility with DocumentationTag logic
-                        definition.FolderName = endpointName;
-
-                        // Skip if no valid name could be extracted
-                        if (string.IsNullOrWhiteSpace(endpointName))
-                        {
-                            Log.Warning("Could not determine endpoint name for {File}", file);
-                            continue;
-                        }
-
-                        // Warn when entity.json Namespace overrides or doubles the folder-inferred namespace
-                        if (!string.IsNullOrEmpty(definition.Namespace))
-                        {
-                            if (!string.IsNullOrEmpty(inferredNamespace))
-                            {
-                                // Nested folder: warn if JSON namespace overrides the folder-inferred one
-                                if (!string.Equals(definition.Namespace, inferredNamespace, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
-                                        endpointName, definition.Namespace, inferredNamespace);
-                                }
-                                // else: matches folder; redundant but harmless, no warning
-                            }
-                            else
-                            {
-                                // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
-                                if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // Namespace equals folder name → doubled key (e.g. Products/Products); almost certainly a mistake
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
-                                        endpointName, definition.Namespace);
-                                }
-                                else
-                                {
-                                    // Namespace differs from folder name → intentional grouping override, log for visibility
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' overrides flat folder identity — routing key will be '{Namespace}/{EndpointName}'",
-                                        endpointName, definition.Namespace);
-                                }
-                            }
-                        }
-
-                        // Validate namespace if present
-                        var validationErrors = definition.ValidateNamespace();
-                        if (validationErrors.Any())
-                        {
-                            Log.Warning("Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
-                            continue;
-                        }
-
-                        // Create keys for both namespaced and non-namespaced access
-                        var effectiveNamespace = definition.EffectiveNamespace;
-                        
-                        // Create the appropriate key based on namespace
-                        var primaryKey = !string.IsNullOrEmpty(effectiveNamespace) 
-                            ? $"{effectiveNamespace}/{endpointName}" 
-                            : endpointName;
-                        
-                        endpoints[primaryKey] = definition;
-
-                        LogEndpointLoading(primaryKey, definition);
-                    }
-                    else
-                    {
-                        Log.Warning("Failed to load endpoint from {File}", file);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    Log.Warning("Invalid JSON in proxy endpoint {File}: {Message}", file, ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unexpected error reading proxy endpoint file: {File}", file);
-                }
-            }
-
-            Log.Debug($"Loaded {endpoints.Count} proxy endpoints from {endpointsDirectory}");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error scanning proxy endpoints directory: {Directory}", endpointsDirectory);
-        }
-
-        return endpoints;
-    }
+        => EndpointDirectoryLoader.Load(endpointsDirectory, ProxyLoaderSpec);
 
     /// <summary>Internal method to load all SQL endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory)
-    {
-        var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            if (!Directory.Exists(endpointsDirectory))
-            {
-                Log.Warning($"SQL endpoints directory not found: {endpointsDirectory}");
-                Directory.CreateDirectory(endpointsDirectory);
-                return endpoints;
-            }
-
-            // Get all JSON files in the endpoints directory and subdirectories
-            foreach (var file in Directory.GetFiles(endpointsDirectory, "*.json", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    // Read and parse the endpoint definition
-                    var json = File.ReadAllText(file);
-                    var definition = ParseSqlEndpointDefinition(json);
-
-                    if (definition != null && !string.IsNullOrWhiteSpace(definition.DatabaseObjectName))
-                    {
-                        // Extract namespace and endpoint name from directory structure
-                        var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
-                        
-                        // Set inferred namespace (entity.json namespace takes precedence)
-                        definition.InferredNamespace = inferredNamespace;
-
-                        // Set folder name for backward compatibility with DocumentationTag logic
-                        definition.FolderName = endpointName;
-
-                        // Skip if no valid name could be extracted
-                        if (string.IsNullOrWhiteSpace(endpointName))
-                        {
-                            Log.Warning("Could not determine endpoint name for {File}", file);
-                            continue;
-                        }
-
-                        // Warn when entity.json Namespace overrides or doubles the folder-inferred namespace
-                        if (!string.IsNullOrEmpty(definition.Namespace))
-                        {
-                            if (!string.IsNullOrEmpty(inferredNamespace))
-                            {
-                                // Nested folder: warn if JSON namespace overrides the folder-inferred one
-                                if (!string.Equals(definition.Namespace, inferredNamespace, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
-                                        endpointName, definition.Namespace, inferredNamespace);
-                                }
-                                // else: matches folder; redundant but harmless, no warning
-                            }
-                            else
-                            {
-                                // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
-                                if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // Namespace equals folder name → doubled key (e.g. Products/Products); almost certainly a mistake
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
-                                        endpointName, definition.Namespace);
-                                }
-                                else
-                                {
-                                    // Namespace differs from folder name → intentional grouping override, log for visibility
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' overrides flat folder identity — routing key will be '{Namespace}/{EndpointName}'",
-                                        endpointName, definition.Namespace);
-                                }
-                            }
-                        }
-
-                        // Validate namespace if present
-                        var validationErrors = definition.ValidateNamespace();
-                        if (validationErrors.Any())
-                        {
-                            Log.Warning("Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
-                            continue;
-                        }
-
-                        // Create the appropriate key based on namespace
-                        var effectiveNamespace = definition.EffectiveNamespace;
-                        
-                        // Create key (with namespace if available)
-                        var primaryKey = !string.IsNullOrEmpty(effectiveNamespace) 
-                            ? $"{effectiveNamespace}/{endpointName}" 
-                            : endpointName;
-                        
-                        endpoints[primaryKey] = definition;
-
-                        Log.Debug($"SQL Endpoint: {primaryKey}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}; Namespace: {effectiveNamespace ?? "None"}");
-                    }
-                    else
-                    {
-                        Log.Warning("Failed to load SQL endpoint from {File}", file);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    Log.Warning("Invalid JSON in SQL endpoint {File}: {Message}", file, ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unexpected error reading SQL endpoint file: {File}", file);
-                }
-            }
-
-            Log.Debug($"Loaded {endpoints.Count} SQL endpoints from {endpointsDirectory}");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error scanning SQL endpoints directory: {Directory}", endpointsDirectory);
-        }
-
-        return endpoints;
-    }
+        => EndpointDirectoryLoader.Load(endpointsDirectory, SqlLoaderSpec);
 
     /// <summary>Internal method to load all SQL webhook endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory)
@@ -675,199 +433,11 @@ public static class EndpointHandler
 
     /// <summary>Internal method to load all file endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory)
-    {
-        var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            if (!Directory.Exists(endpointsDirectory))
-            {
-                Log.Warning($"File endpoints directory not found: {endpointsDirectory}");
-                Directory.CreateDirectory(endpointsDirectory);
-                return endpoints;
-            }
-
-            // Get all JSON files in the endpoints directory and subdirectories
-            foreach (var file in Directory.GetFiles(endpointsDirectory, "*.json", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    // Read and parse the endpoint definition
-                    var json = File.ReadAllText(file);
-                    var definition = ParseFileEndpointDefinition(json);
-
-                    if (definition != null)
-                    {
-                        // Extract endpoint name from directory name
-                        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
-
-                        // Skip if no valid name could be extracted
-                        if (string.IsNullOrWhiteSpace(endpointName))
-                        {
-                            Log.Warning("Could not determine endpoint name for {File}", file);
-                            continue;
-                        }
-
-                        // Set folder name for backward compatibility with DocumentationTag logic
-                        definition.FolderName = endpointName;
-
-                        // Add the endpoint to the dictionary
-                        endpoints[endpointName] = definition;
-
-                        Log.Debug("File Endpoint: {Name} ({IsPrivate})",
-                            endpointName,
-                            definition.IsPrivate ? "Private" : "Public");
-                    }
-                    else
-                    {
-                        Log.Warning("Failed to load file endpoint from {File}", file);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    Log.Warning("Invalid JSON in file endpoint {File}: {Message}", file, ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unexpected error reading file endpoint file: {File}", file);
-                }
-            }
-
-            Log.Debug($"Loaded {endpoints.Count} file endpoints from {endpointsDirectory}");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error scanning file endpoints directory: {Directory}", endpointsDirectory);
-        }
-
-        return endpoints;
-    }
+        => EndpointDirectoryLoader.Load(endpointsDirectory, FileLoaderSpec);
 
     /// <summary>Internal method to load all static endpoints from the endpoints directory</summary>
     private static Dictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory)
-    {
-        var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            if (!Directory.Exists(endpointsDirectory))
-            {
-                Log.Warning($"Static endpoints directory not found: {endpointsDirectory}");
-                Directory.CreateDirectory(endpointsDirectory);
-                return endpoints;
-            }
-
-            // Get all entity.json files in the endpoints directory subdirectories
-            foreach (var file in Directory.GetFiles(endpointsDirectory, "entity.json", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    // Read and parse the endpoint definition
-                    var json = File.ReadAllText(file);
-                    var definition = ParseStaticEndpointDefinition(json);
-
-                    if (definition != null)
-                    {
-                        // Extract namespace and endpoint name from directory structure
-                        var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
-                        
-                        // Set inferred namespace (entity.json namespace takes precedence)
-                        definition.InferredNamespace = inferredNamespace;
-
-                        // Set folder name for backward compatibility with DocumentationTag logic
-                        definition.FolderName = endpointName;
-
-                        // Skip if no valid name could be extracted
-                        if (string.IsNullOrWhiteSpace(endpointName))
-                        {
-                            Log.Warning("Could not determine endpoint name for {File}", file);
-                            continue;
-                        }
-
-                        // Warn when entity.json Namespace overrides or doubles the folder-inferred namespace
-                        if (!string.IsNullOrEmpty(definition.Namespace))
-                        {
-                            if (!string.IsNullOrEmpty(inferredNamespace))
-                            {
-                                // Nested folder: warn if JSON namespace overrides the folder-inferred one
-                                if (!string.Equals(definition.Namespace, inferredNamespace, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Explicit}' overrides folder namespace '{Inferred}' — routing key will be '{Explicit}/{EndpointName}'",
-                                        endpointName, definition.Namespace, inferredNamespace);
-                                }
-                                // else: matches folder; redundant but harmless, no warning
-                            }
-                            else
-                            {
-                                // Flat folder: JSON Namespace adds a namespace where none was inferred from folder structure
-                                if (string.Equals(definition.Namespace, endpointName, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // Namespace equals folder name → doubled key (e.g. Products/Products); almost certainly a mistake
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' matches the folder name — routing key will be '{Namespace}/{EndpointName}' (doubled). Remove Namespace from entity.json to use key '{EndpointName}'",
-                                        endpointName, definition.Namespace);
-                                }
-                                else
-                                {
-                                    // Namespace differs from folder name → intentional grouping override, log for visibility
-                                    Log.Warning(
-                                        "Endpoint {EndpointName}: entity.json Namespace '{Namespace}' overrides flat folder identity — routing key will be '{Namespace}/{EndpointName}'",
-                                        endpointName, definition.Namespace);
-                                }
-                            }
-                        }
-
-                        // Validate namespace if present
-                        var validationErrors = definition.ValidateNamespace();
-                        if (validationErrors.Any())
-                        {
-                            Log.Warning("Namespace validation failed for {File}: {Errors}", file, string.Join(", ", validationErrors));
-                            continue;
-                        }
-
-                        // Create the appropriate key based on namespace
-                        var effectiveNamespace = definition.EffectiveNamespace;
-                        
-                        // Create key (with namespace if available)
-                        var primaryKey = !string.IsNullOrEmpty(effectiveNamespace) 
-                            ? $"{effectiveNamespace}/{endpointName}" 
-                            : endpointName;
-                        
-                        endpoints[primaryKey] = definition;
-
-                        Log.Debug("Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | DocumentationTag: {DocumentationTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
-                            primaryKey,
-                            definition.IsPrivate ? "Private" : "Public",
-                            definition.Properties?.GetValueOrDefault("ContentType", "unknown"),
-                            definition.DocumentationTag,
-                            definition.Namespace ?? "null",
-                            definition.InferredNamespace ?? "null");
-                    }
-                    else
-                    {
-                        Log.Warning("Failed to load static endpoint from {File}", file);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    Log.Warning("Invalid JSON in static endpoint {File}: {Message}", file, ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unexpected error reading static endpoint file: {File}", file);
-                }
-            }
-
-            Log.Debug($"Loaded {endpoints.Count} static endpoints from {endpointsDirectory}");
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error scanning static endpoints directory: {Directory}", endpointsDirectory);
-        }
-
-        return endpoints;
-    }
+        => EndpointDirectoryLoader.Load(endpointsDirectory, StaticLoaderSpec);
 
     /// <summary>Parses a file endpoint definition from JSON</summary>
     private static EndpointDefinition? ParseFileEndpointDefinition(string json)

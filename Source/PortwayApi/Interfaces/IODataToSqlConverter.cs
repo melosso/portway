@@ -17,4 +17,10 @@ public interface IODataToSqlConverter
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType);
+
+    /// <summary>Converts OData query parameters to a COUNT query for the specified provider; only $filter applies</summary>
+    (string SqlQuery, Dictionary<string, object> Parameters) ConvertToCountSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType);
 }

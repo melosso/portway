@@ -150,6 +150,41 @@ public class WebUiSecurityTests : IDisposable
             e.GetProperty("target_type").GetString() == "environment-settings");
     }
 
+    [Theory]
+    [InlineData("sql", """{"DatabaseObjectName":"Items","DatabaseSchema":"dbo"}""", true)]
+    [InlineData("sql", """{"DatabaseSchema":"dbo"}""", false)]
+    [InlineData("proxy", """{"Url":"http://localhost:8020/svc","Methods":["GET"]}""", true)]
+    [InlineData("proxy", """{"Methods":["GET"]}""", false)]
+    [InlineData("static", """{"ContentType":"text/csv","Namespace":"1bad"}""", false)]
+    public async Task ValidateEndpoint_ChecksTypeRules(string type, string content, bool expectValid)
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Post, $"/ui/api/endpoints/{type}/validate", authCookie, csrfCookie,
+            new { content });
+        var resp = await client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(expectValid, json.GetProperty("valid").GetBoolean());
+    }
+
+    [Fact]
+    public async Task ValidateEndpoint_InvalidJson_ReturnsInvalidWithError()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Post, "/ui/api/endpoints/sql/validate", authCookie, csrfCookie,
+            new { content = "{ not json" });
+        var resp = await client.SendAsync(req);
+
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(json.GetProperty("valid").GetBoolean());
+        Assert.Contains("Invalid JSON", json.GetProperty("errors")[0].GetString());
+    }
+
     [Fact]
     public async Task ComposedPage_ContainsShellViewAndTitle()
     {

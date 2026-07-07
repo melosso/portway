@@ -2299,6 +2299,8 @@ public class EndpointController : ControllerBase
                 detectedProviderType);
 
             // Step 8: Check cache first if enabled
+            // $count=true adds the unpaged total matching the filter to the response
+            bool countRequested = string.Equals(Request.Query["$count"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase);
             object? cachedResponse = null;
             string? cacheKey = null;
             bool cacheEnabled = IsCacheEnabled(endpoint);
@@ -2306,7 +2308,7 @@ public class EndpointController : ControllerBase
             if (cacheEnabled)
             {
                 // Create cache key based on query parameters
-                cacheKey = $"sql:{env}:{endpointName}:{query.GetHashCode()}:{string.Join(",", parameters?.Select(p => $"{p.Key}={p.Value}") ?? new string[0])}";
+                cacheKey = $"sql:{env}:{endpointName}:{query.GetHashCode()}:{string.Join(",", parameters?.Select(p => $"{p.Key}={p.Value}") ?? new string[0])}:count={countRequested}";
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
                 
                 if (cachedResponse != null)
@@ -2377,8 +2379,17 @@ public class EndpointController : ControllerBase
                 SetCacheControlHeader(cacheDurationSeconds);
             }
             
+            // Run the COUNT query only when the caller asked for it
+            long? totalCount = null;
+            if (countRequested)
+            {
+                var (countQuery, countParameters) = _oDataToSqlConverter.ConvertToCountSQL(
+                    $"{schema}.{objectName}", odataParams, detectedProviderType);
+                totalCount = await connection.ExecuteScalarAsync<long>(countQuery, countParameters);
+            }
+
             var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip);
-            var response = CollectionResponse<object>.Of(transformedResults, nextLink);
+            var response = CollectionResponse<object>.Of(transformedResults, nextLink, totalCount);
 
             Log.Debug("Successfully processed query for {Endpoint}", endpointName);
 

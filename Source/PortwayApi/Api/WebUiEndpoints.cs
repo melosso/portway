@@ -1237,6 +1237,71 @@ public static class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
+        // POST /ui/api/endpoints/{type}/validate , dry-run configuration check without saving
+        app.MapPost("/ui/api/endpoints/{type}/validate", async (string type, HttpContext context) =>
+        {
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind == JsonValueKind.Undefined)
+                return Results.Json(new { error = "content field required" }, statusCode: 400);
+
+            var rawContent = contentEl.ValueKind == JsonValueKind.String
+                ? contentEl.GetString() ?? ""
+                : contentEl.GetRawText();
+
+            JsonElement root;
+            try
+            {
+                using var doc = JsonDocument.Parse(rawContent);
+                root = doc.RootElement.Clone();
+            }
+            catch (JsonException ex)
+            {
+                return Results.Json(new { valid = false, errors = new[] { $"Invalid JSON: {ex.Message}" } });
+            }
+
+            var errors = new List<string>();
+
+            switch (type.ToLowerInvariant())
+            {
+                case "sql":
+                case "webhook":
+                    if (root.ValueKind != JsonValueKind.Object ||
+                        !root.TryGetProperty("DatabaseObjectName", out var dbo) || dbo.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(dbo.GetString()))
+                        errors.Add("DatabaseObjectName is required for SQL endpoints");
+                    break;
+                case "proxy":
+                case "composite":
+                    if (root.ValueKind != JsonValueKind.Object ||
+                        !root.TryGetProperty("Url", out var url) || url.ValueKind != JsonValueKind.String ||
+                        string.IsNullOrWhiteSpace(url.GetString()))
+                        errors.Add("Url is required for Proxy endpoints");
+                    if (root.ValueKind != JsonValueKind.Object ||
+                        !root.TryGetProperty("Methods", out var methods) || methods.ValueKind != JsonValueKind.Array ||
+                        methods.GetArrayLength() == 0)
+                        errors.Add("Methods must contain at least one HTTP method");
+                    break;
+                case "file":
+                case "static":
+                    break;
+                default:
+                    return Results.Json(new { error = $"Unknown endpoint type: {type}" }, statusCode: 400);
+            }
+
+            // Same namespace rules the loader enforces at startup
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty("Namespace", out var ns) && ns.ValueKind == JsonValueKind.String)
+            {
+                var n = ns.GetString() ?? "";
+                if (!System.Text.RegularExpressions.Regex.IsMatch(n, @"^[A-Za-z][A-Za-z0-9_]*$"))
+                    errors.Add($"Namespace '{n}' is invalid; use letters, numbers and underscores, starting with a letter");
+                else if (n.Length > 50)
+                    errors.Add("Namespace exceeds the maximum length of 50 characters");
+            }
+
+            return Results.Json(new { valid = errors.Count == 0, errors });
+        }).ExcludeFromDescription();
+
         // Receive and log client-side JS errors for production visibility
         // Exempt from auth (sendBeacon fires from any page state); rate-limited by the IP limiter
         app.MapPost("/ui/api/client-error", async (HttpContext context) =>

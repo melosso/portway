@@ -91,6 +91,25 @@ Response:
 }
 ```
 
+### POST /ui/api/endpoints/{type}/validate
+
+Checks an endpoint configuration without saving it, using the same rules the loader applies at startup. This is a convenient pre-flight before writing an `entity.json`, whether by hand or from automation.
+
+```http
+POST /ui/api/endpoints/sql/validate
+Content-Type: application/json
+X-CSRF-Token: {csrf}
+
+{ "content": { "DatabaseObjectName": "Products", "DatabaseSchema": "dbo" } }
+```
+
+Response:
+```json
+{ "valid": true, "errors": [] }
+```
+
+The `content` field accepts either a JSON object or a string containing JSON. Validation covers JSON syntax, the per-type required fields (`DatabaseObjectName` for SQL and Webhook, `Url` and `Methods` for Proxy and Composite), and the namespace naming rules. A failed check returns `valid: false` with each problem listed in `errors`; the endpoint on disk is never touched.
+
 ### GET /ui/api/environments
 
 Environment configuration.

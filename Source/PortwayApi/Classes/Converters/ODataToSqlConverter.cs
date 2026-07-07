@@ -26,6 +26,25 @@ public class ODataToSqlConverter : IODataToSqlConverter
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType)
+        => Convert(entityName, odataParams, providerType, count: false);
+
+    public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToCountSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType)
+    {
+        // Count ignores paging, projection and ordering; only the filter shapes the result
+        var countParams = new Dictionary<string, string>();
+        if (odataParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
+            countParams["filter"] = filter;
+        return Convert(entityName, countParams, providerType, count: true);
+    }
+
+    private (string SqlQuery, Dictionary<string, object> Parameters) Convert(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType,
+        bool count)
     {
         Log.Debug("Converting OData to SQL for entity: {EntityName} (provider: {Provider})", entityName, providerType);
 
@@ -87,7 +106,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             var (sqlQuery, rawParams) = dynamicConverter.ConvertToSQL(
                 fullTableName,
                 odataParams,
-                false,
+                count,
                 true
             );
 

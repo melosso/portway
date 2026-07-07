@@ -184,6 +184,9 @@ try
     // the controller, so CacheManager.GetAsync is never called on hits
     
     app.UseAuthenticatedCaching();
+
+    // Strong ETags on GET /api responses; If-None-Match revalidation returns 304
+    app.UseETagCaching();
     app.UseRequestTrafficLogging();
     app.UseRouting();
 
