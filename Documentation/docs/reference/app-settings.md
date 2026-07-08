@@ -35,6 +35,7 @@ When you want to shape how Portway behaves at its core (logging, security, rate 
   },
   "OpenApi": { ... },
   "RateLimiting": { ... },
+  "ForwardedHeaders": { ... },
   "RequestTrafficLogging": { ... },
   "SqlConnectionPooling": { ... }
 }
@@ -202,6 +203,38 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 - Token-based limiting applies per authentication token
 - Exceeding limits results in 429 Too Many Requests
 - Limits reset after the time window expires
+
+## Forwarded Headers
+
+When Portway runs directly on Kestrel, the client IP it sees is the one connecting to it, which is exactly what per-IP rate limiting and the Web UI network gate rely on. Once you place a reverse proxy in front (nginx, IIS, or similar), that connecting IP becomes the proxy instead, and every client starts to look like the same address. The real client IP is still available in the `X-Forwarded-For` header, and this section is how you tell Portway which proxies it can trust to set it.
+
+### Configuration Structure
+
+```json
+{
+  "ForwardedHeaders": {
+    "KnownProxies": ["127.0.0.1", "::1"],
+    "KnownNetworks": ["10.0.0.0/8"]
+  }
+}
+```
+
+### Property Reference
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `KnownProxies` | string[] | `[]` | IP addresses of trusted reverse proxies |
+| `KnownNetworks` | string[] | `[]` | CIDR ranges of trusted reverse proxies |
+
+### How It Works
+
+Portway only honors `X-Forwarded-For` when the request arrives from an address you have listed here, which keeps clients from spoofing their own IP. You can register individual proxy addresses in `KnownProxies`, describe a whole range in `KnownNetworks`, or combine both when your setup calls for it. A common starting point for a proxy sharing the host with Portway is `127.0.0.1` and `::1`.
+
+Leaving both lists empty is perfectly valid, and it is the default. In that case `X-Forwarded-For` is ignored entirely and the connecting address is used as-is. That is the safe choice when nothing sits in front of Portway, though behind a proxy it means per-IP rate limiting and the network-based Web UI gate will see the proxy rather than the real caller. If you rely on either of those, registering your proxy here is recommended.
+
+> **Note:** If you front Portway with Cloudflare, its client IP is recovered separately from the `CF-Connecting-IP` header when the request genuinely originates from a Cloudflare address, so you do not need to list Cloudflare ranges here.
+
+The Settings posture panel in the Web UI reflects whether any trusted proxies are configured, which is a quick way to confirm the setup took effect.
 
 ## Request Traffic Logging
 
