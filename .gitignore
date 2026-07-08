@@ -22,3 +22,6 @@ Source/PortwayApi/.core/
 Source/coverage.runsettings
 Documentation/docs/node_modules/*
 Documentation/package-lock.json
+# Hidden directories except .github
+.*/
+!.github/
