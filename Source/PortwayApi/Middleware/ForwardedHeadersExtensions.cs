@@ -23,22 +23,25 @@ public static class ForwardedHeadersExtensions
             ForwardLimit = null
         };
 
-        // Configure known proxies based on environment
-        var isProduction = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-            ?.Equals("Production", StringComparison.OrdinalIgnoreCase) ?? false;
+        // Trust X-Forwarded-For only from explicitly configured proxies; empty means the header is ignored and RemoteIpAddress stays the real TCP peer
+        forwardedHeadersOptions.KnownIPNetworks.Clear();
+        forwardedHeadersOptions.KnownProxies.Clear();
 
-        if (!isProduction)
-        {
-            forwardedHeadersOptions.KnownIPNetworks.Clear();
-            forwardedHeadersOptions.KnownProxies.Clear();
-            Log.Warning("ForwardedHeaders: No known proxies configured. Add trusted proxies in production.");
-        }
+        var knownProxies = app.Configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+        var knownNetworks = app.Configuration.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+
+        foreach (var proxy in knownProxies)
+            if (IPAddress.TryParse(proxy, out var ip))
+                forwardedHeadersOptions.KnownProxies.Add(ip);
+
+        foreach (var network in knownNetworks)
+            if (System.Net.IPNetwork.TryParse(network, out var net))
+                forwardedHeadersOptions.KnownIPNetworks.Add(net);
+
+        if (forwardedHeadersOptions.KnownProxies.Count == 0 && forwardedHeadersOptions.KnownIPNetworks.Count == 0)
+            Log.Warning("ForwardedHeaders: no trusted proxies configured; X-Forwarded-For is ignored. Behind a reverse proxy, client IPs will be the proxy IP, which weakens per-IP rate limiting and the Web UI network gate. Set ForwardedHeaders:KnownProxies to fix.");
         else
-        {
-            // Production: cleared by default; configure via config file if needed
-            forwardedHeadersOptions.KnownIPNetworks.Clear();
-            forwardedHeadersOptions.KnownProxies.Clear();
-        }
+            Log.Information("ForwardedHeaders: trusting {ProxyCount} proxy IP(s) and {NetworkCount} network(s) for X-Forwarded-For", forwardedHeadersOptions.KnownProxies.Count, forwardedHeadersOptions.KnownIPNetworks.Count);
 
         app.UseForwardedHeaders(forwardedHeadersOptions);
 

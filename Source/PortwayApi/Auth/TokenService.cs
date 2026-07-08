@@ -162,6 +162,13 @@ public class TokenService
             return cached;
         }
 
+        // Short-circuit recently seen invalid tokens so a flood cannot force a full PBKDF2 scan per request
+        if (_tokenCache.IsKnownMiss(cacheKey))
+        {
+            Log.Debug("Token negative-cache hit; rejecting known invalid token without rehashing");
+            return null;
+        }
+
         // Cache miss; load from DB with no tracking overhead (entities are never modified here)
         var tokens = await _dbContext.Tokens
             .AsNoTracking()
@@ -184,6 +191,9 @@ public class TokenService
 
         Log.Warning("Failed token access attempt with token: {TokenPrefix}...",
             token.Length > 10 ? token[..10] : token);
+
+        // Record the miss so repeated probes with this token skip the scan until the short TTL expires
+        _tokenCache.SetMiss(cacheKey);
 
         return null;
     }

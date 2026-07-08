@@ -175,13 +175,12 @@ try
 
     app.UsePortwayCors();
 
-    PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app);
+    PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app, adminApiKey);
+
     app.UseTokenAuthentication();
     app.UseAuthorization();
 
-    // UseResponseCaching() removed as we'll be using CacheManager to handles all server-side caching
-    // Leaving it in causes ASP.NET Core to intercept repeat requests before reaching
-    // the controller, so CacheManager.GetAsync is never called on hits
+    // Removed UseResponseCaching() to prevent ASP.NET Core from intercepting requests before they reach CacheManager!
     
     app.UseAuthenticatedCaching();
 

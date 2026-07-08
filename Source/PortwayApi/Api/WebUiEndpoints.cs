@@ -714,6 +714,8 @@ public static class WebUiEndpointExtensions
             var adminKey = config.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
             var corsOriginsCount   = config.GetSection("WebUi:CorsOrigins").Get<string[]>()?.Length ?? 0;
             var publicOriginsCount = config.GetSection("WebUi:PublicOrigins").Get<string[]>()?.Length ?? 0;
+            var trustedProxyCount  = (config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>()?.Length ?? 0)
+                                   + (config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>()?.Length ?? 0);
             var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
             var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
             var httpsOn = inContainer
@@ -743,6 +745,7 @@ public static class WebUiEndpointExtensions
                 secure_cookies      = config.GetValue<bool>("WebUi:SecureCookies", false),
                 cors_origins_count  = corsOriginsCount,
                 public_origins_count = publicOriginsCount,
+                trusted_proxies_configured = trustedProxyCount > 0,
                 csrf_protection     = true
             },
             rate_limiting = new
@@ -1509,20 +1512,7 @@ public static class WebUiEndpointExtensions
     };
 
     private static bool ValidateToken(string token, string adminApiKey)
-    {
-        var dot = token.IndexOf('.');
-        if (dot < 0) return false;
-        var expiryStr = token[..dot];
-        if (!long.TryParse(expiryStr, out var expiry) ||
-            DateTimeOffset.FromUnixTimeSeconds(expiry) < DateTimeOffset.UtcNow)
-            return false;
-        var signingKey = SHA256.HashData(Encoding.UTF8.GetBytes(adminApiKey));
-        using var hmac = new HMACSHA256(signingKey);
-        var expected   = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(expiryStr)));
-        return CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(expected),
-            Encoding.UTF8.GetBytes(token[(dot + 1)..]));
-    }
+        => WebUiAuthHelper.IsValidSessionCookie(token, adminApiKey);
 
     /// <summary>Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing</summary>
     private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)

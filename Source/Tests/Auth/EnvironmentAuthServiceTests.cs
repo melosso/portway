@@ -279,4 +279,70 @@ public class EnvironmentAuthServiceTests
         // Assert
         Assert.False(result);
     }
+
+    [Fact]
+    public async Task ValidateAsync_Disabled_ReturnsTrue()
+    {
+        var context = new DefaultHttpContext();
+        var settings = new AuthenticationSettings { Enabled = false };
+
+        var result = await _service.ValidateAsync(context, settings);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_EnabledWithNoMethods_FailsClosed()
+    {
+        // Enabling auth with an empty method list must deny, not open the environment
+        var context = new DefaultHttpContext();
+        var settings = new AuthenticationSettings { Enabled = true, Methods = new List<AuthenticationMethod>() };
+
+        var result = await _service.ValidateAsync(context, settings);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_ApiKey_WrongValue_ReturnsFalse()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Headers["X-API-Key"] = "wrong";
+
+        var settings = new AuthenticationSettings
+        {
+            Enabled = true,
+            Methods = new List<AuthenticationMethod>
+            {
+                new AuthenticationMethod { Type = "ApiKey", Name = "X-API-Key", Value = "secret-key", In = "Header" }
+            }
+        };
+
+        var result = await _service.ValidateAsync(context, settings);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task ValidateAsync_Jwt_WithNoKey_RefusesUnsignedToken()
+    {
+        // A JWT method with neither Secret nor PublicKey must reject rather than trust an unsigned token
+        var context = new DefaultHttpContext();
+        var header = Convert.ToBase64String(Encoding.UTF8.GetBytes("{\"alg\":\"none\",\"typ\":\"JWT\"}")).TrimEnd('=');
+        var payload = Convert.ToBase64String(Encoding.UTF8.GetBytes("{\"sub\":\"attacker\"}")).TrimEnd('=');
+        context.Request.Headers.Authorization = $"Bearer {header}.{payload}.";
+
+        var settings = new AuthenticationSettings
+        {
+            Enabled = true,
+            Methods = new List<AuthenticationMethod>
+            {
+                new AuthenticationMethod { Type = "JWT" }
+            }
+        };
+
+        var result = await _service.ValidateAsync(context, settings);
+
+        Assert.False(result);
+    }
 }

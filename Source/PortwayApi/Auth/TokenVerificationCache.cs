@@ -12,12 +12,16 @@ public interface ITokenVerificationCache
     bool TryGet(string cacheKey, [NotNullWhen(true)] out AuthToken? token);
     void Set(string cacheKey, AuthToken token, int tokenId);
     void Invalidate(int tokenId);
+    bool IsKnownMiss(string cacheKey);
+    void SetMiss(string cacheKey);
 }
 
 /// <summary>Singleton cache for token verification results. Reduces per-request PBKDF2 hashing and SQLite round-trips from 3 to 0 on cache hit (30s TTL). Supports explicit invalidation by token ID on revocation</summary>
 public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificationCache
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(30);
+    // Short TTL so a token created moments after being probed becomes usable quickly
+    private static readonly TimeSpan MissTtl = TimeSpan.FromSeconds(10);
     // Maps tokenId → cache key to enable invalidation when a token is revoked by ID
     private readonly ConcurrentDictionary<int, string> _idToKey = new();
 
@@ -60,4 +64,11 @@ public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificat
         if (_idToKey.TryRemove(tokenId, out var key))
             cache.Remove(key);
     }
+
+    // Negative results are namespaced separately so a miss never shadows a real token entry
+    public bool IsKnownMiss(string cacheKey) => cache.TryGetValue(MissKey(cacheKey), out _);
+
+    public void SetMiss(string cacheKey) => cache.Set(MissKey(cacheKey), true, MissTtl);
+
+    private static string MissKey(string cacheKey) => "miss:" + cacheKey;
 }

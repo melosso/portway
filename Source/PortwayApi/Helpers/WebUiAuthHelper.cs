@@ -84,6 +84,29 @@ public static class WebUiAuthHelper
         _failedAttempts.TryRemove(clientIp, out _);
     }
 
+    /// <summary>Validates an HMAC-signed session cookie against the admin key; returns false on tamper or expiry</summary>
+    public static bool IsValidSessionCookie(string? token, string adminApiKey)
+    {
+        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(adminApiKey))
+            return false;
+
+        var dot = token.IndexOf('.');
+        if (dot < 0)
+            return false;
+
+        var expiryStr = token[..dot];
+        if (!long.TryParse(expiryStr, out var expiry) ||
+            DateTimeOffset.FromUnixTimeSeconds(expiry) < DateTimeOffset.UtcNow)
+            return false;
+
+        var signingKey = SHA256.HashData(Encoding.UTF8.GetBytes(adminApiKey));
+        using var hmac = new HMACSHA256(signingKey);
+        var expected = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(expiryStr)));
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expected),
+            Encoding.UTF8.GetBytes(token[(dot + 1)..]));
+    }
+
     /// <summary>Generates a new CSRF token</summary>
     public static string GenerateCsrfToken()
     {

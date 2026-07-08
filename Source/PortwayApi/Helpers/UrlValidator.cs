@@ -47,12 +47,15 @@ public class UrlValidator
 
         _blockedRanges = config.BlockedIpRanges?.Count > 0
             ? config.BlockedIpRanges
-            : new List<string> 
-            { 
+            : new List<string>
+            {
                 "10.0.0.0/8",
                 "172.16.0.0/12",
                 "192.168.0.0/16",
-                "169.254.0.0/16"
+                "169.254.0.0/16",
+                // IPv6 private and link-local ranges; loopback stays reachable to mirror the IPv4 policy for local proxy targets
+                "fc00::/7",
+                "fe80::/10"
             };
 
         Log.Information("Network traffic allowed for hosts: {Hosts}", 
@@ -310,6 +313,10 @@ public class UrlValidator
     {
         try
         {
+            // Unwrap IPv4-mapped IPv6 so a mapped address is checked against the IPv4 rules
+            if (ip.IsIPv4MappedToIPv6)
+                ip = ip.MapToIPv4();
+
             var parts = cidrRange.Split('/');
             var baseIp = IPAddress.Parse(parts[0]);
             var cidrBits = int.Parse(parts[1]);
