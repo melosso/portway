@@ -54,8 +54,8 @@ PortwayApi/
 | SQL | `endpoints/SQL/{Name}/entity.json` | `/api/{env}/{Name}` |
 | Proxy | `endpoints/Proxy/{Name}/entity.json` | `/api/{env}/{Name}` |
 | Composite | `endpoints/Proxy/{Name}/entity.json` (Type: Composite) | `/api/{env}/composite/{Name}` |
-| Webhook | `endpoints/Webhooks/entity.json` | `/api/{env}/webhook/{id}` |
-| File | `endpoints/Files/{Name}/entity.json` | `/api/{env}/files/{Name}` |
+| Webhook | `endpoints/Webhooks/{Namespace}/{Name}/entity.json` | `/api/{env}/{Namespace}/{Name}/{id}` |
+| File | `endpoints/Files/[{Namespace}/]{Name}/entity.json` | `/api/{env}/files/[{Namespace}/]{Name}` |
 | Static | `endpoints/Static/{Name}/entity.json` | `/api/{env}/{Name}` |
 
 The endpoint name in the URL is case-sensitive and matches the folder name exactly.

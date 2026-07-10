@@ -35,11 +35,18 @@ Namespaces are implemented through directory organization within each endpoint t
   │   └── [EntityName]/              # Non-namespaced (legacy)
   │       ├── entity.json
   │       └── [content-file]
-  ├── Files/                         # Files do NOT support namespaces
-  │   └── [EntityName]/
+  ├── Files/
+  │   ├── [Namespace]/
+  │   │   └── [EntityName]/
+  │   │       └── entity.json
+  │   └── [EntityName]/              # Non-namespaced (legacy)
   │       └── entity.json
-  ├── Webhooks/                      # Webhooks do NOT support namespaces
-  │   └── entity.json
+  ├── Webhooks/                      # Namespaced since v1.7.0 (breaking: no more shared root entity.json)
+  │   ├── [Namespace]/
+  │   │   └── [EntityName]/
+  │   │       └── entity.json
+  │   └── [EntityName]/              # Non-namespaced
+  │       └── entity.json
   └── Composite/                     # Composite endpoints use Proxy structure
       ├── [Namespace]/
       │   └── [EntityName]/

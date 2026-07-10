@@ -7,13 +7,17 @@ description: "Receive HTTP POST payloads from external services and persist them
 
 Webhook endpoints give external services a place to deliver events: they accept incoming POST requests and store the JSON payload in a database table you configure. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. Nothing is parsed or transformed along the way; the raw payload is stored as-is, ready for downstream processing at your own pace.
 
+::: warning Breaking change in v1.7.0
+Webhooks are now **namespaced endpoints**. The single shared `endpoints/Webhooks/entity.json` and the flat route `POST /api/{env}/webhook/{id}` have been removed. Define each webhook under `endpoints/Webhooks/{Namespace}/{Name}/entity.json` and call it at `POST /api/{env}/{namespace}/{name}/{id}`. The old route now returns `410 Gone` pointing at the new shape.
+:::
+
 ```mermaid
 sequenceDiagram
     participant External as External Service
     participant Portway as Portway Gateway
     participant DB as SQL Database
 
-    External->>Portway: POST /api/prod/webhook/payment-received
+    External->>Portway: POST /api/prod/Integrations/Inbound/payment-received
     Portway->>DB: INSERT INTO WebhookData
     DB-->>Portway: Success
     Portway-->>External: 200 OK
@@ -48,7 +52,7 @@ ALTER TABLE WebhookData ADD
 
 ## Configuration
 
-Create `endpoints/Webhooks/entity.json`:
+Create `endpoints/Webhooks/Integrations/Inbound/entity.json` (the `Integrations` folder is the namespace, `Inbound` the endpoint name):
 
 ```json
 {
@@ -75,11 +79,11 @@ Webhook IDs map to values in the `WebhookId` column. Use names that identify the
 ## Sending webhooks
 
 ```
-POST /api/{environment}/webhook/{webhookId}
+POST /api/{environment}/{namespace}/{name}/{webhookId}
 ```
 
 ```http
-POST /api/prod/webhook/payment-received
+POST /api/prod/Integrations/Inbound/payment-received
 Content-Type: application/json
 Authorization: Bearer <token>
 
@@ -154,7 +158,7 @@ To increase log verbosity:
 Test with a minimal payload:
 
 ```bash
-curl -X POST https://your-api/api/prod/webhook/test_webhook \
+curl -X POST https://your-api/api/prod/Integrations/Inbound/test_webhook \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"test": "data"}'

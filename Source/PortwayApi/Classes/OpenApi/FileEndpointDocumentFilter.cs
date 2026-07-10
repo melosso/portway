@@ -46,13 +46,16 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Get effective environments for this endpoint (endpoint-specific or global fallback)
                 var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
 
-                // Use "Files" as the main tag for all file endpoints (file endpoints don't use namespaces)
-                string mainTag = "Files";
+                // Group namespaced file endpoints under their namespace; flat ones stay under "Files"
+                string mainTag = endpoint.HasNamespace
+                    ? (endpoint.NamespaceDisplayName ?? endpoint.EffectiveNamespace!)
+                    : "Files";
 
                 if (!documentTags.ContainsKey(mainTag))
                 {
-                    // Use consistent description for Files tag
-                    documentTags[mainTag] = "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.";
+                    documentTags[mainTag] = endpoint.HasNamespace
+                        ? $"**{mainTag}**\n\nFile storage endpoints in the {mainTag} namespace."
+                        : "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.";
                 }
 
                 // Add file upload operation

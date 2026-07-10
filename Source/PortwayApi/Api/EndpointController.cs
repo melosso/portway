@@ -361,8 +361,17 @@ public class EndpointController : ControllerBase
         {
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
-            
+
             Log.Debug("Processing {Type} endpoint: {Name} for POST", endpointType, endpointName);
+
+            // Legacy webhook route was removed in favour of namespaced webhooks; return a clear tombstone
+            if (endpointType == EndpointType.Standard &&
+                string.Equals(endpointName, "webhook", StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Warning("Legacy webhook route '/api/{Env}/webhook/...' is no longer supported", env);
+                return StatusCode(StatusCodes.Status410Gone, ErrorResponse.Of(
+                    "The '/api/{env}/webhook/{id}' route was removed. Webhooks are now namespaced: use '/api/{env}/{namespace}/{name}/{id}'."));
+            }
 
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
@@ -403,7 +412,12 @@ public class EndpointController : ControllerBase
                 case EndpointType.Webhook:
                     // For webhook endpoints, build the full key for lookup
                     var webhookKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-                    string webhookId = remainingPath.Split('/')[0];
+                    // The webhook id (topic selector) is the segment after the endpoint: prefer parsed id, fall back to remaining path
+                    string webhookId = id ?? remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
+                    if (string.IsNullOrEmpty(webhookId))
+                    {
+                        return PortwayResults.BadRequest(this, "Webhook id is required: use '/api/{env}/{namespace}/{name}/{id}'.");
+                    }
                     var webhookData = JsonSerializer.Deserialize<JsonElement>(requestBody);
                     return await HandleWebhookRequest(env, webhookKey, webhookId, webhookData);
                     
@@ -812,6 +826,12 @@ public class EndpointController : ControllerBase
                 return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
             }
 
+            // A trailing "list" segment means list the endpoint's files (namespaced form)
+            if (string.Equals(fileId, "list", StringComparison.OrdinalIgnoreCase))
+            {
+                return await ListFilesCore(env, namespaceName, endpointName, Request.Query["prefix"].FirstOrDefault());
+            }
+
             // Check if this endpoint exists
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
             if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
@@ -911,48 +931,48 @@ public class EndpointController : ControllerBase
         string env,
         string endpointName,
         [FromQuery] string? prefix = null)
+        => await ListFilesCore(env, null, endpointName, prefix);
+
+    /// <summary>Lists files for a (possibly namespaced) file endpoint</summary>
+    private async Task<IActionResult> ListFilesCore(string env, string? namespaceName, string endpointName, string? prefix)
     {
         try
         {
-            // Check if this endpoint exists
+            // Check if this endpoint exists (namespace-aware)
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
-            if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
+            if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
             {
                 return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
             }
 
             // Get base directory for this endpoint
-            var baseDirectory = (endpoint.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj)) 
+            var baseDirectory = (endpoint!.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj))
                 ? baseDirObj?.ToString() ?? string.Empty
                 : string.Empty;
 
             // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
             baseDirectory = ProcessBaseDirectory(baseDirectory, env);
-                
+
             // Prepare the prefix by combining base directory and provided prefix
             if (!string.IsNullOrEmpty(baseDirectory))
             {
-                if (string.IsNullOrEmpty(prefix))
-                {
-                    prefix = baseDirectory;
-                }
-                else
-                {
-                    prefix = Path.Combine(baseDirectory, prefix).Replace('\\', '/');
-                }
+                prefix = string.IsNullOrEmpty(prefix)
+                    ? baseDirectory
+                    : Path.Combine(baseDirectory, prefix).Replace('\\', '/');
             }
-            
+
             // List the files
             var files = await _fileHandlerService.ListFilesAsync(env, prefix);
-            
-            // Add download URLs
+
+            // Add download URLs; preserve namespace so the links round-trip
+            var endpointPath = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
             var filesWithUrls = files.Select(f => new
             {
                 fileId = f.FileId,
@@ -960,10 +980,10 @@ public class EndpointController : ControllerBase
                 contentType = f.ContentType,
                 size = f.Size,
                 lastModified = f.LastModified,
-                url = $"/api/{env}/files/{endpointName}/{f.FileId}",
+                url = $"/api/{env}/files/{endpointPath}/{f.FileId}",
                 isInMemoryOnly = f.IsInMemoryOnly
             }).ToList();
-            
+
             // Set pagination headers for consistency with other endpoints
             SetPaginationHeaders(filesWithUrls.Count, filesWithUrls.Count, false);
 
@@ -1134,7 +1154,8 @@ public class EndpointController : ControllerBase
         return EndpointHandler.GetSqlEndpoints().ContainsKey(key) ||
                EndpointHandler.GetProxyEndpoints().ContainsKey(key) ||
                EndpointHandler.GetFileEndpoints().ContainsKey(key) ||
-               EndpointHandler.GetStaticEndpoints().ContainsKey(key);
+               EndpointHandler.GetStaticEndpoints().ContainsKey(key) ||
+               EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key);
     }
     
     /// <summary>Determines endpoint type for a given key (supports both namespaced and non-namespaced)</summary>
@@ -1143,7 +1164,6 @@ public class EndpointController : ControllerBase
         return key switch
         {
             "composite" => EndpointType.Composite,
-            "webhook" => EndpointType.Webhook,
             _ when EndpointHandler.GetSqlEndpoints().ContainsKey(key) => EndpointType.SQL,
             _ when EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key) => EndpointType.Webhook,
             _ when EndpointHandler.GetProxyEndpoints().ContainsKey(key) && 
@@ -2003,7 +2023,7 @@ public class EndpointController : ControllerBase
                 webhookId, insertedId);
 
             // Return 201 Created with location header for consistency
-            var locationUrl = $"/api/{env}/webhook/{webhookId}/{insertedId}";
+            var locationUrl = $"/api/{env}/{webhookEndpointKey}/{webhookId}/{insertedId}";
             return PortwayResults.Create(this, locationUrl, "Webhook processed successfully.", id: insertedId);
         }
         catch (Exception ex)

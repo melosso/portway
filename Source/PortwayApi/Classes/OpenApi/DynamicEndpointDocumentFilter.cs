@@ -518,21 +518,22 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 
     private void AddWebhookEndpoints(OpenApiDocument document, ref int operationIdCounter)
     {
-        // Add webhook endpoint with correct path pattern
-        string path = "/api/{env}/webhook/{webhookId}";
-
         var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
         if (webhookEndpoints == null || webhookEndpoints.Count == 0)
         {
             return; // Skip adding webhook endpoints to docs if none exist
         }
 
-        // Get effective environments from the first webhook endpoint (they should all have the same restrictions)
-        var firstWebhook = webhookEndpoints.Values.FirstOrDefault();
-        var effectiveEnvironments = GetEffectiveEnvironments(firstWebhook);
+        // Emit one namespaced POST path per webhook endpoint: /api/{env}/{namespace}/{name}/{webhookId}
+        foreach (var webhook in webhookEndpoints)
+        {
+        var definition = webhook.Value;
+        string path = $"/api/{{env}}/{definition.FullPath}/{{webhookId}}";
 
-        // Load webhook documentation from entity.json
-        var webhookDocumentation = LoadWebhookDocumentation();
+        // Effective environments and documentation are resolved per endpoint
+        var effectiveEnvironments = GetEffectiveEnvironments(definition);
+        var webhookDocumentation = definition.Documentation ?? LoadWebhookDocumentation();
+        var webhookTag = definition.DocumentationTag;
 
         // Create path item if it doesn't exist
         if (!document.Paths.ContainsKey(path))
@@ -543,7 +544,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Create webhook POST operation
         var webhookOperation = new OpenApiOperation
         {
-            Tags = new HashSet<OpenApiTagReference> { new("Webhook") },
+            Tags = new HashSet<OpenApiTagReference> { new(webhookTag) },
             Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
             Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
             OperationId = $"op_{operationIdCounter++}",
@@ -749,6 +750,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         };
 
         document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
+        }
     }
 
     /// <summary>Collects file endpoint tags for documentation (operations are handled by EndpointController)</summary>

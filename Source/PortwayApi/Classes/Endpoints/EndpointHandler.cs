@@ -228,10 +228,18 @@ public static class EndpointHandler
             d.InferredNamespace ?? "null"));
 
     private static readonly EndpointLoaderSpec FileLoaderSpec = new(
-        "File", "file", "file ", "*.json", NamespaceAware: false,
+        "File", "file", "file ", "*.json", NamespaceAware: true,
         ParseFileEndpointDefinition,
         _ => true,
-        (key, d) => Log.Debug("File Endpoint: {Name} ({IsPrivate})", key, d.IsPrivate ? "Private" : "Public"));
+        (key, d) => Log.Debug("File Endpoint: {Name} ({IsPrivate}) | Namespace: {Namespace}",
+            key, d.IsPrivate ? "Private" : "Public", d.EffectiveNamespace ?? "None"));
+
+    private static readonly EndpointLoaderSpec WebhookLoaderSpec = new(
+        "Webhook", "webhook", "webhook ", "entity.json", NamespaceAware: true,
+        ParseWebhookEndpointDefinition,
+        d => !string.IsNullOrWhiteSpace(d.DatabaseObjectName),
+        (key, d) => Log.Debug("Webhook Endpoint: {Name}; Object: {Schema}.{Object}; Namespace: {Namespace}",
+            key, d.DatabaseSchema, d.DatabaseObjectName, d.EffectiveNamespace ?? "None"));
 
     /// <summary>Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility</summary>
     private static string GetEndpointsBasePath()
@@ -365,70 +373,19 @@ public static class EndpointHandler
     private static Dictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory)
         => EndpointDirectoryLoader.Load(endpointsDirectory, SqlLoaderSpec);
 
-    /// <summary>Internal method to load all SQL webhook endpoints from the endpoints directory</summary>
+    /// <summary>Internal method to load all webhook endpoints from the endpoints directory (namespace-aware)</summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory)
+        => EndpointDirectoryLoader.Load(endpointsDirectory, WebhookLoaderSpec);
+
+    /// <summary>Parses a webhook endpoint definition; reuses the SQL parser and tags the result as a Webhook</summary>
+    private static EndpointDefinition? ParseWebhookEndpointDefinition(string json)
     {
-        var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-
-        try
+        var definition = ParseSqlEndpointDefinition(json);
+        if (definition != null)
         {
-            if (!Directory.Exists(endpointsDirectory))
-            {
-                Log.Warning($"SQL Webhook endpoints directory not found: {endpointsDirectory}");
-                Directory.CreateDirectory(endpointsDirectory);
-                return endpoints;
-            }
-
-            // Load the single entity.json file directly from the Webhooks directory
-            var file = Path.Combine(endpointsDirectory, "entity.json");
-            if (File.Exists(file))
-            {
-                try
-                {
-                    // Read and parse the endpoint definition
-                    var json = File.ReadAllText(file);
-                    var definition = ParseSqlEndpointDefinition(json);
-
-                    if (definition != null && !string.IsNullOrWhiteSpace(definition.DatabaseObjectName))
-                    {
-                        // Use a fixed key for the single webhook endpoint
-                        var endpointName = "webhook";
-                        endpoints[endpointName] = definition;
-
-                        Log.Debug($"SQL Webhook Endpoint: {endpointName}; Object: {definition.DatabaseSchema}.{definition.DatabaseObjectName}");
-                    }
-                    else
-                    {
-                        Log.Warning("Failed to load SQL webhook endpoint from {File}", file);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    Log.Warning("Invalid JSON in SQL webhook endpoint {File}: {Message}", file, ex.Message);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Unexpected error reading SQL webhook endpoint file: {File}", file);
-                }
-            }
-            else
-            {
-                // Skip message if it's /webhooks/
-                if (!endpointsDirectory.EndsWith("/webhooks", StringComparison.OrdinalIgnoreCase) 
-                 && !endpointsDirectory.EndsWith("\\webhooks", StringComparison.OrdinalIgnoreCase))
-                {
-                    Log.Warning("No entity.json found in {Directory}", endpointsDirectory);
-                }   
-            }
-
-            Log.Debug($"Loaded {endpoints.Count} webhook endpoints from {endpointsDirectory}");
+            definition.Type = EndpointType.Webhook;
         }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error scanning SQL webhook endpoints directory: {Directory}", endpointsDirectory);
-        }
-
-        return endpoints;
+        return definition;
     }
 
     /// <summary>Internal method to load all file endpoints from the endpoints directory</summary>
@@ -458,6 +415,10 @@ public static class EndpointHandler
             AllowedEnvironments = entity.AllowedEnvironments,
             IsPrivate = entity.IsPrivate,
             Mcp = entity.Mcp,
+            Documentation = entity.Documentation,
+            Namespace = entity.Namespace,
+            DisplayName = entity.DisplayName,
+            NamespaceDisplayName = entity.NamespaceDisplayName,
             // Store file-specific properties in Properties dictionary
             Properties = new Dictionary<string, object>
             {
@@ -887,7 +848,13 @@ public static class EndpointHandler
 
     private static void CreateSampleWebhookEndpoint(string webhookDir)
     {
-        var samplePath = Path.Combine(webhookDir, "entity.json");
+        var sampleDir = Path.Combine(webhookDir, "Sample");
+        if (!Directory.Exists(sampleDir))
+        {
+            Directory.CreateDirectory(sampleDir);
+        }
+
+        var samplePath = Path.Combine(sampleDir, "entity.json");
         if (!File.Exists(samplePath))
         {
             var sample = new EndpointEntity
@@ -957,6 +924,10 @@ public static class EndpointHandler
                     _loadedSqlWebhookEndpoints = null; // Webhooks will be reloaded on next access
                     Log.Information("SQL endpoints reloaded from disk");
                     break;
+                case EndpointType.Webhook:
+                    _loadedSqlWebhookEndpoints = ReloadWebhookEndpoints();
+                    Log.Information("Webhook endpoints reloaded from disk");
+                    break;
                 case EndpointType.Proxy:
                 case EndpointType.Composite:
                     _loadedProxyEndpoints = ReloadProxyEndpoints();
@@ -998,6 +969,13 @@ public static class EndpointHandler
         return LoadFileEndpoints(fileEndpointsDirectory);
     }
 
+    /// <summary>Forces immediate reload of webhook endpoints</summary>
+    private static Dictionary<string, EndpointDefinition> ReloadWebhookEndpoints()
+    {
+        var webhookEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks");
+        return LoadSqlWebhookEndpoints(webhookEndpointsDirectory);
+    }
+
     /// <summary>Forces immediate reload of static endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadStaticEndpoints()
     {
@@ -1018,7 +996,7 @@ public static class EndpointHandler
 
         if (filePath.Contains("endpoints/Webhooks", StringComparison.OrdinalIgnoreCase) ||
             filePath.Contains("endpoints\\Webhooks", StringComparison.OrdinalIgnoreCase))
-            return EndpointType.SQL; // Webhooks are SQL endpoints
+            return EndpointType.Webhook;
 
         if (filePath.Contains("endpoints/Files", StringComparison.OrdinalIgnoreCase) ||
             filePath.Contains("endpoints\\Files", StringComparison.OrdinalIgnoreCase))

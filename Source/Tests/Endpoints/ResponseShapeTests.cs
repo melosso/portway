@@ -166,16 +166,16 @@ public class ResponseShapeTests : ApiTestBase
         }
     }
 
-    // 405 response has body
+    // The legacy flat webhook route was removed when webhooks became namespaced; GET now resolves to no endpoint
     [Fact]
-    public async Task WebhookGet_Returns405_WithBody()
+    public async Task WebhookGet_LegacyRoute_Returns404_WithBody()
     {
         SetAllowedEnvironments("500");
 
-        // Webhook endpoints don't support GET; should return 405 with a body
+        // '/api/{env}/webhook/{id}' is no longer a webhook; GET resolves to an unknown endpoint
         var response = await _client.GetAsync("/api/500/webhook/somewebhook");
 
-        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var bodyStr = await response.Content.ReadAsStringAsync();
         Assert.NotEmpty(bodyStr);
@@ -185,6 +185,28 @@ public class ResponseShapeTests : ApiTestBase
         Assert.True(body.RootElement.TryGetProperty("success", out var success));
         Assert.Equal(JsonValueKind.False, success.ValueKind);
         Assert.True(body.RootElement.TryGetProperty("error", out _));
+    }
+
+    // POST to the removed legacy webhook route returns a 410 Gone tombstone pointing at the namespaced shape
+    [Fact]
+    public async Task WebhookPost_LegacyRoute_Returns410_WithBody()
+    {
+        SetAllowedEnvironments("500");
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync("/api/500/webhook/somewebhook", content);
+
+        Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
+
+        var bodyStr = await response.Content.ReadAsStringAsync();
+        Assert.NotEmpty(bodyStr);
+
+        // Should be valid JSON with { success: false, error: string } and mention the new namespaced route
+        var body = JsonDocument.Parse(bodyStr);
+        Assert.True(body.RootElement.TryGetProperty("success", out var success));
+        Assert.Equal(JsonValueKind.False, success.ValueKind);
+        Assert.True(body.RootElement.TryGetProperty("error", out var error));
+        Assert.Contains("namespace", error.GetString() ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
     // Helper

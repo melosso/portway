@@ -1064,8 +1064,6 @@ public static class WebUiEndpointExtensions
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
             if (!File.Exists(filePath!))
                 return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
-            if (type.ToLowerInvariant() == "webhook")
-                return Results.Json(new { error = "Webhook endpoint cannot be renamed" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
@@ -1222,10 +1220,6 @@ public static class WebUiEndpointExtensions
             if (!File.Exists(filePath!))
                 return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
 
-            var typeNorm = type.ToLowerInvariant();
-            if (typeNorm == "webhook")
-                return Results.Json(new { error = "Webhook endpoint cannot be deleted (shared entity.json)" }, statusCode: 400);
-
             var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(filePath!);
             var dir = Path.GetDirectoryName(filePath!);
             if (dir != null && Directory.Exists(dir))
@@ -1291,15 +1285,11 @@ public static class WebUiEndpointExtensions
                     return Results.Json(new { error = $"Unknown endpoint type: {type}" }, statusCode: 400);
             }
 
-            // Same namespace rules the loader enforces at startup
+            // Same namespace rules the loader enforces at startup (charset, length, reserved names)
             if (root.ValueKind == JsonValueKind.Object &&
                 root.TryGetProperty("Namespace", out var ns) && ns.ValueKind == JsonValueKind.String)
             {
-                var n = ns.GetString() ?? "";
-                if (!System.Text.RegularExpressions.Regex.IsMatch(n, @"^[A-Za-z][A-Za-z0-9_]*$"))
-                    errors.Add($"Namespace '{n}' is invalid; use letters, numbers and underscores, starting with a letter");
-                else if (n.Length > 50)
-                    errors.Add("Namespace exceeds the maximum length of 50 characters");
+                errors.AddRange(PortwayApi.Helpers.DirectoryHelper.ValidateNamespaceName(ns.GetString() ?? ""));
             }
 
             return Results.Json(new { valid = errors.Count == 0, errors });
@@ -1470,7 +1460,7 @@ public static class WebUiEndpointExtensions
             "composite" => ("endpoints/Proxy",    false),
             "file"      => ("endpoints/Files",    false),
             "static"    => ("endpoints/Static",   false),
-            "webhook"   => ("endpoints/Webhooks", true),
+            "webhook"   => ("endpoints/Webhooks", false),
             _           => ((string?)null,        false)
         };
 
