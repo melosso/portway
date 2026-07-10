@@ -89,6 +89,14 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
       "POST": "Add new products to the catalog",
       "PUT": "Update existing product information",
       "DELETE": "Remove products from catalog"
+    },
+    "Examples": {
+      "GET": {
+        "count": 1,
+        "value": [
+          { "ItemCode": "ITEM-001", "Description": "Widget", "Price": 9.99 }
+        ]
+      }
     }
   }
 }
@@ -100,6 +108,10 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 |----------|------|----------|-------------|
 | `TagDescription` | string | Yes | Main description for the endpoint group |
 | `MethodDescriptions` | object | No | Specific descriptions for each HTTP method |
+| `MethodDocumentation` | object | No | Longer per-method descriptions (Markdown supported) |
+| `Examples` | object | No | A response example per HTTP method, shown verbatim in the reference instead of generated sample data |
+
+When you provide an example under `Examples`, Portway shows exactly that payload for the method's successful response. It is a friendly way to make sure the reference reflects the shape your integration actually returns, rather than a generated approximation. If you leave it out, Portway falls back to sample data as before.
 
 ## Schema Discovery
 
