@@ -1201,6 +1201,34 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             };
         }
 
+        else if (method.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
+        {
+            // QUERY (RFC 10008): the OData query travels in the JSON request body instead of the URL
+            operation.RequestBody = new OpenApiRequestBody
+            {
+                Description = "Query criteria (RFC 10008). Send OData-style fields in the body instead of the URL",
+                Required = false,
+                Content = new Dictionary<string, IOpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
+                            {
+                                ["select"]  = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Comma-separated fields to return" },
+                                ["filter"]  = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $filter expression" },
+                                ["orderby"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $orderby expression" },
+                                ["top"]     = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(10) },
+                                ["skip"]    = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(0) }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
         // Add comprehensive responses with detailed schemas and examples
         operation.Responses = new OpenApiResponses();
 

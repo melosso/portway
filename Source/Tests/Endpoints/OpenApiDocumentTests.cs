@@ -43,8 +43,10 @@ public class OpenApiDocumentTests : ApiTestBase
         // The QUERY-only endpoint is documented as a native OpenAPI 3.2 query operation, never as GET
         Assert.True(paths.TryGetProperty("/api/{env}/Inventory/StockLevels", out var stockPath),
             "QUERY-only endpoint should be present in the 3.2 document");
-        Assert.True(stockPath.TryGetProperty("query", out _),
+        Assert.True(stockPath.TryGetProperty("query", out var queryOp),
             "A QUERY-only endpoint must be documented as a query operation");
+        Assert.True(queryOp.TryGetProperty("requestBody", out _),
+            "The query operation should document its JSON request body");
         Assert.False(stockPath.TryGetProperty("get", out _),
             "A QUERY-only endpoint must not be documented as GET");
 
