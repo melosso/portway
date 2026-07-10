@@ -247,6 +247,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                             }
                         },
                         Required = new HashSet<string> { "file" }
+                    },
+                    // Document how the file part is encoded (OpenAPI 3.2 media-type encoding)
+                    Encoding = new Dictionary<string, OpenApiEncoding>
+                    {
+                        ["file"] = new OpenApiEncoding { ContentType = "application/octet-stream" }
                     }
                 }
             }
