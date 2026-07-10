@@ -40,12 +40,13 @@ public class OpenApiDocumentTests : ApiTestBase
         using var doc = JsonDocument.Parse(await docResponse.Content.ReadAsStringAsync());
         var paths = doc.RootElement.GetProperty("paths");
 
-        // The QUERY-only endpoint has no renderable operation, so its base path is not advertised as GET
-        if (paths.TryGetProperty("/api/{env}/Inventory/StockLevels", out var stockPath))
-        {
-            Assert.False(stockPath.TryGetProperty("get", out _),
-                "A QUERY-only endpoint must not be documented as GET");
-        }
+        // The QUERY-only endpoint is documented as a native OpenAPI 3.2 query operation, never as GET
+        Assert.True(paths.TryGetProperty("/api/{env}/Inventory/StockLevels", out var stockPath),
+            "QUERY-only endpoint should be present in the 3.2 document");
+        Assert.True(stockPath.TryGetProperty("query", out _),
+            "A QUERY-only endpoint must be documented as a query operation");
+        Assert.False(stockPath.TryGetProperty("get", out _),
+            "A QUERY-only endpoint must not be documented as GET");
 
         // Generating the document must not have enabled GET at runtime
         var getResponse = await _client.GetAsync("/api/500/Inventory/StockLevels");

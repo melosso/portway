@@ -2009,7 +2009,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             "OPTIONS" => HttpMethod.Options,
             "HEAD" => HttpMethod.Head,
             "MERGE" => HttpMethod.Patch, // Map MERGE to PATCH as they're semantically similar
-            "QUERY" => null, // OpenAPI 3.1 has no QUERY slot; skipped until the 3.2 toolchain lands (see QUERY_METHOD.md)
+            "QUERY" => HttpMethod.Parse("QUERY"), // OpenAPI 3.2 renders this as a native query operation
             _ => null
         };
     }
