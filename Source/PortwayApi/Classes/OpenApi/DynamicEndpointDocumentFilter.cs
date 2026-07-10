@@ -122,24 +122,16 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
 
-            // Add operations based on allowed methods
-            var methods = definition.Methods;
-
-            // Ensure GET is always included (even if not specified)
-            if (!methods.Contains("GET", StringComparer.OrdinalIgnoreCase))
-            {
-                methods.Add("GET");
-            }
-
-            // Add each allowed operation, but skip DELETE for the base path
-            foreach (var method in methods)
+            // Document exactly the endpoint's declared methods. Never mutate the shared definition, and
+            // let GetOperationType decide what is renderable, so unknown verbs (like QUERY, until OpenAPI 3.2)
+            // are skipped instead of being misrendered as GET.
+            foreach (var method in definition.Methods)
             {
                 if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                var opType = GetOperationType(method);
+                    continue; // DELETE gets its own OData-keyed path below
 
-                if (opType == null)
-                    continue;
+                if (GetOperationType(method) == null)
+                    continue; // unrenderable verb; skip without inventing a GET
 
                 var operation = CreateSqlOperation(
                     endpointName,
@@ -148,14 +140,17 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     effectiveEnvironments,
                     operationIdCounter++);
 
-                if (opType != null)
-                {
-                    document.Paths[path].Operations![opType] = operation;
-                }
+                AddOperationToPath(document.Paths[path], method, operation);
+            }
+
+            // Drop the base path if none of the declared methods are renderable (e.g. a QUERY-only endpoint)
+            if (document.Paths[path].Operations!.Count == 0)
+            {
+                document.Paths.Remove(path);
             }
 
             // Add specific delete endpoint with OData-style ID in path
-            if (methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
+            if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
                 // Use OData-style path: /api/{env}/{endpointName}({id})
                 var deletePath = $"/api/{{env}}/{definition.FullPath}({{id}})";

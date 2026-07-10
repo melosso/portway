@@ -25,4 +25,30 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.True(paths.ValueKind == JsonValueKind.Object);
         Assert.True(root.TryGetProperty("info", out _));
     }
+
+    // Regression: a QUERY-only endpoint must not be advertised as GET, and generating the document
+    // must not mutate the endpoint's methods (which previously injected GET and broke the 405 gate).
+    [Fact]
+    public async Task QueryOnlyEndpoint_NotRenderedAsGet_AndGetStays405()
+    {
+        SetAllowedEnvironments("500", "700");
+
+        // Generate the OpenAPI document (runs the document filter over the live endpoint definitions)
+        var docResponse = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        Assert.Equal(HttpStatusCode.OK, docResponse.StatusCode);
+
+        using var doc = JsonDocument.Parse(await docResponse.Content.ReadAsStringAsync());
+        var paths = doc.RootElement.GetProperty("paths");
+
+        // The QUERY-only endpoint has no renderable operation, so its base path is not advertised as GET
+        if (paths.TryGetProperty("/api/{env}/Inventory/StockLevels", out var stockPath))
+        {
+            Assert.False(stockPath.TryGetProperty("get", out _),
+                "A QUERY-only endpoint must not be documented as GET");
+        }
+
+        // Generating the document must not have enabled GET at runtime
+        var getResponse = await _client.GetAsync("/api/500/Inventory/StockLevels");
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, getResponse.StatusCode);
+    }
 }
