@@ -24,13 +24,7 @@ public static class RateLimitingExtensions
         
         // Add settings as singleton for potential future DI
         services.AddSingleton(rateLimitSettings);
-        
-        return services;
-    }
 
-    /// <summary>Adds rate limiting middleware to the application pipeline</summary>
-    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<RateLimiter>();
+        return services;
     }
 }

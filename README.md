@@ -4,9 +4,11 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-Portway is a lightweight **API gateway** for Windows and Linux containers that simplifies secure service routing and infrastructure management. It unifies SQL, proxy, and webhook endpoints with built-in documentation, MCP and OData support, Azure Key Vault authentication, and granular rate limiting.
+Portway is a lightweight **API gateway** for Windows and Linux containers that simplifies secure service routing and infrastructure management. 
 
-Portway modernizes legacy systems by exposing SQL data as APIs without requiring code changes. It ensures reliability through caching, full audit logging, and automated documentation. Its file-based configuration provides simple, centralized control over your service orchestration and data access.
+Quickly set up a modern API gateway that unifies diverse data sources—including SQL databases, internal services, and webhooks—into a single, managed interface. It ensures reliability through caching, full audit logging, and automated documentation, while providing secure service routing and infrastructure management. Its file-based configuration offers simple, centralized control over your service orchestration and data access.
+
+Out of the box Portway allows various endpoint types to be configured, e.g. for various SQL databases, proxy pass-through, and webhook endpoints with built-in documentation, MCP and OData support, Azure Key Vault authentication, and granular rate limiting.
 
 > 📜 <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">Documentation</a>   |   🐋 <a href="https://portway-docs.melosso.com/guide/docker-compose.html" target="_blank" rel="noopener noreferrer">Docker Compose</a>   |   ✨ <a href="https://portway-demo.melosso.com/" target="_blank" rel="noopener noreferrer">Live demo</a>
 

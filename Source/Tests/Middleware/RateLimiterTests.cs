@@ -10,11 +10,14 @@ namespace PortwayApi.Tests.Middleware;
 
 public class RateLimiterTests
 {
+    private const string TestAdminKey = "unit-test-admin-key-0123456789-0123456789";
+
     private static RateLimiter CreateRateLimiter(
         RequestDelegate next,
         int ipLimit = 10000,
         int tokenLimit = 10000,
-        bool enabled = true)
+        bool enabled = true,
+        string adminApiKey = "")
     {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -28,7 +31,18 @@ public class RateLimiterTests
             .Build();
 
         var logger = new Mock<ILogger<RateLimiter>>().Object;
-        return new RateLimiter(next, config, logger);
+
+        return new RateLimiter(next, config, logger, adminApiKey);
+    }
+
+    // Mints a session cookie in the same format WebUiEndpoints.GenerateToken produces
+    private static string MintValidSessionCookie(string adminApiKey)
+    {
+        var expiry = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
+        var signingKey = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(adminApiKey));
+        using var hmac = new System.Security.Cryptography.HMACSHA256(signingKey);
+        var sig = Convert.ToBase64String(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(expiry)));
+        return $"{expiry}.{sig}";
     }
 
     private static DefaultHttpContext BuildContext(string path = "/api/test", string? bearerToken = null)
@@ -131,6 +145,59 @@ public class RateLimiterTests
 
         Assert.Equal(2, passedA);
         Assert.Equal(2, passedB);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_UiWithValidSessionCookie_IsExempt()
+    {
+        var passed = 0;
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 2, adminApiKey: TestAdminKey);
+        var cookie = MintValidSessionCookie(TestAdminKey);
+
+        for (var i = 0; i < 5; i++)
+        {
+            var ctx = BuildContext(path: "/ui/api/settings");
+            ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
+            await limiter.InvokeAsync(ctx, null!, null!);
+        }
+
+        // A valid session bypasses rate limiting; all 5 pass despite the low IP limit
+        Assert.Equal(5, passed);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_UiWithBogusCookie_IsRateLimited()
+    {
+        var passed = 0;
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey);
+
+        for (var i = 0; i < 6; i++)
+        {
+            var ctx = BuildContext(path: "/ui/api/settings");
+            ctx.Request.Headers.Cookie = "portway_auth=forged-value";
+            await limiter.InvokeAsync(ctx, null!, null!);
+        }
+
+        // A merely-present cookie no longer exempts; the IP limit binds
+        Assert.Equal(3, passed);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_AuthEndpoint_IsRateLimited_EvenWithValidCookie()
+    {
+        var passed = 0;
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey);
+        var cookie = MintValidSessionCookie(TestAdminKey);
+
+        for (var i = 0; i < 6; i++)
+        {
+            var ctx = BuildContext(path: "/ui/api/auth/csrf");
+            ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
+            await limiter.InvokeAsync(ctx, null!, null!);
+        }
+
+        // The credential endpoints are never exempt, so the CSRF-token route stays throttled
+        Assert.Equal(3, passed);
     }
 
     [Fact]

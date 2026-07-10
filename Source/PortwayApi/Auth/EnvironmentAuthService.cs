@@ -23,8 +23,16 @@ public class EnvironmentAuthService
     /// <returns>True if authentication succeeded, false otherwise</returns>
     public async Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings)
     {
-        if (!settings.Enabled || settings.Methods == null || settings.Methods.Count == 0)
+        // Auth disabled: nothing to enforce, let the global token path decide
+        if (!settings.Enabled)
             return true;
+
+        // Enabled but no methods configured is a misconfiguration; deny rather than open the environment
+        if (settings.Methods == null || settings.Methods.Count == 0)
+        {
+            _logger.Warning("Environment authentication is enabled but no methods are configured; denying");
+            return false;
+        }
 
         foreach (var method in settings.Methods)
         {
@@ -57,7 +65,11 @@ public class EnvironmentAuthService
 
     private bool ValidateApiKey(HttpContext context, AuthenticationMethod method)
     {
-        string? value = method.In.ToLowerInvariant() switch
+        var location = method.In.ToLowerInvariant();
+        if (location == "query")
+            _logger.Warning("Environment API key configured in the query string is exposed in logs and history; prefer header or cookie");
+
+        string? value = location switch
         {
             "header" => context.Request.Headers[method.Name],
             "query" => context.Request.Query[method.Name],
@@ -68,7 +80,15 @@ public class EnvironmentAuthService
         if (string.IsNullOrEmpty(value) || string.IsNullOrEmpty(method.Value))
             return false;
 
-        return value == method.Value;
+        return SecureEquals(value, method.Value);
+    }
+
+    // Constant-time compare to avoid leaking secret contents via timing; length may still differ and that is acceptable here
+    private static bool SecureEquals(string? a, string? b)
+    {
+        if (a is null || b is null)
+            return false;
+        return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(a), Encoding.UTF8.GetBytes(b));
     }
 
     private bool ValidateBasicAuth(HttpContext context, AuthenticationMethod method)
@@ -87,7 +107,7 @@ public class EnvironmentAuthService
             string username = credentials[0];
             string password = credentials[1];
 
-            return username == method.Name && password == method.Value;
+            return username == method.Name && SecureEquals(password, method.Value);
         }
         catch
         {
@@ -102,7 +122,7 @@ public class EnvironmentAuthService
             return false;
 
         var token = authHeader["Bearer ".Length..].Trim();
-        return token == method.Value;
+        return SecureEquals(token, method.Value);
     }
 
     private async Task<bool> ValidateJwtTokenAsync(HttpContext context, AuthenticationMethod method)
@@ -148,8 +168,9 @@ public class EnvironmentAuthService
             }
             else
             {
-                // Unsigned JWT? Usually not recommended but maybe allowed if ValidateIssuerSigningKey is false
-                validationParameters.ValidateIssuerSigningKey = false;
+                // No signing key means signatures cannot be verified; refuse rather than trust an unsigned token
+                _logger.Warning("JWT environment auth method has no Secret or PublicKey; refusing to accept unsigned tokens");
+                return false;
             }
 
             var result = await handler.ValidateTokenAsync(token, validationParameters);
@@ -202,7 +223,7 @@ public class EnvironmentAuthService
             var hashBytes = hmac.ComputeHash(dataBytes);
             var expectedSignature = Convert.ToHexString(hashBytes).ToLowerInvariant();
 
-            return signature.ToLowerInvariant() == expectedSignature;
+            return SecureEquals(signature.ToLowerInvariant(), expectedSignature);
         }
         catch
         {

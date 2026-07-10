@@ -15,8 +15,8 @@ using PortwayApi.Auth;
 // Extension methods for adding RateLimiter middleware
 public static class RateLimiterExtensions
 {
-    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder)
+    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder, string adminApiKey)
     {
-        return builder.UseMiddleware<RateLimiter>();
+        return builder.UseMiddleware<RateLimiter>(adminApiKey);
     }
 }

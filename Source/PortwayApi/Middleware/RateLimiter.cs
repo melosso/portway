@@ -11,6 +11,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using Serilog;
 using PortwayApi.Auth;
+using PortwayApi.Helpers;
 
 public class RateLimiter
 {
@@ -26,6 +27,7 @@ public class RateLimiter
     private readonly RateLimitSettings _settings;
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
     private readonly bool _uiAuthEnabled;
+    private readonly string _adminApiKey;
     private readonly ConcurrentDictionary<string, TokenBucket> _buckets = new();
     private readonly ConcurrentDictionary<string, BlockInfo> _blockedTokens = new();
     private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
@@ -46,14 +48,17 @@ public class RateLimiter
     public RateLimiter(
         RequestDelegate next,
         IConfiguration configuration,
-        Microsoft.Extensions.Logging.ILogger<RateLimiter> logger)
+        Microsoft.Extensions.Logging.ILogger<RateLimiter> logger,
+        string adminApiKey)
     {
         _next = next;
         _logger = logger;
-        
+
         _settings = new RateLimitSettings();
         configuration.GetSection("RateLimiting").Bind(_settings);
-        _uiAuthEnabled = !string.IsNullOrEmpty(configuration.GetValue<string>("Portway:AdminApiKey"));
+        // Use the resolved Web UI admin key so the exemption check agrees with UseWebUiAuth
+        _adminApiKey = adminApiKey ?? string.Empty;
+        _uiAuthEnabled = !string.IsNullOrEmpty(_adminApiKey);
         
         if (_settings.Enabled)
         {
@@ -107,9 +112,22 @@ public class RateLimiter
         // invalid cookies before they reach here, so cookie presence implies valid auth
         if (context.Request.Path.StartsWithSegments("/ui"))
         {
-            bool isAuthenticatedUiRequest = !_uiAuthEnabled ||
-                context.Request.Cookies.ContainsKey("portway_auth");
-            if (isAuthenticatedUiRequest)
+            // When auth is disabled all UI traffic is trusted
+            if (!_uiAuthEnabled)
+            {
+                await _next(context);
+                return;
+            }
+
+            // Never exempt the credential endpoints; the login and CSRF-token routes are the brute-force and token-flood surface
+            bool isAuthPath = context.Request.Path.StartsWithSegments("/ui/api/auth") ||
+                              context.Request.Path.StartsWithSegments("/ui/login");
+
+            // Exempt only requests carrying a cryptographically valid session cookie, not merely a present one
+            bool hasValidSession = context.Request.Cookies.TryGetValue("portway_auth", out var sessionCookie) &&
+                                   WebUiAuthHelper.IsValidSessionCookie(sessionCookie, _adminApiKey);
+
+            if (!isAuthPath && hasValidSession)
             {
                 Log.Debug("Skipping rate limiting for authenticated UI request {Path}", context.Request.Path);
                 await _next(context);
