@@ -157,6 +157,27 @@ public class EndpointController : ControllerBase
         return endpoints.TryGetValue(endpointName, out endpoint);
     }
 
+    /// <summary>Resolves namespace, endpoint name, and file id from a files catchall path</summary>
+    private (string? Namespace, string EndpointName, string? FileId) ParseFileEndpointPath(string catchall)
+    {
+        var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length == 0)
+        {
+            return (null, string.Empty, null);
+        }
+
+        var fileEndpoints = EndpointHandler.GetFileEndpoints();
+
+        // Namespaced form: {namespace}/{endpoint}/{fileId}
+        if (segments.Length >= 3 && fileEndpoints.ContainsKey($"{segments[0]}/{segments[1]}"))
+        {
+            return (segments[0], segments[1], segments[2]);
+        }
+
+        // Non-namespaced form: {endpoint}/{fileId}
+        return (null, segments[0], segments.Length > 1 ? segments[1] : null);
+    }
+
     /// <summary>Handles GET requests to endpoints</summary>
     [HttpGet("{env}/{**catchall}")]
     [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
@@ -477,8 +498,7 @@ public class EndpointController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteAsync(
         string env,
-        string catchall,
-        [FromQuery] string? id = null)
+        string catchall)
     {
         try
         {
@@ -540,7 +560,11 @@ public class EndpointController : ControllerBase
     [HttpPatch("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PatchAsync(
         string env,
@@ -567,9 +591,19 @@ public class EndpointController : ControllerBase
                     return await HandleProxyRequest(env, proxyKey, id, remainingPath, "PATCH");
 
                 case EndpointType.SQL:
-                    using (var requestBody = await JsonDocument.ParseAsync(Request.Body))
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    JsonDocument requestBody;
+                    try
                     {
-                        return await HandleSqlPatchRequest(env, endpointName, requestBody);
+                        requestBody = await JsonDocument.ParseAsync(Request.Body);
+                    }
+                    catch (JsonException)
+                    {
+                        return PortwayResults.BadRequest(this, "Invalid JSON format in request");
+                    }
+                    using (requestBody)
+                    {
+                        return await HandleSqlPatchRequest(env, sqlKey, requestBody);
                     }
 
                 default:
@@ -734,8 +768,9 @@ public class EndpointController : ControllerBase
                 fileId = await _fileHandlerService.UploadFileAsync(env, filename, stream, overwrite);
             }
             
-            // Return success with file info
-            var fileUrl = $"/api/{env}/files/{endpointName}/{fileId}";
+            // Return success with file info; preserve namespace in the download URL so it round-trips
+            var fileEndpointPath = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+            var fileUrl = $"/api/{env}/files/{fileEndpointPath}/{fileId}";
             return PortwayResults.FileCreate(this, fileUrl, fileId, filename, file.ContentType, file.Length, fileUrl);
         }
         catch (ArgumentException ex)
@@ -770,25 +805,22 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            // Extract the endpoint name and file ID from the catchall
-            var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Length < 2)
+            // Extract the namespace, endpoint name, and file ID from the catchall
+            var (namespaceName, endpointName, fileId) = ParseFileEndpointPath(catchall);
+            if (string.IsNullOrEmpty(endpointName) || string.IsNullOrEmpty(fileId))
             {
                 return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
             }
 
-            string endpointName = segments[0];
-            string fileId = segments[1];
-
             // Check if this endpoint exists
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
-            if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
+            if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
             {
                 return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
@@ -830,25 +862,22 @@ public class EndpointController : ControllerBase
     {
         try
         {
-            // Extract the endpoint name and file ID from the catchall
-            var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Length < 2)
+            // Extract the namespace, endpoint name, and file ID from the catchall
+            var (namespaceName, endpointName, fileId) = ParseFileEndpointPath(catchall);
+            if (string.IsNullOrEmpty(endpointName) || string.IsNullOrEmpty(fileId))
             {
                 return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
             }
 
-            string endpointName = segments[0];
-            string fileId = segments[1];
-
             // Check if this endpoint exists
             var fileEndpoints = EndpointHandler.GetFileEndpoints();
-            if (!fileEndpoints.TryGetValue(endpointName, out var endpoint))
+            if (!TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var endpoint))
             {
                 return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
             }
 
             // Check environment restrictions
-            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, null, endpointName, EndpointType.Files);
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
             {
                 return errorResponse!;
