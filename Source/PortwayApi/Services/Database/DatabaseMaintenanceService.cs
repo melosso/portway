@@ -32,7 +32,7 @@ public class DatabaseMaintenanceService : BackgroundService
         {
             // Small delay so startup IO (EnsureCreated, token bootstrap) settles first
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
-            await RunOnceAsync(stoppingToken);
+            await SafeRunOnceAsync(stoppingToken);
         }
 
         while (!stoppingToken.IsCancellationRequested)
@@ -41,7 +41,24 @@ public class DatabaseMaintenanceService : BackgroundService
             await Task.Delay(delay, stoppingToken);
 
             if (_options.CurrentValue.Enabled)
-                await RunOnceAsync(stoppingToken);
+                await SafeRunOnceAsync(stoppingToken);
+        }
+    }
+
+    // .NET 11 stops the host on an unhandled BackgroundService exception; keep a maintenance failure contained
+    private async Task SafeRunOnceAsync(CancellationToken ct)
+    {
+        try
+        {
+            await RunOnceAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            throw; // shutdown path; let the host stop normally
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Database maintenance pass failed; the service will retry on the next schedule");
         }
     }
 
