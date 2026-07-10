@@ -22,7 +22,7 @@ A quick example to give you an idea:
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
-* <a href="https://dotnet.microsoft.com/en-us/download/dotnet/10.0" target="_blank" rel="noopener noreferrer">.NET 10 Hosting Bundle</a>
+* <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11 Hosting Bundle</a> (Portway `v2.0.0` targets .NET 11, currently a preview; the .NET 10 LTS build remains available for production)
 * If you're running on Windows: Internet Information Services (IIS)
 * A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 

@@ -2,7 +2,8 @@
 # Enable BuildKit features for better performance
 
 # Stage 1: Build the application
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# .NET 11 is currently a preview; switch these tags to 11.0 / 11.0-noble once it reaches GA
+FROM mcr.microsoft.com/dotnet/sdk:11.0-preview AS build
 WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies
@@ -27,7 +28,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/publish /p:UseAppHost=false 
 
 # Stage 2: Runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview-noble AS final
 WORKDIR /app
 
 # Install SQLite and curl for healthchecks
