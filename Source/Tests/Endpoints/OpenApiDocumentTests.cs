@@ -20,7 +20,7 @@ public class OpenApiDocumentTests : ApiTestBase
         var root = doc.RootElement;
 
         Assert.True(root.TryGetProperty("openapi", out var version));
-        Assert.StartsWith("3.", version.GetString());
+        Assert.StartsWith("3.2", version.GetString());
         Assert.True(root.TryGetProperty("paths", out var paths));
         Assert.True(paths.ValueKind == JsonValueKind.Object);
         Assert.True(root.TryGetProperty("info", out _));
