@@ -7,6 +7,15 @@ description: "Replace application files and restore configuration to move to a n
 
 Upgrading Portway is usually a matter of replacing the binaries and letting it start back up, but a little preparation goes a long way. Releases may include application and database changes, so it is recommended to read the [release notes](https://github.com/melosso/portway/releases/) first, particularly for major versions, and to check that no breaking changes apply to your configuration.
 
+## Moving to `v2.0.0`
+
+Version `2.0.0` is a major release, so it is worth a moment of planning before you upgrade. Two things in particular are good to know:
+
+- **It runs on .NET 11.** The [.NET 11 Hosting Bundle](/guide/getting-started#prerequisites) is needed on the server. Since .NET 11 is currently a preview of the framework, you may reasonably prefer to keep a .NET 10 LTS deployment for production until .NET 11 reaches general availability.
+- **Webhook routes are now namespaced.** The older flat route `POST /api/{env}/webhook/{id}` has been retired in favour of `POST /api/{env}/{namespace}/{name}/{id}`. If you have callers on the old path, please point them at the new shape; the previous route now answers with `410 Gone` so nothing fails silently.
+
+Everything else, including your existing endpoints and environments, carries over unchanged. The generated API reference also moves to OpenAPI 3.2, which you can read more about in [OpenAPI Documentation Settings](/reference/openapi-settings).
+
 ## Steps
 
 **1. Read the release notes**

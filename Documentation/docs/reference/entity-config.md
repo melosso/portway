@@ -138,7 +138,8 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 | `FunctionParameters`  | array   | No*      | List of input parameters for TVF endpoints only                                              |
 | `AllowedColumns`      | array   | Yes      | List of accessible columns (supports aliases)                                                |
 | `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
-| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"])                                                              |
+| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for body-carried reads (RFC 10008) |
+| `Deprecated`          | boolean | No       | When true, the endpoint's operations are marked as deprecated in the OpenAPI documentation    |
 | `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
 
 \* Only required for Table-Valued Function (TVF) endpoints.
@@ -218,6 +219,7 @@ Proxy entities forward requests to internal web services.
 | `Url` | string | Yes | Target service URL |
 | `Methods` | array | Yes | Allowed HTTP methods |
 | `IsPrivate` | boolean | No | Hide from API documentation |
+| `Deprecated` | boolean | No | Mark the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
 | `CustomProperties` | object | No | Extended functionality settings |
 

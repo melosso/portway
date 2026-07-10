@@ -42,7 +42,7 @@ Create `endpoints/SQL/{EndpointName}/entity.json`:
 | `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
 | `PrimaryKey` | No | string | Primary key column name. Defaults to `Id` |
 | `AllowedColumns` | No | array | Columns accessible via the API. Empty array exposes all columns |
-| `AllowedMethods` | No | array | HTTP methods allowed. Defaults to `["GET"]` |
+| `AllowedMethods` | No | array | HTTP methods allowed. Defaults to `["GET"]`. You can also allow `QUERY` when you would like the same OData reads with the criteria carried in the JSON body (see [The QUERY method](/guide/routing#the-query-method)) |
 | `AllowedEnvironments` | No | array | Environments where this endpoint responds |
 | `Procedure` | No | string | Stored procedure to call for write operations |
 | `DatabaseObjectType` | No | string | Set to `TableValuedFunction` for TVF endpoints |
