@@ -106,7 +106,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 operation.RequestBody = new OpenApiRequestBody
                 {
                     Required = true,
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -125,7 +125,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 if (dynamicExample != null && operation.RequestBody?.Content?.ContainsKey("application/json") == true)
                 {
                     // Use dynamically loaded example from file
-                    operation.RequestBody.Content["application/json"].Example = dynamicExample;
+                    ((OpenApiMediaType)operation.RequestBody.Content["application/json"]).Example = dynamicExample;
                     _logger.LogDebug("Using dynamic example for composite endpoint: {EndpointName}", definition.EndpointName);
                 }
                 else if (string.Equals(definition.EndpointName, "SalesOrder", StringComparison.OrdinalIgnoreCase))
@@ -164,7 +164,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["200"] = new OpenApiResponse
                     {
                         Description = "Operation completed successfully",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -325,7 +325,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 
         // Add the example to the media type
         if (operation.RequestBody?.Content?.ContainsKey("application/json") == true)
-            operation.RequestBody.Content["application/json"].Example = example;
+            ((OpenApiMediaType)operation.RequestBody.Content["application/json"]).Example = example;
     }
 
     /// <summary>Get allowed environments</summary>

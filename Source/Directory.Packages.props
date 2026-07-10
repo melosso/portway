@@ -3,8 +3,8 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <AspNetCoreVersion>10.0.8</AspNetCoreVersion>
-    <EntityFrameworkVersion>10.0.8</EntityFrameworkVersion>
+    <AspNetCoreVersion>11.0.0-preview.5.26302.115</AspNetCoreVersion>
+    <EntityFrameworkVersion>11.0.0-preview.5.26302.115</EntityFrameworkVersion>
     <SerilogVersion>4.2.0</SerilogVersion>
     <SerilogAspNetCoreVersion>10.0.0</SerilogAspNetCoreVersion>
     <SerilogExtensionsLoggingVersion>10.0.0</SerilogExtensionsLoggingVersion>
@@ -14,11 +14,11 @@
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
     <OpenTelemetryInstrumentationVersion>1.15.2</OpenTelemetryInstrumentationVersion>
     <OpenTelemetryInstrumentationHttpVersion>1.15.1</OpenTelemetryInstrumentationHttpVersion>
-    <MicrosoftExtensionsVersion>10.0.7</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>11.0.0-preview.5.26302.115</MicrosoftExtensionsVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- Versioning -->
-    <PackageVersion Include="Microsoft.OpenApi" Version="2.9.0" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="3.8.0" />
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.50.3" />
   </ItemGroup>

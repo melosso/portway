@@ -230,7 +230,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         operation.RequestBody = new OpenApiRequestBody
         {
             Required = true,
-            Content = new Dictionary<string, OpenApiMediaType>
+            Content = new Dictionary<string, IOpenApiMediaType>
             {
                 ["multipart/form-data"] = new OpenApiMediaType
                 {
@@ -266,7 +266,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 },
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -294,7 +294,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -373,7 +373,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["200"] = new OpenApiResponse
             {
                 Description = "Successful response",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/octet-stream"] = new OpenApiMediaType
                     {
@@ -391,7 +391,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -470,7 +470,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["200"] = new OpenApiResponse
             {
                 Description = "Successful response",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -493,7 +493,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -593,7 +593,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Boolean }
                     }
                 },
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -633,7 +633,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -680,7 +680,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             if (operation.Responses?["200"]?.Content?.ContainsKey("application/json") == true)
             {
-                operation.Responses["200"].Content!["application/json"].Examples = new Dictionary<string, IOpenApiExample>
+                ((OpenApiMediaType)operation.Responses["200"].Content!["application/json"]).Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["success"] = new OpenApiExample
                     {
@@ -699,7 +699,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             if (operation.Responses?["200"]?.Content?.ContainsKey("application/json") == true)
             {
-                operation.Responses["200"].Content!["application/json"].Examples = new Dictionary<string, IOpenApiExample>
+                ((OpenApiMediaType)operation.Responses["200"].Content!["application/json"]).Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["fileList"] = new OpenApiExample
                     {

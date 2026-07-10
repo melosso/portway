@@ -269,7 +269,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -421,7 +421,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     method.Equals("PATCH", StringComparison.OrdinalIgnoreCase) ||
                     method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
                 {
-                    var requestContent = new Dictionary<string, OpenApiMediaType>();
+                    var requestContent = new Dictionary<string, IOpenApiMediaType>();
 
                     // If a specific ContentType is configured, use it as the primary content type
                     if (acceptContentType != "application/json")
@@ -457,7 +457,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["200"] = new OpenApiResponse
                     {
                         Description = "Successful response",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             [acceptContentType] = new OpenApiMediaType
                             {
@@ -472,7 +472,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["500"] = new OpenApiResponse
                     {
                         Description = "Internal Server Error",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -570,7 +570,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             {
                 Description = "Webhook payload (any valid JSON)",
                 Required = true,
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -594,7 +594,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                             Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                         }
                     },
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -622,7 +622,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["400"] = new OpenApiResponse
                 {
                     Description = "Bad Request - Invalid request",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -646,7 +646,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["401"] = new OpenApiResponse
                 {
                     Description = "Unauthorized - Missing or invalid authentication token",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -669,7 +669,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["403"] = new OpenApiResponse
                 {
                     Description = "Forbidden - Token valid but insufficient permissions",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -692,7 +692,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["404"] = new OpenApiResponse
                 {
                     Description = "Not Found - Resource not found or not configured",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -716,7 +716,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["500"] = new OpenApiResponse
                 {
                     Description = "Internal Server Error",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -840,7 +840,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["200"] = new OpenApiResponse
                     {
                         Description = "Successful response",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             [contentType] = new OpenApiMediaType
                             {
@@ -890,7 +890,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["401"] = new OpenApiResponse
                     {
                         Description = "Unauthorized - Missing or invalid authentication token",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -913,7 +913,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["403"] = new OpenApiResponse
                     {
                         Description = "Forbidden - Insufficient permissions",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -936,7 +936,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["404"] = new OpenApiResponse
                     {
                         Description = "Not Found - Resource not found",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -973,7 +973,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["406"] = new OpenApiResponse
                     {
                         Description = "Not Acceptable - Content negotiation failed",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -999,7 +999,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                     ["500"] = new OpenApiResponse
                     {
                         Description = "Internal Server Error",
-                        Content = new Dictionary<string, OpenApiMediaType>
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/json"] = new OpenApiMediaType
                             {
@@ -1176,7 +1176,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                  method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
         {
             // Add request body for POST and PUT, using configured ContentType as primary
-            var requestContent = new Dictionary<string, OpenApiMediaType>
+            var requestContent = new Dictionary<string, IOpenApiMediaType>
             {
                 [acceptContentType] = new OpenApiMediaType
                 {
@@ -1218,7 +1218,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 },
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     [acceptContentType] = new OpenApiMediaType
                     {
@@ -1277,7 +1277,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 } : null,
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     [acceptContentType] = new OpenApiMediaType
                     {
@@ -1357,7 +1357,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["400"] = new OpenApiResponse
             {
                 Description = "Bad Request - Invalid request",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1400,7 +1400,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["401"] = new OpenApiResponse
             {
                 Description = "Unauthorized - Missing or invalid authentication token",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1423,7 +1423,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["403"] = new OpenApiResponse
             {
                 Description = "Forbidden - Insufficient permissions",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1461,7 +1461,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["404"] = new OpenApiResponse
             {
                 Description = "Not Found - Resource not found",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1498,7 +1498,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["409"] = new OpenApiResponse
             {
                 Description = "Conflict - Duplicate key violation or business rule conflict",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1524,7 +1524,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["422"] = new OpenApiResponse
             {
                 Description = "Unprocessable Entity - Validation errors or business rule violations",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1572,7 +1572,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             operation.Responses["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1649,7 +1649,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["200"] = new OpenApiResponse
                 {
                     Description = "Successful response",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -1676,7 +1676,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["400"] = new OpenApiResponse
                 {
                     Description = "Bad Request - Invalid request",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -1698,7 +1698,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["401"] = new OpenApiResponse
                 {
                     Description = "Unauthorized - Missing or invalid authentication token",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -1720,7 +1720,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["403"] = new OpenApiResponse
                 {
                     Description = "Forbidden - Insufficient permissions",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -1742,7 +1742,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["404"] = new OpenApiResponse
                 {
                     Description = "Not Found - Resource not found",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -1779,7 +1779,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["500"] = new OpenApiResponse
                 {
                     Description = "Internal Server Error",
-                    Content = new Dictionary<string, OpenApiMediaType>
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
                         ["application/json"] = new OpenApiMediaType
                         {
@@ -1881,7 +1881,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             {
                 Description = "Request payload",
                 Required = true,
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1918,7 +1918,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["401"] = new OpenApiResponse
             {
                 Description = "Unauthorized - Missing or invalid authentication token",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -1938,7 +1938,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {

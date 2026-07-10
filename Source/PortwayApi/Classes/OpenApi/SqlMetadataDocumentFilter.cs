@@ -213,7 +213,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             Description = GetRequestBodyDescription(method),
             Required = true,
-            Content = new Dictionary<string, OpenApiMediaType>
+            Content = new Dictionary<string, IOpenApiMediaType>
             {
                 ["application/json"] = new OpenApiMediaType
                 {
@@ -659,7 +659,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return new OpenApiResponse
         {
             Description = "Validation failed - Required fields missing or regex pattern mismatch",
-            Content = new Dictionary<string, OpenApiMediaType>
+            Content = new Dictionary<string, IOpenApiMediaType>
             {
                 ["application/json"] = new OpenApiMediaType
                 {
