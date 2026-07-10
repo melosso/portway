@@ -17,4 +17,7 @@ public class Documentation
 
     /// <summary>Custom detailed documentation per HTTP method for OpenAPI operation descriptions</summary>
     public Dictionary<string, string>? MethodDocumentation { get; set; }
+
+    /// <summary>Optional response example payload per HTTP method, used verbatim in the OpenAPI success-response example</summary>
+    public Dictionary<string, System.Text.Json.Nodes.JsonNode>? Examples { get; set; }
 }

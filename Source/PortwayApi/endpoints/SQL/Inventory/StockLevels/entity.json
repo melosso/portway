@@ -19,6 +19,15 @@
         },
         "MethodDocumentation": {
             "QUERY": "Send a JSON body with OData-style fields (`select`, `filter`, `orderby`, `top`, `skip`). The response mirrors an equivalent GET, and the result stays cacheable with the body folded into the cache key."
+        },
+        "Examples": {
+            "QUERY": {
+                "count": 2,
+                "value": [
+                    { "Sku": "SKU-1001", "Warehouse": "AMS", "Quantity": 42 },
+                    { "Sku": "SKU-1002", "Warehouse": "RTM", "Quantity": 7 }
+                ]
+            }
         }
     }
 }

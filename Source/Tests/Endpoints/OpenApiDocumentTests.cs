@@ -47,6 +47,8 @@ public class OpenApiDocumentTests : ApiTestBase
             "A QUERY-only endpoint must be documented as a query operation");
         Assert.True(queryOp.TryGetProperty("requestBody", out _),
             "The query operation should document its JSON request body");
+        // The author-provided example from the endpoint's Documentation block flows into the success response
+        Assert.Contains("SKU-1001", queryOp.GetRawText());
         Assert.False(stockPath.TryGetProperty("get", out _),
             "A QUERY-only endpoint must not be documented as GET");
 
