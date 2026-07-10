@@ -381,7 +381,7 @@ function fieldSelect(id, label, value, options) {
 }
 
 function fieldMethods(selected, id = 'methodPicker') {
-  const all = ['GET','POST','PUT','PATCH','DELETE'];
+  const all = ['GET','POST','PUT','PATCH','DELETE','QUERY'];
   const sel = [].concat(selected ?? ['GET']);   // normalise: string → [string], null/undefined → ['GET']
   return `<div class="ep-field">
     <label>Methods</label>

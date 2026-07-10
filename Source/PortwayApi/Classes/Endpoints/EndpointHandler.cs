@@ -633,7 +633,7 @@ public static class EndpointHandler
         // Validate allowed methods
         if (entity.AllowedMethods != null)
         {
-            var validMethods = new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "MERGE" };
+            var validMethods = new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "MERGE", "QUERY" };
             var invalidMethods = entity.AllowedMethods.Where(m => !validMethods.Contains(m.ToUpper())).ToList();
             if (invalidMethods.Any())
             {

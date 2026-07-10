@@ -251,6 +251,163 @@ public class EndpointController : ControllerBase
         }
     }
 
+    /// <summary>Handles QUERY requests (RFC 10008): a safe, idempotent, cacheable read whose query lives in the request body</summary>
+    [AcceptVerbs("QUERY", Route = "{env}/{**catchall}")]
+    [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> QueryAsync(string env, string catchall)
+    {
+        try
+        {
+            // RFC 10008: servers MUST fail the request if Content-Type is missing or inconsistent with the content
+            var contentType = Request.ContentType ?? string.Empty;
+            if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            {
+                return PortwayResults.UnsupportedMediaType(this, "QUERY requires Content-Type: application/json");
+            }
+
+            // Buffer the body so proxy endpoints can re-read it after we parse the query content
+            Request.EnableBuffering();
+            string requestBody;
+            using (var reader = new StreamReader(Request.Body, leaveOpen: true))
+            {
+                requestBody = await reader.ReadToEndAsync();
+            }
+            Request.Body.Position = 0;
+
+            QueryBody? queryParams;
+            try
+            {
+                queryParams = ParseQueryBody(requestBody);
+            }
+            catch (JsonException)
+            {
+                return PortwayResults.BadRequest(this, "Invalid JSON in QUERY body");
+            }
+            if (queryParams == null)
+            {
+                return PortwayResults.BadRequest(this, "QUERY body must be a JSON object");
+            }
+
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+            Log.Debug("Processing {Type} endpoint: {Name} for QUERY", endpointType, endpointName);
+
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
+            if (!isAllowed)
+            {
+                return errorResponse!;
+            }
+
+            switch (endpointType)
+            {
+                case EndpointType.SQL:
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    // RFC 10008: advertise the equivalent GET representation of this query
+                    SetQueryContentLocation(env, sqlKey, queryParams);
+                    return await HandleSqlGetRequest(env, sqlKey, id, remainingPath,
+                        queryParams.Select, queryParams.Filter, queryParams.OrderBy,
+                        queryParams.Top ?? 10, queryParams.Skip ?? 0, httpMethod: "QUERY");
+
+                case EndpointType.Static:
+                    var staticKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleStaticGetRequest(env, staticKey,
+                        queryParams.Select, queryParams.Filter, queryParams.OrderBy,
+                        queryParams.Top ?? 10, queryParams.Skip ?? 0);
+
+                case EndpointType.Proxy:
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, id, remainingPath, "QUERY");
+
+                case EndpointType.Composite:
+                case EndpointType.Webhook:
+                    Log.Warning("{Type} endpoints don't support QUERY requests", endpointType);
+                    return PortwayResults.MethodNotAllowed(this);
+
+                default:
+                    Log.Warning("Unknown or unsupported endpoint type for QUERY: {EndpointName}", endpointName);
+                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error processing QUERY request for {Path}", Request.Path);
+            return Problem(
+                detail: "Error processing. Please check the logs for more details.",
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Error"
+            );
+        }
+    }
+
+    /// <summary>OData-style parameters carried in a QUERY request body; accepts both bare and $-prefixed keys</summary>
+    private sealed class QueryBody
+    {
+        public string? Select { get; init; }
+        public string? Filter { get; init; }
+        public string? OrderBy { get; init; }
+        public int? Top { get; init; }
+        public int? Skip { get; init; }
+    }
+
+    /// <summary>Parses a QUERY JSON body into OData parameters. Returns null when the body is not a JSON object; empty body yields defaults</summary>
+    private static QueryBody? ParseQueryBody(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new QueryBody();
+        }
+
+        using var doc = JsonDocument.Parse(json);
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+        var root = doc.RootElement;
+
+        string? Str(string a, string b) =>
+            root.TryGetProperty(a, out var va) && va.ValueKind == JsonValueKind.String ? va.GetString()
+            : root.TryGetProperty(b, out var vb) && vb.ValueKind == JsonValueKind.String ? vb.GetString()
+            : null;
+
+        int? Num(string a, string b)
+        {
+            if (root.TryGetProperty(a, out var va) && va.ValueKind == JsonValueKind.Number && va.TryGetInt32(out var na)) return na;
+            if (root.TryGetProperty(b, out var vb) && vb.ValueKind == JsonValueKind.Number && vb.TryGetInt32(out var nb)) return nb;
+            return null;
+        }
+
+        return new QueryBody
+        {
+            Select = Str("$select", "select"),
+            Filter = Str("$filter", "filter"),
+            OrderBy = Str("$orderby", "orderby"),
+            Top = Num("$top", "top"),
+            Skip = Num("$skip", "skip")
+        };
+    }
+
+    /// <summary>Sets Content-Location to the equivalent GET URL for a SQL QUERY (RFC 10008), when the query is URL-representable</summary>
+    private void SetQueryContentLocation(string env, string endpointPath, QueryBody q)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrEmpty(q.Select)) parts.Add($"$select={Uri.EscapeDataString(q.Select)}");
+        if (!string.IsNullOrEmpty(q.Filter)) parts.Add($"$filter={Uri.EscapeDataString(q.Filter)}");
+        if (!string.IsNullOrEmpty(q.OrderBy)) parts.Add($"$orderby={Uri.EscapeDataString(q.OrderBy)}");
+        if (q.Top.HasValue) parts.Add($"$top={q.Top.Value}");
+        if (q.Skip.HasValue) parts.Add($"$skip={q.Skip.Value}");
+
+        var url = $"/api/{env}/{endpointPath}";
+        if (parts.Count > 0) url += "?" + string.Join('&', parts);
+        Response.Headers["Content-Location"] = url;
+    }
+
     /// <summary>Handles HEAD requests to static endpoints</summary>
     [HttpHead("{env}/{**catchall}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -1365,13 +1522,20 @@ public class EndpointController : ControllerBase
                 return new EmptyResult(); // Response already written
             }
 
-            // For GET requests, try to use cache
-            if (originalMethod.Equals("GET", StringComparison.OrdinalIgnoreCase))
+            // GET and QUERY are both safe and cacheable (RFC 10008 for QUERY)
+            if (originalMethod.Equals("GET", StringComparison.OrdinalIgnoreCase) ||
+                originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
             {
                 // Create a cache key based on the request details
                 var headers = Request?.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
                 string cacheKey = CreateCacheKey(env, endpointName, remainingPath ?? string.Empty, queryString, headers);
-                
+
+                // RFC 10008: the cache key for a QUERY request MUST incorporate the request content
+                if (originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
+                {
+                    cacheKey += ":q=" + await ComputeBodyHashAsync();
+                }
+
                 // Try to get from cache first
                 var cacheEntry = await _cacheManager.GetAsync<Services.Caching.ProxyCacheEntry>(cacheKey);
                 
@@ -1590,6 +1754,26 @@ public class EndpointController : ControllerBase
         }
 
         return baseUrl;
+    }
+
+    /// <summary>Computes a SHA-256 hash of the (buffered) request body and rewinds it, for use in QUERY cache keys</summary>
+    private async Task<string> ComputeBodyHashAsync()
+    {
+        if (Request?.Body == null)
+        {
+            return string.Empty;
+        }
+        if (Request.Body.CanSeek)
+        {
+            Request.Body.Position = 0;
+        }
+        using var ms = new MemoryStream();
+        await Request.Body.CopyToAsync(ms);
+        if (Request.Body.CanSeek)
+        {
+            Request.Body.Position = 0;
+        }
+        return Convert.ToHexString(SHA256.HashData(ms.ToArray()));
     }
 
     /// <summary>Creates a cache key based on request details</summary>
@@ -2109,15 +2293,16 @@ public class EndpointController : ControllerBase
 
     /// <summary>Handles SQL GET requests</summary>
     private async Task<IActionResult> HandleSqlGetRequest(
-        string env, 
+        string env,
         string endpointName,
         string? id,
         string? remainingPath,
-        string? select, 
+        string? select,
         string? filter,
         string? orderby,
         int top,
-        int skip)
+        int skip,
+        string httpMethod = "GET")
     {
         var url = $"{Request.Scheme}://{Request.Host}{Request.Path}{Request.QueryString}";
         Log.Debug("SQL Query Request: {Url}", url);
@@ -2230,8 +2415,8 @@ public class EndpointController : ControllerBase
             var allowedMethods = endpoint.Methods ?? new List<string> { "GET" };
             var primaryKey = endpoint.PrimaryKey ?? "Id";
 
-            // Check if GET is allowed
-            if (!allowedMethods.Contains("GET"))
+            // Check if the incoming read method (GET or QUERY) is allowed
+            if (!allowedMethods.Contains(httpMethod, StringComparer.OrdinalIgnoreCase))
             {
                 return PortwayResults.MethodNotAllowed(this);
             }

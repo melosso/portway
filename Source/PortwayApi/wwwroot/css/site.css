@@ -2134,6 +2134,7 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 .method-btn.active.m-put    { background: hsl(43 96% 56% / 0.15);  color: hsl(43 85% 45%);  border-color: hsl(43 85% 45%); }
 .method-btn.active.m-patch  { background: hsl(43 96% 56% / 0.15);  color: hsl(43 85% 45%);  border-color: hsl(43 85% 45%); }
 .method-btn.active.m-delete { background: hsl(0 84% 60% / 0.15);   color: hsl(0 84% 55%);   border-color: hsl(0 84% 55%); }
+.method-btn.active.m-query  { background: hsl(190 90% 45% / 0.15); color: hsl(190 85% 38%); border-color: hsl(190 85% 38%); }
 
 /* Key-value editor (headers etc.) */
 

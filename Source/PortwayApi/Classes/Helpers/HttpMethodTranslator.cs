@@ -112,7 +112,7 @@ public static class HttpMethodTranslator
     {
         var validMethods = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "GET", "POST", "PUT", "DELETE", "PATCH", "MERGE", "HEAD", "OPTIONS"
+            "GET", "POST", "PUT", "DELETE", "PATCH", "MERGE", "HEAD", "OPTIONS", "QUERY"
         };
 
         return validMethods.Contains(method);

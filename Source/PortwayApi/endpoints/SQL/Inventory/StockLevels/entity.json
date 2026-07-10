@@ -1,0 +1,24 @@
+{
+    "DatabaseObjectName": "StockLevels",
+    "DatabaseSchema": "dbo",
+    "PrimaryKey": "Sku",
+    "Namespace": "Inventory",
+    "NamespaceDisplayName": "Inventory",
+    "AllowedColumns": [
+        "Sku;Sku",
+        "Warehouse;Warehouse",
+        "Quantity;Quantity",
+        "UpdatedAt;UpdatedAt"
+    ],
+    "AllowedMethods": ["QUERY"],
+    "AllowedEnvironments": ["500","700"],
+    "Documentation": {
+        "TagDescription": "**Stock levels**\n\nLook up current stock across warehouses. Because these lookups tend to combine several filters at once, this endpoint accepts the QUERY method (RFC 10008) and reads your criteria from the request body rather than the URL.",
+        "MethodDescriptions": {
+            "QUERY": "Search stock levels using criteria in the request body"
+        },
+        "MethodDocumentation": {
+            "QUERY": "Send a JSON body with OData-style fields (`select`, `filter`, `orderby`, `top`, `skip`). The response mirrors an equivalent GET, and the result stays cacheable with the body folded into the cache key."
+        }
+    }
+}

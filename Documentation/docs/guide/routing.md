@@ -60,6 +60,43 @@ PortwayApi/
 
 The endpoint name in the URL is case-sensitive and matches the folder name exactly.
 
+## The QUERY method
+
+Sometimes a read needs more than a URL can comfortably carry. When your filters grow long, or you would simply rather not see query details sitting in access logs, the QUERY method (described in RFC 10008) offers a friendly alternative. It behaves much like a GET, except your criteria travel in the request body as JSON.
+
+QUERY is a read, and only a read. It is safe and idempotent, so Portway routes it through the same code that serves GET (SQL selects, static content, and proxied reads) and never through anything that writes. Because it stays safe, the response is cacheable too, and Portway folds your request body into the cache key so that two different queries never share a cached answer.
+
+You can opt an endpoint into QUERY by adding it to `AllowedMethods`:
+
+```json
+{
+  "DatabaseObjectName": "StockLevels",
+  "AllowedMethods": ["QUERY"],
+  "AllowedEnvironments": ["prod"]
+}
+```
+
+A request then carries its criteria as JSON. Both the bare and `$`-prefixed OData field names are accepted, so you can reach for whichever feels natural:
+
+```http
+QUERY /api/prod/Inventory/StockLevels
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "select": "Sku,Warehouse,Quantity",
+  "filter": "Quantity gt 0 and Warehouse eq 'AMS'",
+  "orderby": "Quantity desc",
+  "top": 50
+}
+```
+
+The response mirrors the equivalent GET, including pagination headers and an optional `Content-Location` that points at the GET URL which would return the same results.
+
+> Note: QUERY expects a JSON body, so please remember to include `Content-Type: application/json`. A request without it is answered with `415 Unsupported Media Type`, which is really just a gentle nudge rather than a hard failure.
+
+SQL, Proxy, and Static endpoints all treat QUERY as a read. Composite and Webhook endpoints are about orchestration and writes, so they kindly decline QUERY with `405 Method Not Allowed`.
+
 ## Folder permissions
 
 Grant the IIS Application Pool identity read/write access to the deployment directory:
