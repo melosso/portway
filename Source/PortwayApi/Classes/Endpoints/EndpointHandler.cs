@@ -12,6 +12,8 @@ public class EndpointDefinition
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
     public bool IsPrivate { get; set; } = false;
+    /// <summary>Marks the endpoint's operations as deprecated in the OpenAPI document</summary>
+    public bool Deprecated { get; set; } = false;
     public McpSettings? Mcp { get; set; }
     /// <summary>Computed from Mcp.Exposed for backward compatibility with tuple consumers.</summary>
     public bool IsMcpExposed => Mcp?.Exposed == true;
@@ -494,6 +496,7 @@ public static class EndpointHandler
                 Url = extendedEntity.Url,
                 Methods = extendedEntity.Methods,
                 IsPrivate = extendedEntity.IsPrivate,
+                Deprecated = extendedEntity.Deprecated,
                 Mcp = extendedEntity.Mcp,
                 Type = ParseEndpointType(extendedEntity.Type),
                 CompositeConfig = extendedEntity.CompositeConfig,
@@ -559,6 +562,7 @@ public static class EndpointHandler
         return new EndpointDefinition
         {
             Type = EndpointType.SQL,
+            Deprecated = entity.Deprecated,
             DatabaseObjectName = entity.DatabaseObjectName,
             DatabaseSchema = schema,
             AllowedColumns = entity.AllowedColumns ?? new List<string>(),

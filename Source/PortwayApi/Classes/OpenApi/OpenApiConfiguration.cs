@@ -155,6 +155,8 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<FileEndpointDocumentFilter>();
                 options.AddDocumentTransformer<SqlMetadataDocumentFilter>();
                 options.AddDocumentTransformer<StaticMetadataDocumentFilter>();
+                options.AddDocumentTransformer<DeprecatedEndpointDocumentFilter>();
+                options.AddDocumentTransformer<HierarchicalTagDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();
 
                 // Apply global security requirement to all operations (runs after all endpoints are added)

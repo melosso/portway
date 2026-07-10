@@ -23,6 +23,7 @@ public class EndpointEntity
 
     // Shared properties
     public bool IsPrivate { get; set; } = false;
+    public bool Deprecated { get; set; } = false;
     public McpSettings? Mcp { get; set; }
     public string Type { get; set; } = "Standard"; // Standard, SQL, Composite
     public CompositeDefinition? CompositeConfig { get; set; }

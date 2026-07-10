@@ -8,6 +8,7 @@ public class ExtendedEndpointEntity
     public string Type { get; set; } = "Standard"; // "Standard" or "Composite"
     public CompositeDefinition? CompositeConfig { get; set; }
     public bool IsPrivate { get; set; } = false; // If true, endpoint won't be exposed in the API (documentation)
+    public bool Deprecated { get; set; } = false; // If true, the endpoint's operations are marked deprecated in OpenAPI
     public McpSettings? Mcp { get; set; }
     public List<string>? AllowedEnvironments { get; set; } // List of environments that can access this endpoint
 
