@@ -1,0 +1,53 @@
+name: Deploy Docs to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Documentation/docs/**'
+      - 'Documentation/wwwroot/**'
+      - '.github/workflows/bark-deployment.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Portway ships docs as Markdown; Bark renders them. Rather than build Bark from source,
+    # we run the published Bark image to generate a static site from Documentation/docs.
+    # base-url/base-path target GitHub Project Pages (https://melosso.github.io/portway/).
+    # For a custom domain, set base-url to the domain and base-path to an empty string.
+    - name: Generate static site with Bark
+      run: |
+        mkdir -p "${{ github.workspace }}/site"
+        docker run --rm -u "$(id -u):$(id -g)" \
+          -v "${{ github.workspace }}/Documentation/docs:/app/docs" \
+          -v "${{ github.workspace }}/Documentation/wwwroot:/app/wwwroot" \
+          -v "${{ github.workspace }}/site:/site" \
+          ghcr.io/melosso/bark:latest \
+          --export /site --base-url https://melosso.github.io --base-path /portway
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '${{ github.workspace }}/site'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
