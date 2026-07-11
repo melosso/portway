@@ -28,7 +28,8 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/publish /p:UseAppHost=false 
 
 # Stage 2: Runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview-noble AS final
+# The 11.0 preview does not publish a -noble variant yet; use the default tag (pin -noble again at GA if desired)
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview AS final
 WORKDIR /app
 
 # Install SQLite and curl for healthchecks
