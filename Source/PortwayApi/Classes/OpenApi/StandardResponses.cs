@@ -12,24 +12,24 @@ public static class StandardResponses
 
     private static readonly Dictionary<int, string> Descriptions = new()
     {
-        [200] = "OK: the request was successful",
-        [201] = "Created: the resource was created",
-        [202] = "Accepted: the request was accepted for processing",
-        [204] = "No Content: the request was successful with no response body",
-        [206] = "Partial Content: the requested byte range is returned",
-        [304] = "Not Modified: the cached copy is still valid",
-        [400] = "Bad Request: the request was malformed or the environment is not allowed",
-        [401] = "Unauthorized: a valid authentication token is required",
-        [403] = "Forbidden: the token is valid but lacks permission, or the target was blocked",
-        [404] = "Not Found: the endpoint or resource does not exist",
-        [405] = "Method Not Allowed: this method is not enabled for the endpoint",
-        [406] = "Not Acceptable: the requested content type cannot be served",
-        [409] = "Conflict: the resource already exists",
-        [413] = "Payload Too Large: the uploaded content exceeds the allowed size",
-        [415] = "Unsupported Media Type: the content type or file extension is not accepted",
-        [416] = "Range Not Satisfiable: the requested byte range is invalid",
-        [422] = "Unprocessable Content: the payload failed validation",
-        [500] = "Internal Server Error: an unexpected error occurred"
+        [200] = "OK",
+        [201] = "Created",
+        [202] = "Accepted",
+        [204] = "No Content",
+        [206] = "Partial Content",
+        [304] = "Not Modified",
+        [400] = "Bad Request",
+        [401] = "Unauthorized",
+        [403] = "Forbidden",
+        [404] = "Not Found",
+        [405] = "Method Not Allowed",
+        [406] = "Not Acceptable",
+        [409] = "Conflict",
+        [413] = "Content Too Large",
+        [415] = "Unsupported Media Type",
+        [416] = "Range Not Satisfiable",
+        [422] = "Unprocessable Content",
+        [500] = "Internal Server Error"
     };
 
     /// <summary>The standard description for a status code, or null when none is defined</summary>

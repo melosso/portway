@@ -62,14 +62,12 @@ public class OpenApiDocumentTests : ApiTestBase
             .GetProperty("schema").GetProperty("$ref").GetString();
         Assert.Equal("#/components/schemas/ErrorResponse", badRequestRef);
 
-        // Response descriptions are standardized per status code
-        Assert.Equal("Bad Request: the request was malformed or the environment is not allowed",
-            responses.GetProperty("400").GetProperty("description").GetString());
-        Assert.Equal("OK: the request was successful",
-            responses.GetProperty("200").GetProperty("description").GetString());
+        // Response descriptions are the standard HTTP reason phrase per status code
+        Assert.Equal("Bad Request", responses.GetProperty("400").GetProperty("description").GetString());
+        Assert.Equal("OK", responses.GetProperty("200").GetProperty("description").GetString());
     }
 
-    // Audit: no operation response keeps a bare, non-standardized description
+    // Audit: every documented status code carries its canonical HTTP reason phrase
     [Fact]
     public async Task AllResponseDescriptions_AreStandardized()
     {
@@ -79,12 +77,6 @@ public class OpenApiDocumentTests : ApiTestBase
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var paths = doc.RootElement.GetProperty("paths");
 
-        var bareDescriptions = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Unauthorized", "Forbidden", "Not Found", "Server Error", "Bad Request",
-            "Default Response", "Conflict", "OK", "Created", "Error"
-        };
-
         var offenders = new List<string>();
         foreach (var path in paths.EnumerateObject())
         foreach (var op in path.Value.EnumerateObject())
@@ -92,10 +84,12 @@ public class OpenApiDocumentTests : ApiTestBase
             if (!op.Value.TryGetProperty("responses", out var resp) || resp.ValueKind != JsonValueKind.Object) continue;
             foreach (var r in resp.EnumerateObject())
             {
-                if (r.Value.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String &&
-                    bareDescriptions.Contains(d.GetString()!))
+                if (!int.TryParse(r.Name, out var code)) continue;
+                var expected = PortwayApi.Classes.StandardResponses.DescriptionFor(code);
+                if (expected == null) continue;
+                if (!r.Value.TryGetProperty("description", out var d) || d.GetString() != expected)
                 {
-                    offenders.Add($"{path.Name} {op.Name} {r.Name}: '{d.GetString()}'");
+                    offenders.Add($"{path.Name} {op.Name} {r.Name}: '{d.GetString()}' (expected '{expected}')");
                 }
             }
         }
