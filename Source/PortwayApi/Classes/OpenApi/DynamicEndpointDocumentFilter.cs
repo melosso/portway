@@ -530,6 +530,21 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         var webhookDocumentation = definition.Documentation ?? LoadWebhookDocumentation();
         var webhookTag = definition.DocumentationTag;
 
+        // Register this webhook's tag description; namespaced webhooks carry it in their own Documentation block
+        if (!string.IsNullOrWhiteSpace(webhookDocumentation?.TagDescription))
+        {
+            document.Tags ??= new HashSet<OpenApiTag>();
+            var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, webhookTag, StringComparison.OrdinalIgnoreCase));
+            if (existingTag == null)
+            {
+                document.Tags.Add(new OpenApiTag { Name = webhookTag, Description = webhookDocumentation.TagDescription });
+            }
+            else if (string.IsNullOrWhiteSpace(existingTag.Description))
+            {
+                existingTag.Description = webhookDocumentation.TagDescription;
+            }
+        }
+
         // Create path item if it doesn't exist
         if (!document.Paths.ContainsKey(path))
         {
@@ -2174,20 +2189,7 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             }
         }
 
-        // Add Webhook tag if webhooks exist (load description from entity.json)
-        if (document.Paths.Any(p => p.Key.Contains("/webhook/")))
-        {
-            var webhookTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, "Webhook", StringComparison.OrdinalIgnoreCase));
-            if (webhookTag == null)
-            {
-                var webhookDocumentation = LoadWebhookDocumentation();
-                document.Tags.Add(new OpenApiTag
-                {
-                    Name = "Webhook",
-                    Description = webhookDocumentation?.TagDescription ?? "Endpoints for receiving and processing external webhook events"
-                });
-            }
-        }
+        // Webhook tag descriptions are registered per endpoint in AddWebhookEndpoints (namespaced since v2.0.0)
 
         // Sort all tags alphabetically
         document.Tags = new HashSet<OpenApiTag>(document.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase));
