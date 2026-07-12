@@ -72,14 +72,28 @@ Requests without a valid token return `401 Unauthorized`. The only unauthenticat
 
 ## Error Format
 
+Every endpoint type answers errors with the same small envelope, so you can handle failures the same way everywhere:
+
 ```json
 {
   "success": false,
-  "error": "Error message",
-  "errorDetail": "Detailed error information",
-  "timestamp": "2024-01-15T10:30:00Z"
+  "error": "A human-readable message"
 }
 ```
+
+Validation failures (`422`) add a `details` array describing each problem:
+
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "details": [
+    { "field": "Price", "message": "is required" }
+  ]
+}
+```
+
+In the API reference these appear as the shared `ErrorResponse` and `ValidationErrorResponse` schemas, which every operation references. A couple of endpoint types are intentionally freer: SQL stored procedures may shape their own success payloads, and Proxy and Composite endpoints pass through whatever the upstream service or the final step returns.
 
 ## OData Query Parameters
 
