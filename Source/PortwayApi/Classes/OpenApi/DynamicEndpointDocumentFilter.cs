@@ -1644,6 +1644,18 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             };
         };
 
+        // Standardize error responses onto the shared schema (validated matrix; removes over-promised codes)
+        foreach (var c in new[] { "400", "401", "403", "404", "405", "406", "409", "413", "415", "416", "422", "500" })
+            operation.Responses.Remove(c);
+        var isWrite = method.Equals("POST", StringComparison.OrdinalIgnoreCase)
+            || method.Equals("PUT", StringComparison.OrdinalIgnoreCase)
+            || method.Equals("PATCH", StringComparison.OrdinalIgnoreCase)
+            || method.Equals("MERGE", StringComparison.OrdinalIgnoreCase);
+        var codes = new List<int> { 400, 401, 403, 404, 500 };
+        if (isWrite) codes.Add(422);
+        if (method.Equals("QUERY", StringComparison.OrdinalIgnoreCase)) codes.Add(415);
+        StandardResponses.AddErrors(operation, codes.ToArray());
+
         return operation;
     }
 

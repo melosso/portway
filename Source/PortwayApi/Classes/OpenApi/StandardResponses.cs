@@ -1,4 +1,4 @@
-namespace PortwayApi.Classes.OpenApi;
+namespace PortwayApi.Classes;
 
 using System.Collections.Generic;
 using Microsoft.OpenApi;
