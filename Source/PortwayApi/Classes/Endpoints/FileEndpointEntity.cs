@@ -29,6 +29,9 @@ public class FileEndpointEntity
     /// <summary>Display name for the namespace (e.g. "Customer Relationship Management"); used as documentation tag description and grouping</summary>
     public string? NamespaceDisplayName { get; set; }
 
+    /// <summary>Optional Scalar sidebar icon for this namespace tag (Phosphor set, e.g. "phosphor/regular/package")</summary>
+    public string? NamespaceIcon { get; set; }
+
     /// <summary>OpenAPI documentation for this endpoint</summary>
     public Documentation? Documentation { get; set; }
 }

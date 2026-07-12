@@ -4,6 +4,7 @@
   "PrimaryKey": "ItemCode",
   "Namespace": "Product",
   "NamespaceDisplayName": "Product",
+  "NamespaceIcon": "box",
   "AllowedColumns": [
     "ItemCode;ProductNumber",
     "Warehouse;Warehouse",

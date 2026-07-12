@@ -96,7 +96,10 @@ The effective namespace follows this priority order:
 |----------|------|----------|-------------|
 | `Namespace` | string | No | Explicit namespace override |
 | `NamespaceDisplayName` | string | No | Human-readable namespace name for documentation |
+| `NamespaceIcon` | string | No | Optional sidebar icon for the namespace group in the Scalar reference (Phosphor set, for example `phosphor/regular/package`) |
 | `DisplayName` | string | No | Human-readable endpoint name |
+
+If you would like the namespace to stand out in the sidebar, you can add a `NamespaceIcon`. It accepts an icon from the [Phosphor](https://phosphoricons.com/) set, written as `phosphor/{weight}/{name}` (for example `phosphor/regular/package`), and Portway attaches it to the namespace's documentation tag so Scalar shows it beside the group. It is entirely optional. Set it on any one endpoint in the namespace and that icon is used for the whole group.
 
 ### Namespace Properties Examples
 

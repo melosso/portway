@@ -4,6 +4,7 @@
     "PrimaryKey": "Sku",
     "Namespace": "Inventory",
     "NamespaceDisplayName": "Inventory",
+    "NamespaceIcon": "phosphor/regular/package",
     "AllowedColumns": [
         "Sku;Sku",
         "Warehouse;Warehouse",

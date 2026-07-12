@@ -86,6 +86,9 @@ public class EndpointDefinition
     /// <summary>Display name for the namespace (e.g., "Customer Relationship Management") Used as documentation tag description and documentation grouping</summary>
     public string? NamespaceDisplayName { get; set; }
 
+    /// <summary>Optional Scalar sidebar icon for this endpoint's namespace tag (Phosphor set, e.g. "phosphor/regular/package")</summary>
+    public string? NamespaceIcon { get; set; }
+
     /// <summary>Folder name where the endpoint definition is located (for backward compatibility) Used as fallback for DocumentationTag when DisplayName is not specified</summary>
     public string? FolderName { get; set; }
     
@@ -421,6 +424,7 @@ public static class EndpointHandler
             Namespace = entity.Namespace,
             DisplayName = entity.DisplayName,
             NamespaceDisplayName = entity.NamespaceDisplayName,
+            NamespaceIcon = entity.NamespaceIcon,
             // Store file-specific properties in Properties dictionary
             Properties = new Dictionary<string, object>
             {
@@ -454,6 +458,7 @@ public static class EndpointHandler
             Namespace = entity.Namespace,
             DisplayName = entity.DisplayName,
             NamespaceDisplayName = entity.NamespaceDisplayName,
+            NamespaceIcon = entity.NamespaceIcon,
             // Store static-specific properties in Properties dictionary
             Properties = new Dictionary<string, object>
             {
@@ -505,6 +510,7 @@ public static class EndpointHandler
                 CustomProperties = extendedEntity.CustomProperties,
                 Namespace = extendedEntity.Namespace,
                 NamespaceDisplayName = extendedEntity.NamespaceDisplayName,
+                NamespaceIcon = extendedEntity.NamespaceIcon,
                 DisplayName = extendedEntity.DisplayName,
                 DeletePatterns = extendedEntity.DeletePatterns
             };
@@ -530,6 +536,7 @@ public static class EndpointHandler
                 Namespace = entity.Namespace,
                 DisplayName = entity.DisplayName,
                 NamespaceDisplayName = entity.NamespaceDisplayName,
+            NamespaceIcon = entity.NamespaceIcon,
                 DeletePatterns = entity.DeletePatterns
             };
         }
@@ -576,6 +583,7 @@ public static class EndpointHandler
             Documentation = entity.Documentation,
             Namespace = entity.Namespace,
             NamespaceDisplayName = entity.NamespaceDisplayName,
+            NamespaceIcon = entity.NamespaceIcon,
             DisplayName = entity.DisplayName
         };
     }

@@ -158,6 +158,7 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<DeprecatedEndpointDocumentFilter>();
                 options.AddDocumentTransformer<ConfigExampleDocumentFilter>();
                 options.AddDocumentTransformer<HierarchicalTagDocumentFilter>();
+                options.AddDocumentTransformer<TagIconDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();
 
                 // Apply global security requirement to all operations (runs after all endpoints are added)

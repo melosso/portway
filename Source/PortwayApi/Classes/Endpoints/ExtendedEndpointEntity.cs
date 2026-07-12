@@ -21,6 +21,9 @@ public class ExtendedEndpointEntity
     /// <summary>Display name for the namespace (e.g. "External Services"); used as documentation tag description and grouping</summary>
     public string? NamespaceDisplayName { get; set; }
 
+    /// <summary>Optional Scalar sidebar icon for this namespace tag (Phosphor set, e.g. "phosphor/regular/package")</summary>
+    public string? NamespaceIcon { get; set; }
+
     /// <summary>DELETE operation patterns</summary>
     public List<DeletePattern>? DeletePatterns { get; set; }
 
