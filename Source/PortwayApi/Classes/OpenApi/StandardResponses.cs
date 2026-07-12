@@ -1,6 +1,7 @@
 namespace PortwayApi.Classes;
 
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
 
 /// <summary>Shared error-response schemas and a helper to attach a standard set of error responses to an operation</summary>
@@ -11,24 +12,24 @@ public static class StandardResponses
 
     private static readonly Dictionary<int, string> Descriptions = new()
     {
-        [200] = "OK - the request was successful",
-        [201] = "Created - the resource was created",
-        [202] = "Accepted - the request was accepted for processing",
-        [204] = "No Content - the request was successful with no response body",
-        [206] = "Partial Content - the requested byte range is returned",
-        [304] = "Not Modified - the cached copy is still valid",
-        [400] = "Bad Request - the request was malformed or the environment is not allowed",
-        [401] = "Unauthorized - a valid authentication token is required",
-        [403] = "Forbidden - the token is valid but lacks permission, or the target was blocked",
-        [404] = "Not Found - the endpoint or resource does not exist",
-        [405] = "Method Not Allowed - this method is not enabled for the endpoint",
-        [406] = "Not Acceptable - the requested content type cannot be served",
-        [409] = "Conflict - the resource already exists",
-        [413] = "Payload Too Large - the uploaded content exceeds the allowed size",
-        [415] = "Unsupported Media Type - the content type or file extension is not accepted",
-        [416] = "Range Not Satisfiable - the requested byte range is invalid",
-        [422] = "Unprocessable Content - the payload failed validation",
-        [500] = "Internal Server Error - an unexpected error occurred"
+        [200] = "OK: the request was successful",
+        [201] = "Created: the resource was created",
+        [202] = "Accepted: the request was accepted for processing",
+        [204] = "No Content: the request was successful with no response body",
+        [206] = "Partial Content: the requested byte range is returned",
+        [304] = "Not Modified: the cached copy is still valid",
+        [400] = "Bad Request: the request was malformed or the environment is not allowed",
+        [401] = "Unauthorized: a valid authentication token is required",
+        [403] = "Forbidden: the token is valid but lacks permission, or the target was blocked",
+        [404] = "Not Found: the endpoint or resource does not exist",
+        [405] = "Method Not Allowed: this method is not enabled for the endpoint",
+        [406] = "Not Acceptable: the requested content type cannot be served",
+        [409] = "Conflict: the resource already exists",
+        [413] = "Payload Too Large: the uploaded content exceeds the allowed size",
+        [415] = "Unsupported Media Type: the content type or file extension is not accepted",
+        [416] = "Range Not Satisfiable: the requested byte range is invalid",
+        [422] = "Unprocessable Content: the payload failed validation",
+        [500] = "Internal Server Error: an unexpected error occurred"
     };
 
     /// <summary>The standard description for a status code, or null when none is defined</summary>
@@ -51,7 +52,8 @@ public static class StandardResponses
                     ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
                     ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
                 },
-                Required = new HashSet<string> { "success", "error" }
+                Required = new HashSet<string> { "success", "error" },
+                Example = new JsonObject { ["success"] = false, ["error"] = "A human-readable message" }
             };
         }
 
@@ -79,7 +81,13 @@ public static class StandardResponses
                         }
                     }
                 },
-                Required = new HashSet<string> { "success", "error" }
+                Required = new HashSet<string> { "success", "error" },
+                Example = new JsonObject
+                {
+                    ["success"] = false,
+                    ["error"] = "Validation failed",
+                    ["details"] = new JsonArray { new JsonObject { ["field"] = "Price", ["message"] = "is required" } }
+                }
             };
         }
     }

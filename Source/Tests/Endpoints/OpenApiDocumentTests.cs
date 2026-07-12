@@ -63,9 +63,9 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Equal("#/components/schemas/ErrorResponse", badRequestRef);
 
         // Response descriptions are standardized per status code
-        Assert.Equal("Bad Request - the request was malformed or the environment is not allowed",
+        Assert.Equal("Bad Request: the request was malformed or the environment is not allowed",
             responses.GetProperty("400").GetProperty("description").GetString());
-        Assert.Equal("OK - the request was successful",
+        Assert.Equal("OK: the request was successful",
             responses.GetProperty("200").GetProperty("description").GetString());
     }
 
