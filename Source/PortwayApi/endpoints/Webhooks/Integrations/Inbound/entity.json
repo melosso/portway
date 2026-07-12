@@ -1,6 +1,9 @@
 {
     "DatabaseObjectName": "WebhookData",
     "DatabaseSchema": "dbo",
+    "Namespace": "Integrations",
+    "NamespaceDisplayName": "Integrations",
+    "DisplayName": "Inbound",
     "AllowedColumns": [
       "webhook1",
       "webhook2"
@@ -15,4 +18,4 @@
             "POST": "Store new webhook payloads and event data in the system for (asynchronous) processing."
         }
     }
-} 
+}
