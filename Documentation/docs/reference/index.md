@@ -93,7 +93,25 @@ Validation failures (`422`) add a `details` array describing each problem:
 }
 ```
 
-In the API reference these appear as the shared `ErrorResponse` and `ValidationErrorResponse` schemas, which every operation references. A couple of endpoint types are intentionally freer: SQL stored procedures may shape their own success payloads, and Proxy and Composite endpoints pass through whatever the upstream service or the final step returns.
+In the API reference these appear as the shared `ErrorResponse` and `ValidationErrorResponse` schemas, which every operation references.
+
+## Status Codes by Endpoint Type
+
+Every endpoint type shares the same error envelope, but each returns only the codes that make sense for it. This is the set you will see documented per operation in the API reference:
+
+| Endpoint type | Success | Error codes |
+|---------------|---------|-------------|
+| SQL (read) | `200` | `400` `401` `403` `404` `500` |
+| SQL (write) | `200` `201` | `400` `401` `403` `404` `422` `500` |
+| Proxy | pass-through | `400` `401` `403` `404` `500` |
+| Static | `200` | `400` `401` `403` `404` `406` `500` |
+| Composite | `200` | `400` `401` `403` `404` `422` `500` |
+| Webhook | `200` | `400` `401` `403` `404` `500` |
+| Files | `200` `201` `206` | `400` `401` `403` `404` `409` `413` `415` `416` `500` |
+
+A `429 Too Many Requests` can come back from any endpoint when a rate limit is exceeded. `400` covers both a malformed request and an environment that is not on the allowed list; `403` means the token is valid but lacks the scope, or the target was blocked.
+
+The success body, on the other hand, is specific to each endpoint. SQL queries return your rows, Static endpoints return their configured content, File downloads return bytes, and Proxy and Composite endpoints pass through whatever the upstream service or the final step returns. SQL stored procedures are the freest of all: they shape their own payloads. The reference documents the success shape it can infer for each operation, so treat the error contract as universal and the success contract as per endpoint.
 
 ## OData Query Parameters
 
