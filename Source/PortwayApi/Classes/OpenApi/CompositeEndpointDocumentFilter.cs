@@ -198,6 +198,11 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 };
 
                 // Add the operation to the path
+                // Standardize composite error responses onto the shared schema (validated matrix; step status still propagates at runtime)
+                foreach (var __c in new[] { "400", "401", "403", "404", "405", "409", "422", "500" })
+                    operation.Responses.Remove(__c);
+                StandardResponses.AddErrors(operation, 400, 401, 403, 404, 422, 500);
+
                 document.Paths[path].Operations![HttpMethod.Post] = operation;
             }
 
