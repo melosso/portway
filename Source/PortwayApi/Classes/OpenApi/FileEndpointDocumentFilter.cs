@@ -326,6 +326,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "upload");
 
         // Add the upload operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 409, 413, 415, 500);
+
         document.Paths[path].Operations![HttpMethod.Post] = operation;
     }
 
@@ -423,6 +428,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "download");
 
         // Add the download operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 416, 500);
+
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
@@ -528,6 +538,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "delete");
 
         // Add the delete operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+
         document.Paths[path].Operations![HttpMethod.Delete] = operation;
     }
 
@@ -668,6 +683,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "list");
 
         // Add the list operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
