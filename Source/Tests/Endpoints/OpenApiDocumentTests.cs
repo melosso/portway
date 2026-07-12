@@ -26,6 +26,23 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.True(root.TryGetProperty("info", out _));
     }
 
+    // The shared error envelope is registered once as a reusable component schema
+    [Fact]
+    public async Task SharedErrorResponse_ComponentSchema_IsRegistered()
+    {
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var schemas = doc.RootElement.GetProperty("components").GetProperty("schemas");
+
+        Assert.True(schemas.TryGetProperty("ErrorResponse", out var err), "ErrorResponse component should exist");
+        var props = err.GetProperty("properties");
+        Assert.True(props.TryGetProperty("success", out _));
+        Assert.True(props.TryGetProperty("error", out _));
+        Assert.True(schemas.TryGetProperty("ValidationErrorResponse", out _), "ValidationErrorResponse component should exist");
+    }
+
     // Regression: a QUERY-only endpoint must not be advertised as GET, and generating the document
     // must not mutate the endpoint's methods (which previously injected GET and broke the 405 gate).
     [Fact]

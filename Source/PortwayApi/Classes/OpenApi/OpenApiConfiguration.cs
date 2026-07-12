@@ -149,6 +149,7 @@ public static class OpenApiConfiguration
                 });
 
                 // Add document transformers (order is critical)
+                options.AddDocumentTransformer<StandardResponsesDocumentFilter>();
                 options.AddDocumentTransformer<DynamicOpenApiDocumentFilter>();
                 options.AddDocumentTransformer<DynamicEndpointDocumentFilter>();
                 options.AddDocumentTransformer<CompositeEndpointDocumentFilter>();
