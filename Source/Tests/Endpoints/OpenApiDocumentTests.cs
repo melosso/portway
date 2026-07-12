@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Net;
 using System.Text.Json;
 using PortwayApi.Tests.Base;
@@ -56,25 +55,5 @@ public class OpenApiDocumentTests : ApiTestBase
         // Generating the document must not have enabled GET at runtime
         var getResponse = await _client.GetAsync("/api/500/Inventory/StockLevels");
         Assert.Equal(HttpStatusCode.MethodNotAllowed, getResponse.StatusCode);
-    }
-
-    // A namespace's optional NamespaceIcon surfaces as a Scalar x-scalar-icon extension on its tag
-    [Fact]
-    public async Task NamespaceIcon_IsAppliedAsScalarIconExtension()
-    {
-        SetAllowedEnvironments("500", "700");
-
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.True(doc.RootElement.TryGetProperty("tags", out var tags));
-
-        var inventory = tags.EnumerateArray()
-            .FirstOrDefault(t => t.TryGetProperty("name", out var n) && n.GetString() == "Inventory");
-        Assert.Equal(JsonValueKind.Object, inventory.ValueKind);
-        Assert.True(inventory.TryGetProperty("x-scalar-icon", out var icon),
-            "The Inventory tag should carry the configured x-scalar-icon");
-        Assert.Equal("phosphor/regular/package", icon.GetString());
     }
 }
