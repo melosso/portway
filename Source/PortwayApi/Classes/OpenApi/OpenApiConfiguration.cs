@@ -440,6 +440,25 @@ var html = $@"
         }});
         observer.observe(document.body, {{ childList: true, subtree: true }});
     </script>
+    <script 
+        id=""_ISF0s93rsopi225SH""
+        >
+        (() => {{
+            const askAiObserver = new MutationObserver(() => {{
+                const askAiButton = Array.from(document.querySelectorAll('button'))
+                    .find(btn => btn.textContent && btn.textContent.includes('Ask AI'));
+                
+                if (askAiButton) {{
+                    askAiButton.remove();
+                }}
+            }});
+
+            askAiObserver.observe(document.body, {{
+                childList: true,
+                subtree: true
+            }});
+        }})();
+    </script>
 </body>
 </html>";
             return Results.Content(html, "text/html");
