@@ -11,6 +11,12 @@ public static class StandardResponses
 
     private static readonly Dictionary<int, string> Descriptions = new()
     {
+        [200] = "OK - the request was successful",
+        [201] = "Created - the resource was created",
+        [202] = "Accepted - the request was accepted for processing",
+        [204] = "No Content - the request was successful with no response body",
+        [206] = "Partial Content - the requested byte range is returned",
+        [304] = "Not Modified - the cached copy is still valid",
         [400] = "Bad Request - the request was malformed or the environment is not allowed",
         [401] = "Unauthorized - a valid authentication token is required",
         [403] = "Forbidden - the token is valid but lacks permission, or the target was blocked",
@@ -24,6 +30,9 @@ public static class StandardResponses
         [422] = "Unprocessable Content - the payload failed validation",
         [500] = "Internal Server Error - an unexpected error occurred"
     };
+
+    /// <summary>The standard description for a status code, or null when none is defined</summary>
+    public static string? DescriptionFor(int code) => Descriptions.TryGetValue(code, out var d) ? d : null;
 
     /// <summary>Registers the shared { success, error } and validation schemas as reusable components (once)</summary>
     public static void EnsureSchemas(OpenApiDocument document)
@@ -85,7 +94,7 @@ public static class StandardResponses
             var schemaId = code == 422 ? ValidationSchemaId : ErrorSchemaId;
             operation.Responses[code.ToString()] = new OpenApiResponse
             {
-                Description = Descriptions.TryGetValue(code, out var d) ? d : "Error",
+                Description = DescriptionFor(code) ?? "Error",
                 Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType

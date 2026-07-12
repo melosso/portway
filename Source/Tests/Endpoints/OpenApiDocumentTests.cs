@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Net;
 using System.Text.Json;
 using PortwayApi.Tests.Base;
@@ -60,6 +61,46 @@ public class OpenApiDocumentTests : ApiTestBase
             .GetProperty("content").GetProperty("application/json")
             .GetProperty("schema").GetProperty("$ref").GetString();
         Assert.Equal("#/components/schemas/ErrorResponse", badRequestRef);
+
+        // Response descriptions are standardized per status code
+        Assert.Equal("Bad Request - the request was malformed or the environment is not allowed",
+            responses.GetProperty("400").GetProperty("description").GetString());
+        Assert.Equal("OK - the request was successful",
+            responses.GetProperty("200").GetProperty("description").GetString());
+    }
+
+    // Audit: no operation response keeps a bare, non-standardized description
+    [Fact]
+    public async Task AllResponseDescriptions_AreStandardized()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var paths = doc.RootElement.GetProperty("paths");
+
+        var bareDescriptions = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Unauthorized", "Forbidden", "Not Found", "Server Error", "Bad Request",
+            "Default Response", "Conflict", "OK", "Created", "Error"
+        };
+
+        var offenders = new List<string>();
+        foreach (var path in paths.EnumerateObject())
+        foreach (var op in path.Value.EnumerateObject())
+        {
+            if (!op.Value.TryGetProperty("responses", out var resp) || resp.ValueKind != JsonValueKind.Object) continue;
+            foreach (var r in resp.EnumerateObject())
+            {
+                if (r.Value.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String &&
+                    bareDescriptions.Contains(d.GetString()!))
+                {
+                    offenders.Add($"{path.Name} {op.Name} {r.Name}: '{d.GetString()}'");
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0, "Non-standardized response descriptions:\n" + string.Join("\n", offenders));
     }
 
     // Regression: a QUERY-only endpoint must not be advertised as GET, and generating the document
