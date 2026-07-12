@@ -759,6 +759,11 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             }
         };
 
+        // Standardize webhook error responses onto the shared schema (validated matrix)
+        foreach (var c in new[] { "400", "401", "403", "404", "405", "409", "422", "500" })
+            webhookOperation.Responses.Remove(c);
+        StandardResponses.AddErrors(webhookOperation, 400, 401, 403, 404, 500);
+
         document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
         }
     }
@@ -1864,6 +1869,11 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             }
         };
 
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var c in new[] { "400", "401", "403", "404", "405", "406", "409", "413", "415", "416", "422", "500" })
+            operation.Responses.Remove(c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+
         return operation;
     }
 
@@ -2010,6 +2020,11 @@ public class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
                 }
             }
         };
+
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var c in new[] { "400", "401", "403", "404", "405", "406", "409", "413", "415", "416", "422", "500" })
+            operation.Responses.Remove(c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
 
         return operation;
     }
