@@ -5,5 +5,5 @@ services:
     ports:
       - "5991:8080"
     volumes:
-      - ./docs:/app/docs
-      - ./wwwroot:/app/wwwroot
+      - ./docs:/app/docs:ro
+      - ./wwwroot:/app/wwwroot:ro
