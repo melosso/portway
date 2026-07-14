@@ -127,11 +127,11 @@
         "collapsed": false,
         "items": [
           {
-            "title": "MCP Server",
+            "title": "Server",
             "path": "guide/mcp"
           },
           {
-            "title": "Chat",
+            "title": "Built-in chat",
             "path": "guide/mcp-chat"
           }
         ]

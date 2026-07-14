@@ -127,3 +127,12 @@ function animateCounter(el, target, duration) {
     return _fetch.call(this, url, options);
   };
 })();
+
+// MCP AI provider catalog; single source of truth for the settings and chat wizards.
+const PROVIDERS = [
+  { id: 'mistral',   label: 'Mistral AI',    model: 'mistral-medium-latest',  hint: 'mistral-large-latest / mistral-medium-latest' },
+  { id: 'anthropic', label: 'Anthropic',     model: 'claude-sonnet-5',        hint: 'claude-fable-5 / claude-opus-4-8' },
+  { id: 'openai',    label: 'OpenAI',        model: 'gpt-5.5',                hint: 'gpt-5.5 / gpt-5.6-terra / gpt-5.6-luna' },
+  { id: 'gemini',    label: 'Google Gemini', model: 'gemini-3.5-flash',       hint: 'gemini-3.5-pro / gemini-3.5-flash' },
+];
+const PROVIDER_LABELS = Object.fromEntries(PROVIDERS.map(p => [p.id, p.label]));

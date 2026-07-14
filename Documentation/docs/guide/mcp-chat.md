@@ -51,7 +51,7 @@ See [Secret Encryption](/reference/secrets) for how PWENC database encryption wo
 
 ```json
 "Provider": "Anthropic",
-"Model": "claude-sonnet-4-6"
+"Model": "claude-sonnet-5"
 ```
 
 Uses the Anthropic Messages API with streaming and native tool use. Obtain an API key from [console.anthropic.com](https://console.anthropic.com).
@@ -60,7 +60,7 @@ Uses the Anthropic Messages API with streaming and native tool use. Obtain an AP
 
 ```json
 "Provider": "OpenAI",
-"Model": "gpt-4o"
+"Model": "gpt-5.5"
 ```
 
 Uses the OpenAI Chat Completions API with streaming function calling.
@@ -69,7 +69,7 @@ Uses the OpenAI Chat Completions API with streaming function calling.
 
 ```json
 "Provider": "Gemini",
-"Model": "gemini-2.0-flash"
+"Model": "gemini-3.5-flash"
 ```
 
 Uses the Google Generative Language API (`streamGenerateContent`) with function declarations.
