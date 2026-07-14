@@ -1,6 +1,6 @@
 services:
   portway_documentation:
-    image: ghcr.io/melosso/documentation:latest
+    image: ghcr.io/melosso/portway_documentation:latest
     container_name: portway_documentation
     ports:
       - "5991:8080"
