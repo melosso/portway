@@ -163,5 +163,5 @@ Files are stored at predictable paths: `files/{environment}/{baseDirectory}/{fil
 
 ## Next steps
 
-- [Environments](./environments)
-- [Security](./security)
+- [Environments](/guide/environments)
+- [Security](/guide/security)

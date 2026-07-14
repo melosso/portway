@@ -160,6 +160,6 @@ IIS worker processes do not inherit system environment variables. Use `appsettin
 
 ## Next steps
 
-- [Monitoring](./monitoring)
+- [Monitoring](/guide/monitoring)
 - [Logging](/reference/logging)
 - [Health Checks](/reference/health-checks)

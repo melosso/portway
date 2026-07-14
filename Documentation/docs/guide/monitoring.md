@@ -256,6 +256,6 @@ Select-String -Path ".\log\*.log" -Pattern "\[ERR\]" | Select-Object -Last 50
 
 ## Next steps
 
-- [Rate Limiting](./rate-limiting)
-- [Security](./security)
-- [Deployment](./deployment)
+- [Rate Limiting](/guide/rate-limiting)
+- [Security](/guide/security)
+- [Deployment](/guide/deployment)

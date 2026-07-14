@@ -264,7 +264,7 @@ To increase log verbosity:
 
 ## Next steps
 
-- [Proxy Endpoints](./endpoints-proxy)
-- [Composite Endpoints](./endpoints-composite)
-- [Environments](./environments)
-- [Security](./security)
+- [Proxy Endpoints](/guide/endpoints-proxy)
+- [Composite Endpoints](/guide/endpoints-composite)
+- [Environments](/guide/environments)
+- [Security](/guide/security)

@@ -136,6 +136,6 @@ Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `
 
 ## Next steps
 
-- [Composite Endpoints](./endpoints-composite): orchestrate multiple proxy steps
-- [Environments](./environments): configure per-environment headers and auth
-- [Security](./security)
+- [Composite Endpoints](/guide/endpoints-composite): orchestrate multiple proxy steps
+- [Environments](/guide/environments): configure per-environment headers and auth
+- [Security](/guide/security)

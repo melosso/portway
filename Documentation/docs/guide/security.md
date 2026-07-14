@@ -75,7 +75,7 @@ Individual endpoints enforce their own environment and visibility constraints:
 }
 ```
 
-Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments, access control](./environments#access-control) for the full matrix.
+Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments, access control](/guide/environments#access-control) for the full matrix.
 
 ## Network security
 
@@ -213,7 +213,7 @@ Enable request traffic logging to capture headers and bodies for security analys
 }
 ```
 
-See [Monitoring](./monitoring) for traffic logging configuration details.
+See [Monitoring](/guide/monitoring) for traffic logging configuration details.
 
 ## Pre-deployment checklist
 
@@ -241,7 +241,7 @@ See [Monitoring](./monitoring) for traffic logging configuration details.
 5. Document the incident for your security audit trail
 
 :::info
-Manage all tokens in the [Web UI](./webui) under **Tokens**. The **Tokens** page lists all active (non-revoked, non-expired) tokens with their scope and environment restrictions.
+Manage all tokens in the [Web UI](/guide/webui) under **Tokens**. The **Tokens** page lists all active (non-revoked, non-expired) tokens with their scope and environment restrictions.
 :::
 
 :::warning
@@ -250,7 +250,7 @@ Token revocation is permanent. A revoked token cannot be reactivated. Create a n
 
 ## Next steps
 
-- [Rate Limiting](./rate-limiting)
-- [Environments, authentication](./environments#per-environment-authentication)
-- [Monitoring](./monitoring)
-- [Deployment](./deployment)
+- [Rate Limiting](/guide/rate-limiting)
+- [Environments, authentication](/guide/environments#per-environment-authentication)
+- [Monitoring](/guide/monitoring)
+- [Deployment](/guide/deployment)

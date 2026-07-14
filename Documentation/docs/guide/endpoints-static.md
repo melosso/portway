@@ -73,5 +73,5 @@ When filtering is applied, the response includes:
 
 ## Next steps
 
-- [SQL Endpoints](./endpoints-sql)
-- [Environments](./environments)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Environments](/guide/environments)

@@ -41,14 +41,14 @@ Authentication issues are the most common problems reported by API consumers. Th
    ```
 
 2. **Check token validity:**
-   Open the [Web UI](./webui) and navigate to **Tokens** to confirm the token exists and has not been revoked or expired.
+   Open the [Web UI](/guide/webui) and navigate to **Tokens** to confirm the token exists and has not been revoked or expired.
 
 3. **Review authentication logs:**
    Look for patterns in failed authentication attempts to identify systemic issues.
 
 **Solutions:**
 
-- **Generate new token:** Create a replacement token in the [Web UI](./webui) under **Tokens**, then revoke the old one.
+- **Generate new token:** Create a replacement token in the [Web UI](/guide/webui) under **Tokens**, then revoke the old one.
 
 - **User guidance:** Provide clear documentation on proper Authorization header format
 - **Security review:** If multiple users are affected, verify that token storage and transmission are secure
@@ -91,7 +91,7 @@ Tokens are essentially API keys. Ensure users store them securely using environm
 
 **Solutions:**
 
-- **Update token scopes:** Edit the token in the [Web UI](./webui) under **Tokens** to add the required scopes or environments.
+- **Update token scopes:** Edit the token in the [Web UI](/guide/webui) under **Tokens** to add the required scopes or environments.
 
 - **Review endpoint access:** Ensure endpoint configuration matches business requirements
 - **Document permissions:** Maintain clear documentation of what scopes are needed for different use cases

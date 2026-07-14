@@ -166,6 +166,6 @@ curl -X POST https://your-api/api/prod/Integrations/Inbound/test_webhook \
 
 ## Next steps
 
-- [SQL Endpoints](./endpoints-sql): query and expose webhook data
-- [Security](./security)
-- [Monitoring](./monitoring)
+- [SQL Endpoints](/guide/endpoints-sql): query and expose webhook data
+- [Security](/guide/security)
+- [Monitoring](/guide/monitoring)

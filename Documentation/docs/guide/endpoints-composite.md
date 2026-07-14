@@ -217,6 +217,6 @@ To increase log verbosity:
 
 ## Next steps
 
-- [Proxy Endpoints](./endpoints-proxy)
-- [Environments](./environments)
-- [Security](./security)
+- [Proxy Endpoints](/guide/endpoints-proxy)
+- [Environments](/guide/environments)
+- [Security](/guide/security)

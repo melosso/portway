@@ -17,9 +17,7 @@ Every API request needs to include authentication:
 Authorization: Bearer your_token_here
 ```
 
-:::warning
-The `Authorization` header is required for all endpoints except `/health/live`. Requests without it receive `401 Unauthorized`.
-:::
+This applies to every endpoint except `/health/live`, so it is worth confirming your client attaches the token on each call. Requests that arrive without it receive a `401 Unauthorized` response.
 
 ### Content Type Headers
 

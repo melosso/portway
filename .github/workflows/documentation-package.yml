@@ -30,7 +30,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v5
       with:
-        images: ghcr.io/${{ github.repository_owner }}/documentation
+        images: ghcr.io/${{ github.repository_owner }}/portway_documentation
         tags: |
           type=raw,value=latest,enable=true
 

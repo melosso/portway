@@ -123,6 +123,6 @@ Do not expose the deployment directory via web browsing. Verify that `web.config
 
 ## Next steps
 
-- [Environments](./environments)
-- [SQL Endpoints](./endpoints-sql)
-- [Proxy Endpoints](./endpoints-proxy)
+- [Environments](/guide/environments)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Proxy Endpoints](/guide/endpoints-proxy)

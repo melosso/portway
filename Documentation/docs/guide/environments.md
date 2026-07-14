@@ -212,7 +212,7 @@ Add an `Authentication` block to the environment's `settings.json`:
 Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk. Encryption keys are stored in a `.core/` directory alongside your Portway installation. Back this up and do not delete it while you have active environments with encrypted secrets.
 :::
 
-For JWT and HMAC configuration, see the [Environment Authentication reference](../reference/environment-auth).
+For JWT and HMAC configuration, see the [Environment Authentication reference](/reference/environment-auth).
 
 ## Azure Key Vault
 
@@ -294,7 +294,7 @@ The `ASPNETCORE_DOMAIN` environment variable adds an additional hostname to the 
 
 **"Settings.json not found for environment"**: Create `environments/{name}/settings.json`. The folder needs to exist and contain the file.
 
-**"Access denied to environment"**: The token does not have permission for this environment. Update token permissions in the [Web UI](./webui) under **Tokens**.
+**"Access denied to environment"**: The token does not have permission for this environment. Update token permissions in the [Web UI](/guide/webui) under **Tokens**.
 
 **Proxy request blocked (host not in allowed list)**: The target host is not listed in `environments/network-access-policy.json`. Add it to `allowedHosts` and restart.
 
@@ -316,7 +316,7 @@ To increase log verbosity for environment issues:
 
 ## Next steps
 
-- [Configure SQL Endpoints](./endpoints-sql)
-- [Set up Proxy Endpoints](./endpoints-proxy)
-- [Security, token management](./security#managing-tokens)
-- [Deploy to production](./deployment)
+- [Configure SQL Endpoints](/guide/endpoints-sql)
+- [Set up Proxy Endpoints](/guide/endpoints-proxy)
+- [Security, token management](/guide/security#managing-tokens)
+- [Deploy to production](/guide/deployment)

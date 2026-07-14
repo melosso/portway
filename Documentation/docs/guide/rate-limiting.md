@@ -125,5 +125,5 @@ To increase verbosity:
 
 ## Next steps
 
-- [Security](./security)
-- [Monitoring](./monitoring)
+- [Security](/guide/security)
+- [Monitoring](/guide/monitoring)

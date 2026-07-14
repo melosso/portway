@@ -57,7 +57,7 @@ Start the container:
 docker compose pull && docker compose up -d
 ```
 
-Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Docker Installation](docker-compose.md).
+Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Docker Installation](/guide/docker-compose).
 
 ### Windows Server (IIS)
 
@@ -194,7 +194,7 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 
 From here, a few natural directions:
 
-- [Configure SQL Endpoints](./endpoints-sql)
-- [Set up Proxy Endpoints](./endpoints-proxy)
-- [Manage Environments](./environments)
-- [Configure Security](./security)
+- [Configure SQL Endpoints](/guide/endpoints-sql)
+- [Set up Proxy Endpoints](/guide/endpoints-proxy)
+- [Manage Environments](/guide/environments)
+- [Configure Security](/guide/security)

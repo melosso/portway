@@ -13,9 +13,9 @@ Portway is an API gateway. It sits in front of your SQL databases, internal serv
 
 ## Quick links
 
-- [Getting Started](./getting-started)
-- [Deployment](./deployment)
-- [Security](./security)
+- [Getting Started](/guide/getting-started)
+- [Deployment](/guide/deployment)
+- [Security](/guide/security)
 
 ## What Portway works with
 
@@ -31,13 +31,13 @@ Portway is an API gateway. It sits in front of your SQL databases, internal serv
 
 All requests to Portway require a Bearer token. Tokens are scoped to specific environments and endpoints, so a token issued for `dev` cannot reach `prod` unless explicitly permitted. Rate limiting, request validation, and optional Azure Key Vault integration are built in.
 
-See [Security](./security) for token management, encryption, and network configuration.
+See [Security](/guide/security) for token management, encryption, and network configuration.
 
 ### Environment awareness
 
 Each request URL includes an environment segment, `/api/{environment}/{endpoint}`. Portway routes the request to the connection string, headers, and access rules defined for that environment. Development, testing, and production configurations stay completely separate.
 
-See [Environments](./environments) for configuration details.
+See [Environments](/guide/environments) for configuration details.
 
 ### Endpoint types
 
@@ -56,7 +56,7 @@ Endpoints and environments are defined as JSON files on disk. Portway watches th
 
 ## Next steps
 
-- [Getting Started](./getting-started): install and run Portway for the first time
-- [Deployment](./deployment): deploy to Windows Server with IIS
-- [Security](./security): configure tokens, scopes, and network access
+- [Getting Started](/guide/getting-started): install and run Portway for the first time
+- [Deployment](/guide/deployment): deploy to Windows Server with IIS
+- [Security](/guide/security): configure tokens, scopes, and network access
 - [Issues](https://github.com/melosso/portway/issues) / [Discussions](https://github.com/melosso/portway/discussions): report bugs or ask questions
