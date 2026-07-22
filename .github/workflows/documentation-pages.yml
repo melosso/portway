@@ -1,0 +1,71 @@
+name: Deploy Documentation to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'Documentation/docs/**'
+      - 'Documentation/wwwroot/**'
+      - '.github/workflows/documentation-pages.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        path: portway
+
+    - name: Checkout Bark
+      uses: actions/checkout@v4
+      with:
+        repository: melosso/bark
+        path: bark
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Build Bark
+      run: |
+        dotnet publish ${{ github.workspace }}/bark/Bark/src/Bark/Bark.csproj \
+          -c Release -o ${{ github.workspace }}/publish
+
+    - name: Copy docs and wwwroot
+      run: |
+        rm -rf ${{ github.workspace }}/publish/docs
+        cp -r ${{ github.workspace }}/portway/Documentation/docs ${{ github.workspace }}/publish/docs
+        rm -rf ${{ github.workspace }}/publish/wwwroot
+        cp -r ${{ github.workspace }}/portway/Documentation/wwwroot ${{ github.workspace }}/publish/wwwroot
+
+    - name: Generate static site
+      working-directory: ${{ github.workspace }}/publish
+      run: |
+        ./Bark --export ${{ github.workspace }}/site \
+          --base-url https://melosso.github.io \
+          --base-path /portway
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '${{ github.workspace }}/site'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
