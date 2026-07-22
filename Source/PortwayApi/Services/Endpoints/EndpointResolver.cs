@@ -4,7 +4,7 @@ using PortwayApi.Classes;
 using PortwayApi.Interfaces;
 
 /// <summary>Central namespace-aware lookup for endpoint definitions across all endpoint types</summary>
-public class EndpointResolver
+public sealed class EndpointResolver
 {
     private readonly IEndpointRegistry _registry;
 

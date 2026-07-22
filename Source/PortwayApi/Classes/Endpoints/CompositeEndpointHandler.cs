@@ -148,6 +148,9 @@ public class CompositeEndpointHandler
             
             // Process the result to rewrite URLs before returning
             RewriteUrlsInResult(result, context, env, endpointName);
+
+            // Shape the final payload with each step's endpoint transforms; step-to-step data stayed untouched
+            ApplyResponseTransformsToResult(result, compositeDefinition);
             
             Log.Information("Successfully executed composite endpoint: {Endpoint}", endpointName);
             return Results.Ok(result);
@@ -479,7 +482,30 @@ public class CompositeEndpointHandler
         return newValue;
     }
 
-    /// <summary>Rewrites URLs in the composite result to use the proxy URL</summary>
+    /// <summary>Applies referenced endpoint transforms to final step results only, after all steps ran</summary>
+    private void ApplyResponseTransformsToResult(CompositeResult result, CompositeDefinition composite)
+    {
+        foreach (var step in composite.Steps)
+        {
+            if (!result.StepResults.TryGetValue(step.Name, out var stepResult))
+                continue;
+
+            if (!_endpointMap.TryGetValue(step.Endpoint, out var endpointInfo) ||
+                endpointInfo.ResponseTransforms is not { HasRules: true } transforms)
+                continue;
+
+            try
+            {
+                var shaped = ResponseTransformHelper.Apply(JsonSerializer.Serialize(stepResult), transforms);
+                result.StepResults[step.Name] = JsonSerializer.Deserialize<object>(shaped, CaseInsensitiveOptions) ?? stepResult;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Response transform skipped for composite step {Step}", step.Name);
+            }
+        }
+    }
+
     private void RewriteUrlsInResult(CompositeResult result, HttpContext context, string env, string endpointName)
     {
         try

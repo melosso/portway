@@ -7,7 +7,7 @@ using PortwayApi.Interfaces;
 using Serilog;
 
 /// <summary>Executes composite endpoint requests outside the controller</summary>
-public class CompositeRequestHandler : IEndpointRequestHandler
+public sealed class CompositeRequestHandler : IEndpointRequestHandler
 {
     private readonly CompositeEndpointHandler _compositeHandler;
 

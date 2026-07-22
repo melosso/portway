@@ -10,7 +10,7 @@ using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>Serves static endpoint content with optional OData-style filtering</summary>
-public class StaticRequestHandler
+public sealed class StaticRequestHandler
 {
     private readonly Services.Caching.CacheManager _cacheManager;
 

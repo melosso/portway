@@ -5,8 +5,16 @@
     "NamespaceDisplayName": "Servicing",
     "AllowedColumns": [
       "RequestId;Id",
-      "Status"
+      "Status",
+      "CustomerCode",
+      "CancellationType",
+      "CancellationDate",
+      "LastComment"
     ],
+    "ResponseTransforms": {
+      "Mask": ["CustomerCode"],
+      "Rename": { "CancellationDate": "CancelledAt" }
+    },
     "Procedure": "dbo.sp_ManageServiceRequests",
     "AllowedMethods": ["GET","DELETE"],
     "AllowedEnvironments": ["500"],

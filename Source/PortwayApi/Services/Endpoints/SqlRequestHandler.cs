@@ -13,7 +13,7 @@ using PortwayApi.Interfaces;
 using Serilog;
 
 /// <summary>Executes SQL endpoint requests (OData reads, procedure writes) outside the controller</summary>
-public class SqlRequestHandler
+public sealed class SqlRequestHandler
 {
     private readonly IODataToSqlConverter _oDataToSqlConverter;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
@@ -115,6 +115,12 @@ public class SqlRequestHandler
                 {
                     // Remove the extra row used for pagination
                     tvfResultList.RemoveAt(tvfResultList.Count - 1);
+                }
+
+                // Apply declarative response transforms to TVF rows
+                if (endpoint.ResponseTransforms is { HasRules: true } tvfTransforms)
+                {
+                    tvfResultList = ResponseTransformHelper.ApplyToRows(tvfResultList, tvfTransforms);
                 }
 
                 // For ID-based requests (if applicable to TVF), return single item directly (OData convention)
@@ -305,6 +311,12 @@ public class SqlRequestHandler
                     transformedResults = aliasResults.Cast<object>().ToList();
                     Log.Debug("Transformed {Count} results from database columns to aliases", transformedResults.Count);
                 }
+            }
+
+            // Apply declarative response transforms after alias mapping so rules target alias names
+            if (endpoint.ResponseTransforms is { HasRules: true } sqlTransforms)
+            {
+                transformedResults = ResponseTransformHelper.ApplyToRows(transformedResults, sqlTransforms);
             }
 
             // Determine if it's the last page

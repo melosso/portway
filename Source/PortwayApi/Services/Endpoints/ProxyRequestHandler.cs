@@ -12,7 +12,7 @@ using PortwayApi.Interfaces;
 using Serilog;
 
 /// <summary>Forwards proxy endpoint requests upstream with caching, retry and failover</summary>
-public class ProxyRequestHandler
+public sealed class ProxyRequestHandler
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly UrlValidator _urlValidator;
@@ -697,11 +697,18 @@ public class ProxyRequestHandler
 
             // Apply URL rewriting
             rewrittenContent = UrlRewriter.RewriteUrl(
-                originalContent, 
-                originalHost, 
-                originalPath, 
-                proxyHost, 
+                originalContent,
+                originalHost,
+                originalPath,
+                proxyHost,
                 proxyPath);
+
+            // Apply declarative response transforms on JSON payloads; runs before caching so cached entries are shaped
+            if (endpointDefinition?.ResponseTransforms is { HasRules: true } transforms &&
+                contentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                rewrittenContent = ResponseTransformHelper.Apply(rewrittenContent, transforms);
+            }
         }
 
         // Write the content to the response

@@ -10,6 +10,7 @@ public class EndpointDefinition
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }
     public ProxyRetryOptions? Retry { get; set; }
+    public ProxyResponseTransforms? ResponseTransforms { get; set; }
     public List<string> Methods { get; set; } = new List<string>();
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
@@ -182,7 +183,8 @@ public class EndpointDefinition
             Type.ToString(),
             AllowedEnvironments,
             FallbackUrls,
-            Retry
+            Retry,
+            ResponseTransforms
         );
     }
 }
