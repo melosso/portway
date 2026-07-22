@@ -3,8 +3,8 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <AspNetCoreVersion>11.0.0-preview.5.26302.115</AspNetCoreVersion>
-    <EntityFrameworkVersion>11.0.0-preview.5.26302.115</EntityFrameworkVersion>
+    <AspNetCoreVersion>11.0.0-preview.6.26359.118</AspNetCoreVersion>
+    <EntityFrameworkVersion>11.0.0-preview.6.26359.118</EntityFrameworkVersion>
     <SerilogVersion>4.2.0</SerilogVersion>
     <SerilogAspNetCoreVersion>10.0.0</SerilogAspNetCoreVersion>
     <SerilogExtensionsLoggingVersion>10.0.0</SerilogExtensionsLoggingVersion>
@@ -14,7 +14,7 @@
     <OpenTelemetryVersion>1.17.0</OpenTelemetryVersion>
     <OpenTelemetryInstrumentationVersion>1.17.0</OpenTelemetryInstrumentationVersion>
     <OpenTelemetryInstrumentationHttpVersion>1.17.0</OpenTelemetryInstrumentationHttpVersion>
-    <MicrosoftExtensionsVersion>11.0.0-preview.5.26302.115</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>11.0.0-preview.6.26359.118</MicrosoftExtensionsVersion>
   </PropertyGroup>
   <ItemGroup>
     <!-- Versioning -->
