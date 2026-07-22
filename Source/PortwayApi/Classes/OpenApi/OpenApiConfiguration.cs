@@ -386,7 +386,7 @@ var html = $@"
                 display: block;
             `;
 
-            const licenseTooltip = createTooltip('Licensed under AGPL 3.0');
+            const licenseTooltip = createTooltip('Licensed under EUPL 1.2');
             licenseContainer.appendChild(licenseLink);
             licenseContainer.appendChild(licenseTooltip);
 

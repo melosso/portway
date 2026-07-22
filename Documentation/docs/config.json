@@ -5,7 +5,7 @@
   "brand": "Portway",
   "favicon": "🔌",
   "lastUpdated": true,
-  "footer": "Released under [GNU AGPL (3.0)](LICENSE) · Copyright © 2026 Melosso.com",
+  "footer": "Released under [EUPL 1.2](LICENSE) · Copyright © 2026 Melosso.com",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
     "text": "Edit this page on GitHub"
