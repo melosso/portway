@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using Moq;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Helpers;
+using PortwayApi.Helpers;
 using System.Collections.Specialized;
 using Xunit;
 

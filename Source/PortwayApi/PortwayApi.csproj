@@ -34,10 +34,10 @@
     <PackageReference Include="MinVer" PrivateAssets="All" IncludeAssets="runtime;build;native;contentfiles;analyzers" />
 
     <!-- Authentication & Identity -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+    <!-- Aligns transitive IdentityModel version pulled by SqlClient -->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
 
     <!-- Entity Framework & Databases -->
     <PackageReference Include="Microsoft.Data.SqlClient" />
@@ -60,7 +60,6 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" />
-    <PackageReference Include="Polly" />
     <PackageReference Include="Serilog.Settings.Configuration" />
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
     <PackageReference Include="SqlKata" />
@@ -76,7 +75,6 @@
     <PackageReference Include="StackExchange.Redis" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Scalar.AspNetCore" />
-    <PackageReference Include="Flurl" />
   </ItemGroup>
 
 </Project>

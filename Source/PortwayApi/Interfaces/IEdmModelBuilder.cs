@@ -2,7 +2,7 @@ namespace PortwayApi.Interfaces;
 
 using Microsoft.OData.Edm;
 using DynamicODataToSQL;
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 
 /// <summary>Interface for building EDM models for OData queries</summary>
 public interface IEdmModelBuilder

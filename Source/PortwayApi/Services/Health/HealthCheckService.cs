@@ -193,7 +193,7 @@ public class HealthCheckService
             handler.UseProxy = true;
             handler.UseCookies = false;
         }
-        var client = new HttpClient(handler);
+        using var client = new HttpClient(handler);
         var unhealthyEndpoints = new List<string>();
 
         try
@@ -202,30 +202,26 @@ public class HealthCheckService
             var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
             var endpointsToCheck = proxyEndpoints
                 .Where(e => !e.Value.IsPrivate && e.Value.Methods.Contains("GET"))
-                .OrderBy(_ => Guid.NewGuid())
-                .Take(3)
                 .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)>(
                     e.Key,
                     (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.IsPrivate, e.Value.Type.ToString())))
                 .ToList();
 
-            Log.Debug("Checking proxy endpoints: {Endpoints}", 
+            Log.Debug("Checking proxy endpoints: {Endpoints}",
                 string.Join(", ", endpointsToCheck.Select(e => $"{e.Key} ({e.Value.Url})")));
 
             if (!endpointsToCheck.Any())
             {
                 return CreateHealthReportEntry(
-                    HealthStatus.Healthy, 
-                    "No endpoints configured for health check", 
-                    startTime, 
+                    HealthStatus.Healthy,
+                    "No endpoints configured for health check",
+                    startTime,
                     results
                 );
             }
 
-            foreach (var endpoint in endpointsToCheck)
-            {
-                await CheckEndpointAsync(client, endpoint, results, unhealthyEndpoints, cancellationToken);
-            }
+            await Task.WhenAll(endpointsToCheck.Select(endpoint =>
+                CheckEndpointAsync(client, endpoint, results, unhealthyEndpoints, cancellationToken)));
 
             status = unhealthyEndpoints.Any() ? HealthStatus.Unhealthy : HealthStatus.Healthy;
             var description = status == HealthStatus.Healthy 
@@ -282,11 +278,11 @@ public class HealthCheckService
             // If the first response is 401, treat it as healthy and stop further processing
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                results[endpoint.Key] = new 
-                { 
-                    Status = "Healthy", 
-                    StatusCode = 401, 
-                    ReasonPhrase = "Unauthorized - Marked as Healthy" 
+                lock (results) results[endpoint.Key] = new
+                {
+                    Status = "Healthy",
+                    StatusCode = 401,
+                    ReasonPhrase = "Unauthorized - Marked as Healthy"
                 };
                 return;
             }
@@ -303,17 +299,17 @@ public class HealthCheckService
                     Log.Warning("Endpoint {Endpoint} returned an XML error response: {Content}", endpoint.Key, content);
                 }
 
-                Log.Warning("Endpoint {Endpoint} returned status code {StatusCode} ({ReasonPhrase})", 
+                Log.Warning("Endpoint {Endpoint} returned status code {StatusCode} ({ReasonPhrase})",
                     endpoint.Key, (int)response.StatusCode, response.ReasonPhrase);
-                unhealthyEndpoints.Add(endpoint.Key);
+                lock (unhealthyEndpoints) unhealthyEndpoints.Add(endpoint.Key);
             }
 
-            results[endpoint.Key] = new 
-            { 
+            lock (results) results[endpoint.Key] = new
+            {
                 Status = content.Contains("Failed to login to Globe") ? "Healthy" : (isHealthy ? "Healthy" : "Unhealthy"),
                 StatusCode = content.Contains("Failed to login to Globe") ? 401 : (int)response.StatusCode,
-                ReasonPhrase = content.Contains("Failed to login to Globe") 
-                    ? "Failed to login to Globe - Marked as Healthy" 
+                ReasonPhrase = content.Contains("Failed to login to Globe")
+                    ? "Failed to login to Globe - Marked as Healthy"
                     : response.ReasonPhrase
             };
         }
@@ -322,12 +318,12 @@ public class HealthCheckService
             var errorMsg = ex.InnerException?.Message ?? ex.Message;
             Log.Error("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
                 endpoint.Key, ex.GetType().Name, errorMsg, endpoint.Value.Url);
-            results[endpoint.Key] = new
+            lock (results) results[endpoint.Key] = new
             {
                 Status = "Unhealthy",
                 Error = errorMsg
             };
-            unhealthyEndpoints.Add(endpoint.Key);
+            lock (unhealthyEndpoints) unhealthyEndpoints.Add(endpoint.Key);
         }
     }
 

@@ -12,6 +12,9 @@ using Serilog;
 
 public class CompositeEndpointHandler
 {
+    private static readonly JsonSerializerOptions CaseInsensitiveOptions = new() { PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions CaseInsensitiveIndentedOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly Dictionary<string, ProxyEndpointInfo> _endpointMap;
     private readonly string _serverName;
@@ -225,7 +228,7 @@ public class CompositeEndpointHandler
                     var clonedItem = item?.DeepClone();
                     if (clonedItem != null)
                     {
-                        var itemResult = await ProcessSingleItemAsync(step, clonedItem, endpoint.Url, context, env, previousResults, ct);
+                        var itemResult = await ProcessSingleItemAsync(step, clonedItem, endpoint, context, env, previousResults, ct);
                         results.Add(itemResult);
                     }
                 }
@@ -265,7 +268,7 @@ public class CompositeEndpointHandler
                 nodeToProcess = requestData.DeepClone();
             }
             
-            return await ProcessSingleItemAsync(step, nodeToProcess, endpoint.Url, context, env, previousResults, ct);
+            return await ProcessSingleItemAsync(step, nodeToProcess, endpoint, context, env, previousResults, ct);
         }
     }
     
@@ -273,7 +276,7 @@ public class CompositeEndpointHandler
     private async Task<object> ProcessSingleItemAsync(
         CompositeStep step,
         JsonNode itemData,
-        string endpointUrl,
+        ProxyEndpointInfo endpoint,
         ExecutionContext context,
         string env,
         Dictionary<string, object> previousResults,
@@ -281,36 +284,36 @@ public class CompositeEndpointHandler
     {
         // Apply template transformations
         ApplyTemplateTransformations(step, itemData, context, previousResults);
-        
+
         // Create the HttpClient
         var client = _httpClientFactory.CreateClient("ProxyClient");
-        
+
         // Prepare the URL for the request
-        string fullUrl = endpointUrl;
-        
-        // Create the request
-        var request = new HttpRequestMessage(new HttpMethod(step.Method), fullUrl);
-        
+        string fullUrl = endpoint.Url;
+
         Log.Debug("Executing step {StepName} to {Url} with method {Method}", step.Name, fullUrl, step.Method);
-        
-        // Add headers
-        request.Headers.Add("ServerName", _serverName);
-        request.Headers.Add("DatabaseName", env);
-        request.Headers.Add("Accept", "application/json,text/javascript; charset=utf-8");
-        
-        // Add content if needed
-        if (step.Method != "GET" && step.Method != "DELETE")
+
+        HttpRequestMessage BuildRequest(string targetUrl)
         {
-            var content = new StringContent(
-                itemData.ToJsonString(), 
-                Encoding.UTF8, 
-                "application/json");
-                
-            request.Content = content;
+            var request = new HttpRequestMessage(new HttpMethod(step.Method), targetUrl);
+            request.Headers.Add("ServerName", _serverName);
+            request.Headers.Add("DatabaseName", env);
+            request.Headers.Add("Accept", "application/json,text/javascript; charset=utf-8");
+
+            if (step.Method != "GET" && step.Method != "DELETE")
+            {
+                request.Content = new StringContent(
+                    itemData.ToJsonString(),
+                    Encoding.UTF8,
+                    "application/json");
+            }
+
+            return request;
         }
-        
-        // Execute the request
-        var response = await client.SendAsync(request, ct);
+
+        var response = await Helpers.ProxyFailoverHelper.SendWithRetryAsync(
+            client, BuildRequest, fullUrl, endpoint.Url, endpoint.FallbackUrls,
+            endpoint.Retry, $"step '{step.Name}'", ct);
 
         // Read the response content now to include in error messages if needed
         var responseContent = await response.Content.ReadAsStringAsync(ct);
@@ -325,7 +328,7 @@ public class CompositeEndpointHandler
             {
                 // Try to parse the response as JSON
                 parsedError = JsonSerializer.Deserialize<object>(responseContent, 
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    CaseInsensitiveOptions);
                     
                 // For responses that are already JSON, don't store them as strings; This way they'll be properly serialized in the error response
                 errorDetail = "See structured error details";
@@ -356,7 +359,7 @@ public class CompositeEndpointHandler
         {
             // Try to parse as JSON object
             var jsonResponse = JsonSerializer.Deserialize<object>(responseContent, 
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                CaseInsensitiveOptions);
                 
             return jsonResponse!;
         }
@@ -518,13 +521,7 @@ public class CompositeEndpointHandler
                 // Convert back to object
                 try
                 {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true,
-                        WriteIndented = true
-                    };
-                    
-                    var rewrittenResult = JsonSerializer.Deserialize<object>(jsonString, options);
+                    var rewrittenResult = JsonSerializer.Deserialize<object>(jsonString, CaseInsensitiveIndentedOptions);
                     if (rewrittenResult != null)
                     {
                         result.StepResults[stepKey] = rewrittenResult;

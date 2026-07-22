@@ -1,4 +1,4 @@
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 using PortwayApi.Interfaces;
 using SqlKata.Compilers;
 using Serilog;

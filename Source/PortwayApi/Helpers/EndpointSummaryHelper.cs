@@ -214,7 +214,7 @@ public static class EndpointSummaryHelper
                 
                 foreach (var entry in publicProxyEndpoints)
                 {
-                    var (url, methods, _, _, _, _) = entry.Value;
+                    var (url, methods) = (entry.Value.Url, entry.Value.Methods);
                     string prefix = entry.Key == lastPublicKey ? "└──" : "├──";
                     Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                         prefix, entry.Key, url, string.Join(", ", methods));
@@ -235,7 +235,7 @@ public static class EndpointSummaryHelper
                 
                 foreach (var entry in privateProxyEndpoints)
                 {
-                    var (url, methods, _, _, _, _) = entry.Value;
+                    var (url, methods) = (entry.Value.Url, entry.Value.Methods);
                     string prefix = entry.Key == lastPrivateKey ? "└──" : "├──";
                     Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                         prefix, entry.Key, url, string.Join(", ", methods));
@@ -257,7 +257,7 @@ public static class EndpointSummaryHelper
             var lastCompositeKey = compositeEndpoints.Last().Key;
             foreach (var entry in compositeEndpoints)
             {
-                var (url, methods, _, _, _, _) = entry.Value;
+                var (url, methods) = (entry.Value.Url, entry.Value.Methods);
                 string prefix = entry.Key == lastCompositeKey ? "└──" : "├──";
                 Log.Information("│ │ {Prefix} {Name}: {Url} [{Methods}]", 
                     prefix, entry.Key, url, string.Join(", ", methods));

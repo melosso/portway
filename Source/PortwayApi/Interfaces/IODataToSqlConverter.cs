@@ -2,7 +2,7 @@ namespace PortwayApi.Interfaces;
 
 using Microsoft.OData.Edm;
 using DynamicODataToSQL;
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 
 /// <summary>Interface for converting OData queries to SQL</summary>
 public interface IODataToSqlConverter

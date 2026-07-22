@@ -1,3 +1,4 @@
+using PortwayApi.Services.Database;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
@@ -369,7 +370,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         // Parse column mappings to understand aliases
         var allowedColumns = endpoint.AllowedColumns ?? new List<string>();
         var (aliasToDatabase, databaseToAlias) =
-            Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
+            Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
         // Add required columns from endpoint definition
         if (endpoint.RequiredColumns != null)
@@ -700,7 +701,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         // Parse column mappings
         var allowedColumns = definition.AllowedColumns ?? new List<string>();
         var (aliasToDatabase, databaseToAlias) =
-            Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
+            Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
         foreach (var parameter in parameters)
         {

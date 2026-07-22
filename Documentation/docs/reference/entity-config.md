@@ -210,13 +210,29 @@ Proxy entities forward requests to internal web services.
   }
 }
 ```
+
+### With Retry and Failover
+
+When an upstream service is occasionally slow to answer or has a standby instance, you can let Portway retry the call and switch to a fallback URL before the caller notices anything:
+
+```json
+{
+  "Url": "http://erp-primary.company.local/api/orders",
+  "Methods": ["GET", "POST"],
+  "FallbackUrls": ["http://erp-standby.company.local/api/orders"],
+  "Retry": { "Attempts": 2, "DelayMs": 200 }
+}
 ```
+
+Portway tries the primary URL first. A connection failure, a timeout, or a 502, 503, or 504 response triggers the next attempt; other responses pass through unchanged. Each URL gets `Attempts` tries with `DelayMs` milliseconds between them. Without these properties every request makes exactly one attempt, as before.
 
 ### Property Reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `Url` | string | Yes | Target service URL |
+| `FallbackUrls` | array | No | Standby URLs tried in order when the primary fails |
+| `Retry` | object | No | `Attempts` per URL (default 1) and `DelayMs` between tries (default 200) |
 | `Methods` | array | Yes | Allowed HTTP methods |
 | `IsPrivate` | boolean | No | Hide from API documentation |
 | `Deprecated` | boolean | No | Mark the endpoint's operations as deprecated in the OpenAPI documentation |
@@ -373,7 +389,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
 
 ## Endpoint: Composite
 
-Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here).
+Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here). This also means each step inherits the `FallbackUrls` and `Retry` settings of the proxy endpoint it references.
 
 ### Sales Order Example
 

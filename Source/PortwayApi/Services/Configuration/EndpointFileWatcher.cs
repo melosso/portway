@@ -4,7 +4,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Serilog;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Configuration;
+using PortwayApi.Services.Configuration;
 using PortwayApi.Services;
 using PortwayApi.Services.Mcp;
 

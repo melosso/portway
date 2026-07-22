@@ -1,7 +1,8 @@
+using PortwayApi.Services.Database;
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 using Serilog;
 using SqlKata.Compilers;
 

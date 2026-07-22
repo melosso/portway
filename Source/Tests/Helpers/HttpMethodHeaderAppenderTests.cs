@@ -1,5 +1,5 @@
 using Xunit;
-using PortwayApi.Classes.Helpers;
+using PortwayApi.Helpers;
 using System.Text.Json;
 
 namespace PortwayApi.Tests.Helpers

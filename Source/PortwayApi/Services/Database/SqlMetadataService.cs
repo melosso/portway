@@ -1,7 +1,6 @@
 using System.Data;
 using System.Data.Common;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Providers;
 using PortwayApi.Services.Providers;
 using Serilog;
 
@@ -9,8 +8,8 @@ namespace PortwayApi.Services;
 
 public class SqlMetadataService
 {
-    private readonly Dictionary<string, List<Classes.ColumnMetadata>> _objectMetadataCache = new();
-    private readonly Dictionary<string, List<Classes.ParameterMetadata>> _procedureMetadataCache = new();
+    private readonly Dictionary<string, List<Services.Database.ColumnMetadata>> _objectMetadataCache = new();
+    private readonly Dictionary<string, List<Services.Database.ParameterMetadata>> _procedureMetadataCache = new();
     private readonly object _cacheLock = new();
     private readonly SqlConnectionPoolService _connectionPoolService;
     private readonly ISqlProviderFactory _providerFactory;
@@ -175,7 +174,7 @@ public class SqlMetadataService
         await using var connection = provider.CreateConnection(optimizedConnectionString);
         await connection.OpenAsync(cancellationToken);
 
-        List<Classes.ColumnMetadata> columns;
+        List<Services.Database.ColumnMetadata> columns;
 
         switch (objectType.ToLowerInvariant())
         {
@@ -260,7 +259,7 @@ public class SqlMetadataService
         return reservedParameters.Contains(parameterName.ToLowerInvariant());
     }
 
-    private List<Classes.ColumnMetadata> ProcessColumnMetadata(List<Classes.ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
+    private List<Services.Database.ColumnMetadata> ProcessColumnMetadata(List<Services.Database.ColumnMetadata> columns, Classes.EndpointDefinition definition, string endpointName)
     {
         var primaryKey = definition.PrimaryKey;
         var allowedColumns = definition.AllowedColumns ?? new List<string>();
@@ -276,7 +275,7 @@ public class SqlMetadataService
         if (allowedColumns.Any())
         {
             var (aliasToDatabase, databaseToAlias) =
-                Classes.Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
+                Helpers.ColumnMappingHelper.ParseColumnMappings(allowedColumns);
 
             var allowedDatabaseColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -330,7 +329,7 @@ public class SqlMetadataService
     }
 
     /// <summary>Gets table/view columns using ADO.NET GetSchemaAsync first; falls back to provider-specific PRAGMA for SQLite</summary>
-    private async Task<List<Classes.ColumnMetadata>> GetTableColumnsAsync(
+    private async Task<List<Services.Database.ColumnMetadata>> GetTableColumnsAsync(
         DbConnection connection,
         ISqlProvider provider,
         string schema,
@@ -341,7 +340,7 @@ public class SqlMetadataService
         if (provider is SqliteProvider sqliteProvider)
             return await sqliteProvider.GetColumnsViaPragmaAsync(connection, tableName, cancellationToken).ConfigureAwait(false);
 
-        var columns = new List<Classes.ColumnMetadata>();
+        var columns = new List<Services.Database.ColumnMetadata>();
 
         var restrictions = new[] { null, schema, tableName, (string?)null };
         var columnsTable = await connection.GetSchemaAsync("Columns", restrictions, cancellationToken);
@@ -356,7 +355,7 @@ public class SqlMetadataService
                 row["DATA_TYPE"].ToString() ?? "unknown",
                 row["IS_NULLABLE"].ToString() ?? "unknown");
 
-            var col = new Classes.ColumnMetadata
+            var col = new Services.Database.ColumnMetadata
             {
                 DatabaseColumnName = columnName,
                 DataType = row["DATA_TYPE"].ToString() ?? string.Empty,
@@ -378,13 +377,13 @@ public class SqlMetadataService
 
     // Public metadata retrieval methods
 
-    public List<Classes.ColumnMetadata>? GetObjectMetadata(string endpointName)
+    public List<Services.Database.ColumnMetadata>? GetObjectMetadata(string endpointName)
     {
         lock (_cacheLock)
             return _objectMetadataCache.TryGetValue(endpointName, out var metadata) ? metadata : null;
     }
 
-    public List<Classes.ParameterMetadata>? GetProcedureMetadata(string endpointName)
+    public List<Services.Database.ParameterMetadata>? GetProcedureMetadata(string endpointName)
     {
         lock (_cacheLock)
             return _procedureMetadataCache.TryGetValue(endpointName, out var metadata) ? metadata : null;

@@ -2,14 +2,14 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Api;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Configuration;
+using PortwayApi.Services.Configuration;
 using PortwayApi.Endpoints;
 using PortwayApi.Interfaces;
+using PortwayApi.Services;
 using PortwayApi.Services.Files;
 using PortwayApi.Helpers;
 using PortwayApi.Middleware;
 using PortwayApi.Services.Caching;
-using PortwayApi.Services.Configuration;
 using PortwayApi.Services.Database;
 using PortwayApi.Services.Health;
 using PortwayApi.Services.Mcp;
@@ -90,11 +90,6 @@ try
     // Nightly SQLite self-tuning for auth, metrics, MCP and traffic databases
     builder.Services.AddPortwayDatabaseMaintenance(builder.Configuration);
 
-    // Register route constraint for ProxyConstraint
-    builder.Services.Configure<RouteOptions>(options =>
-    {
-        options.ConstraintMap.Add("proxy", typeof(ProxyConstraintAttribute));
-    });
     builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
 
     // HTTP client and SQL/OData services
@@ -119,6 +114,14 @@ try
             serverName
         )
     );
+
+    // Central endpoint resolution and per-type request handlers
+    builder.Services.AddSingleton<IEndpointRegistry, EndpointRegistry>();
+    builder.Services.AddSingleton<EndpointResolver>();
+    builder.Services.AddSingleton<CompositeRequestHandler>();
+    builder.Services.AddSingleton<StaticRequestHandler>();
+    builder.Services.AddSingleton<SqlRequestHandler>();
+    builder.Services.AddSingleton<ProxyRequestHandler>();
 
     // Configure Rate Limiting
     builder.Services.AddRateLimiting(builder.Configuration);
