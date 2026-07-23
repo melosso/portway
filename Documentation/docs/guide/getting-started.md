@@ -13,7 +13,7 @@ Portway is an ASP.NET Core application. On Windows Server it is typically hosted
 - Windows Server (or Windows 11 for development)
 - [.NET 11 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/11.0)
 
-> Note: Portway `v2.0.0` targets .NET 11. Because .NET 11 is currently a preview of the framework, you may prefer to stay on the .NET 10 LTS build of Portway for production deployments until .NET 11 reaches general availability. Both are fully supported; the choice is simply about how conservative you would like your runtime to be.
+> Note: Portway `v0.7.0` targets .NET 11. Because .NET 11 is currently a preview of the framework, you may prefer to stay on the .NET 10 LTS build of Portway for production deployments until .NET 11 reaches general availability. Both are fully supported; the choice is simply about how conservative you would like your runtime to be.
 - Internet Information Services (IIS)
 
 :::warning

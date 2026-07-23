@@ -76,7 +76,7 @@ scrape_configs:
 ```
 
 ::: Note
-The scrape endpoint is served without authentication and is exempt from rate limiting, following the same convention as `/health`. It only exposes aggregate counters and histograms, never request payloads. If the gateway is reachable from untrusted networks, it is recommended to restrict access to the metrics path at your firewall or reverse proxy.
+The scrape endpoint only exists when the `Prometheus` provider is selected; with any other provider the route is not mapped. When enabled it is served without authentication and exempt from rate limiting, following the same convention as `/health`, and it only exposes aggregate counters and histograms, never request payloads. If the gateway is reachable from untrusted networks, it is recommended to restrict access to the metrics path at your firewall or reverse proxy.
 :::
 
 Since Prometheus is a metrics-only system, traces are not collected with this provider. If you want distributed tracing alongside Prometheus-style metrics, the OTLP provider combined with a collector gives you both.

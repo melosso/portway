@@ -7,7 +7,7 @@ description: "Configuration reference for OpenAPI schema generation and the Scal
 
 Your endpoint definitions do double duty: besides routing requests, they feed the OpenAPI documentation that Scalar serves at `/docs`. SQL endpoints even get schema discovery for free, with column names and types read from the database at startup. Other endpoint types describe themselves through the `Documentation` block in `entity.json`. This page covers the settings you can adjust.
 
-Since `v2.0.0`, Portway emits an **OpenAPI 3.2** document. This lets the reference describe a few things it could not before: QUERY endpoints appear as native `query` operations (with their JSON body documented), slash-delimited namespaces render as a parent/child tag tree, and endpoints you mark `Deprecated` are shown as such. You do not need to configure any of this; it simply follows from your endpoint definitions.
+Since `v0.7.0`, Portway emits an **OpenAPI 3.2** document. This lets the reference describe a few things it could not before: QUERY endpoints appear as native `query` operations (with their JSON body documented), slash-delimited namespaces render as a parent/child tag tree, and endpoints you mark `Deprecated` are shown as such. You do not need to configure any of this; it simply follows from your endpoint definitions.
 
 ## Global OpenAPI Configuration
 
