@@ -365,7 +365,9 @@ startupProbe:
 
 ### Diagnostic Commands
 
-```powershell
+::: code-group
+
+```powershell [PowerShell]
 # Test basic health
 Invoke-WebRequest -Uri "http://localhost:5000/health" `
   -Headers @{"Authorization"="Bearer $token"}
@@ -378,6 +380,19 @@ $response = Invoke-WebRequest -Uri "http://localhost:5000/health/details" `
   -Headers @{"Authorization"="Bearer $token"}
 $response.Content | ConvertFrom-Json | Format-List
 ```
+
+```bash [Bash]
+# Test basic health
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health
+
+# Check liveness
+curl http://localhost:5000/health/live
+
+# Get detailed status
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health/details | jq .
+```
+
+:::
 
 ### Log Analysis
 

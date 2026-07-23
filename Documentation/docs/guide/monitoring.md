@@ -246,13 +246,25 @@ scrape_configs:
 
 **High response times**: Enable traffic logging with `StorageType: sqlite` and query `DurationMs` to identify slow endpoints.
 
-```powershell
-# Check disk space on Windows
+::: code-group
+
+```powershell [PowerShell]
+# Check disk space
 Get-PSDrive -PSProvider FileSystem
 
 # Review recent errors in application log
 Select-String -Path ".\log\*.log" -Pattern "\[ERR\]" | Select-Object -Last 50
 ```
+
+```bash [Bash]
+# Check disk space
+df -h
+
+# Review recent errors in application log
+grep -h "\[ERR\]" ./log/*.log | tail -n 50
+```
+
+:::
 
 ## Next steps
 

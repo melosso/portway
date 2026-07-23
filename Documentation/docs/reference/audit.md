@@ -203,8 +203,9 @@ Traffic logging adds I/O overhead. The queue-based design minimises impact on re
 
 ### File Storage Queries
 
-Using PowerShell:
-```powershell
+::: code-group
+
+```powershell [PowerShell]
 # Find slow requests
 Get-Content "log/traffic/proxy_traffic_*.json" | 
     ConvertFrom-Json | 
@@ -224,6 +225,22 @@ Get-Content "log/traffic/proxy_traffic_*.json" |
     Where-Object { $_.StatusCode -ge 400 } |
     Select-Object Timestamp, Path, StatusCode
 ```
+
+```bash [Bash]
+# Find slow requests
+cat log/traffic/proxy_traffic_*.json |
+    jq 'select(.DurationMs > 1000) | {Timestamp, Method, Path, DurationMs}'
+
+# Count requests by endpoint
+cat log/traffic/proxy_traffic_*.json |
+    jq -r '.EndpointName' | sort | uniq -c | sort -rn
+
+# Find failed requests
+cat log/traffic/proxy_traffic_*.json |
+    jq 'select(.StatusCode >= 400) | {Timestamp, Path, StatusCode}'
+```
+
+:::
 
 ### SQLite Queries
 
@@ -283,7 +300,9 @@ ORDER BY RequestCount DESC;
 
 ### Diagnostic Commands
 
-```powershell
+::: code-group
+
+```powershell [PowerShell]
 # Check if logging is enabled
 Get-Content "appsettings.json" | ConvertFrom-Json | Select-Object -ExpandProperty RequestTrafficLogging
 
@@ -293,3 +312,16 @@ Get-ChildItem "log/traffic" -Recurse | Measure-Object -Property Length -Sum
 # View recent traffic logs
 Get-Content "log/traffic/proxy_traffic_$(Get-Date -Format 'yyyyMMdd')*.json" | Select-Object -Last 10 | ConvertFrom-Json
 ```
+
+```bash [Bash]
+# Check if logging is enabled
+cat appsettings.json | jq .RequestTrafficLogging
+
+# Monitor log directory size
+du -sh log/traffic
+
+# View recent traffic logs
+tail -n 10 log/traffic/proxy_traffic_$(date +%Y%m%d)*.json | jq .
+```
+
+:::

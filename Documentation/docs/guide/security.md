@@ -124,26 +124,33 @@ Never store a real admin key in `appsettings.json`. The shipped file intentional
 
 Supply the key through the environment instead:
 
-```yaml
+::: code-group
+
+```yaml [Docker]
 # docker-compose.yml
 environment:
   - WebUi__AdminApiKey=${PORTWAY_ADMIN_KEY}
 ```
 
-```powershell
-# Windows Server / IIS
+```powershell [Windows Server]
 [Environment]::SetEnvironmentVariable("WebUi__AdminApiKey", "<your-key>", "Machine")
 ```
 
+:::
+
 Generate a strong key (32+ characters; shorter keys log a warning at startup):
 
-```bash
+::: code-group
+
+```bash [Bash]
 openssl rand -base64 48
 ```
 
-```powershell
+```powershell [PowerShell]
 [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
 ```
+
+:::
 
 With Azure Key Vault configured (`KEYVAULT_URI`), the key can also be served from the vault through the standard ASP.NET Core configuration pipeline. Environment variables and Key Vault values override anything in `appsettings.json`.
 
@@ -153,9 +160,17 @@ The Settings page in the Web UI shows the current key strength (not set / placeh
 
 Store connection strings and server names in Azure Key Vault instead of `settings.json`:
 
-```powershell
+::: code-group
+
+```powershell [PowerShell]
 $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
 ```
+
+```bash [Bash]
+export KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
+```
+
+:::
 
 Create secrets named by environment:
 - `{environment}-ConnectionString`

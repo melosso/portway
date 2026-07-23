@@ -110,8 +110,11 @@ Logs are automatically enriched with:
 
 ### Diagnostic Tools
 
-PowerShell commands for log analysis:
-```powershell
+Handy commands for log analysis:
+
+::: code-group
+
+```powershell [PowerShell]
 # Find errors in today's log
 Get-Content "log/portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | Select-String "ERR"
 
@@ -121,3 +124,16 @@ Get-Content "log/portwayapi-*.log" | Select-String "Processing.*endpoint:" | Gro
 # Monitor log growth
 Get-ChildItem "log" -Filter "*.log" | Sort-Object LastWriteTime -Descending | Select-Object Name, Length
 ```
+
+```bash [Bash]
+# Find errors in today's log
+grep "ERR" "log/portwayapi-$(date +%Y%m%d).log"
+
+# Count requests by endpoint
+grep -hoE "Processing.*endpoint: [^ ]+" log/portwayapi-*.log | sort | uniq -c | sort -rn
+
+# Monitor log growth
+ls -lhtS log/*.log
+```
+
+:::

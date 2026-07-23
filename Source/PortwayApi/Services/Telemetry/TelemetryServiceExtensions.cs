@@ -1,18 +1,9 @@
-using OpenTelemetry.Exporter;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-
 namespace PortwayApi.Services.Telemetry;
 
-public sealed record TelemetryOptions
-{
-    public bool    Enabled            { get; init; } = false;
-    public string  OtlpEndpoint       { get; init; } = "http://localhost:4317";
-    public string? ServiceName        { get; init; }
-    /// <summary>Additional resource attributes, e.g. "deployment.environment=production,host.name=gw01".</summary>
-    public string? ResourceAttributes { get; init; }
-}
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using PortwayApi.Services.Telemetry.Otlp;
+using PortwayApi.Services.Telemetry.Prometheus;
 
 public static class TelemetryServiceExtensions
 {
@@ -28,13 +19,13 @@ public static class TelemetryServiceExtensions
         // (nothing is listening), but DI graph validation succeeds in all configurations
         services.AddSingleton<PortwayMetrics>();
 
-        if (!options.Enabled)
+        var provider = options.EffectiveProvider;
+        if (provider == TelemetryProvider.None)
             return services;
 
         var serviceName = options.ServiceName ?? PortwayTelemetry.ServiceName;
-        var endpoint    = new Uri(options.OtlpEndpoint);
 
-        services.AddOpenTelemetry()
+        var otel = services.AddOpenTelemetry()
             .ConfigureResource(r =>
             {
                 r.AddService(serviceName, serviceVersion: assemblyVersion);
@@ -49,26 +40,28 @@ public static class TelemetryServiceExtensions
 
                     r.AddAttributes(attrs);
                 }
-            })
-            .WithTracing(t => t
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddSqlClientInstrumentation()
-                .AddSource(PortwayTelemetry.ServiceName)
-                .AddOtlpExporter(o =>
-                {
-                    o.Endpoint = endpoint;
-                    o.Protocol = OtlpExportProtocol.Grpc;
-                }))
-            .WithMetrics(m => m
-                .AddAspNetCoreInstrumentation()
-                .AddHttpClientInstrumentation()
-                .AddMeter(PortwayTelemetry.MeterName)
-                .AddOtlpExporter(o =>
-                {
-                    o.Endpoint = endpoint;
-                    o.Protocol = OtlpExportProtocol.Grpc;
-                }));
+            });
+
+        // Tracing pushes spans to a collector, so only the Otlp provider carries it
+        if (provider == TelemetryProvider.Otlp)
+            otel.WithOtlpTracing(options);
+
+        otel.WithMetrics(m =>
+        {
+            m.AddAspNetCoreInstrumentation()
+             .AddHttpClientInstrumentation()
+             .AddMeter(PortwayTelemetry.MeterName);
+
+            switch (provider)
+            {
+                case TelemetryProvider.Otlp:
+                    m.AddOtlpMetricsExporter(options);
+                    break;
+                case TelemetryProvider.Prometheus:
+                    m.AddPrometheusMetricsExporter();
+                    break;
+            }
+        });
 
         return services;
     }

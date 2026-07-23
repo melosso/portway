@@ -13,10 +13,15 @@ using Serilog;
 public class TokenAuthMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly string? _metricsPath;
 
-    public TokenAuthMiddleware(RequestDelegate next)
+    public TokenAuthMiddleware(RequestDelegate next, IConfiguration configuration)
     {
         _next = next;
+
+        // Prometheus scrape endpoint is open by design; operators restrict it at the network level
+        var telemetry = configuration.GetSection("Telemetry").Get<Services.Telemetry.TelemetryOptions>() ?? new();
+        _metricsPath = telemetry.ActiveMetricsPath;
     }
 
     public async Task InvokeAsync(
@@ -40,7 +45,8 @@ public class TokenAuthMiddleware
             context.Request.Path.StartsWithSegments("/sm") ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
-            context.Request.Path.StartsWithSegments("/favicon.ico"))
+            context.Request.Path.StartsWithSegments("/favicon.ico") ||
+            (_metricsPath is not null && context.Request.Path.StartsWithSegments(_metricsPath)))
         {
             Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
             await _next(context);

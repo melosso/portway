@@ -15,6 +15,7 @@ using PortwayApi.Services.Health;
 using PortwayApi.Services.Mcp;
 using PortwayApi.Services.Providers;
 using PortwayApi.Services.Telemetry;
+using PortwayApi.Services.Telemetry.Prometheus;
 using Serilog;
 using System.Reflection;
 
@@ -220,6 +221,9 @@ try
 
     // Map health check endpoints
     PortwayApi.Endpoints.HealthCheckEndpointExtensions.MapHealthCheckEndpoints(app);
+
+    // Map Prometheus scrape endpoint (conditionally enabled)
+    app.MapPortwayPrometheusScraping();
     
     // Map MCP endpoints (conditionally enabled)
     var mcpEnabled = builder.Configuration.GetValue<bool>("Mcp:Enabled", false);

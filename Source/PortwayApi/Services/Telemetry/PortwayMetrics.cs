@@ -33,13 +33,14 @@ public sealed class PortwayMetrics : IDisposable
     public void CacheHit()  => _cacheHitCounter.Add(1);
     public void CacheMiss() => _cacheMissCounter.Add(1);
 
-    public void RequestCompleted(string method, int statusCode, string source, TimeSpan duration)
+    public void RequestCompleted(string method, int statusCode, string source, string endpoint, TimeSpan duration)
     {
         var tags = new TagList
         {
             { "http.method",                method },
             { "http.response.status_code",  statusCode },
-            { "portway.request_source",     source }   // "api" | "ui" | "other"
+            { "portway.request_source",     source },  // "api" | "ui" | "other"
+            { "portway.endpoint",           endpoint } // configured endpoint name, "" for non-endpoint paths
         };
         _requestDuration.Record(duration.TotalSeconds, tags);
     }

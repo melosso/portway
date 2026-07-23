@@ -762,9 +762,18 @@ For production, restrict to specific domains:
 ```
 
 2. Check environment variable:
-```powershell
-echo %ASPNETCORE_ENVIRONMENT%
+
+::: code-group
+
+```powershell [PowerShell]
+$env:ASPNETCORE_ENVIRONMENT
 ```
+
+```bash [Bash]
+echo $ASPNETCORE_ENVIRONMENT
+```
+
+:::
 
 3. Review startup logs for configuration issues
 

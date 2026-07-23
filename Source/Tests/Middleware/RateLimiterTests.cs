@@ -33,7 +33,8 @@ public class RateLimiterTests
         var store = new InMemoryRateLimiterStore(tp);
         var logger = new Mock<ILogger<RateLimiter>>().Object;
 
-        return new RateLimiter(next, settings, store, new RateLimiterState(), tp, logger, adminApiKey);
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
+        return new RateLimiter(next, settings, store, new RateLimiterState(), tp, logger, config, adminApiKey);
     }
 
     // Mints a session cookie in the same format WebUiEndpoints.GenerateToken produces

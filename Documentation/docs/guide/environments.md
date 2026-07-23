@@ -221,9 +221,18 @@ For JWT and HMAC configuration, see the [Environment Authentication reference](/
 Store connection strings and other secrets in Azure Key Vault instead of `settings.json`:
 
 1. Set the Key Vault URI:
-   ```powershell
+
+   ::: code-group
+
+   ```powershell [PowerShell]
    $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
    ```
+
+   ```bash [Bash]
+   export KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
+   ```
+
+   :::
 
 2. Create secrets named by environment:
    - `{environment}-ConnectionString`

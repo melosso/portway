@@ -24,6 +24,7 @@ public class RateLimiter
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
     private readonly bool _uiAuthEnabled;
     private readonly string _adminApiKey;
+    private readonly string? _metricsPath;
     private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
 
     private readonly ITimer _cleanupTimer;
@@ -40,9 +41,14 @@ public class RateLimiter
         RateLimiterState state,
         TimeProvider timeProvider,
         Microsoft.Extensions.Logging.ILogger<RateLimiter> logger,
+        IConfiguration configuration,
         string adminApiKey)
     {
         _next = next;
+
+        // Monitoring scrapers must never be throttled; the endpoint is restricted at the network level
+        var telemetry = configuration.GetSection("Telemetry").Get<Services.Telemetry.TelemetryOptions>() ?? new();
+        _metricsPath = telemetry.ActiveMetricsPath;
         _settings = settings;
         _store = store;
         _state = state;
@@ -127,6 +133,7 @@ public class RateLimiter
         if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
             context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health") ||
+            (_metricsPath is not null && context.Request.Path.StartsWithSegments(_metricsPath)) ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))

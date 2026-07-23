@@ -35,6 +35,7 @@
 
     <!-- Authentication & Identity -->
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <!-- Aligns transitive IdentityModel version pulled by SqlClient -->
     <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
