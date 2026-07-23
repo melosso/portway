@@ -5,7 +5,7 @@
   "brand": "Portway",
   "favicon": "🌊",
   "lastUpdated": true,
-  "footer": "© 2026 Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/melosso/bark/).",
+  "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/melosso/bark/).",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
     "text": "Edit this page on GitHub"
