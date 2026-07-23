@@ -1,4 +1,4 @@
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 
 namespace PortwayApi.Services.Providers;
 

@@ -1,4 +1,4 @@
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 using PortwayApi.Interfaces;
 using SqlKata.Compilers;
 using Serilog;
@@ -10,11 +10,13 @@ public class ODataToSqlConverter : IODataToSqlConverter
 {
     private readonly IEdmModelBuilder _edmModelBuilder;
     private readonly IReadOnlyDictionary<SqlProviderType, Compiler> _compilers;
+    private readonly IReadOnlyDictionary<SqlProviderType, ISqlProvider> _providers;
 
     public ODataToSqlConverter(IEdmModelBuilder edmModelBuilder, IEnumerable<ISqlProvider> providers)
     {
         _edmModelBuilder = edmModelBuilder;
-        _compilers = providers.ToDictionary(p => p.ProviderType, p => p.GetCompiler());
+        _providers = providers.ToDictionary(p => p.ProviderType);
+        _compilers = _providers.ToDictionary(p => p.Key, p => p.Value.GetCompiler());
     }
 
     public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
@@ -76,16 +78,14 @@ public class ODataToSqlConverter : IODataToSqlConverter
             Log.Debug("No endpoint definition found, using parsed values: Schema={Schema}, Table={Table}", schema, tableName);
         }
 
-        // SQLite has no schema namespacing, we'll hav to omit schema prefix entirely
-        string fullTableName = providerType == SqlProviderType.Sqlite
-            ? tableName
-            : $"{schema}.{tableName}";
+        // Fail closed: wrong-dialect SQL for a known connection is a correctness trap
+        if (!_compilers.TryGetValue(providerType, out var compiler) ||
+            !_providers.TryGetValue(providerType, out var provider))
+            throw new InvalidOperationException($"No SQL compiler registered for provider '{providerType}'. Check the provider registration in AddPortwaySqlServices.");
 
-        if (!_compilers.TryGetValue(providerType, out var compiler))
-        {
-            Log.Warning("No compiler registered for provider {Provider}; falling back to SqlServer", providerType);
-            compiler = _compilers[SqlProviderType.SqlServer];
-        }
+        // Empty resolved schema means unqualified (SQLite, or MySQL scoping by connection database)
+        var resolvedSchema = PortwayApi.Helpers.SqlSchemaResolver.Resolve(schema, provider);
+        string fullTableName = resolvedSchema.Length > 0 ? $"{resolvedSchema}.{tableName}" : tableName;
 
         var dynamicEdmModelBuilder = new DynamicODataToSQL.EdmModelBuilder();
         var dynamicConverter = new DynamicODataToSQL.ODataToSqlConverter(dynamicEdmModelBuilder, compiler);

@@ -7,11 +7,13 @@ description: "Exact Globe+ (previously known as Globe Next) exposes an API layer
 
 Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of. Through proxy endpoints, your external applications talk to Globe+ data and services, while environment-specific headers route each request to the correct database instance.
 
-> **Note:** Globe+ uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Globe+ permissions gives Portway the access it needs.
+::: Note
+Globe+ uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Globe+ permissions gives Portway the access it needs
+::: 
 
 ## Overview
 
-The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request carries its environment configuration, which is how data ends up coming from the correct database and server.
+The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request carries its environment configuration. That is how data ends up coming from the correct database and server.
 
 ## Configuration Requirements
 
@@ -30,8 +32,7 @@ These headers are configured in the environment settings and automatically injec
 
 Each environment needs to be configured in its settings:
 
-```json
-// environments/500/settings.json
+```json [environments/500/settings.json]
 {
   "ServerName": "YOUR-SERVER",
   "ConnectionString": "Server=YOUR-SERVER;Database=500;Trusted_Connection=True;",
@@ -47,7 +48,15 @@ Each environment needs to be configured in its settings:
 
 ### Proxy Endpoints
 
-You can configure the availability of the Globe+ endpoints, by configuring a proxy endpoint.
+Each Globe+ service you want to expose gets a proxy endpoint definition. The endpoint URL points at the internal Globe+ REST service, and the environment headers above route it to the right database:
+
+```json [endpoints/Proxy/Account/entity.json]
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "AllowedEnvironments": ["500", "700"]
+}
+```
 
 ### Composite Endpoints
 
@@ -163,11 +172,13 @@ Composite endpoints manage TransactionKey automatically:
 ### Atomic Operations
 
 Composite endpoints ensure atomicity:
-- All steps must succeed for the operation to complete
+- The operation completes only when every step succeeds
 - Failures in any step roll back the entire transaction
 - Detailed error information is provided for troubleshooting
 
 ## Troubleshooting
+
+Most Globe+ issues fall into one of these categories:
 
 | Symptom | Check |
 |---------|-------|

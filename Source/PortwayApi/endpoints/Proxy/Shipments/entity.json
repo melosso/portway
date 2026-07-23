@@ -1,0 +1,16 @@
+{
+    "Url": "http://localhost:8020/api/shipments",
+    "FallbackUrls": ["http://localhost:8021/api/shipments"],
+    "Retry": {
+        "Attempts": 2,
+        "DelayMs": 200
+    },
+    "Methods": ["GET", "POST"],
+    "Documentation": {
+        "TagDescription": "**Shipments**\n\nShipment data proxied from the internal logistics service, with automatic retry and failover to a standby instance.",
+        "MethodDescriptions": {
+            "GET": "Query shipment data",
+            "POST": "Register a new shipment"
+        }
+    }
+}

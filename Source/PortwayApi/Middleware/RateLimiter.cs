@@ -1,15 +1,10 @@
 namespace PortwayApi.Middleware;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Serilog;
+using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
 using PortwayApi.Helpers;
 
@@ -21,74 +16,73 @@ public class RateLimiter
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private sealed record BlockInfo(DateTime BlockedUntil, int ConsecutiveBlocks, int BlockDuration);
-
     private readonly RequestDelegate _next;
     private readonly RateLimitSettings _settings;
+    private readonly IRateLimiterStore _store;
+    private readonly RateLimiterState _state;
+    private readonly TimeProvider _timeProvider;
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
     private readonly bool _uiAuthEnabled;
     private readonly string _adminApiKey;
-    private readonly ConcurrentDictionary<string, TokenBucket> _buckets = new();
-    private readonly ConcurrentDictionary<string, BlockInfo> _blockedTokens = new();
+    private readonly string? _metricsPath;
     private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
 
-    // Track blocked IPs with last logged time to prevent log flooding
-    private readonly ConcurrentDictionary<string, (DateTime BlockedUntil, DateTime LastLogged)> _blockedIps = new();
-    
-    // Cache for token ID lookups to avoid repeated database calls
-    private readonly ConcurrentDictionary<string, string> _tokenDisplayCache = new();
-    private readonly Timer _cleanupTimer;
-    
+    private readonly ITimer _cleanupTimer;
+
     // Configuration for block tracking
     private readonly int _maxConsecutiveBlocks = 3;
-    private readonly TimeSpan _logCooldown = TimeSpan.FromSeconds(10);
     // Logging suppression duration for blocked IPs
     private readonly TimeSpan _logSuppressDuration = TimeSpan.FromSeconds(5);
 
     public RateLimiter(
         RequestDelegate next,
-        IConfiguration configuration,
+        RateLimitSettings settings,
+        IRateLimiterStore store,
+        RateLimiterState state,
+        TimeProvider timeProvider,
         Microsoft.Extensions.Logging.ILogger<RateLimiter> logger,
+        Services.Telemetry.TelemetryOptions telemetryOptions,
         string adminApiKey)
     {
         _next = next;
+
+        // Monitoring scrapers must never be throttled; the endpoint is restricted at the network level
+        _metricsPath = telemetryOptions.ActiveMetricsPath;
+        _settings = settings;
+        _store = store;
+        _state = state;
+        _timeProvider = timeProvider;
         _logger = logger;
 
-        _settings = new RateLimitSettings();
-        configuration.GetSection("RateLimiting").Bind(_settings);
         // Use the resolved Web UI admin key so the exemption check agrees with UseWebUiAuth
         _adminApiKey = adminApiKey ?? string.Empty;
         _uiAuthEnabled = !string.IsNullOrEmpty(_adminApiKey);
-        
+
         if (_settings.Enabled)
         {
-            _logger.LogInformation("Rate limiter {InstanceId} initialized. Enabled: {Enabled}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
-            _instanceId, _settings.Enabled, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
+            _logger.LogInformation("Rate limiter {InstanceId} initialized. Enabled: {Enabled}, Store: {Store}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
+                _instanceId, _settings.Enabled, _store.GetType().Name, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
         }
 
         // Periodically remove expired entries to prevent unbounded dictionary growth
-        _cleanupTimer = new Timer(_ => CleanupExpiredEntries(), null,
+        _cleanupTimer = timeProvider.CreateTimer(_ => CleanupExpiredEntries(), null,
             TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
     private void CleanupExpiredEntries()
     {
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow();
 
-        foreach (var key in _blockedIps.Keys)
-            if (_blockedIps.TryGetValue(key, out var v) && now >= v.BlockedUntil)
-                _blockedIps.TryRemove(key, out _);
+        foreach (var key in _state.BlockedIps.Keys)
+            if (_state.BlockedIps.TryGetValue(key, out var v) && now >= v.BlockedUntil)
+                _state.BlockedIps.TryRemove(key, out _);
 
-        foreach (var key in _blockedTokens.Keys)
-            if (_blockedTokens.TryGetValue(key, out var b) && now >= b.BlockedUntil)
-                _blockedTokens.TryRemove(key, out _);
+        foreach (var key in _state.BlockedTokens.Keys)
+            if (_state.BlockedTokens.TryGetValue(key, out var b) && now >= b.BlockedUntil)
+                _state.BlockedTokens.TryRemove(key, out _);
 
-        // Cap the display-name cache; entries are cheap to rebuild on next bucket creation
-        if (_tokenDisplayCache.Count > 500)
-            _tokenDisplayCache.Clear();
-
-        Log.Debug("RateLimiter cleanup: {Buckets} buckets, {BlockedIps} blocked IPs, {BlockedTokens} blocked tokens",
-            _buckets.Count, _blockedIps.Count, _blockedTokens.Count);
+        Log.Debug("RateLimiter cleanup: {BlockedIps} blocked IPs, {BlockedTokens} blocked tokens",
+            _state.BlockedIps.Count, _state.BlockedTokens.Count);
     }
 
     // Token masking method
@@ -100,7 +94,7 @@ public class RateLimiter
         return $"{token[..4]}...{token[^4..]}";
     }
 
-    public async Task InvokeAsync(HttpContext context, AuthDbContext dbContext, TokenService tokenService)
+    public async Task InvokeAsync(HttpContext context)
     {
         var pathBase = context.Request.PathBase.Value ?? "";
 
@@ -135,18 +129,18 @@ public class RateLimiter
             }
         }
 
-        if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
-            context.Request.Path.StartsWithSegments("/docs") ||
+        if (context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health") ||
+            (_metricsPath is not null && context.Request.Path.StartsWithSegments(_metricsPath)) ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
             context.Request.Path.StartsWithSegments("/favicon.ico"))
         {
-            Log.Debug("Skipping rate limiting for for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
+            Log.Debug("Skipping rate limiting for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
             await _next(context);
             return;
         }
-        
+
         // Skip all checks if rate limiting is disabled
         if (!_settings.Enabled)
         {
@@ -154,63 +148,60 @@ public class RateLimiter
             return;
         }
 
-        // Get client IP 
+        // Get client IP
         string clientIp = GetClientIpAddress(context);
-        var now = DateTime.UtcNow;
-        
-        // Fast check - if this IP is in our blocked list, return 429 immediately 
-        if (_blockedIps.TryGetValue(clientIp, out var blockInfo))
+        var now = _timeProvider.GetUtcNow();
+
+        // Fast check - if this IP is in our blocked list, return 429 immediately
+        if (_state.BlockedIps.TryGetValue(clientIp, out var blockInfo))
         {
             // If still blocked
             if (now < blockInfo.BlockedUntil)
             {
                 // Only log if enough time has passed since last log for this IP
                 bool shouldLog = (now - blockInfo.LastLogged) >= _logSuppressDuration;
-                
+
                 if (shouldLog)
                 {
                     // Update last logged time
-                    _blockedIps[clientIp] = (blockInfo.BlockedUntil, now);
-                    
+                    _state.BlockedIps[clientIp] = (blockInfo.BlockedUntil, now);
+
                     // Calculate remaining seconds
                     int remainingSeconds = (int)(blockInfo.BlockedUntil - now).TotalSeconds;
                     Log.Information("IP {IP} still rate limited for {Seconds} more seconds", clientIp, remainingSeconds);
                 }
-                
+
                 // Always respond with 429, but don't always log
                 int retryAfterSeconds = (int)(blockInfo.BlockedUntil - now).TotalSeconds;
-                await RespondWithRateLimit(context, clientIp, retryAfterSeconds, shouldLog);
+                await RespondWithRateLimit(context, clientIp, retryAfterSeconds, _settings.IpLimit, "ip", shouldLog);
                 return;
             }
             else
             {
                 // No longer blocked, remove from dictionary
-                _blockedIps.TryRemove(clientIp, out _);
+                _state.BlockedIps.TryRemove(clientIp, out _);
                 Log.Information("Rate limit for IP {IP} has expired, allowing traffic", clientIp);
             }
         }
-        
-        // IP-based rate limiting
-        string ipKey = $"ip:{clientIp}";
-        var ipBucket = _buckets.GetOrAdd(ipKey, key => CreateBucket(key, _settings.IpLimit, _settings.IpWindow, "IP", tokenService));
-        bool ipAllowed = ipBucket.TryConsume(1, _logger);
 
-        if (!ipAllowed)
+        // IP-based rate limiting
+        var ipLease = await _store.TryConsumeAsync($"ip:{clientIp}", _settings.IpLimit, _settings.IpWindow, context.RequestAborted);
+
+        if (!ipLease.Allowed)
         {
-            // Add to blocked IPs list
-            var blockDuration = TimeSpan.FromSeconds(_settings.IpWindow);
-            var blockedUntil = now.Add(blockDuration);
-            _blockedIps[clientIp] = (blockedUntil, now); // Log this first violation
-            
+            // Deliberate penalty box: an overflowing IP is blocked for the full window as a deterrent
+            var blockedUntil = now.AddSeconds(_settings.IpWindow);
+            _state.BlockedIps[clientIp] = (blockedUntil, now); // Log this first violation
+
             Log.Warning("IP {IP} has exceeded rate limit, blocking for {Seconds}s", clientIp, _settings.IpWindow);
-            await RespondWithRateLimit(context, clientIp, _settings.IpWindow, true);
+            await RespondWithRateLimit(context, clientIp, _settings.IpWindow, _settings.IpLimit, "ip", true);
             return;
         }
-        
+
         // Extract token for per-token rate limiting (if present)
         // Auth enforcement is handled exclusively by TokenAuthMiddleware
         string? token = null;
-        TokenBucket? tokenBucket = null;
+        RateLimitLease? tokenLease = null;
         if (context.Request.Headers.TryGetValue("Authorization", out var authHeader))
         {
             var auth = authHeader.ToString();
@@ -223,38 +214,41 @@ public class RateLimiter
             var maskedToken = MaskToken(token);
             string tokenKey = $"token:{token}";
 
+            // Per-token override from the token record, null falls back to global settings
+            // Lookup is cache-backed (30s TTL) so this does not hash per request
+            var (effectiveLimit, effectiveWindow) = await ResolveTokenLimitsAsync(context, token);
+
             // Check if token is currently blocked
-            if (_blockedTokens.TryGetValue(tokenKey, out var currentBlockInfo))
+            if (_state.BlockedTokens.TryGetValue(tokenKey, out var currentBlockInfo))
             {
                 if (now < currentBlockInfo.BlockedUntil)
                 {
                     // Token is still blocked
                     int remainingSeconds = (int)(currentBlockInfo.BlockedUntil - now).TotalSeconds;
-                    
-                    Log.Warning("Token {MaskedToken} is blocked for {Seconds} more seconds", 
+
+                    Log.Warning("Token {MaskedToken} is blocked for {Seconds} more seconds",
                         maskedToken, remainingSeconds);
-                    
-                    await RespondWithRateLimit(context, maskedToken, remainingSeconds, true);
+
+                    await RespondWithRateLimit(context, maskedToken, remainingSeconds, effectiveLimit, "token", true);
                     return;
                 }
                 else
                 {
                     // Block expired, remove from blocked tokens
-                    _blockedTokens.TryRemove(tokenKey, out _);
+                    _state.BlockedTokens.TryRemove(tokenKey, out _);
                 }
             }
-            
-            tokenBucket = _buckets.GetOrAdd(tokenKey, key => 
-                CreateBucket(key, _settings.TokenLimit, _settings.TokenWindow, "TOKEN", tokenService));
-            
-            bool tokenAllowed = tokenBucket.TryConsume(1, _logger);
-            
-            if (!tokenAllowed)
+
+            // Limit and window are part of the bucket key so a changed override starts a fresh bucket
+            var lease = await _store.TryConsumeAsync($"{tokenKey}:{effectiveLimit}:{effectiveWindow}", effectiveLimit, effectiveWindow, context.RequestAborted);
+            tokenLease = lease;
+
+            if (!lease.Allowed)
             {
-                var localBlockInfo = _blockedTokens.AddOrUpdate(
+                var localBlockInfo = _state.BlockedTokens.AddOrUpdate(
                     tokenKey,
-                    _ => CreateBlockInfo(now),
-                    (_, existing) => UpdateBlockInfo(existing, now)
+                    _ => CreateBlockInfo(now, effectiveWindow),
+                    (_, existing) => UpdateBlockInfo(existing, now, effectiveWindow)
                 );
 
                 // Use the calculated block duration
@@ -263,21 +257,21 @@ public class RateLimiter
                 // Logging with different levels based on block attempts
                 if (localBlockInfo.ConsecutiveBlocks <= _maxConsecutiveBlocks)
                 {
-                    Log.Warning("Token rate limit exceeded for {MaskedToken} - Attempt {AttemptCount}", 
+                    Log.Warning("Token rate limit exceeded for {MaskedToken} - Attempt {AttemptCount}",
                         maskedToken, localBlockInfo.ConsecutiveBlocks);
                 }
                 else
                 {
-                    Log.Error("Persistent rate limit violations detected for {MaskedToken} - Blocking for {Seconds}s", 
+                    Log.Error("Persistent rate limit violations detected for {MaskedToken} - Blocking for {Seconds}s",
                         maskedToken, retryAfterSeconds);
                 }
 
-                var retryTime = DateTimeOffset.UtcNow.AddSeconds(retryAfterSeconds).ToString("o");
+                var retryTime = now.AddSeconds(retryAfterSeconds).ToString("o");
 
                 var errorObject = new
                 {
-                    error = localBlockInfo.ConsecutiveBlocks > _maxConsecutiveBlocks 
-                        ? "Repeated rate limit violations" 
+                    error = localBlockInfo.ConsecutiveBlocks > _maxConsecutiveBlocks
+                        ? "Repeated rate limit violations"
                         : "Too many requests",
                     retrytime = retryTime,
                     success = false
@@ -286,85 +280,97 @@ public class RateLimiter
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
                 context.Response.ContentType = "application/json";
                 context.Response.Headers.Append("Retry-After", retryAfterSeconds.ToString());
-                
-                // Add rate limit headers
-                AddRateLimitHeaders(context.Response, tokenBucket, "token");
+                AddRateLimitHeaders(context.Response, BlockedLease(effectiveLimit, now, retryAfterSeconds), "token");
 
                 await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, _jsonOptions));
                 return;
             }
         }
-        
+
         // Add rate limit headers to successful responses
         context.Response.OnStarting(() =>
         {
-            // Add rate limit headers based on the most restrictive bucket
-            if (tokenBucket != null)
-            {
-                AddRateLimitHeaders(context.Response, tokenBucket, "token");
-            }
+            // Report the most restrictive lease: token when present, IP otherwise
+            if (tokenLease is { } tl)
+                AddRateLimitHeaders(context.Response, tl, "token");
             else
-            {
-                AddRateLimitHeaders(context.Response, ipBucket, "ip");
-            }
-            
+                AddRateLimitHeaders(context.Response, ipLease, "ip");
+
             return Task.CompletedTask;
         });
-        
+
         await _next(context);
     }
 
-    private BlockInfo CreateBlockInfo(DateTime now)
+    // Resolves the effective token limit from the token record, global settings when absent
+    private async Task<(int Limit, int Window)> ResolveTokenLimitsAsync(HttpContext context, string token)
     {
-        return new BlockInfo(now.AddSeconds(_settings.TokenWindow), 1, _settings.TokenWindow);
+        try
+        {
+            // Optional so unit tests and stripped-down hosts without auth services still work
+            var tokenService = context.RequestServices?.GetService<TokenService>();
+            if (tokenService != null)
+            {
+                var details = await tokenService.GetTokenDetailsByTokenAsync(token);
+                if (details?.RateLimitRequests is int requests and > 0)
+                    return (requests, details.RateLimitWindowSeconds is int w and > 0 ? w : _settings.TokenWindow);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Never let a lookup failure take rate limiting down, fall back to globals
+            Log.Warning(ex, "Per-token rate limit lookup failed, using global limits");
+        }
+
+        return (_settings.TokenLimit, _settings.TokenWindow);
+    }
+
+    private TokenBlockInfo CreateBlockInfo(DateTimeOffset now, int windowSeconds)
+    {
+        return new TokenBlockInfo(now.AddSeconds(windowSeconds), 1, windowSeconds);
     }
 
     // Update block info with exponential backoff
-    private BlockInfo UpdateBlockInfo(BlockInfo existing, DateTime now)
+    private TokenBlockInfo UpdateBlockInfo(TokenBlockInfo existing, DateTimeOffset now, int windowSeconds)
     {
         int newConsecutiveBlocks = existing.ConsecutiveBlocks + 1;
 
         int newBlockDuration = newConsecutiveBlocks > _maxConsecutiveBlocks
-            ? _settings.TokenWindow * (int)Math.Pow(2, newConsecutiveBlocks - _maxConsecutiveBlocks)
-            : _settings.TokenWindow;
+            ? windowSeconds * (int)Math.Pow(2, newConsecutiveBlocks - _maxConsecutiveBlocks)
+            : windowSeconds;
 
         newBlockDuration = Math.Min(newBlockDuration, 3600); // Max 1 hour
 
-        return new BlockInfo(now.AddSeconds(newBlockDuration), newConsecutiveBlocks, newBlockDuration);
+        return new TokenBlockInfo(now.AddSeconds(newBlockDuration), newConsecutiveBlocks, newBlockDuration);
     }
-    private void AddRateLimitHeaders(HttpResponse response, TokenBucket bucket, string resourceName)
+
+    // Header values for a blocked identifier: nothing remains, reset when the block lifts
+    private static RateLimitLease BlockedLease(int limit, DateTimeOffset now, int retryAfterSeconds)
+        => new(false, limit, 0, now.AddSeconds(retryAfterSeconds).ToUnixTimeSeconds());
+
+    private static void AddRateLimitHeaders(HttpResponse response, RateLimitLease lease, string resourceName)
     {
-        int limit = bucket.GetCapacity();
-        int remaining = bucket.GetRemainingTokens();
-        long resetTimestamp = new DateTimeOffset(bucket.GetResetTime()).ToUnixTimeSeconds();
-        int used = limit - remaining;
-        
-        response.Headers["X-RateLimit-Limit"] = limit.ToString();
-        response.Headers["X-RateLimit-Remaining"] = remaining.ToString();
-        response.Headers["X-RateLimit-Reset"] = resetTimestamp.ToString();
+        response.Headers["X-RateLimit-Limit"] = lease.Limit.ToString();
+        response.Headers["X-RateLimit-Remaining"] = lease.Remaining.ToString();
+        response.Headers["X-RateLimit-Reset"] = lease.ResetUnixSeconds.ToString();
         response.Headers["X-RateLimit-Resource"] = resourceName;
-        response.Headers["X-RateLimit-Used"] = used.ToString();
+        response.Headers["X-RateLimit-Used"] = (lease.Limit - lease.Remaining).ToString();
     }
-    
-    private async Task RespondWithRateLimit(HttpContext context, string identifier, int retryAfterSeconds, bool log)
+
+    private async Task RespondWithRateLimit(HttpContext context, string identifier, int retryAfterSeconds, int limit, string resourceName, bool log)
     {
+        var now = _timeProvider.GetUtcNow();
+
         context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         context.Response.ContentType = "application/json";
         context.Response.Headers.Append("Retry-After", retryAfterSeconds.ToString());
-        
-        // Add rate limit headers if we have the bucket
-        string bucketKey = identifier.StartsWith("token:", StringComparison.Ordinal) ? identifier : $"ip:{identifier}";
-        if (_buckets.TryGetValue(bucketKey, out var bucket))
-        {
-            string resourceType = identifier.StartsWith("token:", StringComparison.Ordinal) ? "token" : "ip";
-            AddRateLimitHeaders(context.Response, bucket, resourceType);
-        }
-        
-        var retryTime = DateTimeOffset.UtcNow.AddSeconds(retryAfterSeconds).ToString("o");
+        AddRateLimitHeaders(context.Response, BlockedLease(limit, now, retryAfterSeconds), resourceName);
+
+        var retryTime = now.AddSeconds(retryAfterSeconds).ToString("o");
 
         if (log)
         {
-            Log.Warning("Rate limit enforced for {Identifier}, retry after {Seconds}s (at {Time})", 
+            Log.Warning("Rate limit enforced for {Identifier}, retry after {Seconds}s (at {Time})",
                 identifier, retryAfterSeconds, retryTime);
         }
 
@@ -377,49 +383,7 @@ public class RateLimiter
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, _jsonOptions));
     }
-        private TokenBucket CreateBucket(string key, int limit, int windowSeconds, string type, TokenService? tokenService = null)
-    {
-        string displayKey = key;
-        
-        // For token buckets, try to get the token ID instead of showing the masked token
-        if (type == "TOKEN" && tokenService != null && key.StartsWith("token:", StringComparison.Ordinal))
-        {
-            // Check cache first
-            if (_tokenDisplayCache.TryGetValue(key, out var cachedDisplay))
-            {
-                displayKey = cachedDisplay;
-            }
-            else
-            {
-                var token = key["token:".Length..];
-                var maskedToken = MaskToken(token);
-                displayKey = $"TOKEN:{maskedToken[..Math.Min(8, maskedToken.Length)]}...";
-                _tokenDisplayCache.TryAdd(key, displayKey);
-            }
-        }
-        else
-        {
-            // For IP buckets and fallback cases, use the masking function
-            displayKey = MaskKey(key);
-        }
 
-        string MaskKey(string key, int visibleChars = 4, char maskChar = '*')
-        {
-            if (string.IsNullOrEmpty(key) || key.Length <= visibleChars)
-                return key;
-                
-            return key[..visibleChars] + new string(maskChar, key.Length - visibleChars);
-        }
-
-        _logger.LogInformation("Created {Type} rate limit bucket for {Key} with limit: {Limit}/{Window}s",
-            type, displayKey, limit, windowSeconds);
-            
-        return new TokenBucket(
-            limit,
-            TimeSpan.FromSeconds(windowSeconds),
-            key);
-    }
-    
     // Use RemoteIpAddress set by UseForwardedHeaders middleware rather than reading
     // X-Forwarded-For directly; direct header reads are spoofable by clients
     private string GetClientIpAddress(HttpContext context)

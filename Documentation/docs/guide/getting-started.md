@@ -11,7 +11,9 @@ Portway is an ASP.NET Core application. On Windows Server it is typically hosted
 
 **Windows Server / IIS:**
 - Windows Server (or Windows 11 for development)
-- [.NET 10 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+- [.NET 11 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/11.0)
+
+> Note: Portway `v2.0.0` targets .NET 11. Because .NET 11 is currently a preview of the framework, you may prefer to stay on the .NET 10 LTS build of Portway for production deployments until .NET 11 reaches general availability. Both are fully supported; the choice is simply about how conservative you would like your runtime to be.
 - Internet Information Services (IIS)
 
 :::warning
@@ -55,13 +57,13 @@ Start the container:
 docker compose pull && docker compose up -d
 ```
 
-Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Docker Installation](docker-compose.md).
+Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Docker Installation](/guide/docker-compose).
 
 ### Windows Server (IIS)
 
 The steps assume working knowledge of IIS and your data sources; the essentials are all covered here, though some details will depend on your existing environment. Start by downloading the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
 
-**1. Install the .NET 10 Hosting Bundle:**
+**1. Install the .NET 11 Hosting Bundle:**
 
 ```powershell
 winget install --id Microsoft.DotNet.HostingBundle.10 -e
@@ -192,7 +194,7 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 
 From here, a few natural directions:
 
-- [Configure SQL Endpoints](./endpoints-sql)
-- [Set up Proxy Endpoints](./endpoints-proxy)
-- [Manage Environments](./environments)
-- [Configure Security](./security)
+- [Configure SQL Endpoints](/guide/endpoints-sql)
+- [Set up Proxy Endpoints](/guide/endpoints-proxy)
+- [Manage Environments](/guide/environments)
+- [Configure Security](/guide/security)

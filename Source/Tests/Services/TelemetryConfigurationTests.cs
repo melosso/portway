@@ -16,17 +16,36 @@ public class TelemetryConfigurationTests
     // Option binding
 
     [Fact]
-    public void TelemetryOptions_DefaultsToDisabled()
+    public void TelemetryOptions_DefaultsToNoProvider()
     {
         var config = BuildConfig(new());
 
         var options = config.GetSection("Telemetry").Get<TelemetryOptions>() ?? new();
 
-        Assert.False(options.Enabled);
+        Assert.Equal(TelemetryProvider.None, options.EffectiveProvider);
     }
 
     [Fact]
-    public void TelemetryOptions_BindsEnabledAndEndpointFromConfig()
+    public void TelemetryOptions_BindsProviderAndEndpointFromConfig()
+    {
+        var config = BuildConfig(new()
+        {
+            ["Telemetry:Provider"]      = "Otlp",
+            ["Telemetry:Otlp:Endpoint"] = "http://otel-collector.internal:4317"
+        });
+
+        var options = config.GetSection("Telemetry").Get<TelemetryOptions>()!;
+
+        Assert.Equal(TelemetryProvider.Otlp, options.EffectiveProvider);
+        Assert.Equal("http://otel-collector.internal:4317", options.EffectiveOtlpEndpoint);
+    }
+
+    // Legacy config compatibility
+    // Pre-Provider configs used a flat Enabled switch and OtlpEndpoint key;
+    // both keep working so an upgrade does not silently drop telemetry
+
+    [Fact]
+    public void TelemetryOptions_LegacyEnabled_MapsToOtlpProvider()
     {
         var config = BuildConfig(new()
         {
@@ -36,8 +55,37 @@ public class TelemetryConfigurationTests
 
         var options = config.GetSection("Telemetry").Get<TelemetryOptions>()!;
 
-        Assert.True(options.Enabled);
-        Assert.Equal("http://otel-collector.internal:4317", options.OtlpEndpoint);
+        Assert.Equal(TelemetryProvider.Otlp, options.EffectiveProvider);
+        Assert.Equal("http://otel-collector.internal:4317", options.EffectiveOtlpEndpoint);
+    }
+
+    [Fact]
+    public void TelemetryOptions_ExplicitProvider_WinsOverLegacyEnabled()
+    {
+        var config = BuildConfig(new()
+        {
+            ["Telemetry:Provider"] = "Prometheus",
+            ["Telemetry:Enabled"]  = "true"
+        });
+
+        var options = config.GetSection("Telemetry").Get<TelemetryOptions>()!;
+
+        Assert.Equal(TelemetryProvider.Prometheus, options.EffectiveProvider);
+    }
+
+    [Fact]
+    public void TelemetryOptions_NestedOtlpEndpoint_WinsOverLegacyFlatKey()
+    {
+        var config = BuildConfig(new()
+        {
+            ["Telemetry:Provider"]      = "Otlp",
+            ["Telemetry:OtlpEndpoint"]  = "http://legacy:4317",
+            ["Telemetry:Otlp:Endpoint"] = "http://nested:4317"
+        });
+
+        var options = config.GetSection("Telemetry").Get<TelemetryOptions>()!;
+
+        Assert.Equal("http://nested:4317", options.EffectiveOtlpEndpoint);
     }
 
     [Fact]
@@ -178,7 +226,7 @@ public class TelemetryConfigurationTests
         // Mirrors realistic values from the demo WMS environment
         using var metrics = new PortwayMetrics();
         var ex = Record.Exception(() =>
-            metrics.RequestCompleted("GET", 200, "api", TimeSpan.FromMilliseconds(42)));
+            metrics.RequestCompleted("GET", 200, "api", "customers", TimeSpan.FromMilliseconds(42)));
         Assert.Null(ex);
     }
 

@@ -179,39 +179,9 @@ Tests external service connectivity:
 ```
 
 **Features:**
-- Random endpoint sampling
-- Timeout handling (5 seconds)
-- Authentication status checking
-
-## Configuration
-
-### appsettings.json
-
-```json
-{
-  "HealthChecks": {
-    "Enabled": true,
-    "CacheTimeSeconds": 30,
-    "ProxyTimeout": 5000,
-    "DiskSpaceWarningThreshold": 15,
-    "DiskSpaceCriticalThreshold": 5
-  }
-}
-```
-
-### Environment Variables
-
-```bash
-# Override cache duration
-HEALTHCHECK_CACHE_TIME=60
-
-# Disable proxy checks
-HEALTHCHECK_SKIP_PROXY=true
-
-# Custom disk thresholds
-HEALTHCHECK_DISK_WARNING=20
-HEALTHCHECK_DISK_CRITICAL=10
-```
+- All public proxy endpoints that allow GET are checked in parallel
+- Timeout handling (10 seconds per endpoint)
+- Authentication status checking (a 401 from the upstream counts as reachable)
 
 ## Implementation Details
 
@@ -395,7 +365,9 @@ startupProbe:
 
 ### Diagnostic Commands
 
-```powershell
+::: code-group
+
+```powershell [PowerShell]
 # Test basic health
 Invoke-WebRequest -Uri "http://localhost:5000/health" `
   -Headers @{"Authorization"="Bearer $token"}
@@ -408,6 +380,19 @@ $response = Invoke-WebRequest -Uri "http://localhost:5000/health/details" `
   -Headers @{"Authorization"="Bearer $token"}
 $response.Content | ConvertFrom-Json | Format-List
 ```
+
+```bash [Bash]
+# Test basic health
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health
+
+# Check liveness
+curl http://localhost:5000/health/live
+
+# Get detailed status
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health/details | jq .
+```
+
+:::
 
 ### Log Analysis
 

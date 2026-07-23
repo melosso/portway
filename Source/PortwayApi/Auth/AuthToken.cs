@@ -19,6 +19,12 @@ public class AuthToken
     
     /// <summary>Token description for administrative purposes</summary>
     public string Description { get; set; } = string.Empty;
+
+    /// <summary>Per-token rate limit request count, null falls back to the global RateLimiting:TokenLimit</summary>
+    public int? RateLimitRequests { get; set; }
+
+    /// <summary>Per-token rate limit window in seconds, null falls back to the global RateLimiting:TokenWindow</summary>
+    public int? RateLimitWindowSeconds { get; set; }
     
     /// <summary>Indicates if token is currently active</summary>
     public bool IsActive => RevokedAt == null && (ExpiresAt == null || ExpiresAt > DateTime.UtcNow);

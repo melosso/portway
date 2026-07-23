@@ -13,10 +13,14 @@ using Serilog;
 public class TokenAuthMiddleware
 {
     private readonly RequestDelegate _next;
+    private readonly string? _metricsPath;
 
-    public TokenAuthMiddleware(RequestDelegate next)
+    public TokenAuthMiddleware(RequestDelegate next, Services.Telemetry.TelemetryOptions telemetry)
     {
         _next = next;
+
+        // Prometheus scrape endpoint is open by design; operators restrict it at the network level
+        _metricsPath = telemetry.ActiveMetricsPath;
     }
 
     public async Task InvokeAsync(
@@ -30,15 +34,17 @@ public class TokenAuthMiddleware
         string env = ExtractEnvironmentFromPath(context.Request.Path);
         
         // Skip token validation for specific routes
-        if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
-            context.Request.Path.StartsWithSegments("/docs") ||
+        if (context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health/live") ||
             context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
+            context.Request.Path == "/health" ||
+            context.Request.Path == pathBase + "/health" ||
             context.Request.Path.StartsWithSegments("/ui") ||
             context.Request.Path.StartsWithSegments("/sm") ||
             context.Request.Path == "/" ||
             context.Request.Path == "/index.html" ||
-            context.Request.Path.StartsWithSegments("/favicon.ico"))
+            context.Request.Path.StartsWithSegments("/favicon.ico") ||
+            (_metricsPath is not null && context.Request.Path.StartsWithSegments(_metricsPath)))
         {
             Log.Debug("Skipping token authentication for {Path} (basePath: {pathBase})", context.Request.Path, pathBase);
             await _next(context);

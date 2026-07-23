@@ -3,9 +3,10 @@
   "description": "A lightweight API gateway for Windows environments",
   "lang": "en",
   "brand": "Portway",
-  "favicon": "🔌",
+  "brandImage": "/assets/brand-image.webp",
+  "favicon": "🌊",
   "lastUpdated": true,
-  "footer": "Released under [EUPL 1.2](LICENSE) · Copyright © 2026 Melosso.com",
+  "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/melosso/bark/).",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
     "text": "Edit this page on GitHub"
@@ -127,11 +128,11 @@
         "collapsed": false,
         "items": [
           {
-            "title": "MCP Server",
+            "title": "Server",
             "path": "guide/mcp"
           },
           {
-            "title": "Chat",
+            "title": "Built-in chat",
             "path": "guide/mcp-chat"
           }
         ]
@@ -203,6 +204,10 @@
           {
             "title": "Entity",
             "path": "reference/entity-config"
+          },
+          {
+            "title": "HTTP Methods",
+            "path": "reference/http-methods"
           },
           {
             "title": "Environment",
@@ -299,6 +304,30 @@
           {
             "title": "NAV Business Central",
             "path": "reference/integrations/nav-business-central"
+          },
+          {
+            "title": "AFAS Profit",
+            "path": "reference/integrations/afas-profit"
+          },
+          {
+            "title": "Odoo",
+            "path": "reference/integrations/odoo"
+          },
+          {
+            "title": "SAP Business One",
+            "path": "reference/integrations/sap-business-one"
+          },
+          {
+            "title": "NocoDB",
+            "path": "reference/integrations/nocodb"
+          },
+          {
+            "title": "Teable",
+            "path": "reference/integrations/teable"
+          },
+          {
+            "title": "Pimcore",
+            "path": "reference/integrations/pimcore"
           }
         ]
       }

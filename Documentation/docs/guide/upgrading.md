@@ -5,13 +5,21 @@ description: "Replace application files and restore configuration to move to a n
 
 # Upgrading Portway
 
-Upgrading Portway is usually a matter of replacing the binaries and letting it start back up, but a little preparation goes a long way. Releases may include application and database changes, so it is recommended to read the [release notes](https://github.com/melosso/portway/releases/) first, particularly for major versions, and to check that no breaking changes apply to your configuration.
+Upgrading Portway is usually a matter of replacing the binaries and letting it start back up, but proper preparation and a back-up strategy is required. Releases may include application, configuration and database changes, so it is recommended to read the [release notes](https://github.com/melosso/portway/releases/) first and to check that no breaking changes apply to your configuration.
+
+## Find your current version
+
+Your installed version is recorded in `.version.txt` in the deployment directory. Update this file after upgrading to keep version information current, this is useful when submitting bug reports.
 
 ## Steps
 
 **1. Read the release notes**
 
 Review the [GitHub release notes](https://github.com/melosso/portway/releases/) for migration steps, breaking changes, and new configuration requirements.
+
+::: important Beware before updating
+Since Portway has not reached a major version (e.g. `v1.0.0`) breaking changes will occur. Make sure to **read the release notes** before upgrading.
+:::
 
 **2. Back up your installation**
 
@@ -25,15 +33,17 @@ Copy these files and directories to a safe location before making any changes:
 
 **3. Stop the application**
 
-*IIS:*
-```powershell
+::: code-group
+
+```powershell [IIS]
 Stop-WebAppPool -Name "PortwayAppPool"
 ```
 
-*Docker:*
-```sh
+```sh [Docker]
 docker compose down
 ```
+
+:::
 
 :::info
 Stopping the IIS Application Pool resets in-memory cache and rate limit state. This is expected behaviour.
@@ -61,7 +71,3 @@ Start the application pool or container and confirm:
 :::tip
 For major version upgrades, validate in a non-production environment before upgrading production.
 :::
-
-## Find your current version
-
-Your installed version is recorded in `.version.txt` in the deployment directory. Update this file after upgrading to keep version information current, this is useful when submitting bug reports.

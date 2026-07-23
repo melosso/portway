@@ -5,16 +5,20 @@ namespace PortwayApi.Helpers;
 /// <summary>Startup banner, port availability preflight and hosting URL logging</summary>
 public static class StartupLogHelper
 {
-    public static void LogAsciiBanner()
+    // Single log event so sinks cannot interleave the banner with other startup lines
+    private const string Banner = @"
+ ██████╗  ██████╗ ██████╗ ████████╗██╗    ██╗ █████╗ ██╗   ██╗
+ ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██║    ██║██╔══██╗╚██╗ ██╔╝
+ ██████╔╝██║   ██║██████╔╝   ██║   ██║ █╗ ██║███████║ ╚████╔╝
+ ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██║███╗██║██╔══██║  ╚██╔╝
+ ██║     ╚██████╔╝██║  ██║   ██║   ╚███╔███╔╝██║  ██║   ██║
+ ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝";
+
+    public static void LogAsciiBanner(string version)
     {
-        Log.Information("");
-        Log.Information(" ██████╗  ██████╗ ██████╗ ████████╗██╗    ██╗ █████╗ ██╗   ██╗");
-        Log.Information(" ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██║    ██║██╔══██╗╚██╗ ██╔╝");
-        Log.Information(" ██████╔╝██║   ██║██████╔╝   ██║   ██║ █╗ ██║███████║ ╚████╔╝ ");
-        Log.Information(" ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██║███╗██║██╔══██║  ╚██╔╝  ");
-        Log.Information(" ██║     ╚██████╔╝██║  ██║   ██║   ╚███╔███╔╝██║  ██║   ██║   ");
-        Log.Information(" ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝   ");
-        Log.Information("");
+        Log.Information("{Banner}", Banner);
+        Log.Information("Portway {Version} starting on {Host} ({OS}, .NET {DotNet})",
+            version, Environment.MachineName, Environment.OSVersion.Platform, Environment.Version);
     }
 
     /// <summary>Verifies configured ports are free before Kestrel binds; returns false when a port is taken</summary>

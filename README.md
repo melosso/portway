@@ -4,15 +4,18 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-Portway is a lightweight **API gateway** for Windows and Linux containers that simplifies secure service routing and infrastructure management. 
+Portway is a lightweight **API gateway** for Windows and Linux containers that simplifies secure service routing and infrastructure management.
 
-Quickly set up a modern API gateway that unifies diverse data sources—including SQL databases, internal services, and webhooks—into a single, managed interface. It ensures reliability through caching, full audit logging, and automated documentation, while providing secure service routing and infrastructure management. Its file-based configuration offers simple, centralized control over your service orchestration and data access.
+It unifies databases, internal services, and webhooks into a single interface using simple, file-based configuration. Built-in caching, audit logging, and automated documentation keep your data flow reliable and easy to control.
 
-Out of the box Portway allows various endpoint types to be configured, e.g. for various SQL databases, proxy pass-through, and webhook endpoints with built-in documentation, MCP and OData support, Azure Key Vault authentication, and granular rate limiting.
+Out of the box, Portway handles proxy pass-through, SQL endpoints, and webhooks, with native support for MCP and OData. It also includes Azure Key Vault authentication, rate limiting, management (web) console and full observability through Prometheus or any OTLP collector.
 
-> 📜 <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">Documentation</a>   |   🐋 <a href="https://portway-docs.melosso.com/guide/docker-compose.html" target="_blank" rel="noopener noreferrer">Docker Compose</a>   |   ✨ <a href="https://portway-demo.melosso.com/" target="_blank" rel="noopener noreferrer">Live demo</a>
+<div>
+      <p align="center">
+        <strong>🔍 <a href="https://portway-demo.melosso.com/">See it in action!</a></strong>
+      </p>
+</div>
 
-A quick example to give you an idea:
 
 ![Screenshot of Portway](.github/images/example.webp)
 
@@ -22,7 +25,7 @@ A quick example to give you an idea:
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
-* <a href="https://dotnet.microsoft.com/en-us/download/dotnet/10.0" target="_blank" rel="noopener noreferrer">.NET 10 Hosting Bundle</a>
+* <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11 Hosting Bundle</a> (Portway `v2.0.0` targets .NET 11, currently a preview; the .NET 10 LTS build remains available for production)
 * If you're running on Windows: Internet Information Services (IIS)
 * A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 

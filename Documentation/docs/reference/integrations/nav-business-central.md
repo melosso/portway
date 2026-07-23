@@ -5,13 +5,15 @@ description: "Portway connects to on-premise Microsoft Dynamics NAV/Business Cen
 
 # Microsoft Dynamics NAV/Business Central Integration
 
-Portway connects to on-premise Microsoft Dynamics NAV/Business Central through proxy endpoints, so your external applications can reach NAV/BC data and services without talking to the ERP directly. Environment-specific headers route each request to the correct database instance.
+Portway connects to on-premise Microsoft Dynamics NAV/Business Central through proxy endpoints. Your external applications reach NAV/BC data and services without talking to the ERP directly. Environment-specific headers route each request to the correct database instance.
 
-> **Note:** On-premise NAV/BC uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with NAV/BC OData permissions gives Portway the access it needs.
+::: Note
+On-premise NAV/BC uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with NAV/BC OData permissions gives Portway the access it needs.
+:::
 
 ## Overview
 
-The Microsoft Dynamics NAV/Business Central integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request carries its environment configuration, which is how data ends up coming from the correct company database and server instance.
+The integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request carries its environment configuration. That is how data ends up coming from the correct company database and server instance.
 
 ## Configuration Requirements
 
@@ -31,8 +33,7 @@ These headers are configured in the environment settings and automatically injec
 
 Each environment needs to be configured in its settings:
 
-```json
-// environments/PROD/settings.json
+```json [environments/PROD/settings.json]
 {
   "ServerName": "NAV-SERVER",
   "ServerInstance": "DynamicsNAV130",
@@ -50,7 +51,7 @@ Each environment needs to be configured in its settings:
 
 ### Proxy Endpoints
 
-You can configure the availability of NAV/BC endpoints by configuring proxy endpoints:
+Each NAV/BC OData service you want to expose gets its own endpoint definition. A few common examples:
 
 #### Customers
 
@@ -121,6 +122,8 @@ NAV/BC specific error responses are preserved and forwarded:
 
 ## Notes
 
-- NAV/BC OData field names use underscores (e.g., `Sell_to_Customer_No`), use these exact names in `$filter` and `$select` expressions.
+A few NAV/BC specifics that save debugging time:
+
+- NAV/BC OData field names use underscores (e.g., `Sell_to_Customer_No`). Use these exact names in `$filter` and `$select` expressions.
 - The `Company` header value needs to be URL-encoded (e.g., `CRONUS%20International%20Ltd.`).
 - Test against a NAV/BC test company before connecting to production.

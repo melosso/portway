@@ -12,6 +12,7 @@ public class EndpointEntity
     public string? Procedure { get; set; }
     public List<string>? AllowedMethods { get; set; }
     public string? PrimaryKey { get; set; }
+    public string? WriteMode { get; set; }
 
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }
@@ -23,6 +24,7 @@ public class EndpointEntity
 
     // Shared properties
     public bool IsPrivate { get; set; } = false;
+    public bool Deprecated { get; set; } = false;
     public McpSettings? Mcp { get; set; }
     public string Type { get; set; } = "Standard"; // Standard, SQL, Composite
     public CompositeDefinition? CompositeConfig { get; set; }

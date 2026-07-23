@@ -1,7 +1,8 @@
 {
-  "ConnectionString": "PWENC:rPQPXzNLEx+R4vyURHalQ1ao50kQ08bT27Qtr0V8lNfJwTzHgDDXigLzK9kOxUoNqiIFWmQj0WoYmEB+SHVAPJhRBq+Q3G4ZifI7ua7fJ5vARwPL8/dBus9o6P02X90tQcAr9ja3U3wgtoWIEhCKpSvW27NUpjMGtmgOrxynIAfVGJzN2hvnRpCqQGHq1NIwDzkdPE9cnfzg0rQgstH7sVOyTjp13pvNRZSBqLZmxgFLYtmavqhcg/YrHOcjOSr0qvN1WI5stfURHCvDk0ZRxWojQgsMMo3z87CkpZYTF0/kiyd0LVHiEN4WF+AQgmCE5jpybVCPglB1z0O6WVKeOg==::6q6LclEAXj9B5T6yLOcxDESSN6UqMPkg91M/H0EvFFGYPSF/08HclhoNvm+D8xpQKQuq3ZWlK0+6l28nJTD1BqFxDDaGJqdP1c0JarGEpQZoWpdaB3v3Hrxn5njlBz4dxg8lWXbLtMhHqSlnkof8X8EGm/j23w68gWDSmsqhaXY=",
+  "ConnectionString": "Server=localhost;Database=Synergy;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
   "ServerName": "localhost",
   "Headers": {
     "Origin": "Portway"
-  }
+  },
+  "Encrypt": false
 }

@@ -217,7 +217,7 @@ If you're behind a corporate proxy:
 
 ## Managing tokens
 
-Token management is handled through the [Web UI](./webui). Set `WebUi__AdminApiKey` in your environment configuration to enable it, then navigate to `http://localhost:8080/ui` and open **Tokens** to create, revoke, rotate, and audit tokens.
+Token management is handled through the [Web UI](/guide/webui). Set `WebUi__AdminApiKey` in your environment configuration to enable it, then navigate to `http://localhost:8080/ui` and open **Tokens** to create, revoke, rotate, and audit tokens.
 
 ```yaml
 environment:
@@ -228,10 +228,10 @@ environment:
 
 After successful installation:
 
-1. Review the [Getting Started Guide](getting-started.md) for basic usage
-2. Configure your [Endpoints](endpoints-static.md) 
-3. Set up [Security](security.md) and authentication
-4. Monitor your deployment with [Health Checks](monitoring.md)
+1. Review the [Getting Started Guide](/guide/getting-started) for basic usage
+2. Configure your [Endpoints](/guide/endpoints-static) 
+3. Set up [Security](/guide/security) and authentication
+4. Monitor your deployment with [Health Checks](/guide/monitoring)
 
 ## Production Considerations
 
@@ -242,4 +242,4 @@ After successful installation:
 > - Setting up proper logging and monitoring
 > - Following security best practices
 
-For production deployments, see the [Deployment Guide](deployment.md).
+For production deployments, see the [Deployment Guide](/guide/deployment).

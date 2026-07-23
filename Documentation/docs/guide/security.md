@@ -7,7 +7,9 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go. This page walks through each layer in turn, from authentication down to a pre-deployment checklist you can run before going live.
 
-> **Note:** The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
+::: Note
+The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
+:::
 
 ## Authentication
 
@@ -75,7 +77,7 @@ Individual endpoints enforce their own environment and visibility constraints:
 }
 ```
 
-Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments, access control](./environments#access-control) for the full matrix.
+Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments, access control](/guide/environments#access-control) for the full matrix.
 
 ## Network security
 
@@ -124,26 +126,33 @@ Never store a real admin key in `appsettings.json`. The shipped file intentional
 
 Supply the key through the environment instead:
 
-```yaml
+::: code-group
+
+```yaml [Docker]
 # docker-compose.yml
 environment:
   - WebUi__AdminApiKey=${PORTWAY_ADMIN_KEY}
 ```
 
-```powershell
-# Windows Server / IIS
+```powershell [Windows Server]
 [Environment]::SetEnvironmentVariable("WebUi__AdminApiKey", "<your-key>", "Machine")
 ```
 
+:::
+
 Generate a strong key (32+ characters; shorter keys log a warning at startup):
 
-```bash
+::: code-group
+
+```bash [Bash]
 openssl rand -base64 48
 ```
 
-```powershell
+```powershell [PowerShell]
 [Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
 ```
+
+:::
 
 With Azure Key Vault configured (`KEYVAULT_URI`), the key can also be served from the vault through the standard ASP.NET Core configuration pipeline. Environment variables and Key Vault values override anything in `appsettings.json`.
 
@@ -153,9 +162,17 @@ The Settings page in the Web UI shows the current key strength (not set / placeh
 
 Store connection strings and server names in Azure Key Vault instead of `settings.json`:
 
-```powershell
+::: code-group
+
+```powershell [PowerShell]
 $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
 ```
+
+```bash [Bash]
+export KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
+```
+
+:::
 
 Create secrets named by environment:
 - `{environment}-ConnectionString`
@@ -213,7 +230,7 @@ Enable request traffic logging to capture headers and bodies for security analys
 }
 ```
 
-See [Monitoring](./monitoring) for traffic logging configuration details.
+See [Monitoring](/guide/monitoring) for traffic logging configuration details.
 
 ## Pre-deployment checklist
 
@@ -241,7 +258,7 @@ See [Monitoring](./monitoring) for traffic logging configuration details.
 5. Document the incident for your security audit trail
 
 :::info
-Manage all tokens in the [Web UI](./webui) under **Tokens**. The **Tokens** page lists all active (non-revoked, non-expired) tokens with their scope and environment restrictions.
+Manage all tokens in the [Web UI](/guide/webui) under **Tokens**. The **Tokens** page lists all active (non-revoked, non-expired) tokens with their scope and environment restrictions.
 :::
 
 :::warning
@@ -250,7 +267,7 @@ Token revocation is permanent. A revoked token cannot be reactivated. Create a n
 
 ## Next steps
 
-- [Rate Limiting](./rate-limiting)
-- [Environments, authentication](./environments#per-environment-authentication)
-- [Monitoring](./monitoring)
-- [Deployment](./deployment)
+- [Rate Limiting](/guide/rate-limiting)
+- [Environments, authentication](/guide/environments#per-environment-authentication)
+- [Monitoring](/guide/monitoring)
+- [Deployment](/guide/deployment)

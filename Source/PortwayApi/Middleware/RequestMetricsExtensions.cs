@@ -10,6 +10,7 @@ public static class RequestMetricsExtensions
     {
         var metricsService = app.Services.GetRequiredService<MetricsService>();
         var portwayMetrics = app.Services.GetRequiredService<PortwayMetrics>();
+        var scrapePath     = app.Services.GetRequiredService<TelemetryOptions>().ActiveMetricsPath;
 
         app.Use(async (context, next) =>
         {
@@ -19,6 +20,7 @@ public static class RequestMetricsExtensions
 
             var path = context.Request.Path;
             if (path.StartsWithSegments("/health") || path.StartsWithSegments("/scalar")) return;
+            if (scrapePath is not null && path.StartsWithSegments(scrapePath)) return;
             string source, endpoint;
             if (path.StartsWithSegments("/ui"))
             {
@@ -30,7 +32,7 @@ public static class RequestMetricsExtensions
                 endpoint = ParseEndpointName(path.Value);
             }
             metricsService.Record(context.Response.StatusCode, context.Request.Method, source, endpoint);
-            portwayMetrics.RequestCompleted(context.Request.Method, context.Response.StatusCode, source, duration);
+            portwayMetrics.RequestCompleted(context.Request.Method, context.Response.StatusCode, source, endpoint, duration);
         });
 
         return app;

@@ -1,5 +1,6 @@
 {
-  "ConnectionString": "PWENC:hf6Vd7mZj7BSSZDy1pRWOUaj0lQa5CpN52HTwg8VQTbSYDLAbaDmbIhs0O7pQ3lxSvAzSDBbHPHFAjBtSS66Vg1JRo6zzKAbtM4EFztvdt0+pDkATF25GskaVVlVtgdw1cjgwaAn5tu67fRr5Vh4pJAueAnTKHf09dSy4pQO3yhSvZdp3VqREGFr+rZ2KCrQwc8j6sn+3tqVlxImc5VgdAukWA5oD/0CiLRal8+E4pO/kLBg7SUmQzA4i7H5PTnLUpCbe2hey++/ADqi6N7cn15GFuGIJ3yct2Y0DWv2r8VfGlIZ6p8yIW018N7YisTPmK+tMinisvYh6/E4tRe/jg==::v7OAoby5q009YGdev+E2iYGmkLmQkZ2F0hfHmQ5HEPUJ5tk70ksjCFYGBf8WLy+T",
+  "ConnectionString": "Data Source=environments/WMS/demo.db;",
   "ServerName": "localhost",
-  "Headers": {}
+  "Headers": {},
+  "Encrypt": false
 }

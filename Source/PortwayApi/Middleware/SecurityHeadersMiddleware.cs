@@ -148,8 +148,7 @@ public class SecurityHeadersMiddleware
 
     private static bool ShouldSkipSecurityHeaders(PathString path)
     {
-        return path.StartsWithSegments("/openapi-docs") ||
-               path.StartsWithSegments("/docs") ||
+        return path.StartsWithSegments("/docs") ||
                path.StartsWithSegments("/static") ||
                path.StartsWithSegments("/index.html") ||
                path.StartsWithSegments("/health/live");

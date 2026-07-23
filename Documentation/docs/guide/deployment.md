@@ -5,7 +5,7 @@ description: "Deploy Portway as an IIS website on Windows Server with HTTPS and 
 
 # Deploying
 
-This guide walks you through deploying Portway on Windows Server behind IIS, from prerequisites to a running gateway with a backup routine. If you're deploying with containers instead, [Docker Installation](docker-compose.md) covers that path.
+This guide walks you through deploying Portway on Windows Server behind IIS, from prerequisites to a running gateway with a backup routine. If you're deploying with containers instead, [Docker Installation](/guide/docker-compose) covers that path.
 
 The steps assume working knowledge of IIS and your network and data sources; the essentials are all here, though some details will depend on your existing environment.
 
@@ -146,7 +146,7 @@ Enable stdout logging in `web.config` for startup errors that do not reach the a
 - Configure IP whitelisting in IIS Manager (IP Address and Domain Restrictions)
 - Use a dedicated domain service account with minimum SQL permissions for proxy endpoints
 
-See [Security](./security) for the full security configuration reference.
+See [Security](/guide/security) for the full security configuration reference.
 
 ## Backup
 
@@ -157,11 +157,11 @@ Include these in your backup plan:
 - `environments/` for connection strings and settings
 - `endpoints/` for endpoint definitions
 
-For upgrades, see [Upgrading Portway](./upgrading).
+For upgrades, see [Upgrading Portway](/guide/upgrading).
 
 ## Next steps
 
-- [Configure Environments](./environments)
-- [Configure Endpoints](./endpoints-sql)
-- [Security](./security)
-- [Monitoring](./monitoring)
+- [Configure Environments](/guide/environments)
+- [Configure Endpoints](/guide/endpoints-sql)
+- [Security](/guide/security)
+- [Monitoring](/guide/monitoring)

@@ -9,9 +9,6 @@ permissions:
   contents: read
   packages: write
 
-env:
-  DOTNET_VERSION: '10.0'
-
 jobs:
   build:
     runs-on: ubuntu-latest

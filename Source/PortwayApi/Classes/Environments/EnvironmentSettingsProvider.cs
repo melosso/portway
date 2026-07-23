@@ -599,6 +599,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
     private EncryptionResult AutoEncryptIfNeeded(string settingsPath, EnvironmentConfig config, string envName)
     {
+        // Explicit opt-out keeps the file plaintext, for dev checkouts where encrypted files get committed
+        if (config.Encrypt == false)
+        {
+            Log.Debug("Encryption disabled for environment {Env} via Encrypt: false", envName);
+            return EncryptionResult.AlreadyEncrypted;
+        }
+
         bool needsSave = false;
         bool alreadyEncrypted = true;
 

@@ -16,8 +16,8 @@ public static class ForwardedHeadersExtensions
                             ForwardedHeaders.XForwardedProto |
                             ForwardedHeaders.XForwardedHost,
 
-            // Enforce header symmetry to prevent desync between front-end and back-end
-            RequireHeaderSymmetry = true,
+            // Off (framework default): IIS sends uneven header counts, symmetry would drop them and log warnings
+            RequireHeaderSymmetry = false,
 
             // Support deep proxy chains
             ForwardLimit = null

@@ -23,7 +23,7 @@
     .ep-name  { font-size:0.8rem; color:hsl(var(--foreground)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .ep-count { font-size:0.72rem; font-family:ui-monospace,monospace; color:hsl(var(--muted-foreground)); white-space:nowrap; }
     .ep-bar-track { grid-column:2/-1; height:4px; background:hsl(var(--muted)); border-radius:999px; overflow:hidden; }
-    .ep-bar-fill  { height:100%; background:hsl(var(--info)); border-radius:999px; transition:width .3s; }
+    .ep-bar-fill  { height:100%; width:100%; background:hsl(var(--info)); border-radius:999px; transform-origin:left; transition:transform .3s; }
   </style>
 
 <main>
@@ -135,6 +135,16 @@
         </div>
       </div>
 
+      <div class="card" style="display:flex;flex-direction:column">
+        <div class="card-header">
+          <span class="card-title">Rate Limiting</span>
+          <span class="badge badge-muted" id="rlBadge">—</span>
+        </div>
+        <div class="card-body" id="rateLimitBody" style="flex:1">
+          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        </div>
+      </div>
+
       <div class="card" style="display:flex;flex-direction:column" id="mcpCard" hidden>
         <div class="card-header">
           <span class="card-title">MCP (Model Context Protocol)</span>
@@ -218,6 +228,44 @@ async function load() {
   }
 }
 
+// Rate limiter live state
+async function loadRateLimits() {
+  const badge = document.getElementById('rlBadge');
+  const el = document.getElementById('rateLimitBody');
+  try {
+    const d = await fetch('/ui/api/ratelimits').then(r => r.json());
+
+    const blocks = (d.blocked_ips?.length ?? 0) + (d.blocked_tokens?.length ?? 0);
+    badge.textContent = !d.enabled ? 'Disabled' : blocks ? `${blocks} blocked` : 'Quiet';
+    badge.className = `badge ${!d.enabled ? 'badge-muted' : blocks ? 'badge-warning' : 'badge-success'}`;
+
+    if (!d.enabled) {
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">Rate limiting is disabled</span>';
+      return;
+    }
+
+    const blockRows = [
+      ...(d.blocked_ips ?? []).map(b => ({ id: b.ip, secs: b.remaining_seconds })),
+      ...(d.blocked_tokens ?? []).map(b => ({ id: b.token, secs: b.remaining_seconds }))
+    ].slice(0, 5).map(b => `
+      <span class="kv-key" style="font-family:ui-monospace,monospace;font-size:0.72rem">${esc(b.id)}</span>
+      <span class="kv-val" style="color:hsl(var(--warning))">${b.secs}s left</span>`).join('');
+
+    el.innerHTML = `
+      <div class="kv-grid">
+        <span class="kv-key">Store</span><span class="kv-val">${esc(d.store ?? 'Memory')}</span>
+        <span class="kv-key">IP limit</span><span class="kv-val">${d.ip_limit}/${d.ip_window_seconds}s</span>
+        <span class="kv-key">Token limit</span><span class="kv-val">${d.token_limit}/${d.token_window_seconds}s</span>
+        ${d.bucket_count != null ? `<span class="kv-key">Active buckets</span><span class="kv-val">${d.bucket_count}</span>` : ''}
+        ${blockRows ? `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Blocked</span>
+          <span class="kv-val" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem"></span>${blockRows}` : ''}
+      </div>`;
+  } catch(e) {
+    badge.textContent = '—';
+    el.innerHTML = '<span class="muted" style="font-size:0.8rem">No data</span>';
+  }
+}
+
 // SSE
 let _sseAbort = null, _sseDelay = 1000;
 
@@ -272,6 +320,8 @@ function applyHealth(d) {
 }
 
 load();
+loadRateLimits();
+setInterval(loadRateLimits, 30000);
 connectSSE();
 SetupGuide.init('setupGuide');
 
@@ -356,7 +406,7 @@ function renderTopEndpoints(d) {
       <span class="ep-rank">${i+1}</span>
       <span class="ep-name" title="${esc(ep.name)}">${esc(ep.name)}</span>
       <span class="ep-count">${fmtN(ep.count)} req</span>
-      <div class="ep-bar-track"><div class="ep-bar-fill" style="width:${Math.round(ep.count/max*100)}%"></div></div>
+      <div class="ep-bar-track"><div class="ep-bar-fill" style="transform:scaleX(${(ep.count/max).toFixed(3)})"></div></div>
     </div>`).join('')}
   </div>`;
 }

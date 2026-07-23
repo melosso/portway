@@ -4,15 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MCP · Portway</title>
-  <link href="/css/inter.css" rel="stylesheet">
-  <link href="/css/site.css" rel="stylesheet" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico">
-  <script src="/js/components/toast.js"></script>
-  <script src="/js/components/promobar.js"></script>
-  <script src="/js/components/dialog.js"></script>
-  <script src="/js/components/alert-dialog.js"></script>
-  <script src="/js/sidebar.js"></script>
-  <script src="/js/shared.js"></script>
+  <link href="css/inter.css" rel="stylesheet">
+  <link href="css/site.css" rel="stylesheet" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/components/toast.js"></script>
+  <script src="js/components/promobar.js"></script>
+  <script src="js/components/dialog.js"></script>
+  <script src="js/components/alert-dialog.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/shared.js"></script>
 </head>
 <body>
 
@@ -783,12 +783,6 @@ document.addEventListener('click', e => {
 // Shown when Chat is enabled but no provider/key is configured in the DB.
 // Two-step: (1) choose provider → (2) enter model + API key + optional token.
 
-const PROVIDERS = [
-  { id: 'mistral',   label: 'Mistral AI',    model: 'mistral-medium-latest',  hint: 'mistral-large-latest / mistral-medium-latest' },
-  { id: 'anthropic', label: 'Anthropic',     model: 'claude-sonnet-4-6',      hint: 'claude-sonnet-4-6 / claude-opus-4-6' },
-  { id: 'openai',    label: 'OpenAI',        model: 'gpt-4o',                 hint: 'gpt-4o / gpt-4o-mini / o3' },
-  { id: 'gemini',    label: 'Google Gemini', model: 'gemini-2.5-flash',       hint: 'gemini-2.5-pro / gemini-2.5-flash' },
-];
 
 let _wizardStep     = 1;
 let _wizardProvider = null;

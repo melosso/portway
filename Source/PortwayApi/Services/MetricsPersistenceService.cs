@@ -1,5 +1,6 @@
 namespace PortwayApi.Services;
 
+using Dapper;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -9,6 +10,9 @@ public sealed class MetricsPersistenceService : BackgroundService
 {
     private readonly MetricsService _metrics;
     private readonly string _connectionString;
+
+    // Dapper row shape for hydration, SQLite INTEGER surfaces as Int64 so StatusCode is long
+    private sealed record MetricRow(string Timestamp, long StatusCode, string Method, string? Source, string? Endpoint);
 
     private const int BatchSize = 50;
     private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(2);
@@ -47,8 +51,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         using var conn = new SqliteConnection(_connectionString);
         conn.Open();
 
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = """
+        conn.Execute("""
             CREATE TABLE IF NOT EXISTS RequestMetrics (
                 Id         INTEGER PRIMARY KEY AUTOINCREMENT,
                 Timestamp  TEXT    NOT NULL,
@@ -58,18 +61,17 @@ public sealed class MetricsPersistenceService : BackgroundService
                 Endpoint   TEXT    NOT NULL DEFAULT ''
             );
             CREATE INDEX IF NOT EXISTS idx_rm_ts ON RequestMetrics(Timestamp);
-            """;
-        cmd.ExecuteNonQuery();
+            """);
 
         // Migration: add Source/Endpoint columns to any pre-existing table
-        foreach (var col in new[] { "Source TEXT NOT NULL DEFAULT 'api'", "Endpoint TEXT NOT NULL DEFAULT ''" })
+        foreach (var alterSql in new[]
         {
-            try
-            {
-                cmd.CommandText = $"ALTER TABLE RequestMetrics ADD COLUMN {col}";
-                cmd.ExecuteNonQuery();
-            }
-            catch { /* column already exists — safe to ignore */ }
+            "ALTER TABLE RequestMetrics ADD COLUMN Source TEXT NOT NULL DEFAULT 'api'",
+            "ALTER TABLE RequestMetrics ADD COLUMN Endpoint TEXT NOT NULL DEFAULT ''",
+        })
+        {
+            try { conn.Execute(alterSql); }
+            catch { /* column already exists, safe to ignore */ }
         }
     }
 
@@ -82,20 +84,15 @@ public sealed class MetricsPersistenceService : BackgroundService
         await using var conn = new SqliteConnection(_connectionString);
         await conn.OpenAsync(ct);
 
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT Timestamp, StatusCode, Method, Source, Endpoint FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp";
-        cmd.Parameters.AddWithValue("@cutoff", cutoff);
+        var rows = await conn.QueryAsync<MetricRow>(new CommandDefinition(
+            "SELECT Timestamp, StatusCode, Method, Source, Endpoint FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp",
+            new { cutoff }, cancellationToken: ct));
 
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
+        foreach (var row in rows)
         {
-            if (DateTime.TryParse(reader.GetString(0), null, System.Globalization.DateTimeStyles.RoundtripKind, out var ts))
+            if (DateTime.TryParse(row.Timestamp, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ts))
                 entries.Add(new MetricsService.RequestEntry(
-                    ts,
-                    reader.GetInt32(1),
-                    reader.GetString(2),
-                    reader.IsDBNull(3) ? "api" : reader.GetString(3),
-                    reader.IsDBNull(4) ? ""    : reader.GetString(4)));
+                    ts, (int)row.StatusCode, row.Method, row.Source ?? "api", row.Endpoint ?? ""));
         }
 
         if (entries.Count > 0)
@@ -143,23 +140,18 @@ public sealed class MetricsPersistenceService : BackgroundService
             await conn.OpenAsync(ct);
             await using var tx = conn.BeginTransaction();
 
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "INSERT INTO RequestMetrics (Timestamp, StatusCode, Method, Source, Endpoint) VALUES (@ts, @sc, @m, @src, @ep)";
-            var pTs  = cmd.CreateParameter(); pTs.ParameterName  = "@ts";  cmd.Parameters.Add(pTs);
-            var pSc  = cmd.CreateParameter(); pSc.ParameterName  = "@sc";  cmd.Parameters.Add(pSc);
-            var pM   = cmd.CreateParameter(); pM.ParameterName   = "@m";   cmd.Parameters.Add(pM);
-            var pSrc = cmd.CreateParameter(); pSrc.ParameterName = "@src"; cmd.Parameters.Add(pSrc);
-            var pEp  = cmd.CreateParameter(); pEp.ParameterName  = "@ep";  cmd.Parameters.Add(pEp);
-
-            foreach (var e in batch)
-            {
-                pTs.Value  = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ");
-                pSc.Value  = e.StatusCode;
-                pM.Value   = e.Method;
-                pSrc.Value = e.Source;
-                pEp.Value  = e.Endpoint;
-                await cmd.ExecuteNonQueryAsync(ct);
-            }
+            // Dapper executes the insert once per element of the sequence
+            await conn.ExecuteAsync(new CommandDefinition(
+                "INSERT INTO RequestMetrics (Timestamp, StatusCode, Method, Source, Endpoint) VALUES (@ts, @sc, @m, @src, @ep)",
+                batch.Select(e => new
+                {
+                    ts  = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    sc  = e.StatusCode,
+                    m   = e.Method,
+                    src = e.Source,
+                    ep  = e.Endpoint
+                }),
+                transaction: tx, cancellationToken: ct));
 
             await tx.CommitAsync(ct);
         }
@@ -176,10 +168,8 @@ public sealed class MetricsPersistenceService : BackgroundService
             var cutoff = DateTime.UtcNow.AddDays(-31).ToString("yyyy-MM-ddTHH:mm:ssZ");
             await using var conn = new SqliteConnection(_connectionString);
             await conn.OpenAsync(ct);
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "DELETE FROM RequestMetrics WHERE Timestamp < @cutoff";
-            cmd.Parameters.AddWithValue("@cutoff", cutoff);
-            var deleted = await cmd.ExecuteNonQueryAsync(ct);
+            var deleted = await conn.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM RequestMetrics WHERE Timestamp < @cutoff", new { cutoff }, cancellationToken: ct));
             if (deleted > 0)
                 Log.Debug("MetricsPersistenceService: pruned {Count} old metric rows", deleted);
         }

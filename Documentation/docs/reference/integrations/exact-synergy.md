@@ -7,24 +7,25 @@ description: "While Synergy Enterprise ships a native REST API, you may not want
 
 While Synergy Enterprise ships a native REST API, you may not want to expose all of it. Portway shines when you need only specific database sections available, or when Synergy sits behind a firewall on your internal network. Proxy endpoints give you that selective, controlled access.
 
-> **Note:** On-premise Synergy uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Synergy permissions gives Portway the access it needs.
+::: Note
+On-premise Synergy uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Synergy permissions gives Portway the access it needs.
+:::
 
 ## Overview
 
-Portway proxies requests to the internal Synergy REST API, useful when Synergy is behind a firewall or you need to expose only a subset of its API surface through a controlled gateway.
+Portway proxies requests to the internal Synergy REST API. This is useful when Synergy is behind a firewall, or when you want to expose only a subset of its API surface through a controlled gateway.
 
 ## Configuration Requirements
 
 ### Environment Headers
 
-Synergy Enterprise uses standard HTTP authentication and doesn't require special environment headers like Globe+. Authentication is typically handled through **Windows Authentication**, since all environments are domain-integrated. You should have this set-up as mentioned in the installation instructions of Exact Synergy Enterprise. 
+Synergy Enterprise uses standard HTTP authentication. Unlike Globe+, it needs no special environment headers. Authentication typically runs through **Windows Authentication**, since Synergy environments are domain-integrated. The installation instructions of Exact Synergy Enterprise cover that setup.
 
 ### Environment Settings
 
 Each environment needs to be configured in its settings:
 
-```json
-// environments/Synergy/settings.json
+```json [environments/Synergy/settings.json]
 {
   "ServerName": "YOUR-SERVER",
   "ConnectionString": "Server=YOUR-SERVER;Database=Synergy;Trusted_Connection=True;",
@@ -142,6 +143,8 @@ Portway automatically rewrites Synergy URLs in responses to maintain proxy routi
 This ensures that related links in responses continue to work through the proxy.
 
 ## Troubleshooting
+
+Most Synergy issues fall into one of these categories:
 
 | Symptom | Check |
 |---------|-------|

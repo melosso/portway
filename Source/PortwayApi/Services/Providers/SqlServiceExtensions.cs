@@ -1,5 +1,5 @@
 using PortwayApi.Classes;
-using PortwayApi.Classes.Providers;
+using PortwayApi.Services.Providers;
 using PortwayApi.Interfaces;
 using PortwayApi.Services.Files;
 

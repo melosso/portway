@@ -154,8 +154,8 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | Feature | SQL Server | PostgreSQL | MySQL | SQLite |
 |---|:---:|:---:|:---:|:---:|
 | GET with OData (`$filter`, `$orderby`, `$select`, `$top`, `$skip`) | ✅ | ✅ | ✅ | ✅ |
-| POST / PUT / PATCH via stored procedure | ✅ | ✅ | ✅ | ⚠️ |
-| DELETE | ✅ | ✅ | ✅ | ✅ |
+| POST / PUT / PATCH / DELETE via stored procedure | ✅ | ✅ | ✅ | ❌ |
+| POST / PUT / PATCH / DELETE via table write mode | ✅ | ✅ | ✅ | ✅ |
 | Table-valued functions (TVF) | ✅ | ✅ | ❌ | ❌ |
 | Schema namespacing (`dbo.TableName`) | ✅ | ✅ | ✅ | ❌ |
 | Column metadata & OpenAPI generation | ✅ | ✅ | ✅ | ✅ |
@@ -163,12 +163,18 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | Health check | ✅ | ✅ | ✅ | ✅ |
 
 :::warning
-**SQLite, write operations:** SQLite does not support stored procedures. Endpoints that define a `Procedure` field and point to a SQLite environment return `501 Not Implemented`. GET-only endpoints are unaffected.
+**SQLite, write operations:** SQLite does not support stored procedures, so endpoints that define a `Procedure` field cannot write against a SQLite environment. Setting `"WriteMode": "Table"` on the endpoint enables full CRUD instead; see the [SQL endpoints guide](/guide/endpoints-sql) for the guardrails that apply.
 :::
 
 :::info
 **MySQL, table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
 :::
+
+::: note
+On PostgreSQL, write routines are functions rather than procedures, since only functions can return the created row. Portway invokes them with named arguments, so it helps to name your function parameters after the lowercased payload fields (for example `method`, `id`, `name`). On SQL Server and MySQL a regular procedure with a trailing `SELECT` of the affected row works as before.
+:::
+
+The provider combination Portway is continuously tested against: SQL Server 2025, PostgreSQL 18 and MySQL 8.0. Other versions of the same engines generally work fine; these are simply the ones the automated parity suite runs on.
 
 ---
 
@@ -181,7 +187,7 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | MySQL | Schema maps to the database in the connection string | _(from connection string)_ |
 | SQLite | No schema support: prefix is omitted automatically | - |
 
-When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway defaults to `dbo`. For SQLite environments this prefix is stripped at query time so no manual override is needed.
+When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway uses the provider's own default from the table above. A configured `dbo` on a non SQL Server environment is treated as the template default and mapped the same way, so entity files copied from SQL Server examples work unchanged on PostgreSQL and MySQL. Any other explicit schema is used exactly as written.
 
 ---
 

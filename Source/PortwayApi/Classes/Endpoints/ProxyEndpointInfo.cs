@@ -7,4 +7,7 @@ public sealed record ProxyEndpointInfo(
     bool IsPrivate,
     bool IsMcpExposed,
     string Type,
-    List<string>? AllowedEnvironments);
+    List<string>? AllowedEnvironments,
+    List<string>? FallbackUrls = null,
+    ProxyRetryOptions? Retry = null,
+    ProxyResponseTransforms? ResponseTransforms = null);

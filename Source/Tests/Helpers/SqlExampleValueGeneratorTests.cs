@@ -1,4 +1,5 @@
 using PortwayApi.Classes;
+using PortwayApi.Services.Database;
 using PortwayApi.Classes.OpenApi;
 using Xunit;
 

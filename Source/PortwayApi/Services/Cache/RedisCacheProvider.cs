@@ -6,8 +6,6 @@ using StackExchange.Redis;
 using Serilog;
 using System.Text;
 using System.Threading;
-using Polly;
-using Polly.Retry;
 using System.Net.Sockets;
 
 namespace PortwayApi.Services.Caching;
@@ -20,7 +18,6 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     private readonly ConnectionMultiplexer? _redis;
     private readonly IDatabase? _db;
     private readonly string _instanceName;
-    private readonly AsyncRetryPolicy _retryPolicy;
     private bool _isConnected;
     private readonly ICacheProvider _fallbackProvider;
     private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
@@ -35,21 +32,6 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         _redisOptions = _options.Redis;
         _instanceName = _redisOptions.InstanceName;
         _fallbackProvider = fallbackProvider;
-
-        // Create retry policy for Redis operations
-        _retryPolicy = Policy
-            .Handle<RedisConnectionException>()
-            .Or<SocketException>()
-            .Or<RedisTimeoutException>()
-            .WaitAndRetryAsync(
-                _redisOptions.MaxRetryAttempts,
-                retryAttempt => TimeSpan.FromMilliseconds(_redisOptions.RetryDelayMs * Math.Pow(2, retryAttempt - 1)),
-                (ex, timeSpan, retryCount, context) =>
-                {
-                    Log.Warning(ex, "Redis operation failed, retrying ({RetryCount}/{MaxRetries}) after {RetryDelay}ms", 
-                        retryCount, _redisOptions.MaxRetryAttempts, timeSpan.TotalMilliseconds);
-                }
-            );
 
         try
         {
@@ -114,7 +96,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             }
 
             // Use retry policy for Redis operations
-            return await _retryPolicy.ExecuteAsync(async () =>
+            return await ExecuteWithRetryAsync(async () =>
             {
                 RedisValue value = await _db!.StringGetAsync(redisKey);
                 
@@ -180,7 +162,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             string serializedValue = JsonSerializer.Serialize(value);
             
             // Use retry policy for Redis operations
-            await _retryPolicy.ExecuteAsync(async () =>
+            await ExecuteWithRetryAsync(async () =>
             {
                 bool success = await _db!.StringSetAsync(
                     redisKey,
@@ -236,7 +218,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             }
 
             // Use retry policy for Redis operations
-            await _retryPolicy.ExecuteAsync(async () =>
+            await ExecuteWithRetryAsync(async () =>
             {
                 bool success = await _db!.KeyDeleteAsync(redisKey);
                 
@@ -288,7 +270,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             }
 
             // Use retry policy for Redis operations
-            return await _retryPolicy.ExecuteAsync(async () =>
+            return await ExecuteWithRetryAsync(async () =>
             {
                 return await _db!.KeyExistsAsync(redisKey);
             });
@@ -331,7 +313,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             }
 
             // Use retry policy for Redis operations
-            return await _retryPolicy.ExecuteAsync(async () =>
+            return await ExecuteWithRetryAsync(async () =>
             {
                 // Check if key exists
                 if (await _db!.KeyExistsAsync(redisKey))
@@ -396,7 +378,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // Use retry policy for Redis operations
-                bool acquired = await _retryPolicy.ExecuteAsync(async () =>
+                bool acquired = await ExecuteWithRetryAsync(async () =>
                 {
                     return await _db!.StringSetAsync(
                         redisLockKey,
@@ -439,6 +421,36 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>Runs a Redis operation with exponential backoff on transient failures</summary>
+    private async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (attempt < _redisOptions.MaxRetryAttempts
+                && ex is RedisConnectionException or SocketException or RedisTimeoutException)
+            {
+                var delay = TimeSpan.FromMilliseconds(_redisOptions.RetryDelayMs * Math.Pow(2, attempt));
+                Log.Warning(ex, "Redis operation failed, retrying ({RetryCount}/{MaxRetries}) after {RetryDelay}ms",
+                    attempt + 1, _redisOptions.MaxRetryAttempts, delay.TotalMilliseconds);
+                await Task.Delay(delay);
+            }
+        }
+    }
+
+    /// <summary>Runs a Redis operation without a result with exponential backoff</summary>
+    private Task ExecuteWithRetryAsync(Func<Task> operation)
+    {
+        return ExecuteWithRetryAsync(async () =>
+        {
+            await operation();
+            return true;
+        });
     }
 
     /// <summary>Formats a key with the Redis instance prefix</summary>

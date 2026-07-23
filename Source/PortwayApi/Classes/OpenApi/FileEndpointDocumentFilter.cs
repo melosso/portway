@@ -46,13 +46,16 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Get effective environments for this endpoint (endpoint-specific or global fallback)
                 var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
 
-                // Use "Files" as the main tag for all file endpoints (file endpoints don't use namespaces)
-                string mainTag = "Files";
+                // Group namespaced file endpoints under their namespace; flat ones stay under "Files"
+                string mainTag = endpoint.HasNamespace
+                    ? (endpoint.NamespaceDisplayName ?? endpoint.EffectiveNamespace!)
+                    : "Files";
 
                 if (!documentTags.ContainsKey(mainTag))
                 {
-                    // Use consistent description for Files tag
-                    documentTags[mainTag] = "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.";
+                    documentTags[mainTag] = endpoint.HasNamespace
+                        ? $"**{mainTag}**\n\nFile storage endpoints in the {mainTag} namespace."
+                        : "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.";
                 }
 
                 // Add file upload operation
@@ -227,7 +230,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         operation.RequestBody = new OpenApiRequestBody
         {
             Required = true,
-            Content = new Dictionary<string, OpenApiMediaType>
+            Content = new Dictionary<string, IOpenApiMediaType>
             {
                 ["multipart/form-data"] = new OpenApiMediaType
                 {
@@ -244,6 +247,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                             }
                         },
                         Required = new HashSet<string> { "file" }
+                    },
+                    // Document how the file part is encoded (OpenAPI 3.2 media-type encoding)
+                    Encoding = new Dictionary<string, OpenApiEncoding>
+                    {
+                        ["file"] = new OpenApiEncoding { ContentType = "application/octet-stream" }
                     }
                 }
             }
@@ -263,7 +271,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema { Type = JsonSchemaType.String }
                     }
                 },
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -291,7 +299,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -318,6 +326,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "upload");
 
         // Add the upload operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 409, 413, 415, 500);
+
         document.Paths[path].Operations![HttpMethod.Post] = operation;
     }
 
@@ -370,7 +383,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["200"] = new OpenApiResponse
             {
                 Description = "Successful response",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/octet-stream"] = new OpenApiMediaType
                     {
@@ -388,7 +401,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -415,6 +428,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "download");
 
         // Add the download operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 416, 500);
+
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
@@ -467,7 +485,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["200"] = new OpenApiResponse
             {
                 Description = "Successful response",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -490,7 +508,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -520,6 +538,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "delete");
 
         // Add the delete operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+
         document.Paths[path].Operations![HttpMethod.Delete] = operation;
     }
 
@@ -590,7 +613,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Boolean }
                     }
                 },
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -630,7 +653,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             ["500"] = new OpenApiResponse
             {
                 Description = "Internal Server Error",
-                Content = new Dictionary<string, OpenApiMediaType>
+                Content = new Dictionary<string, IOpenApiMediaType>
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
@@ -660,6 +683,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "list");
 
         // Add the list operation
+        // Standardize error responses onto the shared schema (validated matrix)
+        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
+            operation.Responses.Remove(__c);
+        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
 
@@ -677,7 +705,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             if (operation.Responses?["200"]?.Content?.ContainsKey("application/json") == true)
             {
-                operation.Responses["200"].Content!["application/json"].Examples = new Dictionary<string, IOpenApiExample>
+                ((OpenApiMediaType)operation.Responses["200"].Content!["application/json"]).Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["success"] = new OpenApiExample
                     {
@@ -696,7 +724,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         {
             if (operation.Responses?["200"]?.Content?.ContainsKey("application/json") == true)
             {
-                operation.Responses["200"].Content!["application/json"].Examples = new Dictionary<string, IOpenApiExample>
+                ((OpenApiMediaType)operation.Responses["200"].Content!["application/json"]).Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["fileList"] = new OpenApiExample
                     {

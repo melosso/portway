@@ -8,7 +8,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using PortwayApi.Classes.Providers;
 using PortwayApi.Services.Providers;
 using Serilog;
 
@@ -30,8 +29,10 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         _poolingOptions = poolingOptions;
         _providerFactory = providerFactory;
 
-        // Clear existing SQL Server pools on startup for backward compat
+        // Start from clean driver pools regardless of which providers this deployment uses
         SqlConnection.ClearAllPools();
+        Npgsql.NpgsqlConnection.ClearAllPools();
+        MySqlConnector.MySqlConnection.ClearAllPools();
 
         Log.Information("Database Connection Pool initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, AppName: '{AppName}'",
             _poolingOptions.MinPoolSize, _poolingOptions.MaxPoolSize, _poolingOptions.ConnectionTimeout, _poolingOptions.ApplicationName);

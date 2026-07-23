@@ -7,6 +7,8 @@ description: "Configuration reference for OpenAPI schema generation and the Scal
 
 Your endpoint definitions do double duty: besides routing requests, they feed the OpenAPI documentation that Scalar serves at `/docs`. SQL endpoints even get schema discovery for free, with column names and types read from the database at startup. Other endpoint types describe themselves through the `Documentation` block in `entity.json`. This page covers the settings you can adjust.
 
+Since `v2.0.0`, Portway emits an **OpenAPI 3.2** document. This lets the reference describe a few things it could not before: QUERY endpoints appear as native `query` operations (with their JSON body documented), slash-delimited namespaces render as a parent/child tag tree, and endpoints you mark `Deprecated` are shown as such. You do not need to configure any of this; it simply follows from your endpoint definitions.
+
 ## Global OpenAPI Configuration
 
 Configure the title, contact details, and Scalar UI behaviour in `appsettings.json`:
@@ -87,6 +89,14 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
       "POST": "Add new products to the catalog",
       "PUT": "Update existing product information",
       "DELETE": "Remove products from catalog"
+    },
+    "Examples": {
+      "GET": {
+        "count": 1,
+        "value": [
+          { "ItemCode": "ITEM-001", "Description": "Widget", "Price": 9.99 }
+        ]
+      }
     }
   }
 }
@@ -98,6 +108,10 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 |----------|------|----------|-------------|
 | `TagDescription` | string | Yes | Main description for the endpoint group |
 | `MethodDescriptions` | object | No | Specific descriptions for each HTTP method |
+| `MethodDocumentation` | object | No | Longer per-method descriptions (Markdown supported) |
+| `Examples` | object | No | A response example per HTTP method, shown verbatim in the reference instead of generated sample data |
+
+When you provide an example under `Examples`, Portway shows exactly that payload for the method's successful response. It is a friendly way to make sure the reference reflects the shape your integration actually returns, rather than a generated approximation. If you leave it out, Portway falls back to sample data as before.
 
 ## Schema Discovery
 

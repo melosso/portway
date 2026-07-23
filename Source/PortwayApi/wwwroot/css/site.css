@@ -282,7 +282,7 @@ body.sidebar-expanding main {
     font-size: 0.7rem;
     color: hsl(var(--muted-foreground));
     padding: 0.25rem 0.75rem;
-    font-family: ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
 }
 
 main {
@@ -317,7 +317,6 @@ h1 {
 .page-subtitle {
     font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
-    font-family: ui-monospace, monospace;
 }
 
 .header-actions {
@@ -379,7 +378,6 @@ h1 {
     border-radius: 4px;
     font-size: 0.7rem;
     font-weight: 600;
-    font-family: ui-monospace, monospace;
     white-space: nowrap;
 }
 
@@ -722,8 +720,8 @@ body:has(.drawer-backdrop.open) main {
 }
 
 .kv-val {
-    font-family: ui-monospace, monospace;
     font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
     word-break: break-all;
 }
 
@@ -764,8 +762,8 @@ body:has(.drawer-backdrop.open) main {
 }
 
 .settings-item-value {
-    font-family: ui-monospace, monospace;
     font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
     color: hsl(var(--muted-foreground));
     text-align: right;
     flex-shrink: 0;
@@ -796,7 +794,6 @@ body:has(.drawer-backdrop.open) main {
     font-weight: 600;
     cursor: pointer;
     border: 1px solid transparent;
-    font-family: ui-monospace, monospace;
     transition: background 0.15s;
     background: transparent;
     color: hsl(var(--muted-foreground));
@@ -871,7 +868,7 @@ input[type="checkbox"], input[type="radio"] { accent-color: hsl(var(--primary));
     font-weight: 500;
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
-    font-family: ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Health status dot */
@@ -1294,7 +1291,6 @@ input::placeholder { color: hsl(var(--muted-foreground)); }
     font-weight: 500;
     padding: 0.15rem 0.25rem 0.15rem 0.5rem;
     border-radius: 4px;
-    font-family: ui-monospace, monospace;
     white-space: nowrap;
 }
 
@@ -1345,7 +1341,6 @@ input::placeholder { color: hsl(var(--muted-foreground)); }
     padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
     cursor: pointer;
-    font-family: ui-monospace, monospace;
     border-bottom: 1px solid hsl(var(--border));
 }
 
@@ -1717,7 +1712,6 @@ input::placeholder { color: hsl(var(--muted-foreground)); }
     font-size: 0.75rem;
     color: hsl(var(--destructive));
     margin-top: 0.375rem;
-    font-family: ui-monospace, monospace;
     min-height: 1.1rem;
 }
 
@@ -2031,7 +2025,6 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
     align-items: center;
     padding: 0.075rem 0.35rem;
     font-size: 0.65rem;
-    font-family: monospace;
     font-weight: 600;
     letter-spacing: 0.03em;
     border-radius: calc(var(--radius) - 2px);
@@ -2134,6 +2127,7 @@ th.sortable.sort-desc .sort-icon { opacity: 1; }
 .method-btn.active.m-put    { background: hsl(43 96% 56% / 0.15);  color: hsl(43 85% 45%);  border-color: hsl(43 85% 45%); }
 .method-btn.active.m-patch  { background: hsl(43 96% 56% / 0.15);  color: hsl(43 85% 45%);  border-color: hsl(43 85% 45%); }
 .method-btn.active.m-delete { background: hsl(0 84% 60% / 0.15);   color: hsl(0 84% 55%);   border-color: hsl(0 84% 55%); }
+.method-btn.active.m-query  { background: hsl(190 90% 45% / 0.15); color: hsl(190 85% 38%); border-color: hsl(190 85% 38%); }
 
 /* Key-value editor (headers etc.) */
 

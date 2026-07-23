@@ -1,5 +1,6 @@
 namespace PortwayApi.Services.Mcp;
 
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -32,22 +33,17 @@ public class McpConfigDbContext : DbContext
 
     private bool CheckTableExists(string tableName)
     {
-        using var cmd = Database.GetDbConnection().CreateCommand();
-        cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name";
-        var p = cmd.CreateParameter();
-        p.ParameterName = "@name";
-        p.Value         = tableName;
-        cmd.Parameters.Add(p);
+        var connection = Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            connection.Open();
 
-        if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
-            Database.GetDbConnection().Open();
-
-        return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        return connection.ExecuteScalar<int>(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name", new { name = tableName }) > 0;
     }
 
     private void CreateMcpConfigTable()
     {
-        Database.ExecuteSqlRaw("""
+        Database.GetDbConnection().Execute("""
             CREATE TABLE McpConfig (
                 Key         TEXT PRIMARY KEY NOT NULL,
                 Value       TEXT NOT NULL DEFAULT '',

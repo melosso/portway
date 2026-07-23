@@ -182,7 +182,8 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
     "IpLimit": 100,
     "IpWindow": 60,
     "TokenLimit": 100,
-    "TokenWindow": 60
+    "TokenWindow": 60,
+    "Store": "Memory"
   }
 }
 ```
@@ -196,13 +197,17 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 | `IpWindow` | integer | `60` | Time window in seconds |
 | `TokenLimit` | integer | `100` | Requests per token |
 | `TokenWindow` | integer | `60` | Time window in seconds |
+| `Store` | string | `Memory` | Bucket storage backend, `Memory` or `Redis` |
+| `RedisConnectionString` | string | none | Redis connection for the `Redis` store, reuses the caching connection when empty |
 
 ### Rate Limiting Behavior
 
 - IP-based limiting applies to all requests
-- Token-based limiting applies per authentication token
+- Token-based limiting applies per authentication token, and individual tokens can carry their own limit that overrides `TokenLimit`
 - Exceeding limits results in 429 Too Many Requests
-- Limits reset after the time window expires
+- Buckets refill continuously over the time window
+
+You can find a full walkthrough, including per-token limits and the Redis store, in the [rate limiting guide](/guide/rate-limiting).
 
 ## Forwarded Headers
 
@@ -232,7 +237,9 @@ Portway only honors `X-Forwarded-For` when the request arrives from an address y
 
 Leaving both lists empty is perfectly valid, and it is the default. In that case `X-Forwarded-For` is ignored entirely and the connecting address is used as-is. That is the safe choice when nothing sits in front of Portway, though behind a proxy it means per-IP rate limiting and the network-based Web UI gate will see the proxy rather than the real caller. If you rely on either of those, registering your proxy here is recommended.
 
-> **Note:** If you front Portway with Cloudflare, its client IP is recovered separately from the `CF-Connecting-IP` header when the request genuinely originates from a Cloudflare address, so you do not need to list Cloudflare ranges here.
+::: Note
+If you front Portway with Cloudflare, its client IP is recovered separately from the `CF-Connecting-IP` header when the request genuinely originates from a Cloudflare address, so you do not need to list Cloudflare ranges here.
+:::
 
 The Settings posture panel in the Web UI reflects whether any trusted proxies are configured, which is a quick way to confirm the setup took effect.
 
@@ -433,25 +440,31 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 
 ## Telemetry
 
-Controls OpenTelemetry export over OTLP (gRPC). Disabled by default; no collector connection is attempted unless `Enabled` is `true`.
+Controls how request traces and metrics leave the gateway. Telemetry is off by default; selecting a provider activates it.
 
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `Enabled` | No | boolean | Activates OTLP export. Defaults to `false` |
-| `OtlpEndpoint` | No | string | gRPC endpoint of your OTLP collector. Defaults to `http://localhost:4317` |
-| `ServiceName` | No | string | Service name reported to the collector. Defaults to `Portway.Api` |
+| `Provider` | No | string | `"None"`, `"Otlp"`, or `"Prometheus"`. Defaults to `"None"` |
+| `ServiceName` | No | string | Service name reported to the backend. Defaults to `Portway.Api` |
 | `ResourceAttributes` | No | string | Comma-separated `key=value` pairs attached as resource attributes |
+| `Otlp:Endpoint` | No | string | gRPC endpoint of your OTLP collector. Defaults to `http://localhost:4317` |
+| `Prometheus:Path` | No | string | Route the scrape endpoint is served on. Defaults to `/metrics` |
 
 ```json
 "Telemetry": {
-  "Enabled": true,
-  "OtlpEndpoint": "http://otel-collector.internal:4317",
+  "Provider": "Otlp",
   "ServiceName": "portway-prod",
-  "ResourceAttributes": "deployment.environment=production,host.name=gw01"
+  "ResourceAttributes": "deployment.environment=production,host.name=gw01",
+  "Otlp": {
+    "Endpoint": "http://otel-collector.internal:4317"
+  },
+  "Prometheus": {
+    "Path": "/metrics"
+  }
 }
 ```
 
-`ResourceAttributes` follows the same key=value,key=value format as the OTEL_RESOURCE_ATTRIBUTES environment variable. Environment variables with the OTEL_ prefix still override appsettings.json values when set, following standard .NET configuration precedence.
+The `Otlp` provider pushes traces and metrics to a collector over gRPC; the `Prometheus` provider serves metrics on a scrape endpoint instead. Configurations from earlier releases keep working: a flat `"Enabled": true` selects the OTLP provider, and a flat `OtlpEndpoint` is used whenever `Otlp:Endpoint` is not set. See the [Telemetry guide](/guide/opentelemetry) for the full walkthrough.
 
 ## MCP Configuration
 
@@ -757,9 +770,18 @@ For production, restrict to specific domains:
 ```
 
 2. Check environment variable:
-```powershell
-echo %ASPNETCORE_ENVIRONMENT%
+
+::: code-group
+
+```powershell [PowerShell]
+$env:ASPNETCORE_ENVIRONMENT
 ```
+
+```bash [Bash]
+echo $ASPNETCORE_ENVIRONMENT
+```
+
+:::
 
 3. Review startup logs for configuration issues
 

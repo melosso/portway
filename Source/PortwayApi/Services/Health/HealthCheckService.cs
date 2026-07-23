@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PortwayApi.Classes;
 using PortwayApi.Interfaces;
@@ -193,7 +192,7 @@ public class HealthCheckService
             handler.UseProxy = true;
             handler.UseCookies = false;
         }
-        var client = new HttpClient(handler);
+        using var client = new HttpClient(handler);
         var unhealthyEndpoints = new List<string>();
 
         try
@@ -202,30 +201,26 @@ public class HealthCheckService
             var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
             var endpointsToCheck = proxyEndpoints
                 .Where(e => !e.Value.IsPrivate && e.Value.Methods.Contains("GET"))
-                .OrderBy(_ => Guid.NewGuid())
-                .Take(3)
                 .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)>(
                     e.Key,
                     (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.IsPrivate, e.Value.Type.ToString())))
                 .ToList();
 
-            Log.Debug("Checking proxy endpoints: {Endpoints}", 
+            Log.Debug("Checking proxy endpoints: {Endpoints}",
                 string.Join(", ", endpointsToCheck.Select(e => $"{e.Key} ({e.Value.Url})")));
 
             if (!endpointsToCheck.Any())
             {
                 return CreateHealthReportEntry(
-                    HealthStatus.Healthy, 
-                    "No endpoints configured for health check", 
-                    startTime, 
+                    HealthStatus.Healthy,
+                    "No endpoints configured for health check",
+                    startTime,
                     results
                 );
             }
 
-            foreach (var endpoint in endpointsToCheck)
-            {
-                await CheckEndpointAsync(client, endpoint, results, unhealthyEndpoints, cancellationToken);
-            }
+            await Task.WhenAll(endpointsToCheck.Select(endpoint =>
+                CheckEndpointAsync(client, endpoint, results, unhealthyEndpoints, cancellationToken)));
 
             status = unhealthyEndpoints.Any() ? HealthStatus.Unhealthy : HealthStatus.Healthy;
             var description = status == HealthStatus.Healthy 
@@ -282,11 +277,11 @@ public class HealthCheckService
             // If the first response is 401, treat it as healthy and stop further processing
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                results[endpoint.Key] = new 
-                { 
-                    Status = "Healthy", 
-                    StatusCode = 401, 
-                    ReasonPhrase = "Unauthorized - Marked as Healthy" 
+                lock (results) results[endpoint.Key] = new
+                {
+                    Status = "Healthy",
+                    StatusCode = 401,
+                    ReasonPhrase = "Unauthorized - Marked as Healthy"
                 };
                 return;
             }
@@ -303,17 +298,17 @@ public class HealthCheckService
                     Log.Warning("Endpoint {Endpoint} returned an XML error response: {Content}", endpoint.Key, content);
                 }
 
-                Log.Warning("Endpoint {Endpoint} returned status code {StatusCode} ({ReasonPhrase})", 
+                Log.Warning("Endpoint {Endpoint} returned status code {StatusCode} ({ReasonPhrase})",
                     endpoint.Key, (int)response.StatusCode, response.ReasonPhrase);
-                unhealthyEndpoints.Add(endpoint.Key);
+                lock (unhealthyEndpoints) unhealthyEndpoints.Add(endpoint.Key);
             }
 
-            results[endpoint.Key] = new 
-            { 
+            lock (results) results[endpoint.Key] = new
+            {
                 Status = content.Contains("Failed to login to Globe") ? "Healthy" : (isHealthy ? "Healthy" : "Unhealthy"),
                 StatusCode = content.Contains("Failed to login to Globe") ? 401 : (int)response.StatusCode,
-                ReasonPhrase = content.Contains("Failed to login to Globe") 
-                    ? "Failed to login to Globe - Marked as Healthy" 
+                ReasonPhrase = content.Contains("Failed to login to Globe")
+                    ? "Failed to login to Globe - Marked as Healthy"
                     : response.ReasonPhrase
             };
         }
@@ -322,12 +317,12 @@ public class HealthCheckService
             var errorMsg = ex.InnerException?.Message ?? ex.Message;
             Log.Error("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
                 endpoint.Key, ex.GetType().Name, errorMsg, endpoint.Value.Url);
-            results[endpoint.Key] = new
+            lock (results) results[endpoint.Key] = new
             {
                 Status = "Unhealthy",
                 Error = errorMsg
             };
-            unhealthyEndpoints.Add(endpoint.Key);
+            lock (unhealthyEndpoints) unhealthyEndpoints.Add(endpoint.Key);
         }
     }
 
@@ -384,19 +379,17 @@ public class HealthCheckService
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
-                DbConnection connection;
-                string healthQuery;
-                if (_sqlProviderFactory != null)
+                // Nullable ctor param only eases test construction; connectivity checks need the factory
+                if (_sqlProviderFactory is null)
                 {
-                    var provider = _sqlProviderFactory.GetProvider(connectionString);
-                    connection = provider.CreateConnection(connectionString);
-                    healthQuery = provider.HealthCheckQuery;
+                    Log.Warning("SQL connectivity check skipped for {Environment}: no provider factory configured", env);
+                    lock (results) results[env] = new { Status = "Unknown" };
+                    return;
                 }
-                else
-                {
-                    connection = new SqlConnection(connectionString);
-                    healthQuery = "SELECT 1";
-                }
+
+                var provider = _sqlProviderFactory.GetProvider(connectionString);
+                var connection = provider.CreateConnection(connectionString);
+                var healthQuery = provider.HealthCheckQuery;
 
                 await using (connection)
                 {
@@ -420,11 +413,10 @@ public class HealthCheckService
             }
             catch (Exception ex)
             {
-                var errorMsg = ex is SqlException sql
-                    ? $"SQL error {sql.Number}: {sql.Message}"
-                    : ex is DbException dbEx
-                        ? $"DB error: {dbEx.Message}"
-                        : ex.InnerException?.Message ?? ex.Message;
+                // DbException covers every provider's driver exception
+                var errorMsg = ex is DbException dbEx
+                    ? $"DB error: {dbEx.Message}"
+                    : ex.InnerException?.Message ?? ex.Message;
                 Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
                 lock (results) results[env] = new { Status = "Unhealthy", Error = errorMsg };
                 lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);

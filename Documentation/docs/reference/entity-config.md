@@ -137,8 +137,10 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 | `DatabaseObjectType`  | string  | No*      | Set to `"TableValuedFunction"` for TVF endpoints only                                        |
 | `FunctionParameters`  | array   | No*      | List of input parameters for TVF endpoints only                                              |
 | `AllowedColumns`      | array   | Yes      | List of accessible columns (supports aliases)                                                |
+| `ResponseTransforms`  | object  | No       | `Remove`, `Rename` and `Mask` rules applied to query results after alias mapping             |
 | `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
-| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"])                                                              |
+| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for body-carried reads (RFC 10008) |
+| `Deprecated`          | boolean | No       | When true, the endpoint's operations are marked as deprecated in the OpenAPI documentation    |
 | `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
 
 \* Only required for Table-Valued Function (TVF) endpoints.
@@ -209,15 +211,51 @@ Proxy entities forward requests to internal web services.
   }
 }
 ```
+
+### With Retry and Failover
+
+When an upstream service is occasionally slow to answer or has a standby instance, you can let Portway retry the call and switch to a fallback URL before the caller notices anything:
+
+```json
+{
+  "Url": "http://erp-primary.company.local/api/orders",
+  "Methods": ["GET", "POST"],
+  "FallbackUrls": ["http://erp-standby.company.local/api/orders"],
+  "Retry": { "Attempts": 2, "DelayMs": 200 }
+}
 ```
+
+Portway tries the primary URL first. A connection failure, a timeout, or a 502, 503, or 504 response triggers the next attempt; other responses pass through unchanged. Each URL gets `Attempts` tries with `DelayMs` milliseconds between them. Without these properties every request makes exactly one attempt, as before.
+
+### With Response Transforms
+
+When an upstream response carries fields you would rather not expose, you can shape JSON responses declaratively instead of changing the upstream system:
+
+```json
+{
+  "Url": "http://crm.company.local/api/contacts",
+  "Methods": ["GET"],
+  "ResponseTransforms": {
+    "Remove": ["internalNotes"],
+    "Rename": { "cust_nm": "customerName" },
+    "Mask": ["ssn"]
+  }
+}
+```
+
+Rules apply to top level fields of JSON objects, to each element of JSON arrays, and to items inside an OData style `value` wrapper. Masked fields return `***`. When rules overlap, `Remove` wins. Responses that are not JSON pass through untouched, and transforms run before caching so cached entries are already shaped.
 
 ### Property Reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `Url` | string | Yes | Target service URL |
+| `FallbackUrls` | array | No | Standby URLs tried in order when the primary fails |
+| `Retry` | object | No | `Attempts` per URL (default 1) and `DelayMs` between tries (default 200) |
+| `ResponseTransforms` | object | No | `Remove`, `Rename` and `Mask` rules for JSON response fields |
 | `Methods` | array | Yes | Allowed HTTP methods |
 | `IsPrivate` | boolean | No | Hide from API documentation |
+| `Deprecated` | boolean | No | Mark the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
 | `CustomProperties` | object | No | Extended functionality settings |
 
@@ -371,7 +409,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
 
 ## Endpoint: Composite
 
-Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here).
+Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here). This also means each step inherits the `FallbackUrls` and `Retry` settings of the proxy endpoint it references. `ResponseTransforms` from referenced endpoints apply to the final composite response only, so data passed between steps stays complete for templating.
 
 ### Sales Order Example
 

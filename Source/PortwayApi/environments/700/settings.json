@@ -1,9 +1,10 @@
 {
-  "ConnectionString": "PWENC:dMyPLC1n2wp2urHFH30dM0Be9V109fAcfNBrZzD2erMje8WHCyqmrGOzik3caE+SwLyy4dqQTa84eahWFGjAzTIL7za9hhsHEh7VKT3r5prDdkwLdD7EwkkHzXT0ld8eM6tjKRdrP/U2IrZpXHEjRiMI9M8Q83tGXVRv337bp5ArUTjCeFkW2UF31oj+qqYW6TZTwryTIM+P32R6Y5CTPXqp//M8/4uitmyH7jjQzu33uikpT7u4nemji5i//A9YdkBtgfiwkd+yjyfQmfSG4zKoYkM92TQXlQurSJ7OG0Xnk80mI3GH777UnIV4P1hyDnFESlKgIT9n2Ty3YseEVg==::eG0YCz5FtoKliL697xZ6GRHlDhcgJC4VfnXRgrtPXN1EJ99hvaSIikGk+b3iOXgTr7maAaL4lCQvhyesVQWZi2sdN1d2Wn1LzU1CJsb6dyyvv39Pkyr7nQ4f+wKvoDotKT8vIkveSMf4cRwuAlhc7A==",
+  "ConnectionString": "Server=localhost;Database=700;UID=sa;PWD=MyS3cr3tP4ssW0Rd#;Connection Timeout=15;TrustServerCertificate=true;",
   "ServerName": "localhost",
   "Headers": {
     "DatabaseName": "700",
     "ServerName": "localhost",
     "Origin": "Portway"
-  }
+  },
+  "Encrypt": false
 }

@@ -7,9 +7,11 @@ description: "Expose SQL tables, views, stored procedures, and table-valued func
 
 SQL endpoints turn a table, view, or stored procedure into a REST resource with OData querying, without you writing any SQL. Four backends are supported (SQL Server, PostgreSQL, MySQL, and SQLite), and Portway picks the correct driver automatically from the connection string in the environment's `settings.json`, so your endpoint configuration stays identical across providers.
 
-> **Note:** Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
+::: Note
+Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
+:::
 
-:::info
+:::info Info
 Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full capability matrix.
 :::
 
@@ -42,7 +44,7 @@ Create `endpoints/SQL/{EndpointName}/entity.json`:
 | `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
 | `PrimaryKey` | No | string | Primary key column name. Defaults to `Id` |
 | `AllowedColumns` | No | array | Columns accessible via the API. Empty array exposes all columns |
-| `AllowedMethods` | No | array | HTTP methods allowed. Defaults to `["GET"]` |
+| `AllowedMethods` | No | array | HTTP methods allowed. Defaults to `["GET"]`. You can also allow `QUERY` when you would like the same OData reads with the criteria carried in the JSON body (see [The QUERY method](/guide/routing#the-query-method)) |
 | `AllowedEnvironments` | No | array | Environments where this endpoint responds |
 | `Procedure` | No | string | Stored procedure to call for write operations |
 | `DatabaseObjectType` | No | string | Set to `TableValuedFunction` for TVF endpoints |
@@ -176,6 +178,30 @@ END
 Stored procedures handle write operations only. GET requests use the standard OData query path against `DatabaseObjectName` directly.
 :::
 
+## Table write mode
+
+When a stored procedure is more setup than the job needs, or the database cannot provide one at all (SQLite), an endpoint can opt into direct table writes:
+
+```json
+{
+  "DatabaseObjectName": "Bins",
+  "WriteMode": "Table",
+  "PrimaryKey": "Id",
+  "AllowedMethods": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  "AllowedColumns": ["Id", "Code", "Zone", "CapacityUnits"],
+  "RequiredColumns": ["Code", "Zone"]
+}
+```
+
+Portway then generates parameterized `INSERT`, `UPDATE` and `DELETE` statements through the same query compiler that powers OData reads. The mode is deliberately strict:
+
+* `AllowedColumns` and `PrimaryKey` are required; an endpoint missing either refuses all writes and logs a configuration error at startup.
+* Payload fields outside `AllowedColumns` reject the whole request rather than being dropped.
+* Updates and deletes only ever filter on the primary key, and a key that matches nothing returns `404`.
+* `WriteMode` and `Procedure` are mutually exclusive; pick one strategy per endpoint.
+
+Table mode works on every provider and is what enables full CRUD on SQLite. For production endpoints with business rules, validation chains or audit requirements, stored procedures remain the recommended path. A working example ships in the repository as `WMS/Bins` against the SQLite demo environment.
+
 ## Table-valued functions
 
 TVFs support parameterized queries, useful for reporting, generated datasets, or complex parameterized lookups that views cannot express.
@@ -264,7 +290,7 @@ To increase log verbosity:
 
 ## Next steps
 
-- [Proxy Endpoints](./endpoints-proxy)
-- [Composite Endpoints](./endpoints-composite)
-- [Environments](./environments)
-- [Security](./security)
+- [Proxy Endpoints](/guide/endpoints-proxy)
+- [Composite Endpoints](/guide/endpoints-composite)
+- [Environments](/guide/environments)
+- [Security](/guide/security)

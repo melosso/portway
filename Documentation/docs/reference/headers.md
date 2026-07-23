@@ -17,9 +17,7 @@ Every API request needs to include authentication:
 Authorization: Bearer your_token_here
 ```
 
-:::warning
-The `Authorization` header is required for all endpoints except `/health/live`. Requests without it receive `401 Unauthorized`.
-:::
+This applies to every endpoint except `/health/live`, so it is worth confirming your client attaches the token on each call. Requests that arrive without it receive a `401 Unauthorized` response.
 
 ### Content Type Headers
 
@@ -102,8 +100,10 @@ Portway automatically adds security headers to all responses:
 |--------|-------------|---------|
 | `X-RateLimit-Limit` | Request limit per window | `100` |
 | `X-RateLimit-Remaining` | Remaining requests | `95` |
-| `X-RateLimit-Reset` | Window reset timestamp | `1616161616` |
-| `Retry-After` | Seconds until retry allowed | `60` |
+| `X-RateLimit-Reset` | Unix timestamp when the bucket is fully replenished | `1616161616` |
+| `X-RateLimit-Resource` | Which limit produced the values, `ip` or `token` | `token` |
+| `X-RateLimit-Used` | Requests consumed in the current window | `5` |
+| `Retry-After` | Seconds until retry allowed, only on `429` responses | `60` |
 
 ## Content Negotiation
 

@@ -1,4 +1,4 @@
-using PortwayApi.Classes.Configuration;
+using PortwayApi.Services.Configuration;
 
 namespace PortwayApi.Services.Configuration;
 

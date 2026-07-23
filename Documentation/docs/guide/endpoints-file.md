@@ -48,6 +48,10 @@ You define one with `endpoints/File/{EndpointName}/entity.json`:
 
 Files land at paths like `files/prod/2025/01/database-backup.sql`.
 
+## Namespaces
+
+File endpoints support namespaces (since v1.7.0). Place the endpoint under `endpoints/Files/{Namespace}/{Name}/entity.json` (or set `Namespace` in `entity.json`) and it is served at `/api/{env}/files/{Namespace}/{Name}/...`. All operations (upload, download, delete, list) resolve the namespace, and returned download URLs include it so they round-trip. Non-namespaced endpoints keep their existing `/api/{env}/files/{Name}` URLs. Reserved words (`api`, `docs`, `openapi`, `health`, `admin`, `system`, `composite`, `webhook`, `files`) cannot be used as a namespace; the loader skips such endpoints at startup and the Web UI validator rejects them.
+
 ## API operations
 
 ### Upload a file
@@ -159,5 +163,5 @@ Files are stored at predictable paths: `files/{environment}/{baseDirectory}/{fil
 
 ## Next steps
 
-- [Environments](./environments)
-- [Security](./security)
+- [Environments](/guide/environments)
+- [Security](/guide/security)

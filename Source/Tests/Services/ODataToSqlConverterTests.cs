@@ -1,9 +1,8 @@
 using Microsoft.OData.Edm;
 using Moq;
 using PortwayApi.Classes;
-using PortwayApi.Classes.Providers;
-using PortwayApi.Interfaces;
 using PortwayApi.Services.Providers;
+using PortwayApi.Interfaces;
 using SqlKata.Compilers;
 using Xunit;
 

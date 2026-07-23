@@ -236,7 +236,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
             schema.Properties[$"@{attr.Name.LocalName}"] = new OpenApiSchema 
             { 
                 Type = JsonSchemaType.String,
-                Xml = new OpenApiXml { Attribute = true, Name = attr.Name.LocalName }
+                Xml = new OpenApiXml { NodeType = Microsoft.OpenApi.OpenApiXmlNodeType.Attribute, Name = attr.Name.LocalName }
             };
         }
 

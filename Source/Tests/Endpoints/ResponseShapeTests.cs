@@ -166,16 +166,16 @@ public class ResponseShapeTests : ApiTestBase
         }
     }
 
-    // 405 response has body
+    // The legacy flat webhook route was removed when webhooks became namespaced; GET now resolves to no endpoint
     [Fact]
-    public async Task WebhookGet_Returns405_WithBody()
+    public async Task WebhookGet_LegacyRoute_Returns404_WithBody()
     {
         SetAllowedEnvironments("500");
 
-        // Webhook endpoints don't support GET; should return 405 with a body
+        // '/api/{env}/webhook/{id}' is no longer a webhook; GET resolves to an unknown endpoint
         var response = await _client.GetAsync("/api/500/webhook/somewebhook");
 
-        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
         var bodyStr = await response.Content.ReadAsStringAsync();
         Assert.NotEmpty(bodyStr);
@@ -185,6 +185,88 @@ public class ResponseShapeTests : ApiTestBase
         Assert.True(body.RootElement.TryGetProperty("success", out var success));
         Assert.Equal(JsonValueKind.False, success.ValueKind);
         Assert.True(body.RootElement.TryGetProperty("error", out _));
+    }
+
+    // POST to the removed legacy webhook route returns a 410 Gone tombstone pointing at the namespaced shape
+    [Fact]
+    public async Task WebhookPost_LegacyRoute_Returns410_WithBody()
+    {
+        SetAllowedEnvironments("500");
+
+        var content = new StringContent("{}", Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync("/api/500/webhook/somewebhook", content);
+
+        Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
+
+        var bodyStr = await response.Content.ReadAsStringAsync();
+        Assert.NotEmpty(bodyStr);
+
+        // Should be valid JSON with { success: false, error: string } and mention the new namespaced route
+        var body = JsonDocument.Parse(bodyStr);
+        Assert.True(body.RootElement.TryGetProperty("success", out var success));
+        Assert.Equal(JsonValueKind.False, success.ValueKind);
+        Assert.True(body.RootElement.TryGetProperty("error", out var error));
+        Assert.Contains("namespace", error.GetString() ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // QUERY (RFC 10008): Content-Type is mandatory; a non-JSON type is rejected with 415
+    [Fact]
+    public async Task Query_WithoutJsonContentType_Returns415()
+    {
+        SetAllowedEnvironments("500");
+
+        var req = new HttpRequestMessage(new HttpMethod("QUERY"), "/api/500/AnyEndpoint")
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "text/plain")
+        };
+        var response = await _client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    // QUERY with a malformed JSON body returns 400 (not 500)
+    [Fact]
+    public async Task Query_MalformedJsonBody_Returns400()
+    {
+        SetAllowedEnvironments("500");
+
+        var req = new HttpRequestMessage(new HttpMethod("QUERY"), "/api/500/AnyEndpoint")
+        {
+            Content = new StringContent("{ not json", Encoding.UTF8, "application/json")
+        };
+        var response = await _client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // QUERY body must be a JSON object, not an array or scalar
+    [Fact]
+    public async Task Query_NonObjectBody_Returns400()
+    {
+        SetAllowedEnvironments("500");
+
+        var req = new HttpRequestMessage(new HttpMethod("QUERY"), "/api/500/AnyEndpoint")
+        {
+            Content = new StringContent("[]", Encoding.UTF8, "application/json")
+        };
+        var response = await _client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // A well-formed QUERY on an unknown endpoint reaches routing and resolves to 404
+    [Fact]
+    public async Task Query_ValidBodyUnknownEndpoint_Returns404()
+    {
+        SetAllowedEnvironments("500");
+
+        var req = new HttpRequestMessage(new HttpMethod("QUERY"), "/api/500/NoSuchEndpoint")
+        {
+            Content = new StringContent("{\"filter\":\"Id eq 1\"}", Encoding.UTF8, "application/json")
+        };
+        var response = await _client.SendAsync(req);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     // Helper
