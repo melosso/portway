@@ -3,6 +3,7 @@
   "description": "A lightweight API gateway for Windows environments",
   "lang": "en",
   "brand": "Portway",
+  "brandImage": "/assets/brand-image.webp",
   "favicon": "🌊",
   "lastUpdated": true,
   "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/melosso/bark/).",
