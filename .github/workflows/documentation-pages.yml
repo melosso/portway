@@ -51,8 +51,9 @@ jobs:
       run: |
         rm -rf ${{ github.workspace }}/publish/docs
         cp -r ${{ github.workspace }}/portway/Documentation/docs ${{ github.workspace }}/publish/docs
-        rm -rf ${{ github.workspace }}/publish/wwwroot
-        cp -r ${{ github.workspace }}/portway/Documentation/wwwroot ${{ github.workspace }}/publish/wwwroot
+        # Overlay brand assets on top of Bark's wwwroot; replacing it wholesale
+        # drops framework assets (js/mermaid.min.js, social icons) from the export
+        cp -r ${{ github.workspace }}/portway/Documentation/wwwroot/. ${{ github.workspace }}/publish/wwwroot/
 
     - name: Generate static site
       working-directory: ${{ github.workspace }}/publish
