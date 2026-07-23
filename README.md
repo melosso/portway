@@ -1,6 +1,6 @@
 # <img src="https://github.com/melosso/portway/blob/main/Source/logo.webp?raw=true" alt="" width="34" style="vertical-align: middle;">  Portway
 
-[![License](https://img.shields.io/badge/license-AGPL%203.0-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-EUPL%201.2-blue)](LICENSE)
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
@@ -26,7 +26,7 @@ Out of the box, Portway handles proxy pass-through, SQL endpoints, and webhooks,
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
 * .NET Hosting Bundle
-  * Portway `v0.7.0`: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11</a> (currently a preview)
+  * Preview >= `v0.7.0`: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11</a> (currently a preview)
   * Production: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/10.0" target="_blank" rel="noopener noreferrer">.NET 10 LTS</a> build remains available
 * If you're running on Windows: Internet Information Services (IIS)
 * A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
@@ -121,11 +121,12 @@ Endpoints are configured as JSON files. Each type has its own directory and form
 
 * **SQL** (SQL Server, PostgreSQL, MySQL, SQLite): Direct CRUD access with schema-level control and documentation
 * **Proxy**: Forward to internal services; supports complex orchestration
+* **Composite**: Chain multiple endpoint calls into one transaction
 * **File System**: Read/write from local storage or cache (In memory and/or Redis)
 * **Webhook**: Receive external calls and persist data to SQL
 * **Static**: read static files or set up a mock endpoint
 
-These are handled seperately below: 
+The two most common types as a taste; the <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation</a> covers every type in full:
 
 <br>
 
@@ -167,146 +168,25 @@ These just pass the call through to another service. It’s basically a small re
 ```
 
 </details>
-<br>
-<details>
-<summary>Composite Endpoints</summary>
-These help when a single logical action actually means “call a bunch of other endpoints in a specific order.” Think of creating an order with multiple lines and a header. You wire the steps together and the engine handles the sequencing.
-
-#### Example — `endpoints/Proxy/SalesOrder/entity.json`
-
-```json
-{
-  "Type": "Composite",
-  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
-  "Methods": ["POST"],
-  "CompositeConfig": {
-    "Name": "SalesOrder",
-    "Description": "Creates a complete sales order with multiple lines and header",
-    "Steps": [
-      {
-        "Name": "CreateOrderLines",
-        "Endpoint": "SalesOrderLine",
-        "Method": "POST",
-        "IsArray": true,
-        "ArrayProperty": "Lines",
-        "TemplateTransformations": {
-          "TransactionKey": "$guid"
-        }
-      },
-      {
-        "Name": "CreateOrderHeader",
-        "Endpoint": "SalesOrderHeader",
-        "Method": "POST",
-        "SourceProperty": "Header",
-        "TemplateTransformations": {
-          "TransactionKey": "$prev.CreateOrderLines.0.d.TransactionKey"
-        }
-      }
-    ]
-  }
-}
-```
-
-</details>
-<br>
-<details>
-<summary>Static Endpoints</summary>
-Sometimes you just want to serve a file. JSON, XML, CSV, whatever. These endpoints expose static content and can still use OData filtering if you turn it on.
-
-#### Example — `endpoints/Static/ProductionMachine/entity.json`
-
-```json
-{
-  "ContentType": "application/xml",
-  "ContentFile": "summary.xml",
-  "EnableFiltering": true,
-  "AllowedEnvironments": ["prod", "dev"]
-}
-```
-
-</details>
-<br>
-<details>
-<summary>Files Endpoints</summary>
-This is for storing or retrieving actual files rather than rows or JSON. Handy for documents, images, exports.
-
-#### Example — `endpoints/Files/Documents/entity.json`
-
-```json
-{
-  "StorageType": "Local",
-  "BaseDirectory": "documents",
-  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
-  "AllowedEnvironments": ["prod", "dev"]
-}
-```
-
-</details>
-<br>
-<details>
-<summary>Webhook Endpoints</summary>
-When an external service needs to push data into your system, this is the entry point. The payload goes straight into your table of choice.
-
-#### Example — `endpoints/Webhooks/entity.json`
-
-```json
-{
-  "DatabaseObjectName": "WebhookData",
-  "DatabaseSchema": "dbo",
-  "AllowedColumns": ["webhook1", "webhook2"]
-}
-```
-
-</details>
-
- 
 
 ### 4. Deploy
 
-When you're ready to host your application in IIS, there are a few important things to keep in mind. If you plan to use a proxy, you'll need to configure the correct user identity to ensure everything works smoothly. Don't forget to double-check that your application pool and security settings are properly configured for production use - we're assuming you already have the fundamentals of website security covered.
-
-> [!TIP] 
-> It's worth taking some time to fine-tune your application pool and website settings to maximize uptime and strengthen your security policies. For your primary source of general best practices, consider visiting <a href="https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577" target="_blank" rel="noopener noreferrer">this post</a> on the <a href="https://techcommunity.microsoft.com/blog/coreinfrastructureandsecurityblog/iis-best-practices/1241577" target="_blank" rel="noopener noreferrer">Microsoft Community Hub</a>. For additional guidance on security best practices, you might find <a href="https://securityheaders.com/" target="_blank" rel="noopener noreferrer">Security Headers by Probely</a> helpful.
+When you're ready to host in IIS or Docker, follow the <a href="https://melosso.github.io/portway/guide/deployment" target="_blank" rel="noopener noreferrer">deployment guide</a>. It covers application pool identity (needed for NTLM proxy scenarios), security settings, and production hardening.
 
 ---
 
 ## Security
 
-### Token-Based Authentication
-
-Portway uses a lightweight token-based system for authentication. Tokens are machine-bound and stored securely on disk.
-
-```bash
-Generated token for SERVER-1: <your-token>
-Saved to /tokens/SERVER-1.txt
-```
-
-Include the token in request headers, with the Bearer prefix included:
+Portway uses a lightweight token-based system for authentication. Include the token in request headers, with the Bearer prefix included:
 
 ```bash
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-> [!CAUTION] 
-> The generated token files are highly sensitive and pose a significant security risk if left on disk. **Remove these files immediately after securely saving your token elsewhere.** Unauthorized access to these files can compromise your environment.
+> [!CAUTION]
+> The token file generated on first run (`tokens/{SERVER}.txt`) is highly sensitive. **Remove it immediately after securely saving your token elsewhere.** Unauthorized access to this file can compromise your environment.
 
-### Azure Key Vault Support
-
-To centralize and secure configuration secrets, use Azure Key Vault. Portway can read secrets automatically by environment.
-
-```powershell
-$env:KEYVAULT_URI = "https://your-keyvault-name.vault.azure.net/"
-```
-
-Secrets format: `{env}-ConnectionString` and `{env}-ServerName`
-
-### Application Identity
-
-If you're pointing a **Proxy** endpoint at something inside your network, you’ll want to double-check what identity the application will be running under. If the upstream service expects Windows Authentication (NTLM) and you haven't changed the application identity, the call may fail or authenticate as the wrong user. In setups where NTLM is unavoidable, assign the Application Pool to a domain account based on the principle of least privilege.
-
-### Protecting Secrets
-
-Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
+Scope control, Azure Key Vault, secret encryption at rest, and application identity for NTLM scenarios are covered in the <a href="https://melosso.github.io/portway/guide/security" target="_blank" rel="noopener noreferrer">security guide</a>.
 
 ---
 
@@ -324,20 +204,6 @@ Query specific data with full OData support:
 ```bash
 GET /api/prod/Products?$filter=Assortment eq 'Books'&$select=ItemCode,Description
 ````
-
-</details>
-
-<details>
-<summary>Proxy</summary>
-
-<br>
-
-Forward calls to internal REST services:
-
-```bash
-GET /api/prod/Accounts
-POST /api/prod/Accounts
-```
 
 </details>
 
@@ -365,79 +231,7 @@ Content-Type: application/json
 
 </details>
 
-<details>
-<summary>Static</summary>
-
-<br>
-
-Serve static content with optional OData filtering:
-
-```bash
-GET /api/prod/ProductionMachine?$top=1&$filter=status eq 'running'
-Accept: application/xml
-```
-
-</details>
-
-<details>
-<summary>Files</summary>
-
-Upload a file:
-
-```bash
-POST /api/prod/files/Documents
-Authorization: Bearer YOUR_TOKEN
-Content-Type: multipart/form-data
-file=@report.pdf
-```
-
-List files:
-
-```bash
-GET /api/prod/files/Documents/list
-Authorization: Bearer YOUR_TOKEN
-```
-
-Download a file:
-
-```bash
-GET /api/prod/files/Documents/abc123fileId
-Authorization: Bearer YOUR_TOKEN
-```
-
-</details>
-
-<details>
-<summary>Webhooks</summary>
-
-<br>
-
-Receive data from external services:
-
-```bash
-POST /api/prod/webhook/webhook1
-Content-Type: application/json
-{
-  "eventType": "order.created",
-  "data": {
-    "orderId": "12345",
-    "customer": "ACME Corp"
-  }
-}
-```
-
-</details>
-
 You'll find comprehensive configuration examples in our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>.
-
-## Screenshots
-
-![Screenshot of Portway](.github/images/login.png)
-
-----
-
-![Screenshot of Portway](.github/images/dashboard.png)
-
 
 ## Documentation
 
@@ -446,20 +240,16 @@ We allow you to expose the API with a configurable documentation endpoint. This 
 ### Interactive documentation
 The application uses <a href="https://github.com/scalar/scalar" target="_blank" rel="noopener noreferrer">Scalar</a> to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations.
 
-### Schema discovery
-Portway automatically generates API documentation by reading your **database objects** at startup. It connects to the first allowed environment listed for each SQL endpoint to retrieve column metadata. 
-If you're using Windows Authentication with `Trusted_Connection=True`, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. This isn't necessary when you use SQL Authentication, but make sure each environment uses its own credentials.
-
 ### Model Context Protocol (MCP)
 The application also can act as a MCP server over HTTP. Your endpoints can appear in the MCP tool registry and becomes callable by any MCP-compatible client, e.g. Mistral, VS Code Copilot, custom agents, or the built-in Chat UI. Beware that this is opt-in, meaning all endpoints are not exposed as tool by default. Portway's own authentication and environment scoping apply to every tool call. Please read more on MCP integration at <a href="https://melosso.github.io/portway/guide/mcp" target="_blank" rel="noopener noreferrer">MCP documentation</a>.
 
 ### Walkthrough
-Our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
-
-## License
-
-Free for open source projects and personal use under the **AGPL 3.0** license. For more information, please see the [license](LICENSE) file.
+Our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced configuration. Feel free to submit a pull request if you'd like to see changes to the documentation.
 
 ## Contribution 
 
-Contributions are welcome. Please submit a PR if you'd like to help improve Portway.
+Contributions are welcome, please submit a PR if you'd like to help improve the project.
+
+## License
+
+Licensed under the **EUPL-1.2**. For more information, please see the [license](LICENSE) file.
