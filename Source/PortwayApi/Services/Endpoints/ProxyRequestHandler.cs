@@ -34,6 +34,26 @@ public sealed class ProxyRequestHandler
     /// <summary>Handles proxy requests for any HTTP method with request caching</summary>
     private static readonly MemoryCache _proxyCache = new MemoryCache(new MemoryCacheOptions());
 
+    private static readonly HashSet<string> _noReservedParams = new(StringComparer.OrdinalIgnoreCase);
+
+    // Endpoint Urls are config-static, so the path/query split and reserved param names are computed once per Url
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Path, string Query, HashSet<string> Reserved)> _splitUrlCache = new();
+
+    private static (string Path, string Query, HashSet<string> Reserved) SplitEndpointUrl(string url) =>
+        _splitUrlCache.GetOrAdd(url, static u =>
+        {
+            var queryIndex = u.IndexOf('?');
+            if (queryIndex < 0)
+                return (u, string.Empty, _noReservedParams);
+
+            var query = u[(queryIndex + 1)..];
+            var reserved = query.Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(p => p.Split('=', 2)[0])
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return (u[..queryIndex], query, reserved);
+        });
+
     public async Task<IActionResult> HandleProxyRequest(
         HttpContext context,
         EndpointDefinition endpointDefinition,
@@ -79,7 +99,8 @@ public sealed class ProxyRequestHandler
 
             // Construct full URL
             var queryString = context.Request.QueryString.Value ?? string.Empty;
-            var fullUrl = endpointConfig.Url;
+            // Detach any query baked into the endpoint Url so ids and path segments append to the path; re-attached after construction
+            var (fullUrl, baseQuery, reservedParams) = SplitEndpointUrl(endpointConfig.Url ?? string.Empty);
 
             // Special handling for DELETE method based on DeletePattern
             if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
@@ -137,12 +158,28 @@ public sealed class ProxyRequestHandler
                 }
             }
 
+            // Re-attach the endpoint Url's own query; DELETE QueryParameter style may already
+            // have introduced a '?', so merge rather than blindly prepend
+            if (!string.IsNullOrEmpty(baseQuery))
+            {
+                fullUrl += fullUrl.Contains('?') ? "&" + baseQuery : "?" + baseQuery;
+            }
+
             // Append query string safely (avoid double '?' and preserve existing query params)
             if (!string.IsNullOrEmpty(queryString))
             {
                 // context.Request.QueryString.Value begins with '?' when non-empty
                 var qs = queryString.StartsWith("?") ? queryString.Substring(1) : queryString;
-                fullUrl += fullUrl.Contains('?') ? "&" + qs : "?" + qs;
+
+                // Drop client params that collide with baked ones; upstreams resolving duplicates last-wins would let clients override injected credentials
+                if (reservedParams.Count > 0)
+                {
+                    qs = string.Join('&', qs.Split('&', StringSplitOptions.RemoveEmptyEntries)
+                        .Where(p => !reservedParams.Contains(p.Split('=', 2)[0])));
+                }
+
+                if (!string.IsNullOrEmpty(qs))
+                    fullUrl += fullUrl.Contains('?') ? "&" + qs : "?" + qs;
             }
 
             Log.Debug("Final constructed URL: {Url}", fullUrl);

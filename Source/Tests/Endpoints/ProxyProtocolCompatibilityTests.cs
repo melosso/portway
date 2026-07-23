@@ -11,7 +11,6 @@ internal sealed class UpstreamCapture : IDisposable
 {
     private readonly HttpListener _listener = new();
     private readonly CancellationTokenSource _cts = new();
-    private readonly Task _loop;
 
     public string? Method { get; private set; }
     public string? PathAndQuery { get; private set; }
@@ -26,7 +25,7 @@ internal sealed class UpstreamCapture : IDisposable
     {
         _listener.Prefixes.Add($"http://localhost:{port}/");
         _listener.Start();
-        _loop = Task.Run(ListenLoop);
+        _ = Task.Run(ListenLoop);
     }
 
     private async Task ListenLoop()
@@ -67,9 +66,7 @@ internal sealed class UpstreamCapture : IDisposable
 }
 
 /// <summary>
-/// Protocol compatibility tests for the proxy passthrough documented in the integration
-/// reference (JSON-RPC, XML, GraphQL-style POST, header injection, auth collision, cookies).
-/// Uses the demo endpoint Account/Accounts, whose Url targets localhost:8020.
+/// Protocol compatibility for proxy passthrough (JSON-RPC, XML, GraphQL, headers, cookies) via the demo endpoint targeting localhost:8020
 /// </summary>
 public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
 {
@@ -170,8 +167,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     [Fact]
     public async Task EnvironmentAuthorizationHeader_CollidesWithClientBearer()
     {
-        // Pins the documented collision: both the client bearer and the environment
-        // Authorization value reach the upstream, producing a multi-valued header
+        // Pins the documented collision: client bearer and environment value both reach upstream as a multi-valued header
         SetEnvironmentHeaders(new() { ["Authorization"] = "Bearer upstream_token" });
 
         var response = await _client.GetAsync(ApiPath);
@@ -214,8 +210,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     [Fact]
     public async Task PutMethod_TranslatesToMergeUpstream()
     {
-        // Demo endpoint config: HttpMethodTranslation "PUT:MERGE",
-        // HttpMethodAppendHeaders "PUT:X-Custom-Original-Method={ORIGINAL_METHOD}"
+        // Demo endpoint config: HttpMethodTranslation "PUT:MERGE" plus X-Custom-Original-Method append header
         var response = await _client.PutAsync(ApiPath + "(guid'11111111-1111-1111-1111-111111111111')",
             new StringContent("""{"Name":"Updated"}""", Encoding.UTF8, "application/json"));
 
@@ -227,6 +222,106 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     public new void Dispose()
     {
         _upstream.Dispose();
+        base.Dispose();
+    }
+}
+
+/// <summary>
+/// Content negotiation gates by endpoint type: proxy-family paths skip the JSON-only check, SQL paths keep it
+/// </summary>
+public class ContentNegotiationByEndpointTypeTests : ApiTestBase
+{
+    public ContentNegotiationByEndpointTypeTests()
+    {
+        SetAllowedEnvironments("500", "700");
+    }
+
+    [Fact]
+    public async Task XmlPost_ToSqlEndpoint_Returns415()
+    {
+        var response = await _client.PostAsync("/api/700/Product/Products",
+            new StringContent("<item/>", System.Text.Encoding.UTF8, "application/xml"));
+
+        Assert.Equal(System.Net.HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task JsonPost_ToSqlEndpoint_PassesContentGate()
+    {
+        var response = await _client.PostAsync("/api/700/Product/Products",
+            new StringContent("""{"x":1}""", System.Text.Encoding.UTF8, "application/json"));
+
+        // Downstream SQL failure is fine; the content gate specifically is what must not fire
+        Assert.NotEqual(System.Net.HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+}
+
+/// <summary>
+/// Pins URL construction for endpoint Urls carrying a baked query: paths join the path, queries merge with '&'
+/// </summary>
+public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
+{
+    private const string EndpointDir = "endpoints/Proxy/QueryUrlTest";
+    private readonly UpstreamCapture _upstream;
+
+    public QueryBearingUrlEndpointTests()
+    {
+        SetAllowedEnvironments("500", "700");
+        _upstream = new UpstreamCapture(8020);
+
+        // Temporary endpoint fixture with a query baked into the Url; removed in Dispose
+        Directory.CreateDirectory(EndpointDir);
+        File.WriteAllText(Path.Combine(EndpointDir, "entity.json"), """
+            {
+              "Url": "http://localhost:8020/graphql?apikey=SECRET",
+              "Methods": ["GET", "POST"]
+            }
+            """);
+        PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
+    }
+
+    [Fact]
+    public async Task BakedQuery_TravelsWithPlainPost()
+    {
+        var response = await _client.PostAsync("/api/500/QueryUrlTest",
+            new StringContent("""{"query":"{ ping }"}""", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/graphql?apikey=SECRET", _upstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task ClientQuery_MergesAfterBakedQuery()
+    {
+        var response = await _client.GetAsync("/api/500/QueryUrlTest?x=1");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/graphql?apikey=SECRET&x=1", _upstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task ClientParameter_CannotOverrideBakedParameter()
+    {
+        var response = await _client.GetAsync("/api/500/QueryUrlTest?apikey=evil&x=1");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/graphql?apikey=SECRET&x=1", _upstream.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task RemainingPath_AppendsToPathNotQuery()
+    {
+        var response = await _client.GetAsync("/api/500/QueryUrlTest/sub/path");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("/graphql/sub/path?apikey=SECRET", _upstream.PathAndQuery);
+    }
+
+    public new void Dispose()
+    {
+        _upstream.Dispose();
+        try { Directory.Delete(EndpointDir, recursive: true); } catch { }
+        PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
         base.Dispose();
     }
 }

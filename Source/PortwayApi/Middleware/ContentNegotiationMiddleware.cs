@@ -17,9 +17,6 @@ public class ContentNegotiationMiddleware
         "/openapi-docs"
     };
     
-    // Paths that are passthrough and should not enforce content negotiation
-    private static readonly string[] _passthroughIndicators = { "proxy", "Proxy" };
-    
     // Maximum request body size (50MB)
     private const long MaxRequestBodySize = 52_428_800;
 
@@ -70,13 +67,30 @@ public class ContentNegotiationMiddleware
                 return true;
         }
         
-        // Skip for proxy endpoints (they handle their own content negotiation)
-        foreach (var indicator in _passthroughIndicators)
+        // Skip for proxy-family endpoints (they pass bodies through and negotiate upstream)
+        return IsProxyFamilyPath(path);
+    }
+
+    /// <summary>Resolves /api/{env}/{name} paths against the loaded proxy endpoint definitions</summary>
+    internal static bool IsProxyFamilyPath(string path)
+    {
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length < 3 || !segments[0].Equals("api", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // /api/{env}/composite/{name} routes to composite handlers, part of the proxy family
+        if (segments[2].Equals("composite", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Endpoint names may span multiple segments (namespaces); match longest candidate first
+        var proxyEndpoints = PortwayApi.Classes.EndpointHandler.GetProxyEndpoints();
+        for (var take = segments.Length - 2; take >= 1; take--)
         {
-            if (path.Contains(indicator, StringComparison.OrdinalIgnoreCase))
+            var candidate = string.Join('/', segments.Skip(2).Take(take));
+            if (proxyEndpoints.ContainsKey(candidate))
                 return true;
         }
-        
+
         return false;
     }
 
@@ -122,19 +136,16 @@ public class ContentNegotiationMiddleware
                 "Content-Type header is required for requests with body. Use application/json.");
         }
         
-        // Accept JSON plus the XML family; SOAP and XML-RPC bodies flow through proxy endpoints
-        // whose paths are not recognizable as proxies here, so the gate covers both
-        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase) &&
-            !contentType.Contains("text/xml", StringComparison.OrdinalIgnoreCase) &&
-            !contentType.Contains("application/xml", StringComparison.OrdinalIgnoreCase) &&
-            !contentType.Contains("application/soap+xml", StringComparison.OrdinalIgnoreCase))
+        // Non-proxy endpoints (SQL, webhooks, UI) are JSON APIs; proxy-family paths
+        // skip this gate entirely via IsProxyFamilyPath
+        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
         {
             Log.Warning("Invalid Content-Type '{ContentType}' for {Method} request from {RemoteIp}",
                 contentType, context.Request.Method, context.Connection.RemoteIpAddress);
 
             return (false, StatusCodes.Status415UnsupportedMediaType,
                 "Unsupported Media Type",
-                $"Content-Type '{contentType}' is not supported. Use application/json or an XML media type.");
+                $"Content-Type '{contentType}' is not supported. Use application/json.");
         }
         
         return (true, 0, string.Empty, string.Empty);
