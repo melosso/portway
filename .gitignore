@@ -1,9 +1,10 @@
 Deployment/
 /Deployment/
+*.md
 !README.md
 !CONTRIBUTING.md
 !SECURITY.md
-*.md
+!Documentation/docs/**/*.md
 *.log
 *.tmp
 *.cache

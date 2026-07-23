@@ -5,7 +5,7 @@
   "brand": "Portway",
   "favicon": "🔌",
   "lastUpdated": true,
-  "footer": "Released under [EUPL 1.2](LICENSE) · Copyright © 2026 Melosso.com",
+  "footer": "© 2026 Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/melosso/bark/).",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
     "text": "Edit this page on GitHub"
@@ -203,6 +203,10 @@
           {
             "title": "Entity",
             "path": "reference/entity-config"
+          },
+          {
+            "title": "HTTP Methods",
+            "path": "reference/http-methods"
           },
           {
             "title": "Environment",
