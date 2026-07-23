@@ -303,6 +303,30 @@
           {
             "title": "NAV Business Central",
             "path": "reference/integrations/nav-business-central"
+          },
+          {
+            "title": "AFAS Profit",
+            "path": "reference/integrations/afas-profit"
+          },
+          {
+            "title": "Odoo",
+            "path": "reference/integrations/odoo"
+          },
+          {
+            "title": "SAP Business One",
+            "path": "reference/integrations/sap-business-one"
+          },
+          {
+            "title": "NocoDB",
+            "path": "reference/integrations/nocodb"
+          },
+          {
+            "title": "Teable",
+            "path": "reference/integrations/teable"
+          },
+          {
+            "title": "Pimcore",
+            "path": "reference/integrations/pimcore"
           }
         ]
       }

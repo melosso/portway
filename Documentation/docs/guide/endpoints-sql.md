@@ -7,9 +7,11 @@ description: "Expose SQL tables, views, stored procedures, and table-valued func
 
 SQL endpoints turn a table, view, or stored procedure into a REST resource with OData querying, without you writing any SQL. Four backends are supported (SQL Server, PostgreSQL, MySQL, and SQLite), and Portway picks the correct driver automatically from the connection string in the environment's `settings.json`, so your endpoint configuration stays identical across providers.
 
-> **Note:** Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
+::: Note
+Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
+:::
 
-:::info
+:::info Info
 Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full capability matrix.
 :::
 

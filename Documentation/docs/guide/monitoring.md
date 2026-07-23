@@ -95,6 +95,8 @@ Sometimes you want more than a health status: you want to know exactly which req
 
 ### Configuration options
 
+The defaults are sensible for most deployments; here is what each knob controls:
+
 | Field | Description | Default |
 |---|---|---|
 | `Enabled` | Enable traffic logging | `false` |

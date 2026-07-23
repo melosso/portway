@@ -230,7 +230,9 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-**Note**: File endpoints do not support namespaces. They use only the immediate directory name as the endpoint name.
+::: 
+File endpoints do not support namespaces. They use only the immediate directory name as the endpoint name.
+:::
 
 ### Composite Endpoint with Namespace
 
@@ -264,7 +266,9 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-**Note**: Composite endpoints are stored in the `/endpoints/Proxy/` directory with `"Type": "Composite"`. They support both namespaced access (`/api/{env}/{namespace}/{endpoint}`) and legacy access (`/api/{env}/composite/{endpoint}`).
+::: Note
+Composite endpoints are stored in the `/endpoints/Proxy/` directory with `"Type": "Composite"`. They support both namespaced access (`/api/{env}/{namespace}/{endpoint}`) and legacy access (`/api/{env}/composite/{endpoint}`).
+:::
 
 ## Naming Conventions
 

@@ -237,7 +237,9 @@ Portway only honors `X-Forwarded-For` when the request arrives from an address y
 
 Leaving both lists empty is perfectly valid, and it is the default. In that case `X-Forwarded-For` is ignored entirely and the connecting address is used as-is. That is the safe choice when nothing sits in front of Portway, though behind a proxy it means per-IP rate limiting and the network-based Web UI gate will see the proxy rather than the real caller. If you rely on either of those, registering your proxy here is recommended.
 
-> **Note:** If you front Portway with Cloudflare, its client IP is recovered separately from the `CF-Connecting-IP` header when the request genuinely originates from a Cloudflare address, so you do not need to list Cloudflare ranges here.
+::: Note
+If you front Portway with Cloudflare, its client IP is recovered separately from the `CF-Connecting-IP` header when the request genuinely originates from a Cloudflare address, so you do not need to list Cloudflare ranges here.
+:::
 
 The Settings posture panel in the Web UI reflects whether any trusted proxies are configured, which is a quick way to confirm the setup took effect.
 

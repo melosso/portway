@@ -7,7 +7,9 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go. This page walks through each layer in turn, from authentication down to a pre-deployment checklist you can run before going live.
 
-> **Note:** The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
+::: Note
+The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
+:::
 
 ## Authentication
 

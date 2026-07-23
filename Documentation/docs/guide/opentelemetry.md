@@ -75,13 +75,17 @@ scrape_configs:
       - targets: ["portway.internal:5000"]
 ```
 
-> **Note:** The scrape endpoint is served without authentication and is exempt from rate limiting, following the same convention as `/health`. It only exposes aggregate counters and histograms, never request payloads. If the gateway is reachable from untrusted networks, it is recommended to restrict access to the metrics path at your firewall or reverse proxy.
+::: Note
+The scrape endpoint is served without authentication and is exempt from rate limiting, following the same convention as `/health`. It only exposes aggregate counters and histograms, never request payloads. If the gateway is reachable from untrusted networks, it is recommended to restrict access to the metrics path at your firewall or reverse proxy.
+:::
 
 Since Prometheus is a metrics-only system, traces are not collected with this provider. If you want distributed tracing alongside Prometheus-style metrics, the OTLP provider combined with a collector gives you both.
 
 ## What Portway exports
 
 ### Traces (OTLP provider)
+
+Three span types cover the full request path through the gateway:
 
 | Span | Source | Notes |
 |---|---|---|
@@ -94,6 +98,8 @@ Proxy endpoint calls produce a child HttpClient span nested under the inbound re
 Errors caught by Portway's exception handler are recorded on the active span with `exception.type`, `exception.message`, and `exception.stacktrace` attributes.
 
 ### Metrics (both providers)
+
+Portway publishes its own meters alongside the standard ASP.NET Core instrumentation:
 
 | Metric | Type | Unit | Dimensions |
 |---|---|---|---|
@@ -164,8 +170,7 @@ If you use Grafana Alloy or the Grafana Agent, point `Telemetry__Otlp__Endpoint`
 
 On Windows, the `Telemetry` section lives in `appsettings.json` next to the rest of your gateway configuration. An environment-specific override file is a good place for collector addresses, keeping them out of source control:
 
-```json
-// appsettings.Production.json
+```json [appsettings.Production.json]
 {
   "Telemetry": {
     "Provider": "Otlp",

@@ -7,7 +7,9 @@ description: "Forward requests to internal HTTP/HTTPS services through a consist
 
 Proxy endpoints put Portway in front of an internal service: requests route through the gateway and responses come back to your caller unchanged. Along the way Portway adds token authentication, environment headers, and URL rewriting, while the internal service receives the request transparently without ever knowing about the gateway.
 
-> **Note:** If your backend requires NTLM authentication (Exact Globe+ or Exact Synergy, for example), binding the IIS Application Pool identity to a domain user with the necessary permissions gives Portway the access it needs.
+:::details Note on pass-through authentication
+If your backend requires NTLM authentication (Exact Globe+ or Exact Synergy, for example), binding the IIS Application Pool identity to a domain user with the necessary permissions gives Portway the access it needs.
+:::
 
 ## Configuration
 
