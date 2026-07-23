@@ -275,6 +275,13 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-header"><span class="card-title">Telemetry</span></div>
+          <div class="card-body" id="telemetryBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -356,6 +363,7 @@ async function load() {
     const f   = d.file_storage       ?? {};
     const log = d.logging            ?? {};
     const ep  = d.endpoint_reloading ?? {};
+    const tel = d.telemetry          ?? {};
     const m   = d.mcp                ?? {};
     const sec = d.security           ?? {};
     const dbm = d.database_maintenance ?? {};
@@ -412,6 +420,18 @@ async function load() {
     document.getElementById('reloadBody').innerHTML = [
       boolItem('Enabled',  ep.enabled),
       settingItem('Debounce', ep.debounce_ms != null ? `${ep.debounce_ms}ms` : '—'),
+    ].join('');
+
+    const telActive = tel.provider && tel.provider !== 'None';
+    document.getElementById('telemetryBody').innerHTML = [
+      settingItemRaw('Provider',
+        telActive
+          ? `<span class="setting-on">${esc(tel.provider)}</span>`
+          : '<span class="setting-off">Off</span>',
+        'Telemetry:Provider selects OTLP push or Prometheus scraping'),
+      settingItem('Service Name', tel.service_name ?? '—'),
+      ...(tel.otlp_endpoint   ? [settingItem('OTLP Endpoint',   tel.otlp_endpoint)]   : []),
+      ...(tel.prometheus_path ? [settingItem('Scrape Path',     tel.prometheus_path)] : []),
     ].join('');
 
     document.getElementById('mcpBody').innerHTML = [

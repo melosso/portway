@@ -41,6 +41,7 @@ public static partial class WebUiEndpointExtensions
             var publicOriginsCount = config.GetSection("WebUi:PublicOrigins").Get<string[]>()?.Length ?? 0;
             var trustedProxyCount  = (config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>()?.Length ?? 0)
                                    + (config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>()?.Length ?? 0);
+            var telemetry = config.GetSection("Telemetry").Get<PortwayApi.Services.Telemetry.TelemetryOptions>() ?? new();
             var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
             var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
             var httpsOn = inContainer
@@ -115,6 +116,14 @@ public static partial class WebUiEndpointExtensions
             {
                 enabled     = config.GetValue<bool>("EndpointReloading:Enabled"),
                 debounce_ms = config.GetValue<int>("EndpointReloading:DebounceMs")
+            },
+            telemetry = new
+            {
+                provider        = telemetry.EffectiveProvider.ToString(),
+                service_name    = telemetry.ServiceName ?? PortwayApi.Services.Telemetry.PortwayTelemetry.ServiceName,
+                otlp_endpoint   = telemetry.EffectiveProvider == PortwayApi.Services.Telemetry.TelemetryProvider.Otlp
+                                    ? telemetry.EffectiveOtlpEndpoint : null,
+                prometheus_path = telemetry.ActiveMetricsPath
             },
             mcp = new
             {

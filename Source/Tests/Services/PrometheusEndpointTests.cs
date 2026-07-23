@@ -87,10 +87,22 @@ public class PrometheusOptionsTests
 [Collection("Integration")]
 public class PrometheusScrapeEndpointTests : IDisposable
 {
+    private const string AdminKey = "prometheus-test-admin-key-0123456789-0123456789";
+
     private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
     private readonly string _authDbPath;
     private readonly string _mcpDbPath;
+
+    // Mints a session cookie in the same format WebUiEndpoints.GenerateToken produces
+    private static string MintSessionCookie()
+    {
+        var expiry = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
+        var signingKey = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(AdminKey));
+        using var hmac = new System.Security.Cryptography.HMACSHA256(signingKey);
+        var sig = Convert.ToBase64String(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(expiry)));
+        return Uri.EscapeDataString($"{expiry}.{sig}");
+    }
 
     public PrometheusScrapeEndpointTests()
     {
@@ -105,9 +117,14 @@ public class PrometheusScrapeEndpointTests : IDisposable
                 // ConfigureAppConfiguration would land too late for service registration
                 builder.UseSetting("Mcp:Enabled", "false");
                 builder.UseSetting("Telemetry:Provider", "Prometheus");
+                builder.UseSetting("WebUi:AdminApiKey", AdminKey);
 
                 builder.ConfigureTestServices(services =>
                 {
+                    // TestServer leaves RemoteIpAddress null; the Web UI network gate rejects that.
+                    // A startup filter runs before app middleware and stamps loopback on every request
+                    services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter>(new LoopbackRemoteIpStartupFilter());
+
                     // Isolate SQLite databases per test instance to prevent file-lock races
                     services.AddDbContext<PortwayApi.Auth.AuthDbContext>(opts =>
                         opts.UseSqlite($"Data Source={_authDbPath}"),
@@ -137,6 +154,22 @@ public class PrometheusScrapeEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task SettingsApi_ReportsActivePrometheusProvider()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/ui/api/settings");
+        request.Headers.Add("Cookie", $"portway_auth={MintSessionCookie()}");
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var telemetry = doc.RootElement.GetProperty("telemetry");
+
+        Assert.Equal("Prometheus", telemetry.GetProperty("provider").GetString());
+        Assert.Equal("/metrics", telemetry.GetProperty("prometheus_path").GetString());
+    }
+
+    [Fact]
     public async Task MetricsEndpoint_AfterApiRequest_ExposesRequestDurationHistogram()
     {
         // Any /api request (even a 404) flows through the request metrics middleware
@@ -156,6 +189,21 @@ public class PrometheusScrapeEndpointTests : IDisposable
         if (File.Exists(_mcpDbPath))  File.Delete(_mcpDbPath);
         GC.SuppressFinalize(this);
     }
+}
+
+/// <summary>Stamps loopback as the remote IP so the Web UI network gate admits TestServer requests</summary>
+file sealed class LoopbackRemoteIpStartupFilter : Microsoft.AspNetCore.Hosting.IStartupFilter
+{
+    public Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> Configure(Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> next) =>
+        app =>
+        {
+            app.Use(inner => async ctx =>
+            {
+                ctx.Connection.RemoteIpAddress = System.Net.IPAddress.Loopback;
+                await inner(ctx);
+            });
+            next(app);
+        };
 }
 
 /// <summary>Verifies the scrape endpoint stays unmapped when Prometheus is not the provider</summary>

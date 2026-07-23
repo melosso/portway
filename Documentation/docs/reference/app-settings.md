@@ -438,25 +438,31 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 
 ## Telemetry
 
-Controls OpenTelemetry export over OTLP (gRPC). Disabled by default; no collector connection is attempted unless `Enabled` is `true`.
+Controls how request traces and metrics leave the gateway. Telemetry is off by default; selecting a provider activates it.
 
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `Enabled` | No | boolean | Activates OTLP export. Defaults to `false` |
-| `OtlpEndpoint` | No | string | gRPC endpoint of your OTLP collector. Defaults to `http://localhost:4317` |
-| `ServiceName` | No | string | Service name reported to the collector. Defaults to `Portway.Api` |
+| `Provider` | No | string | `"None"`, `"Otlp"`, or `"Prometheus"`. Defaults to `"None"` |
+| `ServiceName` | No | string | Service name reported to the backend. Defaults to `Portway.Api` |
 | `ResourceAttributes` | No | string | Comma-separated `key=value` pairs attached as resource attributes |
+| `Otlp:Endpoint` | No | string | gRPC endpoint of your OTLP collector. Defaults to `http://localhost:4317` |
+| `Prometheus:Path` | No | string | Route the scrape endpoint is served on. Defaults to `/metrics` |
 
 ```json
 "Telemetry": {
-  "Enabled": true,
-  "OtlpEndpoint": "http://otel-collector.internal:4317",
+  "Provider": "Otlp",
   "ServiceName": "portway-prod",
-  "ResourceAttributes": "deployment.environment=production,host.name=gw01"
+  "ResourceAttributes": "deployment.environment=production,host.name=gw01",
+  "Otlp": {
+    "Endpoint": "http://otel-collector.internal:4317"
+  },
+  "Prometheus": {
+    "Path": "/metrics"
+  }
 }
 ```
 
-`ResourceAttributes` follows the same key=value,key=value format as the OTEL_RESOURCE_ATTRIBUTES environment variable. Environment variables with the OTEL_ prefix still override appsettings.json values when set, following standard .NET configuration precedence.
+The `Otlp` provider pushes traces and metrics to a collector over gRPC; the `Prometheus` provider serves metrics on a scrape endpoint instead. Configurations from earlier releases keep working: a flat `"Enabled": true` selects the OTLP provider, and a flat `OtlpEndpoint` is used whenever `Otlp:Endpoint` is not set. See the [Telemetry guide](/guide/opentelemetry) for the full walkthrough.
 
 ## MCP Configuration
 
