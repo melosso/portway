@@ -9,8 +9,7 @@ public class DynamicEndpointOperationFilter : IOpenApiOperationTransformer
 {
     public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
     {
-        if (context.Description.RelativePath == null ||
-            context.Description.RelativePath.StartsWith("openapi-docs", StringComparison.OrdinalIgnoreCase))
+        if (context.Description.RelativePath == null)
         {
             return Task.CompletedTask;
         }

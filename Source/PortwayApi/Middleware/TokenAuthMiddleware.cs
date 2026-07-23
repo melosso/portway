@@ -15,12 +15,11 @@ public class TokenAuthMiddleware
     private readonly RequestDelegate _next;
     private readonly string? _metricsPath;
 
-    public TokenAuthMiddleware(RequestDelegate next, IConfiguration configuration)
+    public TokenAuthMiddleware(RequestDelegate next, Services.Telemetry.TelemetryOptions telemetry)
     {
         _next = next;
 
         // Prometheus scrape endpoint is open by design; operators restrict it at the network level
-        var telemetry = configuration.GetSection("Telemetry").Get<Services.Telemetry.TelemetryOptions>() ?? new();
         _metricsPath = telemetry.ActiveMetricsPath;
     }
 
@@ -35,8 +34,7 @@ public class TokenAuthMiddleware
         string env = ExtractEnvironmentFromPath(context.Request.Path);
         
         // Skip token validation for specific routes
-        if (context.Request.Path.StartsWithSegments("/openapi-docs") ||
-            context.Request.Path.StartsWithSegments("/docs") ||
+        if (context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health/live") ||
             context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
             context.Request.Path == "/health" ||

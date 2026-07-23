@@ -84,7 +84,7 @@ public static class OpenApiConfiguration
 
                     if (!string.IsNullOrEmpty(routeTemplate))
                     {
-                        var excludedRoutePatterns = new[] { "portwayapi", "models", "openapi-docs", "/models" };
+                        var excludedRoutePatterns = new[] { "portwayapi", "models", "/models" };
                         if (excludedRoutePatterns.Any(pattern => routeTemplate.Contains(pattern)))
                             return false;
                     }

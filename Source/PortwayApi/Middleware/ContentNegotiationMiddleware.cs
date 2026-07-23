@@ -13,8 +13,7 @@ public class ContentNegotiationMiddleware
     {
         "/files",
         "/health",
-        "/docs",
-        "/openapi-docs"
+        "/docs"
     };
     
     // Maximum request body size (50MB)

@@ -27,7 +27,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance) =>
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -41,7 +41,6 @@ public static partial class WebUiEndpointExtensions
             var publicOriginsCount = config.GetSection("WebUi:PublicOrigins").Get<string[]>()?.Length ?? 0;
             var trustedProxyCount  = (config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>()?.Length ?? 0)
                                    + (config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>()?.Length ?? 0);
-            var telemetry = config.GetSection("Telemetry").Get<PortwayApi.Services.Telemetry.TelemetryOptions>() ?? new();
             var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
             var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
             var httpsOn = inContainer
