@@ -122,15 +122,19 @@ public class ContentNegotiationMiddleware
                 "Content-Type header is required for requests with body. Use application/json.");
         }
         
-        // Check for JSON content type
-        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+        // Accept JSON plus the XML family; SOAP and XML-RPC bodies flow through proxy endpoints
+        // whose paths are not recognizable as proxies here, so the gate covers both
+        if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase) &&
+            !contentType.Contains("text/xml", StringComparison.OrdinalIgnoreCase) &&
+            !contentType.Contains("application/xml", StringComparison.OrdinalIgnoreCase) &&
+            !contentType.Contains("application/soap+xml", StringComparison.OrdinalIgnoreCase))
         {
-            Log.Warning("Invalid Content-Type '{ContentType}' for {Method} request from {RemoteIp}", 
+            Log.Warning("Invalid Content-Type '{ContentType}' for {Method} request from {RemoteIp}",
                 contentType, context.Request.Method, context.Connection.RemoteIpAddress);
-            
+
             return (false, StatusCodes.Status415UnsupportedMediaType,
                 "Unsupported Media Type",
-                $"Content-Type '{contentType}' is not supported. Use application/json.");
+                $"Content-Type '{contentType}' is not supported. Use application/json or an XML media type.");
         }
         
         return (true, 0, string.Empty, string.Empty);

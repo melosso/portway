@@ -507,8 +507,10 @@ public sealed class ProxyRequestHandler
                 requestMessage.Content = new ByteArrayContent(bodyBytes);
                 if (context.Request.ContentType != null)
                 {
+                    // Parse, not the ctor: values like "application/json; charset=utf-8" carry
+                    // parameters the ctor rejects with a FormatException (500 on the request)
                     requestMessage.Content.Headers.ContentType =
-                        new System.Net.Http.Headers.MediaTypeHeaderValue(context.Request.ContentType);
+                        System.Net.Http.Headers.MediaTypeHeaderValue.Parse(context.Request.ContentType);
                 }
             }
 
