@@ -221,8 +221,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             }
         }
 
-        // Webhook tag descriptions are registered per endpoint in AddWebhookEndpoints (namespaced since v2.0.0)
-
+        // Webhook tag descriptions are registered per endpoint in AddWebhookEndpoints (namespaced since v0.7.0)
         // Sort all tags alphabetically
         document.Tags = new HashSet<OpenApiTag>(document.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase));
     }

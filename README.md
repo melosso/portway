@@ -25,7 +25,9 @@ Out of the box, Portway handles proxy pass-through, SQL endpoints, and webhooks,
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
-* <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11 Hosting Bundle</a> (Portway `v2.0.0` targets .NET 11, currently a preview; the .NET 10 LTS build remains available for production)
+* .NET Hosting Bundle
+  * Portway `v0.7.0`: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11</a> (currently a preview)
+  * Production: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/10.0" target="_blank" rel="noopener noreferrer">.NET 10 LTS</a> build remains available
 * If you're running on Windows: Internet Information Services (IIS)
 * A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
@@ -115,7 +117,7 @@ Define your server and environment settings to isolate the various environments 
 
 ### 3. Define Your Endpoints
 
-Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a>. There are various types that Portway supports:
+Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>. There are various types that Portway supports:
 
 * **SQL** (SQL Server, PostgreSQL, MySQL, SQLite): Direct CRUD access with schema-level control and documentation
 * **Proxy**: Forward to internal services; supports complex orchestration
@@ -426,7 +428,7 @@ Content-Type: application/json
 
 </details>
 
-You'll find comprehensive configuration examples in our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a>.
+You'll find comprehensive configuration examples in our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>.
 
 ## Screenshots
 
@@ -449,10 +451,10 @@ Portway automatically generates API documentation by reading your **database obj
 If you're using Windows Authentication with `Trusted_Connection=True`, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. This isn't necessary when you use SQL Authentication, but make sure each environment uses its own credentials.
 
 ### Model Context Protocol (MCP)
-The application also can act as a MCP server over HTTP. Your endpoints can appear in the MCP tool registry and becomes callable by any MCP-compatible client, e.g. Mistral, VS Code Copilot, custom agents, or the built-in Chat UI. Beware that this is opt-in, meaning all endpoints are not exposed as tool by default. Portway's own authentication and environment scoping apply to every tool call. Please read more on MCP integration at <a href="https://portway-docs.melosso.com/guide/mcp.html" target="_blank" rel="noopener noreferrer">MCP documentation</a>.
+The application also can act as a MCP server over HTTP. Your endpoints can appear in the MCP tool registry and becomes callable by any MCP-compatible client, e.g. Mistral, VS Code Copilot, custom agents, or the built-in Chat UI. Beware that this is opt-in, meaning all endpoints are not exposed as tool by default. Portway's own authentication and environment scoping apply to every tool call. Please read more on MCP integration at <a href="https://melosso.github.io/portway/guide/mcp" target="_blank" rel="noopener noreferrer">MCP documentation</a>.
 
 ### Walkthrough
-Our <a href="https://portway-docs.melosso.com/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
+Our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced usage. Feel free to submit a pull request if you'd like to see changes to the documentation.
 
 ## License
 
