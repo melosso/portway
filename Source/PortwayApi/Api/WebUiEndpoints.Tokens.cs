@@ -27,6 +27,8 @@ public static partial class WebUiEndpointExtensions
                 revoked_at           = t.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
                 allowed_scopes       = t.AllowedScopes,
                 allowed_environments = t.AllowedEnvironments,
+                rate_limit_requests  = t.RateLimitRequests,
+                rate_limit_window_seconds = t.RateLimitWindowSeconds,
                 is_active            = t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow)
             }));
         }).ExcludeFromDescription();
@@ -40,7 +42,8 @@ public static partial class WebUiEndpointExtensions
             if (error != null)
                 return Results.Json(new { error }, statusCode: error.EndsWith("already exists") ? 409 : 400);
             var token = await tokenService.GenerateTokenAsync(
-                request.Username.Trim(), request.AllowedScopes, request.AllowedEnvironments, request.Description, request.ExpiresInDays);
+                request.Username.Trim(), request.AllowedScopes, request.AllowedEnvironments, request.Description,
+                request.ExpiresInDays, request.RateLimitRequests, request.RateLimitWindowSeconds);
             return Results.Json(new { ok = true, token });
         }).ExcludeFromDescription();
 
@@ -61,7 +64,20 @@ public static partial class WebUiEndpointExtensions
                 expiresAt.ValueKind == JsonValueKind.String &&
                 DateTime.TryParse(expiresAt.GetString(), out var dt))
                 await tokenService.SetTokenExpirationAsync(id, dt.ToUniversalTime());
-            
+
+            // Rate limit override, explicit null reverts to the global default
+            if (body.TryGetProperty("rate_limit_requests", out var rlRequests))
+            {
+                int? requests = rlRequests.ValueKind == JsonValueKind.Number ? rlRequests.GetInt32() : null;
+                int? window = body.TryGetProperty("rate_limit_window_seconds", out var rlWindow) &&
+                              rlWindow.ValueKind == JsonValueKind.Number ? rlWindow.GetInt32() : null;
+
+                if (requests is < 1 || window is < 1 or > 86400)
+                    return Results.Json(new { error = "Rate limit values are out of range" }, statusCode: 400);
+
+                await tokenService.UpdateTokenRateLimitAsync(id, requests, requests.HasValue ? window ?? 60 : null);
+            }
+
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -107,7 +123,9 @@ public static partial class WebUiEndpointExtensions
                 existing.AllowedScopes,
                 existing.AllowedEnvironments,
                 existing.Description,
-                expiresInDays);
+                expiresInDays,
+                existing.RateLimitRequests,
+                existing.RateLimitWindowSeconds);
 
             await tokenService.RevokeTokenAsync(id);
 

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PortwayApi.Middleware;
+using PortwayApi.Tests.Support;
 using System.Net;
 using Xunit;
 
@@ -17,22 +17,23 @@ public class RateLimiterTests
         int ipLimit = 10000,
         int tokenLimit = 10000,
         bool enabled = true,
-        string adminApiKey = "")
+        string adminApiKey = "",
+        TimeProvider? timeProvider = null)
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["RateLimiting:Enabled"] = enabled.ToString().ToLowerInvariant(),
-                ["RateLimiting:IpLimit"] = ipLimit.ToString(),
-                ["RateLimiting:IpWindow"] = "60",
-                ["RateLimiting:TokenLimit"] = tokenLimit.ToString(),
-                ["RateLimiting:TokenWindow"] = "60",
-            })
-            .Build();
+        var settings = new RateLimitSettings
+        {
+            Enabled = enabled,
+            IpLimit = ipLimit,
+            IpWindow = 60,
+            TokenLimit = tokenLimit,
+            TokenWindow = 60,
+        };
 
+        var tp = timeProvider ?? TimeProvider.System;
+        var store = new InMemoryRateLimiterStore(tp);
         var logger = new Mock<ILogger<RateLimiter>>().Object;
 
-        return new RateLimiter(next, config, logger, adminApiKey);
+        return new RateLimiter(next, settings, store, new RateLimiterState(), tp, logger, adminApiKey);
     }
 
     // Mints a session cookie in the same format WebUiEndpoints.GenerateToken produces
@@ -64,7 +65,7 @@ public class RateLimiterTests
         var nextCalled = false;
         var limiter = CreateRateLimiter(_ => { nextCalled = true; return Task.CompletedTask; });
 
-        await limiter.InvokeAsync(BuildContext(), null!, null!);
+        await limiter.InvokeAsync(BuildContext());
 
         Assert.True(nextCalled);
     }
@@ -76,7 +77,7 @@ public class RateLimiterTests
         var limiter = CreateRateLimiter(_ => { callCount++; return Task.CompletedTask; }, ipLimit: 1, enabled: false);
 
         for (var i = 0; i < 5; i++)
-            await limiter.InvokeAsync(BuildContext(), null!, null!);
+            await limiter.InvokeAsync(BuildContext());
 
         Assert.Equal(5, callCount);
     }
@@ -88,7 +89,7 @@ public class RateLimiterTests
         var limiter = CreateRateLimiter(_ => { nextCalled = true; return Task.CompletedTask; }, tokenLimit: 10000);
         var ctx = BuildContext(bearerToken: "abc.def.ghi");
 
-        await limiter.InvokeAsync(ctx, null!, null!);
+        await limiter.InvokeAsync(ctx);
 
         Assert.True(nextCalled);
     }
@@ -97,12 +98,12 @@ public class RateLimiterTests
     public async Task InvokeAsync_ExceedsIpLimit_Returns429()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, tokenLimit: 10000);
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, tokenLimit: 10000, timeProvider: new FakeTimeProvider());
 
         for (var i = 0; i < 5; i++)
         {
             var ctx = BuildContext();
-            await limiter.InvokeAsync(ctx, null!, null!);
+            await limiter.InvokeAsync(ctx);
         }
 
         Assert.Equal(3, passed);
@@ -112,12 +113,12 @@ public class RateLimiterTests
     public async Task InvokeAsync_ExceedsTokenLimit_Returns429()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 10000, tokenLimit: 2);
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 10000, tokenLimit: 2, timeProvider: new FakeTimeProvider());
 
         for (var i = 0; i < 5; i++)
         {
             var ctx = BuildContext(bearerToken: "my-rate-limited-token");
-            await limiter.InvokeAsync(ctx, null!, null!);
+            await limiter.InvokeAsync(ctx);
         }
 
         Assert.Equal(2, passed);
@@ -128,18 +129,18 @@ public class RateLimiterTests
     {
         var passedA = 0;
         var passedB = 0;
-        var limiter = CreateRateLimiter(_ => Task.CompletedTask, ipLimit: 10000, tokenLimit: 2);
+        var limiter = CreateRateLimiter(_ => Task.CompletedTask, ipLimit: 10000, tokenLimit: 2, timeProvider: new FakeTimeProvider());
 
         for (var i = 0; i < 4; i++)
         {
             var ctxA = BuildContext(bearerToken: "token-aaa");
             ctxA.Response.Body = new MemoryStream();
-            await limiter.InvokeAsync(ctxA, null!, null!);
+            await limiter.InvokeAsync(ctxA);
             if (ctxA.Response.StatusCode != 429) passedA++;
 
             var ctxB = BuildContext(bearerToken: "token-bbb");
             ctxB.Response.Body = new MemoryStream();
-            await limiter.InvokeAsync(ctxB, null!, null!);
+            await limiter.InvokeAsync(ctxB);
             if (ctxB.Response.StatusCode != 429) passedB++;
         }
 
@@ -158,7 +159,7 @@ public class RateLimiterTests
         {
             var ctx = BuildContext(path: "/ui/api/settings");
             ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
-            await limiter.InvokeAsync(ctx, null!, null!);
+            await limiter.InvokeAsync(ctx);
         }
 
         // A valid session bypasses rate limiting; all 5 pass despite the low IP limit
@@ -169,13 +170,13 @@ public class RateLimiterTests
     public async Task InvokeAsync_UiWithBogusCookie_IsRateLimited()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey);
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey, timeProvider: new FakeTimeProvider());
 
         for (var i = 0; i < 6; i++)
         {
             var ctx = BuildContext(path: "/ui/api/settings");
             ctx.Request.Headers.Cookie = "portway_auth=forged-value";
-            await limiter.InvokeAsync(ctx, null!, null!);
+            await limiter.InvokeAsync(ctx);
         }
 
         // A merely-present cookie no longer exempts; the IP limit binds
@@ -186,14 +187,14 @@ public class RateLimiterTests
     public async Task InvokeAsync_AuthEndpoint_IsRateLimited_EvenWithValidCookie()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey);
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey, timeProvider: new FakeTimeProvider());
         var cookie = MintValidSessionCookie(TestAdminKey);
 
         for (var i = 0; i < 6; i++)
         {
             var ctx = BuildContext(path: "/ui/api/auth/csrf");
             ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
-            await limiter.InvokeAsync(ctx, null!, null!);
+            await limiter.InvokeAsync(ctx);
         }
 
         // The credential endpoints are never exempt, so the CSRF-token route stays throttled
@@ -212,8 +213,27 @@ public class RateLimiterTests
         }, tokenLimit: 10000);
 
         var ctx = BuildContext(bearerToken: "exact-token-value");
-        await limiter.InvokeAsync(ctx, null!, null!);
+        await limiter.InvokeAsync(ctx);
 
         Assert.Equal("Bearer exact-token-value", captured);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_BlockedToken429_CarriesRateLimitHeaders()
+    {
+        var limiter = CreateRateLimiter(_ => Task.CompletedTask, ipLimit: 10000, tokenLimit: 1, timeProvider: new FakeTimeProvider());
+
+        DefaultHttpContext ctx = BuildContext(bearerToken: "header-check-token");
+        await limiter.InvokeAsync(ctx);
+
+        ctx = BuildContext(bearerToken: "header-check-token");
+        await limiter.InvokeAsync(ctx);
+
+        Assert.Equal(429, ctx.Response.StatusCode);
+        Assert.Equal("1", ctx.Response.Headers["X-RateLimit-Limit"].ToString());
+        Assert.Equal("0", ctx.Response.Headers["X-RateLimit-Remaining"].ToString());
+        Assert.Equal("token", ctx.Response.Headers["X-RateLimit-Resource"].ToString());
+        Assert.False(string.IsNullOrEmpty(ctx.Response.Headers.RetryAfter.ToString()));
+        Assert.False(string.IsNullOrEmpty(ctx.Response.Headers["X-RateLimit-Reset"].ToString()));
     }
 }

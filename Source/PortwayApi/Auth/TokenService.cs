@@ -42,6 +42,8 @@ public class TokenService
         string allowedEnvironments = "*",
         string description = "",
         int? expiresInDays = null,
+        int? rateLimitRequests = null,
+        int? rateLimitWindowSeconds = null,
         CancellationToken ct = default)
     {
         // Generate a random token
@@ -70,7 +72,9 @@ public class TokenService
             ExpiresAt = expiresAt,
             AllowedScopes = allowedScopes,
             AllowedEnvironments = allowedEnvironments,
-            Description = description
+            Description = description,
+            RateLimitRequests = rateLimitRequests,
+            RateLimitWindowSeconds = rateLimitWindowSeconds
         };
         
         // Add to database
@@ -79,12 +83,13 @@ public class TokenService
 
         // Log the token creation in audit trail
         await LogAuditAsync(tokenEntry.Id, username, "Created", null, hashedToken,
-            JsonSerializer.Serialize(new 
-            { 
+            JsonSerializer.Serialize(new
+            {
                 AllowedScopes = allowedScopes,
                 AllowedEnvironments = allowedEnvironments,
                 Description = description,
                 ExpiresAt = expiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                RateLimit = rateLimitRequests.HasValue ? $"{rateLimitRequests}/{rateLimitWindowSeconds ?? 60}s" : "default",
                 TokenLength = token.Length
             }));
         
@@ -423,6 +428,26 @@ public class TokenService
         return true;
     }
     
+    /// <summary>Update per-token rate limit by ID, null values revert to the global default</summary>
+    public async Task<bool> UpdateTokenRateLimitAsync(int tokenId, int? requests, int? windowSeconds, CancellationToken ct = default)
+    {
+        var token = await _dbContext.Tokens.FindAsync(tokenId);
+        if (token == null) return false;
+        var old = token.RateLimitRequests.HasValue ? $"{token.RateLimitRequests}/{token.RateLimitWindowSeconds}s" : "default";
+        token.RateLimitRequests = requests;
+        token.RateLimitWindowSeconds = windowSeconds;
+        await _dbContext.SaveChangesAsync(ct);
+
+        // Invalidate the verification cache so the middleware picks up the new limit within the TTL
+        _tokenCache.Invalidate(tokenId);
+
+        await LogAuditAsync(token.Id, token.Username, "RateLimitUpdated", null, null,
+            JsonSerializer.Serialize(new { OldRateLimit = old,
+                NewRateLimit = requests.HasValue ? $"{requests}/{windowSeconds}s" : "default",
+                UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
+        return true;
+    }
+
     /// <summary>Update token description by ID</summary>
     public async Task<bool> UpdateTokenDescriptionAsync(int tokenId, string description, CancellationToken ct = default)
     {

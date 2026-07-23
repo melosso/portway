@@ -148,6 +148,7 @@ public static partial class WebUiEndpointExtensions
         MapSettingsRoutes(app, configAudit);
         MapAuditRoutes(app, configAudit);
         MapTokenRoutes(app);
+        MapRateLimitRoutes(app);
         MapEventRoutes(app);
         MapEndpointCrudRoutes(app, configAudit);
         MapDiagnosticsRoutes(app);

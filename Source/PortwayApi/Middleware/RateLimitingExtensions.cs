@@ -2,28 +2,47 @@ namespace PortwayApi.Middleware;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Collections.Concurrent;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog;
-using PortwayApi.Auth;
 
 /// <summary>Extension methods for Rate Limiting</summary>
 public static class RateLimitingExtensions
 {
-    /// <summary>Adds rate limiting configuration to the service collection</summary>
+    /// <summary>Adds rate limiting settings and the configured bucket store to the service collection</summary>
     public static IServiceCollection AddRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
-        // Configure RateLimitSettings from configuration
-        var rateLimitSettings = new RateLimitSettings();
-        configuration.GetSection("RateLimiting").Bind(rateLimitSettings);
-        
-        // Add settings as singleton for potential future DI
-        services.AddSingleton(rateLimitSettings);
+        var settings = new RateLimitSettings();
+        configuration.GetSection("RateLimiting").Bind(settings);
+
+        services.AddSingleton(settings);
+        services.AddSingleton<RateLimiterState>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<InMemoryRateLimiterStore>();
+
+        // Redis is opt-in only; memory remains the standard store
+        bool useRedis = string.Equals(settings.Store, "Redis", StringComparison.OrdinalIgnoreCase);
+        if (useRedis)
+        {
+            var connectionString = settings.RedisConnectionString;
+            if (string.IsNullOrWhiteSpace(connectionString))
+                connectionString = configuration.GetValue<string>("Caching:Redis:ConnectionString");
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                Log.Warning("RateLimiting:Store is Redis but no connection string is configured, using in-memory store");
+                useRedis = false;
+            }
+            else
+            {
+                services.AddSingleton<IRateLimiterStore>(sp => new RedisRateLimiterStore(
+                    connectionString,
+                    sp.GetRequiredService<InMemoryRateLimiterStore>(),
+                    sp.GetRequiredService<TimeProvider>()));
+            }
+        }
+
+        if (!useRedis)
+            services.AddSingleton<IRateLimiterStore>(sp => sp.GetRequiredService<InMemoryRateLimiterStore>());
 
         return services;
     }

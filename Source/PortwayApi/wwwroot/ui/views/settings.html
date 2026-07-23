@@ -382,6 +382,7 @@ async function load() {
 
     document.getElementById('rateLimitBody').innerHTML = [
       boolItem('Enabled', rl.enabled),
+      settingItem('Store',       rl.store ?? 'Memory'),
       settingItem('IP Limit',    rl.ip_limit    != null ? `${rl.ip_limit} req / ${rl.ip_window_seconds}s`       : '—'),
       settingItem('Token Limit', rl.token_limit != null ? `${rl.token_limit} req / ${rl.token_window_seconds}s` : '—'),
     ].join('');

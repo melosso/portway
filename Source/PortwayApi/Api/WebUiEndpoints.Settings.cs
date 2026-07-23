@@ -76,6 +76,7 @@ public static partial class WebUiEndpointExtensions
             rate_limiting = new
             {
                 enabled              = config.GetValue<bool>("RateLimiting:Enabled"),
+                store                = config.GetValue<string>("RateLimiting:Store") ?? "Memory",
                 ip_limit             = config.GetValue<int>("RateLimiting:IpLimit"),
                 ip_window_seconds    = config.GetValue<int>("RateLimiting:IpWindow"),
                 token_limit          = config.GetValue<int>("RateLimiting:TokenLimit"),

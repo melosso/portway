@@ -1,126 +1,81 @@
 namespace PortwayApi.Middleware;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Collections.Concurrent;
-using System.Text.Json;
-using Serilog;
-using PortwayApi.Auth;
-
-// Token bucket algorithm implementation
+/// <summary>Continuous-refill token bucket, thread-safe via a short lock</summary>
 public class TokenBucket
 {
     private readonly int _capacity;
     private readonly TimeSpan _refillTime;
+    private readonly TimeProvider _timeProvider;
     private readonly object _syncLock = new object();
-    private readonly string _bucketId;
 
     private double _tokens;
-    private DateTime _lastRefill;
-    private int _requestCount = 0;
-    
-    // Logging suppression mechanism
-    private DateTime _lastLoggedBlockTime = DateTime.MinValue;
-    private readonly TimeSpan _logSuppressDuration = TimeSpan.FromSeconds(5);
+    private DateTimeOffset _lastRefill;
+    private DateTimeOffset _lastActivity;
 
-    public TokenBucket(int capacity, TimeSpan refillTime, string bucketId)
+    public TokenBucket(int capacity, TimeSpan refillTime, TimeProvider timeProvider)
     {
         _capacity = capacity;
         _refillTime = refillTime;
+        _timeProvider = timeProvider;
         _tokens = capacity;
-        _lastRefill = DateTime.UtcNow;
-        _bucketId = bucketId;
-        
-        Log.Debug("Token bucket created for a bucket: Capacity={Capacity}, RefillTime={RefillTime}s", 
-            capacity, refillTime.TotalSeconds);
+        _lastRefill = timeProvider.GetUtcNow();
+        _lastActivity = _lastRefill;
     }
 
-    public bool TryConsume(int tokenCount, Microsoft.Extensions.Logging.ILogger? logger)
+    public int Capacity => _capacity;
+
+    /// <summary>Time of the last consumption attempt, used for idle eviction</summary>
+    public DateTimeOffset LastActivity
+    {
+        get { lock (_syncLock) return _lastActivity; }
+    }
+
+    /// <summary>Attempts to take tokens and reports the post-attempt bucket state</summary>
+    public RateLimitLease TryConsume(int tokenCount)
     {
         lock (_syncLock)
         {
-            var requestNum = Interlocked.Increment(ref _requestCount);
-            
-            RefillTokens(logger);
-            
-            if (_tokens >= tokenCount)
-            {
+            var now = _timeProvider.GetUtcNow();
+            _lastActivity = now;
+            RefillTokens(now);
+
+            bool allowed = _tokens >= tokenCount;
+            if (allowed)
                 _tokens -= tokenCount;
-                if (logger != null)
-                {
-                    logger.LogDebug("Request #{RequestNum} for a bucket ALLOWED", requestNum);
-                }
-                return true;
-            }
 
-            // Suppress repeated logging for the same bucket
-            var now = DateTime.UtcNow;
-            if (logger != null && (now - _lastLoggedBlockTime) >= _logSuppressDuration)
-            {
-                logger.LogWarning(
-                    "Request #{RequestNum} for a bucket BLOCKED - Tokens: {Tokens:F2}/{Capacity} < {TokenCount}", 
-                    requestNum, _tokens, _capacity, tokenCount
-                );
-                
-                Log.Warning(
-                    "Rate limit reached for a bucket: {Tokens:F2}/{Capacity} tokens available, {TokenCount} required", 
-                    _tokens, _capacity, tokenCount
-                );
-
-                _lastLoggedBlockTime = now;
-            }
-                    
-            return false;
+            return BuildLease(allowed, now);
         }
     }
 
-    public int GetRemainingTokens()
+    /// <summary>Reports current bucket state without consuming</summary>
+    public RateLimitLease Peek()
     {
         lock (_syncLock)
         {
-            RefillTokens(null); // Ensure tokens are up-to-date before reporting
-            return (int)Math.Floor(_tokens);
+            var now = _timeProvider.GetUtcNow();
+            RefillTokens(now);
+            return BuildLease(true, now);
         }
     }
 
-    public int GetCapacity()
+    private RateLimitLease BuildLease(bool allowed, DateTimeOffset now)
     {
-        return _capacity;
+        // Reset marks the moment the bucket is fully replenished
+        var secondsToFull = (_capacity - _tokens) * _refillTime.TotalSeconds / _capacity;
+        return new RateLimitLease(
+            allowed,
+            _capacity,
+            (int)Math.Floor(_tokens),
+            now.AddSeconds(secondsToFull).ToUnixTimeSeconds());
     }
 
-    public DateTime GetResetTime()
+    private void RefillTokens(DateTimeOffset now)
     {
-        lock (_syncLock)
-        {
-            RefillTokens(null);
-            // Calculate when tokens will fully replenish
-            var secondsToFull = (_capacity - _tokens) * _refillTime.TotalSeconds / _capacity;
-            return DateTime.UtcNow.AddSeconds(secondsToFull);
-        }
-    }
-
-    private void RefillTokens(Microsoft.Extensions.Logging.ILogger? logger)
-    {
-        var now = DateTime.UtcNow;
         var elapsed = (now - _lastRefill).TotalSeconds;
-        
         if (elapsed <= 0)
             return;
 
-        // Calculate tokens to add based on elapsed time
         var tokensToAdd = elapsed * (_capacity / _refillTime.TotalSeconds);
-        
-        if (tokensToAdd > 0.01 && logger != null) // Only log meaningful refills
-        {
-            logger.LogDebug("Refilling tokens for a bucket: +{TokensToAdd:F2} after {Elapsed:F2}s", 
-                tokensToAdd, elapsed);
-        }
-        
         _tokens = Math.Min(_capacity, _tokens + tokensToAdd);
         _lastRefill = now;
     }

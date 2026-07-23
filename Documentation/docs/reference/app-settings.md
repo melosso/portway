@@ -182,7 +182,8 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
     "IpLimit": 100,
     "IpWindow": 60,
     "TokenLimit": 100,
-    "TokenWindow": 60
+    "TokenWindow": 60,
+    "Store": "Memory"
   }
 }
 ```
@@ -196,13 +197,17 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 | `IpWindow` | integer | `60` | Time window in seconds |
 | `TokenLimit` | integer | `100` | Requests per token |
 | `TokenWindow` | integer | `60` | Time window in seconds |
+| `Store` | string | `Memory` | Bucket storage backend, `Memory` or `Redis` |
+| `RedisConnectionString` | string | none | Redis connection for the `Redis` store, reuses the caching connection when empty |
 
 ### Rate Limiting Behavior
 
 - IP-based limiting applies to all requests
-- Token-based limiting applies per authentication token
+- Token-based limiting applies per authentication token, and individual tokens can carry their own limit that overrides `TokenLimit`
 - Exceeding limits results in 429 Too Many Requests
-- Limits reset after the time window expires
+- Buckets refill continuously over the time window
+
+You can find a full walkthrough, including per-token limits and the Redis store, in the [rate limiting guide](/guide/rate-limiting).
 
 ## Forwarded Headers
 

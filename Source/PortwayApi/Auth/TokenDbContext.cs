@@ -1,5 +1,6 @@
 namespace PortwayApi.Auth;
 
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -23,26 +24,21 @@ public class AuthDbContext : DbContext
                 bool hasEnvironmentColumn = false;
                 try
                 {
-                    using var cmd = Database.GetDbConnection().CreateCommand();
-                    cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Tokens') WHERE name='AllowedEnvironments'";
-                    
-                    if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
-                        Database.GetDbConnection().Open();
-                        
-                    var result = cmd.ExecuteScalar();
-                    hasEnvironmentColumn = Convert.ToInt32(result) > 0;
+                    hasEnvironmentColumn = OpenConnection().ExecuteScalar<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tokens') WHERE name=@name",
+                        new { name = "AllowedEnvironments" }) > 0;
                 }
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Error checking if AllowedEnvironments column exists");
                 }
-                
+
                 // Add the column if it doesn't exist
                 if (!hasEnvironmentColumn)
                 {
                     try
                     {
-                        Database.ExecuteSqlRaw("ALTER TABLE Tokens ADD COLUMN AllowedEnvironments TEXT NOT NULL DEFAULT '*'");
+                        OpenConnection().Execute("ALTER TABLE Tokens ADD COLUMN AllowedEnvironments TEXT NOT NULL DEFAULT '*'");
                         Log.Information("Added AllowedEnvironments column to Tokens table");
                     }
                     catch (Exception ex)
@@ -50,11 +46,13 @@ public class AuthDbContext : DbContext
                         Log.Error(ex, "Error adding AllowedEnvironments column");
                     }
                 }
-                
+
+                EnsureRateLimitColumns();
+
                 // Ensure the active-filter index exists on pre-existing databases
                 try
                 {
-                    Database.ExecuteSqlRaw(@"
+                    OpenConnection().Execute(@"
                         CREATE INDEX IF NOT EXISTS IX_AuthTokens_ActiveFilter
                             ON Tokens (RevokedAt, ExpiresAt)");
                 }
@@ -84,18 +82,50 @@ public class AuthDbContext : DbContext
         }
     }
 
+    // Adds the nullable per-token rate limit columns to pre-existing databases
+    private void EnsureRateLimitColumns()
+    {
+        var migrations = new (string Column, string AlterSql)[]
+        {
+            ("RateLimitRequests", "ALTER TABLE Tokens ADD COLUMN RateLimitRequests INTEGER NULL"),
+            ("RateLimitWindowSeconds", "ALTER TABLE Tokens ADD COLUMN RateLimitWindowSeconds INTEGER NULL"),
+        };
+
+        foreach (var (column, alterSql) in migrations)
+        {
+            try
+            {
+                var exists = OpenConnection().ExecuteScalar<int>(
+                    "SELECT COUNT(*) FROM pragma_table_info('Tokens') WHERE name=@name", new { name = column });
+
+                if (exists == 0)
+                {
+                    OpenConnection().Execute(alterSql);
+                    Log.Information("Added {Column} column to Tokens table", column);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error ensuring {Column} column exists", column);
+            }
+        }
+    }
+
+    // Opens the context connection once and reuses it for all Dapper calls
+    private System.Data.Common.DbConnection OpenConnection()
+    {
+        var connection = Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            connection.Open();
+        return connection;
+    }
+
     private bool CheckTableExists(string tableName)
     {
         try
         {
-            using var cmd = Database.GetDbConnection().CreateCommand();
-            cmd.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{tableName}'";
-            
-            if (Database.GetDbConnection().State != System.Data.ConnectionState.Open)
-                Database.GetDbConnection().Open();
-                
-            var result = cmd.ExecuteScalar();
-            return Convert.ToInt32(result) > 0;
+            return OpenConnection().ExecuteScalar<int>(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@name", new { name = tableName }) > 0;
         }
         catch (Exception ex)
         {
@@ -108,7 +138,7 @@ public class AuthDbContext : DbContext
     {
         try
         {
-            Database.ExecuteSqlRaw(@"
+            OpenConnection().Execute(@"
                 CREATE TABLE Tokens (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Username TEXT NOT NULL DEFAULT 'legacy',
@@ -119,10 +149,12 @@ public class AuthDbContext : DbContext
                     ExpiresAt DATETIME NULL,
                     AllowedScopes TEXT NOT NULL DEFAULT '*',
                     AllowedEnvironments TEXT NOT NULL DEFAULT '*',
-                    Description TEXT NOT NULL DEFAULT ''
+                    Description TEXT NOT NULL DEFAULT '',
+                    RateLimitRequests INTEGER NULL,
+                    RateLimitWindowSeconds INTEGER NULL
                 )");
 
-            Database.ExecuteSqlRaw(@"
+            OpenConnection().Execute(@"
                 CREATE INDEX IF NOT EXISTS IX_AuthTokens_ActiveFilter
                     ON Tokens (RevokedAt, ExpiresAt)");
 
@@ -139,7 +171,7 @@ public class AuthDbContext : DbContext
     {
         try
         {
-            Database.ExecuteSqlRaw(@"
+            OpenConnection().Execute(@"
                 CREATE TABLE TokenAudits (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     TokenId INTEGER NULL,
@@ -181,6 +213,8 @@ public class AuthDbContext : DbContext
             entity.Property(e => e.AllowedScopes).HasDefaultValue("*").HasMaxLength(1000);
             entity.Property(e => e.AllowedEnvironments).HasDefaultValue("*").HasMaxLength(1000);
             entity.Property(e => e.Description).HasDefaultValue("").HasMaxLength(500);
+            entity.Property(e => e.RateLimitRequests).IsRequired(false);
+            entity.Property(e => e.RateLimitWindowSeconds).IsRequired(false);
             
             // Add indexes for performance
             entity.HasIndex(e => e.Username).IsUnique(false);

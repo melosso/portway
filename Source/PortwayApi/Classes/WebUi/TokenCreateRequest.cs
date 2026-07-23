@@ -24,6 +24,14 @@ public sealed class TokenCreateRequest : IAsyncValidatableObject
     [JsonPropertyName("expires_in_days")]
     public int? ExpiresInDays { get; set; }
 
+    [JsonPropertyName("rate_limit_requests")]
+    [Range(1, int.MaxValue, ErrorMessage = "rate_limit_requests must be at least 1")]
+    public int? RateLimitRequests { get; set; }
+
+    [JsonPropertyName("rate_limit_window_seconds")]
+    [Range(1, 86400, ErrorMessage = "rate_limit_window_seconds must be between 1 and 86400")]
+    public int? RateLimitWindowSeconds { get; set; }
+
     // Sync path stays empty, the async overload owns all object level rules
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext) => [];
 

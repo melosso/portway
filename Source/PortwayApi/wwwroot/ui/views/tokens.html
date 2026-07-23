@@ -50,6 +50,7 @@
               <th>Description</th>
               <th>Scopes</th>
               <th>Environments</th>
+              <th style="width:84px">Limit</th>
               <th class="sortable" data-col="expires_at" onclick="setSort('expires_at')">
                 Expires <span class="sort-icon">↕</span>
               </th>
@@ -60,7 +61,7 @@
             </tr>
           </thead>
           <tbody id="tokenTableBody">
-            <tr><td colspan="9" class="empty-state">Loading…</td></tr>
+            <tr><td colspan="10" class="empty-state">Loading…</td></tr>
           </tbody>
         </table>
       </div>
@@ -109,6 +110,16 @@
     <div class="drawer-field">
       <label>Expiration (days)</label>
       <input type="number" id="createExpiry" placeholder="Leave blank for never" min="1" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    </div>
+    <div class="drawer-field">
+      <label>Rate limit</label>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <input type="number" id="createRateLimit" placeholder="Global" min="1" style="flex:1; min-width:0; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground)); white-space:nowrap;">requests per</span>
+        <input type="number" id="createRateWindow" placeholder="60" min="1" max="86400" style="width:5rem; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">s</span>
+      </div>
+      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Blank uses the global token limit.</div>
     </div>
     <div class="drawer-field">
       <label>Scopes</label>
@@ -172,6 +183,16 @@
         <input type="text" id="editEnvsInput" class="tag-input" placeholder="Type to search or * for all">
       </div>
       <div class="tag-dropdown" id="editEnvsDropdown"></div>
+    </div>
+    <div class="drawer-field">
+      <label>Rate limit</label>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <input type="number" id="editRateLimit" placeholder="Global" min="1" style="flex:1; min-width:0; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground)); white-space:nowrap;">requests per</span>
+        <input type="number" id="editRateWindow" placeholder="60" min="1" max="86400" style="width:5rem; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">s</span>
+      </div>
+      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Clear to revert to the global token limit.</div>
     </div>
     <div class="drawer-field">
       <label>Expiration</label>
@@ -477,7 +498,7 @@ function renderTable() {
   });
 
   if (!filteredTokens.length) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">${allTokens.length ? 'No tokens match your search' : 'No tokens found'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${allTokens.length ? 'No tokens match your search' : 'No tokens found'}</td></tr>`;
     updatePagination(0);
     return;
   }
@@ -524,6 +545,9 @@ function renderTable() {
       <td class="muted" style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.description) || '—'}</td>
       <td>${formatPills(t.allowed_scopes)}</td>
       <td>${formatPills(t.allowed_environments)}</td>
+      <td>${t.rate_limit_requests
+        ? `<span class="col-mono" style="font-size:0.72rem">${t.rate_limit_requests}/${t.rate_limit_window_seconds || 60}s</span>`
+        : `<span class="muted">Default</span>`}</td>
       <td>${expires}</td>
       <td>${badge}</td>
       <td style="text-align:right; padding-right:1rem; width:112px;">
@@ -574,6 +598,8 @@ function openCreateDrawer() {
   document.getElementById('createName').value   = '';
   document.getElementById('createDesc').value   = '';
   document.getElementById('createExpiry').value = '';
+  document.getElementById('createRateLimit').value  = '';
+  document.getElementById('createRateWindow').value = '';
   Drawer.open('createDrawer');
   setTimeout(() => document.getElementById('createName').focus(), 220);
 }
@@ -596,6 +622,9 @@ async function createToken() {
     if (isNaN(days) || days < 1) { toast('Expiration must be at least 1 day', 'error'); document.getElementById('createExpiry').focus(); return; }
   }
 
+  const rateLimit = readRateLimitFields('createRateLimit', 'createRateWindow');
+  if (rateLimit === false) return;
+
   const btn = document.getElementById('createBtn');
   btn.classList.add('is-loading');
   btn.disabled = true;
@@ -608,6 +637,10 @@ async function createToken() {
       allowed_environments: createEnvsTI.getValue()
     };
     if (expiryStr) body.expires_in_days = parseInt(expiryStr, 10);
+    if (rateLimit) {
+      body.rate_limit_requests       = rateLimit.requests;
+      body.rate_limit_window_seconds = rateLimit.window;
+    }
 
     const r = await fetch('/ui/api/tokens', {
       method: 'POST',
@@ -632,6 +665,24 @@ async function createToken() {
   }
 }
 
+// Reads the paired rate limit inputs, null when blank, false after validation toast
+function readRateLimitFields(limitId, windowId) {
+  const limitStr  = document.getElementById(limitId).value.trim();
+  const windowStr = document.getElementById(windowId).value.trim();
+  if (!limitStr && !windowStr) return null;
+  if (!limitStr && windowStr) { toast('Enter a request count for the rate limit', 'error'); document.getElementById(limitId).focus(); return false; }
+
+  const requests = parseInt(limitStr, 10);
+  if (isNaN(requests) || requests < 1) { toast('Rate limit must be at least 1 request', 'error'); document.getElementById(limitId).focus(); return false; }
+
+  let window = 60;
+  if (windowStr) {
+    window = parseInt(windowStr, 10);
+    if (isNaN(window) || window < 1 || window > 86400) { toast('Rate limit window must be 1 to 86400 seconds', 'error'); document.getElementById(windowId).focus(); return false; }
+  }
+  return { requests, window };
+}
+
 // Edit Drawer
 function openEditDrawer(id) {
   const token = allTokens.find(t => t.id === id);
@@ -643,6 +694,8 @@ function openEditDrawer(id) {
   document.getElementById('editDesc').value = token.description || '';
   editScopesTI.setValue(token.allowed_scopes);
   editEnvsTI.setValue(token.allowed_environments);
+  document.getElementById('editRateLimit').value  = token.rate_limit_requests ?? '';
+  document.getElementById('editRateWindow').value = token.rate_limit_requests ? (token.rate_limit_window_seconds ?? '') : '';
 
   const expiryInput = document.getElementById('editExpiry');
   if (token.expires_at) {
@@ -679,10 +732,15 @@ async function saveToken() {
   btn.disabled = true;
 
   try {
+    const rateLimit = readRateLimitFields('editRateLimit', 'editRateWindow');
+    if (rateLimit === false) { btn.classList.remove('is-loading'); btn.disabled = false; return; }
+
     const body = {
       description:          document.getElementById('editDesc').value.trim(),
       allowed_scopes:       editScopesTI.getValue(),
-      allowed_environments: editEnvsTI.getValue()
+      allowed_environments: editEnvsTI.getValue(),
+      rate_limit_requests:       rateLimit ? rateLimit.requests : null,
+      rate_limit_window_seconds: rateLimit ? rateLimit.window : null
     };
     const expiryVal = document.getElementById('editExpiry').value;
     if (expiryVal) {
