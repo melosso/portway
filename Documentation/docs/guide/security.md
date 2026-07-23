@@ -8,7 +8,7 @@ description: "Token authentication, scope control, network restrictions, and enc
 Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go. This page walks through each layer in turn, from authentication down to a pre-deployment checklist you can run before going live.
 
 ::: Note
-The defaults are sensible starting points rather than a finished posture. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
+This page must be read as a sensible starting point; rather than a policy to follow. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
 :::
 
 ## Authentication
@@ -36,7 +36,9 @@ On first run, Portway generates an initial token and writes it to `tokens/YOUR_S
 }
 ```
 
-Remove this file from disk immediately after recording the token. Use the Web UI to manage all subsequent tokens.
+::: Caution
+This file is highly sensitive: it carries a token with full scope and environment access. Remove it from disk immediately after recording the token somewhere secure. Use the Web UI to manage all subsequent tokens.
+:::
 
 ## Authorization
 
