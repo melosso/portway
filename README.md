@@ -126,7 +126,7 @@ Endpoints are configured as JSON files. Each type has its own directory and form
 * **Webhook**: Receive external calls and persist data to SQL
 * **Static**: read static files or set up a mock endpoint
 
-The two most common types as a taste; the <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation</a> covers every type in full:
+These are handled seperately below. Once configured, the request side of each type is shown under [Examples](#examples).
 
 <br>
 
@@ -168,6 +168,97 @@ These just pass the call through to another service. It’s basically a small re
 ```
 
 </details>
+<br>
+<details>
+<summary>Composite Endpoints</summary>
+These help when a single logical action actually means “call a bunch of other endpoints in a specific order.” Think of creating an order with multiple lines and a header. You wire the steps together and the engine handles the sequencing.
+
+#### Example — `endpoints/Proxy/SalesOrder/entity.json`
+
+```json
+{
+  "Type": "Composite",
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG",
+  "Methods": ["POST"],
+  "CompositeConfig": {
+    "Name": "SalesOrder",
+    "Description": "Creates a complete sales order with multiple lines and header",
+    "Steps": [
+      {
+        "Name": "CreateOrderLines",
+        "Endpoint": "SalesOrderLine",
+        "Method": "POST",
+        "IsArray": true,
+        "ArrayProperty": "Lines",
+        "TemplateTransformations": {
+          "TransactionKey": "$guid"
+        }
+      },
+      {
+        "Name": "CreateOrderHeader",
+        "Endpoint": "SalesOrderHeader",
+        "Method": "POST",
+        "SourceProperty": "Header",
+        "TemplateTransformations": {
+          "TransactionKey": "$prev.CreateOrderLines.0.d.TransactionKey"
+        }
+      }
+    ]
+  }
+}
+```
+
+</details>
+<br>
+<details>
+<summary>Static Endpoints</summary>
+Sometimes you just want to serve a file. JSON, XML, CSV, whatever. These endpoints expose static content and can still use OData filtering if you turn it on.
+
+#### Example — `endpoints/Static/ProductionMachine/entity.json`
+
+```json
+{
+  "ContentType": "application/xml",
+  "ContentFile": "summary.xml",
+  "EnableFiltering": true,
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+</details>
+<br>
+<details>
+<summary>Files Endpoints</summary>
+This is for storing or retrieving actual files rather than rows or JSON. Handy for documents, images, exports.
+
+#### Example — `endpoints/Files/Documents/entity.json`
+
+```json
+{
+  "StorageType": "Local",
+  "BaseDirectory": "documents",
+  "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
+  "AllowedEnvironments": ["prod", "dev"]
+}
+```
+
+</details>
+<br>
+<details>
+<summary>Webhook Endpoints</summary>
+When an external service needs to push data into your system, this is the entry point. The payload goes straight into your table of choice.
+
+#### Example — `endpoints/Webhooks/Integrations/Inbound/entity.json`
+
+```json
+{
+  "DatabaseObjectName": "WebhookData",
+  "DatabaseSchema": "dbo",
+  "AllowedColumns": ["webhook1", "webhook2"]
+}
+```
+
+</details>
 
 ### 4. Deploy
 
@@ -183,10 +274,7 @@ Portway uses a lightweight token-based system for authentication. Include the to
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-> [!CAUTION]
-> The token file generated on first run (`tokens/{SERVER}.txt`) is highly sensitive. **Remove it immediately after securely saving your token elsewhere.** Unauthorized access to this file can compromise your environment.
-
-Scope control, Azure Key Vault, secret encryption at rest, and application identity for NTLM scenarios are covered in the <a href="https://melosso.github.io/portway/guide/security" target="_blank" rel="noopener noreferrer">security guide</a>.
+The first-run token file, scope control, Azure Key Vault, secret encryption at rest, and application identity for NTLM scenarios are covered in the <a href="https://melosso.github.io/portway/guide/security" target="_blank" rel="noopener noreferrer">security guide</a>.
 
 ---
 
@@ -204,6 +292,20 @@ Query specific data with full OData support:
 ```bash
 GET /api/prod/Products?$filter=Assortment eq 'Books'&$select=ItemCode,Description
 ````
+
+</details>
+
+<details>
+<summary>Proxy</summary>
+
+<br>
+
+Forward calls to internal REST services:
+
+```bash
+GET /api/prod/Accounts
+POST /api/prod/Accounts
+```
 
 </details>
 
@@ -226,6 +328,59 @@ Content-Type: application/json
     { "Itemcode": "ITEM-001", "Quantity": 2, "Price": 0 },
     { "Itemcode": "ITEM-002", "Quantity": 4, "Price": 0 }
   ]
+}
+```
+
+</details>
+
+<details>
+<summary>Static</summary>
+
+<br>
+
+Serve static content with optional OData filtering:
+
+```bash
+GET /api/prod/ProductionMachine?$top=1&$filter=status eq 'running'
+Accept: application/xml
+```
+
+</details>
+
+<details>
+<summary>Files</summary>
+
+<br>
+
+Upload, list, and download files:
+
+```bash
+POST /api/prod/files/Documents
+Content-Type: multipart/form-data
+file=@report.pdf
+
+GET /api/prod/files/Documents/list
+GET /api/prod/files/Documents/abc123fileId
+```
+
+</details>
+
+<details>
+<summary>Webhooks</summary>
+
+<br>
+
+Receive data from external services:
+
+```bash
+POST /api/prod/Integrations/Inbound/webhook1
+Content-Type: application/json
+{
+  "eventType": "order.created",
+  "data": {
+    "orderId": "12345",
+    "customer": "ACME Corp"
+  }
 }
 ```
 
