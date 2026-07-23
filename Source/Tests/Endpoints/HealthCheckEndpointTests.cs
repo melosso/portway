@@ -57,15 +57,24 @@ public class HealthCheckEndpointTests : ApiTestBase
     }
     
     [Fact]
-    public async Task GetHealth_WithoutAuthorization_ReturnsUnauthorized()
+    public async Task GetHealth_WithoutAuthorization_ReturnsOk()
     {
-        // Arrange - remove authorization
+        // The summary endpoint is public so the dashboard badge works without a Bearer token
         _client.DefaultRequestHeaders.Authorization = null;
-        
-        // Act
+
         var response = await _client.GetAsync("/health");
-        
-        // Assert
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHealthDetails_WithoutAuthorization_ReturnsUnauthorized()
+    {
+        // The detailed report keeps requiring a token
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var response = await _client.GetAsync("/health/details");
+
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

@@ -212,6 +212,8 @@ Add an `Authentication` block to the environment's `settings.json`:
 Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk. Encryption keys are stored in a `.core/` directory alongside your Portway installation. Back this up and do not delete it while you have active environments with encrypted secrets.
 :::
 
+If you would rather keep an environment plaintext, such as a development checkout, add `"Encrypt": false` to its `settings.json`. Best reserved for non-production credentials.
+
 For JWT and HMAC configuration, see the [Environment Authentication reference](/reference/environment-auth).
 
 ## Azure Key Vault

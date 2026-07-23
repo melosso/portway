@@ -34,6 +34,8 @@ public class TokenAuthMiddleware
             context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health/live") ||
             context.Request.Path.StartsWithSegments(pathBase + "/health/live") ||
+            context.Request.Path == "/health" ||
+            context.Request.Path == pathBase + "/health" ||
             context.Request.Path.StartsWithSegments("/ui") ||
             context.Request.Path.StartsWithSegments("/sm") ||
             context.Request.Path == "/" ||

@@ -16,4 +16,7 @@ public class EnvironmentConfig
     
     /// <summary>Custom authentication settings for this environment</summary>
     public AuthenticationSettings? Authentication { get; set; }
+
+    /// <summary>Set false to keep this settings.json plaintext, skips at-rest encryption on load. Meant for dev checkouts. Null means encrypt (default)</summary>
+    public bool? Encrypt { get; set; }
 }

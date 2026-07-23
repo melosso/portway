@@ -11,8 +11,8 @@ public sealed class MetricsPersistenceService : BackgroundService
     private readonly MetricsService _metrics;
     private readonly string _connectionString;
 
-    // Dapper row shape for hydration, Timestamp stays a string until parsed with RoundtripKind
-    private sealed record MetricRow(string Timestamp, int StatusCode, string Method, string? Source, string? Endpoint);
+    // Dapper row shape for hydration, SQLite INTEGER surfaces as Int64 so StatusCode is long
+    private sealed record MetricRow(string Timestamp, long StatusCode, string Method, string? Source, string? Endpoint);
 
     private const int BatchSize = 50;
     private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(2);
@@ -92,7 +92,7 @@ public sealed class MetricsPersistenceService : BackgroundService
         {
             if (DateTime.TryParse(row.Timestamp, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ts))
                 entries.Add(new MetricsService.RequestEntry(
-                    ts, row.StatusCode, row.Method, row.Source ?? "api", row.Endpoint ?? ""));
+                    ts, (int)row.StatusCode, row.Method, row.Source ?? "api", row.Endpoint ?? ""));
         }
 
         if (entries.Count > 0)
