@@ -154,8 +154,8 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | Feature | SQL Server | PostgreSQL | MySQL | SQLite |
 |---|:---:|:---:|:---:|:---:|
 | GET with OData (`$filter`, `$orderby`, `$select`, `$top`, `$skip`) | ✅ | ✅ | ✅ | ✅ |
-| POST / PUT / PATCH via stored procedure | ✅ | ✅ | ✅ | ⚠️ |
-| DELETE | ✅ | ✅ | ✅ | ✅ |
+| POST / PUT / PATCH / DELETE via stored procedure | ✅ | ✅ | ✅ | ❌ |
+| POST / PUT / PATCH / DELETE via table write mode | ✅ | ✅ | ✅ | ✅ |
 | Table-valued functions (TVF) | ✅ | ✅ | ❌ | ❌ |
 | Schema namespacing (`dbo.TableName`) | ✅ | ✅ | ✅ | ❌ |
 | Column metadata & OpenAPI generation | ✅ | ✅ | ✅ | ✅ |
@@ -163,7 +163,7 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | Health check | ✅ | ✅ | ✅ | ✅ |
 
 :::warning
-**SQLite, write operations:** SQLite does not support stored procedures. Endpoints that define a `Procedure` field and point to a SQLite environment return `501 Not Implemented`. GET-only endpoints are unaffected.
+**SQLite, write operations:** SQLite does not support stored procedures, so endpoints that define a `Procedure` field cannot write against a SQLite environment. Setting `"WriteMode": "Table"` on the endpoint enables full CRUD instead; see the [SQL endpoints guide](/guide/endpoints-sql) for the guardrails that apply.
 :::
 
 :::info

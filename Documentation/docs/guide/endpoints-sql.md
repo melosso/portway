@@ -176,6 +176,30 @@ END
 Stored procedures handle write operations only. GET requests use the standard OData query path against `DatabaseObjectName` directly.
 :::
 
+## Table write mode
+
+When a stored procedure is more setup than the job needs, or the database cannot provide one at all (SQLite), an endpoint can opt into direct table writes:
+
+```json
+{
+  "DatabaseObjectName": "Bins",
+  "WriteMode": "Table",
+  "PrimaryKey": "Id",
+  "AllowedMethods": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  "AllowedColumns": ["Id", "Code", "Zone", "CapacityUnits"],
+  "RequiredColumns": ["Code", "Zone"]
+}
+```
+
+Portway then generates parameterized `INSERT`, `UPDATE` and `DELETE` statements through the same query compiler that powers OData reads. The mode is deliberately strict:
+
+* `AllowedColumns` and `PrimaryKey` are required; an endpoint missing either refuses all writes and logs a configuration error at startup.
+* Payload fields outside `AllowedColumns` reject the whole request rather than being dropped.
+* Updates and deletes only ever filter on the primary key, and a key that matches nothing returns `404`.
+* `WriteMode` and `Procedure` are mutually exclusive; pick one strategy per endpoint.
+
+Table mode works on every provider and is what enables full CRUD on SQLite. For production endpoints with business rules, validation chains or audit requirements, stored procedures remain the recommended path. A working example ships in the repository as `WMS/Bins` against the SQLite demo environment.
+
 ## Table-valued functions
 
 TVFs support parameterized queries, useful for reporting, generated datasets, or complex parameterized lookups that views cannot express.

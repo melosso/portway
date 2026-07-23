@@ -138,6 +138,15 @@ public static class EndpointSummaryHelper
     {
         ValidateAndLogDuplicateEndpoints(sqlEndpoints, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 
+        // Fail loudly at startup for unsafe table write configs; requests are refused at runtime too
+        foreach (var (name, definition) in sqlEndpoints)
+        {
+            if (!definition.UsesTableWrites) continue;
+            var configError = TableWriteBuilder.ValidateConfig(definition);
+            if (configError != null)
+                Log.Error("Endpoint {Endpoint} has WriteMode Table but an unsafe configuration: {Error}. Writes will be refused", name, configError);
+        }
+
         var proxies = proxyEndpointMap.Where(e => e.Value.Type != "Composite").ToDictionary(e => e.Key, e => e.Value);
         var composites = proxyEndpointMap.Where(e => e.Value.Type == "Composite").ToDictionary(e => e.Key, e => e.Value);
 

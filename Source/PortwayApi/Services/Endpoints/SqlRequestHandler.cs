@@ -13,7 +13,7 @@ using PortwayApi.Interfaces;
 using Serilog;
 
 /// <summary>Executes SQL endpoint requests (OData reads, procedure writes) outside the controller</summary>
-public sealed class SqlRequestHandler
+public sealed partial class SqlRequestHandler
 {
     private readonly IODataToSqlConverter _oDataToSqlConverter;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
@@ -446,7 +446,12 @@ public sealed class SqlRequestHandler
                 return PortwayResults.MethodNotAllowed("This endpoint does not support POST operations");
             }
 
-            if (string.IsNullOrEmpty(endpoint.Procedure))
+            if (endpoint.UsesTableWrites)
+            {
+                if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
+                    return configProblem;
+            }
+            else if (string.IsNullOrEmpty(endpoint.Procedure))
             {
                 return PortwayResults.BadRequest("This endpoint does not support insert operations");
             }
@@ -460,6 +465,13 @@ public sealed class SqlRequestHandler
                     return PortwayResults.ValidationFailed(validationErrors);
                 }
                 return PortwayResults.BadRequest(errorMessage ?? "Validation failed");
+            }
+
+            if (endpoint.UsesTableWrites)
+            {
+                await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
+                await tableConnection.OpenAsync();
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Insert, data, null);
             }
 
             // Prepare stored procedure parameters
@@ -541,7 +553,12 @@ public sealed class SqlRequestHandler
                 return PortwayResults.MethodNotAllowed();
             }
 
-            if (string.IsNullOrEmpty(endpoint.Procedure))
+            if (endpoint.UsesTableWrites)
+            {
+                if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
+                    return configProblem;
+            }
+            else if (string.IsNullOrEmpty(endpoint.Procedure))
             {
                 return PortwayResults.BadRequest("This endpoint does not support update operations");
             }
@@ -562,6 +579,13 @@ public sealed class SqlRequestHandler
             if (!isParamsValid)
             {
                 return PortwayResults.BadRequest(paramsErrorMessage ?? "Validation failed");
+            }
+
+            if (endpoint.UsesTableWrites)
+            {
+                await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
+                await tableConnection.OpenAsync();
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
             }
 
             // Step 6: Prepare stored procedure parameters
@@ -642,7 +666,12 @@ public sealed class SqlRequestHandler
                 return PortwayResults.MethodNotAllowed();
             }
 
-            if (string.IsNullOrEmpty(endpoint.Procedure))
+            if (endpoint.UsesTableWrites)
+            {
+                if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
+                    return configProblem;
+            }
+            else if (string.IsNullOrEmpty(endpoint.Procedure))
             {
                 return PortwayResults.BadRequest("This endpoint does not support partial update operations");
             }
@@ -666,6 +695,13 @@ public sealed class SqlRequestHandler
             if (!isParamsValid)
             {
                 return PortwayResults.BadRequest(paramsErrorMessage ?? "Validation failed");
+            }
+
+            if (endpoint.UsesTableWrites)
+            {
+                await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
+                await tableConnection.OpenAsync();
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
             }
 
             // Step 6: Prepare stored procedure parameters
@@ -747,7 +783,12 @@ public sealed class SqlRequestHandler
                 return PortwayResults.MethodNotAllowed();
             }
 
-            if (string.IsNullOrEmpty(endpoint.Procedure))
+            if (endpoint.UsesTableWrites)
+            {
+                if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
+                    return configProblem;
+            }
+            else if (string.IsNullOrEmpty(endpoint.Procedure))
             {
                 return PortwayResults.BadRequest("This endpoint does not support delete operations");
             }
@@ -756,6 +797,13 @@ public sealed class SqlRequestHandler
             if (string.IsNullOrEmpty(id))
             {
                 return PortwayResults.BadRequest("ID parameter is required for delete operations");
+            }
+
+            if (endpoint.UsesTableWrites)
+            {
+                await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
+                await tableConnection.OpenAsync();
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Delete, null, id);
             }
 
             // Prepare stored procedure parameters

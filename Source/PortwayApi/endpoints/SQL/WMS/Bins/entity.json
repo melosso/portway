@@ -1,0 +1,30 @@
+{
+  "DatabaseObjectName": "Bins",
+  "DatabaseObjectType": "Table",
+  "Namespace": "WMS",
+  "NamespaceDisplayName": "WMS",
+  "AllowedEnvironments": [
+    "WMS"
+  ],
+  "AllowedMethods": [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE"
+  ],
+  "WriteMode": "Table",
+  "PrimaryKey": "Id",
+  "AllowedColumns": [
+    "Id",
+    "Code",
+    "Zone",
+    "CapacityUnits",
+    "IsActive"
+  ],
+  "RequiredColumns": [
+    "Code",
+    "Zone",
+    "CapacityUnits"
+  ]
+}

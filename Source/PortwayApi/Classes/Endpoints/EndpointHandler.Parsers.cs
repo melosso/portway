@@ -195,6 +195,7 @@ public static partial class EndpointHandler
             AllowedColumns = entity.AllowedColumns ?? new List<string>(),
             Procedure = entity.Procedure,
             PrimaryKey = entity.PrimaryKey,
+            WriteMode = entity.WriteMode,
             DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
             FunctionParameters = entity.FunctionParameters,
             Methods = allowedMethods,

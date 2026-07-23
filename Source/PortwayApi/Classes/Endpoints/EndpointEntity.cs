@@ -12,6 +12,7 @@ public class EndpointEntity
     public string? Procedure { get; set; }
     public List<string>? AllowedMethods { get; set; }
     public string? PrimaryKey { get; set; }
+    public string? WriteMode { get; set; }
 
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }

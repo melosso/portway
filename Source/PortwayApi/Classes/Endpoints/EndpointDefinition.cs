@@ -29,6 +29,12 @@ public class EndpointDefinition
     public Dictionary<string, ColumnValidationRule>? ColumnValidation { get; set; }
     public string? Procedure { get; set; }
     public string? PrimaryKey { get; set; }
+
+    /// <summary>Write strategy: Procedure (default) or Table for generated parameterized statements</summary>
+    public string? WriteMode { get; set; }
+
+    /// <summary>True when this endpoint opts into direct table writes</summary>
+    public bool UsesTableWrites => string.Equals(WriteMode, "Table", StringComparison.OrdinalIgnoreCase);
     
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }

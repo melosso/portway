@@ -1,5 +1,5 @@
 {
-  "ConnectionString": "Data Source=data/demo.db;",
+  "ConnectionString": "Data Source=environments/WMS/demo.db;",
   "ServerName": "localhost",
   "Headers": {},
   "Encrypt": false

@@ -180,6 +180,33 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
     }
 
     [DockerFact]
+    public async Task TableWrite_InsertUpdateDelete_Roundtrip()
+    {
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+        try
+        {
+            var insert = PortwayApi.Helpers.TableWriteBuilder.BuildInsert(provider, _fixture.QualifiedProductsTable,
+                new Dictionary<string, object?> { ["Id"] = 80, ["Name"] = "Detonator", ["Price"] = 3.50m });
+            await connection.ExecuteAsync(insert.Sql, insert.Parameters);
+
+            var update = PortwayApi.Helpers.TableWriteBuilder.BuildUpdate(provider, _fixture.QualifiedProductsTable, "Id", 80,
+                new Dictionary<string, object?> { ["Price"] = 4.25m });
+            Assert.Equal(1, await connection.ExecuteAsync(update.Sql, update.Parameters));
+
+            var select = PortwayApi.Helpers.TableWriteBuilder.BuildSelectByKey(provider, _fixture.QualifiedProductsTable, "Id", 80);
+            var row = (await connection.QueryAsync(select.Sql, select.Parameters)).Single();
+            Assert.Equal(4.25m, Convert.ToDecimal(row.Price));
+        }
+        finally
+        {
+            var delete = PortwayApi.Helpers.TableWriteBuilder.BuildDelete(provider, _fixture.QualifiedProductsTable, "Id", 80);
+            await connection.ExecuteAsync(delete.Sql, delete.Parameters);
+        }
+    }
+
+    [DockerFact]
     public async Task ProcedureParameters_AreDiscovered()
     {
         await using var connection = _fixture.Provider.CreateConnection(_fixture.ConnectionString);
