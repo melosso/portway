@@ -1,8 +1,14 @@
 services:
-  portway_documentation:
-    image: ghcr.io/melosso/portway_documentation:latest
-    container_name: portway_documentation
+  portway_docs:
+    image: ghcr.io/melosso/bark:latest
+    container_name: portway_docs
     volumes:
       - ./docs:/app/docs
+      # Overlay brand assets per item; mounting the whole wwwroot shadows Bark's framework assets (js, icons)
+      - ./wwwroot/favicon.ico:/app/wwwroot/favicon.ico
+      - ./wwwroot/logo.png:/app/wwwroot/logo.png
+      - ./wwwroot/logo.svg:/app/wwwroot/logo.svg
+      - ./wwwroot/icons:/app/wwwroot/icons
+      - ./wwwroot/theme:/app/wwwroot/theme
     ports:
       - "5991:8080"
