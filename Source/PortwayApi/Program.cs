@@ -42,7 +42,11 @@ try
         }
     );
 
-    StartupLogHelper.LogAsciiBanner();
+    var assemblyVersion = typeof(Program).Assembly
+        .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+        ?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
+
+    StartupLogHelper.LogAsciiBanner(assemblyVersion);
 
     // Kestrel hardening, HTTPS opt-in detection and response compression
     builder.ConfigurePortwayWebHost();
@@ -65,10 +69,6 @@ try
 
     // CORS allowlist from WebUi:CorsOrigins; never AllowAnyOrigin in production
     builder.AddPortwayCors();
-
-    var assemblyVersion = typeof(Program).Assembly
-        .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
-        ?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
 
     builder.Services.AddPortwayTelemetry(builder.Configuration, assemblyVersion);
 

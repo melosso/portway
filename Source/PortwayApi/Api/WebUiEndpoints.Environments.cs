@@ -150,8 +150,10 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400);
             }
 
-            // Automagicallyy encrypt any plaintext ConnectionString so raw saves never bypass encryptionn
-            if (root.TryGetProperty("ConnectionString", out var csEl) &&
+            // Encrypt any plaintext ConnectionString so raw saves never bypass encryption, unless the file opts out
+            bool rawEncryptOptOut = root.TryGetProperty("Encrypt", out var rawEnc) && rawEnc.ValueKind == JsonValueKind.False;
+            if (!rawEncryptOptOut &&
+                root.TryGetProperty("ConnectionString", out var csEl) &&
                 csEl.ValueKind == JsonValueKind.String)
             {
                 var cs = csEl.GetString() ?? "";
@@ -270,11 +272,14 @@ public static partial class WebUiEndpointExtensions
                 ? sn.GetString()
                 : (existing.TryGetProperty("ServerName", out var esn) ? esn.GetString() : null);
 
+            // Honor the file's Encrypt opt-out so UI saves keep dev environments plaintext
+            bool encryptOptOut = existing.TryGetProperty("Encrypt", out var encEl) && encEl.ValueKind == JsonValueKind.False;
+
             var existingCs = existing.TryGetProperty("ConnectionString", out var ecs) ? ecs.GetString() ?? "" : "";
             string newCs;
             if (body.TryGetProperty("connection_string", out var cs) && cs.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrEmpty(cs.GetString()))
-                newCs = PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(cs.GetString()!);
+                newCs = encryptOptOut ? cs.GetString()! : PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(cs.GetString()!);
             else
                 newCs = existingCs;
 
@@ -288,7 +293,19 @@ public static partial class WebUiEndpointExtensions
 
             Directory.CreateDirectory(envDir);
             var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(envSettingsPath);
-            var envModel = new { ConnectionString = newCs, ServerName = serverName, Headers = headers };
+
+            // Preserve fields the edit form does not manage
+            var envModel = new Dictionary<string, object?>
+            {
+                ["ConnectionString"] = newCs,
+                ["ServerName"] = serverName,
+                ["Headers"] = headers
+            };
+            if (existing.TryGetProperty("Authentication", out var eauth) && eauth.ValueKind == JsonValueKind.Object)
+                envModel["Authentication"] = JsonSerializer.Deserialize<object>(eauth.GetRawText());
+            if (encryptOptOut)
+                envModel["Encrypt"] = false;
+
             await File.WriteAllTextAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
             Audit(context, "update", "environment", name, null, backupPath);
