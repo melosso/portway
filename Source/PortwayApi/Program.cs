@@ -212,8 +212,8 @@ try
 
     EndpointSummaryHelper.LogEndpointSummary(sqlEndpointList, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 
-    // Map controller routes
-    app.MapControllers();
+    // Map controller routes; data plane is Bearer authenticated so automatic cross-origin CSRF marking must not poison form access for CORS clients
+    app.MapControllers().DisableAntiforgery();
 
     // Register Composite middleware
     app.MapCompositeEndpoint();
