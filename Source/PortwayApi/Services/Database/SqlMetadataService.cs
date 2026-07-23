@@ -162,17 +162,18 @@ public class SqlMetadataService
         string connectionString,
         CancellationToken cancellationToken = default)
     {
-        var schema = definition.DatabaseSchema ?? "dbo";
         var objectName = definition.DatabaseObjectName!;
         var objectType = definition.DatabaseObjectType ?? "Table";
-
-        Log.Debug("Loading object metadata for {EndpointName}: {Schema}.{ObjectName} ({ObjectType})",
-            endpointName, schema, objectName, objectType);
 
         var provider = _providerFactory.GetProvider(connectionString);
         var optimizedConnectionString = _connectionPoolService.OptimizeConnectionString(connectionString);
         await using var connection = provider.CreateConnection(optimizedConnectionString);
         await connection.OpenAsync(cancellationToken);
+
+        var schema = Helpers.SqlSchemaResolver.Resolve(definition.DatabaseSchema, provider, connection.Database);
+
+        Log.Debug("Loading object metadata for {EndpointName}: {Schema}.{ObjectName} ({ObjectType})",
+            endpointName, schema, objectName, objectType);
 
         List<Services.Database.ColumnMetadata> columns;
 
@@ -186,7 +187,9 @@ public class SqlMetadataService
             case "tablevaluedfunction":
                 if (!provider.SupportsTvf)
                 {
-                    Log.Information("Provider {Provider} does not support TVF; skipping column metadata for {EndpointName}", provider.ProviderType, endpointName);
+                    // Configuration error: this endpoint can never serve requests on this provider
+                    Log.Error("Endpoint {EndpointName} is configured as a table valued function, but provider {Provider} does not support TVFs. Requests to this endpoint will fail; change the endpoint type or the environment's database",
+                        endpointName, provider.ProviderType);
                     return 0;
                 }
                 columns = await provider.GetTvfColumnsAsync(connection, schema, objectName, cancellationToken).ConfigureAwait(false);
@@ -233,12 +236,12 @@ public class SqlMetadataService
         string schema, name;
         if (parts.Length == 2)
         {
-            schema = parts[0];
+            schema = Helpers.SqlSchemaResolver.Resolve(parts[0], provider, connection.Database);
             name = parts[1];
         }
         else
         {
-            schema = "dbo";
+            schema = Helpers.SqlSchemaResolver.Resolve(null, provider, connection.Database);
             name = procedureName;
         }
 

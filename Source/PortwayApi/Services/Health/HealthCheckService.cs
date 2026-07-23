@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using PortwayApi.Classes;
 using PortwayApi.Interfaces;
@@ -380,19 +379,17 @@ public class HealthCheckService
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
-                DbConnection connection;
-                string healthQuery;
-                if (_sqlProviderFactory != null)
+                // Nullable ctor param only eases test construction; connectivity checks need the factory
+                if (_sqlProviderFactory is null)
                 {
-                    var provider = _sqlProviderFactory.GetProvider(connectionString);
-                    connection = provider.CreateConnection(connectionString);
-                    healthQuery = provider.HealthCheckQuery;
+                    Log.Warning("SQL connectivity check skipped for {Environment}: no provider factory configured", env);
+                    lock (results) results[env] = new { Status = "Unknown" };
+                    return;
                 }
-                else
-                {
-                    connection = new SqlConnection(connectionString);
-                    healthQuery = "SELECT 1";
-                }
+
+                var provider = _sqlProviderFactory.GetProvider(connectionString);
+                var connection = provider.CreateConnection(connectionString);
+                var healthQuery = provider.HealthCheckQuery;
 
                 await using (connection)
                 {
@@ -416,11 +413,10 @@ public class HealthCheckService
             }
             catch (Exception ex)
             {
-                var errorMsg = ex is SqlException sql
-                    ? $"SQL error {sql.Number}: {sql.Message}"
-                    : ex is DbException dbEx
-                        ? $"DB error: {dbEx.Message}"
-                        : ex.InnerException?.Message ?? ex.Message;
+                // DbException covers every provider's driver exception
+                var errorMsg = ex is DbException dbEx
+                    ? $"DB error: {dbEx.Message}"
+                    : ex.InnerException?.Message ?? ex.Message;
                 Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
                 lock (results) results[env] = new { Status = "Unhealthy", Error = errorMsg };
                 lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);

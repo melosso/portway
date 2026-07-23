@@ -24,12 +24,27 @@ public sealed class SqlRequestHandler
         IODataToSqlConverter oDataToSqlConverter,
         IEnvironmentSettingsProvider environmentSettingsProvider,
         SqlConnectionPoolService connectionPoolService,
-        Services.Caching.CacheManager cacheManager)
+        Services.Caching.CacheManager cacheManager,
+        ISqlProviderFactory providerFactory)
     {
         _oDataToSqlConverter = oDataToSqlConverter;
         _environmentSettingsProvider = environmentSettingsProvider;
         _connectionPoolService = connectionPoolService;
         _cacheManager = cacheManager;
+        _providerFactory = providerFactory;
+    }
+
+    private readonly ISqlProviderFactory _providerFactory;
+
+    /// <summary>Runs a write procedure with the dialect-correct invocation for the environment's provider</summary>
+    private async Task<List<dynamic>> ExecuteProcedureAsync(
+        DbConnection connection, string connectionString, string procedure, DynamicParameters parameters)
+    {
+        var provider = _providerFactory.GetProvider(connectionString);
+        var (schema, name) = ParseProcedureName(procedure, provider, connection);
+        var (commandText, commandType) = provider.BuildProcedureInvocation(schema, name, parameters.ParameterNames.ToList());
+        var rows = await connection.QueryAsync(commandText, parameters, commandType: commandType);
+        return rows.ToList();
     }
 
     /// <summary>Handles SQL GET requests</summary>
@@ -384,39 +399,26 @@ public sealed class SqlRequestHandler
 
             return new OkObjectResult(response);
         }
-        catch (SqlException sqlEx)
+        catch (DbException dbEx)
         {
-            // Handle SQL-specific exceptions with more detail; Generate a masked error reference for troubleshooting
-            var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
-            Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
-                errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
-
-            // Provide only generic error messages for all SQL errors to avoid leaking database details
-            string errorMessage = sqlEx.Number switch
-            {
-                2 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Connection error
-                53 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Network error
-                208 => $"A data error occurred. Please contact support with reference: T0{errorId}", // Invalid object name
-                547 => $"A data error occurred. Please contact support with reference: T{errorId}", // Constraint violation
-                1205 => $"A data error occurred. Please contact support with reference: T{errorId}", // Deadlock
-                2627 => $"A data error occurred. Please contact support with reference: T{errorId}", // Unique constraint
-                2601 => $"A data error occurred. Please contact support with reference: T{errorId}", // Duplicate key
-                4060 => $"A data error occurred. Please contact support with reference: T{errorId}", // Cannot open database
-                8152 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data too long
-                8114 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data conversion
-                18456 => $"A data error occurred. Please contact support with reference: T{errorId}", // Login failed
-                50000 => $"A data error occurred. Please contact support with reference: T{errorId}", // User-defined error
-                _ => $"An error occurred while processing your request. Reference: H{errorId}"
-            };
-
-            return PortwayResults.ProblemWithTrace(context, errorMessage, "Internal Error");
+            return MaskedDataError(context, dbEx, endpointName);
         }
-        catch (Exception ex) when (ex is not SqlException)
+        catch (Exception ex) when (ex is not DbException)
         {
             Log.Error(ex, "Error during SQL query for endpoint: {EndpointName}. Exception Type: {ExceptionType}",
                 endpointName, ex.GetType().Name);
             return PortwayResults.ProblemWithTrace(context, "Error processing. Please check the logs for more details.", "Error");
         }
+    }
+
+    // Masked reference for any provider's database error; full detail stays in the log
+    private static IActionResult MaskedDataError(HttpContext context, DbException dbEx, string endpointName)
+    {
+        var errorId = Guid.NewGuid().ToString("N")[..8];
+        Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
+            errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
+        return PortwayResults.ProblemWithTrace(context,
+            $"A data error occurred. Please contact support with reference: T{errorId}", "Internal Error");
     }
 
 	/// <summary>Handles SQL POST requests (Create)</summary>
@@ -479,15 +481,10 @@ public sealed class SqlRequestHandler
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
             
-            // Special handling for SqlException to catch RAISERROR messages
-            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
+            // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await connection.QueryAsync(
-                    $"[{schema}].[{procedureName}]",
-                    dynamicParams,
-                    commandType: CommandType.StoredProcedure
-                );
+                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
 
                 var resultList = result.ToList();
                 
@@ -495,38 +492,15 @@ public sealed class SqlRequestHandler
                 
                 return PortwayResults.Create($"/api/{env}/{endpointName}", "Record created successfully", resultList.FirstOrDefault());
             }
-            catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
+            catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
-                Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-                return PortwayResults.BadRequest(sqlEx.Message);
+                Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
+                return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
-        catch (SqlException sqlEx)
+        catch (DbException dbEx)
         {
-            // Handle SQL-specific exceptions with more detail; Generate a masked error reference for troubleshooting
-            var errorId = Guid.NewGuid().ToString("N").Substring(0, 8);
-            Log.Error(sqlEx, "SQL Error [{ErrorId}] during query for endpoint: {EndpointName}. SQL Error Number: {ErrorNumber}, Severity: {Severity}, State: {State}, Message: {Message}",
-                errorId, endpointName, sqlEx.Number, sqlEx.Class, sqlEx.State, sqlEx.Message);
-
-            // Provide only generic error messages for all SQL errors to avoid leaking database details
-            string errorMessage = sqlEx.Number switch
-            {
-                2 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Connection error
-                53 => $"A data error occurred. Please contact support with reference: T00{errorId}", // Network error
-                208 => $"A data error occurred. Please contact support with reference: T0{errorId}", // Invalid object name
-                547 => $"A data error occurred. Please contact support with reference: T{errorId}", // Constraint violation
-                1205 => $"A data error occurred. Please contact support with reference: T{errorId}", // Deadlock
-                2627 => $"A data error occurred. Please contact support with reference: T{errorId}", // Unique constraint
-                2601 => $"A data error occurred. Please contact support with reference: T{errorId}", // Duplicate key
-                4060 => $"A data error occurred. Please contact support with reference: T{errorId}", // Cannot open database
-                8152 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data too long
-                8114 => $"A data error occurred. Please contact support with reference: T{errorId}", // Data conversion
-                18456 => $"A data error occurred. Please contact support with reference: T{errorId}", // Login failed
-                50000 => $"A data error occurred. Please contact support with reference: T{errorId}", // User-defined error
-                _ => $"An error occurred while processing your request. Reference: H{errorId}"
-            };
-
-            return PortwayResults.ProblemWithTrace(context, errorMessage, "Internal Error");
+            return MaskedDataError(context, dbEx, endpointName);
         }
         catch (Exception ex)
         {
@@ -541,13 +515,6 @@ public sealed class SqlRequestHandler
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
         }
     }
-
- /// <summary>Determines if a SQL exception is an intentional user-facing error vs a system error</summary>
-private bool IsIntentionalUserError(SqlException sqlEx)
-{
-    // Only error 50000 is the default for intentional RAISERROR without specific error number; Other error numbers in 50000+ range could be system or custom errors
-    return sqlEx.Number == 50000;
-}
 
     /// <summary>Handles SQL PUT requests (Update)</summary>
     public async Task<IActionResult> HandleSqlPutRequest(
@@ -619,15 +586,10 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
-            // Special handling for SqlException to catch RAISERROR messages
-            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
+            // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await connection.QueryAsync(
-                    $"[{schema}].[{procedureName}]",
-                    dynamicParams,
-                    commandType: CommandType.StoredProcedure
-                );
+                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
 
                 // Convert result to a list (could be empty if no rows returned)
                 var resultList = result.ToList();
@@ -637,16 +599,16 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 // Return the results, which typically includes the updated record
                 return PortwayResults.Mutation("Record updated successfully", resultList.FirstOrDefault());
             }
-            catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
+            catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
-                Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-                return PortwayResults.BadRequest(sqlEx.Message);
+                Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
+                return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
-        catch (SqlException sqlEx)
+        catch (DbException dbEx)
         {
-            Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
-                endpointName, sqlEx.Number, sqlEx.Message);
+            Log.Error(dbEx, "Database error for {Endpoint} ({Detail}): {ErrorMessage}",
+                endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
             return PortwayResults.ServerError(context, "Internal operation failed");
         }
         catch (Exception ex)
@@ -728,15 +690,10 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
-            // Special handling for SqlException to catch RAISERROR messages
-            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
+            // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await connection.QueryAsync(
-                    $"[{schema}].[{procedureName}]",
-                    dynamicParams,
-                    commandType: CommandType.StoredProcedure
-                );
+                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
 
                 // Convert result to a list
                 var resultList = result.ToList();
@@ -746,16 +703,16 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 // Return the results
                 return PortwayResults.Mutation("Record partially updated successfully", resultList.FirstOrDefault());
             }
-            catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
+            catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
-                Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-                return PortwayResults.BadRequest(sqlEx.Message);
+                Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
+                return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
-        catch (SqlException sqlEx)
+        catch (DbException dbEx)
         {
-            Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
-                endpointName, sqlEx.Number, sqlEx.Message);
+            Log.Error(dbEx, "Database error for {Endpoint} ({Detail}): {ErrorMessage}",
+                endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
             return PortwayResults.ServerError(context, "Internal operation failed");
         }
         catch (Exception ex)
@@ -827,15 +784,10 @@ private bool IsIntentionalUserError(SqlException sqlEx)
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
-            // Special handling for SqlException to catch RAISERROR messages
-            var (schema, procedureName) = ParseProcedureName(endpoint.Procedure);
+            // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await connection.QueryAsync(
-                    $"[{schema}].[{procedureName}]",
-                    dynamicParams,
-                    commandType: CommandType.StoredProcedure
-                );
+                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
 
                 // Convert result to a list (could be empty if no rows returned)
                 var resultList = result.ToList();
@@ -845,16 +797,16 @@ private bool IsIntentionalUserError(SqlException sqlEx)
                 // Return the results, which typically includes deletion confirmation
                 return PortwayResults.Mutation("Record deleted successfully", resultList.FirstOrDefault());
             }
-            catch (SqlException sqlEx) when (IsIntentionalUserError(sqlEx))
+            catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
-                Log.Warning("Custom SQL error (RAISERROR) for {Endpoint}: {ErrorMessage}", endpointName, sqlEx.Message);
-                return PortwayResults.BadRequest(sqlEx.Message);
+                Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
+                return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
-        catch (SqlException sqlEx)
+        catch (DbException dbEx)
         {
-            Log.Error(sqlEx, "SQL Exception for {Endpoint}: {ErrorCode}, {ErrorMessage}",
-                endpointName, sqlEx.Number, sqlEx.Message);
+            Log.Error(dbEx, "Database error for {Endpoint} ({Detail}): {ErrorMessage}",
+                endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
             return PortwayResults.ServerError(context, "Internal operation failed");
         }
         catch (Exception ex)
@@ -914,14 +866,14 @@ private bool IsIntentionalUserError(SqlException sqlEx)
     }
 
     /// <summary>Parses a stored procedure name into schema and procedure name parts. Handles both "schema.procedure" and plain "procedure" formats, stripping brackets</summary>
-    private static (string Schema, string ProcedureName) ParseProcedureName(string procedure)
+    private static (string Schema, string ProcedureName) ParseProcedureName(string procedure, ISqlProvider provider, DbConnection connection)
     {
         if (procedure.Contains('.'))
         {
             var parts = procedure.Split('.');
-            return (parts[0].Trim('[', ']'), parts[1].Trim('[', ']'));
+            return (SqlSchemaResolver.Resolve(parts[0].Trim('[', ']'), provider, connection.Database), parts[1].Trim('[', ']'));
         }
-        return ("dbo", procedure);
+        return (SqlSchemaResolver.Resolve(null, provider, connection.Database), procedure);
     }
 
     /// <summary>Applies the MaxPageSize limit from endpoint properties, overriding the requested top value if necessary</summary>

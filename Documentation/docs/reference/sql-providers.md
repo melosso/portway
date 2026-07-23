@@ -170,6 +170,12 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 **MySQL, table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
 :::
 
+::: note
+On PostgreSQL, write routines are functions rather than procedures, since only functions can return the created row. Portway invokes them with named arguments, so it helps to name your function parameters after the lowercased payload fields (for example `method`, `id`, `name`). On SQL Server and MySQL a regular procedure with a trailing `SELECT` of the affected row works as before.
+:::
+
+The provider combination Portway is continuously tested against: SQL Server 2025, PostgreSQL 18 and MySQL 8.0. Other versions of the same engines generally work fine; these are simply the ones the automated parity suite runs on.
+
 ---
 
 ## Schema Behaviour
@@ -181,7 +187,7 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | MySQL | Schema maps to the database in the connection string | _(from connection string)_ |
 | SQLite | No schema support: prefix is omitted automatically | - |
 
-When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway defaults to `dbo`. For SQLite environments this prefix is stripped at query time so no manual override is needed.
+When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway uses the provider's own default from the table above. A configured `dbo` on a non SQL Server environment is treated as the template default and mapped the same way, so entity files copied from SQL Server examples work unchanged on PostgreSQL and MySQL. Any other explicit schema is used exactly as written.
 
 ---
 

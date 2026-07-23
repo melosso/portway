@@ -40,6 +40,9 @@ public sealed class MetadataInitializationService : BackgroundService
         {
             var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
 
+            // One provider log per environment for support triage
+            var loggedEnvironments = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.OrdinalIgnoreCase);
+
             await _metadataService.InitializeAsync(
                 sqlEndpoints,
                 _environmentSettings,
@@ -48,6 +51,9 @@ public sealed class MetadataInitializationService : BackgroundService
                     try
                     {
                         var (connectionString, _, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(environment);
+                        if (!string.IsNullOrEmpty(connectionString) && loggedEnvironments.TryAdd(environment, 0))
+                            Log.Information("Environment {Environment} uses SQL provider {Provider}",
+                                environment, Providers.SqlProviderDetector.Detect(connectionString));
                         return connectionString ?? string.Empty;
                     }
                     catch

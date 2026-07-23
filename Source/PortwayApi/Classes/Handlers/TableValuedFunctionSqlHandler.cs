@@ -82,7 +82,19 @@ public static class TableValuedFunctionSqlHandler
             var (aliasToDb, dbToAlias) = PortwayApi.Helpers.ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
 
             // Resolve provider factory once (used for both OData dialect and connection creation)
-            var providerFactory = request.HttpContext.RequestServices.GetService(typeof(ISqlProviderFactory)) as ISqlProviderFactory;
+            var providerFactory = request.HttpContext.RequestServices.GetRequiredService<ISqlProviderFactory>();
+
+            // Capability guard: a clear 400 instead of a provider syntax error
+            var sqlProvider = providerFactory.GetProvider(connectionString);
+            if (!sqlProvider.SupportsTvf)
+            {
+                Log.Warning("TVF endpoint {Name} requested against {Provider}, which does not support table valued functions",
+                    endpoint.DatabaseObjectName, sqlProvider.ProviderType);
+                return (false, new BadRequestObjectResult(new {
+                    error = $"Table valued functions are not supported by the {sqlProvider.ProviderType} database backing this environment",
+                    success = false
+                }), null);
+            }
 
             // Hybrid OData support for TVFs
             string finalQuery = functionCall;
@@ -100,9 +112,7 @@ public static class TableValuedFunctionSqlHandler
 
                 // Use a dummy table name to generate OData SQL (provider-aware)
                 var dummyTable = "ODataDummy";
-                var providerType = providerFactory != null
-                    ? SqlProviderDetector.Detect(connectionString)
-                    : SqlProviderType.SqlServer;
+                var providerType = SqlProviderDetector.Detect(connectionString);
                 var (odataQuery, odataParamsDict) = odataConverter.ConvertToSQL(dummyTable, odataParams, providerType);
                 odataSqlParams = odataParamsDict;
 
@@ -147,11 +157,7 @@ public static class TableValuedFunctionSqlHandler
                 Log.Debug("Applied OData fragments to TVF: {Query}", finalQuery);
             }
 
-            // Execute the query, use provider factory if available, fall back to SQL Server
-            System.Data.Common.DbConnection rawConn = providerFactory != null
-                ? providerFactory.GetProvider(connectionString).CreateConnection(connectionString)
-                : new SqlConnection(connectionString);
-            await using var connection = rawConn;
+            await using var connection = providerFactory.GetProvider(connectionString).CreateConnection(connectionString);
             await connection.OpenAsync();
 
             // Merge TVF parameters and OData parameters
@@ -178,19 +184,22 @@ public static class TableValuedFunctionSqlHandler
 
             return (true, null, resultList);
         }
-        catch (SqlException sqlEx)
+        catch (System.Data.Common.DbException dbEx)
         {
-            Log.Error(sqlEx, "SQL Error executing TVF {FunctionName}: {ErrorMessage}", 
-                endpoint.DatabaseObjectName, sqlEx.Message);
+            Log.Error(dbEx, "Database error executing TVF {FunctionName} ({Detail}): {ErrorMessage}",
+                endpoint.DatabaseObjectName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
 
-            string errorMessage = sqlEx.Number switch
-            {
-                208 => "Table valued function does not exist or is not accessible",
-                2812 => "Table valued function could not be found", 
-                201 => "Invalid parameter count for table valued function",
-                8114 => "Data type conversion error in function parameters",
-                _ => "Error executing table valued function"
-            };
+            // Number-specific hints only exist for SQL Server, other providers get the generic message
+            string errorMessage = dbEx is SqlException sqlEx
+                ? sqlEx.Number switch
+                {
+                    208 => "Table valued function does not exist or is not accessible",
+                    2812 => "Table valued function could not be found",
+                    201 => "Invalid parameter count for table valued function",
+                    8114 => "Data type conversion error in function parameters",
+                    _ => "Error executing table valued function"
+                }
+                : "Error executing table valued function";
 
             return (false, new ObjectResult(new { 
                 error = errorMessage,

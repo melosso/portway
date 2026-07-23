@@ -1,0 +1,35 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, "v*"]
+    paths: ["Source/**", ".github/workflows/portway-tests.yml"]
+  pull_request:
+    paths: ["Source/**", ".github/workflows/portway-tests.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: Source/global.json
+
+      - name: Restore and build
+        run: dotnet build portwayapi.slnx --configuration Release
+
+      # Unit tests plus the SQL provider parity suite; the runner's Docker
+      # hosts SQL Server 2025, PostgreSQL 18 and MySQL 8.0 via Testcontainers
+      - name: Test
+        run: dotnet test portwayapi.slnx --configuration Release --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/results.trx"
