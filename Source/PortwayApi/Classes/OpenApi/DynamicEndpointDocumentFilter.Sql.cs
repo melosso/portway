@@ -205,6 +205,19 @@ public partial class DynamicEndpointDocumentFilter
             {
                 operation.Parameters.Add(parameter);
             }
+
+            // Offered only where navigations exist, so the UI never shows an option that always returns 400
+            if (definition.Relationships is { Count: > 0 } relationships)
+            {
+                operation.Parameters.Add(new OpenApiParameter()
+                {
+                    Name = "$expand",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
+                    Description = $"Expand related records (comma-separated). Available: {string.Join(", ", relationships.Select(r => r.Name))}"
+                });
+            }
         }
         else if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) ||
                  method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
