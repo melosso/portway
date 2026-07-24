@@ -33,7 +33,10 @@ public static partial class WebUiEndpointExtensions
             if (mcpConfig is not null)
             {
                 try { chatCfg = await mcpConfig.GetConfigAsync(); }
-                catch { /* non-fatal — chat section will show defaults */ }
+                catch (Exception ex)
+                {
+                    Log.Debug(ex, "Failed to read MCP chat configuration for the settings page");
+                }
             }
 
             var adminKey = config.GetValue<string>("WebUi:AdminApiKey", "") ?? "";

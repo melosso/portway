@@ -4,6 +4,7 @@ using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Serilog;
 using PortwayApi.Classes;
+using PortwayApi.Helpers;
 using PortwayApi.Services.Configuration;
 using PortwayApi.Services;
 using PortwayApi.Services.Mcp;
@@ -29,6 +30,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         });
     private Task? _consumerTask;
     private CancellationTokenSource? _consumerCts;
+    private bool _disposed;
 
     public EndpointFileWatcher(
         SqlMetadataService sqlMetadataService,
@@ -94,7 +96,9 @@ public class EndpointFileWatcher : IHostedService, IDisposable
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         _eventChannel.Writer.TryComplete();
-        try { _consumerCts?.Cancel(); } catch (ObjectDisposedException) { }
+        if (!_disposed)
+            _consumerCts?.Cancel();
+
         _fileWatcher?.Dispose();
 
         if (_consumerTask != null)
@@ -278,6 +282,9 @@ public class EndpointFileWatcher : IHostedService, IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         _consumerCts?.Cancel();
         _consumerCts?.Dispose();
         _fileWatcher?.Dispose();

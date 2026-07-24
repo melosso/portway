@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using PortwayApi.Services;
+using PortwayApi.Services.Mcp.Providers;
 using Serilog;
 
 /// <summary>Orchestrates a single chat turn: resolves the AI provider, builds tool definitions from the MCP registry, runs the tool-use loop, and writes SSE events to the response</summary>
@@ -478,8 +479,7 @@ public sealed partial class McpChatService
                     return $"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
                            $"read in chat. The user should download it directly from the Portway API.";
 
-                // Size-capped read: stream only up to MaxToolResultChars + a small buffer,
-                // then discard the rest. This avoids loading huge responses into memory
+                // Size-capped read: stream only up to MaxToolResultChars + a small buffer, tthen discard the rest. This avoids loading huge responses into memory
                 var maxChars = _mcpOptions.MaxToolResultChars;
                 var content  = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
 
@@ -487,19 +487,10 @@ public sealed partial class McpChatService
                 if (!string.IsNullOrEmpty(mediaType) && !mediaType.Contains("json"))
                     content = $"[Content-Type: {mediaType}]\n{content}";
 
-                // If the endpoint returned an empty JSON array, give the LLM an explicit signal
-                // so it doesn't retry with rephrased queries
+                // If the endpoint returned an empty JSON array, give the LLM an explicit signal so it doesn't retry with rephrased queries
                 var trimmed = content.AsSpan().Trim();
-                if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
-                {
-                    try
-                    {
-                        var node = JsonNode.Parse(content);
-                        if (node is JsonArray arr && arr.Count == 0)
-                            return "[No records found] The endpoint returned an empty result for this query. Do not retry.";
-                    }
-                    catch { /* not valid JSON array — return as-is */ }
-                }
+                if (trimmed.Length >= 2 && trimmed[0] == '[' && trimmed[^1] == ']' && trimmed[1..^1].IsWhiteSpace())
+                    return "[No records found] The endpoint returned an empty result for this query. Do not retry.";
 
                 return content;
             }
@@ -508,14 +499,39 @@ public sealed partial class McpChatService
             var errorBody = await ReadCappedAsync(resp.Content, 2000, ct);
             var hint = (int)resp.StatusCode switch
             {
-                401 => "The request was rejected because no valid Bearer token was provided. " +
-                       "The user should authenticate in the Chat UI before querying endpoints.",
+                301 => $"The endpoint '{endpointPath}' has moved permanently to a new URL. Update the target endpoint path.",
+                302 or 307 or 308 => $"The endpoint '{endpointPath}' redirected to a different location. Check if the request URI or protocol should be updated.",
+
+                400 when errorBody.Contains("validation", StringComparison.OrdinalIgnoreCase) =>
+                    $"The request to '{endpointPath}' failed validation. Check the payload field requirements.",
+                400 => $"The request was malformed or missing required parameters for '{endpointPath}'. Check the payload and query parameters.",
+
+                401 when errorBody.Contains("expired", StringComparison.OrdinalIgnoreCase) =>
+                    "The Bearer token has expired. The user must re-authenticate in the Chat UI to get a fresh token.",
+                401 => "The request was rejected because no valid Bearer token was provided. The user should authenticate in the Chat UI before querying endpoints.",
+
                 403 => "The Bearer token does not have permission to access this endpoint or environment.",
-                404 => $"The endpoint '{endpointPath}' was not found at {url}. " +
-                       "Check that the endpoint name and environment are correct.",
+                404 => $"The endpoint '{endpointPath}' was not found at {url}. Check that the endpoint name and environment are correct.",
+                405 => $"The HTTP method used for '{endpointPath}' is not supported. Verify whether GET, POST, PUT, or DELETE is expected.",
+                407 => "Proxy authentication is required before accessing this endpoint.",
+                408 => "The client request timed out before the server could receive it. Try re-sending the request.",
+                409 => "The request conflicts with the current state of the target resource. Check if the resource already exists or is locked.",
+                410 => $"The resource at '{endpointPath}' is permanently gone and will not be available again.",
+                412 => "One or more preconditions specified in the request headers evaluated to false.",
+                413 => "The request payload is too large for the server to process. Reduce the size of the request body.",
+                415 => "The server refuses to accept the request because the payload format is unsupported. Check the Content-Type header (e.g., application/json).",
+                422 => "The request was well-formed but contains unprocessable semantic or validation errors. Check field validation details.",
+                426 => "The client must upgrade to a different protocol (e.g., TLS/HTTP2) to proceed.",
                 429 => "The request was rate-limited. Try again in a moment.",
+                431 => "The request header fields are too large to process. Clear unnecessary headers or cookies.",
+                451 => "Access to this resource is unavailable due to legal or compliance restrictions.",
+                
                 500 => "The endpoint returned an internal server error. Check the Portway logs for details.",
-                503 => "The endpoint is unavailable. The upstream service may be down.",
+                502 => "The server received an invalid response from an upstream server or gateway.",
+                503 => "The endpoint is unavailable. The upstream service may be down or under maintenance.",
+                504 => "The server acting as a gateway timed out waiting for an upstream response. Try again shortly.",
+
+                // Fallback
                 _   => $"The request failed with HTTP {(int)resp.StatusCode}."
             };
 
@@ -591,7 +607,10 @@ public sealed partial class McpChatService
                              $"thousands separator '{nf.NumberGroupSeparator}', decimal separator '{nf.NumberDecimalSeparator}'. " +
                              $"Apply this to all numbers in your responses.";
             }
-            catch { /* unknown locale — omit hint */ }
+            catch (System.Globalization.CultureNotFoundException ex)
+            {
+                Log.Debug(ex, "Unknown locale {Locale}, omitting number formatting hint", locale);
+            }
         }
 
         return new ChatMessage("system", _systemPromptBase + localeHint);

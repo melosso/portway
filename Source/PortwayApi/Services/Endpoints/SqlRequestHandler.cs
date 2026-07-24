@@ -505,10 +505,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support insert operations");
-            }
 
             // Validate input data against allowed columns, required columns, and regex patterns
             var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "POST");
@@ -526,6 +522,11 @@ public sealed partial class SqlRequestHandler
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Insert, data, null);
+            }
+
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support insert operations");
             }
 
             // Prepare stored procedure parameters
@@ -550,7 +551,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 var resultList = result.ToList();
                 
@@ -612,10 +613,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support update operations");
-            }
 
             // Step 4: Validate input data against allowed columns, required columns, and regex patterns
             var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "PUT");
@@ -640,6 +637,11 @@ public sealed partial class SqlRequestHandler
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
+            }
+
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support update operations");
             }
 
             // Step 6: Prepare stored procedure parameters
@@ -667,7 +669,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 // Convert result to a list (could be empty if no rows returned)
                 var resultList = result.ToList();
@@ -725,10 +727,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support partial update operations");
-            }
 
             // Step 4: Parse and validate request body
             var data = requestBody.RootElement;
@@ -758,6 +756,11 @@ public sealed partial class SqlRequestHandler
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
             }
 
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support partial update operations");
+            }
+
             // Step 6: Prepare stored procedure parameters
             var dynamicParams = new DynamicParameters();
 
@@ -783,7 +786,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 // Convert result to a list
                 var resultList = result.ToList();
@@ -842,10 +845,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support delete operations");
-            }
 
             // Check if the ID is provided
             if (string.IsNullOrEmpty(id))
@@ -858,6 +857,11 @@ public sealed partial class SqlRequestHandler
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Delete, null, id);
+            }
+
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support delete operations");
             }
 
             // Prepare stored procedure parameters
@@ -889,7 +893,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 // Convert result to a list (could be empty if no rows returned)
                 var resultList = result.ToList();

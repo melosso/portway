@@ -23,6 +23,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
     private Timer? _maintenanceTimer;
     private readonly TimeSpan _maintenanceInterval = TimeSpan.FromMinutes(5);
     private readonly CancellationTokenSource _cts = new();
+    private bool _disposed;
 
     public SqlConnectionPoolService(SqlPoolingOptions poolingOptions, ISqlProviderFactory providerFactory)
     {
@@ -158,7 +159,9 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        try { _cts.Cancel(); } catch (ObjectDisposedException) { }
+        if (!_disposed)
+            _cts.Cancel();
+
         _maintenanceTimer?.Change(Timeout.Infinite, 0);
 
         foreach (var connection in _warmupConnections.Values)
@@ -168,7 +171,10 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
                 await connection.CloseAsync();
                 await connection.DisposeAsync();
             }
-            catch { }
+            catch (Exception ex) when (ex is DbException or InvalidOperationException)
+            {
+                Log.Warning(ex, "Failed to close a warmup connection during shutdown");
+            }
         }
 
         _warmupConnections.Clear();
@@ -178,7 +184,10 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return;
+
         await StopAsync(CancellationToken.None);
+        _disposed = true;
         _cts.Dispose();
         _maintenanceTimer?.Dispose();
     }

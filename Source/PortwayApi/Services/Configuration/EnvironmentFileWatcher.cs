@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Threading.Channels;
 using Serilog;
+using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
 using PortwayApi.Services.Caching;
@@ -27,6 +28,7 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
         });
     private Task? _consumerTask;
     private CancellationTokenSource? _consumerCts;
+    private bool _disposed;
 
     public EnvironmentFileWatcher(
         CacheManager cacheManager,
@@ -82,7 +84,9 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         _eventChannel.Writer.TryComplete();
-        try { _consumerCts?.Cancel(); } catch (ObjectDisposedException) { }
+        if (!_disposed)
+            _consumerCts?.Cancel();
+
         _fileWatcher?.Dispose();
 
         if (_consumerTask != null)
@@ -246,6 +250,9 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         _consumerCts?.Cancel();
         _consumerCts?.Dispose();
         _fileWatcher?.Dispose();

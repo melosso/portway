@@ -1,5 +1,6 @@
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
+using PortwayApi.Tests.Support;
 using System.Text.Json;
 using Xunit;
 using System.Reflection;
@@ -8,29 +9,19 @@ namespace PortwayApi.Tests.Services;
 
 public class EnvironmentSettingsProviderTests : IDisposable
 {
-    private readonly string _testBaseDir;
+    private readonly TempDirectory _testBaseDir;
     private readonly string _environmentsDir;
     private readonly string _envName;
 
     public EnvironmentSettingsProviderTests()
     {
         _envName = "test-encrypt-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-        _testBaseDir = Path.Combine(Directory.GetCurrentDirectory(), "TestEnvironments_" + Guid.NewGuid().ToString("N"));
-        _environmentsDir = Path.Combine(_testBaseDir, "environments");
+        _testBaseDir = new TempDirectory("TestEnvironments", Directory.GetCurrentDirectory());
+        _environmentsDir = _testBaseDir.Combine("environments");
         Directory.CreateDirectory(_environmentsDir);
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(_testBaseDir))
-            {
-                Directory.Delete(_testBaseDir, true);
-            }
-        }
-        catch { }
-    }
+    public void Dispose() => _testBaseDir.Dispose();
 
     private EnvironmentSettingsProvider CreateProvider()
     {
