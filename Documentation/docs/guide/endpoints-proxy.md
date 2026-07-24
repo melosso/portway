@@ -44,6 +44,8 @@ Portway forwards the original request to the target URL, preserving:
 
 The `Authorization` header is forwarded unchanged, enabling pass-through authentication to internal services that validate Bearer tokens.
 
+The query string is forwarded verbatim, including the provided OData options in your (HTTP) request. In particular `$expand` is never parsed, validated or rejected on a proxy endpoint: it reaches the upstream exactly as written, so a service that implements `$expand` natively keeps working. That's a long way of saying: Portway only handles `$expand` itself on [SQL Table and View endpoints](/reference/expand).
+
 Environment headers defined in `environments/{env}/settings.json` are appended to every forwarded request:
 
 ```http

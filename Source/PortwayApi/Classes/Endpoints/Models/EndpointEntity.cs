@@ -17,6 +17,9 @@ public class EndpointEntity
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }
 
+    /// <summary>To-one navigations exposed via OData $expand (SQL Table/View endpoints only)</summary>
+    public List<EndpointRelationship>? Relationships { get; set; }
+
     // Proxy endpoint properties
     public string? Url { get; set; }
     public List<string>? Methods { get; set; }

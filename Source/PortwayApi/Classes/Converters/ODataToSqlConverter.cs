@@ -1,5 +1,6 @@
 using PortwayApi.Services.Providers;
 using PortwayApi.Interfaces;
+using SqlKata;
 using SqlKata.Compilers;
 using Serilog;
 
@@ -28,7 +29,14 @@ public class ODataToSqlConverter : IODataToSqlConverter
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType)
-        => Convert(entityName, odataParams, providerType, count: false);
+        => Convert(entityName, odataParams, providerType, count: false, relationships: null);
+
+    public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType,
+        IReadOnlyList<EndpointRelationship>? relationships)
+        => Convert(entityName, odataParams, providerType, count: false, relationships);
 
     public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToCountSQL(
         string entityName,
@@ -39,14 +47,15 @@ public class ODataToSqlConverter : IODataToSqlConverter
         var countParams = new Dictionary<string, string>();
         if (odataParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
             countParams["filter"] = filter;
-        return Convert(entityName, countParams, providerType, count: true);
+        return Convert(entityName, countParams, providerType, count: true, relationships: null);
     }
 
     private (string SqlQuery, Dictionary<string, object> Parameters) Convert(
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType,
-        bool count)
+        bool count,
+        IReadOnlyList<EndpointRelationship>? relationships)
     {
         Log.Debug("Converting OData to SQL for entity: {EntityName} (provider: {Provider})", entityName, providerType);
 
@@ -90,25 +99,45 @@ public class ODataToSqlConverter : IODataToSqlConverter
         var dynamicEdmModelBuilder = new DynamicODataToSQL.EdmModelBuilder();
         var dynamicConverter = new DynamicODataToSQL.ODataToSqlConverter(dynamicEdmModelBuilder, compiler);
 
+        // $expand is applied as manual SqlKata JOINs on the fork's open model. Declaring the FK as a
+        // typed EDM property would make the OData binder reject filters like "Fk eq 10" (typed vs literal),
+        // so the base query stays fully open and the JOIN is added after the fact
+        bool expandRequested = odataParams.TryGetValue("expand", out var expandValue) && !string.IsNullOrWhiteSpace(expandValue);
+        List<RelationalExpandSpec>? expandSpecs = expandRequested && relationships is { Count: > 0 } && !count
+            ? BuildExpandSpecs(expandValue!, relationships, provider, sqlEndpoints)
+            : null;
+
+        // The fork never sees "expand"; navigation joins are added by hand below
+        var forkParams = odataParams;
+        if (odataParams.ContainsKey("expand"))
+        {
+            forkParams = new Dictionary<string, string>(odataParams);
+            forkParams.Remove("expand");
+        }
+
         try
         {
-            if (odataParams.TryGetValue("select", out var select) && !string.IsNullOrWhiteSpace(select))
+            if (forkParams.TryGetValue("select", out var select) && !string.IsNullOrWhiteSpace(select))
                 Log.Debug("Applied $select: {Columns}", select);
-            if (odataParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
+            if (forkParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
                 Log.Debug("Applied $filter: {Filter}", filter);
-            if (odataParams.TryGetValue("orderby", out var orderby) && !string.IsNullOrWhiteSpace(orderby))
+            if (forkParams.TryGetValue("orderby", out var orderby) && !string.IsNullOrWhiteSpace(orderby))
                 Log.Debug("Applied $orderby: {OrderBy}", orderby);
-            if (odataParams.TryGetValue("top", out var topStr) && int.TryParse(topStr, out var top))
-                Log.Debug("Applied $top: {Top}", top);
-            if (odataParams.TryGetValue("skip", out var skipStr) && int.TryParse(skipStr, out var skip))
-                Log.Debug("Applied $skip: {Skip}", skip);
 
-            var (sqlQuery, rawParams) = dynamicConverter.ConvertToSQL(
-                fullTableName,
-                odataParams,
-                count,
-                true
-            );
+            string sqlQuery;
+            IDictionary<string, object> rawParams;
+
+            if (expandSpecs is { Count: > 0 })
+            {
+                var kata = dynamicConverter.ConvertToSQLKataQuery(fullTableName, forkParams, count, true);
+                kata = PortwayApi.Helpers.OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
+                var compiled = compiler.Compile(kata);
+                (sqlQuery, rawParams) = (compiled.Sql, compiled.NamedBindings);
+            }
+            else
+            {
+                (sqlQuery, rawParams) = dynamicConverter.ConvertToSQL(fullTableName, forkParams, count, true);
+            }
 
             var parameters = new Dictionary<string, object>(rawParams ?? new Dictionary<string, object>());
 
@@ -125,5 +154,58 @@ public class ODataToSqlConverter : IODataToSqlConverter
             Log.Error(ex, "Error converting OData to SQL: {Message}", ex.Message);
             throw new InvalidOperationException($"Failed to convert OData to SQL: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>Resolves the requested navigation names to EDM emission specs using the target endpoints' own schema/table/columns</summary>
+    private static List<RelationalExpandSpec> BuildExpandSpecs(
+        string expandValue,
+        IReadOnlyList<EndpointRelationship> relationships,
+        ISqlProvider provider,
+        Dictionary<string, EndpointDefinition> sqlEndpoints)
+    {
+        var specs = new List<RelationalExpandSpec>();
+
+        // Bare navigation names only; nested options are rejected upstream on the read path
+        var requested = expandValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var navRaw in requested)
+        {
+            var nav = navRaw.Contains('(') ? navRaw[..navRaw.IndexOf('(')].Trim() : navRaw;
+
+            var rel = relationships.FirstOrDefault(r => string.Equals(r.Name, nav, StringComparison.OrdinalIgnoreCase));
+            if (rel == null)
+                throw new InvalidOperationException($"Unknown navigation '{nav}' for $expand");
+
+            if (!TryResolveTarget(rel.Target, sqlEndpoints, out var target) || target == null)
+                throw new InvalidOperationException($"Relationship '{rel.Name}' targets unregistered endpoint '{rel.Target}'");
+
+            var targetSchema = PortwayApi.Helpers.SqlSchemaResolver.Resolve(target.DatabaseSchema ?? "dbo", provider);
+            var targetTable = targetSchema.Length > 0
+                ? $"{targetSchema}.{target.DatabaseObjectName}"
+                : target.DatabaseObjectName ?? rel.Target;
+
+            var targetColumns = target.DatabaseToAlias.Keys.ToList();
+
+            specs.Add(new RelationalExpandSpec(rel.Name, targetTable, rel.LocalColumn, rel.TargetColumn, targetColumns));
+        }
+
+        return specs;
+    }
+
+    /// <summary>Target-by-name resolution: exact endpoint key or a namespaced key ending in the plain name</summary>
+    private static bool TryResolveTarget(string target, Dictionary<string, EndpointDefinition> sqlEndpoints, out EndpointDefinition? endpoint)
+    {
+        if (sqlEndpoints.TryGetValue(target, out endpoint))
+            return true;
+
+        var key = sqlEndpoints.Keys.FirstOrDefault(k => k.EndsWith($"/{target}", StringComparison.OrdinalIgnoreCase));
+        if (key != null)
+        {
+            endpoint = sqlEndpoints[key];
+            return true;
+        }
+
+        endpoint = null;
+        return false;
     }
 }

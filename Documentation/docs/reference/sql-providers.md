@@ -157,6 +157,7 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 | POST / PUT / PATCH / DELETE via stored procedure | ✅ | ✅ | ✅ | ❌ |
 | POST / PUT / PATCH / DELETE via table write mode | ✅ | ✅ | ✅ | ✅ |
 | Table-valued functions (TVF) | ✅ | ✅ | ❌ | ❌ |
+| `$expand` to-one related data (Table / View) | ✅ | ✅ | ✅ | ✅ |
 | Schema namespacing (`dbo.TableName`) | ✅ | ✅ | ✅ | ❌ |
 | Column metadata & OpenAPI generation | ✅ | ✅ | ✅ | ✅ |
 | Connection pooling | ✅ | ✅ | ✅ | Limited |
@@ -172,6 +173,10 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 
 ::: note
 On PostgreSQL, write routines are functions rather than procedures, since only functions can return the created row. Portway invokes them with named arguments, so it helps to name your function parameters after the lowercased payload fields (for example `method`, `id`, `name`). On SQL Server and MySQL a regular procedure with a trailing `SELECT` of the affected row works as before.
+:::
+
+::: info
+**`$expand`:** Table and View endpoints can pull a related entity into the response with `$expand`, translated to an `INNER JOIN` on every dialect above. It covers to-one navigations declared in `entity.json`; table-valued functions return `400`, and Proxy or Composite endpoints pass the query string through to the upstream. See [Expanding Related Data](/reference/expand).
 :::
 
 The provider combination Portway is continuously tested against: SQL Server 2025, PostgreSQL 18 and MySQL 8.0. Other versions of the same engines generally work fine; these are simply the ones the automated parity suite runs on.

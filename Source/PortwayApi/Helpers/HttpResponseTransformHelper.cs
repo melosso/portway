@@ -5,7 +5,7 @@ using Serilog;
 namespace PortwayApi.Helpers;
 
 /// <summary>Applies declarative remove, rename and mask rules to JSON proxy responses</summary>
-public static class ResponseTransformHelper
+public static class HttpResponseTransformHelper
 {
     private const string MaskValue = "***";
 

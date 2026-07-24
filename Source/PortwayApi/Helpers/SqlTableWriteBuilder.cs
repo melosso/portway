@@ -11,7 +11,7 @@ public sealed record TableWriteCommand(string Sql, Dictionary<string, object?> P
 /// <summary>Builds guarded INSERT/UPDATE/DELETE statements for WriteMode: Table endpoints.
 /// Every identifier comes from validated endpoint configuration, every value is a bound parameter,
 /// and every predicate is primary key equality only</summary>
-public static partial class TableWriteBuilder
+public static partial class SqlTableWriteBuilder
 {
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex SafeIdentifier();

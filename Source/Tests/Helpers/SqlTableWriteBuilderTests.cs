@@ -7,7 +7,7 @@ using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
-public class TableWriteBuilderTests
+public class SqlTableWriteBuilderTests
 {
     private static EndpointDefinition ValidEndpoint() => new()
     {
@@ -21,7 +21,7 @@ public class TableWriteBuilderTests
 
     [Fact]
     public void ValidConfig_Passes()
-        => Assert.Null(TableWriteBuilder.ValidateConfig(ValidEndpoint()));
+        => Assert.Null(SqlTableWriteBuilder.ValidateConfig(ValidEndpoint()));
 
     [Theory]
     [InlineData("no-allowlist")]
@@ -41,7 +41,7 @@ public class TableWriteBuilderTests
             case "tvf-type": endpoint.DatabaseObjectType = "TableValuedFunction"; break;
         }
 
-        Assert.NotNull(TableWriteBuilder.ValidateConfig(endpoint));
+        Assert.NotNull(SqlTableWriteBuilder.ValidateConfig(endpoint));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public class TableWriteBuilderTests
     {
         var payload = new Dictionary<string, object?> { ["Code"] = "A1", ["IsAdmin"] = true };
 
-        var ok = TableWriteBuilder.TryResolveColumns(ValidEndpoint(), payload, out _, out var error);
+        var ok = SqlTableWriteBuilder.TryResolveColumns(ValidEndpoint(), payload, out _, out var error);
 
         Assert.False(ok);
         Assert.Contains("IsAdmin", error);
@@ -61,7 +61,7 @@ public class TableWriteBuilderTests
         var provider = new SqliteProvider();
         var columns = new Dictionary<string, object?> { ["Code"] = "A'; DROP TABLE Bins;--", ["Capacity"] = 10 };
 
-        var insert = TableWriteBuilder.BuildInsert(provider, "Bins", columns);
+        var insert = SqlTableWriteBuilder.BuildInsert(provider, "Bins", columns);
 
         Assert.DoesNotContain("DROP TABLE", insert.Sql);
         Assert.Contains("@", insert.Sql);
@@ -76,19 +76,19 @@ public class TableWriteBuilderTests
         await connection.OpenAsync();
         await connection.ExecuteAsync("CREATE TABLE Bins (Id INTEGER PRIMARY KEY, Code TEXT NOT NULL, Capacity INTEGER)");
 
-        var insert = TableWriteBuilder.BuildInsert(provider, "Bins",
+        var insert = SqlTableWriteBuilder.BuildInsert(provider, "Bins",
             new Dictionary<string, object?> { ["Id"] = 1, ["Code"] = "A1", ["Capacity"] = 10 });
         await connection.ExecuteAsync(insert.Sql, insert.Parameters);
 
-        var update = TableWriteBuilder.BuildUpdate(provider, "Bins", "Id", 1,
+        var update = SqlTableWriteBuilder.BuildUpdate(provider, "Bins", "Id", 1,
             new Dictionary<string, object?> { ["Capacity"] = 25 });
         Assert.Equal(1, await connection.ExecuteAsync(update.Sql, update.Parameters));
 
-        var select = TableWriteBuilder.BuildSelectByKey(provider, "Bins", "Id", 1);
+        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, "Bins", "Id", 1);
         var row = (await connection.QueryAsync(select.Sql, select.Parameters)).Single();
         Assert.Equal(25, Convert.ToInt32(row.Capacity));
 
-        var delete = TableWriteBuilder.BuildDelete(provider, "Bins", "Id", 1);
+        var delete = SqlTableWriteBuilder.BuildDelete(provider, "Bins", "Id", 1);
         Assert.Equal(1, await connection.ExecuteAsync(delete.Sql, delete.Parameters));
         Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Bins"));
     }

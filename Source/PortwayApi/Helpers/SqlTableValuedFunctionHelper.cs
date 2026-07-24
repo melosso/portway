@@ -7,7 +7,7 @@ using PortwayApi.Classes;
 namespace PortwayApi.Helpers;
 
 /// <summary>Helper class for handling Table Valued Function (TVF) parameter extraction and SQL generation</summary>
-public static class TableValuedFunctionHelper
+public static class SqlTableValuedFunctionHelper
 {
     /// <summary>Determines if an endpoint is a Table Valued Function</summary>
     /// <param name="endpoint">Endpoint definition</param>

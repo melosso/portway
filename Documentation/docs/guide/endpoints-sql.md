@@ -102,6 +102,27 @@ GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price d
 }
 ```
 
+### Related data with $expand
+
+Declare a to-one relationship to another SQL endpoint, and readers can pull the related row into the response with `$expand`:
+
+```json
+{
+  "DatabaseObjectName": "Items",
+  "DatabaseObjectType": "Table",
+  "AllowedColumns": ["ItemCode;ProductNumber", "Assortment;AssortmentID"],
+  "Relationships": [
+    { "Name": "Category", "Target": "Assortments", "LocalColumn": "Assortment", "TargetColumn": "AssortmentID" }
+  ]
+}
+```
+
+```http
+GET /api/prod/Products?$expand=Category
+```
+
+Portway joins the target and nests it under the navigation name, reusing the target's own column allowlist. It applies to Table and View endpoints and to-one navigations only; a table-valued function returns `400`. The full contract and limits are in [Expanding Related Data](/reference/expand).
+
 ## Write operations
 
 ### POST: create a record

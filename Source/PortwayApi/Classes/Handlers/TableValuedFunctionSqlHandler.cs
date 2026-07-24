@@ -31,7 +31,7 @@ public static class TableValuedFunctionSqlHandler
             Log.Debug("Processing TVF GET request for: {FunctionName}", endpoint.DatabaseObjectName);
 
             // Validate that this is actually a TVF endpoint
-            if (!TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
+            if (!SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
                 Log.Warning("Endpoint {Name} is not configured as a Table Valued Function", endpoint.DatabaseObjectName);
                 return (false, new BadRequestObjectResult(new { 
@@ -51,7 +51,7 @@ public static class TableValuedFunctionSqlHandler
             }
 
             // Extract parameter values from the request
-            var (parameterValues, extractionErrors) = TableValuedFunctionHelper.ExtractParameterValues(
+            var (parameterValues, extractionErrors) = SqlTableValuedFunctionHelper.ExtractParameterValues(
                 endpoint.FunctionParameters,
                 request,
                 pathSegments);
@@ -72,7 +72,7 @@ public static class TableValuedFunctionSqlHandler
             var schema = endpoint.DatabaseSchema ?? "dbo";
             var functionName = endpoint.DatabaseObjectName!;
             
-            var (functionCall, sqlParameters) = TableValuedFunctionHelper.BuildFunctionCall(
+            var (functionCall, sqlParameters) = SqlTableValuedFunctionHelper.BuildFunctionCall(
                 schema,
                 functionName,
                 parameterValues,
@@ -224,7 +224,7 @@ public static class TableValuedFunctionSqlHandler
     {
         var errors = new List<string>();
 
-        if (!TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
+        if (!SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
         {
             errors.Add("DatabaseObjectType must be 'TableValuedFunction' for TVF endpoints");
         }

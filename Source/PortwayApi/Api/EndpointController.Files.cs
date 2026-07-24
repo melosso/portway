@@ -367,7 +367,7 @@ public partial class EndpointController
             }).ToList();
 
             // Set pagination headers for consistency with other endpoints
-            ResponseHeaderHelper.SetPaginationHeaders(HttpContext, filesWithUrls.Count, filesWithUrls.Count, false);
+            HttpResponseHeaderHelper.SetPaginationHeaders(HttpContext, filesWithUrls.Count, filesWithUrls.Count, false);
 
             return PortwayResults.Collection(this, filesWithUrls);
         }

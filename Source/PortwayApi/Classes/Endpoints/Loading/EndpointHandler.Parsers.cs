@@ -198,6 +198,7 @@ public static partial class EndpointHandler
             WriteMode = entity.WriteMode,
             DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
             FunctionParameters = entity.FunctionParameters,
+            Relationships = entity.Relationships,
             Methods = allowedMethods,
             Mcp = entity.Mcp,
             AllowedEnvironments = entity.AllowedEnvironments,
@@ -261,6 +262,9 @@ public static partial class EndpointHandler
             var tvfErrors = PortwayApi.Classes.Handlers.TableValuedFunctionSqlHandler.ValidateTVFConfiguration(tempEndpoint);
             errors.AddRange(tvfErrors);
         }
+
+        // Validate $expand relationship shape (identifiers, to-one only, not on a TVF)
+        errors.AddRange(PortwayApi.Helpers.OdataExpandRelationshipValidator.ValidateShape(entity));
 
         // Validate allowed methods
         if (entity.AllowedMethods != null)

@@ -38,7 +38,10 @@ public class EndpointDefinition
     
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }
-    
+
+    /// <summary>To-one navigations exposed via OData $expand; empty for endpoints without $expand</summary>
+    public List<EndpointRelationship>? Relationships { get; set; }
+
     // Column mappings lazy-load from AllowedColumns; holder reference makes publication atomic under concurrent reads
     private sealed record ColumnMappingSet(Dictionary<string, string> AliasToDatabase, Dictionary<string, string> DatabaseToAlias);
     private volatile ColumnMappingSet? _columnMappings;

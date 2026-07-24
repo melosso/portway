@@ -17,6 +17,7 @@ OData gives your SQL endpoints a query language without you writing a line of SQ
 | `$top` | Limit results | `$top=10` |
 | `$skip` | Skip results | `$skip=20` |
 | `$count` | Include the total matching count | `$count=true` |
+| `$expand` | Include a related entity (to-one) | `$expand=Category` |
 
 ## Basic Query Structure
 
@@ -202,6 +203,16 @@ A few things worth knowing:
 - `totalCount` is omitted from the response entirely when `$count` is not requested
 
 Since the count is one more round-trip to your database, it's most useful on the first page of a listing; subsequent pages can usually reuse it.
+
+## $expand - Related Data
+
+`$expand` pulls a related entity into the response in the same request, nested under the navigation name:
+
+```http
+GET /api/prod/Products?$expand=Category
+```
+
+The relationship is declared once in the endpoint's `entity.json`, and Portway turns it into a SQL `JOIN`. It applies to SQL Table and View endpoints, covers to-one navigations, and reuses the target's own column allowlist. The full contract, configuration and limits live in [Expanding Related Data](/reference/expand).
 
 ## Combining Query Options
 

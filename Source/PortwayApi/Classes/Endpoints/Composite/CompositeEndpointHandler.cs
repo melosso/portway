@@ -496,7 +496,7 @@ public class CompositeEndpointHandler
 
             try
             {
-                var shaped = ResponseTransformHelper.Apply(JsonSerializer.Serialize(stepResult), transforms);
+                var shaped = HttpResponseTransformHelper.Apply(JsonSerializer.Serialize(stepResult), transforms);
                 result.StepResults[step.Name] = JsonSerializer.Deserialize<object>(shaped, CaseInsensitiveOptions) ?? stepResult;
             }
             catch (Exception ex)
