@@ -1,0 +1,27 @@
+{
+    "DatabaseObjectName": "ItemAssortment",
+    "DatabaseSchema": "dbo",
+    "DatabaseObjectType": "Table",
+    "PrimaryKey": "ID",
+    "IsPrivate": true,
+    "Namespace": "Product",
+    "NamespaceDisplayName": "Product",
+    "AllowedColumns": [
+        "ID;ID",
+        "Assortment;AssortmentID",
+        "Code;Code",
+        "Description;Description",
+        "sysguid;InternalID"
+    ],
+    "AllowedMethods": ["GET"],
+    "AllowedEnvironments": ["500","700"],
+    "Documentation": {
+        "TagDescription": "**Product Assortments**\n\nAccess the assortment groups that classify the product catalog. Use it to resolve the assortment behind an item, or to list the available groups.\n\n> [!IMPORTANT]\n> This endpoint exposes classification data only; it holds no pricing or stock information.",
+        "MethodDescriptions": {
+            "GET": "Retrieve product assortments"
+        },
+        "MethodDocumentation": {
+            "GET": "You can retrieve **all assortments** used to group the `product catalog`, including their code and description. Products reference these groups through their assortment."
+        }
+    }
+}
