@@ -7,7 +7,7 @@ description: "Directory-based grouping for SQL, Proxy, Static, and Composite end
 
 Namespaces let you organise related endpoints into logical groups, for example, `CRM`, `Finance`, or `Account`, using the directory structure under each endpoint type folder. The folder name becomes the namespace segment in the request URL.
 
-Files and Webhooks endpoints do not support namespaces; they use the immediate directory name only.
+Every endpoint type supports namespaces. Webhooks are the one type that requires one, since each webhook lives at `endpoints/Webhooks/{Namespace}/{Name}/entity.json`.
 
 ## Directory Structure
 
@@ -41,7 +41,7 @@ Namespaces are implemented through directory organization within each endpoint t
   │   │       └── entity.json
   │   └── [EntityName]/              # Non-namespaced (legacy)
   │       └── entity.json
-  ├── Webhooks/                      # Namespaced since v1.7.0 (breaking: no more shared root entity.json)
+  ├── Webhooks/
   │   ├── [Namespace]/
   │   │   └── [EntityName]/
   │   │       └── entity.json
@@ -216,9 +216,9 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-### File Endpoint (No Namespace Support)
+### File Endpoint with Namespace
 
-**File**: `/endpoints/Files/Documents/entity.json`
+**File**: `/endpoints/Files/Archive/Documents/entity.json`
 
 ```json
 {
@@ -226,12 +226,14 @@ The system attempts namespaced access first, then falls back to non-namespaced:
   "AllowedExtensions": [".pdf", ".docx", ".txt"],
   "MaxFileSizeBytes": 10485760,
   "IsPrivate": false,
+  "Namespace": "Archive",
+  "NamespaceDisplayName": "Document Archive",
   "AllowedEnvironments": ["dev", "test", "prod"]
 }
 ```
 
-::: 
-File endpoints do not support namespaces. They use only the immediate directory name as the endpoint name.
+::: tip
+The namespace appears in every file route, so this endpoint is served at `/api/{env}/files/Archive/Documents`. Download URLs returned by the API include it as well, which keeps them usable as-is.
 :::
 
 ### Composite Endpoint with Namespace
@@ -266,7 +268,7 @@ File endpoints do not support namespaces. They use only the immediate directory 
 }
 ```
 
-::: Note
+::: tip
 Composite endpoints are stored in the `/endpoints/Proxy/` directory with `"Type": "Composite"`. They support both namespaced access (`/api/{env}/{namespace}/{endpoint}`) and legacy access (`/api/{env}/composite/{endpoint}`).
 :::
 
@@ -292,7 +294,7 @@ Namespace names follow these conventions:
 - `Account-Management` (contains hyphen)
 - `Account Management` (contains space)
 
-### Reserved Namespace Names
+### Reserved Namespaces
 
 The following namespace names are reserved and cannot be used:
 
@@ -305,6 +307,8 @@ The following namespace names are reserved and cannot be used:
 - `composite`
 - `webhook`
 - `files`
+
+An endpoint that claims one of these is skipped when the loader reads it at startup; the Web UI validator turns it down before the file is written.
 
 ## OpenAPI Documentation
 
