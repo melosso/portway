@@ -256,6 +256,10 @@
           {
             "title": "Sorting & Pagination",
             "path": "reference/sorting-pagination"
+          },
+          {
+            "title": "Expanding Related Data",
+            "path": "reference/expand"
           }
         ]
       },

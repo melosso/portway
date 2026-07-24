@@ -1,10 +1,5 @@
 namespace PortwayApi.Services.Mcp;
 
-using System.Text.Json.Serialization;
-
-/// <summary>Discriminated union of all SSE event types streamed from the chat service. Serialised with snake_case (e.g. ToolCall → "tool_call")</summary>
-[JsonConverter(typeof(JsonStringEnumConverter))]
-
 /// <summary>A single streamed chunk from the LLM; either a text delta or a completed tool call</summary>
 public sealed record ChatDelta
 {

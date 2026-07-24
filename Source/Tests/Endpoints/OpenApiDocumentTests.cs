@@ -67,6 +67,43 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Equal("OK", responses.GetProperty("200").GetProperty("description").GetString());
     }
 
+    // $expand is offered only where the endpoint declares navigations, and names the ones it has
+    [Fact]
+    public async Task ExpandParameter_IsDocumented_OnlyForEndpointsWithRelationships()
+    {
+        SetAllowedEnvironments("500", "700");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var paths = doc.RootElement.GetProperty("paths");
+
+        // Product/Products declares an Assortment navigation; Product/Stock declares none
+        var expand = GetQueryParameter(paths, "/api/{env}/Product/Products", "$expand");
+        Assert.NotNull(expand);
+        // Optional parameters are serialized without a "required" key, so it stays unchecked in the UI
+        Assert.False(expand.Value.TryGetProperty("required", out var required) && required.GetBoolean());
+        Assert.Equal("string", expand.Value.GetProperty("schema").GetProperty("type").GetString());
+        Assert.Contains("Assortment", expand.Value.GetProperty("description").GetString());
+
+        Assert.Null(GetQueryParameter(paths, "/api/{env}/Product/Stock", "$expand"));
+        Assert.NotNull(GetQueryParameter(paths, "/api/{env}/Product/Stock", "$select"));
+    }
+
+    private static JsonElement? GetQueryParameter(JsonElement paths, string path, string name)
+    {
+        if (!paths.TryGetProperty(path, out var operations)) return null;
+        if (!operations.TryGetProperty("get", out var get)) return null;
+        if (!get.TryGetProperty("parameters", out var parameters)) return null;
+
+        foreach (var parameter in parameters.EnumerateArray())
+        {
+            if (parameter.GetProperty("name").GetString() == name)
+                return parameter;
+        }
+
+        return null;
+    }
+
     // Audit: every documented status code carries its canonical HTTP reason phrase
     [Fact]
     public async Task AllResponseDescriptions_AreStandardized()

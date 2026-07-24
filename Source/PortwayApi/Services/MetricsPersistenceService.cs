@@ -64,14 +64,22 @@ public sealed class MetricsPersistenceService : BackgroundService
             """);
 
         // Migration: add Source/Endpoint columns to any pre-existing table
-        foreach (var alterSql in new[]
+        var migrations = new (string Column, string AlterSql)[]
         {
-            "ALTER TABLE RequestMetrics ADD COLUMN Source TEXT NOT NULL DEFAULT 'api'",
-            "ALTER TABLE RequestMetrics ADD COLUMN Endpoint TEXT NOT NULL DEFAULT ''",
-        })
+            ("Source", "ALTER TABLE RequestMetrics ADD COLUMN Source TEXT NOT NULL DEFAULT 'api'"),
+            ("Endpoint", "ALTER TABLE RequestMetrics ADD COLUMN Endpoint TEXT NOT NULL DEFAULT ''"),
+        };
+
+        foreach (var (column, alterSql) in migrations)
         {
-            try { conn.Execute(alterSql); }
-            catch { /* column already exists, safe to ignore */ }
+            var exists = conn.ExecuteScalar<int>(
+                "SELECT COUNT(*) FROM pragma_table_info('RequestMetrics') WHERE name=@name", new { name = column });
+
+            if (exists == 0)
+            {
+                conn.Execute(alterSql);
+                Log.Information("Added {Column} column to RequestMetrics table", column);
+            }
         }
     }
 

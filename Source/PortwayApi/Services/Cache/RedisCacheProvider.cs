@@ -697,7 +697,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                     }
                     catch (OperationCanceledException)
                     {
-                        // Timeout or already cancelled, lock will expire nativly
+                        Log.Debug("Timed out releasing lock {Key} synchronously, it will expire naturally", _lockKey);
                     }
                     catch (Exception ex)
                     {

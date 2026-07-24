@@ -10,6 +10,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
     public override SqlProviderType ProviderType => SqlProviderType.MySql;
     // MySQL schemas are databases; the container's default database plays that role
     public override string QualifiedProductsTable => "test.Products";
+    public override string QualifiedCategoriesTable => "test.Categories";
     public override string ProcedureSchema => "test";
     public override string ProcedureName => "GetProductsByPrice";
     public override string WriteProcedureName => "ManageProduct";
@@ -27,8 +28,12 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
 
     protected override IEnumerable<string> SchemaStatements =>
     [
-        "CREATE TABLE test.Products (Id INT PRIMARY KEY, Name VARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL)",
+        "CREATE TABLE test.Products (Id INT PRIMARY KEY, Name VARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL, CategoryId INT NULL)",
         $"INSERT INTO test.Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",
+        "CREATE TABLE test.Categories (CategoryId INT PRIMARY KEY, CategoryName VARCHAR(100) NOT NULL)",
+        $"INSERT INTO test.Categories (CategoryId, CategoryName) VALUES {CategorySeedValues}",
+        "UPDATE test.Products SET CategoryId = 10 WHERE Id IN (1, 2)",
+        "UPDATE test.Products SET CategoryId = 20 WHERE Id = 4",
         "CREATE PROCEDURE test.GetProductsByPrice(IN MinPrice DECIMAL(10,2)) SELECT Id, Name, Price FROM test.Products WHERE Price >= MinPrice",
         """
         CREATE PROCEDURE test.ManageProduct(IN Method VARCHAR(10), IN Id INT, IN Name VARCHAR(100), IN Price DECIMAL(10,2))

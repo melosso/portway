@@ -55,7 +55,7 @@
 
     <!-- OData & SQL Querying -->
     <PackageReference Include="Dapper" />
-    <PackageReference Include="DynamicODataToSQL" />
+    <PackageReference Include="Melosso.DynamicODataToSQL" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />

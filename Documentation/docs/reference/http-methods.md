@@ -29,7 +29,7 @@ The workhorse. Filters, projection, sorting and paging all travel as OData query
 GET /api/prod/Products?$filter=Price gt 20&$orderby=Name&$top=10
 ```
 
-The full query syntax lives in the [OData reference](/reference/odata).
+The full query syntax lives in the [OData reference](/reference/odata). SQL Table and View endpoints can also pull related rows in the same request with [`$expand`](/reference/expand).
 
 ## QUERY
 

@@ -12,6 +12,9 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
     /// <summary>Schema-qualified entity name as a client would address it in OData</summary>
     public abstract string QualifiedProductsTable { get; }
 
+    /// <summary>Schema-qualified related table for $expand parity (Products.CategoryId -> Categories.CategoryId)</summary>
+    public abstract string QualifiedCategoriesTable { get; }
+
     /// <summary>Schema passed to GetProcedureParametersAsync</summary>
     public abstract string ProcedureSchema { get; }
     public abstract string ProcedureName { get; }
@@ -63,5 +66,11 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
         (3, 'Bird Seed', 5.25, '2023-11-30'),
         (4, 'Giant Magnet', 149.50, '2024-06-01'),
         (5, 'Tornado Kit', 33.10, '2024-09-09')
+        """;
+
+    /// <summary>Two categories; products 1 and 2 map to 10, product 4 to 20, products 3 and 5 stay unmatched</summary>
+    protected const string CategorySeedValues = """
+        (10, 'Tools'),
+        (20, 'Toys')
         """;
 }

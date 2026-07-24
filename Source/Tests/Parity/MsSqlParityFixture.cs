@@ -9,6 +9,7 @@ public sealed class MsSqlParityFixture : ParityDatabaseFixture
 
     public override SqlProviderType ProviderType => SqlProviderType.SqlServer;
     public override string QualifiedProductsTable => "dbo.Products";
+    public override string QualifiedCategoriesTable => "dbo.Categories";
     public override string ProcedureSchema => "dbo";
     public override string ProcedureName => "GetProductsByPrice";
     public override string TvfName => "ProductsAbove";
@@ -28,8 +29,12 @@ public sealed class MsSqlParityFixture : ParityDatabaseFixture
 
     protected override IEnumerable<string> SchemaStatements =>
     [
-        "CREATE TABLE dbo.Products (Id INT PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL)",
+        "CREATE TABLE dbo.Products (Id INT PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL, CategoryId INT NULL)",
         $"INSERT INTO dbo.Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",
+        "CREATE TABLE dbo.Categories (CategoryId INT PRIMARY KEY, CategoryName NVARCHAR(100) NOT NULL)",
+        $"INSERT INTO dbo.Categories (CategoryId, CategoryName) VALUES {CategorySeedValues}",
+        "UPDATE dbo.Products SET CategoryId = 10 WHERE Id IN (1, 2)",
+        "UPDATE dbo.Products SET CategoryId = 20 WHERE Id = 4",
         "CREATE PROCEDURE dbo.GetProductsByPrice @MinPrice DECIMAL(10,2) AS SELECT Id, Name, Price FROM dbo.Products WHERE Price >= @MinPrice",
         "CREATE FUNCTION dbo.ProductsAbove (@MinPrice DECIMAL(10,2)) RETURNS TABLE AS RETURN (SELECT Id, Name, Price FROM dbo.Products WHERE Price >= @MinPrice)",
         """

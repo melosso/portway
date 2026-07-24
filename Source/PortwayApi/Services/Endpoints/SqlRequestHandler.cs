@@ -81,8 +81,12 @@ public sealed partial class SqlRequestHandler
             orderby = ApplyDefaultSorting(orderby, endpoint);
 
             // Check if this is a Table Valued Function endpoint
-            if (PortwayApi.Helpers.TableValuedFunctionHelper.IsTableValuedFunction(endpoint))
+            if (PortwayApi.Helpers.SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
+                // Fail closed: the TVF hybrid splice cannot carry a JOIN, so $expand would be silently dropped
+                if (!string.IsNullOrWhiteSpace(context.Request.Query["$expand"].FirstOrDefault()))
+                    return PortwayResults.BadRequest("$expand is not supported on table-valued function endpoints");
+
                 Log.Debug("Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);
                 
                 // Extract path segments for parameter values
@@ -135,7 +139,7 @@ public sealed partial class SqlRequestHandler
                 // Apply declarative response transforms to TVF rows
                 if (endpoint.ResponseTransforms is { HasRules: true } tvfTransforms)
                 {
-                    tvfResultList = ResponseTransformHelper.ApplyToRows(tvfResultList, tvfTransforms);
+                    tvfResultList = HttpResponseTransformHelper.ApplyToRows(tvfResultList, tvfTransforms);
                 }
 
                 // For ID-based requests (if applicable to TVF), return single item directly (OData convention)
@@ -150,13 +154,13 @@ public sealed partial class SqlRequestHandler
                 }
 
                 // Return collection response with pagination headers
-                ResponseHeaderHelper.SetPaginationHeaders(context, null, tvfResultList.Count, !tvfIsLastPage);
+                HttpResponseHeaderHelper.SetPaginationHeaders(context, null, tvfResultList.Count, !tvfIsLastPage);
                 
                 // Only set Cache-Control header if caching is enabled for this endpoint
                 if (IsCacheEnabled(endpoint))
                 {
                     var tvfCacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
-                    ResponseHeaderHelper.SetCacheControlHeader(context, tvfCacheDurationSeconds);
+                    HttpResponseHeaderHelper.SetCacheControlHeader(context, tvfCacheDurationSeconds);
                 }
                 
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
@@ -274,19 +278,60 @@ public sealed partial class SqlRequestHandler
                 { "skip", skip.ToString() }
             };
 
-            if (!string.IsNullOrEmpty(selectForQuery)) 
+            if (!string.IsNullOrEmpty(selectForQuery))
                 odataParams["select"] = selectForQuery;
-            if (!string.IsNullOrEmpty(filterForQuery)) 
+            if (!string.IsNullOrEmpty(filterForQuery))
                 odataParams["filter"] = filterForQuery;
-            if (!string.IsNullOrEmpty(orderbyForQuery)) 
+            if (!string.IsNullOrEmpty(orderbyForQuery))
                 odataParams["orderby"] = orderbyForQuery;
+
+            // Step 6b: $expand to-one navigations. SQL read path only, gated and capability-checked
+            List<(string NavName, IReadOnlyDictionary<string, string> DbToAlias)>? expandNavMaps = null;
+            var expandRaw = context.Request.Query["$expand"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(expandRaw))
+            {
+                // TVF $expand is rejected earlier, in the TVF branch; only Table/View endpoints reach here
+
+                // Nested expand options ($expand=Nav($select=...)) are not supported in v1
+                if (expandRaw.Contains('('))
+                    return PortwayResults.BadRequest("Nested $expand options are not supported");
+
+                // Root projection must be explicit so the JOIN does not drop the base columns
+                if (!odataParams.ContainsKey("select"))
+                    return PortwayResults.BadRequest("$expand requires the endpoint to declare AllowedColumns");
+
+                var configured = endpoint.Relationships ?? new List<EndpointRelationship>();
+                var requestedNavs = expandRaw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var unknownNavs = requestedNavs
+                    .Where(n => !configured.Any(r => string.Equals(r.Name, n, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+                if (unknownNavs.Count > 0)
+                    return PortwayResults.BadRequest($"Unknown $expand navigation(s): {string.Join(", ", unknownNavs)}");
+
+                // Resolve each nav's target endpoint now so the response can be nested and aliased
+                var allSqlEndpoints = EndpointHandler.GetSqlEndpoints();
+                expandNavMaps = new List<(string, IReadOnlyDictionary<string, string>)>();
+                foreach (var nav in requestedNavs)
+                {
+                    var rel = configured.First(r => string.Equals(r.Name, nav, StringComparison.OrdinalIgnoreCase));
+                    var target = allSqlEndpoints.FirstOrDefault(kv =>
+                        string.Equals(kv.Key, rel.Target, StringComparison.OrdinalIgnoreCase)
+                        || kv.Key.EndsWith($"/{rel.Target}", StringComparison.OrdinalIgnoreCase)).Value;
+                    if (target == null)
+                        return PortwayResults.BadRequest($"$expand navigation '{rel.Name}' targets unregistered endpoint '{rel.Target}'");
+                    expandNavMaps.Add((rel.Name, target.DatabaseToAlias));
+                }
+
+                odataParams["expand"] = string.Join(",", requestedNavs);
+            }
 
             // Step 7: Convert OData to SQL (provider-aware for correct dialect)
             var detectedProviderType = SqlProviderDetector.Detect(connectionString);
             var (query, parameters) = _oDataToSqlConverter.ConvertToSQL(
                 $"{schema}.{objectName}",
                 odataParams,
-                detectedProviderType);
+                detectedProviderType,
+                endpoint.Relationships);
 
             // Step 8: Check cache first if enabled
             // $count=true adds the unpaged total matching the filter to the response
@@ -328,10 +373,19 @@ public sealed partial class SqlRequestHandler
                 }
             }
 
+            // Nest expanded navigation columns (Nav.Column) into a Nav object, aliased to the target's columns
+            if (expandNavMaps is { Count: > 0 })
+            {
+                transformedResults = PortwayApi.Helpers.OdataExpandResponseShaper
+                    .Nest(transformedResults, expandNavMaps)
+                    .Cast<object>()
+                    .ToList();
+            }
+
             // Apply declarative response transforms after alias mapping so rules target alias names
             if (endpoint.ResponseTransforms is { HasRules: true } sqlTransforms)
             {
-                transformedResults = ResponseTransformHelper.ApplyToRows(transformedResults, sqlTransforms);
+                transformedResults = HttpResponseTransformHelper.ApplyToRows(transformedResults, sqlTransforms);
             }
 
             // Determine if it's the last page
@@ -366,13 +420,13 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 10: Prepare response for collection requests with pagination headers
-            ResponseHeaderHelper.SetPaginationHeaders(context, null, transformedResults.Count, !isLastPage);
+            HttpResponseHeaderHelper.SetPaginationHeaders(context, null, transformedResults.Count, !isLastPage);
             
             // Only set Cache-Control header if caching is enabled for this endpoint
             if (cacheEnabled)
             {
                 var cacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
-                ResponseHeaderHelper.SetCacheControlHeader(context, cacheDurationSeconds);
+                HttpResponseHeaderHelper.SetCacheControlHeader(context, cacheDurationSeconds);
             }
             
             // Run the COUNT query only when the caller asked for it
@@ -451,10 +505,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support insert operations");
-            }
 
             // Validate input data against allowed columns, required columns, and regex patterns
             var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "POST");
@@ -472,6 +522,11 @@ public sealed partial class SqlRequestHandler
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Insert, data, null);
+            }
+
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support insert operations");
             }
 
             // Prepare stored procedure parameters
@@ -496,7 +551,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 var resultList = result.ToList();
                 
@@ -558,10 +613,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support update operations");
-            }
 
             // Step 4: Validate input data against allowed columns, required columns, and regex patterns
             var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "PUT");
@@ -586,6 +637,11 @@ public sealed partial class SqlRequestHandler
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
+            }
+
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support update operations");
             }
 
             // Step 6: Prepare stored procedure parameters
@@ -613,7 +669,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 // Convert result to a list (could be empty if no rows returned)
                 var resultList = result.ToList();
@@ -671,10 +727,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support partial update operations");
-            }
 
             // Step 4: Parse and validate request body
             var data = requestBody.RootElement;
@@ -704,6 +756,11 @@ public sealed partial class SqlRequestHandler
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
             }
 
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support partial update operations");
+            }
+
             // Step 6: Prepare stored procedure parameters
             var dynamicParams = new DynamicParameters();
 
@@ -729,7 +786,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 // Convert result to a list
                 var resultList = result.ToList();
@@ -788,10 +845,6 @@ public sealed partial class SqlRequestHandler
                 if (GuardTableWriteConfig(endpoint, endpointName) is { } configProblem)
                     return configProblem;
             }
-            else if (string.IsNullOrEmpty(endpoint.Procedure))
-            {
-                return PortwayResults.BadRequest("This endpoint does not support delete operations");
-            }
 
             // Check if the ID is provided
             if (string.IsNullOrEmpty(id))
@@ -804,6 +857,11 @@ public sealed partial class SqlRequestHandler
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Delete, null, id);
+            }
+
+            if (endpoint.Procedure is not { Length: > 0 } procedure)
+            {
+                return PortwayResults.BadRequest("This endpoint does not support delete operations");
             }
 
             // Prepare stored procedure parameters
@@ -835,7 +893,7 @@ public sealed partial class SqlRequestHandler
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
-                var result = await ExecuteProcedureAsync(connection, connectionString, endpoint.Procedure, dynamicParams);
+                var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 // Convert result to a list (could be empty if no rows returned)
                 var resultList = result.ToList();

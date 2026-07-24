@@ -18,6 +18,13 @@ public interface IODataToSqlConverter
         Dictionary<string, string> odataParams,
         SqlProviderType providerType);
 
+    /// <summary>Converts OData query parameters to SQL, emitting JOINs for the configured $expand navigations</summary>
+    (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType,
+        IReadOnlyList<PortwayApi.Classes.EndpointRelationship>? relationships);
+
     /// <summary>Converts OData query parameters to a COUNT query for the specified provider; only $filter applies</summary>
     (string SqlQuery, Dictionary<string, object> Parameters) ConvertToCountSQL(
         string entityName,

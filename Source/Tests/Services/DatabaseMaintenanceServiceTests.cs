@@ -4,24 +4,18 @@ using Microsoft.Extensions.Options;
 using Moq;
 using PortwayApi.Services.Configuration;
 using PortwayApi.Services.Database;
+using PortwayApi.Tests.Support;
 using Xunit;
 
 namespace PortwayApi.Tests.Services;
 
 public class DatabaseMaintenanceServiceTests : IDisposable
 {
-    private readonly string _dir;
+    private readonly TempDirectory _tempDir = new("portway_maint");
 
-    public DatabaseMaintenanceServiceTests()
-    {
-        _dir = Path.Combine(Path.GetTempPath(), $"portway_maint_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(_dir);
-    }
+    private string _dir => _tempDir.Path;
 
-    public void Dispose()
-    {
-        try { Directory.Delete(_dir, true); } catch { }
-    }
+    public void Dispose() => _tempDir.Dispose();
 
     private DatabaseMaintenanceService CreateService(DatabaseMaintenanceOptions options, string trafficPath)
     {

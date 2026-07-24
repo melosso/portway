@@ -7,7 +7,7 @@ description: "Expose SQL tables, views, stored procedures, and table-valued func
 
 SQL endpoints turn a table, view, or stored procedure into a REST resource with OData querying, without you writing any SQL. Four backends are supported (SQL Server, PostgreSQL, MySQL, and SQLite), and Portway picks the correct driver automatically from the connection string in the environment's `settings.json`, so your endpoint configuration stays identical across providers.
 
-::: Note
+::: tip
 Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
 :::
 
@@ -101,6 +101,27 @@ GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price d
   "nextLink": "/api/prod/Products?$top=25&$skip=25"
 }
 ```
+
+### Related data with $expand
+
+Declare a to-one relationship to another SQL endpoint, and readers can pull the related row into the response with `$expand`:
+
+```json
+{
+  "DatabaseObjectName": "Items",
+  "DatabaseObjectType": "Table",
+  "AllowedColumns": ["ItemCode;ProductNumber", "Assortment;AssortmentID"],
+  "Relationships": [
+    { "Name": "Category", "Target": "Assortments", "LocalColumn": "Assortment", "TargetColumn": "AssortmentID" }
+  ]
+}
+```
+
+```http
+GET /api/prod/Products?$expand=Category
+```
+
+Portway joins the target and nests it under the navigation name, reusing the target's own column allowlist. It applies to Table and View endpoints and to-one navigations only; a table-valued function returns `400`. The full contract and limits are in [Expanding Related Data](/reference/expand).
 
 ## Write operations
 

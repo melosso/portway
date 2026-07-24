@@ -35,7 +35,10 @@ public static partial class WebUiEndpointExtensions
                         context.Connection.RemoteIpAddress, body);
                 }
             }
-            catch { /* never let client errors throw */ }
+            catch (Exception ex)
+            {
+                Log.Debug(ex, "Failed to record client-side JS error report");
+            }
             return Results.Ok();
         }).ExcludeFromDescription();
 

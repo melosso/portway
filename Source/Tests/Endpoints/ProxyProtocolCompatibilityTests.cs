@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Moq;
 using PortwayApi.Tests.Base;
+using PortwayApi.Tests.Support;
 using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
@@ -61,7 +62,11 @@ internal sealed class UpstreamCapture : IDisposable
     public void Dispose()
     {
         _cts.Cancel();
-        try { _listener.Stop(); _listener.Close(); } catch { }
+
+        if (_listener.IsListening)
+            _listener.Stop();
+
+        _listener.Close();
     }
 }
 
@@ -320,7 +325,7 @@ public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
     public new void Dispose()
     {
         _upstream.Dispose();
-        try { Directory.Delete(EndpointDir, recursive: true); } catch { }
+        TempDirectory.TryDelete(EndpointDir);
         PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
         base.Dispose();
     }

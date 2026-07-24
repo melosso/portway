@@ -49,6 +49,27 @@ public static class EndpointSummaryHelper
         }
     }
     
+    /// <summary>Logs a config ERROR when a declared $expand Target is not a registered SQL endpoint; the expand is refused at runtime too</summary>
+    private static void ValidateRelationshipTargets(Dictionary<string, EndpointDefinition> sqlEndpoints)
+    {
+        foreach (var (name, definition) in sqlEndpoints)
+        {
+            if (definition.Relationships is not { Count: > 0 }) continue;
+
+            foreach (var rel in definition.Relationships)
+            {
+                if (string.IsNullOrWhiteSpace(rel.Target)) continue;
+
+                // Target-by-name: accept an exact key or a namespaced key ending in the plain name
+                var resolved = sqlEndpoints.ContainsKey(rel.Target)
+                    || sqlEndpoints.Keys.Any(k => k.EndsWith($"/{rel.Target}", StringComparison.OrdinalIgnoreCase));
+
+                if (!resolved)
+                    Log.Error("Endpoint {Endpoint} relationship '{Relationship}' targets '{Target}' which is not a registered SQL endpoint. $expand will be refused", name, rel.Name, rel.Target);
+            }
+        }
+    }
+
     private static void AddEndpoints(Dictionary<string, List<string>> registry, IEnumerable<string> endpoints, string type)
     {
         foreach (var endpoint in endpoints)
@@ -142,10 +163,13 @@ public static class EndpointSummaryHelper
         foreach (var (name, definition) in sqlEndpoints)
         {
             if (!definition.UsesTableWrites) continue;
-            var configError = TableWriteBuilder.ValidateConfig(definition);
+            var configError = SqlTableWriteBuilder.ValidateConfig(definition);
             if (configError != null)
                 Log.Error("Endpoint {Endpoint} has WriteMode Table but an unsafe configuration: {Error}. Writes will be refused", name, configError);
         }
+
+        // Fail closed when an $expand relationship points at an endpoint that is not a registered SQL endpoint
+        ValidateRelationshipTargets(sqlEndpoints);
 
         var proxies = proxyEndpointMap.Where(e => e.Value.Type != "Composite").ToDictionary(e => e.Key, e => e.Value);
         var composites = proxyEndpointMap.Where(e => e.Value.Type == "Composite").ToDictionary(e => e.Key, e => e.Value);

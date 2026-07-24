@@ -1,7 +1,7 @@
 namespace PortwayApi.Helpers;
 
 /// <summary>Writes pagination and cache-control response headers outside ControllerBase</summary>
-public static class ResponseHeaderHelper
+public static class HttpResponseHeaderHelper
 {
     public static void SetPaginationHeaders(HttpContext context, int? totalCount, int returnedCount, bool hasMore = false)
     {

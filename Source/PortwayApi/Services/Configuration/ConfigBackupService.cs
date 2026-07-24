@@ -1,15 +1,17 @@
+using System.Security.Cryptography;
+using PortwayApi.Helpers;
 using Serilog;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>Timestamped copies of config files before Web UI writes; keeps the last 10 per file</summary>
+/// <summary>Timestamped copies of config files before Web UI writes; keeps the last 10 distinct versions per file</summary>
 public static class ConfigBackupService
 {
     private const int MaxBackupsPerFile = 10;
 
     private static string BackupRoot => Path.Combine(Directory.GetCurrentDirectory(), ".backups");
 
-    /// <summary>Copies the current file into .backups before it is overwritten or deleted; returns the backup path or null</summary>
+    /// <summary>Copies the file into .backups; identical content reuses the existing backup</summary>
     public static string? Backup(string filePath)
     {
         try
@@ -22,14 +24,22 @@ public static class ConfigBackupService
                 ? Path.GetRelativePath(cwd, fullPath)
                 : Path.GetFileName(fullPath);
 
+            HiddenDirectoryHelper.Ensure(BackupRoot);
             var backupDir = Path.Combine(BackupRoot, Path.GetDirectoryName(relative) ?? "");
             Directory.CreateDirectory(backupDir);
 
-            var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
-            var backupPath = Path.Combine(backupDir, $"{stamp}-{Path.GetFileName(fullPath)}");
+            var fileName = Path.GetFileName(fullPath);
+
+            if (LatestBackup(backupDir, fileName) is { } latest && ContentMatches(latest, fullPath))
+            {
+                Log.Debug("Skipped backup of {FilePath}, content is unchanged since {BackupPath}", filePath, latest);
+                return latest;
+            }
+
+            var backupPath = UniqueBackupPath(backupDir, fileName);
             File.Copy(fullPath, backupPath, overwrite: false);
 
-            Prune(backupDir, Path.GetFileName(fullPath));
+            Prune(backupDir, fileName);
             return backupPath;
         }
         catch (Exception ex)
@@ -68,15 +78,50 @@ public static class ConfigBackupService
         }
     }
 
+    // Suffix keeps writes in the same millisecond distinct and still ordinally sorted
+    private static string UniqueBackupPath(string backupDir, string fileName)
+    {
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
+        var path  = Path.Combine(backupDir, $"{stamp}-{fileName}");
+
+        for (var attempt = 1; File.Exists(path); attempt++)
+            path = Path.Combine(backupDir, $"{stamp}_{attempt:D3}-{fileName}");
+
+        return path;
+    }
+
+    private static string? LatestBackup(string backupDir, string fileName)
+        => Directory.EnumerateFiles(backupDir, $"*-{fileName}").Max(StringComparer.Ordinal);
+
+    private static bool ContentMatches(string left, string right)
+    {
+        if (new FileInfo(left).Length != new FileInfo(right).Length) return false;
+
+        return Hash(left).SequenceEqual(Hash(right));
+    }
+
+    private static byte[] Hash(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return SHA256.HashData(stream);
+    }
+
     private static void Prune(string backupDir, string fileName)
     {
         var backups = Directory.GetFiles(backupDir, $"*-{fileName}")
-            .OrderByDescending(f => f)
+            .OrderByDescending(f => f, StringComparer.Ordinal)
             .Skip(MaxBackupsPerFile)
             .ToList();
         foreach (var old in backups)
         {
-            try { File.Delete(old); } catch { /* best effort */ }
+            try
+            {
+                File.Delete(old);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Log.Warning(ex, "Failed to prune old backup {BackupPath}", old);
+            }
         }
     }
 }

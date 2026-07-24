@@ -209,16 +209,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         try
         {
-            Directory.CreateDirectory(_certsPath);
-
-            if (OperatingSystem.IsWindows())
-            {
-                var dirInfo = new DirectoryInfo(_certsPath);
-                if ((dirInfo.Attributes & FileAttributes.Hidden) == 0)
-                {
-                    dirInfo.Attributes |= FileAttributes.Hidden;
-                }
-            }
+            HiddenDirectoryHelper.Ensure(_certsPath);
 
             using var rsa = RSA.Create(2048);
             

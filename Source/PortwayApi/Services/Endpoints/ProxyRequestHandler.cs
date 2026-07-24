@@ -746,7 +746,7 @@ public sealed class ProxyRequestHandler
             if (endpointDefinition?.ResponseTransforms is { HasRules: true } transforms &&
                 contentType?.Contains("json", StringComparison.OrdinalIgnoreCase) == true)
             {
-                rewrittenContent = ResponseTransformHelper.Apply(rewrittenContent, transforms);
+                rewrittenContent = HttpResponseTransformHelper.Apply(rewrittenContent, transforms);
             }
         }
 

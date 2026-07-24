@@ -9,11 +9,12 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
 
     public override SqlProviderType ProviderType => SqlProviderType.PostgreSql;
     public override string QualifiedProductsTable => "public.Products";
+    public override string QualifiedCategoriesTable => "public.Categories";
     public override string ProcedureSchema => "public";
     public override string ProcedureName => "get_products_by_price";
     // SETOF composite return, the RETURNS TABLE shape gets its own test below
     public override string TvfName => "get_products_by_price";
-    public override int TvfColumnCount => 4;
+    public override int TvfColumnCount => 5;
     public override string WriteProcedureName => "manage_product";
     public override string DeleteProductByIdSql => """DELETE FROM public."Products" WHERE "Id" = @Id""";
 
@@ -30,8 +31,12 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
     // Quoted identifiers keep the casing the OData compiler emits
     protected override IEnumerable<string> SchemaStatements =>
     [
-        """CREATE TABLE public."Products" ("Id" INT PRIMARY KEY, "Name" VARCHAR(100) NOT NULL, "Price" DECIMAL(10,2) NOT NULL, "ReleasedAt" DATE NULL)""",
+        """CREATE TABLE public."Products" ("Id" INT PRIMARY KEY, "Name" VARCHAR(100) NOT NULL, "Price" DECIMAL(10,2) NOT NULL, "ReleasedAt" DATE NULL, "CategoryId" INT NULL)""",
         $"""INSERT INTO public."Products" ("Id", "Name", "Price", "ReleasedAt") VALUES {SeedValues}""",
+        """CREATE TABLE public."Categories" ("CategoryId" INT PRIMARY KEY, "CategoryName" VARCHAR(100) NOT NULL)""",
+        $"""INSERT INTO public."Categories" ("CategoryId", "CategoryName") VALUES {CategorySeedValues}""",
+        """UPDATE public."Products" SET "CategoryId" = 10 WHERE "Id" IN (1, 2)""",
+        """UPDATE public."Products" SET "CategoryId" = 20 WHERE "Id" = 4""",
         """
         CREATE FUNCTION public.get_products_by_price(min_price NUMERIC)
         RETURNS SETOF public."Products" AS $$

@@ -16,7 +16,7 @@ public sealed partial class SqlRequestHandler
     /// <summary>Fail-closed gate shared by all verbs, returns an error result when the config is unsafe</summary>
     private static IActionResult? GuardTableWriteConfig(EndpointDefinition endpoint, string endpointName)
     {
-        var configError = TableWriteBuilder.ValidateConfig(endpoint);
+        var configError = SqlTableWriteBuilder.ValidateConfig(endpoint);
         if (configError == null) return null;
 
         // Configuration problem, not a caller problem; log loudly and refuse
@@ -36,7 +36,7 @@ public sealed partial class SqlRequestHandler
         var provider = _providerFactory.GetProvider(connectionString);
         var schema = SqlSchemaResolver.Resolve(endpoint.DatabaseSchema, provider, connection.Database);
         var table = schema.Length > 0 ? $"{schema}.{endpoint.DatabaseObjectName}" : endpoint.DatabaseObjectName!;
-        var pkColumn = TableWriteBuilder.ResolvePrimaryKeyColumn(endpoint);
+        var pkColumn = SqlTableWriteBuilder.ResolvePrimaryKeyColumn(endpoint);
 
         // Payload maps through the allowlist only; unknown fields reject the whole request
         var columns = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
@@ -46,7 +46,7 @@ public sealed partial class SqlRequestHandler
             foreach (var property in json.EnumerateObject())
                 payload[property.Name] = GetParameterValue(property.Value);
 
-            if (!TableWriteBuilder.TryResolveColumns(endpoint, payload, out columns, out var columnError))
+            if (!SqlTableWriteBuilder.TryResolveColumns(endpoint, payload, out columns, out var columnError))
                 return PortwayResults.BadRequest(columnError!);
         }
 
@@ -59,14 +59,14 @@ public sealed partial class SqlRequestHandler
         {
             case TableWriteKind.Insert:
             {
-                var insert = TableWriteBuilder.BuildInsert(provider, table, columns);
+                var insert = SqlTableWriteBuilder.BuildInsert(provider, table, columns);
                 await connection.ExecuteAsync(insert.Sql, insert.Parameters);
 
                 // Return the created row when the payload named its own key
                 object? created = null;
                 if (pkValue != null)
                 {
-                    var select = TableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
+                    var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
                     created = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
                 }
                 Log.Debug("Table INSERT on {Endpoint} succeeded", endpointName);
@@ -82,12 +82,12 @@ public sealed partial class SqlRequestHandler
                 if (columns.Count == 0)
                     return PortwayResults.BadRequest("Request contains no updatable columns");
 
-                var update = TableWriteBuilder.BuildUpdate(provider, table, pkColumn, pkValue, columns);
+                var update = SqlTableWriteBuilder.BuildUpdate(provider, table, pkColumn, pkValue, columns);
                 var affected = await connection.ExecuteAsync(update.Sql, update.Parameters);
                 if (affected == 0)
                     return PortwayResults.NotFound("Record not found");
 
-                var select = TableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
+                var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
                 var updated = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
                 Log.Debug("Table UPDATE on {Endpoint} affected {Rows} row(s)", endpointName, affected);
                 return PortwayResults.Mutation("Record updated successfully", updated);
@@ -98,7 +98,7 @@ public sealed partial class SqlRequestHandler
                 if (pkValue == null)
                     return PortwayResults.BadRequest("ID parameter is required for delete operations");
 
-                var delete = TableWriteBuilder.BuildDelete(provider, table, pkColumn, pkValue);
+                var delete = SqlTableWriteBuilder.BuildDelete(provider, table, pkColumn, pkValue);
                 var affected = await connection.ExecuteAsync(delete.Sql, delete.Parameters);
                 if (affected == 0)
                     return PortwayResults.NotFound("Record not found");

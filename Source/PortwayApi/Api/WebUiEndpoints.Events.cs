@@ -53,7 +53,10 @@ public static partial class WebUiEndpointExtensions
                     await response.Body.FlushAsync(ct);
                 }
             }
-            catch (OperationCanceledException) { /* client disconnected, expected */ }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("SSE client disconnected, stopped streaming events");
+            }
         }).ExcludeFromDescription();
 
         // Endpoint CRUD

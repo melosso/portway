@@ -8,7 +8,7 @@ using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
-public class TableValuedFunctionHelperTests
+public class SqlTableValuedFunctionHelperTests
 {
     [Fact]
     public void IsTableValuedFunction_WithTVFType_ReturnsTrue()
@@ -20,7 +20,7 @@ public class TableValuedFunctionHelperTests
         };
 
         // Act
-        var result = TableValuedFunctionHelper.IsTableValuedFunction(endpoint);
+        var result = SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint);
 
         // Assert
         Assert.True(result);
@@ -36,7 +36,7 @@ public class TableValuedFunctionHelperTests
         };
 
         // Act
-        var result = TableValuedFunctionHelper.IsTableValuedFunction(endpoint);
+        var result = SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint);
 
         // Assert
         Assert.False(result);
@@ -52,7 +52,7 @@ public class TableValuedFunctionHelperTests
         };
 
         // Act
-        var result = TableValuedFunctionHelper.IsTableValuedFunction(endpoint);
+        var result = SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint);
 
         // Assert
         Assert.False(result);
@@ -78,7 +78,7 @@ public class TableValuedFunctionHelperTests
         var pathSegments = new[] { "12345" };
 
         // Act
-        var result = TableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
+        var result = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
 
         // Assert
         Assert.Empty(result.Errors);
@@ -117,7 +117,7 @@ public class TableValuedFunctionHelperTests
         var pathSegments = new string[0];
 
         // Act
-        var result = TableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
+        var result = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
 
         // Assert
         Assert.Empty(result.Errors);
@@ -155,7 +155,7 @@ public class TableValuedFunctionHelperTests
         var pathSegments = new string[0];
 
         // Act
-        var result = TableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
+        var result = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
 
         // Assert
         Assert.Empty(result.Errors);
@@ -184,7 +184,7 @@ public class TableValuedFunctionHelperTests
         var pathSegments = new string[0]; // No path segments provided
 
         // Act
-        var result = TableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
+        var result = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
 
         // Assert
         Assert.NotEmpty(result.Errors);
@@ -217,7 +217,7 @@ public class TableValuedFunctionHelperTests
         var pathSegments = new string[0];
 
         // Act
-        var result = TableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
+        var result = SqlTableValuedFunctionHelper.ExtractParameterValues(parameters, mockRequest.Object, pathSegments);
 
         // Assert
         Assert.Empty(result.Errors);
@@ -244,7 +244,7 @@ public class TableValuedFunctionHelperTests
         };
 
         // Act
-        var result = TableValuedFunctionHelper.BuildFunctionCall(schema, functionName, parameterValues, functionParameters);
+        var result = SqlTableValuedFunctionHelper.BuildFunctionCall(schema, functionName, parameterValues, functionParameters);
 
         // Assert
         Assert.StartsWith("SELECT * FROM [dbo].[GetCustomerOrders]", result.FunctionCall);
