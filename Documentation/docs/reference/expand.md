@@ -87,6 +87,29 @@ Only the target endpoint's `AllowedColumns` are joinable. A column that the targ
 
 `$filter`, `$select`, `$orderby` and paging keep working on the base entity while you expand, including filters on the foreign key column itself.
 
+## Before you point a relationship at a table
+
+Three things about the join change what you get back. None of them raise an error, so they are worth checking once when you declare the relationship.
+
+::: danger Your target column needs to be unique
+Nothing verifies that `TargetColumn` identifies a single row. If the column repeats in the target table, you get one copy of the base record per match, and those copies fill the page you asked for.
+
+The primary key is the safe choice. For any other column, this confirms it behaves like a key:
+
+```sql [Verify your configuration:]
+SELECT TargetColumn, COUNT(*)
+FROM YourTargetTable
+GROUP BY TargetColumn
+HAVING COUNT(*) > 1;
+```
+
+The query returning rows means you are fine!
+:::
+
+A to-one navigation uses an `INNER JOIN`. Rows whose foreign key has no match in the target drop out, so the same request can return fewer records with `$expand` than without it.
+
+`$count` reports the base entity total for your `$filter` and ignores the join, so it will not match the row count when a navigation duplicates or drops rows.
+
 ## What it refuses, and why
 
 Portway states its limits rather than returning a wrong result:
