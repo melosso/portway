@@ -1,15 +1,15 @@
 :root,
 [data-theme="light"] {
-  --accent: #1a3a6b !important;
-  --accent-light: rgba(26, 58, 107, 0.08) !important;
-  --accent-hover: #142e56 !important;
+  --accent: #1a3d8f !important;
+  --accent-light: rgba(26, 61, 143, 0.08) !important;
+  --accent-hover: #153275 !important;
 }
 
 [data-theme="dark"],
 :root:not([data-theme="light"]) {
-  --accent: #5b8abf !important;
-  --accent-light: rgba(91, 138, 191, 0.12) !important;
-  --accent-hover: #7ca8d4 !important;
+  --accent: #5e8fd4 !important;
+  --accent-light: rgba(94, 143, 212, 0.12) !important;
+  --accent-hover: #82aee0 !important;
 }
 
 .bark-hero {
@@ -17,7 +17,7 @@
 }
 
 .bark-hero-name {
-  background: linear-gradient(135deg, #1a3a6b 0%, #3a6090 100%);
+  background: linear-gradient(135deg, #1a3d8f 0%, #3a65a8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   font-weight: 800;
@@ -26,7 +26,7 @@
 
 [data-theme="dark"] .bark-hero-name,
 :root:not([data-theme="light"]) .bark-hero-name {
-  background: linear-gradient(135deg, #5b8abf 0%, #8fb4d9 100%);
+  background: linear-gradient(135deg, #5e8fd4 0%, #90bde8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -131,7 +131,7 @@ a.bark-feature:hover {
 }
 
 #scroll-indicator {
-  background: linear-gradient(90deg, #1a3a6b, #3a6090);
+  background: linear-gradient(90deg, #1a3d8f, #3a65a8);
 }
 
 .content .line.highlighted {
