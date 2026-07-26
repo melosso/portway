@@ -95,7 +95,7 @@ Validation failures (`422`) add a `details` array describing each problem:
 
 In the API reference these appear as the shared `ErrorResponse` and `ValidationErrorResponse` schemas, which every operation references.
 
-A `500` carries one extra field, `traceId`. Because the message itself is deliberately vague, this identifier is what ties your response back to the matching entry in the server log, so it is worth quoting whenever you report a problem:
+A `500` carries one extra field, `traceId`. The message itself stays deliberately vague, so this identifier is what ties your response back to the matching entry in the server log. It is worth quoting whenever you report a problem:
 
 ```json
 {
@@ -122,7 +122,15 @@ Every endpoint type shares the same error envelope, but each returns only the co
 
 A `429 Too Many Requests` can come back from any endpoint when a rate limit is exceeded. A `503` tells you the endpoint has been switched off through `Enabled: false`, and it arrives with a `Retry-After` header so you know how long to wait. `400` covers both a malformed request and an environment that is not on the allowed list; `403` means the token is valid but lacks the scope, or the target was blocked.
 
-The success body, on the other hand, is specific to each endpoint. SQL queries return your rows, Static endpoints return their configured content, File downloads return bytes, and Proxy and Composite endpoints pass through whatever the upstream service or the final step returns. SQL stored procedures are the freest of all: they shape their own payloads. The reference documents the success shape it can infer for each operation, so treat the error contract as universal and the success contract as per endpoint.
+The success body, on the other hand, is specific to each endpoint:
+
+- SQL queries return your rows
+- Static endpoints return their configured content
+- File downloads return bytes
+- Proxy and Composite endpoints pass through whatever the upstream service or the final step returns
+- SQL stored procedures are the freest of all, shaping their own payloads
+
+The reference documents the success shape it can infer for each operation. In short, the error contract is universal and the success contract is per endpoint.
 
 ## OData Query Parameters
 

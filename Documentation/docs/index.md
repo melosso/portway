@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Portway"
   text:
-  tagline: Expose SQL databases, internal services, and files as MCP-tools and REST endpoints. Runs in Docker or on Windows Server.
+  tagline: Expose SQL databases, internal services, and files as MCP-tools and REST endpoints.
   actions:
     - theme: brand
       text: Get Started

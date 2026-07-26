@@ -7,7 +7,15 @@ description: "Configuration reference for OpenAPI schema generation and the Scal
 
 Your endpoint definitions do double duty: besides routing requests, they feed the OpenAPI documentation that Scalar serves at `/docs`. SQL endpoints even get schema discovery for free, with column names and types read from the database at startup. Other endpoint types describe themselves through the `Documentation` block in `entity.json`. This page covers the settings you can adjust.
 
-Portway builds on **OpenAPI 3.2**, which gives the reference room to describe things earlier versions of the format could not. QUERY endpoints appear as native `query` operations, namespaces become the tag structure, `Deprecated` endpoints are shown as such, file uploads describe their multipart encoding, and every error points at one shared schema. All of it follows from your endpoint definitions, so there is usually nothing extra to configure.
+Portway builds on **OpenAPI 3.2**, which gives the reference room to describe things earlier versions of the format could not:
+
+- QUERY endpoints appear as native `query` operations
+- Namespaces become the tag structure
+- `Deprecated` endpoints are shown as such
+- File uploads describe their multipart encoding
+- Every error points at one shared schema
+
+All of it follows from your endpoint definitions, so there is usually nothing extra to configure.
 
 ## Global OpenAPI Configuration
 
@@ -156,7 +164,9 @@ You will notice the endpoint is still listed in the OpenAPI document, marked dep
 
 ## File Upload Encoding
 
-File endpoints describe their upload as `multipart/form-data` and document how the `file` part itself is encoded. The media types listed there are derived from the endpoint's `AllowedExtensions`, so a reports endpoint limited to `.pdf`, `.xlsx`, and `.csv` advertises exactly those three types rather than a generic binary blob. If you leave `AllowedExtensions` out, the part falls back to `application/octet-stream`, which is still perfectly valid and simply tells callers less about what you accept.
+File endpoints describe their upload as `multipart/form-data` and document how the `file` part itself is encoded. The media types come from the endpoint's `AllowedExtensions`. A reports endpoint limited to `.pdf`, `.xlsx`, and `.csv` therefore advertises exactly those three types, rather than a generic binary blob.
+
+Leaving `AllowedExtensions` out is fine too. The part then falls back to `application/octet-stream`, which is still perfectly valid and simply tells callers less about what you accept.
 
 ## Error Responses
 
@@ -175,7 +185,7 @@ OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits th
 For SQL endpoints, Portway reads column metadata from the database at startup. It connects to the first allowed environment listed in the endpoint's `AllowedEnvironments`. Non-SQL endpoints are not queried.
 
 :::warning
-If you're using Windows Authentication (`Trusted_Connection=True`) in your Environments, ensure your IIS Application Pool identity has the appropriate permissions on all environment databases. With SQL Authentication, each environment uses its own credentials.
+If you're using Windows Authentication (`Trusted_Connection=True`) in your Environments, the IIS Application Pool identity needs permissions on every environment database. With SQL Authentication, each environment uses its own credentials instead.
 :::
 
 ## Tag Descriptions

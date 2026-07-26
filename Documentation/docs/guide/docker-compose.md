@@ -9,7 +9,9 @@ This guide explains how to deploy Portway using Docker Compose for quick develop
 
 ## Quick Start
 
-If you have not started a container yet, [Getting Started](/guide/getting-started) has a minimal `docker-compose.yml` you can copy and run in a couple of minutes. Once it is up, the API is available at `http://localhost:8080` and the rest of this page picks up from there, covering the settings you are most likely to reach for next.
+If you have not started a container yet, [Getting Started](/guide/getting-started) has a minimal `docker-compose.yml` you can copy and run in a couple of minutes. Once it is up, the API is available at `http://localhost:8080`.
+
+The rest of this page picks up from there, covering the settings you are most likely to reach for next.
 
 ## Configuration
 

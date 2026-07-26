@@ -68,7 +68,9 @@ Verify the application is running:
 
 ## Initial configuration
 
-From here the setup is the same whichever way you host Portway, so rather than repeat it, [Getting Started](/guide/getting-started) walks you through retrieving your access token and configuring your environments. One detail is worth keeping in mind on IIS: the `tokens/` and `environments/` directories are created on first run under the site root, so the Application Pool identity needs read access to both.
+From here the setup is the same whichever way you host Portway. [Getting Started](/guide/getting-started) walks you through retrieving your access token and configuring your environments.
+
+One detail is worth keeping in mind on IIS. The `tokens/` and `environments/` directories are created on first run under the site root, so the Application Pool identity needs read access to both.
 
 ## Troubleshooting
 

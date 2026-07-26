@@ -4,7 +4,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-Portway is a lightweight **API gateway** that simplifies secure service routing and infrastructure management. It runs as a Linux container or on Windows Server behind IIS.
+Portway is a lightweight **API gateway** that simplifies secure service routing and infrastructure management.
 
 It unifies databases, internal services, and webhooks into a single interface using simple, file-based configuration. Built-in caching, audit logging, and automated documentation keep your data flow reliable and easy to control.
 
