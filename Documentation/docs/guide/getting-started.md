@@ -57,7 +57,7 @@ Start the container:
 docker compose pull && docker compose up -d
 ```
 
-Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Docker Installation](/guide/docker-compose).
+Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Deploying with Docker](/guide/docker-compose).
 
 ### Windows Server (IIS)
 

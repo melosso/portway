@@ -38,13 +38,15 @@ graph TD
 
 ## Endpoint Types
 
+Most endpoints live under a namespace, which becomes the first path segment:
+
 | Type | URL Pattern | Description |
 |------|-------------|-------------|
-| SQL | `/api/{env}/{endpoint}` | OData-queryable access to database tables, views, or stored procedures |
-| Proxy | `/api/{env}/{endpoint}` | Forwards requests to internal web services |
-| Static | `/api/{env}/{endpoint}` | Serves pre-defined content files |
-| Composite | `/api/{env}/{endpoint}` | Orchestrates multiple proxy operations in a single request |
-| Webhook | `/api/{env}/webhook/{name}` | Receives and stores external webhook payloads |
+| SQL | `/api/{env}/{namespace}/{endpoint}` | OData-queryable access to database tables, views, or stored procedures |
+| Proxy | `/api/{env}/{namespace}/{endpoint}` | Forwards requests to internal web services |
+| Static | `/api/{env}/{namespace}/{endpoint}` | Serves pre-defined content files |
+| Composite | `/api/{env}/{namespace}/{endpoint}` | Orchestrates multiple proxy operations in a single request |
+| Webhook | `/api/{env}/{namespace}/{name}/{id}` | Receives and stores external webhook payloads |
 | Files | `/api/{env}/files/{name}` | Handles file upload, download, and listing |
 
 ## Authentication

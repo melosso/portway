@@ -41,19 +41,13 @@ Namespaces are implemented through directory organization within each endpoint t
   │   │       └── entity.json
   │   └── [EntityName]/              # Non-namespaced (legacy)
   │       └── entity.json
-  ├── Webhooks/
-  │   ├── [Namespace]/
-  │   │   └── [EntityName]/
-  │   │       └── entity.json
-  │   └── [EntityName]/              # Non-namespaced
-  │       └── entity.json
-  └── Composite/                     # Composite endpoints use Proxy structure
-      ├── [Namespace]/
-      │   └── [EntityName]/
-      │       └── entity.json
-      └── [EntityName]/              # Non-namespaced (legacy)
-          └── entity.json
+  └── Webhooks/                      # namespace is required here
+      └── [Namespace]/
+          └── [EntityName]/
+              └── entity.json
 ```
+
+Composite endpoints have no folder of their own. They live under `Proxy/` with `"Type": "Composite"` in their `entity.json`.
 
 ## Namespace Configuration
 

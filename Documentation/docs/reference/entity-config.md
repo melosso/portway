@@ -23,15 +23,16 @@ Entity configuration files are JSON files located in the endpoints directory str
   │   └── [EntityName]/
   │       ├── entity.json
   │       └── [content-file]
-  ├── Composite/
-  │   └── [EntityName]/
-  │       └── entity.json
   ├── Webhooks/
-  │   └── entity.json
+  │   └── [Namespace]/
+  │       └── [EntityName]/
+  │           └── entity.json
   └── Files/
       └── [EntityName]/
           └── entity.json
 ```
+
+Composite endpoints have no folder of their own. They live under `Proxy/` with `"Type": "Composite"` in their `entity.json`. Any endpoint folder can also be nested one level deeper to give it a namespace, as `Webhooks/` shows above.
 
 ## Endpoint: SQL
 

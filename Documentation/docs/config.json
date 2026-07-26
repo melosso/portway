@@ -57,10 +57,24 @@
           {
             "title": "Structure",
             "path": "guide/routing"
+          }
+        ]
+      },
+      {
+        "title": "Deploying",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Overview",
+            "path": "guide/deployment"
           },
           {
-            "title": "Deploying",
-            "path": "guide/deployment"
+            "title": "Docker",
+            "path": "guide/docker-compose"
+          },
+          {
+            "title": "Windows Server",
+            "path": "guide/deployment-windows"
           }
         ]
       },
@@ -117,10 +131,6 @@
           {
             "title": "Versioning",
             "path": "guide/versioning"
-          },
-          {
-            "title": "Licensing",
-            "path": "guide/licensing"
           }
         ]
       },

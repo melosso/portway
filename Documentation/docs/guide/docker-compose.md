@@ -1,11 +1,13 @@
 ---
-title: Docker Installation
-description: "This guide explains how to deploy Portway using Docker Compose for quick development, testing and/or Home Lab environments"
+title: Deploying with Docker
+description: "Deploy Portway with Docker Compose, from a first container through to a production setup"
 ---
 
-# Docker Installation
+# Deploying with Docker
 
-This guide explains how to deploy Portway using Docker Compose for quick development, testing and/or Home Lab environments. Before you begin, ensure you have [Docker](https://www.docker.com/get-started) installed and running.
+Docker Compose is the way most people run Portway, whether that is a laptop, a Home Lab, or a production host. This guide takes you from a first container through to the settings worth having in place before you put it in front of real traffic. Before you begin, make sure [Docker](https://www.docker.com/get-started) is installed and running.
+
+If you would rather host on Windows Server behind IIS, [Deploying on Windows Server](/guide/deployment-windows) covers that path.
 
 ## Quick Start
 
@@ -197,6 +199,37 @@ environment:
   - WebUi__AdminApiKey=your-secure-password
 ```
 
+## Going to production
+
+The compose file above is deliberately minimal. A few additions are worth making before real traffic arrives.
+
+### Set the encryption key
+
+`PORTWAY_ENCRYPTION_KEY` protects the connection strings in your environment settings. Generate one and keep it out of the compose file itself, for example in a `.env` file or your secrets manager:
+
+```bash
+openssl rand -base64 48
+```
+
+### Terminate TLS in front of the container
+
+Portway serves plain HTTP inside the container. Put a reverse proxy (nginx, Traefik, Caddy) in front of it to terminate TLS, or publish it behind an ingress that does.
+
+### Back up the mounted volumes
+
+Everything worth keeping lives in the paths you mounted:
+
+- `data/` for `auth.db` and the metrics database
+- `tokens/` for token files
+- `environments/` for connection strings and settings
+- `endpoints/` for endpoint definitions
+
+### Watch it
+
+Health endpoints and Prometheus metrics are described in [Monitoring](/guide/monitoring), and [Security](/guide/security) covers token scoping, rate limiting, and network restrictions.
+
+For upgrades, see [Upgrading Portway](/guide/upgrading).
+
 ## Next Steps
 
 After successful installation:
@@ -205,14 +238,3 @@ After successful installation:
 2. Configure your [Endpoints](/guide/endpoints-static) 
 3. Set up [Security](/guide/security) and authentication
 4. Monitor your deployment with [Health Checks](/guide/monitoring)
-
-## Production Considerations
-
-> [!WARNING]
-> This Docker setup is intended for development and testing. For production deployments, consider:
-> - Using proper secrets management
-> - Implementing reverse proxy with SSL/TLS
-> - Setting up proper logging and monitoring
-> - Following security best practices
-
-For production deployments, see the [Deployment Guide](/guide/deployment).

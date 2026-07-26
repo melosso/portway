@@ -7,8 +7,6 @@ keywords: [API Gateway, Docker, Windows, SQL Server, REST, OData]
 
 # What is Portway?
 
-> Practical context for setting up Portway, what it is, how it works, and where to start.
-
 Portway is an API gateway. It sits in front of your SQL databases, internal services, and static content, exposing them through a consistent REST interface. If you're running a mix of legacy systems and newer services, Portway surfaces them without rewriting anything.
 
 ## Quick links
@@ -19,11 +17,14 @@ Portway is an API gateway. It sits in front of your SQL databases, internal serv
 
 ## What Portway works with
 
+We've made sure it works with at least the following:
+
 - SQL databases (SQL Server, PostgreSQL, MySQL, SQLite), tables, views, and stored procedures
 - Internal HTTP/HTTPS services
-- JSON, XML, and CSV files
-- Incoming webhook payloads stored to a SQL table
-- Multi-step composite operations across proxy endpoints
+- Static files, not limited to JSON, XML, and CSV
+- File storage, with upload, download, and listing over the API
+- Incoming webhook payloads stored to a database table
+- Multi-step composited operations across proxy endpoints
 
 ## Concepts
 
@@ -41,6 +42,8 @@ See [Environments](/guide/environments) for configuration details.
 
 ### Endpoint types
 
+Every endpoint you define is one of six types, and the type decides what Portway does with the request:
+
 | Type | What it does |
 |---|---|
 | **SQL** | Exposes tables, views, or stored procedures as REST endpoints with OData filtering |
@@ -57,6 +60,6 @@ Endpoints and environments are defined as JSON files on disk. Portway watches th
 ## Next steps
 
 - [Getting Started](/guide/getting-started): install and run Portway for the first time
-- [Deployment](/guide/deployment): deploy to Windows Server with IIS
+- [Deployment](/guide/deployment): run Portway with Docker or on Windows Server
 - [Security](/guide/security): configure tokens, scopes, and network access
 - [Issues](https://github.com/melosso/portway/issues) / [Discussions](https://github.com/melosso/portway/discussions): report bugs or ask questions
