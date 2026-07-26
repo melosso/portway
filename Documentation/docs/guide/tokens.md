@@ -1,14 +1,16 @@
 ---
-title: Access Token Management
+title: Access Tokens
 description: "Create, scope, rotate, and revoke the Bearer tokens that control API access"
 ---
 
-# Access Token Management
+# Access Tokens
 
-Every request to Portway carries a Bearer token, so token management is a place you'll visit regularly. Tokens live in the Web UI under **Access Tokens** (`/ui`) and are never stored in plaintext; only a PBKDF2-SHA256 hash is persisted.
+Portway is our API gateway that uses Bearer tokens for authentication, implementing the standard defined in [RFC 6750](https://datatracker.ietf.org/doc/html/rfc6750).
+
+Every request to the server must carry a Bearer token, so token management is a place you'll visit regularly. Tokens live in the Web UI under **Access Tokens**.
 
 :::warning
-Save the token value shown at creation time. It is only displayed once and cannot be retrieved later.
+On first startup, Portway writes an initial token to `tokens/{SERVER_NAME}.txt`. This token has full access (`*` scopes, `*` environments). Delete the file from disk immediately after recording the value, then use the Web UI for all subsequent token management.
 :::
 
 ## Creating a token
@@ -26,6 +28,11 @@ Save the token value shown at creation time. It is only displayed once and canno
 | `Expires In (days)` | No | Leave blank for a non-expiring token. |
 
 4. Click **Create** and copy the token value immediately.
+
+:::warning
+Save the token value shown when you first launch Portway or when creating a new token. It is only displayed once and cannot be retrieved later.
+:::
+
 
 ## Scoping tokens
 
@@ -92,10 +99,6 @@ GET /ui/api/tokens/{id}/audit
 ```
 
 See [Token Audit Log](/reference/token-generator) for the schema.
-
-## First-run token
-
-On first startup, Portway writes an initial token to `tokens/{SERVER_NAME}.txt`. This token has full access (`*` scopes, `*` environments). Delete the file from disk immediately after recording the value, then use the Web UI for all subsequent token management.
 
 ## Related
 
