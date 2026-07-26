@@ -7,7 +7,7 @@ description: "Portway automatically encrypts sensitive data in your environment 
 
 Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
 
-## How It Works
+## How it works
 
 On startup, Portway:
 
@@ -21,9 +21,9 @@ On startup, Portway:
 - Private key: `.core/recovery.binlz4` (encrypted with `PORTWAY_ENCRYPTION_KEY`)
 - Public key: `.core/snapshot_blob.bin`
 
-## Encryption Key Management
+## Encryption key management
 
-### Setting the Encryption Key
+### Setting the encryption key
 
 The `PORTWAY_ENCRYPTION_KEY` is used to protect the private key. Priority order:
 
@@ -44,7 +44,7 @@ The `PORTWAY_ENCRYPTION_KEY` is used to protect the private key. Priority order:
 
 4. **Fallback**: A hardcoded key (not recommended for production)
 
-### Regenerating Keys
+### Regenerating keys
 
 If you need to regenerate encryption keys:
 
@@ -56,7 +56,7 @@ If you need to regenerate encryption keys:
 
 **Warning:** If you change `PORTWAY_ENCRYPTION_KEY` without deleting `.core`, the application won't be able to decrypt the existing private key and encryption will fail.
 
-## What Gets Encrypted
+## What gets encrypted
 
 **Always encrypted:**
 - `ConnectionString` field (if valid MSSQL format)
@@ -108,7 +108,7 @@ Connection strings are validated before encryption. They need to include:
 
 ## Troubleshooting
 
-### File Permission Errors
+### File permission errors
 
 If you see:
 ```
@@ -124,7 +124,7 @@ Set-ItemProperty "C:\Apps\Portway API\v1\environments\prod\settings.json" -Name 
 Get-ChildItem "C:\Apps\Portway API\v1\environments\*\settings.json" | ForEach-Object { $_.IsReadOnly = $false }
 ```
 
-### Decryption Failures
+### Decryption failures
 
 If the application can't decrypt settings on startup:
 
@@ -139,7 +139,7 @@ If the application can't decrypt settings on startup:
 
 **Solution:** Delete the `.core` folder and restart to regenerate keys.
 
-### Viewing Logs
+### Viewing logs
 
 Enable debug logging to see encryption details:
 
@@ -162,6 +162,6 @@ You'll see:
 [DBG] Encryption scan complete: 3 encrypted, 0 already encrypted, 0 errors
 ```
 
-## Security Notes
+## Security notes
 
 Set a strong `PORTWAY_ENCRYPTION_KEY` in production using a machine-level environment variable. Back up the `.core` folder securely, without it you cannot decrypt your settings. Never commit `.core` to source control. Use different encryption keys for different environments.

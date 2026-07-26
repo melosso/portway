@@ -7,22 +7,22 @@ description: "Serilog configuration reference for log levels, file rotation, and
 
 When something behaves unexpectedly, logs are usually your first stop. Portway logs through Serilog, which gives you structured output, sensible file rotation, and per-namespace level control. Here is how the pieces fit together.
 
-## Log Outputs
+## Log outputs
 
-### Console Logging
+### Console logging
 - Displays real-time logs with timestamp formatting
 - Information level and above shown by default
 - Color-coded by severity level
 - Useful for development and debugging
 
-### File Logging
+### File logging
 - Stored in the `/log` directory
 - Daily rotation with pattern: `portwayapi-YYYYMMDD.log`
 - 10MB file size limit with automatic rollover
 - Retains 10 days of log files
 - Buffered writing for performance
 
-## Log Levels
+## Log levels
 
 | Level | Description | Examples |
 |-------|-------------|----------|
@@ -36,19 +36,19 @@ When something behaves unexpectedly, logs are usually your first stop. Portway l
 
 Logging is configured in `appsettings.json` under the `Serilog` section. See [Application Settings](/reference/app-settings) for the full configuration schema.
 
-## Log File Management
+## Log file management
 
-### Rotation Policy
+### Rotation policy
 - Daily rotation at midnight
 - Size-based rotation at 10MB
 - Automatic file naming with date suffix
 
-### Retention Policy
+### Retention policy
 - Keeps last 10 log files
 - Older files automatically deleted
 - Configurable retention period
 
-### File Naming Convention
+### File naming convention
 ```
 log/
 ├── portwayapi-20240120.log
@@ -56,24 +56,24 @@ log/
 └── portwayapi-20240118.log
 ```
 
-## Performance Logging
+## Performance logging
 
-### Request Timing
+### Request timing
 ```
 [DBG] Incoming request: POST /api/500/Orders
 [DBG] Outgoing response: 200 for /api/500/Orders - Took 125ms
 ```
 
-### Rate Limiting
+### Rate limiting
 ```
 [INF] Rate limiter initialized - IP: 100/60s, Token: 1000/60s
 [INF] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
 [DBG] Rate limit for IP 192.168.1.100 has expired, allowing traffic
 ```
 
-## Structured Logging
+## Structured logging
 
-### Event Properties
+### Event properties
 The logging system captures structured data for better analysis:
 - Request method and path
 - User identity and token information
@@ -81,7 +81,7 @@ The logging system captures structured data for better analysis:
 - Duration and status codes
 - Error details and stack traces
 
-### Context Enrichment
+### Context enrichment
 Logs are automatically enriched with:
 - Machine name
 - Application version
@@ -91,7 +91,7 @@ Logs are automatically enriched with:
 
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
 1. **Missing Log Files**
    - Check write permissions on log directory
@@ -108,7 +108,7 @@ Logs are automatically enriched with:
    - Increase flush intervals
    - Filter high-frequency events
 
-### Diagnostic Tools
+### Diagnostic tools
 
 Handy commands for log analysis:
 

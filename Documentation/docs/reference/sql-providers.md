@@ -9,7 +9,7 @@ keywords: [SQL Server, PostgreSQL, MySQL, SQLite, connection string, provider de
 
 Portway speaks to four relational database backends, and you rarely have to tell it which one you're using: the active provider for each environment is detected automatically from the connection string in `settings.json`, with no extra configuration key required. This page covers each provider, the detection logic, and what to keep in mind per backend.
 
-## Supported Providers
+## Supported providers
 
 | Provider | Typical use |
 |---|---|
@@ -20,7 +20,7 @@ Portway speaks to four relational database backends, and you rarely have to tell
 
 ---
 
-## Provider Auto-Detection
+## Provider auto-Detection
 
 Portway reads the connection string and identifies the provider without requiring an explicit `Provider` field. Detection runs top-to-bottom through a priority list; the first match wins.
 
@@ -42,7 +42,7 @@ Standard SQL Server connection strings naturally contain keywords like `TrustSer
 
 ---
 
-## Connection String Reference
+## Connection string reference
 
 ### SQL Server
 
@@ -149,7 +149,7 @@ SQLite connection strings carry no credentials. Portway skips the credential-mas
 
 ---
 
-## Capability Matrix
+## Capability matrix
 
 | Feature | SQL Server | PostgreSQL | MySQL | SQLite |
 |---|:---:|:---:|:---:|:---:|
@@ -183,7 +183,7 @@ The provider combination Portway is continuously tested against: SQL Server 2025
 
 ---
 
-## Schema Behaviour
+## Schema behaviour
 
 | Provider | Schema support | Default schema |
 |---|---|---|
@@ -196,7 +196,7 @@ When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway uses 
 
 ---
 
-## Related Topics
+## Related topics
 
 - [Environments Guide](/guide/environments): creating and managing environments
 - [Environment Settings Reference](/reference/environment-settings): full `settings.json` reference

@@ -7,7 +7,7 @@ description: "Schema and queries for the token operations audit trail stored in 
 
 Every token operation you perform (create, rotate, revoke, update) is recorded automatically in the `TokenAudits` table of `auth.db`, so there is always a trail to consult when you're wondering who changed what. This page documents the schema, along with some queries to get you started.
 
-## Audit Schema
+## Audit schema
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -25,7 +25,7 @@ Every token operation you perform (create, rotate, revoke, update) is recorded a
 
 The Web UI exposes per-token audit history at `GET /ui/api/tokens/{id}/audit`. See the [Web UI API reference](/reference/webui).
 
-## Direct Queries
+## Direct queries
 
 ```sql
 -- All operations for a token owner
@@ -42,7 +42,7 @@ WHERE Timestamp > datetime('now', '-1 day')
 ORDER BY Timestamp DESC;
 ```
 
-## First-run Token File
+## First-run token file
 
 On first run, Portway writes the initial token to `tokens/{SERVER_NAME}.txt`:
 
@@ -59,7 +59,7 @@ On first run, Portway writes the initial token to `tokens/{SERVER_NAME}.txt`:
 
 Record the token value, delete the file, and use the Web UI to create all subsequent tokens.
 
-## Related Topics
+## Related topics
 
 - [Web UI guide](/guide/webui): browser-based token management
 - [Authentication reference](/reference/api-auth): token properties and scope patterns

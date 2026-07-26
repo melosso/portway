@@ -5,26 +5,17 @@ description: "Choose between deploying Portway with Docker Compose or on Windows
 
 # Deploying
 
-Portway ships as a container image and as a Windows release, so there are two well-trodden paths to a running gateway. Both end up in the same place: the endpoint and environment configuration is identical either way, and so is everything in the rest of this guide.
+Portway ships as a container image, Linux and Windows release. Pick whichever fits your infrastructure: the endpoint and environment configuration is identical either way.
 
-## Deploying with Docker
+<div class="tip custom-block">
 
-Most deployments use Docker Compose. It is the quickest way to a running gateway, it keeps your configuration in files you can version, and it works the same on a laptop, a Home Lab box, and a production host.
+Just want to try it out? Skip to the [Quickstart](../getting-started).
 
-Start with [Deploying with Docker](/guide/docker-compose), which walks from a first container through the settings worth having in place before real traffic arrives.
+</div>
 
-## Deploying on Windows Server
+The following pages cover the supported installation methods:
 
-If your gateway needs to live alongside existing IIS sites, or a proxy endpoint depends on NTLM pass-through to something like Exact Globe+ or AFAS Profit, hosting on Windows Server gives you a domain identity to work with.
+- **[Deploying with Docker](/guide/docker-compose)**
+- **[Deploying on Windows Server](/guide/deployment-windows)**
 
-[Deploying on Windows Server](/guide/deployment-windows) covers the Hosting Bundle, the Application Pool, HTTPS bindings, and folder permissions.
-
-## Next steps
-
-Once Portway is running, the configuration is the same whichever path you took:
-
-- [Getting Started](/guide/getting-started) for your access token and first environment
-- [Configure Environments](/guide/environments)
-- [Configure Endpoints](/guide/endpoints-sql)
-- [Security](/guide/security)
-- [Monitoring](/guide/monitoring)
+Once your server is running, continue with [initial configuration](/guide/getting-started#initial-configuration) for your access token and first environment.

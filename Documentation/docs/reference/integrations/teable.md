@@ -17,7 +17,7 @@ There is one catch. Portway forwards the client's `Authorization` header to upst
 
 ## Configuration
 
-### Environment Settings
+### Environment settings
 
 Two things happen in the environment file. The Teable token goes into the outbound headers. Inbound authentication switches to an API key header, which keeps the `Authorization` header clear:
 
@@ -50,7 +50,7 @@ Skipping the `X-API-Key` setup breaks the integration. A client's Portway bearer
 
 You can generate a personal access token in Teable under your account's token settings. Tokens carry the `teable_` prefix.
 
-### Proxy Endpoint
+### Proxy endpoint
 
 Each Teable table gets an endpoint file pointing at its record collection:
 

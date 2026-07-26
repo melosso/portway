@@ -7,7 +7,7 @@ description: "Environments are how Portway keeps your development, testing, and 
 
 Environments are how Portway keeps your development, testing, and production worlds from bleeding into each other. Their settings control database connections, the allowed environment list, and per-environment behavior. This page covers the files involved and what you can configure in each.
 
-## File Structure
+## File structure
 
 Environment configuration files are organized in the following structure:
 
@@ -19,14 +19,14 @@ Environment configuration files are organized in the following structure:
   └── network-access-policy.json     # Network security policy
 ```
 
-## Global Settings
+## Global settings
 
 The root `settings.json` file defines which environments are allowed:
 
-### File Location
+### File location
 `/environments/settings.json`
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -37,7 +37,7 @@ The root `settings.json` file defines which environments are allowed:
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -45,14 +45,14 @@ The root `settings.json` file defines which environments are allowed:
 | `Environment.ServerName` | string | Yes | Default server name |
 | `Environment.AllowedEnvironments` | array | Yes | List of allowed environment names |
 
-## Environment-Specific Settings
+## Environment-Specific settings
 
 Each environment has its own configuration file with connection details:
 
-### File Location
+### File location
 `/environments/[EnvironmentName]/settings.json`
 
-### Basic Configuration
+### Basic configuration
 
 ```json
 {
@@ -66,7 +66,7 @@ Each environment has its own configuration file with connection details:
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -74,7 +74,7 @@ Each environment has its own configuration file with connection details:
 | `ConnectionString` | string | Yes | Database connection string |
 | `Headers` | object | No | Custom headers for requests |
 
-### Headers Configuration
+### Headers configuration
 
 Custom headers added to all requests for this environment:
 
@@ -85,14 +85,14 @@ Custom headers added to all requests for this environment:
 | `Origin` | string | Request origin identifier |
 | `[Custom]` | string | Any additional headers needed |
 
-## Network Access Policy
+## Network access policy
 
 Controls which hosts and IP ranges are allowed for proxy requests:
 
-### File Location
+### File location
 `/environments/network-access-policy.json`
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -109,7 +109,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -118,7 +118,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 
 ## Examples
 
-### Production Environment
+### Production environment
 
 `/environments/prod/settings.json`
 ```json
@@ -134,7 +134,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 }
 ```
 
-### Development Environment
+### Development environment
 
 `/environments/dev/settings.json`
 ```json
@@ -150,7 +150,7 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 }
 ```
 
-## Connection String Configuration
+## Connection string configuration
 
 The `ConnectionString` value determines both the target database and the SQL driver Portway uses. No additional property is needed, the provider is detected automatically.
 
@@ -253,7 +253,7 @@ Supported variables:
 - `${VARIABLE_NAME}` - Replaced at runtime
 - Azure Key Vault integration (if configured)
 
-## Security Notes
+## Security notes
 
 :::warning
 Never store passwords or secrets directly in configuration files. Use environment variables, Azure Key Vault, or Portway's automatic `PWENC:` encryption.
@@ -263,7 +263,7 @@ The network access policy in `network-access-policy.json` prevents Server-Side R
 
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
 1. **Environment Not Found**
    - Check environment name in `AllowedEnvironments`
@@ -287,7 +287,7 @@ The network access policy in `network-access-policy.json` prevents Server-Side R
    - Validate DNS resolution
    - Test with diagnostic tools
 
-## Related Topics
+## Related topics
 
 - [Entity Configuration](/reference/entity-config) - Endpoint configuration
 - [Security Guide](/guide/security) - Security best practices

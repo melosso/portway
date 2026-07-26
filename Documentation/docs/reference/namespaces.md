@@ -9,7 +9,7 @@ Namespaces let you organise related endpoints into logical groups, for example, 
 
 Every endpoint type supports namespaces. Webhooks are the one type that requires one, since each webhook lives at `endpoints/Webhooks/{Namespace}/{Name}/entity.json`.
 
-## Directory Structure
+## Directory structure
 
 Namespaces are implemented through directory organization within each endpoint type:
 
@@ -49,9 +49,9 @@ Namespaces are implemented through directory organization within each endpoint t
 
 Composite endpoints have no folder of their own. They live under `Proxy/` with `"Type": "Composite"` in their `entity.json`.
 
-## Namespace Configuration
+## Namespace configuration
 
-### Explicit Namespace Definition
+### Explicit namespace definition
 
 You can explicitly define namespace properties in any `entity.json` file:
 
@@ -67,7 +67,7 @@ You can explicitly define namespace properties in any `entity.json` file:
 }
 ```
 
-### Inferred Namespace from Directory
+### Inferred namespace from directory
 
 If no explicit `Namespace` is specified, the namespace is inferred from the directory structure:
 
@@ -75,16 +75,16 @@ If no explicit `Namespace` is specified, the namespace is inferred from the dire
 - **Inferred Namespace**: `Account`
 - **Endpoint Name**: `Contacts`
 
-### Namespace Priority
+### Namespace priority
 
 The effective namespace follows this priority order:
 1. **Explicit `Namespace`** property in `entity.json`
 2. **Inferred namespace** from directory structure
 3. **No namespace** (legacy behavior)
 
-## Property Reference
+## Property reference
 
-### Core Namespace Properties
+### Core namespace properties
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -92,7 +92,7 @@ The effective namespace follows this priority order:
 | `NamespaceDisplayName` | string | No | Human-readable namespace name for documentation |
 | `DisplayName` | string | No | Human-readable endpoint name |
 
-### Namespace Properties Examples
+### Namespace properties examples
 
 ```json
 {
@@ -102,9 +102,9 @@ The effective namespace follows this priority order:
 }
 ```
 
-## API Routing Patterns
+## API routing patterns
 
-### Namespaced Endpoints
+### Namespaced endpoints
 
 Endpoints with namespaces are accessible via extended URL patterns:
 
@@ -121,7 +121,7 @@ DELETE /api/{env}/{namespace}/{endpoint}/{id}
 - `/api/prod/Finance/Transactions/12345` - Get specific transaction
 - `/api/dev/CRM/Customers` - Get customers in development environment
 
-### Backward Compatibility
+### Backward compatibility
 
 Non-namespaced endpoints continue to work with legacy URL patterns:
 
@@ -132,16 +132,16 @@ GET /api/{env}/{endpoint}/{id}
 
 **Example**: `/api/prod/Accounts` (legacy non-namespaced)
 
-### Fallback Behavior
+### Fallback behavior
 
 The system attempts namespaced access first, then falls back to non-namespaced:
 
 1. Try: `/api/prod/CRM/Accounts` → `CRM/Accounts`
 2. Fallback: `/api/prod/Accounts` → `Accounts`
 
-## Configuration Examples
+## Configuration examples
 
-### SQL Endpoint with Namespace
+### SQL endpoint with namespace
 
 **File**: `/endpoints/SQL/Company/Employees/entity.json`
 
@@ -164,7 +164,7 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-### Proxy Endpoint with Namespace
+### Proxy endpoint with namespace
 
 **File**: `/endpoints/Proxy/Account/Contacts/entity.json`
 
@@ -188,7 +188,7 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-### Static Endpoint with Namespace
+### Static endpoint with namespace
 
 **File**: `/endpoints/Static/Reports/SalesReport/entity.json`
 
@@ -210,7 +210,7 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 }
 ```
 
-### File Endpoint with Namespace
+### File endpoint with namespace
 
 **File**: `/endpoints/Files/Archive/Documents/entity.json`
 
@@ -230,7 +230,7 @@ The system attempts namespaced access first, then falls back to non-namespaced:
 The namespace appears in every file route, so this endpoint is served at `/api/{env}/files/Archive/Documents`. Download URLs returned by the API include it as well, which keeps them usable as-is.
 :::
 
-### Composite Endpoint with Namespace
+### Composite endpoint with namespace
 
 **File**: `/endpoints/Proxy/Sales/OrderProcessing/entity.json`
 
@@ -266,9 +266,9 @@ The namespace appears in every file route, so this endpoint is served at `/api/{
 Composite endpoints are stored in the `/endpoints/Proxy/` directory with `"Type": "Composite"`. They support both namespaced access (`/api/{env}/{namespace}/{endpoint}`) and legacy access (`/api/{env}/composite/{endpoint}`).
 :::
 
-## Naming Conventions
+## Naming conventions
 
-### Namespace Naming Rules
+### Namespace naming rules
 
 Namespace names follow these conventions:
 
@@ -288,7 +288,7 @@ Namespace names follow these conventions:
 - `Account-Management` (contains hyphen)
 - `Account Management` (contains space)
 
-### Reserved Namespaces
+### Reserved namespaces
 
 The following namespace names are reserved and cannot be used:
 
@@ -304,9 +304,9 @@ The following namespace names are reserved and cannot be used:
 
 An endpoint that claims one of these is skipped when the loader reads it at startup; the Web UI validator turns it down before the file is written.
 
-## OpenAPI Documentation
+## OpenAPI documentation
 
-### Documentation Tag Organization
+### Documentation tag organization
 
 Namespaces automatically organize endpoints in the documentation UI using tags:
 
@@ -314,7 +314,7 @@ Namespaces automatically organize endpoints in the documentation UI using tags:
 - **With Namespace only**: `"CRM"`
 - **Inferred**: Uses directory name as tag
 
-### Documentation Grouping
+### Documentation grouping
 
 In the generated OpenAPI specification:
 
@@ -333,16 +333,16 @@ In the generated OpenAPI specification:
 }
 ```
 
-## Migration from Non-Namespaced
+## Migration from non-Namespaced
 
-### Gradual Migration
+### Gradual migration
 
 1. **Keep existing endpoints** in root directories
 2. **Create namespaced versions** in subdirectories
 3. **Update clients gradually** to use namespaced URLs
 4. **Remove legacy endpoints** when migration is complete
 
-### Backward Compatibility
+### Backward compatibility
 
 During migration, both URL patterns work:
 
@@ -353,9 +353,9 @@ During migration, both URL patterns work:
 
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
-#### 1. Namespace Validation Errors
+#### 1. Namespace validation errors
 
 **Error**: `Namespace must start with a letter and contain only letters, numbers, and underscores`
 
@@ -367,7 +367,7 @@ During migration, both URL patterns work:
 }
 ```
 
-#### 2. Reserved Namespace Names
+#### 2. Reserved namespace names
 
 **Error**: `'api' is a reserved namespace name`
 
@@ -379,7 +379,7 @@ During migration, both URL patterns work:
 }
 ```
 
-#### 3. Conflicting Directory Structure
+#### 3. Conflicting directory structure
 
 **Issue**: Inferred namespace doesn't match explicit namespace
 
@@ -392,7 +392,7 @@ During migration, both URL patterns work:
 }
 ```
 
-#### 4. Missing Endpoints in Documentation
+#### 4. Missing endpoints in documentation
 
 **Issue**: Namespaced endpoints not appearing in documentation
 
@@ -404,7 +404,7 @@ During migration, both URL patterns work:
 }
 ```
 
-### Validation Checklist
+### Validation checklist
 
 - [ ] Namespace name follows naming conventions
 - [ ] Namespace is not a reserved word
@@ -415,7 +415,7 @@ During migration, both URL patterns work:
 - [ ] Backward compatibility maintained for existing clients
 - [ ] Environment consistency across dev/test/prod
 
-## Related Topics
+## Related topics
 
 - [Entity Configuration](/reference/entity-config) - Complete endpoint configuration reference
 - [Environment Settings](/reference/environment-settings) - Environment configuration

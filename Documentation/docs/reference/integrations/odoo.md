@@ -17,7 +17,7 @@ If you want credentials kept server-side, the AFAS and NocoDB integrations show 
 
 ## Configuration
 
-### Proxy Endpoint
+### Proxy endpoint
 
 A single endpoint covers the JSON-RPC entry point:
 
@@ -31,7 +31,7 @@ A single endpoint covers the JSON-RPC entry point:
 
 No environment headers are needed. The environment still controls which clients may call the endpoint through `AllowedEnvironments` and token scopes.
 
-### Odoo API Keys
+### Odoo API keys
 
 Give each integration its own Odoo user and API key, generated under the user's account security settings. API keys act as the password in RPC calls. Odoo's own access rights then bound what each integration can read and write.
 

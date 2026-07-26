@@ -7,7 +7,7 @@ description: "When you want to shape how Portway behaves at its core (logging, s
 
 When you want to shape how Portway behaves at its core (logging, security, rate limiting, and service wiring), `appsettings.json` is where you'll spend your time. This page walks through each section, explains what it controls, and shows how you can override values per deployment without touching the base file.
 
-## Configuration Files
+## Configuration files
 
 | File | Purpose | Priority |
 |------|---------|----------|
@@ -16,7 +16,7 @@ When you want to shape how Portway behaves at its core (logging, security, rate 
 | `appsettings.Production.json` | Production overrides | Highest |
 | Environment variables | Runtime overrides | Highest |
 
-## Core Configuration Structure
+## Core configuration structure
 
 ```json
 {
@@ -41,11 +41,11 @@ When you want to shape how Portway behaves at its core (logging, security, rate 
 }
 ```
 
-## Logging Configuration
+## Logging configuration
 
 Portway uses Serilog for structured logging with configurable sinks and filtering.
 
-### Basic Structure
+### Basic structure
 
 ```json
 {
@@ -86,7 +86,7 @@ Portway uses Serilog for structured logging with configurable sinks and filterin
 }
 ```
 
-### Log Levels
+### Log levels
 
 | Level | Description | Use Case |
 |-------|-------------|----------|
@@ -96,7 +96,7 @@ Portway uses Serilog for structured logging with configurable sinks and filterin
 | `Error` | Error events | Application errors |
 | `Fatal` | Critical failures | System failures |
 
-### Changing Log Levels
+### Changing log levels
 
 To change the logging level, modify the `Default` value in `appsettings.json`:
 
@@ -110,11 +110,11 @@ To change the logging level, modify the `Default` value in `appsettings.json`:
 }
 ```
 
-## OpenAPI Configuration
+## OpenAPI configuration
 
 Portway generates OpenAPI documentation from your configured endpoints and exposes it through the Scalar UI at `/docs`.
 
-### Full Configuration
+### Full configuration
 
 ```json
 {
@@ -151,7 +151,7 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -171,9 +171,9 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 | `ScalarHideClientButton` | boolean | `true` | Hide client generation button |
 | `ScalarHideTestRequestButton` | boolean | `false` | Hide test request button |
 
-## Rate Limiting Configuration
+## Rate limiting configuration
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -188,7 +188,7 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -200,7 +200,7 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 | `Store` | string | `Memory` | Bucket storage backend, `Memory` or `Redis` |
 | `RedisConnectionString` | string | none | Redis connection for the `Redis` store, reuses the caching connection when empty |
 
-### Rate Limiting Behavior
+### Rate limiting behavior
 
 - IP-based limiting applies to all requests
 - Token-based limiting applies per authentication token, and individual tokens can carry their own limit that overrides `TokenLimit`
@@ -209,11 +209,11 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
 
 You can find a full walkthrough, including per-token limits and the Redis store, in the [rate limiting guide](/guide/rate-limiting).
 
-## Forwarded Headers
+## Forwarded headers
 
 When Portway runs directly on Kestrel, the client IP it sees is the one connecting to it, which is exactly what per-IP rate limiting and the Web UI network gate rely on. Once you place a reverse proxy in front (nginx, IIS, or similar), that connecting IP becomes the proxy instead, and every client starts to look like the same address. The real client IP is still available in the `X-Forwarded-For` header, and this section is how you tell Portway which proxies it can trust to set it.
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -224,14 +224,14 @@ When Portway runs directly on Kestrel, the client IP it sees is the one connecti
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `KnownProxies` | string[] | `[]` | IP addresses of trusted reverse proxies |
 | `KnownNetworks` | string[] | `[]` | CIDR ranges of trusted reverse proxies |
 
-### How It Works
+### How it works
 
 Portway only honors `X-Forwarded-For` when the request arrives from an address you have listed here, which keeps clients from spoofing their own IP. You can register individual proxy addresses in `KnownProxies`, describe a whole range in `KnownNetworks`, or combine both when your setup calls for it. A common starting point for a proxy sharing the host with Portway is `127.0.0.1` and `::1`.
 
@@ -243,9 +243,9 @@ If you front Portway with Cloudflare, its client IP is recovered separately from
 
 The Settings posture panel in the Web UI reflects whether any trusted proxies are configured, which is a quick way to confirm the setup took effect.
 
-## Request Traffic Logging
+## Request traffic logging
 
-### Full Configuration
+### Full configuration
 
 ```json
 {
@@ -269,7 +269,7 @@ The Settings posture panel in the Web UI reflects whether any trusted proxies ar
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -289,9 +289,9 @@ The Settings posture panel in the Web UI reflects whether any trusted proxies ar
 | `CaptureHeaders` | boolean | `true` | Log request headers |
 | `EnableInfoLogging` | boolean | `true` | Enable info-level logs |
 
-## SQL Connection Pooling
+## SQL connection pooling
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -306,7 +306,7 @@ The Settings posture panel in the Web UI reflects whether any trusted proxies ar
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -317,11 +317,11 @@ The Settings posture panel in the Web UI reflects whether any trusted proxies ar
 | `CommandTimeout` | integer | `30` | Command timeout (seconds) |
 | `Enabled` | boolean | `true` | Enable connection pooling |
 
-## Caching Configuration
+## Caching configuration
 
 Portway caches proxy and SQL responses in memory or Redis to reduce upstream load and improve response times.
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -354,7 +354,7 @@ Portway caches proxy and SQL responses in memory or Redis to reduce upstream loa
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -366,7 +366,7 @@ Portway caches proxy and SQL responses in memory or Redis to reduce upstream loa
 | `CacheableContentTypes` | array | `["application/json", ...]` | Only responses with these content types are cached |
 | `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
 
-### Redis Properties
+### Redis properties
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -380,11 +380,11 @@ Portway caches proxy and SQL responses in memory or Redis to reduce upstream loa
 | `MaxRetryAttempts` | integer | `3` | Retry attempts on transient Redis errors |
 | `RetryDelayMs` | integer | `200` | Delay between retry attempts in milliseconds |
 
-## File Storage Configuration
+## File storage configuration
 
 Controls how Portway stores and serves files for `File`-type endpoints.
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -399,7 +399,7 @@ Controls how Portway stores and serves files for `File`-type endpoints.
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -414,11 +414,11 @@ Controls how Portway stores and serves files for `File`-type endpoints.
 The default block list covers executable, script, and macro-enabled office formats. Extend it to suit your security policy; shrink it only with caution.
 :::
 
-## Endpoint Reloading Configuration
+## Endpoint reloading configuration
 
 Controls hot-reload behaviour when endpoint JSON files change on disk.
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -430,7 +430,7 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -466,11 +466,11 @@ Controls how request traces and metrics leave the gateway. Telemetry is off by d
 
 The `Otlp` provider pushes traces and metrics to a collector over gRPC; the `Prometheus` provider serves metrics on a scrape endpoint instead. Configurations from earlier releases keep working: a flat `"Enabled": true` selects the OTLP provider, and a flat `OtlpEndpoint` is used whenever `Otlp:Endpoint` is not set. See the [Telemetry guide](/guide/opentelemetry) for the full walkthrough.
 
-## MCP Configuration
+## MCP configuration
 
 Controls the Model Context Protocol server and built-in Chat feature.
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -488,7 +488,7 @@ Controls the Model Context Protocol server and built-in Chat feature.
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -506,9 +506,9 @@ Controls the Model Context Protocol server and built-in Chat feature.
 Chat credentials (provider, model, API key) are stored in the encrypted `mcp.db` database and managed through the Chat setup wizard. They are not configured in `appsettings.json`. An environment variable `PORTWAY_CHAT_API_KEY` can be used instead of the database entry; it takes precedence if set.
 :::
 
-## Log Settings
+## Log settings
 
-### Configuration Structure
+### Configuration structure
 
 ```json
 {
@@ -522,7 +522,7 @@ Chat credentials (provider, model, API key) are stored in the encrypted `mcp.db`
 |----------|------|---------|-------------|
 | `LogResponseToFile` | boolean | `false` | Write raw response bodies to the log file (useful for debugging; disable in production) |
 
-## General Settings
+## General settings
 
 ### AllowedHosts
 
@@ -548,7 +548,7 @@ Configure which hosts can access the application:
 
 Base path for the application (e.g., `/api`).
 
-## Web UI Configuration
+## Web UI configuration
 
 The built-in admin interface settings.
 
@@ -563,7 +563,7 @@ The built-in admin interface settings.
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -582,7 +582,7 @@ The built-in admin interface settings.
 - Cookie auth uses HMAC-SHA256 signing
 - Set `EnableLandingPage: false` on internet-facing or production deployments to prevent the admin UI from being surfaced at the root path
 
-### Customization Example
+### Customization example
 
 ```json
 {
@@ -597,9 +597,9 @@ The built-in admin interface settings.
 
 Both fields support standard Markdown (bold, links, inline code).
 
-## Environment-Specific Configuration
+## Environment-Specific configuration
 
-### Development Settings
+### Development settings
 
 `appsettings.Development.json`:
 ```json
@@ -618,7 +618,7 @@ Both fields support standard Markdown (bold, links, inline code).
 }
 ```
 
-### Production Settings
+### Production settings
 
 `appsettings.Production.json`:
 ```json
@@ -637,9 +637,9 @@ Both fields support standard Markdown (bold, links, inline code).
 }
 ```
 
-## Security Settings
+## Security settings
 
-### CORS Configuration
+### CORS configuration
 
 CORS is configured to allow all origins in the default configuration:
 ```json
@@ -655,9 +655,9 @@ For production, restrict to specific domains:
 }
 ```
 
-## Performance Tuning
+## Performance tuning
 
-### Connection Pool Optimization
+### Connection pool optimization
 
 ```json
 {
@@ -671,7 +671,7 @@ For production, restrict to specific domains:
 }
 ```
 
-### Rate Limiting for High Traffic
+### Rate limiting for high traffic
 
 ```json
 {
@@ -685,7 +685,7 @@ For production, restrict to specific domains:
 }
 ```
 
-### Traffic Logging for Debugging
+### Traffic logging for debugging
 
 ```json
 {
@@ -699,9 +699,9 @@ For production, restrict to specific domains:
 }
 ```
 
-## Environment Variables
+## Environment variables
 
-### Common Variables
+### Common variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -724,16 +724,16 @@ For production, restrict to specific domains:
 **`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
 :::
 
-### Configuration Priority
+### Configuration priority
 
 1. Environment variables
 2. `appsettings.{Environment}.json`
 3. `appsettings.json`
 4. Default values
 
-## Troubleshooting Configuration
+## Troubleshooting configuration
 
-### Common Issues
+### Common issues
 
 1. **Application Won't Start**
    - Check JSON syntax in appsettings files
@@ -755,7 +755,7 @@ For production, restrict to specific domains:
    - Verify log directory exists
    - Review LogLevel settings
 
-### Configuration Debugging
+### Configuration debugging
 
 1. Enable detailed logging:
 ```json
@@ -785,7 +785,7 @@ echo $ASPNETCORE_ENVIRONMENT
 
 3. Review startup logs for configuration issues
 
-## Complete Example Configuration
+## Complete example configuration
 
 ### Production appsettings.json
 
@@ -843,7 +843,7 @@ echo $ASPNETCORE_ENVIRONMENT
 }
 ```
 
-## Related Topics
+## Related topics
 
 - [Environment Settings](/reference/environment-settings) - Environment-specific configuration
 - [Security Guide](/guide/security) - Security configuration

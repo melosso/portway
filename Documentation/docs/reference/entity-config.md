@@ -7,7 +7,7 @@ description: "Every endpoint you create starts life as an entity.json file"
 
 Every endpoint you create starts life as an `entity.json` file. This page is your dictionary for those files: what each property does, which ones apply to which endpoint type (SQL, Proxy, Static, Composite, Webhook, File), and the patterns that tend to work well in practice.
 
-## File Structure
+## File structure
 
 Entity configuration files are JSON files located in the endpoints directory structure:
 
@@ -38,7 +38,7 @@ Composite endpoints have no folder of their own. They live under `Proxy/` with `
 
 SQL entities expose database tables or views through OData endpoints.
 
-### Basic Structure
+### Basic structure
 
 ```json
 {
@@ -55,7 +55,7 @@ SQL entities expose database tables or views through OData endpoints.
 }
 ```
 
-### With Stored Procedures
+### With stored procedures
 
 ```json
 {
@@ -128,7 +128,7 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 - No `PrimaryKey` property is needed for TVFs.
 - Use column aliases in `AllowedColumns` as with regular endpoints.
 
-### Property Reference
+### Property reference
 
 | Property              | Type    | Required | Description                                                                                  |
 |-----------------------|---------|----------|----------------------------------------------------------------------------------------------|
@@ -147,7 +147,7 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 
 \* Only required for Table-Valued Function (TVF) endpoints.
 
-### Column Aliases
+### Column aliases
 
 The `AllowedColumns` array supports semicolon-separated aliases for user-friendly column names:
 
@@ -169,11 +169,11 @@ The `AllowedColumns` array supports semicolon-separated aliases for user-friendl
 - Backward compatible with existing configurations
 - Automatic conversion in all OData operations (`$select`, `$filter`, `$orderby`)
 
-## Endpoint: Proxy
+## Endpoint: proxy
 
 Proxy entities forward requests to internal web services.
 
-### Basic Example
+### Basic example
 
 ```json
 {
@@ -182,7 +182,7 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
-### With Environment Restrictions
+### With environment restrictions
 
 ```json
 {
@@ -192,7 +192,7 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
-### Hidden Endpoint
+### Hidden endpoint
 
 ```json
 {
@@ -202,7 +202,7 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
-### With HTTP Method Translation
+### With HTTP method translation
 
 ```json
 {
@@ -214,7 +214,7 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
-### With Retry and Failover
+### With retry and failover
 
 When an upstream service is occasionally slow to answer or has a standby instance, you can let Portway retry the call and switch to a fallback URL before the caller notices anything:
 
@@ -229,7 +229,7 @@ When an upstream service is occasionally slow to answer or has a standby instanc
 
 Portway tries the primary URL first. A connection failure, a timeout, or a 502, 503, or 504 response triggers the next attempt; other responses pass through unchanged. Each URL gets `Attempts` tries with `DelayMs` milliseconds between them. Without these properties every request makes exactly one attempt, as before.
 
-### With Response Transforms
+### With response transforms
 
 When an upstream response carries fields you would rather not expose, you can shape JSON responses declaratively instead of changing the upstream system:
 
@@ -247,7 +247,7 @@ When an upstream response carries fields you would rather not expose, you can sh
 
 Rules apply to top level fields of JSON objects, to each element of JSON arrays, and to items inside an OData style `value` wrapper. Masked fields return `***`. When rules overlap, `Remove` wins. Responses that are not JSON pass through untouched, and transforms run before caching so cached entries are already shaped.
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -262,7 +262,7 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 | `AllowedEnvironments` | array | No | Allowed environments |
 | `CustomProperties` | object | No | Extended functionality settings |
 
-#### CustomProperties Options
+#### CustomProperties options
 
 | Property | Type | Description | Example |
 |----------|------|-------------|---------|
@@ -270,7 +270,7 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 | `HttpMethodTranslation` | string | Translate HTTP methods before proxying | `"PUT:MERGE,POST:CREATE"` |
 | `HttpMethodAppendHeaders` | string | Auto-append headers based on HTTP method | `"PUT:X-HTTP-Method={ORIGINAL_METHOD}"` |
 
-### With HTTP Method Translation and Header Appending
+### With HTTP method translation and header appending
 
 ```json
 {
@@ -283,11 +283,11 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 }
 ```
 
-### Configuring DELETE Operations
+### Configuring DELETE operations
 
 Different internal services expect DELETE request IDs in different formats. Use `DeletePatterns` to tell the gateway how to format the ID when forwarding to your target service.
 
-#### Why Configure This?
+#### Why configure this?
 
 When you receive:
 ```
@@ -299,7 +299,7 @@ The gateway needs to know whether your internal service expects:
 - `http://service/customers?id=a7f3c8e1...` (query style)
 - `http://service/customers(guid'a7f3c8e1...')` (OData style)
 
-#### Available Styles
+#### Available styles
 
 | Style | Use Case | Example Output |
 |-------|----------|----------------|
@@ -324,7 +324,7 @@ The gateway needs to know whether your internal service expects:
 { "DeletePatterns": [{ "Style": "ODataKey" }] }
 ```
 
-#### Quick Examples
+#### Quick examples
 
 **Modern REST microservice** (most common):
 ```json
@@ -358,11 +358,11 @@ The gateway needs to know whether your internal service expects:
 
 The gateway automatically recognizes IDs in any format (plain GUIDs, OData wrapped, numeric, string keys) and forwards them correctly to your service.
 
-## Endpoint: Static
+## Endpoint: static
 
 Static entities serve pre-defined content files with optional OData filtering capabilities.
 
-### Basic Example
+### Basic example
 
 ```json
 {
@@ -374,7 +374,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
 }
 ```
 
-### With Documentation
+### With documentation
 
 ```json
 {
@@ -391,7 +391,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -404,7 +404,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
 | `AllowedEnvironments` | array | Yes | Environments where endpoint is available |
 | `Documentation` | object | No | OpenAPI documentation metadata |
 
-### Supported Content Types
+### Supported content types
 
 - **JSON** (`application/json`) - With full OData filtering support
 - **XML** (`application/xml`) - With OData filtering support  
@@ -412,11 +412,11 @@ Static entities serve pre-defined content files with optional OData filtering ca
 - **Text** (`text/plain`) - Raw file serving
 - **Images** (`image/*`) - Raw file serving
 
-## Endpoint: Composite
+## Endpoint: composite
 
 Composite entities orchestrate multiple operations in a single transaction. It's important to know that the composite request relies on the **Proxy** endpoint layer (meaning no other endpoint types can be used here). This also means each step inherits the `FallbackUrls` and `Retry` settings of the proxy endpoint it references. `ResponseTransforms` from referenced endpoints apply to the final composite response only, so data passed between steps stays complete for templating.
 
-### Sales Order Example
+### Sales order example
 
 ```json
 {
@@ -452,7 +452,7 @@ Composite entities orchestrate multiple operations in a single transaction. It's
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -465,7 +465,7 @@ Composite entities orchestrate multiple operations in a single transaction. It's
 | `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `AllowedEnvironments` | array | No | Allowed environments |
 
-### CompositeConfig Properties
+### CompositeConfig properties
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -473,7 +473,7 @@ Composite entities orchestrate multiple operations in a single transaction. It's
 | `Description` | string | No | Endpoint description |
 | `Steps` | array | Yes | Execution steps |
 
-### Step Properties
+### Step properties
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -486,7 +486,7 @@ Composite entities orchestrate multiple operations in a single transaction. It's
 | `DependsOn` | string | No | Previous step dependency |
 | `TemplateTransformations` | object | No | Dynamic value mappings |
 
-### Template Transformation Variables
+### Template transformation variables
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -495,11 +495,11 @@ Composite entities orchestrate multiple operations in a single transaction. It's
 | `$prev.[step].[path]` | Previous step value | `$prev.CreateOrderLines.0.d.TransactionKey` |
 | `$context.[variable]` | Context variable | `$context.customerId` |
 
-## Endpoint: Webhook
+## Endpoint: webhook
 
 Webhook entities receive and store external webhook data.
 
-### Example Configuration
+### Example configuration
 
 ```json
 {
@@ -512,7 +512,7 @@ Webhook entities receive and store external webhook data.
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -524,11 +524,11 @@ Webhook entities receive and store external webhook data.
 | `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `Documentation` | object | No | OpenAPI documentation metadata |
 
-## Endpoint: Files
+## Endpoint: files
 
 File entities enable storage and retrieval of files through dedicated endpoints.
 
-### Basic Structure
+### Basic structure
 
 ```json
 {
@@ -540,7 +540,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 }
 ```
 
-### With Directory Organization
+### With directory organization
 
 ```json
 {
@@ -552,7 +552,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 }
 ```
 
-### Security-Restricted Endpoint
+### Security-Restricted endpoint
 
 ```json
 {
@@ -564,7 +564,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -579,7 +579,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
 1. **Endpoint Not Found**
    - Verify file location: `/endpoints/[Type]/[EntityName]/entity.json`
@@ -614,7 +614,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
    - Verify environment matches upload environment
    - Ensure permissions on storage location
 
-### Validation Checklist
+### Validation checklist
 
 - [ ] Valid JSON syntax
 - [ ] Required properties present
@@ -627,9 +627,9 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 - [ ] File extensions in correct format (e.g., ".pdf" not "pdf")
 - [ ] Storage directories exist and are writable
 
-## Server Configuration Options
+## Server configuration options
 
-### File Storage Configuration
+### File storage configuration
 
 Additional options can be set in the server's `appsettings.json`:
 
@@ -647,7 +647,7 @@ Additional options can be set in the server's `appsettings.json`:
 }
 ```
 
-### Environment Configuration
+### Environment configuration
 
 Configure allowed environments in `environments/settings.json`:
 
@@ -660,7 +660,7 @@ Configure allowed environments in `environments/settings.json`:
 }
 ```
 
-## Related Topics
+## Related topics
 
 - [Environment Settings](/reference/environment-settings) - Environment configuration
 - [API Overview](/reference/) - API endpoint patterns

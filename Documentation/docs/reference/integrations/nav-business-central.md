@@ -15,9 +15,9 @@ On-premise NAV/BC uses Windows/NTLM authentication. When you deploy in IIS, sett
 
 The integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request carries its environment configuration. That is how data ends up coming from the correct company database and server instance.
 
-## Configuration Requirements
+## Configuration requirements
 
-### Environment Headers
+### Environment headers
 
 All requests to NAV/BC endpoints require critical headers that are automatically added based on the environment:
 
@@ -29,7 +29,7 @@ All requests to NAV/BC endpoints require critical headers that are automatically
 
 These headers are configured in the environment settings and automatically injected into proxy requests.
 
-### Environment Settings
+### Environment settings
 
 Each environment needs to be configured in its settings:
 
@@ -47,9 +47,9 @@ Each environment needs to be configured in its settings:
 }
 ```
 
-## Available NAV/Business Central Endpoints
+## Available NAV/Business Central endpoints
 
-### Proxy Endpoints
+### Proxy endpoints
 
 Each NAV/BC OData service you want to expose gets its own endpoint definition. A few common examples:
 
@@ -71,7 +71,7 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 }
 ```
 
-#### Sales Orders
+#### Sales orders
 
 ```json
 {
@@ -80,7 +80,7 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 }
 ```
 
-#### Sales Order Lines
+#### Sales order lines
 
 ```json
 {
@@ -89,7 +89,7 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 }
 ```
 
-### Composite Endpoints
+### Composite endpoints
 
 Composite endpoints handle complex operations that require multiple related transactions. These endpoints can create sales orders with lines, general journal entries, or other multi-step NAV/BC operations in a single request.
 
@@ -101,7 +101,7 @@ The proxy endpoints handle NAV/BC authentication transparently:
 2. The service account running Portway needs NAV/BC database access
 3. Individual API tokens control access to specific OData services
 
-## Error Handling
+## Error handling
 
 NAV/BC specific error responses are preserved and forwarded:
 

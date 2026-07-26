@@ -19,7 +19,7 @@ If you want credentials kept server-side, the AFAS and NocoDB integrations show 
 
 ## Configuration
 
-### Proxy Endpoint
+### Proxy endpoint
 
 One endpoint covers the Service Layer root:
 
@@ -33,7 +33,7 @@ One endpoint covers the Service Layer root:
 
 Paths after the endpoint name are appended to the target URL, so one definition serves `Login`, `Items`, `Orders`, and the rest of the Service Layer surface.
 
-### Service Accounts
+### Service accounts
 
 Give each integration its own SAP B1 user with the minimum authorizations it needs. Session activity in SAP then stays attributable per integration, and Portway's traffic log shows the same split on the gateway side.
 

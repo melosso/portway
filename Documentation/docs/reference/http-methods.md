@@ -84,7 +84,7 @@ Some older backends, notably classic OData services, expect `MERGE` instead of `
 
 Clients keep speaking standard HTTP; the backend receives the verb it understands. The translation targets can be any of `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `MERGE`, `HEAD`, `OPTIONS` and `QUERY`. Details live in the [entity configuration reference](/reference/entity-config).
 
-## Related Topics
+## Related topics
 
 - [Entity Configuration](/reference/entity-config): `AllowedMethods` and the rest of `entity.json`
 - [OData Reference](/reference/odata): the query syntax shared by GET and QUERY

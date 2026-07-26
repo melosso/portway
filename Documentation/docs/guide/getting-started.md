@@ -5,7 +5,7 @@ description: "Install Portway and make your first authenticated API call"
 
 # Getting Started
 
-Portway is an ASP.NET Core application. On Windows Server it is typically hosted behind IIS, though running it standalone on Kestrel works just as well; on any other platform it runs as a Docker container. This guide covers the IIS and Docker paths through to a working endpoint.
+Portway is an ASP.NET Core application. It runs as a Docker container, or on Windows Server behind IIS, and standalone on Kestrel works just as well. This guide covers the Docker and IIS paths through to a working endpoint.
 
 ## Prerequisites
 

@@ -329,5 +329,5 @@ To increase log verbosity for environment issues:
 
 - [Configure SQL Endpoints](/guide/endpoints-sql)
 - [Set up Proxy Endpoints](/guide/endpoints-proxy)
-- [Security, token management](/guide/security#managing-tokens)
+- [Access token management](/guide/tokens)
 - [Deploy to production](/guide/deployment)

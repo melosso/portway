@@ -392,11 +392,11 @@ data: {"type":"sql","count":5}
 
 ---
 
-## SSE Events
+## SSE events
 
 The UI subscribes to real-time updates via Server-Sent Events.
 
-### Event Types
+### Event types
 
 | Event | Data | Description |
 |-------|------|-------------|
@@ -407,7 +407,7 @@ The UI subscribes to real-time updates via Server-Sent Events.
 
 ---
 
-## Error Responses
+## Error responses
 
 ### 401 Unauthorized
 
@@ -448,6 +448,6 @@ The UI subscribes to real-time updates via Server-Sent Events.
 
 ---
 
-## Rate Limiting
+## Rate limiting
 
 UI API endpoints are subject to rate limiting. Returns `429 Too Many Requests` when exceeded.

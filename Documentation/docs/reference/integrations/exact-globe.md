@@ -15,9 +15,9 @@ Globe+ uses Windows/NTLM authentication. When you deploy in IIS, setting the App
 
 The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request carries its environment configuration. That is how data ends up coming from the correct database and server.
 
-## Configuration Requirements
+## Configuration requirements
 
-### Environment Headers
+### Environment headers
 
 All requests to Globe+ endpoints require two critical headers that are automatically added based on the environment:
 
@@ -28,7 +28,7 @@ All requests to Globe+ endpoints require two critical headers that are automatic
 
 These headers are configured in the environment settings and automatically injected into proxy requests.
 
-### Environment Settings
+### Environment settings
 
 Each environment needs to be configured in its settings:
 
@@ -44,9 +44,9 @@ Each environment needs to be configured in its settings:
 }
 ```
 
-## Available Globe+ Endpoints
+## Available Globe+ endpoints
 
-### Proxy Endpoints
+### Proxy endpoints
 
 Each Globe+ service you want to expose gets a proxy endpoint definition. The endpoint URL points at the internal Globe+ REST service, and the environment headers above route it to the right database:
 
@@ -58,11 +58,11 @@ Each Globe+ service you want to expose gets a proxy endpoint definition. The end
 }
 ```
 
-### Composite Endpoints
+### Composite endpoints
 
 These endpoints handle complex operations that require multiple related transactions:
 
-#### Sales Order Creation
+#### Sales order creation
 
 ```http
 POST /api/{env}/composite/SalesOrder
@@ -93,7 +93,7 @@ This composite endpoint:
 2. Creates the sales order header using the same key
 3. Returns the complete order information
 
-#### Financial Entry Creation
+#### Financial entry creation
 
 ```http
 POST /api/{env}/composite/FinancialEntry
@@ -132,7 +132,7 @@ The proxy endpoints handle Globe+ authentication transparently:
 2. The service account running Portway needs Globe+ access
 3. Individual API tokens control access to specific endpoints
 
-## Error Handling
+## Error handling
 
 Globe+ specific error responses are preserved and forwarded:
 
@@ -150,7 +150,7 @@ Globe+ specific error responses are preserved and forwarded:
 }
 ```
 
-## URL Rewriting
+## URL rewriting
 
 Portway automatically rewrites Globe+ URLs in responses to maintain proxy routing:
 
@@ -159,9 +159,9 @@ Portway automatically rewrites Globe+ URLs in responses to maintain proxy routin
 
 This ensures that related links in responses continue to work through the proxy.
 
-## Transaction Management
+## Transaction management
 
-### TransactionKey Handling
+### TransactionKey handling
 
 Composite endpoints manage TransactionKey automatically:
 
@@ -169,7 +169,7 @@ Composite endpoints manage TransactionKey automatically:
 2. The key is applied to all related records
 3. Globe+ processes the records as a single unit
 
-### Atomic Operations
+### Atomic operations
 
 Composite endpoints ensure atomicity:
 - The operation completes only when every step succeeds

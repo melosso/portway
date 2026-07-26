@@ -15,7 +15,7 @@ Authorization: Bearer your_token_here
 
 Requests without a valid token receive `401 Unauthorized`. The only unauthenticated endpoint is `/health/live`.
 
-## Token Properties
+## Token properties
 
 | Property | Description | Default |
 |----------|-------------|---------|
@@ -31,7 +31,7 @@ Requests without a valid token receive `401 Unauthorized`. The only unauthentica
 
 Tokens are created and managed in the [Web UI](/guide/webui) under **Tokens**.
 
-## Scope Patterns
+## Scope patterns
 
 ### Endpoint scopes (`allowedScopes`)
 
@@ -54,7 +54,7 @@ Tokens are created and managed in the [Web UI](/guide/webui) under **Tokens**.
 | `dev,test` | Named environments (comma-separated) |
 | `dev*` | All environments matching the prefix |
 
-## Authentication Flow
+## Authentication flow
 
 ```mermaid
 sequenceDiagram
@@ -77,7 +77,7 @@ sequenceDiagram
     end
 ```
 
-## Validation Process
+## Validation process
 
 When a request arrives, Portway:
 
@@ -88,7 +88,7 @@ When a request arrives, Portway:
 5. Validates endpoint scope against `allowedScopes`
 6. Validates environment scope against `allowedEnvironments`
 
-## Error Responses
+## Error responses
 
 | Status | Error | Cause |
 |--------|-------|-------|
@@ -107,7 +107,7 @@ Authorization: Bearer your_token_here
 Authorization: your_token_here
 ```
 
-## Token Lifecycle
+## Token lifecycle
 
 1. **Create**: generate a token with defined scopes and environment restrictions in the Web UI
 2. **Distribute**: share the token value securely with the service or user
@@ -117,7 +117,7 @@ Authorization: your_token_here
 
 Revocation is permanent. A revoked token cannot be reactivated.
 
-## Related Topics
+## Related topics
 
 - [Web UI guide](/guide/webui): create, revoke, rotate, and audit tokens
 - [Security guide](/guide/security): incident response for compromised tokens

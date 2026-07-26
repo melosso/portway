@@ -15,13 +15,13 @@ On-premise Synergy uses Windows/NTLM authentication. When you deploy in IIS, set
 
 Portway proxies requests to the internal Synergy REST API. This is useful when Synergy is behind a firewall, or when you want to expose only a subset of its API surface through a controlled gateway.
 
-## Configuration Requirements
+## Configuration requirements
 
-### Environment Headers
+### Environment headers
 
 Synergy Enterprise uses standard HTTP authentication. Unlike Globe+, it needs no special environment headers. Authentication typically runs through **Windows Authentication**, since Synergy environments are domain-integrated. The installation instructions of Exact Synergy Enterprise cover that setup.
 
-### Environment Settings
+### Environment settings
 
 Each environment needs to be configured in its settings:
 
@@ -35,13 +35,13 @@ Each environment needs to be configured in its settings:
 }
 ```
 
-## Available Synergy Endpoints
+## Available Synergy endpoints
 
-### Proxy Endpoints
+### Proxy endpoints
 
 You can selectively configure which Synergy endpoints to expose through proxy endpoints:
 
-#### Accounts (Selective Exposure)
+#### Accounts (selective exposure)
 
 ```json
 {
@@ -52,11 +52,11 @@ You can selectively configure which Synergy endpoints to expose through proxy en
 }
 ```
 
-### Composite Endpoints
+### Composite endpoints
 
 These endpoints handle complex operations that require multiple related Synergy API calls:
 
-#### Project Creation with Resources
+#### Project creation with resources
 
 ```http
 POST /api/Synergy/composite/ProjectSetup
@@ -89,7 +89,7 @@ This composite endpoint:
 2. Creates associated project WBS elements
 3. Links WBS elements to the project with proper hierarchy
 
-#### Binary Data Upload
+#### Binary data upload
 
 ```http
 POST /api/Synergy/composite/BinaryUpload
@@ -114,7 +114,7 @@ This composite endpoint:
 2. Creates associated document record
 3. Returns the MessageID for future reference
 
-## Error Handling
+## Error handling
 
 Synergy specific error responses are preserved and forwarded:
 
@@ -133,7 +133,7 @@ Synergy specific error responses are preserved and forwarded:
 }
 ```
 
-## URL Rewriting
+## URL rewriting
 
 Portway automatically rewrites Synergy URLs in responses to maintain proxy routing:
 

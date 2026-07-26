@@ -9,13 +9,13 @@ Once an endpoint returns more rows than fit comfortably in one response, sorting
 
 ## Sorting with $orderby
 
-### Basic Syntax
+### Basic syntax
 
 ```
 $orderby=field [asc|desc]
 ```
 
-### Single Field Sorting
+### Single field sorting
 
 ```http
 # Ascending (default)
@@ -28,7 +28,7 @@ GET /api/prod/Products?$orderby=Name asc
 GET /api/prod/Products?$orderby=Price desc
 ```
 
-### Multiple Field Sorting
+### Multiple field sorting
 
 ```http
 # Primary and secondary sort
@@ -41,7 +41,7 @@ GET /api/prod/Products?$orderby=Category asc,Price desc,Name asc
 GET /api/prod/Orders?$orderby=CustomerCode,OrderDate desc,Priority asc
 ```
 
-### Sorting Rules
+### Sorting rules
 
 1. Default order is ascending if not specified
 2. Fields are sorted in the order listed
@@ -50,7 +50,7 @@ GET /api/prod/Orders?$orderby=CustomerCode,OrderDate desc,Priority asc
 
 ## Pagination with $top and $skip
 
-### $top - Limit Results
+### $top - limit results
 
 Controls the maximum number of items returned:
 
@@ -62,7 +62,7 @@ GET /api/prod/Products?$top=10
 GET /api/prod/Products?$top=50
 ```
 
-### $skip - Skip Results
+### $skip - skip results
 
 Skips a specified number of items:
 
@@ -74,7 +74,7 @@ GET /api/prod/Products?$skip=20
 GET /api/prod/Products?$skip=100
 ```
 
-### Combined Pagination
+### Combined pagination
 
 ```http
 # Page 1 (items 1-10)
@@ -87,9 +87,9 @@ GET /api/prod/Products?$top=10&$skip=10
 GET /api/prod/Products?$top=10&$skip=20
 ```
 
-## Pagination Patterns
+## Pagination patterns
 
-### Standard Pagination
+### Standard pagination
 
 Implement page-based navigation:
 
@@ -110,7 +110,7 @@ $skip = (pageNumber - 1) * pageSize
 $top = pageSize
 ```
 
-### Offset-Based Pagination
+### Offset-Based pagination
 
 Direct control over starting position:
 
@@ -122,7 +122,7 @@ GET /api/prod/Products?$top=25&$skip=50
 GET /api/prod/Products?$top=50&$skip=100
 ```
 
-### Cursor-Based Pagination
+### Cursor-Based pagination
 
 Use the NextLink provided in responses:
 
@@ -143,9 +143,9 @@ GET /api/prod/Products?$top=10&$orderby=ItemCode
 GET /api/prod/Products?$top=10&$skip=10&$orderby=ItemCode
 ```
 
-## Combining Sort and Pagination
+## Combining sort and pagination
 
-### Best Practices
+### Best practices
 
 Always include $orderby when using pagination:
 
@@ -157,7 +157,7 @@ GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=0
 GET /api/prod/Products?$top=20&$skip=0
 ```
 
-### Common Patterns
+### Common patterns
 
 1. **Recent Items First**
 ```http
@@ -179,9 +179,9 @@ GET /api/prod/Tasks?$orderby=Priority asc,DueDate asc&$top=20
 GET /api/prod/Products?$orderby=Category,SubCategory,Name&$top=100&$skip=0
 ```
 
-## Performance Optimization
+## Performance optimization
 
-### Indexed Field Sorting
+### Indexed field sorting
 
 Sort on indexed fields for better performance:
 
@@ -196,7 +196,7 @@ GET /api/prod/Orders?$orderby=OrderDate desc&$top=20
 GET /api/prod/Products?$orderby=Description&$top=50
 ```
 
-### Efficient Pagination
+### Efficient pagination
 
 1. **Use Reasonable Page Sizes**
 ```http
@@ -219,7 +219,7 @@ GET /api/prod/Products?$top=50&$skip=100
 GET /api/prod/Products?$top=50&$skip=10000
 ```
 
-### Sorting Performance Tips
+### Sorting performance tips
 
 1. **Single Field vs Multiple Fields**
 ```http
@@ -239,9 +239,9 @@ GET /api/prod/Orders?$orderby=OrderDate desc
 GET /api/prod/Orders?$orderby=OrderDate asc
 ```
 
-## Complete Examples
+## Complete examples
 
-### Product Catalog with Categories
+### Product catalog with categories
 
 ```http
 # Products by category, then price
@@ -254,7 +254,7 @@ GET /api/prod/Products?$filter=Category eq 'Electronics'&$orderby=Price desc&$to
 GET /api/prod/Products?$select=Category,Name,Price&$orderby=Category,Price desc&$top=5
 ```
 
-### Customer Order History
+### Customer order history
 
 ```http
 # Recent orders for a customer
@@ -267,7 +267,7 @@ GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=TotalAmount desc
 GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$select=OrderNumber,OrderDate,Status,TotalAmount&$top=20
 ```
 
-### Inventory Management
+### Inventory management
 
 ```http
 # Low stock items
@@ -280,9 +280,9 @@ GET /api/prod/Products?$orderby=WarehouseLocation,Bin&$select=ItemCode,Name,Ware
 GET /api/prod/StockMovements?$orderby=MovementDate desc&$top=100
 ```
 
-## Error Handling
+## Error handling
 
-### Invalid $orderby Fields
+### Invalid $orderby fields
 
 ```http
 # Error: Invalid field name
@@ -300,7 +300,7 @@ Response: 400 Bad Request
 }
 ```
 
-### Pagination Errors
+### Pagination errors
 
 ```http
 # Error: Negative $skip value
@@ -318,9 +318,9 @@ Response: 400 Bad Request
 }
 ```
 
-## Response Format
+## Response format
 
-### Standard Pagination Response
+### Standard pagination response
 
 ```json
 {
@@ -345,7 +345,7 @@ Response: 400 Bad Request
 }
 ```
 
-### Last Page Response
+### Last page response
 
 ```json
 {
@@ -358,9 +358,9 @@ Response: 400 Bad Request
 }
 ```
 
-## Advanced Techniques
+## Advanced techniques
 
-### Stable Sorting
+### Stable sorting
 
 Ensure consistent pagination by including a unique identifier:
 
@@ -372,7 +372,7 @@ GET /api/prod/Products?$orderby=Price desc,ItemCode&$top=20&$skip=0
 GET /api/prod/Products?$orderby=Price desc&$top=20&$skip=0
 ```
 
-### Keyset Pagination
+### Keyset pagination
 
 More efficient for large datasets:
 
@@ -384,7 +384,7 @@ GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=10000
 GET /api/prod/Products?$filter=ItemCode gt 'PROD10000'&$orderby=ItemCode&$top=20
 ```
 
-### Dynamic Sorting
+### Dynamic sorting
 
 Build orderby clauses programmatically:
 
@@ -406,7 +406,7 @@ const orderBy = buildOrderBy(sortFields);
 // Result: "Category,Price desc,Name"
 ```
 
-### Sorting with Nulls
+### Sorting with nulls
 
 Handle null values in sorting:
 
@@ -420,7 +420,7 @@ GET /api/prod/Products?$orderby=DiscountPrice desc
 
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
 1. **Inconsistent Pagination Results**
    - Always include $orderby for consistent pagination
@@ -436,7 +436,7 @@ GET /api/prod/Products?$orderby=DiscountPrice desc
    - Verify sort direction (asc/desc)
    - Consider data type effects on sorting
 
-### Performance Monitoring
+### Performance monitoring
 
 ```http
 # Add timing headers to monitor performance

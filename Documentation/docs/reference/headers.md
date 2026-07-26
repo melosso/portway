@@ -7,9 +7,9 @@ description: "Headers carry a surprising amount of Portway's conversation with y
 
 Headers carry a surprising amount of Portway's conversation with your clients: authentication, content negotiation, request tracking, and service configuration all travel there. This page collects every header Portway reads or writes, so you have one place to look things up.
 
-## Required Headers
+## Required headers
 
-### Authentication Header
+### Authentication header
 
 Every API request needs to include authentication:
 
@@ -19,7 +19,7 @@ Authorization: Bearer your_token_here
 
 This applies to every endpoint except `/health/live`, so it is worth confirming your client attaches the token on each call. Requests that arrive without it receive a `401 Unauthorized` response.
 
-### Content Type Headers
+### Content type headers
 
 For requests with a body (POST, PUT, PATCH):
 
@@ -28,9 +28,9 @@ Content-Type: application/json
 Accept: application/json
 ```
 
-## Request Headers
+## Request headers
 
-### Standard Headers
+### Standard headers
 
 | Header | Required | Description | Example |
 |--------|----------|-------------|---------|
@@ -40,7 +40,7 @@ Accept: application/json
 | `User-Agent` | No | Client application identifier | `MyApp/1.0` |
 | `Accept-Encoding` | No | Supported compression | `gzip, deflate` |
 
-### Custom Headers
+### Custom headers
 
 | Header | Purpose | Example |
 |--------|---------|---------|
@@ -49,7 +49,7 @@ Accept: application/json
 | `X-Debug-Mode` | Enable debug information | `true` |
 | `X-Forward-Host` | Original host in proxy | `api.internal` |
 
-### Environment Headers
+### Environment headers
 
 Internal headers can be automatically added, based on the environment configuration. This means that `settings.json` in the `/environments/{env}` folder can append custom headers. For example:
 
@@ -71,9 +71,9 @@ Example from environment settings:
 }
 ```
 
-## Response Headers
+## Response headers
 
-### Standard Response Headers
+### Standard response headers
 
 | Header | Description | Example |
 |--------|-------------|---------|
@@ -82,7 +82,7 @@ Example from environment settings:
 | `Date` | Response timestamp | `Wed, 21 Oct 2023 07:28:00 GMT` |
 | `Cache-Control` | Caching directives | `private, max-age=300` |
 
-### Security Headers
+### Security headers
 
 Portway automatically adds security headers to all responses:
 
@@ -94,7 +94,7 @@ Portway automatically adds security headers to all responses:
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Control referrer info |
 | `Permissions-Policy` | `geolocation=(), camera=(), microphone=()` | Restrict features |
 
-### Rate Limiting Headers
+### Rate limiting headers
 
 | Header | Description | Example |
 |--------|-------------|---------|
@@ -105,9 +105,9 @@ Portway automatically adds security headers to all responses:
 | `X-RateLimit-Used` | Requests consumed in the current window | `5` |
 | `Retry-After` | Seconds until retry allowed, only on `429` responses | `60` |
 
-## Content Negotiation
+## Content negotiation
 
-### Request Headers
+### Request headers
 
 ```http
 Accept: application/json
@@ -115,7 +115,7 @@ Accept-Language: en-US
 Accept-Encoding: gzip, deflate
 ```
 
-### Response Headers
+### Response headers
 
 ```http
 Content-Type: application/json; charset=utf-8
@@ -138,7 +138,7 @@ Request with compression preference:
 Accept-Encoding: br, gzip, deflate
 ```
 
-## CORS Headers
+## CORS headers
 
 For cross-origin requests:
 
@@ -149,7 +149,7 @@ For cross-origin requests:
 | `Access-Control-Allow-Headers` | Allowed request headers | `Authorization, Content-Type` |
 | `Access-Control-Max-Age` | Preflight cache duration | `86400` |
 
-## Proxy Headers
+## Proxy headers
 
 When Portway acts as a reverse proxy:
 
@@ -160,7 +160,7 @@ When Portway acts as a reverse proxy:
 | `X-Forwarded-Host` | Original host | `api.company.com` |
 | `X-Real-IP` | Actual client IP | `192.168.1.1` |
 
-## Caching Headers
+## Caching headers
 
 ### ETag revalidation
 
@@ -182,14 +182,14 @@ HTTP/1.1 304 Not Modified
 
 Because the tag is derived from the actual response content, any change in the underlying data produces a new tag and a fresh `200` with the full body. Polling clients benefit the most: a poll loop that sends `If-None-Match` costs almost nothing while nothing changes.
 
-### Response Cache Control
+### Response cache control
 
 ```http
 Cache-Control: private, max-age=300
 ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
 ```
 
-### Cache Control Directives
+### Cache control directives
 
 | Directive | Description | Example |
 |-----------|-------------|---------|
@@ -199,7 +199,7 @@ ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
 | `no-store` | Don't cache at all | `no-store` |
 | `max-age` | Cache lifetime in seconds | `max-age=3600` |
 
-## Header Size Limits
+## Header size limits
 
 | Limit Type | Value | Description |
 |------------|-------|-------------|
@@ -209,17 +209,17 @@ ETag: "33a64df551425fcc55e4d42a148795d9f25f89d4"
 
 Keep header values concise and use standard headers where possible. Avoid including sensitive data (passwords, connection strings, PII) in headers. Validate and sanitize custom header values. Disable debug headers in production.
 
-## Security Considerations
+## Security considerations
 
-### Headers to Avoid
+### Headers to avoid
 
 :::warning
 Never include passwords, secrets, PII, connection strings, or internal system paths in headers. Authorization headers are logged as `[REDACTED]` by Portway's traffic logging, but headers sent to upstream services are not automatically masked.
 :::
 
-## Common Header Issues
+## Common header issues
 
-### Missing Headers
+### Missing headers
 
 ```http
 # Error: Missing Authorization
@@ -233,7 +233,7 @@ Response: 401 Unauthorized
 }
 ```
 
-### Invalid Header Values
+### Invalid header values
 
 ```http
 # Error: Invalid content type
@@ -245,7 +245,7 @@ Response: 415 Unsupported Media Type
 }
 ```
 
-### Header Conflicts
+### Header conflicts
 
 ```http
 # Error: Conflicting cache directives
@@ -257,7 +257,7 @@ Response: 400 Bad Request
 }
 ```
 
-## Testing Headers
+## Testing headers
 
 ### Using cURL
 
@@ -282,7 +282,7 @@ curl -X POST \
 3. Set up header presets for common requests
 4. Use Postman collections for header management
 
-## Related Topics
+## Related topics
 
 - [Authentication](/reference/api-auth) - Token and authorization headers
 - [API Overview](/reference/) - General API reference

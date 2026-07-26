@@ -13,7 +13,7 @@ The integration uses Portway's proxy endpoints to forward requests to the AFAS R
 
 ## Configuration
 
-### Environment Headers
+### Environment headers
 
 Create an app connector in AFAS under the app connector settings and copy its token. The token is an XML fragment that gets base64-encoded into the header value:
 
@@ -32,7 +32,7 @@ The token lives in the environment, not the endpoint. A separate environment can
 AFAS puts its token in the `Authorization` header, the same header Portway's bearer tokens use. Portway forwards the client's `Authorization` header upstream, so the two collide. Use the same solution as the [Teable integration](/reference/integrations/teable): give the environment a custom `X-API-Key` authentication method with `OverrideGlobalToken` set to `true`. Clients then send no `Authorization` header of their own.
 ::: 
 
-### Proxy Endpoints
+### Proxy endpoints
 
 Each connector gets its own endpoint file. A GetConnector is read-only, so it only needs `GET`:
 

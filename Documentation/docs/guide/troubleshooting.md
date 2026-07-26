@@ -7,17 +7,15 @@ description: "A practical guide for diagnosing and resolving issues with Portway
 
 When something goes wrong with your gateway, the fastest path to a fix is usually understanding what the system is trying to tell you. This guide walks you through the most common issues you will encounter in production, explains what is actually happening behind each error, and shows you where to look for answers. Rather than just listing fixes, the goal is to help you build intuition about the underlying causes so recurring problems become rare.
 
-[[toc]]
-
-## Common Issues
+## Common issues
 
 The issues below represent the most frequent problems reported from production deployments. Each section explains how the problem shows up, why it tends to happen, and how to resolve it.
 
-### Authentication Failures
+### Authentication failures
 
 Authentication issues are the most common problems reported by API consumers, and fortunately they are usually quick to diagnose. They come in two flavors: requests that cannot be verified at all, and requests with credentials that lack the right permissions.
 
-#### Missing or Invalid Tokens
+#### Missing or invalid tokens
 
 When users receive `401 Unauthorized` responses, or you spot "Authentication required" and "Invalid or expired token" messages in your logs, the request is arriving without a token the gateway can verify. This usually traces back to a missing Authorization header, an expired or revoked token, or a Bearer header that is formatted incorrectly.
 
@@ -35,7 +33,7 @@ When several users are affected at once, it is worth reviewing the authenticatio
 Tokens are essentially API keys. It is recommended that users store them in environment variables or a dedicated secret management system, and keep them out of version control entirely.
 :::
 
-#### Insufficient Token Permissions
+#### Insufficient token permissions
 
 A `403 Forbidden` response tells a different story: the token is valid, but it is not allowed to do what the request asks. You will see "Access denied to endpoint" or "Access denied to environment" messages in the logs. The token may lack the scope for the requested endpoint, or the user may be reaching for an environment their token does not cover.
 
@@ -66,7 +64,7 @@ Then compare that against what the endpoint configuration expects:
 
 If the user legitimately needs the access, editing the token in the [Web UI](/guide/webui) under **Tokens** to add the missing scopes or environments is all it takes. While you are there, it is a good moment to confirm the endpoint's access rules still match your business requirements, and to note somewhere which scopes different integrations actually need. That documentation pays for itself the next time this question comes up.
 
-### Rate Limiting Issues
+### Rate limiting issues
 
 Rate limiting protects the gateway from being overwhelmed. When users report `429 Too Many Requests` responses, or you find "Rate limit exceeded" and "IP blocked" messages in the logs, someone is sending more requests than the configured thresholds allow. Sometimes that is legitimate high-volume usage; sometimes it is a development team hammering the API during integration testing, or an automated script with an aggressive retry loop.
 
@@ -104,22 +102,29 @@ grep -h "Rate limit" ./log/*.log | tail -n 20
 
 If the pattern is isolated to one user or IP, a conversation about retry logic with exponential backoff usually fixes it at the source. If legitimate usage has simply outgrown the thresholds, raising the limits in configuration is the right long-term answer.
 
-For immediate relief during an incident, restarting the application pool resets all counters:
+For immediate relief during an incident, restarting Portway resets all counters:
 
-```powershell
-# Restart IIS Application Pool
+::: code-group
+
+```bash [Docker]
+docker compose restart portway
+```
+
+```powershell [IIS]
 Restart-WebAppPool -Name "PortwayAppPool"
 ```
+
+:::
 
 ::: warning A note on restarts
 Rate limiting uses in-memory token buckets, so restarting the application resets every counter to zero. That is helpful in an emergency, but it is not a long-term solution if users are consistently hitting limits. Follow up by addressing the underlying request pattern or adjusting the configuration.
 :::
 
-### Connection Issues
+### Connection issues
 
 Connection problems can be frustrating because they often indicate issues with underlying services that your gateway depends on. Let's walk through the two main types you'll encounter.
 
-#### When Your Database Won't Connect
+#### When your database won't connect
 
 Database connection failures will typically show up as `500 Internal Server Error` responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL database or when the connection is dropped unexpectedly.
 
@@ -170,7 +175,7 @@ If basic connectivity works but you're still having issues, the problem might be
 }
 ```
 
-#### When Proxy Endpoints Stop Responding
+#### When proxy endpoints stop responding
 
 Proxy endpoints act as intermediaries between your API consumers and your backend services. When these fail, you'll typically see timeout errors, "Error processing endpoint" messages, or `503 Service Unavailable` responses. This is pretty common with legacy applications, where high availability of an API isn't guaranteed.
 
@@ -216,11 +221,11 @@ cat ./environments/500/settings.json | jq .
 
 :::
 
-### Health Check Failures
+### Health check failures
 
 The gateway includes built-in health monitoring to help you identify problems before they impact your users. When health checks fail, it's usually indicating a resource constraint or connectivity issue that needs immediate attention.
 
-#### When You're Running Out of Disk Space
+#### When you're running out of disk space
 
 One of the most critical health issues you can encounter is low disk space. When the system detects critically low storage, health checks will show `"Unhealthy"` status with warnings about remaining disk space. This can lead to log write failures and eventually cause the entire application to stop functioning.
 
@@ -272,7 +277,7 @@ For ongoing space management, configure automatic log rotation to prevent this p
 }
 ```
 
-#### When Your Backend Services Aren't Responding
+#### When your backend services aren't responding
 
 Sometimes health checks will report that "one or more proxy services are not responding properly." This indicates that while your gateway is running fine, some of the backend services it depends on are having problems.
 
@@ -319,11 +324,11 @@ grep "endpoint: Products" ./log/*.log | grep "ERROR"
 
 :::
 
-### Performance Issues
+### Performance issues
 
 Performance problems can be subtle at first but significantly impact user experience as they worsen. The gateway includes monitoring capabilities to help you identify and resolve these issues before they become critical.
 
-#### When Everything Feels Slow
+#### When everything feels slow
 
 If you're experiencing high latency on API calls, timeout errors, or seeing duration measurements over `1000ms` in your logs, you're dealing with performance degradation. This can stem from various causes, including database bottlenecks, network issues, or resource constraints.
 
@@ -361,15 +366,15 @@ Often, performance issues are related to database connection management. If your
 }
 ```
 
-## Diagnostic Tools
+## Diagnostic tools
 
 Effective troubleshooting is mostly about knowing where to look. The gateway generates extensive diagnostic data, and once you know which source answers which kind of question, most investigations become short.
 
-### Understanding Your Log Files
+### Understanding your log files
 
 The gateway creates several different types of logs, each serving a specific purpose in helping you understand what's happening in your system. Knowing which log to check for which type of problem will save you significant time during troubleshooting.
 
-#### Where to Find Your Logs
+#### Where to find your logs
 
 Your logs are organized in a logical structure, with different types of information stored in different locations:
 
@@ -380,7 +385,7 @@ Your logs are organized in a logical structure, with different types of informat
 | Traffic Logs (SQLite) | `./log/traffic_logs.db` | Queryable database of all traffic for analysis |
 | Auth Database | `./auth.db` | Token authentication data and user information |
 
-#### Handy Commands for Log Analysis
+#### Handy commands for log analysis
 
 When you're troubleshooting an active issue, these commands will help you quickly find relevant information.
 
@@ -441,11 +446,11 @@ tail -n 50 -f "./log/portwayapi-$(date +%Y%m%d).log"
 
 :::
 
-### Database Diagnostics
+### Database diagnostics
 
 The gateway uses SQLite databases to store authentication and traffic data. These databases contain valuable information for troubleshooting authentication issues and analyzing usage patterns.
 
-#### Checking Authentication Status
+#### Checking authentication status
 
 When users report authentication problems, start by verifying their token status in the database:
 
@@ -459,7 +464,7 @@ ORDER BY CreatedAt DESC;
 
 This query shows you all active tokens, when they were created, when they expire, and what permissions they have.
 
-#### Understanding Traffic Patterns and Errors
+#### Understanding traffic patterns and errors
 
 The traffic logs database is particularly useful for identifying patterns in errors or performance issues:
 
@@ -478,7 +483,7 @@ ORDER BY ErrorRate DESC;
 
 This query helps you identify which endpoints are experiencing the highest error rates, giving you a clear starting point for investigation.
 
-### Network and Connectivity Diagnostics
+### Network and connectivity diagnostics
 
 Sometimes the issue isn't with the gateway itself, but with the network connections it depends on. These commands help you verify connectivity to essential services:
 
@@ -512,11 +517,11 @@ ss -tlnp | grep -E ':(80|443|8080)\b'
 
 These tests will quickly tell you if the problem is a basic connectivity issue versus something more complex within the application itself.
 
-## Understanding Error Messages
+## Understanding error messages
 
 When troubleshooting issues, the specific error codes and messages you encounter provide valuable clues about what's going wrong. Rather than just memorizing these codes, understanding what they actually mean will help you diagnose problems more effectively.
 
-### Common Error Codes and What They Really Mean
+### Common error codes and what they really mean
 
 | Status Code | Error Message | What's Actually Happening | How to Fix It |
 |------------|---------------|---------------------------|---------------|
@@ -526,9 +531,9 @@ When troubleshooting issues, the specific error codes and messages you encounter
 | `404` | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
 | `429` | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
 | `500` | "Database operation failed" | The gateway can't connect to or query the SQL Server database | Check your connection string and verify SQL Server is accessible |
-| Blank | No content/blank page | Usually indicates TLS/SSL certificate issues | Bind a proper SSL certificate to your website in IIS |
+| Blank | No content/blank page | Usually indicates TLS/SSL certificate issues | Bind a certificate in IIS, or check the TLS termination in front of the container |
 
-### Recognizing Log Message Patterns
+### Recognizing log message patterns
 
 The gateway uses a familiar logging pattern to help you quickly identify different types of events:
 
@@ -541,36 +546,52 @@ The gateway uses a familiar logging pattern to help you quickly identify differe
 
 These patterns help you quickly scan logs and identify the types of issues you're dealing with.
 
-## Emergency Procedures
+## Emergency procedures
 
 Sometimes things go seriously wrong and you need to get the system back online quickly. These procedures are for emergency situations when normal troubleshooting isn't sufficient.
 
-### When the Application Won't Start at All
+### Application not starting
 
-If your gateway won't start, the problem is usually at the infrastructure level rather than within the application code itself. Start with the most basic diagnostics:
+If your gateway won't start, the problem is usually at the infrastructure level rather than within the application code itself. Start by asking the host what it saw:
 
-First, check the Windows Event Viewer for any critical startup errors:
-```powershell
-Get-EventLog -LogName Application -Source "IIS*" -Newest 20
+::: code-group
+
+```bash [Docker]
+# Container state and exit code
+docker compose ps
+
+# Startup output, including anything written before logging began
+docker compose logs --tail=100 portway
 ```
 
-Next, verify that IIS and your application pool are in the correct state:
-```powershell
-# Check application pool status
-Get-WebAppPoolState -Name "PortwayAppPool"
+```powershell [IIS]
+# Critical startup errors from the Windows Event Viewer
+Get-EventLog -LogName Application -Source "IIS*" -Newest 20
 
-# Restart application pool
+# Application pool state
+Get-WebAppPoolState -Name "PortwayAppPool"
 Restart-WebAppPool -Name "PortwayAppPool"
 ```
 
-If IIS appears to be working but the application still won't start, check the application logs for startup errors:
-```powershell
+:::
+
+If the host looks healthy but the application still won't start, check the application log for startup errors:
+
+::: code-group
+
+```bash [Docker]
+grep -E "Application start|FATAL|ERROR" ./log/portwayapi-*.log | head -50
+```
+
+```powershell [IIS]
 Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" |
     Select-String -Pattern "Application start|FATAL|ERROR" |
     Select-Object -First 50
 ```
 
-### Complete System Reset (Use with Extreme Caution)
+:::
+
+### Complete system reset (use with extreme caution)
 
 ::: danger Emergency Only
 Only perform these steps when you've exhausted other options and after creating proper backups. This procedure will reset your gateway to a clean state, which may resolve persistent issues but will also clear all temporary data.
@@ -578,38 +599,52 @@ Only perform these steps when you've exhausted other options and after creating 
 
 Before doing anything drastic, create a complete backup of your critical configuration:
 
-```powershell
-# Create backup directory
+::: code-group
+
+```bash [Docker]
+backup="./backup_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$backup"
+cp -r ./tokens ./environments ./endpoints ./log "$backup"/
+docker compose cp portway:/app/auth.db "$backup"/
+```
+
+```powershell [IIS]
 $backupDir = ".\backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 New-Item -ItemType Directory -Path $backupDir
 
-# Copy important files
 Copy-Item ".\tokens\*" "$backupDir\tokens\" -Recurse
 Copy-Item ".\auth.db" "$backupDir\"
 Copy-Item ".\environments\*" "$backupDir\environments\" -Recurse
 Copy-Item ".\endpoints\*" "$backupDir\endpoints\" -Recurse
 ```
 
+:::
+
 Once you have a backup, you can reset the application state:
 
-```powershell
-# Stop IIS
+::: code-group
+
+```bash [Docker]
+docker compose stop portway
+rm -rf ./log/*
+docker compose start portway
+```
+
+```powershell [IIS]
 iisreset /stop
-
-# Clear logs (this removes diagnostic history)
 Remove-Item ".\log\*" -Recurse -Force
-
-# Start IIS
 iisreset /start
 ```
 
+:::
+
 After performing a reset, monitor the application logs carefully to ensure it starts up properly and test a few basic endpoints to verify functionality.
 
-## Keeping It Healthy
+## Keeping it healthy
 
 Prevention is always better than cure when it comes to gateway operations. By following these practices, you can avoid many of the common issues described in this guide and catch problems before they impact your users.
 
-### Proactive Monitoring and Maintenance
+### Proactive monitoring and maintenance
 
 Regular maintenance doesn't have to be complicated, but it does benefit from consistency. Here are the key activities that will keep your gateway running smoothly:
 
@@ -623,7 +658,7 @@ Regular maintenance doesn't have to be complicated, but it does benefit from con
 
 - **Rotate your tokens periodically.** Authentication tokens deserve the same care as passwords: change them regularly and immediately revoke any tokens that are no longer needed. This reduces your security exposure and ensures that only current, authorized integrations have access to your gateway.
 
-### Security Considerations
+### Security considerations
 
 Security isn't just about preventing attacks. It's also about maintaining clean diagnostic information and ensuring you can trust your troubleshooting data.
 
@@ -633,7 +668,7 @@ Security isn't just about preventing attacks. It's also about maintaining clean 
 
 - **Secure your diagnostic tools.** The same database queries and log analysis tools that help you troubleshoot can also reveal sensitive information. It is a good idea to restrict access to logs, databases, and diagnostic endpoints to authorized personnel only.
 
-## Where to Go From Here
+## Where to go from here
 
 This troubleshooting guide covers the most common issues you'll encounter, but every environment is unique. As you become more familiar with your specific gateway configuration and usage patterns, you'll develop intuition about where to look first when problems arise.
 

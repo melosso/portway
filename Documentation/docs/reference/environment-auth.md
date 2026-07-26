@@ -9,14 +9,14 @@ Sometimes the global token system isn't quite the right fit for one environment:
 
 If multiple methods are defined, a request is authorised if it satisfies **any** of them.
 
-## Configuration Structure
+## Configuration structure
 
 The authentication settings are defined in the `Authentication` object within `settings.json`.
 
-### File Location
+### File location
 `/environments/[EnvironmentName]/settings.json`
 
-### Basic Structure
+### Basic structure
 
 ```json
 {
@@ -35,7 +35,7 @@ The authentication settings are defined in the `Authentication` object within `s
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------
@@ -43,7 +43,7 @@ The authentication settings are defined in the `Authentication` object within `s
 | `OverrideGlobalToken` | boolean | `false` | If `true`, global Portway tokens are ignored for this environment. |
 | `Methods` | array | `[]` | List of authentication methods to check. |
 
-## Supported Authentication Methods
+## Supported authentication methods
 
 ### 1. ApiKey
 Matches a static value against a header, query parameter, or cookie.
@@ -72,7 +72,7 @@ Matches a static token in the `Authorization: Bearer <token>` header.
 | `Type`| `Bearer` |
 | `Value` | The expected static token (auto. encrypted). |
 
-### 4. JWT (JSON Web Token)
+### 4. JWT (JSON web token)
 Performs full JWT validation including signature, issuer, and audience.
 
 | Property | Description |
@@ -97,7 +97,7 @@ Validates a request signature generated using a shared secret.
 Portway's HMAC Implementation expects `X-Signature`and `X-Timestamp` headers. The signature is calculated as `HMACSHA256(Secret, Method + Path + Timestamp + Body)`.
 :::
 
-## Automatic Encryption
+## Automatic encryption
 
 When you save a `settings.json` file with plaintext secrets, Portway detects them on next startup and encrypts them using RSA/AES hybrid encryption.
 
@@ -108,7 +108,7 @@ The following fields are automatically encrypted:
 
 Encrypted values are prefixed with `PWENC:` and are safe to store on disk.
 
-## Global Token Fallback
+## Global token fallback
 
 By default (`OverrideGlobalToken: false`), Portway uses the following logic:
 1. Try environment-specific authentication.
@@ -118,11 +118,11 @@ By default (`OverrideGlobalToken: false`), Portway uses the following logic:
 
 If `OverrideGlobalToken` is set to `true`, only requests that satisfy the environment-specific rules are authorised; global tokens are rejected for that environment.
 
-## Security Notes
+## Security notes
 
 Use cryptographically strong keys for ApiKey and HMAC methods. Rotate credentials periodically. For OAuth2 provider integrations, prefer JWT for full signature validation. Authentication credentials sent via headers are only secure over HTTPS.
 
-## Related Topics
+## Related topics
 
 - [Environment Settings](/reference/environment-settings) - General environment configuration
 - [API Authentication](/reference/api-auth) - Standard Portway token system

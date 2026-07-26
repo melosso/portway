@@ -7,9 +7,9 @@ description: "Health check endpoints, response format, component checks, and loa
 
 Whether it's a load balancer deciding where to send traffic or you checking in on a quiet Sunday evening, something will regularly ask Portway how it's doing. These endpoints provide the answer at three levels of detail.
 
-## Available Endpoints
+## Available endpoints
 
-### Basic Health Check
+### Basic health check
 
 ```http
 GET /health
@@ -31,7 +31,7 @@ Returns basic health status:
 - `Degraded` - Some issues detected
 - `Unhealthy` - Critical issues found
 
-### Liveness Check
+### Liveness check
 
 ```http
 GET /health/live
@@ -49,7 +49,7 @@ Alive
 - 5-second cache
 - Used by load balancers and Kubernetes
 
-### Detailed Health Check
+### Detailed health check
 
 ```http
 GET /health/details
@@ -110,9 +110,9 @@ Comprehensive health information:
 }
 ```
 
-## Health Check Components
+## Health check components
 
-### Database Check
+### Database check
 
 Verifies SQL database connectivity:
 
@@ -134,7 +134,7 @@ Verifies SQL database connectivity:
 - Response time
 - Authentication status
 
-### Disk Space Check
+### Disk space check
 
 Monitors available storage:
 
@@ -155,7 +155,7 @@ Monitors available storage:
 - Degraded: 5-15% free
 - Unhealthy: < 5% free
 
-### Proxy Endpoints Check
+### Proxy endpoints check
 
 Tests external service connectivity:
 
@@ -183,9 +183,9 @@ Tests external service connectivity:
 - Timeout handling (10 seconds per endpoint)
 - Authentication status checking (a 401 from the upstream counts as reachable)
 
-## Implementation Details
+## Implementation details
 
-### Caching Strategy
+### Caching strategy
 
 Health checks use intelligent caching to prevent overload:
 
@@ -195,14 +195,14 @@ Health checks use intelligent caching to prevent overload:
 | `/health/live` | 5 seconds |
 | `/health/details` | 60 seconds |
 
-### Response Headers
+### Response headers
 
 ```http
 Cache-Control: public, max-age=15
 Expires: Sun, 20 Jan 2024 10:30:15 GMT
 ```
 
-### Error Handling
+### Error handling
 
 Health checks handle failures gracefully:
 
@@ -237,7 +237,7 @@ Health checks handle failures gracefully:
    }
    ```
 
-## Load Balancer Configuration
+## Load balancer configuration
 
 ### IIS ARR
 
@@ -289,9 +289,9 @@ backend portway_api
     server api2 10.0.1.11:5000 check inter 5s
 ```
 
-## Kubernetes Integration
+## Kubernetes integration
 
-### Liveness Probe
+### Liveness probe
 
 ```yaml
 apiVersion: apps/v1
@@ -312,7 +312,7 @@ spec:
           timeoutSeconds: 5
 ```
 
-### Readiness Probe
+### Readiness probe
 
 ```yaml
 readinessProbe:
@@ -327,7 +327,7 @@ readinessProbe:
   timeoutSeconds: 10
 ```
 
-### Startup Probe
+### Startup probe
 
 ```yaml
 startupProbe:
@@ -340,7 +340,7 @@ startupProbe:
 
 ## Troubleshooting
 
-### Common Issues
+### Common issues
 
 1. **Health Check Timeouts**
    ```
@@ -363,7 +363,7 @@ startupProbe:
    Solution: Provide valid authentication token
    ```
 
-### Diagnostic Commands
+### Diagnostic commands
 
 ::: code-group
 
@@ -394,7 +394,7 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health/details | jq
 
 :::
 
-### Log Analysis
+### Log analysis
 
 ```log
 [10:30:00 INF] Health check cache refreshed. Status: Healthy

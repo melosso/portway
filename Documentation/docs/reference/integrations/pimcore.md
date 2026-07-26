@@ -13,7 +13,7 @@ The integration uses a proxy endpoint to forward GraphQL requests to Data Hub. D
 
 ## Configuration
 
-### Data Hub Endpoint
+### Data Hub endpoint
 
 In Pimcore, create a Data Hub configuration and note two things: the endpoint name and the API key. Both go into the proxy endpoint URL:
 

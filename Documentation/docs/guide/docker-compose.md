@@ -5,11 +5,11 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 # Deploying with Docker
 
-Docker Compose is the way most people run Portway, whether that is a laptop, a Home Lab, or a production host. This guide takes you from a first container through to the settings worth having in place before you put it in front of real traffic. Before you begin, make sure [Docker](https://www.docker.com/get-started) is installed and running.
+This guide takes you from a first container through to the settings worth having in place before you put Portway in front of real traffic, whether that is a laptop, a Home Lab, or a production host. Before you begin, make sure [Docker](https://www.docker.com/get-started) is installed and running.
 
 If you would rather host on Windows Server behind IIS, [Deploying on Windows Server](/guide/deployment-windows) covers that path.
 
-## Quick Start
+## Quick start
 
 If you have not started a container yet, [Getting Started](/guide/getting-started) has a minimal `docker-compose.yml` you can copy and run in a couple of minutes. Once it is up, the API is available at `http://localhost:8080`.
 
@@ -17,7 +17,7 @@ The rest of this page picks up from there, covering the settings you are most li
 
 ## Configuration
 
-### Environment Variables
+### Environment variables
 
 The Docker Compose configuration can be extended with additional environment variables for advanced functionality:
 
@@ -70,7 +70,7 @@ volumes:
   portway_app:
 ```
 
-### Core Settings
+### Core settings
 
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
@@ -84,7 +84,7 @@ volumes:
 >
 > In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally, keep `Use_HTTPS=false` in that case. Only set `Use_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
 
-### Web UI Settings
+### Web UI settings
 
 | Variable | Description | Default Value |
 |----------|-------------|---------------|
@@ -100,7 +100,7 @@ For `WebUi__PublicOrigins`, use index notation for multiple origins:
 - WebUi__PublicOrigins__1=https://api.example.com
 ```
 
-### Proxy Configuration
+### Proxy configuration
 
 Configure these settings if your environment requires proxy authentication. Portway supports NTLM authentication for corporate proxy environments:
 
@@ -113,7 +113,7 @@ Configure these settings if your environment requires proxy authentication. Port
 > [!NOTE]
 > When using NTLM authentication, ensure all three proxy variables are configured. The `PROXY_DOMAIN` is required for proper NTLM handshake with corporate proxy servers.
 
-### Azure Key Vault (Optional)
+### Azure Key Vault (optional)
 
 For production environments, you can integrate with Azure Key Vault by uncommenting and configuring:
 
@@ -124,7 +124,7 @@ For production environments, you can integrate with Azure Key Vault by uncomment
 | `AZURE_TENANT_ID` | Azure tenant ID |
 | `AZURE_CLIENT_SECRET` | Azure client secret |
 
-## Data Persistence
+## Data persistence
 
 The Docker Compose setup includes volume mounts for data persistence:
 
@@ -137,13 +137,13 @@ volumes:
   - ./data:/app/data
 ```
 
-- **Configuration files**: Mounted from local directories for easy editing
-- **Authentication data**: Stored in the `./data` directory
-- **Logs**: Available in the `./log` directory
+- **Configuration files**: `environments/`, `endpoints/`, and `tokens/` are bind-mounted so you can edit them from the host
+- **Logs**: written to `./log`, including the traffic log database at `log/traffic_logs.db`
+- **Databases**: `auth.db`, `metrics.db`, and `mcp.db` are created at the application root, so they live in the `portway_app` named volume rather than a bind mount
 
-## Customizing the Setup
+## Customizing the setup
 
-### Custom Configuration
+### Custom configuration
 
 1. Create your configuration files in the mounted directories:
    - `./endpoints/` - API endpoint definitions
@@ -155,7 +155,7 @@ volumes:
    docker compose restart
    ```
 
-## Health Check
+## Health check
 
 The container can be monitored to verify the API is responding:
 
@@ -169,20 +169,20 @@ docker compose logs portway
 
 ## Troubleshooting
 
-### Container Won't Start
+### Container won't start
 
 1. Check Docker logs:
    ```bash
    docker compose logs portway
    ```
 
-### Configuration Issues
+### Configuration issues
 
 1. Verify environment variables are set correctly
 2. Check mounted volume permissions
 3. Review application logs in the `./log` directory
 
-### Proxy Authentication
+### Proxy authentication
 
 If you're behind a corporate proxy:
 
@@ -215,14 +215,9 @@ openssl rand -base64 48
 
 Portway serves plain HTTP inside the container. Put a reverse proxy (nginx, Traefik, Caddy) in front of it to terminate TLS, or publish it behind an ingress that does.
 
-### Back up the mounted volumes
+### Back up your state
 
-Everything worth keeping lives in the paths you mounted:
-
-- `data/` for `auth.db` and the metrics database
-- `tokens/` for token files
-- `environments/` for connection strings and settings
-- `endpoints/` for endpoint definitions
+Your configuration lives in the bind mounts, and the databases live in the `portway_app` volume. [Data Persistence](#data-persistence) above lists exactly what sits where, and a backup wants both.
 
 ### Watch it
 
@@ -230,7 +225,7 @@ Health endpoints and Prometheus metrics are described in [Monitoring](/guide/mon
 
 For upgrades, see [Upgrading Portway](/guide/upgrading).
 
-## Next Steps
+## Next steps
 
 After successful installation:
 

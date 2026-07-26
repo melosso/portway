@@ -7,7 +7,7 @@ description: "Portway tends to live next to other systems, and these guides walk
 
 Portway tends to live next to other systems, and these guides walk you through the ones we see most often. Each covers the environment setup, the endpoint definitions, and the quirks worth knowing in advance.
 
-## Enterprise Resource Planning (ERP) Systems
+## Enterprise resource planning (ERP) systems
 
 These integrations put Portway in front of on-premise ERP APIs, usually with Windows authentication and environment headers doing the routing:
 
@@ -18,14 +18,14 @@ These integrations put Portway in front of on-premise ERP APIs, usually with Win
 - [Odoo](/reference/integrations/odoo)
 - [SAP Business One](/reference/integrations/sap-business-one)
 
-## No-code Databases
+## No-code databases
 
 Spreadsheet-style databases with REST APIs that Portway fronts with token scoping and rate limiting:
 
 - [NocoDB](/reference/integrations/nocodb)
 - [Teable](/reference/integrations/teable)
 
-## Product Information Management (PIM)
+## Product information management (PIM)
 
 Self-hosted product data platforms, fronted with credential isolation:
 

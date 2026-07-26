@@ -7,7 +7,7 @@ description: "Configuration reference for Portway's in-memory and Redis caching"
 
 If the same GET requests keep hitting your backends, caching is the easiest win available. Portway stores successful responses from SQL and Proxy endpoints so repeat requests are answered from memory (or Redis) instead of your database. Only `2xx` responses with cacheable content types are stored, so errors never linger.
 
-## Cache Flow
+## Cache flow
 
 ```mermaid
 flowchart TD
@@ -93,7 +93,7 @@ flowchart TD
 }
 ```
 
-### Property Reference
+### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -105,7 +105,7 @@ flowchart TD
 | `CacheableContentTypes` | array | `["application/json", ...]` | Only cache responses with these content types |
 | `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
 
-### Redis Configuration
+### Redis configuration
 
 ```json
 {
@@ -138,7 +138,7 @@ flowchart TD
 | `MaxRetryAttempts` | integer | `3` | Retry attempts on transient Redis errors |
 | `RetryDelayMs` | integer | `200` | Delay between retry attempts in milliseconds |
 
-## Cache Behaviour
+## Cache behaviour
 
 ### What is cached
 
@@ -160,7 +160,7 @@ Keys are generated from: request URL + query string, environment and endpoint na
 
 Cache entries expire after their configured TTL. A non-GET operation on the same endpoint also invalidates its cache entries. Memory cache is cleared on application restart; Redis persists.
 
-## Cache Durations
+## Cache durations
 
 All cacheable responses use `DefaultCacheDurationSeconds` unless overridden. Override specific endpoints with `EndpointCacheDurations`:
 
@@ -196,7 +196,7 @@ Responses with an explicit `Cache-Control: max-age=N` header use that value inst
 
 When `FallbackToMemoryCache` is `true` and Redis becomes unavailable, Portway switches to in-memory caching automatically and logs a warning. It resumes Redis caching when the connection is restored.
 
-## Cache Statistics
+## Cache statistics
 
 `GET /health/details` includes cache statistics: item count, hit/miss ratio, memory usage, and Redis connection status.
 
@@ -220,7 +220,7 @@ redis-cli ttl "Portway:proxy:600:Products::"
 | Redis connection failures | Wrong connection string or unreachable server | Verify `ConnectionString`; check firewall |
 | High memory usage | Long TTL or too many items | Reduce `DefaultCacheDurationSeconds` or `MemoryCacheMaxItems` |
 
-## Related Topics
+## Related topics
 
 - [Monitoring](/guide/monitoring): cache configuration via the Web UI
 - [Application Settings](/reference/app-settings): full `appsettings.json` reference

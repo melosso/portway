@@ -15,7 +15,7 @@ All requests follow this URL pattern:
 
 The `{environment}` segment maps to a folder under `environments/`. The `{endpoint}` segment matches a configured endpoint name, or `{namespace}/{endpoint}` for namespaced endpoints.
 
-## Request Flow
+## Request flow
 
 ```mermaid
 graph TD
@@ -36,7 +36,7 @@ graph TD
     K -->|Upload/Download| L[File Storage]
 ```
 
-## Endpoint Types
+## Endpoint types
 
 Most endpoints live under a namespace, which becomes the first path segment:
 
@@ -59,7 +59,7 @@ Authorization: Bearer your_token_here
 
 Requests without a valid token return `401 Unauthorized`. The only unauthenticated endpoint is `/health/live`. See [Authentication](/reference/api-auth) for token scope configuration.
 
-## Response Codes
+## Response codes
 
 | Code | Meaning |
 |------|---------|
@@ -72,7 +72,7 @@ Requests without a valid token return `401 Unauthorized`. The only unauthenticat
 | 429 | Too Many Requests: rate limit exceeded |
 | 500 | Internal Server Error |
 
-## Error Format
+## Error format
 
 Every endpoint type answers errors with the same small envelope, so you can handle failures the same way everywhere:
 
@@ -107,7 +107,7 @@ A `500` carries one extra field, `traceId`. The message itself stays deliberatel
 }
 ```
 
-## Status Codes by Endpoint Type
+## Status codes by endpoint type
 
 Every endpoint type shares the same error envelope, but each returns only the codes that make sense for it. This is the set you will see documented per operation in the API reference:
 
@@ -134,7 +134,7 @@ The success body, on the other hand, is specific to each endpoint:
 
 The reference documents the success shape it can infer for each operation. In short, the error contract is universal and the success contract is per endpoint.
 
-## OData Query Parameters
+## OData query parameters
 
 SQL and Static endpoints support OData query parameters:
 
@@ -146,7 +146,7 @@ SQL and Static endpoints support OData query parameters:
 | `$top` | integer | Maximum items to return | `$top=50` |
 | `$skip` | integer | Items to skip (pagination) | `$skip=20` |
 
-## Rate Limiting
+## Rate limiting
 
 | Limit | Default | Response header |
 |-------|---------|-----------------|
@@ -155,7 +155,7 @@ SQL and Static endpoints support OData query parameters:
 
 Rate-limited requests receive `429 Too Many Requests`.
 
-## Health Endpoints
+## Health endpoints
 
 | Endpoint | Auth required | Description |
 |----------|--------------|-------------|
@@ -163,7 +163,7 @@ Rate-limited requests receive `429 Too Many Requests`.
 | `/health` | Yes | Basic health status |
 | `/health/details` | Yes | Per-component health with database and proxy checks |
 
-## Next Steps
+## Next steps
 
 - [Authentication](/reference/api-auth): token properties and scope patterns
 - [OData Syntax](/reference/odata): filter, sort, and pagination

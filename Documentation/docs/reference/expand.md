@@ -120,7 +120,7 @@ Portway states its limits rather than returning a wrong result:
 * **An allowlist is required.** The endpoint must declare `AllowedColumns` so its own columns survive the join. Without one, `$expand` returns `400`.
 * **Unknown navigations are rejected.** `$expand=Something` that is not a configured relationship returns `400` naming the navigation.
 
-## Related Topics
+## Related topics
 
 - [OData Syntax](/reference/odata): the query options shared by GET and QUERY
 - [HTTP Methods](/reference/http-methods): where `$expand` fits among the read verbs

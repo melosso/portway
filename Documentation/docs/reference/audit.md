@@ -9,7 +9,7 @@ Sooner or later you'll want to know exactly what passed through your gateway and
 
 ## Configuration
 
-### Basic Settings
+### Basic settings
 
 ```json
 {
@@ -33,7 +33,7 @@ Sooner or later you'll want to know exactly what passed through your gateway and
 }
 ```
 
-### Configuration Options
+### Configuration options
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -53,9 +53,9 @@ Sooner or later you'll want to know exactly what passed through your gateway and
 | `CaptureHeaders` | Capture request headers | `true` |
 | `EnableInfoLogging` | Log at INFO level | `true` |
 
-## Storage Types
+## Storage types
 
-### File Storage
+### File storage
 
 When `StorageType` is set to `"file"`, logs are stored as JSON files with automatic rotation:
 
@@ -72,7 +72,7 @@ log/traffic/
 - Old files are deleted when count exceeds `MaxFileCount`
 - Filenames include timestamp for easy identification
 
-### SQLite Storage
+### SQLite storage
 
 When `StorageType` is set to `"sqlite"`, logs are stored in a SQLite database:
 
@@ -102,7 +102,7 @@ CREATE TABLE TrafficLogs (
 CREATE INDEX idx_timestamp ON TrafficLogs (Timestamp);
 ```
 
-## Log Entry Format
+## Log entry format
 
 Each traffic log entry contains:
 
@@ -133,7 +133,7 @@ Each traffic log entry contains:
 }
 ```
 
-## Field Descriptions
+## Field descriptions
 
 | Field | Description |
 |-------|-------------|
@@ -156,9 +156,9 @@ Each traffic log entry contains:
 | `RequestBody` | Request body (if enabled) |
 | `ResponseBody` | Response body (if enabled) |
 
-## Security Features
+## Security features
 
-### Header Sanitization
+### Header sanitization
 
 Sensitive headers are automatically redacted:
 - Authorization
@@ -173,7 +173,7 @@ Sensitive headers are automatically redacted:
 - Access-Token
 - X-Access-Token
 
-### Body Capture Controls
+### Body capture controls
 
 Request and response bodies are:
 - Disabled by default
@@ -181,13 +181,13 @@ Request and response bodies are:
 - Truncated with "..." suffix if exceeding limit
 - Only captured for JSON/XML content types
 
-### Access Control
+### Access control
 
 - Log files/database should be protected from web access
 - Consider using separate storage with restricted permissions
 - Implement log rotation to manage sensitive data retention
 
-## Performance Considerations
+## Performance considerations
 
 Traffic logging adds I/O overhead. The queue-based design minimises impact on request latency, writes happen in background batches, but high-volume deployments should tune the settings below.
 
@@ -199,9 +199,9 @@ Traffic logging adds I/O overhead. The queue-based design minimises impact on re
 | `QueueCapacity` | Increase if log entries are being dropped (watch for queue-full warnings in application logs) |
 | `StorageType` | Prefer `file` over `sqlite` for raw throughput |
 
-## Querying Traffic Logs
+## Querying traffic logs
 
-### File Storage Queries
+### File storage queries
 
 ::: code-group
 
@@ -242,7 +242,7 @@ cat log/traffic/proxy_traffic_*.json |
 
 :::
 
-### SQLite Queries
+### SQLite queries
 
 ```sql
 -- Top 10 slowest requests
@@ -298,7 +298,7 @@ ORDER BY RequestCount DESC;
 | Disk filling up | Reduce `MaxFileCount`; reduce `MaxBodyCaptureSizeBytes`; disable body capture |
 | SQLite errors | Check file permissions; ensure path directory exists; validate with `sqlite3 log/traffic_logs.db .tables` |
 
-### Diagnostic Commands
+### Diagnostic commands
 
 ::: code-group
 

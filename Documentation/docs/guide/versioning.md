@@ -11,12 +11,12 @@ Versioning in Portway allows you to manage multiple versions of your API gateway
 
 Versioning relies on having multiple Portway installations in separate version-specific folders (e.g., `v1`, `v2`). Requests are routed to the appropriate version folder based on the configuration in IIS or environment variables.
 
-### Key Concepts
+### Key concepts
 - **Version Folders**: Each version of Portway resides in its own folder (e.g., `v1`, `v2`).
 - **Default Version**: Requests to the root URL are redirected to the default version (e.g., `v1`).
 - **Environment Variables**: You can use environment variables to dynamically configure the default version.
 
-### Key Concepts Visualization
+### Key concepts visualization
 
 To better understand the key concepts of versioning in Portway, refer to the simplified diagram below:
 
@@ -35,18 +35,18 @@ graph TD
     end
 ```
 
-## Setting Up Versioning in IIS
+## Setting up versioning in IIS
 
 To enable versioning in IIS, follow these steps:
 
-### 1. Add Version Folders
+### 1. Add version folders
 
 1. Create separate folders for each version of Portway (e.g., `v1`, `v2`). E.g. `C:\path\to\your\PortwayApi\v1` and `C:\path\to\your\PortwayApi\v2`
 2. Add the folder to IIS and convert it to an application:
    - Open IIS Manager.
    - Right-click the folder (e.g., `v1`) and select **Convert to Application**.
 
-### 2. Add Configuration Files
+### 2. Add configuration files
 
 In the root folder of your IIS site, add the following files (e.g. `C:\path\to\your\PortwayApi`).
 
@@ -150,17 +150,17 @@ In each version folder, update the `PathBase` property in the `appsettings.json`
 
 This ensures that the application correctly identifies the base path for each version.
 
-### 4. Create Seperate Application Pools
+### 4. Create separate Application Pools
 
 The same application pool can't be used twice for the same application. To circumvent this limitation, make sure to create seperate application pools for each version (e.g. `PortwayApi_v1` and `PortwayApi_v2`) and bind them to each site.
 
-### 5. Test the Setup
+### 5. Test the setup
 
 1. Open a browser and navigate to the root URL of your site.
 2. Verify that requests are redirected to the default version (e.g., `/v1/`).
 3. Test other versions by navigating to their specific paths (e.g., `/v2/`).
 
-## Best Practices
+## Best practices
 
 1. **Use Clear Versioning**: Name version folders clearly (e.g., `v1`, `v2`).
 2. **Test Thoroughly**: Ensure all redirects and configurations work as expected.

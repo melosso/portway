@@ -17,7 +17,7 @@ Portway builds on **OpenAPI 3.2**, which gives the reference room to describe th
 
 All of it follows from your endpoint definitions, so there is usually nothing extra to configure.
 
-## Global OpenAPI Configuration
+## Global OpenAPI configuration
 
 Configure the title, contact details, and Scalar UI behaviour in `appsettings.json`:
 
@@ -55,7 +55,7 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
 }
 ```
 
-### Configuration Properties
+### Configuration properties
 | Property | Type | Description |
 |----------|------|-------------|
 | `Enabled` | boolean | Enable/disable API documentation generation |
@@ -82,7 +82,7 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
 | `ScalarHideClientButton` | boolean | Hide the client generation button |
 | `ScalarHideTestRequestButton` | boolean | Hide the test request button |
 
-## Documentation Configuration
+## Documentation configuration
 
 Each entity can include a `Documentation` section to customize its OpenAPI representation:
 
@@ -110,7 +110,7 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 }
 ```
 
-### Documentation Properties
+### Documentation properties
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -121,7 +121,7 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 
 When you provide an example under `Examples`, Portway shows exactly that payload for the method's successful response. It is a friendly way to make sure the reference reflects the shape your integration really returns, rather than a generated approximation of it. Leaving it out is perfectly fine too, in which case Portway falls back to sample data as before. Every endpoint type accepts `Examples`, so this works equally well for SQL, Proxy, Composite, Static, Webhook, and Files.
 
-## Retiring an Endpoint
+## Retiring an endpoint
 
 Endpoints rarely disappear overnight. Usually you want to tell people an endpoint is on its way out well before you delete it, and sometimes you need to take one out of service for an afternoon. Portway gives you two separate flags for those two situations, and it can be helpful to think of them as a signal and a switch.
 
@@ -137,7 +137,7 @@ Endpoints rarely disappear overnight. Usually you want to tell people an endpoin
 
 Your callers keep working exactly as before, because the flag only touches the documentation. That makes it a comfortable way to announce a planned retirement while you give integrations time to migrate. Every endpoint type understands it: SQL, Proxy, Composite, Static, Webhook, and Files.
 
-## Switching an Endpoint Off
+## Switching an endpoint off
 
 `Enabled` is the switch. When you set it to `false`, the endpoint stops serving:
 
@@ -162,25 +162,25 @@ You will notice the endpoint is still listed in the OpenAPI document, marked dep
 
 `Enabled` defaults to `true`, which means leaving it out keeps your existing configuration exactly as it is. If you would like to see the behaviour first-hand, the `Static/Production/Machines` sample ships switched off as a worked example.
 
-## File Upload Encoding
+## File upload encoding
 
 File endpoints describe their upload as `multipart/form-data` and document how the `file` part itself is encoded. The media types come from the endpoint's `AllowedExtensions`. A reports endpoint limited to `.pdf`, `.xlsx`, and `.csv` therefore advertises exactly those three types, rather than a generic binary blob.
 
 Leaving `AllowedExtensions` out is fine too. The part then falls back to `application/octet-stream`, which is still perfectly valid and simply tells callers less about what you accept.
 
-## Error Responses
+## Error responses
 
 One of the nicer things about generating the reference from your configuration is that errors only have to be described once. The document registers two component schemas: `ErrorResponse`, which is the familiar `{ success, error }` envelope, and `ValidationErrorResponse`, which adds a per-field `details` array for `422` responses. Every documented `4xx` and `5xx` response then points at one of those two.
 
 Which status codes turn up on a given operation still depends on what that endpoint type can actually return, so a Static endpoint and a Files upload will not show the same list. Only the shape is shared. If you would like to see the envelope itself, the [reference index](/reference/) walks through it.
 
-## Namespaces and Tags
+## Namespaces and tags
 
 Namespaces do double duty in the reference: each one becomes a tag, and your operations are grouped underneath the namespace they belong to. `NamespaceDisplayName` sets the label you see in the sidebar, and `Documentation.TagDescription` fills in the text below it.
 
 OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a tag name contains a `/`. In practice you are unlikely to see it yet, because namespaces are a single directory level today and routing does not resolve deeper nesting. The support is in place for when that changes.
 
-## Schema Discovery
+## Schema discovery
 
 For SQL endpoints, Portway reads column metadata from the database at startup. It connects to the first allowed environment listed in the endpoint's `AllowedEnvironments`. Non-SQL endpoints are not queried.
 
@@ -188,9 +188,9 @@ For SQL endpoints, Portway reads column metadata from the database at startup. I
 If you're using Windows Authentication (`Trusted_Connection=True`) in your Environments, the IIS Application Pool identity needs permissions on every environment database. With SQL Authentication, each environment uses its own credentials instead.
 :::
 
-## Tag Descriptions
+## Tag descriptions
 
-### Formatting Guidelines
+### Formatting guidelines
 
 Use **bold titles** and descriptive content:
 
@@ -198,7 +198,7 @@ Use **bold titles** and descriptive content:
 "TagDescription": "**Service Management**\n\nComprehensive service request lifecycle management. Track customer issues, assign technicians, and monitor progress."
 ```
 
-### Include Context and Purpose
+### Include context and purpose
 
 Provide clear information about what the endpoint does:
 
@@ -206,9 +206,9 @@ Provide clear information about what the endpoint does:
 "TagDescription": "**Financial Data**\n\nRetrieve outstanding debtor information and payment tracking. Access critical financial data for accounts receivable management and cash flow analysis."
 ```
 
-## Method Descriptions
+## Method descriptions
 
-### Standard CRUD Operations
+### Standard CRUD operations
 
 Provide clear, action-oriented descriptions:
 
@@ -221,7 +221,7 @@ Provide clear, action-oriented descriptions:
 }
 ```
 
-### Specialized Operations
+### Specialized operations
 
 For stored procedures or custom operations:
 
@@ -233,7 +233,7 @@ For stored procedures or custom operations:
 }
 ```
 
-### Composite Endpoints
+### Composite endpoints
 
 For complex operations:
 
@@ -243,7 +243,7 @@ For complex operations:
 }
 ```
 
-## Documentation Structure
+## Documentation structure
 
 All entity types support the same OpenAPI documentation structure through the `Documentation` section:
 
@@ -262,9 +262,9 @@ All entity types support the same OpenAPI documentation structure through the `D
 }
 ```
 
-## Markdown Support
+## Markdown support
 
-### Supported Elements
+### Supported elements
 
 OpenAPI descriptions support the Github-flavoured markdown. It also allows for limited HTML-support (`<br>`, `<p>`).
 
@@ -284,7 +284,7 @@ Use special formatting for callouts:
 
 See the [Scalar markdown reference](https://guides.scalar.com/scalar/scalar-api-references/markdown#alerts) for supported alert types.
 
-## Hidden Endpoint Handling
+## Hidden endpoint handling
 
 Endpoints you mark `Hidden` are left out of the OpenAPI document while continuing to serve requests as normal. This is handy for internal endpoints you would rather not advertise:
 
@@ -295,7 +295,7 @@ Endpoints you mark `Hidden` are left out of the OpenAPI document while continuin
 }
 ```
 
-## Environment-Specific Documentation
+## Environment-Specific documentation
 
 Documentation is automatically filtered by environment. Only endpoints available in the current environment appear in the OpenAPI documentation:
 
@@ -308,27 +308,27 @@ Documentation is automatically filtered by environment. Only endpoints available
 
 ## Troubleshooting
 
-### Documentation Not Appearing
+### Documentation not appearing
 
 1. Verify JSON syntax in entity.json
 2. Check that `Documentation` section is properly formatted
 3. Ensure endpoint is not marked as `Hidden: true`
 4. Confirm endpoint is allowed in current environment
 
-### Markdown Not Rendering
+### Markdown not rendering
 
 1. Use `\n` for line breaks in JSON strings
 2. Escape special characters properly
 3. Test markdown formatting in a separate viewer
 4. Check for unclosed formatting tags
 
-### Missing Method Descriptions
+### Missing method descriptions
 
 1. Ensure method names match exactly (case-sensitive)
 2. Verify methods are listed in `AllowedMethods` or `Methods`
 3. Check that methods are supported for the endpoint type
 
-## Related Topics
+## Related topics
 
 - [Entity Configuration](/reference/entity-config) - Complete entity configuration guide
 - [API Overview](/reference/) - API endpoint patterns and usage

@@ -7,16 +7,16 @@ description: "Filtering is where OData starts to feel powerful: you describe the
 
 Filtering is where OData starts to feel powerful: you describe the rows you want, and Portway translates that into SQL for you. This reference covers every supported filter operation, with examples you can adapt and a few practices that keep queries fast.
 
-## Filter Syntax
+## Filter syntax
 
 Basic filter structure:
 ```
 $filter=expression
 ```
 
-## Comparison Operators
+## Comparison operators
 
-### Equality Operators
+### Equality operators
 
 | Operator | Description | Example |
 |----------|-------------|---------|
@@ -38,7 +38,7 @@ GET /api/500/Products?$filter=IsActive eq true
 GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
 ```
 
-### Relational Operators
+### Relational operators
 
 | Operator | Description | Example |
 |----------|-------------|---------|
@@ -59,9 +59,9 @@ GET /api/500/Orders?$filter=OrderDate gt 2024-01-01
 GET /api/500/Customers?$filter=Name gt 'M'
 ```
 
-## Logical Operators
+## Logical operators
 
-### Combining Conditions
+### Combining conditions
 
 | Operator | Description | Example |
 |----------|-------------|---------|
@@ -84,7 +84,7 @@ GET /api/500/Products?$filter=not IsDeleted
 GET /api/500/Products?$filter=(Price gt 100 and Price lt 500) or Category eq 'Special'
 ```
 
-### Grouping with Parentheses
+### Grouping with parentheses
 
 Use parentheses to control operator precedence:
 
@@ -98,9 +98,9 @@ GET /api/500/Products?$filter=Price gt 100 and (Category eq 'A' or Category eq '
 # Evaluates as: Price gt 100 AND (Category eq 'A' OR Category eq 'B')
 ```
 
-## String Functions
+## String functions
 
-### Text Search Functions
+### Text search functions
 
 | Function | Description | Example |
 |----------|-------------|---------|
@@ -125,9 +125,9 @@ GET /api/500/Products?$filter=contains(Description,'premium') and startswith(Ite
 
 All string comparisons are case-sensitive. `startswith` is typically faster than `contains` because it can use index range scans. There is no wildcard syntax, use `contains`, `startswith`, or `endswith` instead.
 
-## Working with Data Types
+## Working with data types
 
-### String Values
+### String values
 
 Strings are enclosed in single quotes:
 
@@ -142,7 +142,7 @@ $filter=Description eq 'It''s a product'
 $filter=Category eq 'Home & Garden'
 ```
 
-### Numeric Values
+### Numeric values
 
 Numbers don't require quotes:
 
@@ -160,7 +160,7 @@ $filter=Balance gt -100.50
 $filter=Value lt 1.5e6
 ```
 
-### Date and DateTime Values
+### Date and dateTime values
 
 Use ISO 8601 format:
 
@@ -175,7 +175,7 @@ $filter=CreatedAt gt 2024-01-15T14:30:00Z
 $filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 ```
 
-### Boolean Values
+### Boolean values
 
 Use lowercase `true` or `false`:
 
@@ -190,7 +190,7 @@ $filter=IsDeleted eq false
 $filter=not IsActive
 ```
 
-### Null Values
+### Null values
 
 Use `null` keyword:
 
@@ -205,9 +205,9 @@ $filter=CompletedDate ne null
 $filter=Status eq 'Open' and AssignedTo eq null
 ```
 
-## Advanced Filter Patterns
+## Advanced filter patterns
 
-### Range Queries
+### Range queries
 
 ```http
 # Numeric range
@@ -220,7 +220,7 @@ GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 GET /api/500/Products?$filter=Price gt 100 and Price lt 500
 ```
 
-### Multiple Value Matching
+### Multiple value matching
 
 ```http
 # Using OR for multiple values
@@ -230,7 +230,7 @@ GET /api/500/Orders?$filter=Status eq 'New' or Status eq 'Pending' or Status eq 
 GET /api/500/Products?$filter=(Category eq 'A' or Category eq 'B' or Category eq 'C') and Price gt 50
 ```
 
-### Complex Text Searches
+### Complex text searches
 
 ```http
 # Multiple text conditions
@@ -240,7 +240,7 @@ GET /api/500/Products?$filter=contains(Description,'premium') and not contains(D
 GET /api/500/Products?$filter=contains(Name,'widget') or contains(Description,'widget')
 ```
 
-### Nested Conditions
+### Nested conditions
 
 ```http
 # Complex nested logic
@@ -250,9 +250,9 @@ GET /api/500/Orders?$filter=(Status eq 'Open' and Priority eq 1) or (Status eq '
 GET /api/500/Products?$filter=((Price gt 100 and Price lt 500) or Category eq 'Special') and IsActive eq true
 ```
 
-## Filter Performance Tips
+## Filter performance tips
 
-### 1. Use Indexed Fields
+### 1. Use indexed fields
 
 Always filter on indexed fields when possible:
 
@@ -264,7 +264,7 @@ GET /api/500/Products?$filter=ItemCode eq 'PROD001'
 GET /api/500/Products?$filter=contains(Description,'long text search')
 ```
 
-### 2. Avoid Complex String Operations
+### 2. Avoid complex string operations
 
 ```http
 # Efficient - exact match
@@ -277,7 +277,7 @@ GET /api/500/Products?$filter=contains(Category,'Elec')
 GET /api/500/Products?$filter=startswith(ItemCode,'PROD')
 ```
 
-### 3. Limit Result Sets Early
+### 3. Limit result sets early
 
 ```http
 # Good - filter reduces dataset before sorting
@@ -287,7 +287,7 @@ GET /api/500/Orders?$filter=Status eq 'Open'&$orderby=OrderDate desc&$top=10
 GET /api/500/Orders?$orderby=OrderDate desc&$top=10
 ```
 
-### 4. Use Specific Conditions
+### 4. Use specific conditions
 
 ```http
 # Specific date
@@ -300,9 +300,9 @@ GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 GET /api/500/Orders?$filter=OrderDate ne null
 ```
 
-## Common Filter Patterns
+## Common filter patterns
 
-### Active Records
+### Active records
 
 ```http
 # Active items
@@ -312,7 +312,7 @@ GET /api/500/Products?$filter=IsActive eq true and IsDeleted eq false
 GET /api/500/Customers?$filter=DeletedDate eq null
 ```
 
-### Date-Based Filters
+### Date-Based filters
 
 ```http
 # Today's records
@@ -325,7 +325,7 @@ GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
 GET /api/500/Orders?$filter=OrderDate gt 2023-12-16
 ```
 
-### Status Filters
+### Status filters
 
 ```http
 # Single status
@@ -338,7 +338,7 @@ GET /api/500/Tasks?$filter=Status eq 'Open' or Status eq 'InProgress'
 GET /api/500/Tasks?$filter=Status ne 'Closed'
 ```
 
-### Search Patterns
+### Search patterns
 
 ```http
 # Partial match
@@ -351,9 +351,9 @@ GET /api/500/Customers?$filter=startswith(LastName,'Sm')
 GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'phone')
 ```
 
-## Error Handling
+## Error handling
 
-### Common Filter Errors
+### Common filter errors
 
 1. **Invalid Field Name**
 ```json
@@ -391,7 +391,7 @@ GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'ph
 }
 ```
 
-## Filter Limitations
+## Filter limitations
 
 | Limitation | Description | Workaround |
 |------------|-------------|------------|
@@ -401,7 +401,7 @@ GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'ph
 | No regex support | No pattern matching | Use contains/startswith |
 | No arithmetic | No calculations in filters | Pre-calculate values |
 
-## Related Topics
+## Related topics
 
 - [OData Syntax](/reference/odata) - Complete OData syntax reference
 - [Sorting & Pagination](/reference/sorting-pagination) - Sorting and pagination

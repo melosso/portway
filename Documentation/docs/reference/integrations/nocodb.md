@@ -13,7 +13,7 @@ The integration uses Portway's proxy endpoints to forward requests to NocoDB's v
 
 ## Configuration
 
-### Environment Headers
+### Environment headers
 
 NocoDB expects its API token in the `xc-token` header. Generate one in NocoDB under **Account Settings → API Tokens**. Then place it in the environment settings, where it gets attached to every proxied request:
 
@@ -28,7 +28,7 @@ NocoDB expects its API token in the `xc-token` header. Generate one in NocoDB un
 
 The token lives in the environment, not the endpoint. That means the same endpoint definitions can serve different NocoDB instances per environment, each with its own token.
 
-### Proxy Endpoint
+### Proxy endpoint
 
 Each exposed NocoDB table gets its own endpoint file. The URL targets the table's records collection in the v2 API:
 
@@ -104,4 +104,4 @@ When something misbehaves, these are the usual suspects:
 | `401` from NocoDB behind a `200`-healthy gateway | `xc-token` value in the environment headers; token not expired or revoked in NocoDB |
 | Empty result where data exists | Table ID in the endpoint URL; the token's workspace access in NocoDB |
 | Filters ignored | Query syntax is NocoDB's own (`where=(Field,eq,Value)`), not OData `$filter` |
-| Stale data | Response caching. Tune or disable per endpoint via [caching settings](/reference/app-settings#caching) |
+| Stale data | Response caching. Tune or disable per endpoint via [caching settings](/reference/app-settings#caching-configuration) |

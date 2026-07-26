@@ -11,7 +11,7 @@ MCP Chat connects an AI model to the Portway MCP tool registry. When you send a 
 MCP Chat requires the MCP server to be enabled. Set `Mcp:Enabled: true` and expose at least one endpoint with `"Mcp": { "Exposed": true }` before configuring Chat.
 :::
 
-## Enable Chat
+## Enable chat
 
 Set `Mcp:ChatEnabled` to `true` in `appsettings.json`. This activates the Chat UI and the `/ui/api/mcp/chat` SSE endpoint. The MCP server must also be enabled.
 
