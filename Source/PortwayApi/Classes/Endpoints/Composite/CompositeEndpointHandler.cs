@@ -48,7 +48,7 @@ public class CompositeEndpointHandler
             if (!compositeDefinitions.TryGetValue(endpointName, out var compositeDefinition))
             {
                 Log.Warning("Composite endpoint not found: {Endpoint}", endpointName);
-                return Results.NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
+                return Results.NotFound(ErrorResponse.Of($"Endpoint '{endpointName}' not found"));
             }
 
             var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
@@ -66,7 +66,7 @@ public class CompositeEndpointHandler
                 !endpointDefinition.AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
             {
                 Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
-                return Results.BadRequest(new { error = $"Environment '{env}' is not allowed for this endpoint.", success = false });
+                return Results.BadRequest(ErrorResponse.Of($"Environment '{env}' is not allowed for this endpoint."));
             }
 
             // Parse request body
@@ -82,7 +82,7 @@ public class CompositeEndpointHandler
             catch (JsonException ex)
             {
                 Log.Warning(ex, "Invalid JSON in request body for composite endpoint: {Endpoint}", endpointName);
-                return Results.BadRequest(new { error = "Invalid request format", success = false, details = ex.Message });
+                return Results.BadRequest(ErrorResponse.Of("Invalid request format"));
             }
             
             // Create execution context and result container
@@ -142,14 +142,15 @@ public class CompositeEndpointHandler
                     Log.Error(ex, "Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}", 
                         step.Name, endpointName, ex.Message);
                         
-                    return Results.BadRequest(new
+                    // Detail stays masked; the trace id correlates the response with the logged exception
+                    return Results.Json(new
                     {
                         success = false,
                         error = $"Error executing step '{step.Name}'",
-                        details = ex.Message,
+                        traceId = PortwayResults.TraceIdOf(context),
                         step = step.Name,
                         completedSteps
-                    });
+                    }, statusCode: StatusCodes.Status500InternalServerError);
                 }
             }
             
@@ -167,12 +168,7 @@ public class CompositeEndpointHandler
             Log.Error(ex, "Unhandled error processing composite endpoint {Endpoint}: {ErrorMessage}", 
                 endpointName, ex.Message);
                 
-            return Results.BadRequest(new
-            {
-                success = false,
-                error = "Error processing composite endpoint",
-                details = ex.Message
-            });
+            return PortwayResults.MinimalServerError(context, "Error processing composite endpoint");
         }
     }
 
