@@ -10,13 +10,13 @@ public class ConfigExampleDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        // Base path template -> definition, only for endpoints that supplied examples (SQL + Proxy carry Documentation)
+        // Only endpoints that supplied examples
         var byBase = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-        foreach (var kv in EndpointHandler.GetSqlEndpoints().Concat(EndpointHandler.GetProxyEndpoints()))
+        foreach (var (basePath, definition) in OpenApiEndpointCatalog.All())
         {
-            if (kv.Value.Documentation?.Examples is { Count: > 0 })
+            if (definition.Documentation?.Examples is { Count: > 0 })
             {
-                byBase[$"/api/{{env}}/{kv.Value.FullPath}"] = kv.Value;
+                byBase[basePath] = definition;
             }
         }
 
@@ -32,10 +32,7 @@ public class ConfigExampleDocumentFilter : IOpenApiDocumentTransformer
                 continue;
             }
 
-            var definition = byBase.FirstOrDefault(b =>
-                pathKey.Equals(b.Key, StringComparison.OrdinalIgnoreCase) ||
-                pathKey.StartsWith(b.Key + "(", StringComparison.OrdinalIgnoreCase) ||
-                pathKey.StartsWith(b.Key + "/", StringComparison.OrdinalIgnoreCase)).Value;
+            var definition = byBase.FirstOrDefault(b => OpenApiEndpointCatalog.Covers(b.Key, pathKey)).Value;
 
             var examples = definition?.Documentation?.Examples;
             if (examples is null)
@@ -50,13 +47,22 @@ public class ConfigExampleDocumentFilter : IOpenApiDocumentTransformer
                     continue;
                 }
 
-                // Apply to the first success (2xx) response's JSON body
+                // Apply to the first success (2xx) response body
                 var successResponse = operation.Responses?
                     .FirstOrDefault(r => r.Key.StartsWith("2", StringComparison.Ordinal)).Value;
 
-                if (successResponse?.Content is not null &&
-                    successResponse.Content.TryGetValue("application/json", out var media) &&
-                    media is OpenApiMediaType concrete)
+                if (successResponse?.Content is null || successResponse.Content.Count == 0)
+                {
+                    continue;
+                }
+
+                // Prefer JSON; static endpoints declare a single non-JSON media type instead
+                if (!successResponse.Content.TryGetValue("application/json", out var media))
+                {
+                    media = successResponse.Content.Values.First();
+                }
+
+                if (media is OpenApiMediaType concrete)
                 {
                     // DeepClone so the same node is not parented into more than one place
                     concrete.Example = example.DeepClone();

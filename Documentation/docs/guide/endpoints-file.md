@@ -16,7 +16,7 @@ You define one with `endpoints/File/{EndpointName}/entity.json`:
   "StorageType": "Local",
   "BaseDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["prod", "test"]
 }
 ```
@@ -28,7 +28,7 @@ You define one with `endpoints/File/{EndpointName}/entity.json`:
 | `StorageType` | Yes | string | Storage backend. Currently `Local` |
 | `BaseDirectory` | Yes | string | Path under `files/` where uploaded files are stored. Supports placeholders |
 | `AllowedExtensions` | No | array | File extensions accepted by this endpoint. Empty array allows all non-blocked types |
-| `IsPrivate` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
+| `Hidden` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
 | `AllowedEnvironments` | No | array | Environments where this endpoint responds |
 
 ### Base directory placeholders

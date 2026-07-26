@@ -84,32 +84,32 @@
 const ENDPOINT_TYPES = [
   {
     key: 'sql', label: 'SQL', dotClass: 'dot-sql',
-    fields: ['name','methods','schema','object_name','object_type','allowed_columns','is_private','is_mcp_exposed','allowed_environments','documentation'],
-    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false }
+    fields: ['name','methods','schema','object_name','object_type','allowed_columns','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments','documentation'],
+    defaultContent: { DatabaseObjectName: '', DatabaseSchema: 'dbo', DatabaseObjectType: 'Table', AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false }
   },
   {
     key: 'proxy', label: 'Proxy', dotClass: 'dot-proxy',
-    fields: ['name','url','methods','is_private','is_mcp_exposed','allowed_environments','documentation'],
-    defaultContent: { Url: '', AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false }
+    fields: ['name','url','methods','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments','documentation'],
+    defaultContent: { Url: '', AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false }
   },
   {
     key: 'composite', label: 'Composite', dotClass: 'dot-composite',
-    fields: ['name','methods','is_private','is_mcp_exposed','allowed_environments','composite_steps','documentation'],
-    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false, CompositeConfig: { Steps: [] } }
+    fields: ['name','methods','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments','composite_steps','documentation'],
+    defaultContent: { Type: 'Composite', AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false, CompositeConfig: { Steps: [] } }
   },
   {
     key: 'file', label: 'File', dotClass: 'dot-file',
-    fields: ['name','methods','storage_type','base_directory','allowed_extensions','is_private','is_mcp_exposed','allowed_environments'],
-    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], IsPrivate: false, IsMcpExposed: false }
+    fields: ['name','methods','storage_type','base_directory','allowed_extensions','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments'],
+    defaultContent: { StorageType: 'Local', BaseDirectory: '', AllowedExtensions: ['.jpg','.png','.pdf'], AllowedMethods: ['GET','POST'], Hidden: false, Enabled: true, IsMcpExposed: false }
   },
   {
     key: 'static', label: 'Static', dotClass: 'dot-static',
-    fields: ['name','methods','is_private','is_mcp_exposed','allowed_environments'],
-    defaultContent: { AllowedMethods: ['GET'], IsPrivate: false, IsMcpExposed: false }
+    fields: ['name','methods','hidden','enabled','deprecated','is_mcp_exposed','allowed_environments'],
+    defaultContent: { AllowedMethods: ['GET'], Hidden: false, Enabled: true, IsMcpExposed: false }
   },
   {
     key: 'webhook', label: 'Webhook', dotClass: 'dot-webhook',
-    fields: ['methods','schema','object_name','allowed_columns','is_private','is_mcp_exposed','documentation'],
+    fields: ['methods','schema','object_name','allowed_columns','hidden','enabled','deprecated','is_mcp_exposed','documentation'],
     defaultContent: null // fixed file
   }
 ];
@@ -570,7 +570,7 @@ function fieldDocumentation(c) {
 // Structured forms per type
 
 // SQL, order matches file convention:
-// DatabaseSchema, DatabaseObjectName, Namespace, NamespaceDisplayName, IsPrivate,
+// DatabaseSchema, DatabaseObjectName, Namespace, NamespaceDisplayName, Hidden,
 // AllowedEnvironments, AllowedMethods, Procedure, PrimaryKey,
 // [Columns accordion], [Advanced accordion], Documentation
 function renderSqlForm(c) {
@@ -587,7 +587,8 @@ function renderSqlForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldMethods(c.AllowedMethods)}
-      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
+      ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
@@ -611,7 +612,7 @@ function renderSqlForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Proxy, order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
+// Proxy, order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, Hidden,
 //                [Delete Patterns accordion], [Custom Properties accordion], Documentation
 function renderProxyForm(c) {
   const cp = c.CustomProperties ?? {};
@@ -625,7 +626,8 @@ function renderProxyForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
-      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
+      ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
@@ -650,7 +652,7 @@ function renderProxyForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Composite, order: Type, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, IsPrivate,
+// Composite, order: Type, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, Hidden,
 //                    CompositeConfig (Name, Description, Steps), Documentation
 function renderCompositeForm(c) {
   const cfg = c.CompositeConfig ?? {};
@@ -659,7 +661,8 @@ function renderCompositeForm(c) {
       <div class="ep-section-title">Access</div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
-      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
+      ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
@@ -684,7 +687,7 @@ function renderCompositeForm(c) {
 }
 
 // File, order: StorageType, BaseDirectory, AllowedExtensions, Namespace, NamespaceDisplayName,
-//               AllowedEnvironments, IsPrivate, Documentation
+//               AllowedEnvironments, Hidden, Documentation
 function renderFileForm(c) {
   return `
     <div class="ep-section">
@@ -696,7 +699,8 @@ function renderFileForm(c) {
     <div class="ep-section">
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
-      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
+      ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
@@ -715,7 +719,7 @@ function renderFileForm(c) {
 }
 
 // Static, order: ContentType, ContentFile, EnableFiltering, Namespace, NamespaceDisplayName,
-//                 AllowedEnvironments, IsPrivate, Documentation
+//                 AllowedEnvironments, Hidden, Documentation
 function renderStaticForm(c) {
   return `
     <div class="ep-section">
@@ -727,7 +731,8 @@ function renderStaticForm(c) {
     <div class="ep-section">
       <div class="ep-section-title">Access</div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
-      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
+      ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
@@ -760,7 +765,8 @@ function renderWebhookForm(c) {
       ${fieldMethods(c.AllowedMethods)}
       ${fieldColumns('allowedCols', 'Allowed Tables', c.AllowedColumns)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
-      ${fieldToggle('isPrivate', 'Private', c.IsPrivate ?? false)}
+      ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
+      ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="isMcpExposed" ${(c.IsMcpExposed ?? false) ? 'checked' : ''} onchange="markDirty()">
@@ -855,7 +861,8 @@ function collectFormConfig(type, existingContent) {
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
-        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Hidden:            document.getElementById('hidden')?.checked || undefined,
+        Enabled:           document.getElementById('enabled')?.checked ?? true,
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         AllowedEnvironments:  envs,
         AllowedMethods:       methods,
@@ -886,7 +893,8 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Hidden:            document.getElementById('hidden')?.checked || undefined,
+        Enabled:           document.getElementById('enabled')?.checked ?? true,
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
@@ -904,7 +912,8 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Hidden:            document.getElementById('hidden')?.checked || undefined,
+        Enabled:           document.getElementById('enabled')?.checked ?? true,
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         CompositeConfig: {
           ...c.CompositeConfig,
@@ -927,7 +936,8 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Hidden:            document.getElementById('hidden')?.checked || undefined,
+        Enabled:           document.getElementById('enabled')?.checked ?? true,
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         Documentation:        doc ?? undefined,
       };
@@ -943,7 +953,8 @@ function collectFormConfig(type, existingContent) {
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
-        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Hidden:            document.getElementById('hidden')?.checked || undefined,
+        Enabled:           document.getElementById('enabled')?.checked ?? true,
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         Documentation:        doc ?? undefined,
       };
@@ -962,7 +973,8 @@ function collectFormConfig(type, existingContent) {
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
-        IsPrivate:            document.getElementById('isPrivate')?.checked || undefined,
+        Hidden:            document.getElementById('hidden')?.checked || undefined,
+        Enabled:           document.getElementById('enabled')?.checked ?? true,
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         RequiredColumns:      reqCols.length ? reqCols : undefined,
         ColumnValidation:     readJsonField('columnValidation'),
@@ -1158,7 +1170,7 @@ function renderCreateForm() {
         <div class="ep-section-title">Access</div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createIsPrivate', 'Private', false)}
+        ${fieldToggle('createHidden', 'Private', false)}
       </div>
       ${fieldDocumentation({})}`;
       break;
@@ -1171,7 +1183,7 @@ function renderCreateForm() {
         <div class="ep-section-title">Access</div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createIsPrivate', 'Private', false)}
+        ${fieldToggle('createHidden', 'Private', false)}
       </div>
       ${fieldDocumentation({})}`;
       break;
@@ -1180,7 +1192,7 @@ function renderCreateForm() {
         <div class="ep-section-title">Access</div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createIsPrivate', 'Private', false)}
+        ${fieldToggle('createHidden', 'Private', false)}
       </div>
       <div class="ep-section">
         <div class="ep-section-title">Steps (JSON)</div>
@@ -1198,7 +1210,7 @@ function renderCreateForm() {
       <div class="ep-section">
         <div class="ep-section-title">Access</div>
         ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createIsPrivate', 'Private', false)}
+        ${fieldToggle('createHidden', 'Private', false)}
       </div>`;
       break;
     case 'static':
@@ -1211,7 +1223,7 @@ function renderCreateForm() {
       <div class="ep-section">
         <div class="ep-section-title">Access</div>
         ${fieldAllowedEnvs('*')}
-        ${fieldToggle('createIsPrivate', 'Private', false)}
+        ${fieldToggle('createHidden', 'Private', false)}
       </div>`;
       break;
   }
@@ -1246,7 +1258,7 @@ async function submitCreate() {
         DatabaseObjectType: document.getElementById('createObjectType')?.value ?? 'Table',
         AllowedMethods: methods,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
+        Hidden: document.getElementById('createHidden')?.checked ?? false,
         ...(createDisplayName ? { DisplayName: createDisplayName } : {}),
         ...(createNsDisplayName ? { NamespaceDisplayName: createNsDisplayName } : {}),
         ...(createDoc ? { Documentation: createDoc } : {})
@@ -1263,7 +1275,7 @@ async function submitCreate() {
         Url: url,
         Methods: methods,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
+        Hidden: document.getElementById('createHidden')?.checked ?? false,
         ...(createProxyDoc ? { Documentation: createProxyDoc } : {})
       }; break; }
     case 'composite': {
@@ -1279,7 +1291,7 @@ async function submitCreate() {
         Type: 'Composite',
         Methods: methods,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false,
+        Hidden: document.getElementById('createHidden')?.checked ?? false,
         CompositeConfig: { Steps: steps },
         ...(createCompDoc ? { Documentation: createCompDoc } : {})
       }; break; }
@@ -1292,7 +1304,7 @@ async function submitCreate() {
         BaseDirectory: baseDir,
         AllowedExtensions: exts,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+        Hidden: document.getElementById('createHidden')?.checked ?? false
       }; break; }
     case 'static': {
       const contentFile = document.getElementById('createContentFile')?.value?.trim();
@@ -1304,7 +1316,7 @@ async function submitCreate() {
         ContentType: contentType,
         EnableFiltering: document.getElementById('createEnableFiltering')?.checked ?? false,
         AllowedEnvironments: envs,
-        IsPrivate: document.getElementById('createIsPrivate')?.checked ?? false
+        Hidden: document.getElementById('createHidden')?.checked ?? false
       }; break; }
     default:
       content = {};

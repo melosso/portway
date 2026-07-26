@@ -13,7 +13,7 @@
     "AllowedMethods": ["QUERY"],
     "AllowedEnvironments": ["500","700"],
     "Documentation": {
-        "TagDescription": "**Stock levels**\n\nLook up current stock across warehouses. Because these lookups tend to combine several filters at once, this endpoint accepts the QUERY method (RFC 10008) and reads your criteria from the request body rather than the URL.",
+        "TagDescription": "**Stock levels**\n\nLook up current stock across warehouses. Because these lookups tend to combine several filters at once, this endpoint accepts the QUERY method (RFC 10008) and reads your criteria from the request body rather than the URL.\n\n> [!IMPORTANT]\n> This version of Scalar doesn't support OData-style query parameters in the URL for this endpoint. Use the request body instead.",
         "MethodDescriptions": {
             "QUERY": "Search stock levels using criteria in the request body"
         },

@@ -123,7 +123,7 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
     "BaseProtocol": "https",
     "Title": "Portway: API Gateway",
     "Version": "v1",
-    "Description": "This is Portway. A lightweight API gateway designed to integrate your platforms with your Windows environment. It provides a simple, fast and efficient way to connect various data sources and services.",
+    "Description": "This is Portway. A lightweight API gateway that connects your platforms to your data sources and services, with a simple and fast setup.",
     "Contact": {
       "Name": "Jay Doe (Demo Company)",
       "Email": "support@democompany.local"

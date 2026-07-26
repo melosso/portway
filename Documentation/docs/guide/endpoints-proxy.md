@@ -29,7 +29,7 @@ Create `endpoints/Proxy/{EndpointName}/entity.json`:
 |---|---|---|---|
 | `Url` | Yes | string | Target URL to forward requests to |
 | `Methods` | Yes | array | HTTP methods to allow: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
-| `IsPrivate` | No | boolean | Exclude this endpoint from OpenAPI documentation. Defaults to `false` |
+| `Hidden` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
 | `AllowedEnvironments` | No | array | Environments where this endpoint responds |
 
 Only configure the HTTP methods your internal service actually exposes. Omit methods that the target does not support.
@@ -85,15 +85,15 @@ This ensures internal hostnames and ports are never exposed to API consumers.
 
 GET responses are cached for 5 minutes by default. The cache key includes the URL, query parameters, and Authorization header. POST, PUT, DELETE, and PATCH requests bypass the cache and invalidate any cached GET response for that endpoint.
 
-## Private endpoints
+## Hidden endpoints
 
-Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `/docs`. The endpoint still functions normally, it is simply not listed.
+Setting `Hidden: true` keeps an endpoint out of the OpenAPI documentation at `/docs`. It carries on serving requests exactly as before, it is simply not listed for browsers of your reference.
 
 ```json
 {
   "Url": "http://admin-service/internal-api",
   "Methods": ["POST"],
-  "IsPrivate": true
+  "Hidden": true
 }
 ```
 
@@ -113,7 +113,7 @@ Set `IsPrivate: true` to exclude an endpoint from the OpenAPI documentation at `
 {
   "Url": "http://legacy-service/soap/endpoint",
   "Methods": ["POST"],
-  "IsPrivate": true,
+  "Hidden": true,
   "AllowedEnvironments": ["prod"]
 }
 ```

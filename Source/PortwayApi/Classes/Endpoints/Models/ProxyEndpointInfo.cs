@@ -4,7 +4,9 @@ namespace PortwayApi.Classes;
 public sealed record ProxyEndpointInfo(
     string Url,
     HashSet<string> Methods,
-    bool IsPrivate,
+    bool Hidden,
+    bool Enabled,
+    bool Deprecated,
     bool IsMcpExposed,
     string Type,
     List<string>? AllowedEnvironments,

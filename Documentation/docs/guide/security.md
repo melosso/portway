@@ -74,7 +74,7 @@ Individual endpoints enforce their own environment and visibility constraints:
 {
   "DatabaseObjectName": "SensitiveData",
   "AllowedEnvironments": ["prod"],
-  "IsPrivate": true,
+  "Hidden": true,
   "AllowedMethods": ["GET"]
 }
 ```

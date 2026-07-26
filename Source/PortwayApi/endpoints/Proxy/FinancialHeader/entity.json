@@ -1,7 +1,7 @@
 {
     "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/FinancialHeader", 
     "Methods": ["POST"],
-    "IsPrivate": true,
+    "Hidden": true,
     "Documentation": {
         "TagDescription": "**Financial Headers**\n\nInternal endpoint for managing financial transaction headers. Used by composite endpoints to create transaction header records with proper accounting references.",
         "MethodDescriptions": {

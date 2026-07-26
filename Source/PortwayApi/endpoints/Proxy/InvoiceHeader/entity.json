@@ -1,7 +1,7 @@
 {
     "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/InvoiceHeader", 
     "Methods": ["POST"],
-    "IsPrivate": true,
+    "Hidden": true,
     "Documentation": {
         "TagDescription": "**Invoice Headers**\n\nInternal endpoint for managing invoice headers. Used by composite endpoints to create invoice header records with customer and document references.",
         "MethodDescriptions": {

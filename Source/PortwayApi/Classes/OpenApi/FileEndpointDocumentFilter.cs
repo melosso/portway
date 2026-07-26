@@ -37,7 +37,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Create paths for each file endpoint
             foreach (var (endpointName, endpoint) in fileEndpoints)
             {
-                if (endpoint.IsPrivate)
+                if (endpoint.Hidden)
                 {
                     // Skip private endpoints
                     continue;
@@ -49,7 +49,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Group namespaced file endpoints under their namespace; flat ones stay under "Files"
                 string mainTag = endpoint.HasNamespace
                     ? (endpoint.NamespaceDisplayName ?? endpoint.EffectiveNamespace!)
-                    : "Files";
+                    : OpenApiEndpointCatalog.FilesFallbackTag;
 
                 if (!documentTags.ContainsKey(mainTag))
                 {
@@ -125,6 +125,23 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         return defaultDescription;
     }
 
+    /// <summary>Media types accepted for the multipart file part, derived from the endpoint's AllowedExtensions</summary>
+    private static string GetUploadPartContentType(EndpointDefinition endpoint)
+    {
+        if (endpoint.Properties?.GetValueOrDefault("AllowedExtensions") is not List<string> extensions || extensions.Count == 0)
+        {
+            return "application/octet-stream";
+        }
+
+        var mediaTypes = extensions
+            .Where(e => !string.IsNullOrWhiteSpace(e))
+            .Select(e => PortwayApi.Helpers.ContentTypeHelper.GetContentType(e.StartsWith('.') ? $"file{e}" : $"file.{e}"))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return mediaTypes.Count > 0 ? string.Join(", ", mediaTypes) : "application/octet-stream";
+    }
+
     private void AddFileSchemas(OpenApiDocument document)
     {
         // Ensure components is initialized
@@ -186,7 +203,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
     private void AddFileUploadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for upload: /api/{env}/files/{endpointName}
-        string path = $"/api/{{env}}/files/{endpointName}";
+        string path = OpenApiEndpointCatalog.FileBasePath(endpointName);
 
         if (!document.Paths.ContainsKey(path))
         {
@@ -251,7 +268,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                     // Document how the file part is encoded (OpenAPI 3.2 media-type encoding)
                     Encoding = new Dictionary<string, OpenApiEncoding>
                     {
-                        ["file"] = new OpenApiEncoding { ContentType = "application/octet-stream" }
+                        ["file"] = new OpenApiEncoding { ContentType = GetUploadPartContentType(endpoint) }
                     }
                 }
             }
@@ -326,10 +343,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "upload");
 
         // Add the upload operation
-        // Standardize error responses onto the shared schema (validated matrix)
-        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
-            operation.Responses.Remove(__c);
-        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 409, 413, 415, 500);
+        StandardResponses.AddErrors(operation, ApiOperationKind.FileUpload);
 
         document.Paths[path].Operations![HttpMethod.Post] = operation;
     }
@@ -337,7 +351,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
     private void AddFileDownloadOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for download: /api/{env}/files/{endpointName}/{fileId}
-        string path = $"/api/{{env}}/files/{endpointName}/{{fileId}}";
+        string path = $"{OpenApiEndpointCatalog.FileBasePath(endpointName)}/{{fileId}}";
 
         if (!document.Paths.ContainsKey(path))
         {
@@ -428,10 +442,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         AddFileEndpointPropertiesInfo(operation, endpoint, "download");
 
         // Add the download operation
-        // Standardize error responses onto the shared schema (validated matrix)
-        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
-            operation.Responses.Remove(__c);
-        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 416, 500);
+        StandardResponses.AddErrors(operation, ApiOperationKind.FileDownload);
 
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }
@@ -439,7 +450,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
     private void AddFileDeleteOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for delete: /api/{env}/files/{endpointName}/{fileId}
-        string path = $"/api/{{env}}/files/{endpointName}/{{fileId}}";
+        string path = $"{OpenApiEndpointCatalog.FileBasePath(endpointName)}/{{fileId}}";
 
         if (!document.Paths.ContainsKey(path))
         {
@@ -501,35 +512,10 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         }
                     }
                 }
-            },
-            ["400"] = new OpenApiResponse { Description = "Bad request - invalid file ID" },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "File not found" },
-            ["500"] = new OpenApiResponse
-            {
-                Description = "Internal Server Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
-                        Example = new JsonObject
-                        {
-                            ["success"] = false,
-                            ["error"] = "An error occurred while deleting the file"
-                        }
-                    }
-                }
             }
         };
+
+        StandardResponses.AddErrors(operation, ApiOperationKind.FileDelete);
 
         // Add examples
         AddExamples(operation, "delete", endpointName);
@@ -537,19 +523,13 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Add file endpoint properties info
         AddFileEndpointPropertiesInfo(operation, endpoint, "delete");
 
-        // Add the delete operation
-        // Standardize error responses onto the shared schema (validated matrix)
-        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
-            operation.Responses.Remove(__c);
-        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
-
         document.Paths[path].Operations![HttpMethod.Delete] = operation;
     }
 
     private void AddFileListOperation(OpenApiDocument document, string endpointName, EndpointDefinition endpoint, List<string> effectiveEnvironments, string tag)
     {
         // Path for listing: /api/{env}/files/{endpointName}/list
-        string path = $"/api/{{env}}/files/{endpointName}/list";
+        string path = $"{OpenApiEndpointCatalog.FileBasePath(endpointName)}/list";
 
         if (!document.Paths.ContainsKey(path))
         {
@@ -647,46 +627,16 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         }
                     }
                 }
-            },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "Endpoint not found" },
-            ["500"] = new OpenApiResponse
-            {
-                Description = "Internal Server Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
-                        Example = new JsonObject
-                        {
-                            ["success"] = false,
-                            ["error"] = "An error occurred while listing files"
-                        }
-                    }
-                }
             }
         };
+
+        StandardResponses.AddErrors(operation, ApiOperationKind.FileList);
 
         // Add examples
         AddExamples(operation, "list", endpointName);
 
         // Add file endpoint properties info
         AddFileEndpointPropertiesInfo(operation, endpoint, "list");
-
-        // Add the list operation
-        // Standardize error responses onto the shared schema (validated matrix)
-        foreach (var __c in new[] { "400","401","403","404","405","406","409","413","415","416","422","500" })
-            operation.Responses.Remove(__c);
-        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
 
         document.Paths[path].Operations![HttpMethod.Get] = operation;
     }

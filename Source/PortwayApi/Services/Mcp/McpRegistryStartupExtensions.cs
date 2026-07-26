@@ -19,7 +19,7 @@ public static class McpRegistryStartupExtensions
         {
             foreach (var kvp in endpoints)
             {
-                if (kvp.Value.IsMcpExposed)
+                if (kvp.Value.IsMcpExposed && kvp.Value.Enabled)
                 {
                     var endpointKind = kvp.Value.Type switch {
                         EndpointType.Static => "static",
@@ -58,7 +58,7 @@ public static class McpRegistryStartupExtensions
         {
             foreach (var kvp in endpoints)
             {
-                if (kvp.Value.IsMcpExposed)
+                if (kvp.Value.IsMcpExposed && kvp.Value.Enabled)
                 {
                     mcpEndpoints.Add(new EndpointMcpInfo
                     {

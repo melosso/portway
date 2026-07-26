@@ -9,11 +9,9 @@ public class DeprecatedEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        // Base path templates of endpoints that opted into deprecation (SQL + Proxy carry the flag)
-        var deprecatedBases = EndpointHandler.GetSqlEndpoints()
-            .Concat(EndpointHandler.GetProxyEndpoints())
-            .Where(kv => kv.Value.Deprecated)
-            .Select(kv => $"/api/{{env}}/{kv.Value.FullPath}")
+        var deprecatedBases = OpenApiEndpointCatalog.All()
+            .Where(e => e.Definition.Deprecated)
+            .Select(e => e.BasePath)
             .ToList();
 
         if (deprecatedBases.Count == 0 || document.Paths is null)
@@ -28,13 +26,7 @@ public class DeprecatedEndpointDocumentFilter : IOpenApiDocumentTransformer
                 continue;
             }
 
-            // Match the base path itself and its id / sub-path variants, without prefix-matching a longer sibling name
-            var isDeprecated = deprecatedBases.Any(b =>
-                pathKey.Equals(b, StringComparison.OrdinalIgnoreCase) ||
-                pathKey.StartsWith(b + "(", StringComparison.OrdinalIgnoreCase) ||
-                pathKey.StartsWith(b + "/", StringComparison.OrdinalIgnoreCase));
-
-            if (!isDeprecated)
+            if (!deprecatedBases.Any(b => OpenApiEndpointCatalog.Covers(b, pathKey)))
             {
                 continue;
             }

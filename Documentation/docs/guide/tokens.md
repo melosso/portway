@@ -29,7 +29,7 @@ Save the token value shown at creation time. It is only displayed once and canno
 
 ## Scoping tokens
 
-Narrow a token's access to reduce exposure. A token can only access endpoints and environments that match both its scope and the endpoint's own `AllowedEnvironments` / `IsPrivate` settings.
+Narrow a token's access to reduce exposure. A token can only access endpoints and environments that match both its scope and the endpoint's own `AllowedEnvironments` / `Hidden` settings.
 
 ### Endpoint scopes
 

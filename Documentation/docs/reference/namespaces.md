@@ -225,7 +225,7 @@ The system attempts namespaced access first, then falls back to non-namespaced:
   "StorageDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".txt"],
   "MaxFileSizeBytes": 10485760,
-  "IsPrivate": false,
+  "Hidden": false,
   "Namespace": "Archive",
   "NamespaceDisplayName": "Document Archive",
   "AllowedEnvironments": ["dev", "test", "prod"]

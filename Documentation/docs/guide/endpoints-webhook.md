@@ -8,7 +8,7 @@ description: "Receive HTTP POST payloads from external services and persist them
 Webhook endpoints give external services a place to deliver events: they accept incoming POST requests and store the JSON payload in a database table you configure. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. Nothing is parsed or transformed along the way; the raw payload is stored as-is, ready for downstream processing at your own pace.
 
 ::: warning Coming from the flat webhook route
-The shared `endpoints/Webhooks/entity.json` and the flat route `POST /api/{env}/webhook/{id}` were removed in v0.7.0, and that route now answers `410 Gone` with a pointer to the new shape. Define each webhook under `endpoints/Webhooks/{Namespace}/{Name}/entity.json` and call it at `POST /api/{env}/{namespace}/{name}/{id}`.
+The shared `endpoints/Webhooks/entity.json` and the flat route `POST /api/{env}/webhook/{id}` have been removed, and that route now answers `410 Gone` with a pointer to the new shape. Each webhook can be defined under `endpoints/Webhooks/{Namespace}/{Name}/entity.json` and called at `POST /api/{env}/{namespace}/{name}/{id}`.
 :::
 
 ```mermaid

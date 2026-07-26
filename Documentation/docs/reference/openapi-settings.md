@@ -7,7 +7,7 @@ description: "Configuration reference for OpenAPI schema generation and the Scal
 
 Your endpoint definitions do double duty: besides routing requests, they feed the OpenAPI documentation that Scalar serves at `/docs`. SQL endpoints even get schema discovery for free, with column names and types read from the database at startup. Other endpoint types describe themselves through the `Documentation` block in `entity.json`. This page covers the settings you can adjust.
 
-Since `v0.7.0`, Portway emits an **OpenAPI 3.2** document. This lets the reference describe a few things it could not before: QUERY endpoints appear as native `query` operations (with their JSON body documented), slash-delimited namespaces render as a parent/child tag tree, and endpoints you mark `Deprecated` are shown as such. You do not need to configure any of this; it simply follows from your endpoint definitions.
+Portway builds on **OpenAPI 3.2**, which gives the reference room to describe things earlier versions of the format could not. QUERY endpoints appear as native `query` operations, namespaces become the tag structure, `Deprecated` endpoints are shown as such, file uploads describe their multipart encoding, and every error points at one shared schema. All of it follows from your endpoint definitions, so there is usually nothing extra to configure.
 
 ## Global OpenAPI Configuration
 
@@ -20,7 +20,7 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
     "BaseProtocol": "https",
     "Title": "Portway: API Gateway",
     "Version": "v1",
-    "Description": "This is Portway. A lightweight API gateway designed to integrate your platforms with your Windows environment. It provides a simple, fast and efficient way to connect various data sources and services.",
+    "Description": "This is Portway. A lightweight API gateway that connects your platforms to your data sources and services, with a simple and fast setup.",
     "Contact": {
       "Name": "Your Name",
       "Email": "support@yourcompany.com"
@@ -111,7 +111,64 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 | `MethodDocumentation` | object | No | Longer per-method descriptions (Markdown supported) |
 | `Examples` | object | No | A response example per HTTP method, shown verbatim in the reference instead of generated sample data |
 
-When you provide an example under `Examples`, Portway shows exactly that payload for the method's successful response. It is a friendly way to make sure the reference reflects the shape your integration actually returns, rather than a generated approximation. If you leave it out, Portway falls back to sample data as before.
+When you provide an example under `Examples`, Portway shows exactly that payload for the method's successful response. It is a friendly way to make sure the reference reflects the shape your integration really returns, rather than a generated approximation of it. Leaving it out is perfectly fine too, in which case Portway falls back to sample data as before. Every endpoint type accepts `Examples`, so this works equally well for SQL, Proxy, Composite, Static, Webhook, and Files.
+
+## Retiring an Endpoint
+
+Endpoints rarely disappear overnight. Usually you want to tell people an endpoint is on its way out well before you delete it, and sometimes you need to take one out of service for an afternoon. Portway gives you two separate flags for those two situations, and it can be helpful to think of them as a signal and a switch.
+
+`Deprecated` is the signal. Adding it to any `entity.json` marks every operation that endpoint contributes as deprecated in the document, which Scalar then renders with a strikethrough:
+
+```json
+{
+  "DatabaseObjectName": "LegacyOrders",
+  "AllowedMethods": ["GET"],
+  "Deprecated": true
+}
+```
+
+Your callers keep working exactly as before, because the flag only touches the documentation. That makes it a comfortable way to announce a planned retirement while you give integrations time to migrate. Every endpoint type understands it: SQL, Proxy, Composite, Static, Webhook, and Files.
+
+## Switching an Endpoint Off
+
+`Enabled` is the switch. When you set it to `false`, the endpoint stops serving:
+
+```json
+{
+  "DatabaseObjectName": "LegacyOrders",
+  "AllowedMethods": ["GET"],
+  "Enabled": false
+}
+```
+
+Calls then receive `503 Service Unavailable` in the shared error envelope, together with a `Retry-After` header so clients and caches know to wait rather than retry immediately:
+
+```json
+{
+  "success": false,
+  "error": "This endpoint is temporarily disabled for scheduled maintenance."
+}
+```
+
+You will notice the endpoint is still listed in the OpenAPI document, marked deprecated with a `[Disabled]` prefix on its summary. This is deliberate: if it vanished from the reference, a temporary outage would be indistinguishable from a deletion, and your callers would have no way to tell which one they were looking at. Disabled endpoints are left out of the MCP tool list as well, and the change is picked up on the next configuration reload, so a restart is not needed.
+
+`Enabled` defaults to `true`, which means leaving it out keeps your existing configuration exactly as it is. If you would like to see the behaviour first-hand, the `Static/Production/Machines` sample ships switched off as a worked example.
+
+## File Upload Encoding
+
+File endpoints describe their upload as `multipart/form-data` and document how the `file` part itself is encoded. The media types listed there are derived from the endpoint's `AllowedExtensions`, so a reports endpoint limited to `.pdf`, `.xlsx`, and `.csv` advertises exactly those three types rather than a generic binary blob. If you leave `AllowedExtensions` out, the part falls back to `application/octet-stream`, which is still perfectly valid and simply tells callers less about what you accept.
+
+## Error Responses
+
+One of the nicer things about generating the reference from your configuration is that errors only have to be described once. The document registers two component schemas: `ErrorResponse`, which is the familiar `{ success, error }` envelope, and `ValidationErrorResponse`, which adds a per-field `details` array for `422` responses. Every documented `4xx` and `5xx` response then points at one of those two.
+
+Which status codes turn up on a given operation still depends on what that endpoint type can actually return, so a Static endpoint and a Files upload will not show the same list. Only the shape is shared. If you would like to see the envelope itself, the [reference index](/reference/) walks through it.
+
+## Namespaces and Tags
+
+Namespaces do double duty in the reference: each one becomes a tag, and your operations are grouped underneath the namespace they belong to. `NamespaceDisplayName` sets the label you see in the sidebar, and `Documentation.TagDescription` fills in the text below it.
+
+OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a tag name contains a `/`. In practice you are unlikely to see it yet, because namespaces are a single directory level today and routing does not resolve deeper nesting. The support is in place for when that changes.
 
 ## Schema Discovery
 
@@ -217,14 +274,14 @@ Use special formatting for callouts:
 
 See the [Scalar markdown reference](https://guides.scalar.com/scalar/scalar-api-references/markdown#alerts) for supported alert types.
 
-## Private Endpoint Handling
+## Hidden Endpoint Handling
 
-Private endpoints are automatically excluded from OpenAPI documentation:
+Endpoints you mark `Hidden` are left out of the OpenAPI document while continuing to serve requests as normal. This is handy for internal endpoints you would rather not advertise:
 
 ```json
 {
-  "IsPrivate": true
-  // Documentation section is ignored for private endpoints
+  "Hidden": true
+  // The Documentation section is ignored for hidden endpoints
 }
 ```
 
@@ -245,7 +302,7 @@ Documentation is automatically filtered by environment. Only endpoints available
 
 1. Verify JSON syntax in entity.json
 2. Check that `Documentation` section is properly formatted
-3. Ensure endpoint is not marked as `IsPrivate: true`
+3. Ensure endpoint is not marked as `Hidden: true`
 4. Confirm endpoint is allowed in current environment
 
 ### Markdown Not Rendering

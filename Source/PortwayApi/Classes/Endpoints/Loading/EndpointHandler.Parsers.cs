@@ -42,7 +42,9 @@ public static partial class EndpointHandler
             Type = EndpointType.Files,
             Methods = new List<string> { "GET", "POST", "DELETE" },
             AllowedEnvironments = entity.AllowedEnvironments,
-            IsPrivate = entity.IsPrivate,
+            Hidden = entity.Hidden,
+            Enabled = entity.Enabled,
+            Deprecated = entity.Deprecated,
             Mcp = entity.Mcp,
             Documentation = entity.Documentation,
             Namespace = entity.Namespace,
@@ -75,7 +77,9 @@ public static partial class EndpointHandler
             Type = EndpointType.Static,
             Methods = new List<string> { "GET" },
             AllowedEnvironments = entity.AllowedEnvironments,
-            IsPrivate = entity.IsPrivate,
+            Hidden = entity.Hidden,
+            Enabled = entity.Enabled,
+            Deprecated = entity.Deprecated,
             Mcp = entity.Mcp,
             Documentation = entity.Documentation,
             Namespace = entity.Namespace,
@@ -112,56 +116,30 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        // First try to parse as an ExtendedEndpointEntity (preferred format)
-        var extendedEntity = JsonSerializer.Deserialize<ExtendedEndpointEntity>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        if (extendedEntity != null && !string.IsNullOrWhiteSpace(extendedEntity.Url) && extendedEntity.Methods != null)
-        {
-            return new EndpointDefinition
-            {
-                Url = extendedEntity.Url,
-                Methods = extendedEntity.Methods,
-                IsPrivate = extendedEntity.IsPrivate,
-                Deprecated = extendedEntity.Deprecated,
-                Mcp = extendedEntity.Mcp,
-                Type = ParseEndpointType(extendedEntity.Type),
-                CompositeConfig = extendedEntity.CompositeConfig,
-                AllowedEnvironments = extendedEntity.AllowedEnvironments,
-                Documentation = extendedEntity.Documentation,
-                CustomProperties = extendedEntity.CustomProperties,
-                Namespace = extendedEntity.Namespace,
-                NamespaceDisplayName = extendedEntity.NamespaceDisplayName,
-                DisplayName = extendedEntity.DisplayName,
-                DeletePatterns = extendedEntity.DeletePatterns
-            };
-        }
-
-        // Try to parse as a standard EndpointEntity as fallback
         var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        if (entity != null && !string.IsNullOrWhiteSpace(entity.Url) && entity.Methods != null)
-        {
-            return new EndpointDefinition
-            {
-                Url = entity.Url,
-                Methods = entity.Methods,
-                IsPrivate = false,
-                Mcp = entity.Mcp,
-                Type = EndpointType.Standard,
-                CompositeConfig = null,
-                AllowedEnvironments = entity.AllowedEnvironments,
-                Documentation = entity.Documentation,
-                CustomProperties = entity.CustomProperties,
-                Namespace = entity.Namespace,
-                DisplayName = entity.DisplayName,
-                NamespaceDisplayName = entity.NamespaceDisplayName,
-                DeletePatterns = entity.DeletePatterns
-            };
-        }
+        if (entity == null || string.IsNullOrWhiteSpace(entity.Url))
+            return null;
 
-        return null;
+        return new EndpointDefinition
+        {
+            Url = entity.Url,
+            Methods = entity.Methods ?? new List<string>(),
+            Hidden = entity.Hidden,
+            Enabled = entity.Enabled,
+            Deprecated = entity.Deprecated,
+            Mcp = entity.Mcp,
+            Type = ParseEndpointType(entity.Type),
+            CompositeConfig = entity.CompositeConfig,
+            AllowedEnvironments = entity.AllowedEnvironments,
+            Documentation = entity.Documentation,
+            CustomProperties = entity.CustomProperties,
+            Namespace = entity.Namespace,
+            NamespaceDisplayName = entity.NamespaceDisplayName,
+            DisplayName = entity.DisplayName,
+            DeletePatterns = entity.DeletePatterns
+        };
     }
 
     /// <summary>Parses a SQL endpoint definition from JSON</summary>
@@ -189,6 +167,8 @@ public static partial class EndpointHandler
         return new EndpointDefinition
         {
             Type = EndpointType.SQL,
+            Hidden = entity.Hidden,
+            Enabled = entity.Enabled,
             Deprecated = entity.Deprecated,
             DatabaseObjectName = entity.DatabaseObjectName,
             DatabaseSchema = schema,
@@ -298,7 +278,7 @@ public static partial class EndpointHandler
     /// <summary>Logs information about a loaded endpoint with appropriate emoji based on type</summary>
     private static void LogEndpointLoading(string endpointName, EndpointDefinition definition)
     {
-        if (definition.IsPrivate)
+        if (definition.Hidden)
         {
             Log.Debug("Loaded private proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
         }

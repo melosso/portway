@@ -35,7 +35,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
             var endpointName = endpoint.Key;
             var definition = endpoint.Value;
 
-            if (definition.IsPrivate)
+            if (definition.Hidden)
                 continue;
 
             // Resolve the physical path to the content file
@@ -297,7 +297,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         OpenApiSchema schema,
         JsonNode? example)
     {
-        var path = $"/api/{{env}}/{definition.FullPath}";
+        var path = OpenApiEndpointCatalog.BasePath(definition);
         if (!document.Paths.ContainsKey(path)) return;
 
         var pathItem = document.Paths[path];

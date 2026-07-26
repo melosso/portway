@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
 using Serilog;
 
 namespace PortwayApi.Classes;
@@ -34,6 +35,9 @@ public partial class DynamicEndpointDocumentFilter
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
 
+            if (definition.Hidden)
+                continue;
+
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
@@ -44,7 +48,7 @@ public partial class DynamicEndpointDocumentFilter
             }
 
             // Path template for this endpoint (use FullPath to include namespace if present)
-            string path = $"/api/{{env}}/{definition.FullPath}";
+            string path = OpenApiEndpointCatalog.BasePath(definition);
 
             // Create path item if it doesn't exist
             if (!document.Paths.ContainsKey(path))
@@ -83,7 +87,7 @@ public partial class DynamicEndpointDocumentFilter
             if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
                 // Use OData-style path: /api/{env}/{endpointName}({id})
-                var deletePath = $"/api/{{env}}/{definition.FullPath}({{id}})";
+                var deletePath = $"{OpenApiEndpointCatalog.BasePath(definition)}({{id}})";
 
                 // Create path item if it doesn't exist
                 if (!document.Paths.ContainsKey(deletePath))
@@ -432,17 +436,7 @@ public partial class DynamicEndpointDocumentFilter
             };
         };
 
-        // Standardize error responses onto the shared schema (validated matrix; removes over-promised codes)
-        foreach (var c in new[] { "400", "401", "403", "404", "405", "406", "409", "413", "415", "416", "422", "500" })
-            operation.Responses.Remove(c);
-        var isWrite = method.Equals("POST", StringComparison.OrdinalIgnoreCase)
-            || method.Equals("PUT", StringComparison.OrdinalIgnoreCase)
-            || method.Equals("PATCH", StringComparison.OrdinalIgnoreCase)
-            || method.Equals("MERGE", StringComparison.OrdinalIgnoreCase);
-        var codes = new List<int> { 400, 401, 403, 404, 500 };
-        if (isWrite) codes.Add(422);
-        if (method.Equals("QUERY", StringComparison.OrdinalIgnoreCase)) codes.Add(415);
-        StandardResponses.AddErrors(operation, codes.ToArray());
+        StandardResponses.AddErrors(operation, StandardErrorCodes.SqlKindFor(method));
 
         return operation;
     }
@@ -652,10 +646,7 @@ public partial class DynamicEndpointDocumentFilter
             }
         };
 
-        // Standardize error responses onto the shared schema (validated matrix)
-        foreach (var c in new[] { "400", "401", "403", "404", "405", "406", "409", "413", "415", "416", "422", "500" })
-            operation.Responses.Remove(c);
-        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+        StandardResponses.AddErrors(operation, ApiOperationKind.SqlDelete);
 
         return operation;
     }

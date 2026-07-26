@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
 using Serilog;
 
 namespace PortwayApi.Classes;
@@ -31,7 +32,11 @@ public partial class DynamicEndpointDocumentFilter
         foreach (var webhook in webhookEndpoints)
         {
         var definition = webhook.Value;
-        string path = $"/api/{{env}}/{definition.FullPath}/{{webhookId}}";
+
+        if (definition.Hidden)
+            continue;
+
+        string path = $"{OpenApiEndpointCatalog.BasePath(definition)}/{{webhookId}}";
 
         // Effective environments and documentation are resolved per endpoint
         var effectiveEnvironments = GetEffectiveEnvironments(definition);
@@ -267,10 +272,7 @@ public partial class DynamicEndpointDocumentFilter
             }
         };
 
-        // Standardize webhook error responses onto the shared schema (validated matrix)
-        foreach (var c in new[] { "400", "401", "403", "404", "405", "409", "422", "500" })
-            webhookOperation.Responses.Remove(c);
-        StandardResponses.AddErrors(webhookOperation, 400, 401, 403, 404, 500);
+        StandardResponses.AddErrors(webhookOperation, ApiOperationKind.Webhook);
 
         document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
         }

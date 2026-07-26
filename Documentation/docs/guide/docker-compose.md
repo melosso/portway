@@ -9,36 +9,7 @@ This guide explains how to deploy Portway using Docker Compose for quick develop
 
 ## Quick Start
 
-1. **Create a docker-compose.yml file:**
-
-```yaml
-services:
-  portway:
-    image: ghcr.io/melosso/portway:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - portway_app:/app
-      - ./environments:/app/environments
-      - ./endpoints:/app/endpoints
-      - ./tokens:/app/tokens
-      - ./log:/app/log
-      - ./data:/app/data
-    environment:
-      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-
-volumes:
-  portway_app:
-```
-
-2. **Start the application:**
-
-  ```bash
-  docker compose up -d
-  ```
-
-3. **Verify the installation:**
-   The API will be available at `http://localhost:8080`
+If you have not started a container yet, [Getting Started](/guide/getting-started) has a minimal `docker-compose.yml` you can copy and run in a couple of minutes. Once it is up, the API is available at `http://localhost:8080` and the rest of this page picks up from there, covering the settings you are most likely to reach for next.
 
 ## Configuration
 

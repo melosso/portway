@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Portway"
   text:
-  tagline: API gateway for Windows Server. Expose SQL databases, internal services, and files as MCP-tools and REST endpoints.
+  tagline: Expose SQL databases, internal services, and files as MCP-tools and REST endpoints. Runs in Docker or on Windows Server.
   actions:
     - theme: brand
       text: Get Started

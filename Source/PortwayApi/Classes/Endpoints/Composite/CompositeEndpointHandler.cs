@@ -51,10 +51,17 @@ public class CompositeEndpointHandler
                 return Results.NotFound(new { error = $"Endpoint '{endpointName}' not found", success = false });
             }
 
-            // Check if the environment is allowed for this endpoint
             var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
-            if (endpointDefinitions.TryGetValue(endpointName, out var endpointDefinition) && 
-                endpointDefinition.AllowedEnvironments != null && 
+
+            if (endpointDefinitions.TryGetValue(endpointName, out var definition) && !definition.Enabled)
+            {
+                Log.Debug("Composite endpoint disabled: {Endpoint}", endpointName);
+                return PortwayApi.Helpers.DisabledEndpoint.MinimalResult(context);
+            }
+
+            // Check if the environment is allowed for this endpoint
+            if (endpointDefinitions.TryGetValue(endpointName, out var endpointDefinition) &&
+                endpointDefinition.AllowedEnvironments != null &&
                 endpointDefinition.AllowedEnvironments.Count > 0 &&
                 !endpointDefinition.AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
             {

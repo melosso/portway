@@ -31,9 +31,9 @@ public static partial class EndpointHandler
         "Static", "static", "static ", "entity.json", NamespaceAware: true,
         ParseStaticEndpointDefinition,
         _ => true,
-        (key, d) => Log.Debug("Static Endpoint: {Name} ({IsPrivate}) - {ContentType} | DocumentationTag: {DocumentationTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
+        (key, d) => Log.Debug("Static Endpoint: {Name} ({Hidden}) - {ContentType} | DocumentationTag: {DocumentationTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
             key,
-            d.IsPrivate ? "Private" : "Public",
+            d.Hidden ? "Private" : "Public",
             d.Properties?.GetValueOrDefault("ContentType", "unknown"),
             d.DocumentationTag,
             d.Namespace ?? "null",
@@ -43,8 +43,8 @@ public static partial class EndpointHandler
         "File", "file", "file ", "*.json", NamespaceAware: true,
         ParseFileEndpointDefinition,
         _ => true,
-        (key, d) => Log.Debug("File Endpoint: {Name} ({IsPrivate}) | Namespace: {Namespace}",
-            key, d.IsPrivate ? "Private" : "Public", d.EffectiveNamespace ?? "None"));
+        (key, d) => Log.Debug("File Endpoint: {Name} ({Hidden}) | Namespace: {Namespace}",
+            key, d.Hidden ? "Private" : "Public", d.EffectiveNamespace ?? "None"));
 
     private static readonly EndpointLoaderSpec WebhookLoaderSpec = new(
         "Webhook", "webhook", "webhook ", "entity.json", NamespaceAware: true,

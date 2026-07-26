@@ -83,7 +83,9 @@ public static partial class WebUiEndpointExtensions
                 {
                     name           = e.Key,
                     methods        = e.Value.Methods,
-                    is_private     = e.Value.IsPrivate,
+                    hidden         = e.Value.Hidden,
+                    enabled        = e.Value.Enabled,
+                    deprecated     = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace     = e.Value.Namespace,
                     schema         = e.Value.DatabaseSchema,
@@ -95,7 +97,9 @@ public static partial class WebUiEndpointExtensions
                     name           = e.Key,
                     url            = e.Value.Url,
                     methods        = e.Value.Methods,
-                    is_private     = e.Value.IsPrivate,
+                    hidden         = e.Value.Hidden,
+                    enabled        = e.Value.Enabled,
+                    deprecated     = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
@@ -104,7 +108,9 @@ public static partial class WebUiEndpointExtensions
                     name           = e.Key,
                     url            = e.Value.Url,
                     methods        = e.Value.Methods,
-                    is_private     = e.Value.IsPrivate,
+                    hidden         = e.Value.Hidden,
+                    enabled        = e.Value.Enabled,
+                    deprecated     = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
@@ -112,7 +118,9 @@ public static partial class WebUiEndpointExtensions
                 {
                     name           = e.Key,
                     methods        = e.Value.Methods,
-                    is_private     = e.Value.IsPrivate,
+                    hidden         = e.Value.Hidden,
+                    enabled        = e.Value.Enabled,
+                    deprecated     = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
@@ -120,7 +128,9 @@ public static partial class WebUiEndpointExtensions
                 {
                     name           = e.Key,
                     methods        = e.Value.Methods,
-                    is_private     = e.Value.IsPrivate,
+                    hidden         = e.Value.Hidden,
+                    enabled        = e.Value.Enabled,
+                    deprecated     = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name),
@@ -128,7 +138,9 @@ public static partial class WebUiEndpointExtensions
                 {
                     name           = e.Key,
                     methods        = e.Value.Methods,
-                    is_private     = e.Value.IsPrivate,
+                    hidden         = e.Value.Hidden,
+                    enabled        = e.Value.Enabled,
+                    deprecated     = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace     = e.Value.Namespace
                 }).OrderBy(e => e.name)

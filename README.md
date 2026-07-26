@@ -4,7 +4,7 @@
 [![Last commit](https://img.shields.io/github/last-commit/melosso/portway)](https://github.com/melosso/portway/commits/main)
 [![Latest Release](https://img.shields.io/github/v/release/melosso/portway)](https://github.com/melosso/portway/releases/latest)
 
-Portway is a lightweight **API gateway** for Windows and Linux containers that simplifies secure service routing and infrastructure management.
+Portway is a lightweight **API gateway** that simplifies secure service routing and infrastructure management. It runs as a Linux container or on Windows Server behind IIS.
 
 It unifies databases, internal services, and webhooks into a single interface using simple, file-based configuration. Built-in caching, audit logging, and automated documentation keep your data flow reliable and easy to control.
 
@@ -39,7 +39,7 @@ Follow these steps to get Portway up and running in your environment. Setup is f
 
 ### 1. Download & Extract
 
-#### Windows Server (Recommended)
+#### Windows Server (IIS)
 
 Grab the <a href="https://github.com/melosso/portway/releases" target="_blank" rel="noopener noreferrer">latest release</a> and extract it to your deployment folder. This build already includes a set of example environment and endpoint configurations. 
 
@@ -53,7 +53,7 @@ On containerized environments, this can be done with the identically named `PORT
 
 ---
 
-#### **Alternative: Docker Compose**
+#### **Docker Compose**
 
 You can quickly deploy Portway using Docker Compose and the official image:
 

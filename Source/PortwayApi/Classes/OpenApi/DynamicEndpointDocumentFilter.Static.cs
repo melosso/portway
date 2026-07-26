@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
 using Serilog;
 
 namespace PortwayApi.Classes;
@@ -30,7 +31,7 @@ public partial class DynamicEndpointDocumentFilter
             var definition = endpoint.Value;
 
             // Skip private endpoints
-            if (definition.IsPrivate)
+            if (definition.Hidden)
                 continue;
 
             // Collect tag description if provided
@@ -57,7 +58,7 @@ public partial class DynamicEndpointDocumentFilter
             var definition = endpoint.Value;
 
             // Skip private endpoints
-            if (definition.IsPrivate)
+            if (definition.Hidden)
                 continue;
 
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
@@ -75,7 +76,7 @@ public partial class DynamicEndpointDocumentFilter
             var enableFiltering = (bool)(definition.Properties?.GetValueOrDefault("EnableFiltering", false) ?? false);
 
             // Create single OpenAPI path with environment parameter (use FullPath to include namespace if present)
-            string path = $"/api/{{env}}/{definition.FullPath}";
+            string path = OpenApiEndpointCatalog.BasePath(definition);
 
             if (!document.Paths.ContainsKey(path))
             {
@@ -346,11 +347,7 @@ public partial class DynamicEndpointDocumentFilter
                 });
             }
 
-            // Standardize static error responses onto the shared schema (validated matrix; 406 = content negotiation)
-            getOperation.Responses ??= new OpenApiResponses();
-            foreach (var __c in new[] { "400", "401", "403", "404", "405", "406", "409", "422", "500" })
-                getOperation.Responses.Remove(__c);
-            StandardResponses.AddErrors(getOperation, 400, 401, 403, 404, 406, 500);
+                StandardResponses.AddErrors(getOperation, ApiOperationKind.Static);
 
             document.Paths[path].Operations![HttpMethod.Get] = getOperation;
         }

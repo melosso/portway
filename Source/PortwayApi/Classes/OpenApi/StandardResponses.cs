@@ -3,6 +3,8 @@ namespace PortwayApi.Classes;
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
+using System.Linq;
 
 /// <summary>Shared error-response schemas and a helper to attach a standard set of error responses to an operation</summary>
 public static class StandardResponses
@@ -29,7 +31,8 @@ public static class StandardResponses
         [415] = "Unsupported Media Type",
         [416] = "Range Not Satisfiable",
         [422] = "Unprocessable Content",
-        [500] = "Internal Server Error"
+        [500] = "Internal Server Error",
+        [503] = "Service Unavailable"
     };
 
     /// <summary>The standard description for a status code, or null when none is defined</summary>
@@ -50,7 +53,12 @@ public static class StandardResponses
                 Properties = new Dictionary<string, IOpenApiSchema>
                 {
                     ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                    ["traceId"] = new OpenApiSchema
+                    {
+                        Type = JsonSchemaType.String,
+                        Description = "Unique ID correlating internal server errors with logs. Included only on 500 status code."
+                    }
                 },
                 Required = new HashSet<string> { "success", "error" },
                 Example = new JsonObject { ["success"] = false, ["error"] = "A human-readable message" }
@@ -92,10 +100,24 @@ public static class StandardResponses
         }
     }
 
-    /// <summary>Adds the given error responses to an operation, each referencing the shared schema (422 uses the validation schema)</summary>
+    /// <summary>Adds the error responses this operation kind documents, per the shared error-code matrix</summary>
+    public static void AddErrors(OpenApiOperation operation, ApiOperationKind kind)
+        => AddErrors(operation, StandardErrorCodes.For(kind));
+
+    /// <summary>Replaces every error response on an operation with the given codes, each referencing the shared schema (422 uses the validation schema)</summary>
     public static void AddErrors(OpenApiOperation operation, params int[] codes)
     {
         operation.Responses ??= new OpenApiResponses();
+
+        // Drop anything a builder declared inline so the shared envelope is the only error shape
+        var declaredErrors = operation.Responses.Keys
+            .Where(k => int.TryParse(k, out var status) && status >= 400)
+            .ToList();
+
+        foreach (var key in declaredErrors)
+        {
+            operation.Responses.Remove(key);
+        }
 
         foreach (var code in codes)
         {

@@ -3,7 +3,7 @@
   "DatabaseObjectName": "CompanyEmployees",
   "Namespace": "Company",
   "NamespaceDisplayName": "Company",
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["Synergy"],
   "AllowedMethods": ["GET", "POST", "PATCH"],
   "Procedure": "Portway.usp_ManageCompanyEmployees",

@@ -13,7 +13,7 @@ The steps assume working knowledge of IIS and your network and data sources; the
 
 - Windows Server with IIS installed and running
 - Administrator access
-- [ASP.NET Core 10 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 11 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/11.0)
 - A TLS/SSL certificate (self-signed is acceptable for internal deployments)
 
 :::warning
@@ -68,55 +68,7 @@ Verify the application is running:
 
 ## Initial configuration
 
-### Retrieve the access token
-
-Find the generated token at `tokens/[SERVERNAME].txt`:
-
-```json
-{
-  "Username": "SERVER-NAME",
-  "Token": "your-bearer-token-here",
-  "AllowedScopes": "*",
-  "AllowedEnvironments": "*"
-}
-```
-
-:::warning
-Remove this file from disk immediately after recording the token. The token is a plaintext secret. Unauthorized access to this file compromises your gateway.
-:::
-
-### Configure environments
-
-Edit `environments/settings.json`:
-
-```json
-{
-  "Environment": {
-    "ServerName": "YOUR_SERVER",
-    "AllowedEnvironments": ["prod", "dev", "test"]
-  }
-}
-```
-
-Create `environments/{name}/settings.json` for each environment:
-
-::: code-group
-
-```json [Production]
-{
-  "ServerName": "YOUR_SQL_SERVER",
-  "ConnectionString": "Server=YOUR_SQL_SERVER;Database=prod;Trusted_Connection=True;TrustServerCertificate=true;"
-}
-```
-
-```json [Development]
-{
-  "ServerName": "YOUR_SQL_SERVER",
-  "ConnectionString": "Server=YOUR_SQL_SERVER;Database=dev;Trusted_Connection=True;TrustServerCertificate=true;"
-}
-```
-
-:::
+From here the setup is the same whichever way you host Portway, so rather than repeat it, [Getting Started](/guide/getting-started) walks you through retrieving your access token and configuring your environments. One detail is worth keeping in mind on IIS: the `tokens/` and `environments/` directories are created on first run under the site root, so the Application Pool identity needs read access to both.
 
 ## Troubleshooting
 

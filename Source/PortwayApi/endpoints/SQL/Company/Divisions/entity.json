@@ -3,7 +3,7 @@
   "DatabaseObjectName": "CompanyDivisions",
   "Namespace": "Company",
   "NamespaceDisplayName": "Company",
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["500", "700", "Synergy"],
   "Documentation": {
     "Summary": "Retrieve division data",

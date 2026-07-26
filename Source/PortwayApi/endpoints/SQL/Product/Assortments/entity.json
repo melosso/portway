@@ -3,7 +3,7 @@
     "DatabaseSchema": "dbo",
     "DatabaseObjectType": "Table",
     "PrimaryKey": "ID",
-    "IsPrivate": true,
+    "Hidden": true,
     "Namespace": "Product",
     "NamespaceDisplayName": "Product",
     "AllowedColumns": [

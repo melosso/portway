@@ -24,7 +24,7 @@ endpoints/Static/ProductionMachine/
   "ContentType": "application/xml",
   "ContentFile": "summary.xml",
   "EnableFiltering": true,
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["prod", "dev"],
   "Documentation": {
     "TagDescription": "Production machine data",
@@ -42,7 +42,7 @@ endpoints/Static/ProductionMachine/
 | `ContentFile` | Yes | string | Filename relative to the endpoint directory |
 | `ContentType` | No | string | MIME type. Auto-detected from file extension if omitted |
 | `EnableFiltering` | No | boolean | Enable OData filtering. Defaults to `false` |
-| `IsPrivate` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
+| `Hidden` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
 | `AllowedEnvironments` | Yes | array | Environments where this endpoint responds |
 | `Documentation` | No | object | OpenAPI metadata |
 

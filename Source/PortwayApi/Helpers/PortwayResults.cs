@@ -45,10 +45,15 @@ public static class PortwayResults
         IEnumerable<ValidationDetail> details, string error = "Validation failed")
         => ctrl.UnprocessableEntity(ValidationErrorResponse.Of(details, error));
 
+    public static IActionResult ServiceUnavailable(ControllerBase ctrl, string error, int? retryAfterSeconds = null)
+    {
+        SetRetryAfter(ctrl.Response, retryAfterSeconds);
+        return ctrl.StatusCode(StatusCodes.Status503ServiceUnavailable, ErrorResponse.Of(error));
+    }
+
     public static IActionResult ServerError(ControllerBase ctrl, string detail)
-        => ctrl.Problem(detail: detail,
-                        statusCode: StatusCodes.Status500InternalServerError,
-                        title: "Error");
+        => ctrl.StatusCode(StatusCodes.Status500InternalServerError,
+                           ErrorResponse.Traced(detail, TraceIdOf(ctrl.HttpContext)));
 
     // Controller-free overloads for handlers that run outside ControllerBase
     public static IActionResult Collection<T>(IReadOnlyList<T> items, string? nextLink = null)
@@ -70,34 +75,35 @@ public static class PortwayResults
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = 406 };
 
     public static IActionResult ServerError(string detail)
-        => new ObjectResult(new ProblemDetails
-        {
-            Detail = detail,
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Error"
-        })
-        { StatusCode = StatusCodes.Status500InternalServerError };
+        => new ObjectResult(ErrorResponse.Of(detail)) { StatusCode = StatusCodes.Status500InternalServerError };
 
     public static IActionResult ServerError(HttpContext context, string detail, string title = "Error")
         => ProblemWithTrace(context, detail, title);
 
-    /// <summary>Replicates ControllerBase.Problem's 500 shape (type link and traceId) outside a controller</summary>
+    /// <summary>500 in the shared envelope, carrying the trace id that correlates it with the server log</summary>
     public static IActionResult ProblemWithTrace(HttpContext context, string detail, string title)
-    {
-        var problem = new ProblemDetails
-        {
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-            Title = title,
-            Status = StatusCodes.Status500InternalServerError,
-            Detail = detail
-        };
-        problem.Extensions["traceId"] = System.Diagnostics.Activity.Current?.Id ?? context.TraceIdentifier;
-        return new ObjectResult(problem) { StatusCode = StatusCodes.Status500InternalServerError };
-    }
+        => new ObjectResult(ErrorResponse.Traced(detail, TraceIdOf(context)))
+        { StatusCode = StatusCodes.Status500InternalServerError };
+
+    /// <summary>Trace id a caller can quote when reporting a masked error</summary>
+    public static string TraceIdOf(HttpContext? context)
+        => System.Diagnostics.Activity.Current?.Id ?? context?.TraceIdentifier ?? string.Empty;
 
     public static IActionResult Create(string location, string message, object? result = null, object? id = null)
         => new CreatedResult(location, CreatedResponse.Of(message, result, id));
 
     public static IActionResult ValidationFailed(IEnumerable<ValidationDetail> details, string error = "Validation failed")
         => new UnprocessableEntityObjectResult(ValidationErrorResponse.Of(details, error));
+
+    public static IActionResult ServiceUnavailable(string error, int? retryAfterSeconds = null)
+        => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status503ServiceUnavailable };
+
+    /// <summary>Tells clients and caches how long to back off before retrying a deliberate outage</summary>
+    private static void SetRetryAfter(HttpResponse response, int? retryAfterSeconds)
+    {
+        if (retryAfterSeconds is > 0)
+        {
+            response.Headers.RetryAfter = retryAfterSeconds.Value.ToString();
+        }
+    }
 }

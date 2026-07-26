@@ -276,4 +276,26 @@ public class ResponseShapeTests : ApiTestBase
         Assert.False(string.IsNullOrEmpty(content), "Response body should not be empty");
         return JsonDocument.Parse(content);
     }
+
+    // A masked 500 uses the same envelope as every other error, plus a trace id to quote in a bug report
+    [Fact]
+    public async Task ServerError_Returns500_WithSharedEnvelopeAndTraceId()
+    {
+        SetAllowedEnvironments("500", "700");
+
+        // No SQL server is reachable from the test host, so this endpoint fails on connect
+        var response = await _client.GetAsync("/api/500/Product/Products");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+
+        var body = await ParseBody(response);
+        Assert.Equal(JsonValueKind.False, body.RootElement.GetProperty("success").ValueKind);
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("error").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("traceId").GetString()));
+
+        // The RFC 9110 ProblemDetails shape must not leak back in
+        Assert.False(body.RootElement.TryGetProperty("type", out _));
+        Assert.False(body.RootElement.TryGetProperty("title", out _));
+        Assert.False(body.RootElement.TryGetProperty("status", out _));
+    }
 }

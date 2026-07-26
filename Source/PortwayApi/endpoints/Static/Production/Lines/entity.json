@@ -5,10 +5,11 @@
   "ContentType": "text/csv",
   "ContentFile": "content.csv",
   "EnableFiltering": false,
-  "IsPrivate": false,
+  "Hidden": false,
+  "Deprecated": true,
   "AllowedEnvironments": ["500", "700"],
   "Documentation": {
-    "TagDescription": "**Production Line Data API**\n\nProduction line data in CSV format for testing frontend applications, dashboards, and API simulation.\n\nReturns machine status, production metrics, and operational data across all production lines.",
+    "TagDescription": "**Production Line Data API**\n\nProduction line data in CSV format for testing frontend applications, dashboards, and API simulation.\n\nReturns machine status, production metrics, and operational data across all production lines.\n\n_Deprecated: this CSV feed is kept for compatibility. Prefer the JSON endpoints for new integrations._",
     "MethodDescriptions": {
       "GET": "Retrieve production line data"
     },

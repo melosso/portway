@@ -67,6 +67,61 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Equal("OK", responses.GetProperty("200").GetProperty("description").GetString());
     }
 
+    // Audit: no operation may inline its own error schema, whatever endpoint type produced it
+    [Fact]
+    public async Task EveryErrorResponse_UsesTheSharedEnvelope()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var paths = doc.RootElement.GetProperty("paths");
+
+        var offenders = new List<string>();
+        foreach (var path in paths.EnumerateObject())
+        foreach (var op in path.Value.EnumerateObject())
+        {
+            if (!op.Value.TryGetProperty("responses", out var responses) || responses.ValueKind != JsonValueKind.Object) continue;
+            foreach (var r in responses.EnumerateObject())
+            {
+                if (!int.TryParse(r.Name, out var code) || code < 400) continue;
+
+                var reference = r.Value.TryGetProperty("content", out var content) &&
+                                content.TryGetProperty("application/json", out var media) &&
+                                media.TryGetProperty("schema", out var schema) &&
+                                schema.TryGetProperty("$ref", out var refValue)
+                    ? refValue.GetString()
+                    : null;
+
+                if (reference != "#/components/schemas/ErrorResponse" &&
+                    reference != "#/components/schemas/ValidationErrorResponse")
+                {
+                    offenders.Add($"{path.Name} {op.Name} {r.Name}: {reference ?? "no $ref"}");
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0, "Error responses not using the shared envelope:\n" + string.Join("\n", offenders));
+    }
+
+    // Multipart uploads describe the part encoding, narrowed to the extensions the endpoint allows
+    [Fact]
+    public async Task FileUpload_DocumentsMultipartEncoding_FromAllowedExtensions()
+    {
+        SetAllowedEnvironments("500", "700");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var upload = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/files/Images").GetProperty("post");
+        var multipart = upload.GetProperty("requestBody").GetProperty("content").GetProperty("multipart/form-data");
+
+        var contentType = multipart.GetProperty("encoding").GetProperty("file").GetProperty("contentType").GetString();
+        Assert.NotNull(contentType);
+        Assert.Contains("image/png", contentType);
+        Assert.DoesNotContain("application/octet-stream", contentType);
+    }
+
     // $expand is offered only where the endpoint declares navigations, and names the ones it has
     [Fact]
     public async Task ExpandParameter_IsDocumented_OnlyForEndpointsWithRelationships()

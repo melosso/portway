@@ -2,6 +2,6 @@
   "StorageType": "Local",
   "BaseDirectory": "customer-data/{env}",
   "AllowedExtensions": [".csv", ".json", ".xml", ".xlsx"],
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["500", "700"]
 }

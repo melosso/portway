@@ -14,7 +14,9 @@ public class EndpointDefinition
     public List<string> Methods { get; set; } = new List<string>();
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
-    public bool IsPrivate { get; set; } = false;
+    /// <summary>When false the endpoint returns 503 instead of serving requests</summary>
+    public bool Enabled { get; set; } = true;
+    public bool Hidden { get; set; } = false;
     /// <summary>Marks the endpoint's operations as deprecated in the OpenAPI document</summary>
     public bool Deprecated { get; set; } = false;
     public McpSettings? Mcp { get; set; }
@@ -93,7 +95,7 @@ public class EndpointDefinition
     public string? InferredNamespace { get; set; }
 
     // Helper properties to simplify type checking
-    public bool IsStandard => Type == EndpointType.Standard && !IsPrivate;
+    public bool IsStandard => Type == EndpointType.Standard && !Hidden;
     public bool IsComposite => Type == EndpointType.Composite || 
                               (CompositeConfig != null && !string.IsNullOrEmpty(CompositeConfig.Name));
     public bool IsSql => Type == EndpointType.SQL;
@@ -187,7 +189,9 @@ public class EndpointDefinition
         return new ProxyEndpointInfo(
             Url,
             new HashSet<string>(Methods, StringComparer.OrdinalIgnoreCase),
-            IsPrivate,
+            Hidden,
+            Enabled,
+            Deprecated,
             IsMcpExposed,
             Type.ToString(),
             AllowedEnvironments,

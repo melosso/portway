@@ -95,21 +95,32 @@ Validation failures (`422`) add a `details` array describing each problem:
 
 In the API reference these appear as the shared `ErrorResponse` and `ValidationErrorResponse` schemas, which every operation references.
 
+A `500` carries one extra field, `traceId`. Because the message itself is deliberately vague, this identifier is what ties your response back to the matching entry in the server log, so it is worth quoting whenever you report a problem:
+
+```json
+{
+  "success": false,
+  "error": "Error processing. Please check the logs for more details.",
+  "traceId": "00-530e2d01e7e446f7c1a9936cd2858df4-77e01a3151145562-02"
+}
+```
+
 ## Status Codes by Endpoint Type
 
 Every endpoint type shares the same error envelope, but each returns only the codes that make sense for it. This is the set you will see documented per operation in the API reference:
 
 | Endpoint type | Success | Error codes |
 |---------------|---------|-------------|
-| SQL (read) | `200` | `400` `401` `403` `404` `500` |
-| SQL (write) | `200` `201` | `400` `401` `403` `404` `422` `500` |
-| Proxy | pass-through | `400` `401` `403` `404` `500` |
-| Static | `200` | `400` `401` `403` `404` `406` `500` |
-| Composite | `200` | `400` `401` `403` `404` `422` `500` |
-| Webhook | `200` | `400` `401` `403` `404` `500` |
-| Files | `200` `201` `206` | `400` `401` `403` `404` `409` `413` `415` `416` `500` |
+| SQL (read) | `200` | `400` `401` `403` `404` `500` `503` |
+| SQL (write) | `200` `201` | `400` `401` `403` `404` `422` `500` `503` |
+| SQL (query) | `200` | `400` `401` `403` `404` `415` `500` `503` |
+| Proxy | pass-through | `400` `401` `403` `404` `500` `503` |
+| Static | `200` | `400` `401` `403` `404` `406` `500` `503` |
+| Composite | `200` | `400` `401` `403` `404` `422` `500` `503` |
+| Webhook | `200` | `400` `401` `403` `404` `500` `503` |
+| Files | `200` `201` `206` | `400` `401` `403` `404` `409` `413` `415` `416` `500` `503` |
 
-A `429 Too Many Requests` can come back from any endpoint when a rate limit is exceeded. `400` covers both a malformed request and an environment that is not on the allowed list; `403` means the token is valid but lacks the scope, or the target was blocked.
+A `429 Too Many Requests` can come back from any endpoint when a rate limit is exceeded. A `503` tells you the endpoint has been switched off through `Enabled: false`, and it arrives with a `Retry-After` header so you know how long to wait. `400` covers both a malformed request and an environment that is not on the allowed list; `403` means the token is valid but lacks the scope, or the target was blocked.
 
 The success body, on the other hand, is specific to each endpoint. SQL queries return your rows, Static endpoints return their configured content, File downloads return bytes, and Proxy and Composite endpoints pass through whatever the upstream service or the final step returns. SQL stored procedures are the freest of all: they shape their own payloads. The reference documents the success shape it can infer for each operation, so treat the error contract as universal and the success contract as per endpoint.
 

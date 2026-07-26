@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
+using PortwayApi.Classes.OpenApi;
 using Serilog;
 
 namespace PortwayApi.Classes;
@@ -35,8 +36,8 @@ public partial class DynamicEndpointDocumentFilter
         string deletePath = deletePattern.Style == "PathParameter" ||
                             deletePattern.Style == "ODataGuid" ||
                             deletePattern.Style == "ODataKey"
-            ? $"/api/{{env}}/{endpointName}/{{id}}"
-            : $"/api/{{env}}/{endpointName}";
+            ? $"{OpenApiEndpointCatalog.BasePath(definition)}/{{id}}"
+            : OpenApiEndpointCatalog.BasePath(definition);
 
         if (!document.Paths.ContainsKey(deletePath))
         {
@@ -96,39 +97,10 @@ public partial class DynamicEndpointDocumentFilter
         operation.Responses = new OpenApiResponses
         {
             ["200"] = new OpenApiResponse { Description = "Successfully deleted" },
-            ["204"] = new OpenApiResponse { Description = "Successfully deleted (no content)" },
-            ["400"] = new OpenApiResponse { Description = "Bad request" },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "Resource not found" },
-            ["500"] = new OpenApiResponse
-            {
-                Description = "Internal Server Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
-                        Example = new JsonObject
-                        {
-                            ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                            ["title"] = JsonValue.Create("Error"),
-                            ["status"] = JsonValue.Create(500),
-                            ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
-                        }
-                    }
-                }
-            }
+            ["204"] = new OpenApiResponse { Description = "Successfully deleted (no content)" }
         };
+
+        StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
 
         document.Paths[deletePath].Operations![HttpMethod.Delete] = operation;
         operationIdCounter++;
@@ -162,7 +134,7 @@ public partial class DynamicEndpointDocumentFilter
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
 
-            if (definition.IsPrivate || definition.IsComposite)
+            if (definition.Hidden || definition.IsComposite)
                 continue;
 
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
@@ -174,7 +146,7 @@ public partial class DynamicEndpointDocumentFilter
                 documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
             }
 
-            string path = $"/api/{{env}}/{endpointName}";
+            string path = OpenApiEndpointCatalog.BasePath(definition);
 
             if (!document.Paths.ContainsKey(path))
             {
@@ -298,40 +270,10 @@ public partial class DynamicEndpointDocumentFilter
                                 Schema = GetSchemaForContentType(acceptContentType)
                             }
                         }
-                    },
-                    ["400"] = new OpenApiResponse { Description = "Bad Request - Invalid request" },
-                    ["401"] = new OpenApiResponse { Description = "Unauthorized - Missing or invalid authentication token" },
-                    ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
-                    ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
-                    ["500"] = new OpenApiResponse
-                    {
-                        Description = "Internal Server Error",
-                        Content = new Dictionary<string, IOpenApiMediaType>
-                        {
-                            ["application/json"] = new OpenApiMediaType
-                            {
-                                Schema = new OpenApiSchema
-                                {
-                                    Type = JsonSchemaType.Object,
-                                    Properties = new Dictionary<string, IOpenApiSchema>
-                                    {
-                                        ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                        ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                        ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                        ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                                    }
-                                },
-                                Example = new JsonObject
-                                {
-                                    ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                                    ["title"] = JsonValue.Create("Error"),
-                                    ["status"] = JsonValue.Create(500),
-                                    ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
-                                }
-                            }
-                        }
                     }
                 };
+
+                        StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
 
                 // Add the operation to the path with the appropriate HTTP method
                 AddOperationToPath(document.Paths[path], method, operation);
@@ -446,53 +388,10 @@ public partial class DynamicEndpointDocumentFilter
         // Add standard responses
         operation.Responses = new OpenApiResponses
         {
-            ["200"] = new OpenApiResponse { Description = "Successful response" },
-            ["400"] = new OpenApiResponse { Description = "Bad Request - Invalid request" },
-            ["401"] = new OpenApiResponse
-            {
-                Description = "Unauthorized - Missing or invalid authentication token",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        }
-                    }
-                }
-            },
-            ["403"] = new OpenApiResponse { Description = "Forbidden - Insufficient permissions" },
-            ["404"] = new OpenApiResponse { Description = "Not Found - Resource not found" },
-            ["500"] = new OpenApiResponse
-            {
-                Description = "Internal Server Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        }
-                    }
-                }
-            }
+            ["200"] = new OpenApiResponse { Description = "Successful response" }
         };
 
-        // Standardize error responses onto the shared schema (validated matrix)
-        foreach (var c in new[] { "400", "401", "403", "404", "405", "406", "409", "413", "415", "416", "422", "500" })
-            operation.Responses.Remove(c);
-        StandardResponses.AddErrors(operation, 400, 401, 403, 404, 500);
+        StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
 
         return operation;
     }

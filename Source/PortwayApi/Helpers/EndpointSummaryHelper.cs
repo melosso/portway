@@ -175,12 +175,12 @@ public static class EndpointSummaryHelper
         var composites = proxyEndpointMap.Where(e => e.Value.Type == "Composite").ToDictionary(e => e.Key, e => e.Value);
 
         var sections = new List<SummarySection>();
-        AddSection(sections, "SQL", sqlEndpoints, e => $"{e.Key}: {e.Value.DatabaseSchema}.{e.Value.DatabaseObjectName}", e => e.Value.IsPrivate);
-        AddSection(sections, "Proxy", proxies, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.IsPrivate);
-        AddSection(sections, "Composite", composites, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.IsPrivate);
-        AddSection(sections, "Webhook", webhookEndpoints, e => $"{e.Key}: [{FormatWebhookIds(e.Value)}]", e => e.Value.IsPrivate);
-        AddSection(sections, "File", fileEndpoints, e => $"{e.Key}{FormatBaseDir(e.Value)}", e => e.Value.IsPrivate);
-        AddSection(sections, "Static", staticEndpoints, e => $"{e.Key} [{FormatContentType(e.Value)}]", e => e.Value.IsPrivate);
+        AddSection(sections, "SQL", sqlEndpoints, e => $"{e.Key}: {e.Value.DatabaseSchema}.{e.Value.DatabaseObjectName}", e => e.Value.Hidden);
+        AddSection(sections, "Proxy", proxies, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
+        AddSection(sections, "Composite", composites, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
+        AddSection(sections, "Webhook", webhookEndpoints, e => $"{e.Key}: [{FormatWebhookIds(e.Value)}]", e => e.Value.Hidden);
+        AddSection(sections, "File", fileEndpoints, e => $"{e.Key}{FormatBaseDir(e.Value)}", e => e.Value.Hidden);
+        AddSection(sections, "Static", staticEndpoints, e => $"{e.Key} [{FormatContentType(e.Value)}]", e => e.Value.Hidden);
 
         // Rendered as one log event so sinks cannot interleave the tree with other startup lines
         Log.Information("Endpoint configuration ({Total} endpoints){Tree}", sections.Sum(s => s.Count), RenderTree(sections));

@@ -2,7 +2,7 @@
 title: Guide
 description: A high-level guide to Portway, its core concepts, and how to get started.
 outline: [2, 3]
-keywords: [API Gateway, Windows, SQL Server, REST, OData]
+keywords: [API Gateway, Docker, Windows, SQL Server, REST, OData]
 ---
 
 # What is Portway?

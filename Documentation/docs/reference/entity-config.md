@@ -140,7 +140,8 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 | `ResponseTransforms`  | object  | No       | `Remove`, `Rename` and `Mask` rules applied to query results after alias mapping             |
 | `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
 | `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for body-carried reads (RFC 10008) |
-| `Deprecated`          | boolean | No       | When true, the endpoint's operations are marked as deprecated in the OpenAPI documentation    |
+| `Deprecated`          | boolean | No       | Shows the endpoint's operations as deprecated in the OpenAPI documentation                    |
+| `Enabled`             | boolean | No       | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`)     |
 | `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
 
 \* Only required for Table-Valued Function (TVF) endpoints.
@@ -190,13 +191,13 @@ Proxy entities forward requests to internal web services.
 }
 ```
 
-### Private Endpoint
+### Hidden Endpoint
 
 ```json
 {
   "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/SalesOrderHeader",
   "Methods": ["POST"],
-  "IsPrivate": true
+  "Hidden": true
 }
 ```
 
@@ -254,8 +255,9 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 | `Retry` | object | No | `Attempts` per URL (default 1) and `DelayMs` between tries (default 200) |
 | `ResponseTransforms` | object | No | `Remove`, `Rename` and `Mask` rules for JSON response fields |
 | `Methods` | array | Yes | Allowed HTTP methods |
-| `IsPrivate` | boolean | No | Hide from API documentation |
-| `Deprecated` | boolean | No | Mark the endpoint's operations as deprecated in the OpenAPI documentation |
+| `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
+| `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
+| `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
 | `CustomProperties` | object | No | Extended functionality settings |
 
@@ -366,7 +368,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
   "ContentType": "application/xml",
   "ContentFile": "summary.xml",
   "EnableFiltering": true,
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["prod", "dev"]
 }
 ```
@@ -395,7 +397,9 @@ Static entities serve pre-defined content files with optional OData filtering ca
 | `ContentType` | string | No | MIME type (auto-detected if not specified) |
 | `ContentFile` | string | Yes | Content filename relative to endpoint directory |
 | `EnableFiltering` | boolean | No | Enable OData query parameters (default: false) |
-| `IsPrivate` | boolean | No | Require authentication (default: false) |
+| `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
+| `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
+| `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | Yes | Environments where endpoint is available |
 | `Documentation` | object | No | OpenAPI documentation metadata |
 
@@ -455,6 +459,9 @@ Composite entities orchestrate multiple operations in a single transaction. It's
 | `Url` | string | Yes | Base URL for all steps |
 | `Methods` | array | Yes | Allowed HTTP methods |
 | `CompositeConfig` | object | Yes | Composite configuration |
+| `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
+| `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
+| `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `AllowedEnvironments` | array | No | Allowed environments |
 
 ### CompositeConfig Properties
@@ -511,6 +518,10 @@ Webhook entities receive and store external webhook data.
 | `DatabaseObjectName` | string | Yes | Target table name |
 | `DatabaseSchema` | string | No | Database schema |
 | `AllowedColumns` | array | Yes | Allowed webhook IDs |
+| `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
+| `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
+| `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
+| `Documentation` | object | No | OpenAPI documentation metadata |
 
 ## Endpoint: Files
 
@@ -523,7 +534,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
   "StorageType": "Local",
   "BaseDirectory": "documents",
   "AllowedExtensions": [".pdf", ".docx", ".xlsx", ".txt"],
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["prod", "dev"]
 }
 ```
@@ -535,7 +546,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
   "StorageType": "Local",
   "BaseDirectory": "customer-files/{env}",
   "AllowedExtensions": [".jpg", ".png", ".pdf", ".xlsx"],
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["prod", "dev"]
 }
 ```
@@ -547,7 +558,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
   "StorageType": "Local",
   "BaseDirectory": "secure-documents",
   "AllowedExtensions": [".pdf", ".xlsx"],
-  "IsPrivate": true,
+  "Hidden": true,
   "AllowedEnvironments": ["prod"]
 }
 ```
@@ -558,9 +569,12 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 |----------|------|----------|-------------|
 | `StorageType` | string | Yes | Storage provider type (currently only "Local") |
 | `BaseDirectory` | string | No | Base directory for file storage (default: endpoint name) |
-| `AllowedExtensions` | array | No | List of allowed file extensions (empty = allow all) |
-| `IsPrivate` | boolean | No | Whether endpoint is hidden from documentation (default: false) |
+| `AllowedExtensions` | array | No | Extensions accepted on upload, and the media types documented for the multipart part (empty allows all) |
+| `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
+| `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
+| `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Environments that can access this endpoint |
+| `Documentation` | object | No | OpenAPI documentation metadata |
 
 ## Troubleshooting
 

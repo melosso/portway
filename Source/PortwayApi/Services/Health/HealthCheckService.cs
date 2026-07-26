@@ -200,10 +200,10 @@ public class HealthCheckService
             // Lazy load endpoints - ensures we always check current endpoint definitions
             var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
             var endpointsToCheck = proxyEndpoints
-                .Where(e => !e.Value.IsPrivate && e.Value.Methods.Contains("GET"))
-                .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)>(
+                .Where(e => !e.Value.Hidden && e.Value.Methods.Contains("GET"))
+                .Select(e => new KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)>(
                     e.Key,
-                    (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.IsPrivate, e.Value.Type.ToString())))
+                    (e.Value.Url, new HashSet<string>(e.Value.Methods), e.Value.Hidden, e.Value.Type.ToString())))
                 .ToList();
 
             Log.Debug("Checking proxy endpoints: {Endpoints}",
@@ -250,7 +250,7 @@ public class HealthCheckService
 
     private async Task CheckEndpointAsync(
         HttpClient client, 
-        KeyValuePair<string, (string Url, HashSet<string> Methods, bool IsPrivate, string Type)> endpoint, 
+        KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)> endpoint, 
         Dictionary<string, object> results, 
         List<string> unhealthyEndpoints, 
         CancellationToken cancellationToken)

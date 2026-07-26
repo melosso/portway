@@ -47,7 +47,7 @@ You can selectively configure which Synergy endpoints to expose through proxy en
 {
   "Url": "http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account",
   "Methods": ["GET"],
-  "IsPrivate": false,
+  "Hidden": false,
   "AllowedEnvironments": ["Synergy"]
 }
 ```

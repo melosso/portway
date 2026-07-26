@@ -1,7 +1,7 @@
 {
     "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/InvoiceLine", 
     "Methods": ["POST"],
-    "IsPrivate": true,
+    "Hidden": true,
     "Documentation": {
         "TagDescription": "**Invoice Lines**\n\nInternal endpoint for managing individual invoice line items. Handles product details, quantities, prices, and line-level calculations for invoices.",
         "MethodDescriptions": {

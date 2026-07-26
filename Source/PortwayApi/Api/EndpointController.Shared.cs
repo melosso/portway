@@ -36,6 +36,14 @@ public partial class EndpointController
         if (_endpointResolver.TryResolve(type, namespaceName, endpointName, out var found))
         {
             endpoint = found!;
+
+            // Resolved but switched off: report the outage instead of serving
+            if (!endpoint.Enabled)
+            {
+                Log.Debug("Endpoint disabled: {EndpointName}", endpointName);
+                return DisabledEndpoint.Result(this);
+            }
+
             return null;
         }
 
@@ -59,10 +67,7 @@ public partial class EndpointController
     private IActionResult HandleUnexpectedProblem(Exception ex, string operation)
     {
         Log.Error(ex, "Error processing {Operation} request for {Path}", operation, Request.Path);
-        return Problem(
-            detail: "Error processing. Please check the logs for more details.",
-            statusCode: StatusCodes.Status500InternalServerError,
-            title: "Error");
+        return PortwayResults.ServerError(this, "Error processing. Please check the logs for more details.");
     }
 
     /// <summary>Parses the catchall segment to determine endpoint type and name with namespace support</summary>

@@ -110,7 +110,7 @@ public static partial class EndpointHandler
                 Url = "https://jsonplaceholder.typicode.com/posts",
                 Methods = new List<string> { "GET", "POST" },
                 Type = "Standard",
-                IsPrivate = false
+                Hidden = false
             };
 
             var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
@@ -212,7 +212,7 @@ public static partial class EndpointHandler
                 StorageType = "Local",
                 BaseDirectory = "sample",
                 AllowedExtensions = new List<string> { ".jpg", ".png", ".pdf", ".docx", ".xlsx" },
-                IsPrivate = false,
+                Hidden = false,
                 AllowedEnvironments = new List<string> { "prod", "dev" }
             };
 
