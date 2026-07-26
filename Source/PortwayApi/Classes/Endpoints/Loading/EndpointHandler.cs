@@ -2,8 +2,6 @@ namespace PortwayApi.Classes;
 
 using System.Text.Json;
 using Serilog;
-using PortwayApi.Helpers;
-
 
 public static partial class EndpointHandler
 {
@@ -14,6 +12,11 @@ public static partial class EndpointHandler
     private static volatile Dictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
     private static volatile Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
+
+    // Shared so a reload builds the serializer metadata cache once, not per endpoint file
+    private static readonly JsonSerializerOptions CaseInsensitiveOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private static readonly JsonSerializerOptions IndentedOptions = new() { WriteIndented = true };
 
     private static readonly EndpointLoaderSpec ProxyLoaderSpec = new(
         "Proxy", "proxy", "", "*.json", NamespaceAware: true,
@@ -53,12 +56,11 @@ public static partial class EndpointHandler
         (key, d) => Log.Debug("Webhook Endpoint: {Name}; Object: {Schema}.{Object}; Namespace: {Namespace}",
             key, d.DatabaseSchema, d.DatabaseObjectName, d.EffectiveNamespace ?? "None"));
 
+    // Resolved once; accessors read it per lookup and GetCurrentDirectory is a syscall
+    private static readonly string EndpointsBasePath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints");
+
     /// <summary>Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility</summary>
-    private static string GetEndpointsBasePath()
-    {
-        var baseDir = Directory.GetCurrentDirectory();
-        return Path.Combine(baseDir, "endpoints");
-    }
+    private static string GetEndpointsBasePath() => EndpointsBasePath;
 
     /// <summary>Gets SQL endpoints from the /endpoints/SQL directory</summary>
     public static Dictionary<string, EndpointDefinition> GetSqlEndpoints()
@@ -251,35 +253,35 @@ public static partial class EndpointHandler
     /// <summary>Forces immediate reload of SQL endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadSqlEndpoints()
     {
-        var sqlEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "SQL");
+        var sqlEndpointsDirectory = Path.Combine(EndpointsBasePath, "SQL");
         return LoadSqlEndpoints(sqlEndpointsDirectory);
     }
 
     /// <summary>Forces immediate reload of proxy endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadProxyEndpoints()
     {
-        var proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
+        var proxyEndpointsDirectory = Path.Combine(EndpointsBasePath, "Proxy");
         return LoadProxyEndpoints(proxyEndpointsDirectory);
     }
 
     /// <summary>Forces immediate reload of file endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadFileEndpoints()
     {
-        var fileEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Files");
+        var fileEndpointsDirectory = Path.Combine(EndpointsBasePath, "Files");
         return LoadFileEndpoints(fileEndpointsDirectory);
     }
 
     /// <summary>Forces immediate reload of webhook endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadWebhookEndpoints()
     {
-        var webhookEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Webhooks");
+        var webhookEndpointsDirectory = Path.Combine(EndpointsBasePath, "Webhooks");
         return LoadSqlWebhookEndpoints(webhookEndpointsDirectory);
     }
 
     /// <summary>Forces immediate reload of static endpoints</summary>
     private static Dictionary<string, EndpointDefinition> ReloadStaticEndpoints()
     {
-        var staticEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static");
+        var staticEndpointsDirectory = Path.Combine(EndpointsBasePath, "Static");
         return LoadStaticEndpoints(staticEndpointsDirectory);
     }
 

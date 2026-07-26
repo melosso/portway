@@ -28,15 +28,6 @@ public partial class EndpointController
     /// <summary>Handles GET requests to endpoints</summary>
     [HttpGet("{env}/{**catchall}")]
     [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status304NotModified)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status406NotAcceptable)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetAsync(
         string env,
         string catchall,
@@ -96,14 +87,6 @@ public partial class EndpointController
     /// <summary>Handles QUERY requests (RFC 10008): a safe, idempotent, cacheable read whose query lives in the request body</summary>
     [AcceptVerbs("QUERY", Route = "{env}/{**catchall}")]
     [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> QueryAsync(string env, string catchall)
     {
         try
@@ -247,13 +230,6 @@ public partial class EndpointController
 
     /// <summary>Handles HEAD requests to static endpoints</summary>
     [HttpHead("{env}/{**catchall}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status304NotModified)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult Head(string env, string catchall)
     {
         try
@@ -336,16 +312,6 @@ public partial class EndpointController
 
     /// <summary>Handles POST requests to endpoints</summary>
     [HttpPost("{env}/{**catchall}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PostAsync(
         string env,
         string catchall)
@@ -427,16 +393,6 @@ public partial class EndpointController
 
     /// <summary>Handles PUT requests to endpoints</summary>
     [HttpPut("{env}/{**catchall}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PutAsync(
         string env,
         string catchall)
@@ -484,15 +440,6 @@ public partial class EndpointController
 
     /// <summary>Handles DELETE requests to endpoints</summary>
     [HttpDelete("{env}/{**catchall}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> DeleteAsync(
         string env,
         string catchall)
@@ -550,14 +497,6 @@ public partial class EndpointController
 
     /// <summary>Handles PATCH requests to endpoints</summary>
     [HttpPatch("{env}/{**catchall}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status405MethodNotAllowed)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> PatchAsync(
         string env,
         string catchall)

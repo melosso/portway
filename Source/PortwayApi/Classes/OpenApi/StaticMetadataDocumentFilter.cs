@@ -35,7 +35,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
             var endpointName = endpoint.Key;
             var definition = endpoint.Value;
 
-            if (definition.Hidden)
+            if (!OpenApiEndpointCatalog.IsDocumented(definition))
                 continue;
 
             // Resolve the physical path to the content file

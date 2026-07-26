@@ -37,7 +37,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Create paths for each file endpoint
             foreach (var (endpointName, endpoint) in fileEndpoints)
             {
-                if (endpoint.Hidden)
+                if (!OpenApiEndpointCatalog.IsDocumented(endpoint))
                 {
                     // Skip private endpoints
                     continue;

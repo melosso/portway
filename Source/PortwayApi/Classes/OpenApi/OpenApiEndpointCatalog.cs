@@ -33,6 +33,9 @@ internal static class OpenApiEndpointCatalog
             yield return (FileBasePath(kv.Key), kv.Value);
     }
 
+    /// <summary>Whether an endpoint belongs in the document; disabled ones stay in, marked by EndpointStateDocumentFilter</summary>
+    public static bool IsDocumented(EndpointDefinition definition) => !definition.Hidden;
+
     /// <summary>Matches a base and its id and sub-path variants, without matching a longer sibling name</summary>
     public static bool Covers(string basePath, string pathKey) =>
         pathKey.Equals(basePath, StringComparison.OrdinalIgnoreCase) ||

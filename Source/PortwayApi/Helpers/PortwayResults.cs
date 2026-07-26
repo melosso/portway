@@ -77,13 +77,15 @@ public static class PortwayResults
     public static IActionResult ServerError(string detail)
         => new ObjectResult(ErrorResponse.Of(detail)) { StatusCode = StatusCodes.Status500InternalServerError };
 
-    public static IActionResult ServerError(HttpContext context, string detail, string title = "Error")
-        => ProblemWithTrace(context, detail, title);
-
     /// <summary>500 in the shared envelope, carrying the trace id that correlates it with the server log</summary>
-    public static IActionResult ProblemWithTrace(HttpContext context, string detail, string title)
+    public static IActionResult ServerError(HttpContext context, string detail)
         => new ObjectResult(ErrorResponse.Traced(detail, TraceIdOf(context)))
         { StatusCode = StatusCodes.Status500InternalServerError };
+
+    /// <summary>Masked 500 in the shared envelope for handlers that return minimal-API results</summary>
+    public static IResult MinimalServerError(HttpContext context, string detail = "An unexpected error occurred.")
+        => Results.Json(ErrorResponse.Traced(detail, TraceIdOf(context)),
+                        statusCode: StatusCodes.Status500InternalServerError);
 
     /// <summary>Trace id a caller can quote when reporting a masked error</summary>
     public static string TraceIdOf(HttpContext? context)
@@ -95,7 +97,8 @@ public static class PortwayResults
     public static IActionResult ValidationFailed(IEnumerable<ValidationDetail> details, string error = "Validation failed")
         => new UnprocessableEntityObjectResult(ValidationErrorResponse.Of(details, error));
 
-    public static IActionResult ServiceUnavailable(string error, int? retryAfterSeconds = null)
+    /// <summary>503 without a Retry-After; use the ControllerBase overload or set the header yourself when a hint is needed</summary>
+    public static IActionResult ServiceUnavailable(string error)
         => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = StatusCodes.Status503ServiceUnavailable };
 
     /// <summary>Tells clients and caches how long to back off before retrying a deliberate outage</summary>

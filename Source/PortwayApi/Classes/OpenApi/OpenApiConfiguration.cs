@@ -157,8 +157,8 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<SqlMetadataDocumentFilter>();
                 options.AddDocumentTransformer<StaticMetadataDocumentFilter>();
                 options.AddDocumentTransformer<ResponseDescriptionDocumentFilter>();
-                options.AddDocumentTransformer<DeprecatedEndpointDocumentFilter>();
-                options.AddDocumentTransformer<DisabledEndpointDocumentFilter>();
+                options.AddDocumentTransformer(EndpointStateDocumentFilter.Deprecated());
+                options.AddDocumentTransformer(EndpointStateDocumentFilter.Disabled());
                 options.AddDocumentTransformer<ConfigExampleDocumentFilter>();
                 options.AddDocumentTransformer<HierarchicalTagDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();

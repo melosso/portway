@@ -8,7 +8,7 @@ namespace PortwayApi.Tests.Endpoints;
 public class ODataCountTests
 {
     private static ODataToSqlConverter CreateConverter()
-        => new(new EdmModelBuilder(), new[] { new MsSqlProvider() });
+        => new(new[] { new MsSqlProvider() });
 
     [Fact]
     public void CountQuery_Contains_Count_And_Filter()

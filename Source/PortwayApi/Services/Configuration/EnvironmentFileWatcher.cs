@@ -13,7 +13,6 @@ namespace PortwayApi.Services.Configuration;
 public class EnvironmentFileWatcher : IHostedService, IDisposable
 {
     private readonly string _environmentsPath;
-    private readonly CacheManager _cacheManager;
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
     private readonly SseBroadcaster? _broadcaster;
     private readonly ReloadTracker _reloadTracker;
@@ -31,14 +30,12 @@ public class EnvironmentFileWatcher : IHostedService, IDisposable
     private bool _disposed;
 
     public EnvironmentFileWatcher(
-        CacheManager cacheManager,
         IEnvironmentSettingsProvider environmentSettingsProvider,
         ReloadTracker reloadTracker,
         SseBroadcaster? broadcaster = null)
     {
         var baseDir = Directory.GetCurrentDirectory();
         _environmentsPath            = Path.Combine(baseDir, "environments");
-        _cacheManager                = cacheManager;
         _environmentSettingsProvider = environmentSettingsProvider;
         _reloadTracker               = reloadTracker;
         _broadcaster                 = broadcaster;

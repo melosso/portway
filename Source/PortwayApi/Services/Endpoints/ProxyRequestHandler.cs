@@ -31,9 +31,6 @@ public sealed class ProxyRequestHandler
         _cacheManager = cacheManager;
     }
 
-    /// <summary>Handles proxy requests for any HTTP method with request caching</summary>
-    private static readonly MemoryCache _proxyCache = new MemoryCache(new MemoryCacheOptions());
-
     private static readonly HashSet<string> _noReservedParams = new(StringComparer.OrdinalIgnoreCase);
 
     // Endpoint Urls are config-static, so the path/query split and reserved param names are computed once per Url
@@ -327,8 +324,8 @@ public sealed class ProxyRequestHandler
         {
             Log.Error(ex, "Error during proxy request: {EndpointName}", endpointName);
 
-            return PortwayResults.ProblemWithTrace(context,
-                $"Error processing endpoint {endpointName}. Please check the logs for more details.", "Error");
+            return PortwayResults.ServerError(context,
+                $"Error processing endpoint {endpointName}. Please check the logs for more details.");
         }
     }
 

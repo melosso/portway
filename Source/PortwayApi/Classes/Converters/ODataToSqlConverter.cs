@@ -9,13 +9,11 @@ namespace PortwayApi.Classes;
 /// <summary>Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect based on the connection string provider type</summary>
 public class ODataToSqlConverter : IODataToSqlConverter
 {
-    private readonly IEdmModelBuilder _edmModelBuilder;
     private readonly IReadOnlyDictionary<SqlProviderType, Compiler> _compilers;
     private readonly IReadOnlyDictionary<SqlProviderType, ISqlProvider> _providers;
 
-    public ODataToSqlConverter(IEdmModelBuilder edmModelBuilder, IEnumerable<ISqlProvider> providers)
+    public ODataToSqlConverter(IEnumerable<ISqlProvider> providers)
     {
-        _edmModelBuilder = edmModelBuilder;
         _providers = providers.ToDictionary(p => p.ProviderType);
         _compilers = _providers.ToDictionary(p => p.Key, p => p.Value.GetCompiler());
     }

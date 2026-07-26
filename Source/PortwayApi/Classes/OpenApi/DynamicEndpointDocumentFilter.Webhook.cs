@@ -33,7 +33,7 @@ public partial class DynamicEndpointDocumentFilter
         {
         var definition = webhook.Value;
 
-        if (definition.Hidden)
+        if (!OpenApiEndpointCatalog.IsDocumented(definition))
             continue;
 
         string path = $"{OpenApiEndpointCatalog.BasePath(definition)}/{{webhookId}}";

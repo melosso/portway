@@ -31,7 +31,7 @@ public partial class DynamicEndpointDocumentFilter
             var definition = endpoint.Value;
 
             // Skip private endpoints
-            if (definition.Hidden)
+            if (!OpenApiEndpointCatalog.IsDocumented(definition))
                 continue;
 
             // Collect tag description if provided
@@ -58,7 +58,7 @@ public partial class DynamicEndpointDocumentFilter
             var definition = endpoint.Value;
 
             // Skip private endpoints
-            if (definition.Hidden)
+            if (!OpenApiEndpointCatalog.IsDocumented(definition))
                 continue;
 
             // Get effective environments for this endpoint (endpoint-specific or global fallback)

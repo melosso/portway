@@ -24,7 +24,6 @@ public static class SqlServiceExtensions
 
         // OData/SQL services
         services.AddSingleton<IHostedService, PortwayApi.Services.StartupLogger>();
-        services.AddSingleton<IEdmModelBuilder, EdmModelBuilder>();
         services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
         services.AddSingleton<PortwayApi.Services.SqlMetadataService>();
         services.AddHostedService<PortwayApi.Services.MetadataInitializationService>();

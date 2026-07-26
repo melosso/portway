@@ -11,7 +11,7 @@ public class PortwayMcpToolsTests
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
 
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var endpoints = new[]
         {
@@ -34,7 +34,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var result = PortwayMcpTools.ListEndpoints();
         Assert.Equal("No endpoints registered", result);
@@ -45,7 +45,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var endpoints = new[]
         {
@@ -66,7 +66,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
         registry.RegisterEndpoints(Array.Empty<EndpointMcpInfo>());
 
         var result = PortwayMcpTools.GetEndpointInfo("Products");
@@ -79,7 +79,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var endpoints = new[]
         {
@@ -97,7 +97,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var endpoints = new[]
         {
@@ -130,7 +130,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var result = PortwayMcpTools.ListUiEnabledEndpoints();
 
@@ -143,7 +143,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var endpoints = new[]
         {
@@ -166,7 +166,7 @@ public class PortwayMcpToolsTests
     {
         var registry = new McpEndpointRegistry();
         var appsProvider = new McpAppsResourceProvider();
-        PortwayMcpTools.Initialize(registry, appsProvider);
+        PortwayMcpTools.Initialize(registry);
 
         var endpoints = new[]
         {

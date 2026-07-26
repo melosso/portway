@@ -11,16 +11,9 @@ namespace PortwayApi.Tests.Services;
 public class ODataToSqlConverterTests
 {
     private readonly ODataToSqlConverter _converter;
-    private readonly Mock<IEdmModelBuilder> _mockEdmModelBuilder;
 
     public ODataToSqlConverterTests()
     {
-        _mockEdmModelBuilder = new Mock<IEdmModelBuilder>();
-
-        // Create a simple EDM model for testing
-        var mockModel = new Mock<IEdmModel>();
-        _mockEdmModelBuilder.Setup(m => m.GetEdmModel(It.IsAny<string>())).Returns(mockModel.Object);
-
         // Provide all registered providers (mirroring Program.cs registration)
         var providers = new ISqlProvider[]
         {
@@ -30,7 +23,7 @@ public class ODataToSqlConverterTests
             new SqliteProvider()
         };
 
-        _converter = new ODataToSqlConverter(_mockEdmModelBuilder.Object, providers);
+        _converter = new ODataToSqlConverter(providers);
     }
     
     [Fact]

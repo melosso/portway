@@ -35,7 +35,7 @@ public partial class DynamicEndpointDocumentFilter
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
 
-            if (definition.Hidden)
+            if (!OpenApiEndpointCatalog.IsDocumented(definition))
                 continue;
 
             // Get effective environments for this endpoint (endpoint-specific or global fallback)

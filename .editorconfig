@@ -1,0 +1,9 @@
+[*.cs]
+
+# Dead code is a build warning so it cannot accumulate unnoticed
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+
+# Timer fields are held to keep the timer alive, so IDE0052 misreads them
+[**/{WebUiAuthHelper,RateLimiter}.cs]
+dotnet_diagnostic.IDE0052.severity = none
