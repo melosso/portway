@@ -38,10 +38,7 @@ Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any ident
 }
 ```
 
-| Field | Required | Description |
-|---|---|---|
-| `ServerName` | Yes | Default server name included in forwarded headers |
-| `AllowedEnvironments` | Yes | Names of environments accessible via the API. Requests to any name not listed return 404 |
+`ServerName` sets the default server name included in forwarded headers, and `AllowedEnvironments` lists the environment names the API will route. See [Environment settings](/reference/environment-settings#global-settings) for the full property reference.
 
 :::warning
 Adding a folder under `environments/` is not enough, the name also needs to appear in `AllowedEnvironments` before Portway will route requests to it.

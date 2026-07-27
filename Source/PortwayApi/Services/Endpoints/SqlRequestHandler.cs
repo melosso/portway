@@ -461,7 +461,7 @@ public sealed partial class SqlRequestHandler
         {
             Log.Error(ex, "Error during SQL query for endpoint: {EndpointName}. Exception Type: {ExceptionType}",
                 endpointName, ex.GetType().Name);
-            return PortwayResults.ProblemWithTrace(context, "Error processing. Please check the logs for more details.", "Error");
+            return PortwayResults.ServerError(context, "Error processing. Please check the logs for more details.");
         }
     }
 
@@ -471,8 +471,8 @@ public sealed partial class SqlRequestHandler
         var errorId = Guid.NewGuid().ToString("N")[..8];
         Log.Error(dbEx, "Database error [{ErrorId}] for endpoint {EndpointName} ({Detail}): {Message}",
             errorId, endpointName, SqlErrorClassifier.DescribeForLog(dbEx), dbEx.Message);
-        return PortwayResults.ProblemWithTrace(context,
-            $"A data error occurred. Please contact support with reference: T{errorId}", "Internal Error");
+        return PortwayResults.ServerError(context,
+            $"A data error occurred. Please contact support with reference: T{errorId}");
     }
 
 	/// <summary>Handles SQL POST requests (Create)</summary>

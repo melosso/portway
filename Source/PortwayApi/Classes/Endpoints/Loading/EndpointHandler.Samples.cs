@@ -2,7 +2,6 @@ namespace PortwayApi.Classes;
 
 using System.Text.Json;
 using Serilog;
-using PortwayApi.Helpers;
 
 public static partial class EndpointHandler
 {
@@ -88,7 +87,7 @@ public static partial class EndpointHandler
                 PrimaryKey = "ItemCode"
             };
 
-            var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(sample, IndentedOptions);
             File.WriteAllText(samplePath, json);
             Log.Information($"Created sample SQL endpoint definition: {samplePath}");
         }
@@ -113,7 +112,7 @@ public static partial class EndpointHandler
                 Hidden = false
             };
 
-            var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(sample, IndentedOptions);
             File.WriteAllText(samplePath, json);
             Log.Information($"Created sample proxy endpoint definition: {samplePath}");
         }
@@ -166,7 +165,7 @@ public static partial class EndpointHandler
                 }
             };
 
-            var json = JsonSerializer.Serialize(compositeSample, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(compositeSample, IndentedOptions);
             File.WriteAllText(compositeSamplePath, json);
             Log.Information($"Created sample composite endpoint definition: {compositeSamplePath}");
         }
@@ -190,7 +189,7 @@ public static partial class EndpointHandler
                 AllowedColumns = new List<string> { "webhook1", "webhook2" }
             };
 
-            var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(sample, IndentedOptions);
             File.WriteAllText(samplePath, json);
             Log.Information($"Created sample webhook endpoint definition: {samplePath}");
         }
@@ -216,7 +215,7 @@ public static partial class EndpointHandler
                 AllowedEnvironments = new List<string> { "prod", "dev" }
             };
 
-            var json = JsonSerializer.Serialize(sample, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(sample, IndentedOptions);
             File.WriteAllText(samplePath, json);
             Log.Information($"Created sample Files endpoint definition: {samplePath}");
         }

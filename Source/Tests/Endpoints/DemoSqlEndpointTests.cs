@@ -1,3 +1,5 @@
+using PortwayApi.Classes;
+using PortwayApi.Services.Providers;
 using Moq;
 using PortwayApi.Tests.Base;
 using System.Net;
@@ -31,7 +33,9 @@ public class DemoSqlEndpointTests : ApiTestBase
         _mockODataToSqlConverter
             .Setup(c => c.ConvertToSQL(
                 It.Is<string>(s => s.Contains("Warehouses")),
-                It.IsAny<Dictionary<string, string>>()))
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
             .Returns(("SELECT [Id],[Code],[Name],[City],[Country],[Region],[CapacityM2],[IsActive] FROM [Warehouses]",
                 new Dictionary<string, object>()));
     }
@@ -106,14 +110,14 @@ public class DemoSqlEndpointTests : ApiTestBase
         var response = await _client.GetAsync($"{ApiPath}?$filter=IsActive eq true");
 
         // If the DB is reachable the assertion on the converter call confirms routing
-        if (response.StatusCode == HttpStatusCode.InternalServerError)
-            return;
 
         // Assert: OData converter was called with the correct database object name
         _mockODataToSqlConverter.Verify(
             c => c.ConvertToSQL(
                 It.Is<string>(s => s.Contains("Warehouses")),
-                It.Is<Dictionary<string, string>>(d => d.ContainsKey("filter"))),
+                It.Is<Dictionary<string, string>>(d => d.ContainsKey("filter")),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
             Times.AtLeastOnce);
     }
 
@@ -123,14 +127,14 @@ public class DemoSqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync($"{ApiPath}?$select=Code,Name,City");
 
-        if (response.StatusCode == HttpStatusCode.InternalServerError)
-            return;
 
         // Assert
         _mockODataToSqlConverter.Verify(
             c => c.ConvertToSQL(
                 It.Is<string>(s => s.Contains("Warehouses")),
-                It.Is<Dictionary<string, string>>(d => d.ContainsKey("select"))),
+                It.Is<Dictionary<string, string>>(d => d.ContainsKey("select")),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
             Times.AtLeastOnce);
     }
 
@@ -140,14 +144,14 @@ public class DemoSqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync($"{ApiPath}?$orderby=Code asc");
 
-        if (response.StatusCode == HttpStatusCode.InternalServerError)
-            return;
 
         // Assert
         _mockODataToSqlConverter.Verify(
             c => c.ConvertToSQL(
                 It.Is<string>(s => s.Contains("Warehouses")),
-                It.Is<Dictionary<string, string>>(d => d.ContainsKey("orderby"))),
+                It.Is<Dictionary<string, string>>(d => d.ContainsKey("orderby")),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
             Times.AtLeastOnce);
     }
 
@@ -157,14 +161,14 @@ public class DemoSqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.GetAsync($"{ApiPath}?$top=10&$skip=20");
 
-        if (response.StatusCode == HttpStatusCode.InternalServerError)
-            return;
 
         // Assert
         _mockODataToSqlConverter.Verify(
             c => c.ConvertToSQL(
                 It.Is<string>(s => s.Contains("Warehouses")),
-                It.Is<Dictionary<string, string>>(d => d.ContainsKey("top") && d.ContainsKey("skip"))),
+                It.Is<Dictionary<string, string>>(d => d.ContainsKey("top") && d.ContainsKey("skip")),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
             Times.AtLeastOnce);
     }
 }

@@ -71,8 +71,17 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                 // If we have items, process them
                 if (batch.Count > 0)
                 {
-                    await _logStorage.SaveLogsAsync(batch);
-                    Serilog.Log.Debug($"Processed {batch.Count} traffic log entries");
+                    // A storage failure must not escape the loop; the host ignores background service exceptions, so an escape would stop tracing until the next restart
+                    try
+                    {
+                        await _logStorage.SaveLogsAsync(batch);
+                        Serilog.Log.Debug($"Processed {batch.Count} traffic log entries");
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        Serilog.Log.Error(ex, "Failed to persist {Count} traffic log entries; dropping the batch", batch.Count);
+                    }
+
                     batch.Clear();
                     itemsProcessed = true;
                 }

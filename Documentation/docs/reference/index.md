@@ -136,32 +136,26 @@ The reference documents the success shape it can infer for each operation. In sh
 
 ## OData query parameters
 
-SQL and Static endpoints support OData query parameters:
 
-| Parameter | Type | Description | Example |
-|-----------|------|-------------|---------|
-| `$select` | string | Select specific fields | `$select=Name,Price` |
-| `$filter` | string | Filter results | `$filter=Price gt 100` |
-| `$orderby` | string | Sort results | `$orderby=Name desc` |
-| `$top` | integer | Maximum items to return | `$top=50` |
-| `$skip` | integer | Items to skip (pagination) | `$skip=20` |
+SQL and Static endpoints accept `$select`, `$filter`, `$orderby`, `$top`, `$skip` and `$count`.
+
+```http
+GET /api/prod/Products?$select=Name,Price&$filter=Price gt 100&$orderby=Name desc&$top=50
+```
+
+See [OData syntax](/reference/odata) for the full option reference and [Filter operations](/reference/filters) for the operator set.
 
 ## Rate limiting
 
-| Limit | Default | Response header |
-|-------|---------|-----------------|
-| Per IP | 100 / minute | `X-RateLimit-IP-Remaining` |
-| Per Token | 1000 / minute | `X-RateLimit-Token-Remaining` |
 
-Rate-limited requests receive `429 Too Many Requests`.
+Requests are limited per IP and per token, and every response carries the `X-RateLimit-*` headers describing the applicable budget. Exceeding a limit returns `429 Too Many Requests` with a `Retry-After` header.
+
+Defaults, per-token overrides and Redis-backed buckets are covered in [Rate limiting](/guide/rate-limiting). The header set is listed in [HTTP headers](/reference/headers).
 
 ## Health endpoints
 
-| Endpoint | Auth required | Description |
-|----------|--------------|-------------|
-| `/health/live` | No | Liveness check for load balancers |
-| `/health` | Yes | Basic health status |
-| `/health/details` | Yes | Per-component health with database and proxy checks |
+
+`/health/live` is an unauthenticated liveness probe for load balancers. `/health` and `/health/details` require a token and report component status. See [Health checks](/reference/health-checks).
 
 ## Next steps
 

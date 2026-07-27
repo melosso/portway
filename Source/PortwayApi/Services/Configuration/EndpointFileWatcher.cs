@@ -1,36 +1,20 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
-using System.Threading.Channels;
 using Microsoft.Extensions.Options;
 using Serilog;
 using PortwayApi.Classes;
-using PortwayApi.Helpers;
-using PortwayApi.Services.Configuration;
 using PortwayApi.Services;
 using PortwayApi.Services.Mcp;
 
 namespace PortwayApi.Services.Configuration;
 
 /// <summary>Monitors the endpoints folder for changes and invalidates endpoint/metadata caches</summary>
-public class EndpointFileWatcher : IHostedService, IDisposable
+public class EndpointFileWatcher : FileWatchPump
 {
-    private readonly string _endpointsPath;
     private readonly SqlMetadataService _sqlMetadataService;
     private readonly IOptionsMonitor<EndpointReloadingOptions> _optionsMonitor;
     private readonly SseBroadcaster? _broadcaster;
     private readonly ReloadTracker _reloadTracker;
     private readonly McpEndpointRegistry? _mcpRegistry;
-    private FileSystemWatcher? _fileWatcher;
-    private readonly ConcurrentDictionary<string, DateTime> _lastReloadTimes = new();
-    private readonly Channel<(string Path, WatcherChangeTypes Type)> _eventChannel =
-        Channel.CreateBounded<(string, WatcherChangeTypes)>(new BoundedChannelOptions(200)
-        {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = true
-        });
-    private Task? _consumerTask;
-    private CancellationTokenSource? _consumerCts;
-    private bool _disposed;
 
     public EndpointFileWatcher(
         SqlMetadataService sqlMetadataService,
@@ -38,9 +22,8 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         ReloadTracker reloadTracker,
         SseBroadcaster? broadcaster = null,
         McpEndpointRegistry? mcpRegistry = null)
+        : base(Path.Combine(Directory.GetCurrentDirectory(), "endpoints"), "Endpoint")
     {
-        var baseDir = Directory.GetCurrentDirectory();
-        _endpointsPath  = Path.Combine(baseDir, "endpoints");
         _sqlMetadataService = sqlMetadataService;
         _optionsMonitor = optionsMonitor;
         _reloadTracker  = reloadTracker;
@@ -48,99 +31,19 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         _mcpRegistry    = mcpRegistry;
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    protected override TimeSpan DebounceTime => TimeSpan.FromMilliseconds(_optionsMonitor.CurrentValue.DebounceMs);
+
+    protected override bool ShouldStart()
     {
-        var options = _optionsMonitor.CurrentValue;
+        if (_optionsMonitor.CurrentValue.Enabled)
+            return true;
 
-        if (!options.Enabled)
-        {
-            Log.Information("Endpoint hot-reload is DISABLED via configuration");
-            return Task.CompletedTask;
-        }
-
-        if (!Directory.Exists(_endpointsPath))
-        {
-            Log.Warning("Endpoints folder not found at {Path} - endpoint file watching disabled", _endpointsPath);
-            return Task.CompletedTask;
-        }
-
-        _consumerCts = new CancellationTokenSource();
-        _consumerTask = ConsumeEventsAsync(_consumerCts.Token);
-
-        _fileWatcher = new FileSystemWatcher(_endpointsPath)
-        {
-            NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName,
-            Filter = "*.json",
-            IncludeSubdirectories = true,
-            EnableRaisingEvents = true,
-            InternalBufferSize = 65536 // Increase from default 8192
-        };
-
-        _fileWatcher.Changed += OnFileChanged;
-        _fileWatcher.Created += OnFileChanged;
-        _fileWatcher.Deleted += OnFileChanged;
-        _fileWatcher.Renamed += OnFileRenamed;
-
-        Log.Debug("Endpoint file watcher initialized at path: {Path}", _endpointsPath);
-
-        // WORKAROUND: Detect drvfs mount and use polling fallback for WSL2 compatibility
-        if (_endpointsPath.StartsWith("/mnt/"))
-        {
-            Log.Debug("Detected drvfs mount - using polling fallback (checks every 3s)");
-            StartPollingFallback();
-        }
-
-        return Task.CompletedTask;
+        Log.Information("Endpoint hot-reload is DISABLED via configuration");
+        return false;
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    protected override Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)
     {
-        _eventChannel.Writer.TryComplete();
-        if (!_disposed)
-            _consumerCts?.Cancel();
-
-        _fileWatcher?.Dispose();
-
-        if (_consumerTask != null)
-            await _consumerTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-
-        Log.Information("Endpoint file watcher stopped");
-    }
-
-    private void OnFileChanged(object sender, FileSystemEventArgs e)
-        => _eventChannel.Writer.TryWrite((e.FullPath, e.ChangeType));
-
-    private void OnFileRenamed(object sender, RenamedEventArgs e)
-        => _eventChannel.Writer.TryWrite((e.FullPath, e.ChangeType));
-
-    private async Task ConsumeEventsAsync(CancellationToken ct)
-    {
-        await foreach (var (path, type) in _eventChannel.Reader.ReadAllAsync(ct))
-        {
-            try
-            {
-                await HandleFileChangeAsync(path, type);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled error processing file change for {Path}", path);
-            }
-        }
-    }
-
-    private async Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)
-    {
-        var options = _optionsMonitor.CurrentValue;
-        var now = DateTime.UtcNow;
-        var debounceTime = TimeSpan.FromMilliseconds(options.DebounceMs);
-
-        if (_lastReloadTimes.TryGetValue(filePath, out var lastReload) && now - lastReload < debounceTime)
-        {
-            Log.Debug("Ignoring duplicate file change event for {Path} (debounced)", filePath);
-            return;
-        }
-        _lastReloadTimes[filePath] = now;
-
         try
         {
             // Extract endpoint type from path
@@ -148,7 +51,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             if (endpointType == null)
             {
                 Log.Debug("Could not determine endpoint type from path: {Path}", filePath);
-                return;
+                return Task.CompletedTask;
             }
 
             // Extract endpoint name from file path
@@ -156,7 +59,7 @@ public class EndpointFileWatcher : IHostedService, IDisposable
             if (string.IsNullOrEmpty(endpointName))
             {
                 Log.Debug("Could not determine endpoint name from path: {Path}", filePath);
-                return;
+                return Task.CompletedTask;
             }
 
             // Reload endpoint definitions
@@ -185,6 +88,8 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         {
             Log.Error(ex, "Error handling endpoint file change for {Path}", filePath);
         }
+
+        return Task.CompletedTask;
     }
 
     private static readonly HashSet<string> _typeFolderNames = new(StringComparer.OrdinalIgnoreCase)
@@ -229,64 +134,5 @@ public class EndpointFileWatcher : IHostedService, IDisposable
         {
             return null;
         }
-    }
-
-    private void StartPollingFallback()
-    {
-        var ct = _consumerCts!.Token;
-        _ = Task.Run(async () =>
-        {
-            var lastWriteTimes = new Dictionary<string, DateTime>();
-
-            while (!ct.IsCancellationRequested)
-            {
-                try
-                {
-                    if (Directory.Exists(_endpointsPath))
-                    {
-                        var files = Directory.GetFiles(_endpointsPath, "*.json", SearchOption.AllDirectories);
-                        foreach (var file in files)
-                        {
-                            if (ct.IsCancellationRequested) break;
-
-                            var lastWrite = File.GetLastWriteTimeUtc(file);
-                            if (lastWriteTimes.TryGetValue(file, out var previousWrite) && lastWrite > previousWrite)
-                            {
-                                Log.Debug("Polling detected change: {File}", file);
-                                _eventChannel.Writer.TryWrite((file, WatcherChangeTypes.Changed));
-                            }
-                            lastWriteTimes[file] = lastWrite;
-                        }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Error in endpoint file polling");
-                }
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(3), ct);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-            }
-        }, ct);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed) return;
-        _disposed = true;
-
-        _consumerCts?.Cancel();
-        _consumerCts?.Dispose();
-        _fileWatcher?.Dispose();
     }
 }

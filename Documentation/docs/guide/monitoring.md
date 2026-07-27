@@ -95,21 +95,7 @@ Sometimes you want more than a health status: you want to know exactly which req
 
 ### Configuration options
 
-The defaults are sensible for most deployments; here is what each knob controls:
-
-| Field | Description | Default |
-|---|---|---|
-| `Enabled` | Enable traffic logging | `false` |
-| `StorageType` | `file` or `sqlite` | `file` |
-| `LogDirectory` | Output directory for file storage | `log/traffic` |
-| `MaxFileSizeMB` | Maximum size per log file before rotation | `50` |
-| `MaxFileCount` | Number of rotated log files to retain | `5` |
-| `BatchSize` | Records to buffer before writing | `100` |
-| `FlushIntervalMs` | Maximum milliseconds before a partial batch is flushed | `1000` |
-| `IncludeRequestBodies` | Log request bodies | `false` |
-| `IncludeResponseBodies` | Log response bodies | `false` |
-| `MaxBodyCaptureSizeBytes` | Maximum body size to capture | `4096` |
-| `CaptureHeaders` | Include request headers in log entries | `true` |
+The defaults are sensible for most deployments. Every field, including the SQLite storage options and the retention settings, is listed in [Audit and traffic logging](/reference/audit#configuration).
 
 :::warning
 `IncludeRequestBodies` and `IncludeResponseBodies` can capture sensitive data. Authorization headers are automatically redacted, but request and response bodies are not filtered.

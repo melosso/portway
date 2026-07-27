@@ -7,7 +7,7 @@ description: "Choose between deploying Portway with Docker Compose or on Windows
 
 Portway ships as a container image, Linux and Windows release. Pick whichever fits your infrastructure: the endpoint and environment configuration is identical either way.
 
-<div class="tip custom-block">
+<div class="info custom-block">
 
 Just want to try it out? Skip to the [Quickstart](../getting-started).
 

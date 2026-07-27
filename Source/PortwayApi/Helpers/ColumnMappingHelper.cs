@@ -126,37 +126,6 @@ public static class ColumnMappingHelper
         return string.Join(",", databaseColumns);
     }
 
-    /// <summary>Converts database column names to alias column names for API responses</summary>
-    /// <param name="databaseColumns">List of database column names</param>
-    /// <param name="databaseToAlias">Mapping from database to alias column names</param>
-    /// <returns>List of alias column names</returns>
-    public static List<string> ConvertDatabaseColumnsToAliases(List<string> databaseColumns, Dictionary<string, string> databaseToAlias)
-    {
-        if (databaseColumns == null || databaseColumns.Count == 0 || databaseToAlias.Count == 0)
-        {
-            return databaseColumns ?? new List<string>();
-        }
-
-        var aliasColumns = new List<string>();
-        
-        foreach (var databaseColumn in databaseColumns)
-        {
-            if (databaseToAlias.TryGetValue(databaseColumn, out var alias))
-            {
-                aliasColumns.Add(alias);
-                Log.Debug("Converted database column '{DatabaseColumn}' to alias '{Alias}'", databaseColumn, alias);
-            }
-            else
-            {
-                // If no mapping found, use the database column as-is (fallback behavior)
-                aliasColumns.Add(databaseColumn);
-                Log.Debug("No mapping found for database column '{DatabaseColumn}', using as-is", databaseColumn);
-            }
-        }
-
-        return aliasColumns;
-    }
-
     /// <summary>Validates that all requested alias columns are allowed</summary>
     /// <param name="requestedAliases">Comma-separated list of requested alias column names</param>
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
@@ -193,14 +162,6 @@ public static class ColumnMappingHelper
         }
 
         return (isValid, invalidAliases);
-    }
-
-    /// <summary>Gets all allowed alias column names</summary>
-    /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
-    /// <returns>List of all allowed alias column names</returns>
-    public static List<string> GetAllowedAliases(Dictionary<string, string> aliasToDatabase)
-    {
-        return aliasToDatabase.Keys.ToList();
     }
 
     /// <summary>Gets all database column names</summary>

@@ -38,16 +38,8 @@ Create `endpoints/SQL/{EndpointName}/entity.json`:
 
 ### Configuration properties
 
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `DatabaseObjectName` | Yes | string | Table, view, or function name in the database |
-| `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
-| `PrimaryKey` | No | string | Primary key column name. Defaults to `Id` |
-| `AllowedColumns` | No | array | Columns accessible via the API. Empty array exposes all columns |
-| `AllowedMethods` | No | array | HTTP methods allowed. Defaults to `["GET"]`. You can also allow `QUERY` when you would like the same OData reads with the criteria carried in the JSON body (see [The QUERY method](/reference/http-methods#query)) |
-| `AllowedEnvironments` | No | array | Environments where this endpoint responds |
-| `Procedure` | No | string | Stored procedure to call for write operations |
-| `DatabaseObjectType` | No | string | Set to `TableValuedFunction` for TVF endpoints |
+
+Every property this endpoint type accepts, with its type and default, is listed in [Entity configuration](/reference/entity-config#endpoint-sql).
 
 ## Column aliases
 

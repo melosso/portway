@@ -1,3 +1,5 @@
+using PortwayApi.Classes;
+using PortwayApi.Services.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Serilog;
@@ -25,27 +27,29 @@ public class SqlEndpointTests : ApiTestBase
             new Dictionary<string, object> { { "p0", "TEST001" } });
             
         _mockODataToSqlConverter
-            .Setup(c => c.ConvertToSQL(It.Is<string>(s => s.Contains("Items")), It.IsAny<Dictionary<string, string>>()))
+            .Setup(c => c.ConvertToSQL(It.Is<string>(s => s.Contains("Items")), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>(), It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
             .Returns(mockQueryResult);
         
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}?$filter=ItemCode eq 'TEST001'");
         
-        // Assert; If the server is not reachable, we might get InternalServerError, which is expected in this environment
+        // The converter runs before any database access, so this holds even when SQL is unreachable
+        _mockODataToSqlConverter.Verify(
+            c => c.ConvertToSQL(
+                It.Is<string>(s => s.Contains("Items")),
+                It.Is<Dictionary<string, string>>(d => d.ContainsKey("filter")),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
+            Times.Once);
+
+        // Only the 200 itself needs a reachable server
         if (response.StatusCode == HttpStatusCode.InternalServerError)
         {
             Log.Warning("SQL Server not reachable during test, skipping full validation of OK status.");
             return;
         }
-        
+
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        
-        // Verify that the converter was called with the correct database object name
-        _mockODataToSqlConverter.Verify(
-            c => c.ConvertToSQL(
-                It.Is<string>(s => s.Contains("Items")), 
-                It.Is<Dictionary<string, string>>(d => d.ContainsKey("filter"))),
-            Times.Once);
     }
     
     [Fact]
@@ -120,7 +124,7 @@ public class SqlEndpointTests : ApiTestBase
         // Mock SQL Converter
         var mockQueryResult = ("SELECT * FROM [dbo].[Items]", new Dictionary<string, object>());
         _mockODataToSqlConverter
-            .Setup(c => c.ConvertToSQL(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .Setup(c => c.ConvertToSQL(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>(), It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
             .Returns(mockQueryResult);
 
         // Prepare request with HMAC headers

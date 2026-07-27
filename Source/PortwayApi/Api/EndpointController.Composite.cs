@@ -37,13 +37,8 @@ public partial class EndpointController
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error during composite (proxy) request: {EndpointName}", endpointName);
-            
-            return Problem(
-                detail: $"Error processing endpoint {endpointName}. Please check the logs for more details.",
-                statusCode: StatusCodes.Status500InternalServerError,
-                title: "Error"
-            );
+            return HandleUnexpectedError(ex, "composite (proxy)", endpointName,
+                $"Error processing endpoint {endpointName}. Please check the logs for more details.");
         }
     }
 

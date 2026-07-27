@@ -54,17 +54,10 @@ try
 
     // Add services
     builder.Services.AddControllers();
-    builder.Services.AddResponseCaching(options =>
-    {
-        options.UseCaseSensitivePaths = true;
-        options.SizeLimit = 1024 * 1024 * 10; // 10 MB
-        options.MaximumBodySize = 1024 * 1024 * 10; // 10 MB
-    });
 
     // Add caching services (Redis and/or memory cache)
     builder.Services.AddCachingServices(builder.Configuration);
 
-    builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddRequestTrafficLogging(builder.Configuration);
     builder.Services.AddHttpContextAccessor();
 
@@ -76,12 +69,7 @@ try
     // Define server name
     string serverName = Environment.MachineName;
 
-    // Configure logging
-    builder.Logging.ClearProviders();
-    builder.Logging.AddConsole(options => options.FormatterName = "simple");
-    builder.Logging.AddSimpleConsole(options => options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ");
-
-    // Register Serilog logger for dependency injection 
+    // Register Serilog logger for dependency injection
     builder.Services.AddSingleton<Serilog.ILogger>(sp => Log.Logger);
 
     // Authentication and configuration reload
@@ -117,7 +105,6 @@ try
     );
 
     // Central endpoint resolution and per-type request handlers
-    builder.Services.AddSingleton<IEndpointRegistry, EndpointRegistry>();
     builder.Services.AddSingleton<EndpointResolver>();
     builder.Services.AddSingleton<CompositeRequestHandler>();
     builder.Services.AddSingleton<StaticRequestHandler>();
@@ -142,7 +129,7 @@ try
     var adminApiKey = AdminApiKeyValidator.Resolve(builder.Configuration, app.Environment);
 
     var publicOrigins = builder.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
-    var enableLandingPage = builder.Configuration.GetValue<bool>("WebUi:EnableLandingPage", true);
+    var enableLandingPage = builder.Configuration.GetValue<bool>("WebUi:Customization:EnableLandingPage", true);
 
     // Path base from ASPNETCORE_PATHBASE or PathBase config
     app.UsePortwayPathBase();
@@ -172,7 +159,7 @@ try
     // Inject PathBase into index.html before static files can serve it
     app.UseIndexHtmlPathBaseInjection();
 
-    app.UseStaticFiles();
+    app.UseStaticFilesWithCaching();
 
     // Root path, legacy /swagger and docs redirects
     app.UsePortwayRootRedirects(adminApiKey, publicOrigins, enableLandingPage);

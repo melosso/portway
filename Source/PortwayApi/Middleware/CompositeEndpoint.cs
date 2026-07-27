@@ -1,12 +1,10 @@
 namespace PortwayApi.Middleware;
 
 using System;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
+using PortwayApi.Helpers;
 using Serilog;
 
 public class CompositeEndpoint
@@ -36,7 +34,7 @@ public class CompositeEndpoint
             if (!_environmentSettings.IsEnvironmentAllowed(env))
             {
                 Log.Warning("Environment '{Env}' is not in the allowed list.", env);
-                return Results.BadRequest(new { error = $"Environment '{env}' is not allowed.", success = false });
+                return Results.BadRequest(ErrorResponse.Of($"Environment '{env}' is not allowed."));
             }
 
             // Read the request body
@@ -51,12 +49,9 @@ public class CompositeEndpoint
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Error processing composite endpoint: {Error}", ex.Message);
-            return Results.Problem(
-                detail: ex.Message,
-                title: "Internal Server Error",
-                statusCode: 500
-            );
+            // Mask the detail; exceptions can carry connection strings, schema and file paths
+            Log.Error(ex, "Error processing composite endpoint: {EndpointName}", endpointName);
+            return PortwayResults.MinimalServerError(context);
         }
     }
 }

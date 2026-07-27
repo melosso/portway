@@ -9,6 +9,11 @@ Portway is an ASP.NET Core application. It runs as a Docker container, or on Win
 
 ## Prerequisites
 
+**Docker:**
+- Docker Engine with Compose support
+
+Please note you may need additional configuration to mount your configuration to the container, the guide will set the basics up for you.
+
 **Windows Server / IIS:**
 - Windows Server (or Windows 11 for development)
 - [.NET 11 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/11.0)
@@ -19,11 +24,6 @@ Portway is an ASP.NET Core application. It runs as a Docker container, or on Win
 :::warning
 Download the **Hosting Bundle**, not the x64 runtime installer. The Hosting Bundle includes the IIS integration module that the runtime package omits.
 :::
-
-**Docker:**
-- Docker Engine with Compose support
-
-A SQL database only comes into play if you plan to use SQL endpoints, so it's fine to skip that for now.
 
 ## Installation
 
@@ -61,39 +61,9 @@ Portway starts on port 8080. Adjust the port mapping and volume paths to suit yo
 
 ### Windows Server (IIS)
 
-The steps assume working knowledge of IIS and your data sources; the essentials are all covered here, though some details will depend on your existing environment. Start by downloading the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
+Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/), install the .NET 11 ASP.NET Core Hosting Bundle, generate a machine-level `PORTWAY_ENCRYPTION_KEY`, then point an IIS site at the extracted folder using an application pool set to **No Managed Code**.
 
-**1. Install the .NET 11 Hosting Bundle:**
-
-```powershell
-winget install --id Microsoft.DotNet.HostingBundle.10 -e
-```
-
-**2. Generate an encryption key:**
-
-```powershell
-$bytes = New-Object byte[] 48
-[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-[Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
-```
-
-**3. Extract Portway to your IIS directory** (e.g. `C:\Portway`).
-
-**4. Configure IIS:**
-
-1. Open IIS Manager
-2. Create a new Application Pool:
-   - Name: `PortwayAppPool`
-   - .NET CLR version: `No Managed Code`
-   - Managed pipeline mode: `Integrated`
-3. Create a TLS/SSL certificate or import an existing one
-4. Create a new Website:
-   - Application pool: `PortwayAppPool`
-   - Physical path: `C:\Portway`
-   - Binding: your preferred port and certificate
-5. Set the Application Pool identity to a domain user with network access if you need NTLM pass-through for proxy endpoints
-
-Portway is now accessible at the configured binding address.
+For the full walkthrough with the encryption key command, the application pool settings, NTLM pass-through and a backup routine, see [Deploying on Windows Server](/guide/deployment-windows).
 
 ## Initial configuration
 

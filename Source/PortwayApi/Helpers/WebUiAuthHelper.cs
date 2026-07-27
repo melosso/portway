@@ -9,7 +9,6 @@ public static class WebUiAuthHelper
 {
     // Rate limiting: max attempts per window
     private const int MaxAttemptsPerWindow = 10;
-    private static readonly TimeSpan AttemptWindow = TimeSpan.FromMinutes(15);
     
     // Account lockout: lock after max failures, duration
     private const int MaxFailuresBeforeLockout = 10;

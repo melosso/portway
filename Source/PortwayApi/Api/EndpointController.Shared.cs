@@ -49,7 +49,7 @@ public partial class EndpointController
 
         endpoint = null!;
         Log.Warning("Endpoint not found: {EndpointName}", endpointName);
-        return PortwayResults.NotFound(this, notFoundMessage ?? $"Endpoint '{endpointName}' not found");
+        return PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
     }
 
     /// <summary>Central boundary for unexpected handler errors: logs and returns a masked response</summary>
@@ -60,14 +60,14 @@ public partial class EndpointController
         string? responseDetail = null)
     {
         Log.Error(ex, "Error processing {Operation} for {Endpoint}", operation, endpointName);
-        return PortwayResults.ServerError(this, responseDetail ?? "An error occurred while processing your request");
+        return PortwayResults.ServerError(HttpContext, responseDetail ?? "An error occurred while processing your request");
     }
 
     /// <summary>Central boundary returning masked ProblemDetails for unexpected dispatch errors</summary>
     private IActionResult HandleUnexpectedProblem(Exception ex, string operation)
     {
         Log.Error(ex, "Error processing {Operation} request for {Path}", operation, Request.Path);
-        return PortwayResults.ServerError(this, "Error processing. Please check the logs for more details.");
+        return PortwayResults.ServerError(HttpContext, "Error processing. Please check the logs for more details.");
     }
 
     /// <summary>Parses the catchall segment to determine endpoint type and name with namespace support</summary>
@@ -90,7 +90,7 @@ public partial class EndpointController
             var namespacedKey = $"{potentialNamespace}/{potentialEndpoint}";
 
             // Check if this namespaced endpoint exists (using cleaned endpoint name)
-            if (NamespaceEndpointExists(namespacedKey))
+            if (TryDetermineEndpointType(namespacedKey, out var endpointType))
             {
                 string? id = null;
                 string remainingPath = "";
@@ -173,8 +173,6 @@ public partial class EndpointController
                     }
                 }
 
-                var endpointType = DetermineEndpointType(namespacedKey);
-
                 Log.Debug("Namespaced endpoint found: {Namespace}/{Name}, Type={Type}, ID={Id}",
                     potentialNamespace, potentialEndpoint, endpointType, id);
 
@@ -220,31 +218,51 @@ public partial class EndpointController
         return (fallbackEndpointType, null, endpointName, fallbackId, fallbackRemainingPath);
     }
 
-    /// <summary>Checks if a namespaced endpoint exists</summary>
-    private bool NamespaceEndpointExists(string key)
+    /// <summary>Resolves existence and endpoint type in one pass; probe order decides ties, so it lives here only</summary>
+    private static bool TryDetermineEndpointType(string key, out EndpointType type)
     {
-        return EndpointHandler.GetSqlEndpoints().ContainsKey(key) ||
-               EndpointHandler.GetProxyEndpoints().ContainsKey(key) ||
-               EndpointHandler.GetFileEndpoints().ContainsKey(key) ||
-               EndpointHandler.GetStaticEndpoints().ContainsKey(key) ||
-               EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key);
-    }
-    
-    /// <summary>Determines endpoint type for a given key (supports both namespaced and non-namespaced)</summary>
-    private EndpointType DetermineEndpointType(string key)
-    {
-        return key switch
+        if (EndpointHandler.GetSqlEndpoints().ContainsKey(key))
         {
-            "composite" => EndpointType.Composite,
-            _ when EndpointHandler.GetSqlEndpoints().ContainsKey(key) => EndpointType.SQL,
-            _ when EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key) => EndpointType.Webhook,
-            _ when EndpointHandler.GetProxyEndpoints().ContainsKey(key) && 
-                   EndpointHandler.GetProxyEndpoints()[key].IsComposite => EndpointType.Composite,
-            _ when EndpointHandler.GetProxyEndpoints().ContainsKey(key) => EndpointType.Proxy,
-            _ when EndpointHandler.GetFileEndpoints().ContainsKey(key) => EndpointType.Files,
-            _ when EndpointHandler.GetStaticEndpoints().ContainsKey(key) => EndpointType.Static,
-            _ => EndpointType.Standard
-        };
+            type = EndpointType.SQL;
+            return true;
+        }
+
+        if (EndpointHandler.GetSqlWebhookEndpoints().ContainsKey(key))
+        {
+            type = EndpointType.Webhook;
+            return true;
+        }
+
+        if (EndpointHandler.GetProxyEndpoints().TryGetValue(key, out var proxy))
+        {
+            type = proxy.IsComposite ? EndpointType.Composite : EndpointType.Proxy;
+            return true;
+        }
+
+        if (EndpointHandler.GetFileEndpoints().ContainsKey(key))
+        {
+            type = EndpointType.Files;
+            return true;
+        }
+
+        if (EndpointHandler.GetStaticEndpoints().ContainsKey(key))
+        {
+            type = EndpointType.Static;
+            return true;
+        }
+
+        type = EndpointType.Standard;
+        return false;
+    }
+
+    /// <summary>Determines endpoint type for a given key (supports both namespaced and non-namespaced)</summary>
+    private static EndpointType DetermineEndpointType(string key)
+    {
+        if (key == "composite")
+            return EndpointType.Composite;
+
+        TryDetermineEndpointType(key, out var type);
+        return type;
     }
 
     /// <summary>Replaces placeholders in the base directory with actual values</summary>
@@ -263,62 +281,5 @@ public partial class EndpointController
         
         return processedDirectory;
     }
-
-    /// <summary>Resolves the storage path, supporting both relative and absolute BaseDirectory paths</summary>
-    private string ResolveStoragePath(string baseDirectory, string environment, string filename)
-    {
-        // If BaseDirectory is an absolute path, use it directly
-        if (!string.IsNullOrEmpty(baseDirectory) && Path.IsPathRooted(baseDirectory))
-        {
-            // For absolute paths, create subdirectory structure: AbsolutePath/Environment/Filename
-            var environmentDir = Path.Combine(baseDirectory, environment);
-            Directory.CreateDirectory(environmentDir);
-            return Path.Combine(environmentDir, filename);
-        }
-        
-        // For relative paths, use the existing logic
-        if (!string.IsNullOrEmpty(baseDirectory))
-        {
-            filename = Path.Combine(baseDirectory, filename);
-        }
-        
-        // Return the combined path with storage directory
-        return filename;
-    }
-
-
-    /// <summary>Sets standard pagination headers on the response for consistency across endpoint types</summary>
-    /// <param name="totalCount">Total number of items before pagination (if known)</param>
-    /// <param name="returnedCount">Number of items being returned in this response</param>
-    /// <param name="hasMore">Whether there are more items available</param>
-    private void SetPaginationHeaders(int? totalCount, int returnedCount, bool hasMore = false)
-    {
-        if (totalCount.HasValue)
-        {
-            Response.Headers["X-Total-Count"] = totalCount.Value.ToString();
-        }
-        Response.Headers["X-Returned-Count"] = returnedCount.ToString();
-        Response.Headers["X-Has-More"] = hasMore.ToString().ToLowerInvariant();
-    }
-
-    /// <summary>Sets Cache-Control header for GET responses</summary>
-    /// <param name="maxAgeSeconds">Cache duration in seconds (default: 300 = 5 minutes)</param>
-    /// <param name="isPublic">Whether the cache is public or private (default: public)</param>
-    private void SetCacheControlHeader(int maxAgeSeconds = 300, bool isPublic = true)
-    {
-        var cacheType = isPublic ? "public" : "private";
-        Response.Headers["Cache-Control"] = $"{cacheType}, max-age={maxAgeSeconds}";
-    }
-
-
-
-
-
-
-
-
-
-
-
 
 }

@@ -15,10 +15,12 @@ namespace PortwayApi.Classes.OpenApi;
 public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<FileEndpointDocumentFilter> _logger;
+    private readonly EnvironmentSettings _environmentSettings;
 
-    public FileEndpointDocumentFilter(ILogger<FileEndpointDocumentFilter> logger)
+    public FileEndpointDocumentFilter(ILogger<FileEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings)
     {
         _logger = logger;
+        _environmentSettings = environmentSettings;
     }
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -37,7 +39,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Create paths for each file endpoint
             foreach (var (endpointName, endpoint) in fileEndpoints)
             {
-                if (endpoint.Hidden)
+                if (!OpenApiEndpointCatalog.IsDocumented(endpoint))
                 {
                     // Skip private endpoints
                     continue;
@@ -89,7 +91,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Initialize tags collection if it doesn't exist
         document.Tags ??= new HashSet<OpenApiTag>();
 
-        // Add each file endpoint tag with its description (sorting will be handled by AlphabeticalEndpointSorter)
+        // Add each file endpoint tag with its description (sorting will be handled by TagSorterDocumentFilter)
         foreach (var tagEntry in documentTags)
         {
             var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, tagEntry.Key, StringComparison.OrdinalIgnoreCase));
@@ -730,53 +732,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Update operation description
         operation.Description = description.ToString();
     }
-    private List<string> GetAllowedEnvironments()
-    {
-        try
-        {
-            var settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
-            if (File.Exists(settingsFile))
-            {
-                var settingsJson = File.ReadAllText(settingsFile);
-
-                // Match the structure used in EnvironmentSettings class
-                var settings = JsonSerializer.Deserialize<SettingsModel>(settingsJson);
-                if (settings?.Environment?.AllowedEnvironments != null &&
-                    settings.Environment.AllowedEnvironments.Any())
-                {
-                    return settings.Environment.AllowedEnvironments;
-                }
-            }
-
-            // Return default if settings not found
-            return new List<string> { "prod", "dev" };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading environment settings");
-            return new List<string> { "prod", "dev" };
-        }
-    }
-
-    /// <summary>Gets the effective list of allowed environments for an endpoint. Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings</summary>
     private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
-    {
-        if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
-        {
-            return definition.AllowedEnvironments;
-        }
-        return GetAllowedEnvironments();
-    }
-
-    // Helper classes for deserializing settings.json
-    private class SettingsModel
-    {
-        public EnvironmentModel Environment { get; set; } = new EnvironmentModel();
-    }
-
-    private class EnvironmentModel
-    {
-        public string ServerName { get; set; } = ".";
-        public List<string> AllowedEnvironments { get; set; } = new List<string>();
-    }
+        => OpenApiEndpointCatalog.EffectiveEnvironments(definition, _environmentSettings);
 }

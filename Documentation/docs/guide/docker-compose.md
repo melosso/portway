@@ -79,10 +79,17 @@ volumes:
 | `AllowedHosts` | Allowed host names | `*` |
 | `PathBase` | Base path for the application | (empty) |
 
-> [!WARNING]
-> **`Use_HTTPS` requires a TLS certificate to be available to Kestrel.** If you set this to `true` without mounting a valid certificate, the container will fail to start immediately with `BackgroundService failed / Hosting failed to start`.
->
-> In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally, keep `Use_HTTPS=false` in that case. Only set `Use_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
+:::warning
+The flag `Use_HTTPS` **requires a TLS certificate to be available to Kestrel.** If you set this to `true` without mounting a valid certificate, the container will fail to start immediately with `BackgroundService failed / Hosting failed to start`.
+
+<br>
+
+In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally, keep `Use_HTTPS=false` in that case. 
+
+<br>
+
+Only set `Use_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
+:::
 
 ### Web UI settings
 
@@ -110,8 +117,9 @@ Configure these settings if your environment requires proxy authentication. Port
 | `PROXY_PASSWORD` | Proxy password | `password` |
 | `PROXY_DOMAIN` | Domain for proxy authentication (NTLM) | `YOURDOMAIN` |
 
-> [!NOTE]
-> When using NTLM authentication, ensure all three proxy variables are configured. The `PROXY_DOMAIN` is required for proper NTLM handshake with corporate proxy servers.
+:::note
+When using NTLM authentication, ensure all three proxy variables are configured. The `PROXY_DOMAIN` is required for proper NTLM handshake with corporate proxy servers.
+:::
 
 ### Azure Key Vault (optional)
 
@@ -154,41 +162,6 @@ volumes:
    ```bash
    docker compose restart
    ```
-
-## Health check
-
-The container can be monitored to verify the API is responding:
-
-```bash
-# Check container health
-docker compose ps
-
-# View container logs
-docker compose logs portway
-```
-
-## Troubleshooting
-
-### Container won't start
-
-1. Check Docker logs:
-   ```bash
-   docker compose logs portway
-   ```
-
-### Configuration issues
-
-1. Verify environment variables are set correctly
-2. Check mounted volume permissions
-3. Review application logs in the `./log` directory
-
-### Proxy authentication
-
-If you're behind a corporate proxy:
-
-1. Update the proxy settings in the environment variables
-2. Ensure your proxy credentials are correct
-3. Contact your network administrator for proxy details
 
 ## Managing tokens
 

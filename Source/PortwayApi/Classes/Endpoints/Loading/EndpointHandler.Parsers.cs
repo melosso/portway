@@ -2,7 +2,6 @@ namespace PortwayApi.Classes;
 
 using System.Text.Json;
 using Serilog;
-using PortwayApi.Helpers;
 
 public static partial class EndpointHandler
 {
@@ -31,25 +30,15 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json, CaseInsensitiveOptions);
 
         if (entity == null)
             return null;
 
-        return new EndpointDefinition
+        var definition = new EndpointDefinition
         {
             Type = EndpointType.Files,
             Methods = new List<string> { "GET", "POST", "DELETE" },
-            AllowedEnvironments = entity.AllowedEnvironments,
-            Hidden = entity.Hidden,
-            Enabled = entity.Enabled,
-            Deprecated = entity.Deprecated,
-            Mcp = entity.Mcp,
-            Documentation = entity.Documentation,
-            Namespace = entity.Namespace,
-            DisplayName = entity.DisplayName,
-            NamespaceDisplayName = entity.NamespaceDisplayName,
             // Store file-specific properties in Properties dictionary
             Properties = new Dictionary<string, object>
             {
@@ -58,6 +47,9 @@ public static partial class EndpointHandler
                 ["AllowedExtensions"] = entity.AllowedExtensions ?? new List<string>()
             }
         };
+
+        entity.ApplyTo(definition);
+        return definition;
     }
 
     /// <summary>Parses a static endpoint definition from JSON</summary>
@@ -66,25 +58,15 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json, CaseInsensitiveOptions);
 
         if (entity == null)
             return null;
 
-        return new EndpointDefinition
+        var definition = new EndpointDefinition
         {
             Type = EndpointType.Static,
             Methods = new List<string> { "GET" },
-            AllowedEnvironments = entity.AllowedEnvironments,
-            Hidden = entity.Hidden,
-            Enabled = entity.Enabled,
-            Deprecated = entity.Deprecated,
-            Mcp = entity.Mcp,
-            Documentation = entity.Documentation,
-            Namespace = entity.Namespace,
-            DisplayName = entity.DisplayName,
-            NamespaceDisplayName = entity.NamespaceDisplayName,
             // Store static-specific properties in Properties dictionary
             Properties = new Dictionary<string, object>
             {
@@ -93,6 +75,9 @@ public static partial class EndpointHandler
                 ["EnableFiltering"] = entity.EnableFiltering
             }
         };
+
+        entity.ApplyTo(definition);
+        return definition;
     }
 
     public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
@@ -116,30 +101,23 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, CaseInsensitiveOptions);
 
         if (entity == null || string.IsNullOrWhiteSpace(entity.Url))
             return null;
 
-        return new EndpointDefinition
+        var definition = new EndpointDefinition
         {
             Url = entity.Url,
             Methods = entity.Methods ?? new List<string>(),
-            Hidden = entity.Hidden,
-            Enabled = entity.Enabled,
-            Deprecated = entity.Deprecated,
-            Mcp = entity.Mcp,
             Type = ParseEndpointType(entity.Type),
             CompositeConfig = entity.CompositeConfig,
-            AllowedEnvironments = entity.AllowedEnvironments,
-            Documentation = entity.Documentation,
             CustomProperties = entity.CustomProperties,
-            Namespace = entity.Namespace,
-            NamespaceDisplayName = entity.NamespaceDisplayName,
-            DisplayName = entity.DisplayName,
             DeletePatterns = entity.DeletePatterns
         };
+
+        entity.ApplyTo(definition);
+        return definition;
     }
 
     /// <summary>Parses a SQL endpoint definition from JSON</summary>
@@ -148,8 +126,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<EndpointEntity>(json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, CaseInsensitiveOptions);
 
         if (entity == null || string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
             return null;
@@ -164,12 +141,9 @@ public static partial class EndpointHandler
             throw new InvalidOperationException($"Endpoint configuration is invalid: {errors}");
         }
 
-        return new EndpointDefinition
+        var definition = new EndpointDefinition
         {
             Type = EndpointType.SQL,
-            Hidden = entity.Hidden,
-            Enabled = entity.Enabled,
-            Deprecated = entity.Deprecated,
             DatabaseObjectName = entity.DatabaseObjectName,
             DatabaseSchema = schema,
             AllowedColumns = entity.AllowedColumns ?? new List<string>(),
@@ -179,14 +153,11 @@ public static partial class EndpointHandler
             DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
             FunctionParameters = entity.FunctionParameters,
             Relationships = entity.Relationships,
-            Methods = allowedMethods,
-            Mcp = entity.Mcp,
-            AllowedEnvironments = entity.AllowedEnvironments,
-            Documentation = entity.Documentation,
-            Namespace = entity.Namespace,
-            NamespaceDisplayName = entity.NamespaceDisplayName,
-            DisplayName = entity.DisplayName
+            Methods = allowedMethods
         };
+
+        entity.ApplyTo(definition);
+        return definition;
     }
 
     /// <summary>Validates SQL endpoint configuration to prevent runtime errors</summary>

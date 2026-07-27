@@ -24,6 +24,7 @@ using System.Runtime.CompilerServices;
 namespace PortwayApi.Api;
 
 /// <summary>Unified controller that handles all endpoint types (SQL, Proxy, Composite, Webhook)</summary>
+/// <remarks>No [ProducesResponseType] here; catchall paths are stripped from the document, StandardErrorCodes is the source!!</remarks>
 [ApiController]
 [Route("api")] // Base route only, we'll use action-level routing
 public partial class EndpointController : ControllerBase
@@ -49,61 +50,20 @@ public partial class EndpointController : ControllerBase
         if (!_environmentSettings.IsEnvironmentAllowed(env))
         {
             Log.Warning("Environment '{Env}' is not in the global allowed list.", env);
-            return (false, PortwayResults.BadRequest(this, $"Environment '{env}' is not allowed."));
+            return (false, PortwayResults.BadRequest($"Environment '{env}' is not allowed."));
         }
 
         // Then check endpoint-specific environment restrictions
-        List<string>? allowedEnvironments = null;
-        
-        switch (endpointType)
-        {
-            case EndpointType.SQL:
-                var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
-                if (TryGetEndpoint(sqlEndpoints, namespaceName, endpointName, out var sqlEndpoint))
-                {
-                    allowedEnvironments = sqlEndpoint?.AllowedEnvironments;
-                }
-                break;
-                
-            case EndpointType.Proxy:
-                var endpointDefinitions = EndpointHandler.GetProxyEndpoints();
-                if (TryGetEndpoint(endpointDefinitions, namespaceName, endpointName, out var proxyEndpoint))
-                {
-                    allowedEnvironments = proxyEndpoint?.AllowedEnvironments;
-                }
-                break;
-                
-                case EndpointType.Webhook:
-                    var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
-                    if (TryGetEndpoint(webhookEndpoints, namespaceName, endpointName, out var webhookEndpoint))
-                    {
-                        allowedEnvironments = webhookEndpoint?.AllowedEnvironments;
-                    }
-                    break;
-                
-            case EndpointType.Static:
-                var staticEndpoints = EndpointHandler.GetStaticEndpoints();
-                if (TryGetEndpoint(staticEndpoints, namespaceName, endpointName, out var staticEndpoint))
-                {
-                    allowedEnvironments = staticEndpoint?.AllowedEnvironments;
-                }
-                break;
-                
-            case EndpointType.Files:
-                var fileEndpoints = EndpointHandler.GetFileEndpoints();
-                if (TryGetEndpoint(fileEndpoints, namespaceName, endpointName, out var fileEndpoint))
-                {
-                    allowedEnvironments = fileEndpoint?.AllowedEnvironments;
-                }
-                break;
-        }
+        var allowedEnvironments = _endpointResolver.TryResolve(endpointType, namespaceName, endpointName, out var endpoint)
+            ? endpoint?.AllowedEnvironments
+            : null;
 
-        if (allowedEnvironments != null && 
+        if (allowedEnvironments != null &&
             allowedEnvironments.Count > 0 &&
             !allowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
         {
             Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
-            return (false, PortwayResults.BadRequest(this, $"Environment '{env}' is not allowed for this endpoint."));
+            return (false, PortwayResults.BadRequest($"Environment '{env}' is not allowed for this endpoint."));
         }
 
         // Environment is allowed
@@ -129,31 +89,6 @@ public partial class EndpointController : ControllerBase
         _staticRequestHandler = staticRequestHandler;
         _sqlRequestHandler = sqlRequestHandler;
         _proxyRequestHandler = proxyRequestHandler;
-    }
-
-    /// <summary>Helper method to try resolving an endpoint with namespace-aware lookup</summary>
-    /// <typeparam name="T">The type of endpoint entity</typeparam>
-    /// <param name="endpoints">The dictionary of endpoints to search</param>
-    /// <param name="namespaceName">The namespace from the parsed URL (can be null)</param>
-    /// <param name="endpointName">The endpoint name</param>
-    /// <param name="endpoint">The found endpoint (if any)</param>
-    /// <returns>True if endpoint was found, false otherwise</returns>
-    private bool TryGetEndpoint<T>(Dictionary<string, T> endpoints, string? namespaceName, string endpointName, out T? endpoint)
-    {
-        endpoint = default;
-        
-        // First try with namespace if provided
-        if (!string.IsNullOrEmpty(namespaceName))
-        {
-            var namespacedKey = $"{namespaceName}/{endpointName}";
-            if (endpoints.TryGetValue(namespacedKey, out endpoint))
-            {
-                return true;
-            }
-        }
-        
-        // Fallback to endpoint name only (backward compatibility)
-        return endpoints.TryGetValue(endpointName, out endpoint);
     }
 
     /// <summary>Resolves namespace, endpoint name, and file id from a files catchall path</summary>

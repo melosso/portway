@@ -3,11 +3,10 @@ namespace PortwayApi.Services;
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
-using PortwayApi.Interfaces;
 using Serilog;
 
 /// <summary>Executes composite endpoint requests outside the controller</summary>
-public sealed class CompositeRequestHandler : IEndpointRequestHandler
+public sealed class CompositeRequestHandler
 {
     private readonly CompositeEndpointHandler _compositeHandler;
 

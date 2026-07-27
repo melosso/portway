@@ -33,6 +33,15 @@ internal static class OpenApiEndpointCatalog
             yield return (FileBasePath(kv.Key), kv.Value);
     }
 
+    /// <summary>Whether an endpoint belongs in the document; disabled ones stay in, marked by EndpointStateDocumentFilter</summary>
+    public static bool IsDocumented(EndpointDefinition definition) => !definition.Hidden;
+
+    /// <summary>Environments an endpoint is documented for: its own allowlist when set, else the global one</summary>
+    public static List<string> EffectiveEnvironments(EndpointDefinition? definition, EnvironmentSettings settings)
+        => definition?.AllowedEnvironments is { Count: > 0 } scoped
+            ? scoped
+            : settings.AllowedEnvironments;
+
     /// <summary>Matches a base and its id and sub-path variants, without matching a longer sibling name</summary>
     public static bool Covers(string basePath, string pathKey) =>
         pathKey.Equals(basePath, StringComparison.OrdinalIgnoreCase) ||

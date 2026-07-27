@@ -411,24 +411,6 @@ function fieldTextarea(id, label, value, minHeight = '80px', isCode = false) {
   </div>`;
 }
 
-function fieldDocumentation(c) {
-  const doc = c.Documentation ?? {};
-  const hasContent = !!(doc.TagDescription || doc.MethodDescriptions || doc.MethodDocumentation);
-  return `<div class="accordion${hasContent ? '' : ''}">
-    <button type="button" class="accordion-trigger" onclick="this.closest('.accordion').classList.toggle('open')" style="font-size:0.8125rem;padding:0.625rem 0.875rem;">
-      <span>Documentation</span>
-      <svg class="accordion-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-    <div class="accordion-body">
-      <div class="accordion-section" style="display:flex;flex-direction:column;gap:0.75rem;">
-        ${fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true)}
-        ${fieldTextarea('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions ? JSON.stringify(doc.MethodDescriptions, null, 2) : '', '72px', true)}
-        ${fieldTextarea('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation ? JSON.stringify(doc.MethodDocumentation, null, 2) : '', '100px', true)}
-      </div>
-    </div>
-  </div>`;
-}
-
 function readDocumentation(c) {
   const tag  = document.getElementById('docTagDescription')?.value?.trim() ?? '';
   const descsRaw = document.getElementById('docMethodDescriptions')?.value?.trim() ?? '';

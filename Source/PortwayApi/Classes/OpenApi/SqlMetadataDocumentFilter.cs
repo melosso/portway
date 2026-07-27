@@ -42,7 +42,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             var definition = endpoint.Value;
 
             // Skip private endpoints
-            if (definition.Hidden)
+            if (!OpenApiEndpointCatalog.IsDocumented(definition))
                 continue;
 
             // Find the path in OpenAPI document

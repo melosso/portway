@@ -4,20 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using PortwayApi.Helpers;
 using Serilog;
 
-/// <summary>Singleton service that reads and writes MCP chat configuration from the encrypted SQLite store (mcp.db)</summary>
+/// <summary>
+/// Singleton reading/writing encrypted MCP chat config (<c>mcp.db</c>).
+/// </summary>
 /// <remarks>
-/// Sensitive values (ApiKey, InternalApiToken) are encrypted at rest using
-/// <see cref="SettingsEncryptionHelper"/> before being persisted
-///
-/// An in-memory cache avoids hitting the DB on every chat turn
-/// The cache is invalidated whenever <see cref="SaveConfigAsync"/> is called
+/// Encrypts sensitive keys via <see cref="SettingsEncryptionHelper"/>.
+/// Uses an in-memory cache, invalidated on <see cref="SaveConfigAsync"/>.
 /// </remarks>
 public sealed class McpConfigService
 {
-    // Keys whose values are encrypted with PWENC before storage
-    private static readonly HashSet<string> _sensitiveKeys =
-        new(StringComparer.OrdinalIgnoreCase) { "ApiKey", "InternalApiToken" };
-
     // Environment variable that overrides the DB api key; checked first
     private const string ApiKeyEnvVar = "PORTWAY_CHAT_API_KEY";
 

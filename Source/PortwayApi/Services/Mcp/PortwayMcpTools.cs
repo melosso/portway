@@ -7,12 +7,10 @@ using System.ComponentModel;
 public static class PortwayMcpTools
 {
     private static McpEndpointRegistry?    _registry;
-    private static McpAppsResourceProvider? _appsProvider;
 
-    public static void Initialize(McpEndpointRegistry registry, McpAppsResourceProvider appsProvider)
+    public static void Initialize(McpEndpointRegistry registry)
     {
-        _registry     = registry;
-        _appsProvider = appsProvider;
+        _registry = registry;
     }
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Browse available Portway endpoints with an interactive UI")]

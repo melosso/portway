@@ -19,10 +19,12 @@ namespace PortwayApi.Classes;
 public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<DynamicEndpointDocumentFilter> _logger;
+    private readonly EnvironmentSettings _environmentSettings;
 
-    public DynamicEndpointDocumentFilter(ILogger<DynamicEndpointDocumentFilter> logger)
+    public DynamicEndpointDocumentFilter(ILogger<DynamicEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings)
     {
         _logger = logger;
+        _environmentSettings = environmentSettings;
     }
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -199,7 +201,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Initialize tags collection if it doesn't exist
         document.Tags ??= new HashSet<OpenApiTag>();
 
-        // Add each tag with its description (sorting will be handled by AlphabeticalEndpointSorter)
+        // Add each tag with its description (sorting will be handled by TagSorterDocumentFilter)
         foreach (var tagEntry in documentTags)
         {
             var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, tagEntry.Key, StringComparison.OrdinalIgnoreCase));
@@ -255,15 +257,4 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         public Documentation? Documentation { get; set; }
     }
 
-    // Match the classes used in EnvironmentSettings
-    private class SettingsModel
-    {
-        public EnvironmentModel Environment { get; set; } = new EnvironmentModel();
-    }
-
-    private class EnvironmentModel
-    {
-        public string ServerName { get; set; } = ".";
-        public List<string> AllowedEnvironments { get; set; } = new List<string>();
-    }
 }

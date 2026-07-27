@@ -70,16 +70,6 @@ public static class EndpointSummaryHelper
         }
     }
 
-    private static void AddEndpoints(Dictionary<string, List<string>> registry, IEnumerable<string> endpoints, string type)
-    {
-        foreach (var endpoint in endpoints)
-        {
-            if (!registry.ContainsKey(endpoint))
-                registry[endpoint] = new List<string>();
-            registry[endpoint].Add(type);
-        }
-    }
-    
     /// <summary>Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility</summary>
     private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, EndpointDefinition> endpoints, string type)
     {

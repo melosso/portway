@@ -60,6 +60,7 @@ GET /api/prod/Products
 
 ## $filter - filtering data
 
+
 Filter results based on conditions:
 
 ### Basic syntax
@@ -67,32 +68,7 @@ Filter results based on conditions:
 $filter=field operator value
 ```
 
-### Comparison operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `eq` | Equals | `$filter=Status eq 'Active'` |
-| `ne` | Not equals | `$filter=Status ne 'Closed'` |
-| `gt` | Greater than | `$filter=Price gt 100` |
-| `ge` | Greater than or equal | `$filter=Price ge 100` |
-| `lt` | Less than | `$filter=Price lt 100` |
-| `le` | Less than or equal | `$filter=Price le 100` |
-
-### String functions
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `contains` | Contains substring | `$filter=contains(Description,'book')` |
-| `startswith` | Starts with | `$filter=startswith(Name,'A')` |
-| `endswith` | Ends with | `$filter=endswith(Email,'.com')` |
-
-### Logical operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `and` | Logical AND | `$filter=Price gt 100 and Status eq 'Active'` |
-| `or` | Logical OR | `$filter=Status eq 'New' or Status eq 'Pending'` |
-| `not` | Logical NOT | `$filter=not contains(Description,'test')` |
+Portway supports comparison operators (`eq`, `ne`, `gt`, `ge`, `lt`, `le`), logical operators (`and`, `or`, `not`) and the string functions `contains`, `startswith` and `endswith`. [Filter operations](/reference/filters) carries the full operator reference, the type-specific rules and the performance notes.
 
 ### Filter examples
 
@@ -108,9 +84,6 @@ GET /api/prod/Products?$filter=contains(Description,'Widget')
 
 # Multiple conditions
 GET /api/prod/Products?$filter=Price gt 100 and Assortment eq 'Electronics'
-
-# OR condition
-GET /api/prod/Products?$filter=Status eq 'Active' or Status eq 'Pending'
 
 # Complex filter
 GET /api/prod/Products?$filter=(Price gt 100 and Price lt 500) or contains(Description,'Special')
@@ -230,48 +203,17 @@ GET /api/prod/Products
 
 ## Data types in queries
 
-### String values
-- Enclose in single quotes: `'value'`
-- Escape single quotes with double quotes: `'O''Brien'`
+
+Literal values follow the OData conventions: strings in single quotes with `''` as the escape, numbers unquoted, dates in ISO 8601, and `true` or `false` in lowercase.
 
 ```http
-$filter=Name eq 'Product Name'
-$filter=Description eq 'It''s a product'
-```
-
-### Numeric values
-- No quotes needed
-- Use decimal point for floating numbers
-
-```http
-$filter=Price eq 99.99
-$filter=Quantity gt 10
-```
-
-### Date values
-- Use ISO 8601 format
-- Can compare with standard operators
-
-```http
+$filter=Name eq 'It''s a product'
+$filter=Price gt 99.99
 $filter=CreatedDate gt 2024-01-01T00:00:00Z
-$filter=ModifiedDate le 2024-12-31T23:59:59Z
-```
-
-### Boolean values
-- Use `true` or `false` (lowercase)
-
-```http
 $filter=IsActive eq true
-$filter=IsDeleted eq false
 ```
 
-### Null values
-- Use `null` keyword
-
-```http
-$filter=DeletedDate eq null
-$filter=AssignedTo ne null
-```
+[Filter operations](/reference/filters#working-with-data-types) covers each type in detail, including null handling.
 
 ## Special characters and encoding
 

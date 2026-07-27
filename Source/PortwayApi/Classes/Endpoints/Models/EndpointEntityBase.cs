@@ -33,4 +33,18 @@ public abstract class EndpointEntityBase
     public string? NamespaceDisplayName { get; set; }
 
     public Documentation? Documentation { get; set; }
+
+    /// <summary>Copies the settings shared by every endpoint type onto a parsed definition</summary>
+    public void ApplyTo(EndpointDefinition definition)
+    {
+        definition.Enabled = Enabled;
+        definition.Hidden = Hidden;
+        definition.Deprecated = Deprecated;
+        definition.Mcp = Mcp;
+        definition.AllowedEnvironments = AllowedEnvironments;
+        definition.Documentation = Documentation;
+        definition.Namespace = Namespace;
+        definition.DisplayName = DisplayName;
+        definition.NamespaceDisplayName = NamespaceDisplayName;
+    }
 }

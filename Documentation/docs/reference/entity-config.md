@@ -401,7 +401,7 @@ Static entities serve pre-defined content files with optional OData filtering ca
 | `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
 | `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
-| `AllowedEnvironments` | array | Yes | Environments where endpoint is available |
+| `AllowedEnvironments` | array | No | Environments where endpoint is available. Omit to allow all |
 | `Documentation` | object | No | OpenAPI documentation metadata |
 
 ### Supported content types
@@ -629,36 +629,8 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 
 ## Server configuration options
 
-### File storage configuration
 
-Additional options can be set in the server's `appsettings.json`:
-
-```json
-"FileStorage": {
-  "StorageDirectory": "files",          // Root directory for all files
-  "MaxFileSizeBytes": 52428800,         // 50MB default
-  "UseMemoryCache": true,               // Enable memory caching
-  "MemoryCacheTimeSeconds": 60,         // Cache duration
-  "MaxTotalMemoryCacheMB": 200,         // Memory cache limit
-  "BlockedExtensions": [                // Globally blocked extensions
-    ".exe", ".dll", ".bat", ".sh", 
-    ".cmd", ".msi", ".vbs"
-  ]
-}
-```
-
-### Environment configuration
-
-Configure allowed environments in `environments/settings.json`:
-
-```json
-{
-  "Environment": {
-    "ServerName": "localhost",
-    "AllowedEnvironments": ["prod", "dev"]
-  }
-}
-```
+Endpoint files describe individual endpoints. The server-wide settings they depend on live elsewhere: file storage limits and blocked extensions in [Application settings](/reference/app-settings#file-storage-configuration), and the allowed environment list in [Environment settings](/reference/environment-settings#global-settings).
 
 ## Related topics
 

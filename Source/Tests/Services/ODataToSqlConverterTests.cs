@@ -1,4 +1,3 @@
-using Microsoft.OData.Edm;
 using Moq;
 using PortwayApi.Classes;
 using PortwayApi.Services.Providers;
@@ -11,16 +10,9 @@ namespace PortwayApi.Tests.Services;
 public class ODataToSqlConverterTests
 {
     private readonly ODataToSqlConverter _converter;
-    private readonly Mock<IEdmModelBuilder> _mockEdmModelBuilder;
 
     public ODataToSqlConverterTests()
     {
-        _mockEdmModelBuilder = new Mock<IEdmModelBuilder>();
-
-        // Create a simple EDM model for testing
-        var mockModel = new Mock<IEdmModel>();
-        _mockEdmModelBuilder.Setup(m => m.GetEdmModel(It.IsAny<string>())).Returns(mockModel.Object);
-
         // Provide all registered providers (mirroring Program.cs registration)
         var providers = new ISqlProvider[]
         {
@@ -30,7 +22,7 @@ public class ODataToSqlConverterTests
             new SqliteProvider()
         };
 
-        _converter = new ODataToSqlConverter(_mockEdmModelBuilder.Object, providers);
+        _converter = new ODataToSqlConverter(providers);
     }
     
     [Fact]
@@ -44,7 +36,7 @@ public class ODataToSqlConverterTests
         };
         
         // Act
-        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams);
+        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
         
         // Assert
         Assert.NotNull(sqlQuery);
@@ -66,7 +58,7 @@ public class ODataToSqlConverterTests
         };
         
         // Act
-        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams);
+        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
         
         // Assert
         Assert.NotNull(sqlQuery);
@@ -85,7 +77,7 @@ public class ODataToSqlConverterTests
         };
         
         // Act
-        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams);
+        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
         
         // Assert
         Assert.NotNull(sqlQuery);

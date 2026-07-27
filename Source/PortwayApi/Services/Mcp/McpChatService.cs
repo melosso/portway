@@ -13,7 +13,9 @@ using PortwayApi.Services;
 using PortwayApi.Services.Mcp.Providers;
 using Serilog;
 
-/// <summary>Orchestrates a single chat turn: resolves the AI provider, builds tool definitions from the MCP registry, runs the tool-use loop, and writes SSE events to the response</summary>
+/// <summary>
+/// Orchestrates a single chat turn: resolves the AI provider, builds tool definitions from the MCP registry, runs the tool-use loop, and writes SSE events to the response
+/// </summary>
 public sealed partial class McpChatService
 {
     private static readonly JsonSerializerOptions _jsonOpts = new()
@@ -32,8 +34,6 @@ public sealed partial class McpChatService
     [GeneratedRegex(@"[^a-zA-Z0-9_]")]
     private static partial Regex SanitisePattern();
 
-    [GeneratedRegex(@"[?&]\$top=", RegexOptions.IgnoreCase)]
-    private static partial Regex TopParamPattern();
 
     [GeneratedRegex(@"\$top=(\d+)", RegexOptions.IgnoreCase)]
     private static partial Regex TopValuePattern();
@@ -634,9 +634,9 @@ public sealed partial class McpChatService
 
         return provider.ToLowerInvariant() switch
         {
-            "openai"  => new OpenAiChatProvider(apiKey, model, _httpFactory),
+            "openai"  => new OpenAiCompatibleChatProvider("OpenAI", apiKey, model, OpenAiCompatibleChatProvider.OpenAiUrl, _httpFactory),
             "gemini"  => new GeminiChatProvider(apiKey, model, _httpFactory),
-            "mistral" => new MistralChatProvider(apiKey, model, _httpFactory),
+            "mistral" => new OpenAiCompatibleChatProvider("Mistral", apiKey, model, OpenAiCompatibleChatProvider.MistralUrlFor(model), _httpFactory),
             _         => new AnthropicChatProvider(apiKey, model, _httpFactory)
         };
     }

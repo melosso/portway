@@ -34,19 +34,7 @@ public static class DirectoryHelper
         if (!Directory.Exists(staticDir))
             Directory.CreateDirectory(staticDir);
     }
-    
-    /// <summary>Creates namespace directory structure for an endpoint type</summary>
-    private static void CreateNamespaceStructure(string endpointType, string[] namespaces)
-    {
-        var baseDir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", endpointType);
-        foreach (var ns in namespaces)
-        {
-            var nsDir = Path.Combine(baseDir, ns);
-            if (!Directory.Exists(nsDir))
-                Directory.CreateDirectory(nsDir);
-        }
-    }
-    
+
     /// <summary>Extracts namespace and endpoint name from a file path Returns (namespace, endpointName) where namespace can be null for non-namespaced endpoints</summary>
     public static (string? Namespace, string EndpointName) ExtractNamespaceAndEndpoint(string filePath, string baseDirectory)
     {

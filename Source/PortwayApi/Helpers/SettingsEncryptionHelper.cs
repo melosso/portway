@@ -53,9 +53,12 @@ public static class SettingsEncryptionHelper
                     var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
                     var encryptionKey = LoadEncryptionKey();
                     var privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
+                    
                     using var rsa = RSA.Create();
+
                     rsa.ImportFromPem(privateKeyPem);
-                    var publicKeyPem = ExportPublicKeyPem(rsa);
+                    var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
+                    
                     _currentPublicKeyPem = publicKeyPem;
                     
                     // Save the derived public key for next time
@@ -74,7 +77,8 @@ public static class SettingsEncryptionHelper
             return _currentPublicKeyPem;
         }
 
-    private static string LoadEncryptionKey()
+    /// <summary>Shared with EnvironmentSettingsProvider; resolves PORTWAY_ENCRYPTION_KEY from env, .env, then fallback</summary>
+    internal static string LoadEncryptionKey()
         {
             // Priority 1: Check Windows environment variable
             var envKey = Environment.GetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", EnvironmentVariableTarget.Machine);
@@ -126,12 +130,13 @@ public static class SettingsEncryptionHelper
             return _fallbackKey;
         }
 
-        private static string DecryptPrivateKey(string encrypted, string encryptionKey)
+        /// <summary>Shared with EnvironmentSettingsProvider, which decrypts the same key file at startup</summary>
+        internal static string DecryptPrivateKey(string encrypted, string encryptionKey)
         {
             var bytes = Convert.FromBase64String(encrypted);
             using var ms = new MemoryStream(bytes);
             var iv = new byte[16];
-            ms.Read(iv, 0, 16);
+            ms.ReadExactly(iv);
             using var aes = Aes.Create();
             aes.Key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32));
             aes.IV = iv;
@@ -140,13 +145,23 @@ public static class SettingsEncryptionHelper
             return sr.ReadToEnd();
         }
 
-        private static string ExportPublicKeyPem(RSA rsa)
+        /// <summary>AES-wraps a PEM private key for at-rest storage in the .core folder</summary>
+        internal static string EncryptPrivateKey(string privateKeyPem, string encryptionKey)
         {
-            var builder = new StringBuilder();
-            builder.AppendLine("-----BEGIN PUBLIC KEY-----");
-            builder.AppendLine(Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo(), Base64FormattingOptions.InsertLineBreaks));
-            builder.AppendLine("-----END PUBLIC KEY-----");
-            return builder.ToString();
+            using var aes = Aes.Create();
+            aes.Key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32));
+            aes.GenerateIV();
+
+            using var ms = new MemoryStream();
+            ms.Write(aes.IV, 0, aes.IV.Length);
+
+            using (var cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+            using (var sw = new StreamWriter(cs))
+            {
+                sw.Write(privateKeyPem);
+            }
+
+            return Convert.ToBase64String(ms.ToArray());
         }
 
         // Hybrid encryption: AES for content, RSA for AES key/IV

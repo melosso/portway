@@ -20,26 +20,26 @@ When you want to shape how Portway behaves at its core (logging, security, rate 
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
   "AllowedHosts": "*",
   "PathBase": "",
-  "WebUi": {
-    "AdminApiKey": "",
-    "PublicOrigins": [],
-    "SecureCookies": false
-  },
+  "WebUi": { ... },
   "OpenApi": { ... },
   "RateLimiting": { ... },
   "ForwardedHeaders": { ... },
   "RequestTrafficLogging": { ... },
-  "SqlConnectionPooling": { ... }
+  "LogSettings": { ... },
+  "SqlConnectionPooling": { ... },
+  "Caching": { ... },
+  "FileStorage": { ... },
+  "Telemetry": { ... },
+  "Mcp": { ... },
+  "EndpointReloading": { ... },
+  "Serilog": { ... },
+  "Logging": { ... }
 }
 ```
+
+Each section is described below.
 
 ## Logging configuration
 
@@ -112,68 +112,25 @@ To change the logging level, modify the `Default` value in `appsettings.json`:
 
 ## OpenAPI configuration
 
-Portway generates OpenAPI documentation from your configured endpoints and exposes it through the Scalar UI at `/docs`.
 
-### Full configuration
+The `OpenApi` section controls the generated API documentation and the Scalar UI that renders it.
 
 ```json
 {
   "OpenApi": {
     "Enabled": true,
-    "BaseProtocol": "https",
     "Title": "Portway: API Gateway",
-    "Version": "v1",
-    "Description": "This is Portway. A lightweight API gateway that connects your platforms to your data sources and services, with a simple and fast setup.",
-    "Contact": {
-      "Name": "Jay Doe (Demo Company)",
-      "Email": "support@democompany.local"
-    },
-    "Footer": {
-      "Text": "Powered by Scalar",
-      "Target": "_blank",
-      "Url": "#"
-    },
-    "SecurityDefinition": {
-      "Name": "Bearer",
-      "Description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
-      "In": "Header",
-      "Type": "ApiKey",
-      "Scheme": "Bearer"
-    },
-    "ScalarTheme": "default",
-    "ScalarLayout": "modern",
-    "ScalarShowSidebar": true,
-    "ScalarHideDownloadButton": true,
-    "ScalarHideModels": true,
-    "ScalarHideClientButton": true,
-    "ScalarHideTestRequestButton": false
+    "Version": "v1"
   }
 }
 ```
 
-### Property reference
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Enabled` | boolean | `true` | Enable/disable API documentation |
-| `BaseProtocol` | string | `"https"` | Protocol for API base URLs |
-| `Title` | string | - | Main title displayed in documentation |
-| `Version` | string | `"v1"` | API version identifier |
-| `Description` | string | - | Main description (supports markdown) |
-| `Contact` | object | - | Contact information for API support |
-| `Footer` | object | - | Footer text shown in Scalar |
-| `SecurityDefinition` | object | - | Authentication method configuration |
-| `ScalarTheme` | string | `"default"` | Scalar theme: `"default"`, `"alternate"`, `"moon"`, `"purple"`, `"solarized"` |
-| `ScalarLayout` | string | `"modern"` | Scalar layout: `"modern"`, `"classic"` |
-| `ScalarShowSidebar` | boolean | `true` | Display navigation sidebar |
-| `ScalarHideDownloadButton` | boolean | `true` | Hide OpenAPI spec download button |
-| `ScalarHideModels` | boolean | `true` | Hide data models section |
-| `ScalarHideClientButton` | boolean | `true` | Hide client generation button |
-| `ScalarHideTestRequestButton` | boolean | `false` | Hide test request button |
+Every property, including the contact block, security definition and the full set of Scalar display options, is listed in [OpenAPI settings](/reference/openapi-settings).
 
 ## Rate limiting configuration
 
-### Configuration structure
+
+The `RateLimiting` section sets the per-IP and per-token request budgets.
 
 ```json
 {
@@ -181,33 +138,14 @@ Portway generates OpenAPI documentation from your configured endpoints and expos
     "Enabled": true,
     "IpLimit": 100,
     "IpWindow": 60,
-    "TokenLimit": 100,
+    "TokenLimit": 1000,
     "TokenWindow": 60,
     "Store": "Memory"
   }
 }
 ```
 
-### Property reference
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Enabled` | boolean | `true` | Enable rate limiting |
-| `IpLimit` | integer | `100` | Requests per IP |
-| `IpWindow` | integer | `60` | Time window in seconds |
-| `TokenLimit` | integer | `100` | Requests per token |
-| `TokenWindow` | integer | `60` | Time window in seconds |
-| `Store` | string | `Memory` | Bucket storage backend, `Memory` or `Redis` |
-| `RedisConnectionString` | string | none | Redis connection for the `Redis` store, reuses the caching connection when empty |
-
-### Rate limiting behavior
-
-- IP-based limiting applies to all requests
-- Token-based limiting applies per authentication token, and individual tokens can carry their own limit that overrides `TokenLimit`
-- Exceeding limits results in 429 Too Many Requests
-- Buckets refill continuously over the time window
-
-You can find a full walkthrough, including per-token limits and the Redis store, in the [rate limiting guide](/guide/rate-limiting).
+For the property reference, per-token overrides, Redis-backed buckets and tuning advice, see [Rate limiting](/guide/rate-limiting).
 
 ## Forwarded headers
 
@@ -245,49 +183,19 @@ The Settings posture panel in the Web UI reflects whether any trusted proxies ar
 
 ## Request traffic logging
 
-### Full configuration
+
+The `RequestTrafficLogging` section records every proxied request to file or SQLite. It stays off until you enable it.
 
 ```json
 {
   "RequestTrafficLogging": {
     "Enabled": false,
-    "QueueCapacity": 10000,
-    "StorageType": "file",
-    "SqlitePath": "log/traffic_logs.db",
-    "LogDirectory": "log/traffic",
-    "MaxFileSizeMB": 50,
-    "MaxFileCount": 5,
-    "FilePrefix": "proxy_traffic_",
-    "BatchSize": 100,
-    "FlushIntervalMs": 1000,
-    "IncludeRequestBodies": false,
-    "IncludeResponseBodies": false,
-    "MaxBodyCaptureSizeBytes": 4096,
-    "CaptureHeaders": true,
-    "EnableInfoLogging": true
+    "StorageType": "file"
   }
 }
 ```
 
-### Property reference
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Enabled` | boolean | `false` | Enable traffic logging |
-| `QueueCapacity` | integer | `10000` | Log queue size |
-| `StorageType` | string | `"file"` | Storage type: "file" or "sqlite" |
-| `SqlitePath` | string | `"log/traffic_logs.db"` | SQLite database path |
-| `LogDirectory` | string | `"log/traffic"` | Log file directory |
-| `MaxFileSizeMB` | integer | `50` | Maximum log file size |
-| `MaxFileCount` | integer | `5` | Maximum log files |
-| `FilePrefix` | string | `"proxy_traffic_"` | Log file prefix |
-| `BatchSize` | integer | `100` | Batch write size |
-| `FlushIntervalMs` | integer | `1000` | Flush interval (ms) |
-| `IncludeRequestBodies` | boolean | `false` | Log request bodies |
-| `IncludeResponseBodies` | boolean | `false` | Log response bodies |
-| `MaxBodyCaptureSizeBytes` | integer | `4096` | Max body size to log |
-| `CaptureHeaders` | boolean | `true` | Log request headers |
-| `EnableInfoLogging` | boolean | `true` | Enable info-level logs |
+The full property reference, the stored record shape and retention behaviour live in [Audit and traffic logging](/reference/audit).
 
 ## SQL connection pooling
 
@@ -319,66 +227,20 @@ The Settings posture panel in the Web UI reflects whether any trusted proxies ar
 
 ## Caching configuration
 
-Portway caches proxy and SQL responses in memory or Redis to reduce upstream load and improve response times.
 
-### Configuration structure
+The `Caching` section controls response caching for proxy and SQL endpoints, backed by memory or Redis.
 
 ```json
 {
   "Caching": {
     "Enabled": true,
     "DefaultCacheDurationSeconds": 300,
-    "ProviderType": "Memory",
-    "MemoryCacheMaxItems": 10000,
-    "MemoryCacheSizeLimitMB": 100,
-    "CacheableContentTypes": [
-      "application/json",
-      "text/json"
-    ],
-    "EndpointCacheDurations": {
-      "Products": 600,
-      "Customers": 300
-    },
-    "Redis": {
-      "ConnectionString": "localhost:6379",
-      "InstanceName": "Portway:",
-      "Database": 0,
-      "UseSsl": false,
-      "ConnectTimeoutMs": 5000,
-      "AbortOnConnectFail": false,
-      "FallbackToMemoryCache": true,
-      "MaxRetryAttempts": 3,
-      "RetryDelayMs": 200
-    }
+    "ProviderType": "Memory"
   }
 }
 ```
 
-### Property reference
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Enabled` | boolean | `true` | Enable response caching |
-| `DefaultCacheDurationSeconds` | integer | `300` | Default TTL for cached responses |
-| `ProviderType` | string | `"Memory"` | Cache backend: `"Memory"` or `"Redis"` |
-| `MemoryCacheMaxItems` | integer | `10000` | Maximum number of items in the memory cache |
-| `MemoryCacheSizeLimitMB` | integer | `100` | Memory cap for the cache in MB |
-| `CacheableContentTypes` | array | `["application/json", ...]` | Only responses with these content types are cached |
-| `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
-
-### Redis properties
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `ConnectionString` | string | `"localhost:6379"` | Redis connection string |
-| `InstanceName` | string | `"Portway:"` | Key prefix to namespace cache entries |
-| `Database` | integer | `0` | Redis logical database index |
-| `UseSsl` | boolean | `false` | Use TLS for the Redis connection |
-| `ConnectTimeoutMs` | integer | `5000` | Connection timeout in milliseconds |
-| `AbortOnConnectFail` | boolean | `false` | Throw on connection failure instead of retrying |
-| `FallbackToMemoryCache` | boolean | `true` | Fall back to in-process memory cache if Redis is unavailable |
-| `MaxRetryAttempts` | integer | `3` | Retry attempts on transient Redis errors |
-| `RetryDelayMs` | integer | `200` | Delay between retry attempts in milliseconds |
+The property reference, the Redis block and per-endpoint duration overrides are documented in [Caching](/reference/caching).
 
 ## File storage configuration
 
@@ -468,43 +330,20 @@ The `Otlp` provider pushes traces and metrics to a collector over gRPC; the `Pro
 
 ## MCP configuration
 
-Controls the Model Context Protocol server and built-in Chat feature.
 
-### Configuration structure
+The `Mcp` section exposes endpoints as Model Context Protocol tools.
 
 ```json
 {
   "Mcp": {
-    "Enabled": true,
+    "Enabled": false,
     "Path": "/mcp",
-    "RequireAuthentication": true,
-    "AppsEnabled": true,
-    "ChatEnabled": false,
-    "DefaultPageSize": 50,
-    "MaxPageSize": 200,
-    "ToolTimeoutSeconds": 30,
-    "MaxToolResultChars": 12000
+    "RequireAuthentication": true
   }
 }
 ```
 
-### Property reference
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `Enabled` | boolean | `false` | Activate the MCP HTTP server |
-| `Path` | string | `"/mcp"` | HTTP path the MCP server is mounted on |
-| `RequireAuthentication` | boolean | `true` | Require a valid Portway Bearer token on MCP requests |
-| `AppsEnabled` | boolean | `true` | Register embedded UI resources as MCP resource URIs |
-| `ChatEnabled` | boolean | `false` | Activate the Chat UI and SSE endpoint. Provider and credentials are configured via the setup wizard, not in this file |
-| `DefaultPageSize` | integer | `50` | Rows added as `$top` when the AI model omits a page size |
-| `MaxPageSize` | integer | `200` | Maximum `$top` value; the server clamps higher values to this limit |
-| `ToolTimeoutSeconds` | integer | `30` | HTTP timeout for internal tool-execution calls |
-| `MaxToolResultChars` | integer | `12000` | Maximum characters kept from a single tool result; longer results are truncated |
-
-:::info
-Chat credentials (provider, model, API key) are stored in the encrypted `mcp.db` database and managed through the Chat setup wizard. They are not configured in `appsettings.json`. An environment variable `PORTWAY_CHAT_API_KEY` can be used instead of the database entry; it takes precedence if set.
-:::
+The property reference, per-endpoint exposure and the built-in tools are covered in the [MCP server guide](/guide/mcp).
 
 ## Log settings
 
@@ -558,7 +397,9 @@ The built-in admin interface settings.
     "AdminApiKey": "your-secure-password",
     "PublicOrigins": ["https://example.com"],
     "SecureCookies": true,
-    "EnableLandingPage": true
+    "Customization": {
+      "EnableLandingPage": true
+    }
   }
 }
 ```
@@ -570,7 +411,7 @@ The built-in admin interface settings.
 | `AdminApiKey` | string | `""` | Password for web UI login (empty = disabled) |
 | `PublicOrigins` | array | `[]` | Allowed CORS origins for external access |
 | `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies |
-| `EnableLandingPage` | boolean | `true` | Show the landing page at `/` for local/allowed clients. Set to `false` to redirect all root requests straight to `/docs` (useful for production systems where the UI should not be discoverable). |
+| `Customization.EnableLandingPage` | boolean | `true` | Show the landing page at `/` for local/allowed clients. Set to `false` to redirect all root requests straight to `/docs` (useful for production systems where the UI should not be discoverable). |
 | `Customization.PromoText` | string | `""` | Markdown banner shown at the top of the login page |
 | `Customization.PromoLogin` | boolean | `false` | Allow the promo-bar to be shown at `/login` |
 | `Customization.LoginFooter` | string | `""` | Markdown text shown below the login form |
@@ -580,7 +421,7 @@ The built-in admin interface settings.
 - Without `AdminApiKey`, the web UI is disabled
 - Without `PublicOrigins`, only local network IPs can access the UI
 - Cookie auth uses HMAC-SHA256 signing
-- Set `EnableLandingPage: false` on internet-facing or production deployments to prevent the admin UI from being surfaced at the root path
+- Set `Customization.EnableLandingPage` to `false` on internet-facing or production deployments to prevent the admin UI from being surfaced at the root path
 
 ### Customization example
 
@@ -718,7 +559,7 @@ For production, restrict to specific domains:
 | `WebUi__AdminApiKey` | Web UI password | `secret` |
 | `WebUi__PublicOrigins__0` | CORS origin (array) | `https://example.com` |
 | `WebUi__SecureCookies` | Secure cookies | `true` |
-| `WebUi__EnableLandingPage` | Show landing page at root | `false` |
+| `WebUi__Customization__EnableLandingPage` | Show landing page at root | `false` |
 
 :::warning
 **`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).

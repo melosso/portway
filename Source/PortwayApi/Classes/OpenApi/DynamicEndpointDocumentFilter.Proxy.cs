@@ -1,19 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.OpenApi;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using PortwayApi.Classes.OpenApi;
-using Serilog;
 
 namespace PortwayApi.Classes;
 
@@ -134,7 +122,7 @@ public partial class DynamicEndpointDocumentFilter
             string endpointName = endpoint.Key;
             var definition = endpoint.Value;
 
-            if (definition.Hidden || definition.IsComposite)
+            if (!OpenApiEndpointCatalog.IsDocumented(definition) || definition.IsComposite)
                 continue;
 
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
@@ -287,152 +275,9 @@ public partial class DynamicEndpointDocumentFilter
         }
     }
 
-    private OpenApiOperation CreateProxyOperation(
-        string endpointName,
-        string method,
-        string targetUrl,
-        List<string> effectiveEnvironments,
-        int operationId,
-        EndpointDefinition? definition = null)
-    {
-        var operation = new OpenApiOperation
-        {
-            Tags = new HashSet<OpenApiTagReference> { new(definition?.DocumentationTag ?? endpointName) }, // Use DocumentationTag for consistency
-            Summary = definition != null ? GetOperationSummary(method, endpointName, definition) : $"{method} {endpointName}",
-            Description = definition != null ? GetOperationDescription(method, endpointName, definition) : $"Proxy {method} request to {targetUrl}",
-            OperationId = $"op_{operationId}",
-            Parameters = new List<IOpenApiParameter>
-            {
-                // Environment parameter
-                new OpenApiParameter()
-                {
-                    Name = "env",
-                    In = ParameterLocation.Path,
-                    Required = true,
-                    Schema = new OpenApiSchema
-                    {
-                        Type = JsonSchemaType.String,
-                        Enum = effectiveEnvironments.Select(e => (JsonNode?)JsonValue.Create(e)).Cast<JsonNode>().ToList()
-                    },
-                    Description = "Target environment"
-                }
-            }
-        };
-
-        // Add method-specific parameters and request body
-        if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
-        {
-            // Add query parameters for GET
-            operation.Parameters.Add(new OpenApiParameter
-            {
-                Name = "$filter",
-                In = ParameterLocation.Query,
-                Required = false,
-                Schema = new OpenApiSchema { Type = JsonSchemaType.String },
-                Description = "Filter expression"
-            });
-
-            // Add default $top=10 to the parameters for Proxy GET requests in documentation
-            operation.Parameters.Add(new OpenApiParameter
-            {
-                Name = "$top",
-                In = ParameterLocation.Query,
-                Required = false,
-                Schema = new OpenApiSchema
-                {
-                    Type = JsonSchemaType.Integer,
-                    Default = JsonValue.Create(10)
-                },
-                Description = "Maximum number of records to return (default is 10)"
-            });
-        }
-        else if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) ||
-                 method.Equals("PUT", StringComparison.OrdinalIgnoreCase) ||
-                 method.Equals("PATCH", StringComparison.OrdinalIgnoreCase) ||
-                 method.Equals("MERGE", StringComparison.OrdinalIgnoreCase))
-        {
-            // Add request body for methods that support it
-            operation.RequestBody = new OpenApiRequestBody
-            {
-                Description = "Request payload",
-                Required = true,
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object
-                        }
-                    },
-                    ["text/xml"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                    },
-                    ["application/soap+xml"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                    },
-                    ["application/xml"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                    },
-                    ["text/plain"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
-                    }
-                }
-            };
-        }
-
-        // Add standard responses
-        operation.Responses = new OpenApiResponses
-        {
-            ["200"] = new OpenApiResponse { Description = "Successful response" }
-        };
-
-        StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
-
-        return operation;
-    }
-
-    private List<string> GetAllowedEnvironments()
-    {
-        try
-        {
-            var settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
-            if (File.Exists(settingsFile))
-            {
-                var settingsJson = File.ReadAllText(settingsFile);
-
-                // Match the structure used in EnvironmentSettings class
-                var settings = JsonSerializer.Deserialize<SettingsModel>(settingsJson);
-                if (settings?.Environment?.AllowedEnvironments != null &&
-                    settings.Environment.AllowedEnvironments.Any())
-                {
-                    return settings.Environment.AllowedEnvironments;
-                }
-            }
-
-            // Return default if settings not found
-            return new List<string> { "prod", "dev" };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading environment settings");
-            return new List<string> { "prod", "dev" };
-        }
-    }
-
     /// <summary>Gets the effective list of allowed environments for an endpoint. Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings</summary>
     private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
-    {
-        if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
-        {
-            return definition.AllowedEnvironments;
-        }
-        return GetAllowedEnvironments();
-    }
+        => OpenApiEndpointCatalog.EffectiveEnvironments(definition, _environmentSettings);
 
     private HttpMethod? GetOperationType(string method)
     {

@@ -23,18 +23,7 @@ Tokens are generated using cryptographically secure random values and stored enc
 
 ### First-run token
 
-On first run, Portway generates an initial token and writes it to `tokens/YOUR_SERVER_NAME.txt`:
-
-```json
-{
-  "Username": "SERVER-NAME",
-  "Token": "base64-encoded-secure-token",
-  "AllowedScopes": "*",
-  "AllowedEnvironments": "*",
-  "ExpiresAt": "Never",
-  "CreatedAt": "2024-01-01 00:00:00"
-}
-```
+On first run, Portway generates an initial token and writes it to `tokens/YOUR_SERVER_NAME.txt`. The [token generator reference](/reference/token-generator) shows the file format and the fields it carries.
 
 ::: Caution
 This file is highly sensitive: it carries a token with full scope and environment access. Remove it from disk immediately after recording the token somewhere secure. Use the Web UI to manage all subsequent tokens.

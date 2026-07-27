@@ -102,7 +102,7 @@ public static class McpRegistryStartupExtensions
         mcpAppsProvider.RegisterUiResource("ui://portway/endpoint-explorer", explorerHtml);
 
         // Initialize the MCP protocol tools
-        PortwayMcpTools.Initialize(mcpRegistry, mcpAppsProvider);
+        PortwayMcpTools.Initialize(mcpRegistry);
 
         // Add MCP Apps UI resource endpoint
         app.MapGet("/mcp/apps/{*path}", async (HttpContext context, CancellationToken ct) =>

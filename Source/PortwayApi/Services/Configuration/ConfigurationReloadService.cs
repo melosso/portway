@@ -8,18 +8,14 @@ namespace PortwayApi.Services.Configuration;
 public class ConfigurationReloadService : IHostedService, IDisposable
 {
     private readonly IOptionsMonitor<CacheOptions> _cacheOptionsMonitor;
-    private readonly CacheManager _cacheManager;
     private readonly IDisposable? _cacheOptionsChangeToken;
     private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
     private DateTime _lastReloadTime = DateTime.MinValue;
     private readonly TimeSpan _reloadDebounceTime = TimeSpan.FromMilliseconds(500);
 
-    public ConfigurationReloadService(
-        IOptionsMonitor<CacheOptions> cacheOptionsMonitor,
-        CacheManager cacheManager)
+    public ConfigurationReloadService(IOptionsMonitor<CacheOptions> cacheOptionsMonitor)
     {
         _cacheOptionsMonitor = cacheOptionsMonitor;
-        _cacheManager = cacheManager;
 
         // Subscribe to configuration changes
         _cacheOptionsChangeToken = _cacheOptionsMonitor.OnChange(OnCacheConfigurationChanged);
@@ -63,7 +59,7 @@ public class ConfigurationReloadService : IHostedService, IDisposable
 
             // Note: Cache entries are not cleared here to prevent data loss
             // The new settings will be used for future cache operations
-            // If you want to clear cache on config change, add: await _cacheManager.ClearAllAsync();
+            // To clear on config change instead, inject CacheManager and call ClearAllAsync()
         }
         finally
         {

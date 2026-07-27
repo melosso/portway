@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using PortwayApi.Classes.OpenApi;
 
@@ -49,7 +44,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 string endpointKey = endpoint.Key;
                 var definition = endpoint.Value;
 
-                    if (definition.Hidden)
+                if (!OpenApiEndpointCatalog.IsDocumented(definition))
                     continue;
 
                 // Get effective environments for this endpoint (endpoint-specific or global fallback)
