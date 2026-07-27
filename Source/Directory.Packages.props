@@ -49,11 +49,6 @@
     <PackageVersion Include="SqlKata.Execution" Version="4.0.1" />
     <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.1" />
   </ItemGroup>
-  <ItemGroup Label="OData">
-    <PackageVersion Include="Microsoft.OData.Core" Version="8.4.4" />
-    <PackageVersion Include="Microsoft.OData.Edm" Version="8.4.4" />
-    <PackageVersion Include="Microsoft.OData.ModelBuilder" Version="2.0.0" />
-  </ItemGroup>
   <ItemGroup Label="Serilog">
     <PackageVersion Include="Serilog" Version="$(SerilogVersion)" />
     <PackageVersion Include="Serilog.AspNetCore" Version="$(SerilogAspNetCoreVersion)" />

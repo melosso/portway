@@ -49,7 +49,7 @@ public partial class EndpointController
 
         endpoint = null!;
         Log.Warning("Endpoint not found: {EndpointName}", endpointName);
-        return PortwayResults.NotFound(this, notFoundMessage ?? $"Endpoint '{endpointName}' not found");
+        return PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
     }
 
     /// <summary>Central boundary for unexpected handler errors: logs and returns a masked response</summary>
@@ -60,14 +60,14 @@ public partial class EndpointController
         string? responseDetail = null)
     {
         Log.Error(ex, "Error processing {Operation} for {Endpoint}", operation, endpointName);
-        return PortwayResults.ServerError(this, responseDetail ?? "An error occurred while processing your request");
+        return PortwayResults.ServerError(HttpContext, responseDetail ?? "An error occurred while processing your request");
     }
 
     /// <summary>Central boundary returning masked ProblemDetails for unexpected dispatch errors</summary>
     private IActionResult HandleUnexpectedProblem(Exception ex, string operation)
     {
         Log.Error(ex, "Error processing {Operation} request for {Path}", operation, Request.Path);
-        return PortwayResults.ServerError(this, "Error processing. Please check the logs for more details.");
+        return PortwayResults.ServerError(HttpContext, "Error processing. Please check the logs for more details.");
     }
 
     /// <summary>Parses the catchall segment to determine endpoint type and name with namespace support</summary>

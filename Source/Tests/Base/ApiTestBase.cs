@@ -52,13 +52,15 @@ public class ApiTestBase : IDisposable
         _mockUrlValidator = new Mock<UrlValidator>(MockBehavior.Loose, "path");
         _mockODataToSqlConverter = new Mock<IODataToSqlConverter>();
 
-        var poolingOptions = new SqlPoolingOptions(5, 100, 15, true, "PortwayAPI");
-        var mockProviderFactory = new Mock<ISqlProviderFactory>();
-        mockProviderFactory.Setup(f => f.GetProvider(It.IsAny<string>())).Returns(new MsSqlProvider());
-        mockProviderFactory.Setup(f => f.GetProvider(It.IsAny<SqlProviderType>())).Returns(new MsSqlProvider());
+        // 1s connect timeout; no SQL Server runs under test so the default 15s wait would dominate the suite
+        var poolingOptions = new SqlPoolingOptions(5, 100, 1, true, "PortwayAPI");
 
-        _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(poolingOptions, mockProviderFactory.Object);
-        _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object, mockProviderFactory.Object);
+        // Real factory (this is not a mock) so the WMS SQLite demo.db resolves to SqliteProvider
+        var providerFactory = new SqlProviderFactory(
+            [new MsSqlProvider(), new PostgreSqlProvider(), new MySqlProvider(), new SqliteProvider()]);
+
+        _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(poolingOptions, providerFactory);
+        _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object, providerFactory);
         _mockTokenService = new Mock<TokenService>((AuthDbContext)null!, (ITokenVerificationCache)null!);
         
         // Setup token service mock
@@ -82,14 +84,14 @@ public class ApiTestBase : IDisposable
         _testEnvironmentSettings = new TestEnvironmentSettings();
         _testEnvironmentSettings.SetAllowedEnvironments(new List<string> { "500", "700" });
 
-        // Setup environment settings provider
+        // WMS maps to the SQLite demo database; other environments keep the unreachable SQL Server string
         _mockEnvironmentSettingsProvider.Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
-            .ReturnsAsync(("Server=localhost;Database=test;Trusted_Connection=True", "localhost", new Dictionary<string, string>()));
+            .ReturnsAsync((string env) => (ConnectionStringFor(env), "localhost", new Dictionary<string, string>()));
 
         _mockEnvironmentSettingsProvider.Setup(p => p.GetEnvironmentConfigAsync(It.IsAny<string>()))
-            .ReturnsAsync((string env) => new EnvironmentConfig 
-            { 
-                ConnectionString = "Server=localhost;Database=test;Trusted_Connection=True",
+            .ReturnsAsync((string env) => new EnvironmentConfig
+            {
+                ConnectionString = ConnectionStringFor(env),
                 ServerName = "localhost"
             });
 
@@ -168,6 +170,18 @@ public class ApiTestBase : IDisposable
     {
         _testEnvironmentSettings.SetAllowedEnvironments(environments.ToList());
     }
+
+    /// <summary>Absolute path to the WMS SQLite demo database copied next to the test assembly</summary>
+    protected static string WmsDemoDbPath =>
+        Path.Combine(AppContext.BaseDirectory, "environments", "WMS", "demo.db");
+
+    /// <summary>True when the WMS demo database is present, so shape tests can assert instead of skipping</summary>
+    protected static bool WmsDemoDbAvailable => File.Exists(WmsDemoDbPath);
+
+    private static string ConnectionStringFor(string environment) =>
+        string.Equals(environment, "WMS", StringComparison.OrdinalIgnoreCase)
+            ? $"Data Source={WmsDemoDbPath}"
+            : "Server=localhost;Database=test;Trusted_Connection=True";
 }
 
 // Test implementation that we can control directly without mocking

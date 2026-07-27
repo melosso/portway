@@ -20,11 +20,6 @@ public class ODataToSqlConverter : IODataToSqlConverter
 
     public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
         string entityName,
-        Dictionary<string, string> odataParams)
-        => ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
-
-    public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
-        string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType)
         => Convert(entityName, odataParams, providerType, count: false, relationships: null);

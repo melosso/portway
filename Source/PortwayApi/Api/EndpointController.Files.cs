@@ -43,7 +43,7 @@ public partial class EndpointController
             var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length == 0)
             {
-                return PortwayResults.BadRequest(this, "Missing endpoint name in the URL path");
+                return PortwayResults.BadRequest("Missing endpoint name in the URL path");
             }
             
             // Check if we have namespace/endpoint format (2+ segments)
@@ -95,7 +95,7 @@ public partial class EndpointController
             // Validate file
             if (file == null || file.Length == 0)
             {
-                return PortwayResults.BadRequest(this, "No file was uploaded");
+                return PortwayResults.BadRequest("No file was uploaded");
             }
             
             // Get storage options from endpoint definition
@@ -133,7 +133,7 @@ public partial class EndpointController
             string extension = Path.GetExtension(filename).ToLowerInvariant();
             if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(extension))
             {
-                return PortwayResults.UnsupportedMediaType(this, $"Files with extension {extension} are not allowed for this endpoint");
+                return PortwayResults.UnsupportedMediaType($"Files with extension {extension} are not allowed for this endpoint");
             }
             
             // Upload the file
@@ -163,15 +163,15 @@ public partial class EndpointController
             // Return success with file info; preserve namespace in the download URL so it round-trips
             var fileEndpointPath = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
             var fileUrl = $"/api/{env}/files/{fileEndpointPath}/{fileId}";
-            return PortwayResults.FileCreate(this, fileUrl, fileId, filename, file.ContentType, file.Length, fileUrl);
+            return PortwayResults.FileCreate(fileUrl, fileId, filename, file.ContentType, file.Length, fileUrl);
         }
         catch (ArgumentException ex)
         {
-            return PortwayResults.BadRequest(this, ex.Message);
+            return PortwayResults.BadRequest(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return PortwayResults.Conflict(this, ex.Message);
+            return PortwayResults.Conflict(ex.Message);
         }
         catch (Exception ex)
         {
@@ -191,7 +191,7 @@ public partial class EndpointController
             var (namespaceName, endpointName, fileId) = ParseFileEndpointPath(catchall);
             if (string.IsNullOrEmpty(endpointName) || string.IsNullOrEmpty(fileId))
             {
-                return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
+                return PortwayResults.BadRequest("Missing endpoint name or file ID in the URL path");
             }
 
             // A trailing "list" segment means list the endpoint's files (namespaced form)
@@ -221,11 +221,11 @@ public partial class EndpointController
         }
         catch (FileNotFoundException ex)
         {
-            return PortwayResults.NotFound(this, $"File not found: {ex.FileName}");
+            return PortwayResults.NotFound($"File not found: {ex.FileName}");
         }
         catch (ArgumentException ex)
         {
-            return PortwayResults.BadRequest(this, ex.Message);
+            return PortwayResults.BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
@@ -245,7 +245,7 @@ public partial class EndpointController
             var (namespaceName, endpointName, fileId) = ParseFileEndpointPath(catchall);
             if (string.IsNullOrEmpty(endpointName) || string.IsNullOrEmpty(fileId))
             {
-                return PortwayResults.BadRequest(this, "Missing endpoint name or file ID in the URL path");
+                return PortwayResults.BadRequest("Missing endpoint name or file ID in the URL path");
             }
 
             // Check if this endpoint exists
@@ -264,11 +264,11 @@ public partial class EndpointController
             // Delete the file
             await _fileHandlerService.DeleteFileAsync(fileId);
 
-            return PortwayResults.Mutation(this, "File deleted successfully");
+            return PortwayResults.Mutation("File deleted successfully");
         }
         catch (ArgumentException ex)
         {
-            return PortwayResults.BadRequest(this, ex.Message);
+            return PortwayResults.BadRequest(ex.Message);
         }
         catch (Exception ex)
         {
@@ -337,7 +337,7 @@ public partial class EndpointController
             // Set pagination headers for consistency with other endpoints
             HttpResponseHeaderHelper.SetPaginationHeaders(HttpContext, filesWithUrls.Count, filesWithUrls.Count, false);
 
-            return PortwayResults.Collection(this, filesWithUrls);
+            return PortwayResults.Collection(filesWithUrls);
         }
         catch (Exception ex)
         {

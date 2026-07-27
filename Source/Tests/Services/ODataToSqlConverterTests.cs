@@ -1,4 +1,3 @@
-using Microsoft.OData.Edm;
 using Moq;
 using PortwayApi.Classes;
 using PortwayApi.Services.Providers;
@@ -37,7 +36,7 @@ public class ODataToSqlConverterTests
         };
         
         // Act
-        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams);
+        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
         
         // Assert
         Assert.NotNull(sqlQuery);
@@ -59,7 +58,7 @@ public class ODataToSqlConverterTests
         };
         
         // Act
-        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams);
+        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
         
         // Assert
         Assert.NotNull(sqlQuery);
@@ -78,7 +77,7 @@ public class ODataToSqlConverterTests
         };
         
         // Act
-        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams);
+        var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
         
         // Assert
         Assert.NotNull(sqlQuery);

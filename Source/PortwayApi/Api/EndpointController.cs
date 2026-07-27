@@ -50,7 +50,7 @@ public partial class EndpointController : ControllerBase
         if (!_environmentSettings.IsEnvironmentAllowed(env))
         {
             Log.Warning("Environment '{Env}' is not in the global allowed list.", env);
-            return (false, PortwayResults.BadRequest(this, $"Environment '{env}' is not allowed."));
+            return (false, PortwayResults.BadRequest($"Environment '{env}' is not allowed."));
         }
 
         // Then check endpoint-specific environment restrictions
@@ -63,7 +63,7 @@ public partial class EndpointController : ControllerBase
             !allowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
         {
             Log.Warning("Environment '{Env}' is not allowed for endpoint '{Endpoint}'.", env, endpointName);
-            return (false, PortwayResults.BadRequest(this, $"Environment '{env}' is not allowed for this endpoint."));
+            return (false, PortwayResults.BadRequest($"Environment '{env}' is not allowed for this endpoint."));
         }
 
         // Environment is allowed

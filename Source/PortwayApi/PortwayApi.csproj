@@ -65,9 +65,6 @@
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
     <PackageReference Include="SqlKata" />
     <PackageReference Include="SqlKata.Execution" />
-    <PackageReference Include="Microsoft.OData.Core" />
-    <PackageReference Include="Microsoft.OData.Edm" />
-    <PackageReference Include="Microsoft.OData.ModelBuilder" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />

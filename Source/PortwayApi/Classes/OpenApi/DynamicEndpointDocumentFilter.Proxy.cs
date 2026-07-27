@@ -275,43 +275,9 @@ public partial class DynamicEndpointDocumentFilter
         }
     }
 
-    private List<string> GetAllowedEnvironments()
-    {
-        try
-        {
-            var settingsFile = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
-            if (File.Exists(settingsFile))
-            {
-                var settingsJson = File.ReadAllText(settingsFile);
-
-                // Match the structure used in EnvironmentSettings class
-                var settings = JsonSerializer.Deserialize<SettingsModel>(settingsJson);
-                if (settings?.Environment?.AllowedEnvironments != null &&
-                    settings.Environment.AllowedEnvironments.Any())
-                {
-                    return settings.Environment.AllowedEnvironments;
-                }
-            }
-
-            // Return default if settings not found
-            return new List<string> { "prod", "dev" };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading environment settings");
-            return new List<string> { "prod", "dev" };
-        }
-    }
-
     /// <summary>Gets the effective list of allowed environments for an endpoint. Uses endpoint-specific AllowedEnvironments if defined, otherwise falls back to global settings</summary>
     private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
-    {
-        if (definition?.AllowedEnvironments != null && definition.AllowedEnvironments.Any())
-        {
-            return definition.AllowedEnvironments;
-        }
-        return GetAllowedEnvironments();
-    }
+        => OpenApiEndpointCatalog.EffectiveEnvironments(definition, _environmentSettings);
 
     private HttpMethod? GetOperationType(string method)
     {

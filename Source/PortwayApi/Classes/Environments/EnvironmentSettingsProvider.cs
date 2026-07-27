@@ -38,8 +38,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 try
                 {
                     var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
-                    var encryptionKey = LoadEncryptionKey();
-                    _privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
+                    var encryptionKey = SettingsEncryptionHelper.LoadEncryptionKey();
+                    _privateKeyPem = SettingsEncryptionHelper.DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
                     Log.Debug("Loaded and decrypted private key from: {KeyPath}", privateKeyPath);
                 }
                 catch (Exception ex)
@@ -213,11 +213,11 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
             using var rsa = RSA.Create(2048);
             
-            var privateKeyPem = ExportPrivateKeyPem(rsa);
-            var publicKeyPem = ExportPublicKeyPem(rsa);
+            var privateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
+            var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
 
-            var encryptionKey = LoadEncryptionKey();
-            var encryptedPrivateKey = EncryptPrivateKey(privateKeyPem, encryptionKey);
+            var encryptionKey = SettingsEncryptionHelper.LoadEncryptionKey();
+            var encryptedPrivateKey = SettingsEncryptionHelper.EncryptPrivateKey(privateKeyPem, encryptionKey);
 
             File.WriteAllText(privateKeyPath, encryptedPrivateKey);
             Log.Debug("Saved encrypted private key to: {Path}", privateKeyPath);
@@ -232,42 +232,6 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             Log.Error(ex, "Failed to generate encryption keys");
             throw;
         }
-    }
-
-    private static string ExportPrivateKeyPem(RSA rsa)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine("-----BEGIN PRIVATE KEY-----");
-        builder.AppendLine(Convert.ToBase64String(rsa.ExportPkcs8PrivateKey(), Base64FormattingOptions.InsertLineBreaks));
-        builder.AppendLine("-----END PRIVATE KEY-----");
-        return builder.ToString();
-    }
-
-    private static string ExportPublicKeyPem(RSA rsa)
-    {
-        var builder = new StringBuilder();
-        builder.AppendLine("-----BEGIN PUBLIC KEY-----");
-        builder.AppendLine(Convert.ToBase64String(rsa.ExportSubjectPublicKeyInfo(), Base64FormattingOptions.InsertLineBreaks));
-        builder.AppendLine("-----END PUBLIC KEY-----");
-        return builder.ToString();
-    }
-
-    private static string EncryptPrivateKey(string privateKeyPem, string encryptionKey)
-    {
-        using var aes = Aes.Create();
-        aes.Key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32));
-        aes.GenerateIV();
-
-        using var ms = new MemoryStream();
-        ms.Write(aes.IV, 0, aes.IV.Length);
-
-        using (var cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
-        using (var sw = new StreamWriter(cs))
-        {
-            sw.Write(privateKeyPem);
-        }
-
-        return Convert.ToBase64String(ms.ToArray());
     }
 
     public async Task<(string ConnectionString, string ServerName, Dictionary<string, string> Headers)> LoadEnvironmentOrThrowAsync(string env)
@@ -757,56 +721,4 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         }
     }
 
-    private static string LoadEncryptionKey()
-    {
-        var envKey = Environment.GetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", EnvironmentVariableTarget.Machine);
-        if (!string.IsNullOrWhiteSpace(envKey))
-            return envKey;
-
-        envKey = Environment.GetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", EnvironmentVariableTarget.Process);
-        if (!string.IsNullOrWhiteSpace(envKey))
-            return envKey;
-
-        var projectRoot = Directory.GetCurrentDirectory();
-        var envFilePath = Path.Combine(projectRoot, ".env");
-        
-        if (File.Exists(envFilePath))
-        {
-            try
-            {
-                var envLines = File.ReadAllLines(envFilePath);
-                foreach (var line in envLines)
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.StartsWith("#") || string.IsNullOrWhiteSpace(trimmed))
-                        continue;
-
-                    var parts = trimmed.Split('=', 2);
-                    if (parts.Length == 2 && parts[0].Trim() == "PORTWAY_ENCRYPTION_KEY")
-                    {
-                        var key = parts[1].Trim().Trim('"', '\'');
-                        if (!string.IsNullOrWhiteSpace(key))
-                            return key;
-                    }
-                }
-            }
-            catch (Exception ex) { Log.Debug(ex, "Failed to read environment variable, falling back to next option"); }
-        }
-
-        return "$XTSI5gTEf1hawq3G2uOdWTsFUrgZ6mkCBGrdr0fsRTegXwis68HxGEoCsIBpgbPl5swwY9BQ0qiXG6CaeEPJzp3SPyGebl0ZyHL3jLACKIuSw7G1ufAZ5XATtetKatH0sr#";
-    }
-
-    private static string DecryptPrivateKey(string encrypted, string encryptionKey)
-    {
-        var bytes = Convert.FromBase64String(encrypted);
-        using var ms = new MemoryStream(bytes);
-        var iv = new byte[16];
-        ms.Read(iv, 0, 16);
-        using var aes = Aes.Create();
-        aes.Key = Encoding.UTF8.GetBytes(encryptionKey.PadRight(32).Substring(0, 32));
-        aes.IV = iv;
-        using var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
-        using var sr = new StreamReader(cs);
-        return sr.ReadToEnd();
-    }
 }

@@ -1,3 +1,6 @@
+using Moq;
+using PortwayApi.Classes;
+using PortwayApi.Services.Providers;
 using PortwayApi.Tests.Base;
 using System.Net;
 using System.Text;
@@ -85,14 +88,10 @@ public class ResponseShapeTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        // The demo file endpoint "attachments" requires environment "500"
-        // We just need a file endpoint that exists; shape check is what matters
-        // /api/500/files/attachments/list may 404 (no endpoint configured in tests)
-        // but if it returns 200 the shape must conform. If 404 we skip shape check
-        var response = await _client.GetAsync("/api/500/files/attachments/list");
+        // Reports is a real demo file endpoint for environment 500; an empty listing still returns the envelope
+        var response = await _client.GetAsync("/api/500/files/Reports/list");
 
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Skip shape check if endpoint not configured in test environment
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await ParseBody(response);
         var root = body.RootElement;
@@ -114,13 +113,25 @@ public class ResponseShapeTests : ApiTestBase
     [Fact]
     public async Task SqlGet_WhenEndpointExists_CollectionHasLowercaseKeys()
     {
+        // Committed SQLite demo database ships next to the test assembly, so this asserts instead of skipping
+        Assert.True(WmsDemoDbAvailable, $"WMS demo database missing at {WmsDemoDbPath}");
+
         SetAllowedEnvironments("WMS");
+
+        // Shape is under test, so only the OData translation is stubbed; handler, driver and envelope stay real
+        _mockODataToSqlConverter
+            .Setup(c => c.ConvertToSQL(
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
+            .Returns(("SELECT Id, Code, Name, City, Country, Region, CapacityM2, IsActive FROM Warehouses LIMIT 10",
+                new Dictionary<string, object>()));
 
         // WMS/Warehouses is a real demo SQL endpoint with GET allowed
         var response = await _client.GetAsync("/api/WMS/WMS/Warehouses");
 
-        if (response.StatusCode != HttpStatusCode.OK)
-            return; // Skip if SQL connection not available in test environment
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var body = await ParseBody(response);
         var root = body.RootElement;

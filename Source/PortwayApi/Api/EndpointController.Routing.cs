@@ -67,15 +67,15 @@ public partial class EndpointController
                 case EndpointType.Composite:
                     // Log warning and return 405
                     Log.Warning("Composite endpoints don't support GET requests");
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
                 case EndpointType.Webhook:
                     // Log warning and return 405
                     Log.Warning("Webhook endpoints don't support GET requests");
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
                 default:
                     // Log warning and return 404
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
-                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+                    return PortwayResults.NotFound($"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -95,7 +95,7 @@ public partial class EndpointController
             var contentType = Request.ContentType ?? string.Empty;
             if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
             {
-                return PortwayResults.UnsupportedMediaType(this, "QUERY requires Content-Type: application/json");
+                return PortwayResults.UnsupportedMediaType("QUERY requires Content-Type: application/json");
             }
 
             // Buffer the body so proxy endpoints can re-read it after we parse the query content
@@ -114,11 +114,11 @@ public partial class EndpointController
             }
             catch (JsonException)
             {
-                return PortwayResults.BadRequest(this, "Invalid JSON in QUERY body");
+                return PortwayResults.BadRequest("Invalid JSON in QUERY body");
             }
             if (queryParams == null)
             {
-                return PortwayResults.BadRequest(this, "QUERY body must be a JSON object");
+                return PortwayResults.BadRequest("QUERY body must be a JSON object");
             }
 
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
@@ -153,11 +153,11 @@ public partial class EndpointController
                 case EndpointType.Composite:
                 case EndpointType.Webhook:
                     Log.Warning("{Type} endpoints don't support QUERY requests", endpointType);
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
 
                 default:
                     Log.Warning("Unknown or unsupported endpoint type for QUERY: {EndpointName}", endpointName);
-                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+                    return PortwayResults.NotFound($"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -240,7 +240,7 @@ public partial class EndpointController
             // Only support HEAD for static endpoints
             if (endpointType != EndpointType.Static)
             {
-                return PortwayResults.MethodNotAllowed(this, "HEAD method is only supported for static endpoints");
+                return PortwayResults.MethodNotAllowed("HEAD method is only supported for static endpoints");
             }
 
             Log.Debug("HEAD request for static endpoint: {Name}", endpointName);
@@ -375,14 +375,14 @@ public partial class EndpointController
                     string webhookId = id ?? remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty;
                     if (string.IsNullOrEmpty(webhookId))
                     {
-                        return PortwayResults.BadRequest(this, "Webhook id is required: use '/api/{env}/{namespace}/{name}/{id}'.");
+                        return PortwayResults.BadRequest("Webhook id is required: use '/api/{env}/{namespace}/{name}/{id}'.");
                     }
                     var webhookData = JsonSerializer.Deserialize<JsonElement>(requestBody);
                     return await HandleWebhookRequest(env, webhookKey, webhookId, webhookData);
                     
                 default:
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
-                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+                    return PortwayResults.NotFound($"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -429,7 +429,7 @@ public partial class EndpointController
 
                 default:
                     Log.Warning("{Type} endpoints don't support PUT requests", endpointType);
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
             }
         }
         catch (Exception ex)
@@ -464,7 +464,7 @@ public partial class EndpointController
                     // Ensure ID is provided for SQL DELETE
                     if (string.IsNullOrEmpty(parsedId))
                     {
-                        return PortwayResults.BadRequest(this, "ID parameter is required for delete operations");
+                        return PortwayResults.BadRequest("ID parameter is required for delete operations");
                     }
                     
                     // For SQL endpoints, build the full key for lookup (same as GET)
@@ -478,15 +478,15 @@ public partial class EndpointController
                     
                 case EndpointType.Composite:
                     Log.Warning("Composite endpoints don't support DELETE requests");
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
 
                 case EndpointType.Webhook:
                     Log.Warning("{Type} endpoints don't support DELETE requests", endpointType);
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
 
                 default:
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
-                    return PortwayResults.NotFound(this, $"Endpoint '{endpointName}' not found");
+                    return PortwayResults.NotFound($"Endpoint '{endpointName}' not found");
             }
         }
         catch (Exception ex)
@@ -530,7 +530,7 @@ public partial class EndpointController
                     }
                     catch (JsonException)
                     {
-                        return PortwayResults.BadRequest(this, "Invalid JSON format in request");
+                        return PortwayResults.BadRequest("Invalid JSON format in request");
                     }
                     using (requestBody)
                     {
@@ -539,7 +539,7 @@ public partial class EndpointController
 
                 default:
                     Log.Warning("{Type} endpoints don't support PATCH requests", endpointType);
-                    return PortwayResults.MethodNotAllowed(this);
+                    return PortwayResults.MethodNotAllowed();
             }
         }
         catch (Exception ex)

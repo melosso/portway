@@ -634,9 +634,9 @@ public sealed partial class McpChatService
 
         return provider.ToLowerInvariant() switch
         {
-            "openai"  => new OpenAiChatProvider(apiKey, model, _httpFactory),
+            "openai"  => new OpenAiCompatibleChatProvider("OpenAI", apiKey, model, OpenAiCompatibleChatProvider.OpenAiUrl, _httpFactory),
             "gemini"  => new GeminiChatProvider(apiKey, model, _httpFactory),
-            "mistral" => new MistralChatProvider(apiKey, model, _httpFactory),
+            "mistral" => new OpenAiCompatibleChatProvider("Mistral", apiKey, model, OpenAiCompatibleChatProvider.MistralUrlFor(model), _httpFactory),
             _         => new AnthropicChatProvider(apiKey, model, _httpFactory)
         };
     }

@@ -42,7 +42,7 @@ public partial class EndpointController
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                return PortwayResults.BadRequest(this, "Environment is not configured properly.");
+                return PortwayResults.BadRequest("Environment is not configured properly.");
             }
 
             // Load webhook endpoint configuration using the namespace-aware key
@@ -61,7 +61,7 @@ public partial class EndpointController
             if (allowedColumns.Any() &&
                 !allowedColumns.Contains(webhookId, StringComparer.OrdinalIgnoreCase))
             {
-                return PortwayResults.NotFound(this, $"Webhook ID '{webhookId}' is not configured.");
+                return PortwayResults.NotFound($"Webhook ID '{webhookId}' is not configured.");
             }
 
             // Insert webhook data
@@ -85,7 +85,7 @@ public partial class EndpointController
 
             // Return 201 Created with location header for consistency
             var locationUrl = $"/api/{env}/{webhookEndpointKey}/{webhookId}/{insertedId}";
-            return PortwayResults.Create(this, locationUrl, "Webhook processed successfully.", id: insertedId);
+            return PortwayResults.Create(locationUrl, "Webhook processed successfully.", id: insertedId);
         }
         catch (Exception ex)
         {
