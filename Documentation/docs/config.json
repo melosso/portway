@@ -107,6 +107,10 @@
             "path": "guide/tokens"
           },
           {
+            "title": "Web UI",
+            "path": "guide/webui"
+          },
+          {
             "title": "Security",
             "path": "guide/security"
           },
@@ -191,6 +195,10 @@
           {
             "title": "HTTP Headers",
             "path": "reference/headers"
+          },
+          {
+            "title": "Web UI API",
+            "path": "reference/webui"
           }
         ]
       },
@@ -294,6 +302,10 @@
         "title": "Integrations",
         "collapsed": false,
         "items": [
+          {
+            "title": "Overview",
+            "path": "reference/integrations/"
+          },
           {
             "title": "Exact Globe+",
             "path": "reference/integrations/exact-globe"

@@ -23,13 +23,8 @@ You define one with `endpoints/File/{EndpointName}/entity.json`:
 
 ### Configuration properties
 
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `StorageType` | Yes | string | Storage backend. Currently `Local` |
-| `BaseDirectory` | Yes | string | Path under `files/` where uploaded files are stored. Supports placeholders |
-| `AllowedExtensions` | No | array | File extensions accepted by this endpoint. Empty array allows all non-blocked types |
-| `Hidden` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
-| `AllowedEnvironments` | No | array | Environments where this endpoint responds |
+
+Every property this endpoint type accepts, with its type and default, is listed in [Entity configuration](/reference/entity-config#endpoint-files).
 
 ### Base directory placeholders
 

@@ -9,11 +9,7 @@ When you'd rather click through your gateway than query it, the Web UI gives you
 
 ## Configuration
 
-| Variable | Description | Default |
-|---|---|---|
-| `WebUi__AdminApiKey` | Login password for the UI | _(disabled)_ |
-| `WebUi__PublicOrigins` | CORS origins permitted to access the UI | Local only |
-| `WebUi__SecureCookies` | Require HTTPS for session cookies | `false` |
+The three settings you need to get started are the admin key, the permitted origins and the cookie policy. The complete `WebUi` property reference, including the landing page and login page customisation options, lives in [Application settings](/reference/app-settings#web-ui-configuration).
 
 ```yaml
 environment:

@@ -54,12 +54,8 @@ Create `endpoints/Proxy/{CompositeName}/entity.json`:
 
 ### Top-level properties
 
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `Type` | Yes | string | Must be `"Composite"` |
-| `Url` | Yes | string | Base URL used for all steps |
-| `Methods` | Yes | array | Supported HTTP methods. Composite endpoints typically accept `["POST"]` only |
-| `CompositeConfig` | Yes | object | Step definitions and operation metadata |
+
+The top-level fields, the `CompositeConfig` block, the step properties and the template transformation variables are all listed in [Entity configuration](/reference/entity-config#endpoint-composite).
 
 ### CompositeConfig properties
 
