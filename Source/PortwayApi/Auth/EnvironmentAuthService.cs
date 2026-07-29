@@ -44,7 +44,7 @@ public class EnvironmentAuthService
                     "basic" => ValidateBasicAuth(context, method),
                     "bearer" => ValidateBearerToken(context, method),
                     "jwt" => await ValidateJwtTokenAsync(context, method),
-                    "hmac" => ValidateHmac(context, method),
+                    "hmac" => await ValidateHmacAsync(context, method),
                     _ => false
                 };
 
@@ -190,7 +190,7 @@ public class EnvironmentAuthService
         return false;
     }
 
-    private bool ValidateHmac(HttpContext context, AuthenticationMethod method)
+    private async Task<bool> ValidateHmacAsync(HttpContext context, AuthenticationMethod method)
     {
         // Simple HMAC implementation: Expects 'X-Signature' and 'X-Timestamp' headers
         // Signature = HMAC(Secret, Method + Path + Timestamp + Body)
@@ -212,7 +212,7 @@ public class EnvironmentAuthService
             // Read body
             context.Request.EnableBuffering();
             using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, true, 1024, true);
-            var body = reader.ReadToEndAsync().GetAwaiter().GetResult();
+            var body = await reader.ReadToEndAsync();
             context.Request.Body.Position = 0;
 
             var rawData = $"{context.Request.Method}{context.Request.Path}{timestamp}{body}";

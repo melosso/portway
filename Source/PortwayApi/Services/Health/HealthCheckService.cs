@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
@@ -179,7 +180,7 @@ public class HealthCheckService
     private async Task<HealthReportEntry> CheckProxyEndpointsAsync(CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
-        var results = new Dictionary<string, object>();
+        var results = new ConcurrentDictionary<string, object>();
         var status = HealthStatus.Healthy;
 
         var handler = new HttpClientHandler
@@ -193,7 +194,7 @@ public class HealthCheckService
             handler.UseCookies = false;
         }
         using var client = new HttpClient(handler);
-        var unhealthyEndpoints = new List<string>();
+        var unhealthyEndpoints = new ConcurrentBag<string>();
 
         try
         {
@@ -251,8 +252,8 @@ public class HealthCheckService
     private async Task CheckEndpointAsync(
         HttpClient client, 
         KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)> endpoint, 
-        Dictionary<string, object> results, 
-        List<string> unhealthyEndpoints, 
+        ConcurrentDictionary<string, object> results, 
+        ConcurrentBag<string> unhealthyEndpoints, 
         CancellationToken cancellationToken)
     {
         try
@@ -277,7 +278,7 @@ public class HealthCheckService
             // If the first response is 401, treat it as healthy and stop further processing
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
-                lock (results) results[endpoint.Key] = new
+                results[endpoint.Key] = new
                 {
                     Status = "Healthy",
                     StatusCode = 401,
@@ -300,10 +301,10 @@ public class HealthCheckService
 
                 Log.Warning("Endpoint {Endpoint} returned status code {StatusCode} ({ReasonPhrase})",
                     endpoint.Key, (int)response.StatusCode, response.ReasonPhrase);
-                lock (unhealthyEndpoints) unhealthyEndpoints.Add(endpoint.Key);
+                unhealthyEndpoints.Add(endpoint.Key);
             }
 
-            lock (results) results[endpoint.Key] = new
+            results[endpoint.Key] = new
             {
                 Status = content.Contains("Failed to login to Globe") ? "Healthy" : (isHealthy ? "Healthy" : "Unhealthy"),
                 StatusCode = content.Contains("Failed to login to Globe") ? 401 : (int)response.StatusCode,
@@ -317,12 +318,12 @@ public class HealthCheckService
             var errorMsg = ex.InnerException?.Message ?? ex.Message;
             Log.Error("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
                 endpoint.Key, ex.GetType().Name, errorMsg, endpoint.Value.Url);
-            lock (results) results[endpoint.Key] = new
+            results[endpoint.Key] = new
             {
                 Status = "Unhealthy",
                 Error = errorMsg
             };
-            lock (unhealthyEndpoints) unhealthyEndpoints.Add(endpoint.Key);
+            unhealthyEndpoints.Add(endpoint.Key);
         }
     }
 
@@ -330,7 +331,7 @@ public class HealthCheckService
         HealthStatus status,
         string description,
         DateTime startTime,
-        Dictionary<string, object> results,
+        IReadOnlyDictionary<string, object> results,
         Exception? exception = null)
     {
         return new HealthReportEntry(
@@ -346,8 +347,8 @@ public class HealthCheckService
     private async Task<HealthReportEntry> CheckSqlConnectivityAsync(CancellationToken cancellationToken)
     {
         var startTime = DateTime.UtcNow;
-        var results = new Dictionary<string, object>();
-        var unhealthyEnvironments = new List<string>();
+        var results = new ConcurrentDictionary<string, object>();
+        var unhealthyEnvironments = new ConcurrentBag<string>();
 
         var environments = _environmentSettings!.AllowedEnvironments;
 
@@ -372,7 +373,7 @@ public class HealthCheckService
                 if (string.IsNullOrEmpty(connectionString))
                 {
                     Log.Debug("Skipping SQL health check for environment {Environment}: no connection string configured", env);
-                    lock (results) results[env] = new { Status = "NotConfigured", Note = "No SQL connection string" };
+                    results[env] = new { Status = "NotConfigured", Note = "No SQL connection string" };
                     return;
                 }
 
@@ -383,7 +384,7 @@ public class HealthCheckService
                 if (_sqlProviderFactory is null)
                 {
                     Log.Warning("SQL connectivity check skipped for {Environment}: no provider factory configured", env);
-                    lock (results) results[env] = new { Status = "Unknown" };
+                    results[env] = new { Status = "Unknown" };
                     return;
                 }
 
@@ -401,15 +402,15 @@ public class HealthCheckService
                     await cmd.ExecuteScalarAsync(linkedCts.Token);
                 }
 
-                lock (results) results[env] = new { Status = "Healthy" };
+                results[env] = new { Status = "Healthy" };
                 Log.Debug("SQL connectivity check passed for environment: {Environment}", env);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 const string timeoutMsg = "Connection timed out after 5 seconds";
                 Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, timeoutMsg);
-                lock (results) results[env] = new { Status = "Unhealthy", Error = timeoutMsg };
-                lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);
+                results[env] = new { Status = "Unhealthy", Error = timeoutMsg };
+                unhealthyEnvironments.Add(env);
             }
             catch (Exception ex)
             {
@@ -418,8 +419,8 @@ public class HealthCheckService
                     ? $"DB error: {dbEx.Message}"
                     : ex.InnerException?.Message ?? ex.Message;
                 Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
-                lock (results) results[env] = new { Status = "Unhealthy", Error = errorMsg };
-                lock (unhealthyEnvironments) unhealthyEnvironments.Add(env);
+                results[env] = new { Status = "Unhealthy", Error = errorMsg };
+                unhealthyEnvironments.Add(env);
             }
         }));
 

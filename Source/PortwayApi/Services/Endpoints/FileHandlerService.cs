@@ -24,7 +24,15 @@ public class FileHandlerService : IDisposable
     private readonly FileSystemIndex _fileSystemIndex;
     private readonly Serilog.ILogger _logger;
     private long _currentMemoryUsage = 0;
+    private int _flushRunning;
+    private int _refreshRunning;
     private bool _disposed = false;
+
+    /// <summary>Bytes currently held in the memory cache, exposed for diagnostics and tests</summary>
+    internal long CurrentMemoryUsage => Interlocked.Read(ref _currentMemoryUsage);
+
+    /// <summary>Bytes actually resident in the memory cache, used to assert the counter has not drifted</summary>
+    internal long MeasuredMemoryUsage => _memoryCache.Values.Sum(s => s.Length);
 
     public FileHandlerService(IOptionsMonitor<FileStorageOptions> optionsMonitor, CacheManager cacheManager, Serilog.ILogger logger)
     {
@@ -105,10 +113,12 @@ public class FileHandlerService : IDisposable
         if (_optionsMonitor.CurrentValue.UseMemoryCache)
         {
             // Check if adding this file would exceed memory limits
-            if (_currentMemoryUsage + fileStream.Length > _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024)
+            var projectedUsage = CurrentMemoryUsage + fileStream.Length;
+            var memoryBudget = _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024L * 1024L;
+            if (projectedUsage > memoryBudget)
             {
                 // Memory cache is full, flush old files
-                await FlushOldestFilesAsync(_currentMemoryUsage + fileStream.Length - _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024);
+                await FlushOldestFilesAsync(projectedUsage - memoryBudget);
             }
 
             // Store in memory first
@@ -122,7 +132,7 @@ public class FileHandlerService : IDisposable
             _dirtyFlags[fileId] = true;
 
             // Update current memory usage
-            _currentMemoryUsage += memoryStream.Length;
+            Interlocked.Add(ref _currentMemoryUsage, memoryStream.Length);
 
             Log.Debug("File {Filename} stored in memory cache with ID {FileId}", safeFilename, fileId);
         }
@@ -202,10 +212,12 @@ public class FileHandlerService : IDisposable
         if (_optionsMonitor.CurrentValue.UseMemoryCache && fileStream.Length <= _optionsMonitor.CurrentValue.MaxFileSizeBytes)
         {
             // Check if adding this file would exceed memory limits
-            if (_currentMemoryUsage + fileStream.Length > _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024)
+            var projectedUsage = CurrentMemoryUsage + fileStream.Length;
+            var memoryBudget = _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024L * 1024L;
+            if (projectedUsage > memoryBudget)
             {
                 // Memory cache is full, flush old files
-                await FlushOldestFilesAsync(_currentMemoryUsage + fileStream.Length - _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024 * 1024);
+                await FlushOldestFilesAsync(projectedUsage - memoryBudget);
             }
 
             // Create a copy for the cache
@@ -221,7 +233,7 @@ public class FileHandlerService : IDisposable
             _dirtyFlags[fileId] = false; // Not dirty since we just loaded from disk
 
             // Update current memory usage
-            _currentMemoryUsage += cacheStream.Length;
+            Interlocked.Add(ref _currentMemoryUsage, cacheStream.Length);
 
             Log.Debug("File {Filename} loaded into memory cache with ID {FileId}", filename, fileId);
         }
@@ -244,7 +256,7 @@ public class FileHandlerService : IDisposable
         if (_memoryCache.TryRemove(fileId, out var cachedStream))
         {
             // Update memory usage
-            _currentMemoryUsage -= cachedStream.Length;
+            Interlocked.Add(ref _currentMemoryUsage, -cachedStream.Length);
 
             // Clean up
             await cachedStream.DisposeAsync();
@@ -472,6 +484,10 @@ public class FileHandlerService : IDisposable
     /// <summary>Timer callback to refresh file system indices</summary>
     private async void RefreshIndices(object? state)
     {
+        // Timer does not await the callback, so a slow pass would otherwise overlap the next tick
+        if (Interlocked.Exchange(ref _refreshRunning, 1) == 1)
+            return;
+
         try
         {
             await _fileSystemIndex.RefreshAllIndicesAsync();
@@ -480,11 +496,19 @@ public class FileHandlerService : IDisposable
         {
             _logger.Error(ex, "Error refreshing file indices");
         }
+        finally
+        {
+            Interlocked.Exchange(ref _refreshRunning, 0);
+        }
     }
 
     /// <summary>Timer callback to flush memory cache to disk</summary>
     private async void FlushMemoryCache(object? state)
     {
+        // Overlapping ticks would open two FileStreams onto the same path and truncate the file
+        if (Interlocked.Exchange(ref _flushRunning, 1) == 1)
+            return;
+
         try
         {
             // Get all dirty files
@@ -518,7 +542,7 @@ public class FileHandlerService : IDisposable
                     // Remove from memory cache
                     if (_memoryCache.TryRemove(fileId, out var stream))
                     {
-                        _currentMemoryUsage -= stream.Length;
+                        Interlocked.Add(ref _currentMemoryUsage, -stream.Length);
                         await stream.DisposeAsync();
                     }
 
@@ -532,6 +556,10 @@ public class FileHandlerService : IDisposable
         catch (Exception ex)
         {
             Log.Error(ex, "Error flushing memory cache");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _flushRunning, 0);
         }
     }
 
@@ -570,7 +598,7 @@ public class FileHandlerService : IDisposable
             if (_memoryCache.TryRemove(fileId, out var stream))
             {
                 freedBytes += stream.Length;
-                _currentMemoryUsage -= stream.Length;
+                Interlocked.Add(ref _currentMemoryUsage, -stream.Length);
                 await stream.DisposeAsync();
             }
 

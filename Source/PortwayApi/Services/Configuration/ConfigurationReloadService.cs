@@ -9,9 +9,8 @@ public class ConfigurationReloadService : IHostedService, IDisposable
 {
     private readonly IOptionsMonitor<CacheOptions> _cacheOptionsMonitor;
     private readonly IDisposable? _cacheOptionsChangeToken;
-    private readonly SemaphoreSlim _reloadSemaphore = new(1, 1);
-    private DateTime _lastReloadTime = DateTime.MinValue;
-    private readonly TimeSpan _reloadDebounceTime = TimeSpan.FromMilliseconds(500);
+    private long _lastReloadTicks = DateTime.MinValue.Ticks;
+    private static readonly TimeSpan ReloadDebounceTime = TimeSpan.FromMilliseconds(500);
 
     public ConfigurationReloadService(IOptionsMonitor<CacheOptions> cacheOptionsMonitor)
     {
@@ -34,42 +33,27 @@ public class ConfigurationReloadService : IHostedService, IDisposable
 
     private void OnCacheConfigurationChanged(CacheOptions newOptions, string? name)
     {
-        // Debounce: Prevent multiple rapid notifications from file save operations
-        if (!_reloadSemaphore.Wait(0))
+        // Debounce: a single file save raises several notifications
+        var now = DateTime.UtcNow;
+        var previous = Interlocked.Exchange(ref _lastReloadTicks, now.Ticks);
+
+        if (now - new DateTime(previous, DateTimeKind.Utc) < ReloadDebounceTime)
         {
-            // Another thread is processing, skip this event
+            Log.Debug("Ignoring duplicate configuration change event (debounced)");
             return;
         }
 
-        try
-        {
-            var now = DateTime.UtcNow;
-            if (now - _lastReloadTime < _reloadDebounceTime)
-            {
-                Log.Debug("Ignoring duplicate configuration change event (debounced)");
-                return;
-            }
-            _lastReloadTime = now;
+        Log.Information("Cache configuration changed, new settings will be applied on next cache operation");
+        Log.Debug("Cache enabled: {Enabled}, Provider: {Provider}, Default duration: {Duration}s",
+            newOptions.Enabled,
+            newOptions.ProviderType,
+            newOptions.DefaultCacheDurationSeconds);
 
-            Log.Information("Cache configuration changed, new settings will be applied on next cache operation");
-            Log.Debug("Cache enabled: {Enabled}, Provider: {Provider}, Default duration: {Duration}s",
-                newOptions.Enabled,
-                newOptions.ProviderType,
-                newOptions.DefaultCacheDurationSeconds);
-
-            // Note: Cache entries are not cleared here to prevent data loss
-            // The new settings will be used for future cache operations
-            // To clear on config change instead, inject CacheManager and call ClearAllAsync()
-        }
-        finally
-        {
-            _reloadSemaphore.Release();
-        }
+        // Cache entries are kept to prevent data loss; inject CacheManager and call ClearAllAsync to change that
     }
 
     public void Dispose()
     {
         _cacheOptionsChangeToken?.Dispose();
-        _reloadSemaphore?.Dispose();
     }
 }

@@ -1,16 +1,19 @@
 namespace PortwayApi.Classes;
 
+using System.Collections.Immutable;
 using System.Text.Json;
 using Serilog;
 
 public class EnvironmentSettings
 {
-    private readonly List<string> _allowedEnvironments = new List<string>();
-    private readonly string _settingsPath;
-    private string _serverName = ".";
+    // Reload swaps this in one assignment so readers never see a half-rebuilt allowlist
+    private sealed record Snapshot(ImmutableArray<string> AllowedEnvironments, string ServerName);
 
-    public List<string> AllowedEnvironments => _allowedEnvironments.ToList();
-    public string ServerName => _serverName;
+    private volatile Snapshot _snapshot = new([], ".");
+    private readonly string _settingsPath;
+
+    public List<string> AllowedEnvironments => [.. _snapshot.AllowedEnvironments];
+    public string ServerName => _snapshot.ServerName;
 
     public EnvironmentSettings()
     {
@@ -31,20 +34,15 @@ public class EnvironmentSettings
             {
                 var json = File.ReadAllText(_settingsPath);
                 var settings = JsonSerializer.Deserialize<SettingsModel>(json);
-                
-                if (settings?.Environment?.AllowedEnvironments != null)
-                {
-                    _allowedEnvironments.Clear();
-                    _allowedEnvironments.AddRange(settings.Environment.AllowedEnvironments);
-                }
 
-                if (settings?.Environment?.ServerName != null)
-                {
-                    _serverName = settings.Environment.ServerName;
-                }
+                var loaded = new Snapshot(
+                    [.. settings?.Environment?.AllowedEnvironments ?? []],
+                    settings?.Environment?.ServerName ?? _snapshot.ServerName);
 
-                Log.Information("Loaded environments: {AllowedEnvironments}", string.Join(", ", _allowedEnvironments));
-                Log.Debug("Using server: {ServerName}", _serverName);
+                _snapshot = loaded;
+
+                Log.Information("Loaded environments: {AllowedEnvironments}", string.Join(", ", loaded.AllowedEnvironments));
+                Log.Debug("Using server: {ServerName}", loaded.ServerName);
             }
             else
             {
@@ -57,13 +55,14 @@ public class EnvironmentSettings
                         AllowedEnvironments = new List<string> { "prod", "dev" }
                     }
                 };
-                
-                _allowedEnvironments.AddRange(defaultSettings.Environment.AllowedEnvironments);
-                _serverName = defaultSettings.Environment.ServerName;
-                
+
+                _snapshot = new Snapshot(
+                    [.. defaultSettings.Environment.AllowedEnvironments],
+                    defaultSettings.Environment.ServerName);
+
                 var json = JsonSerializer.Serialize(defaultSettings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                
+
                 Log.Warning("settings.json not found. Created with defaults.");
             }
         }
@@ -75,18 +74,17 @@ public class EnvironmentSettings
 
     public virtual void Reload()
     {
-        _allowedEnvironments.Clear();
         LoadSettings();
     }
 
     public virtual bool IsEnvironmentAllowed(string environment)
     {
-        return _allowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase);
+        return _snapshot.AllowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase);
     }
 
     public virtual List<string> GetAllowedEnvironments()
     {
-        return _allowedEnvironments.ToList();
+        return [.. _snapshot.AllowedEnvironments];
     }
     
     private class SettingsModel

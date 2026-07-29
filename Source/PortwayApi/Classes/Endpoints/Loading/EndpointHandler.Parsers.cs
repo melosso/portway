@@ -83,16 +83,14 @@ public static partial class EndpointHandler
     public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
     {
         string fileEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Files");
-        LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
-        return _loadedFileEndpoints!;
+        return LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
     }
 
     /// <summary>Gets Static endpoints from the /endpoints/Static directory</summary>
     public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
     {
         string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
-        LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
-        return _loadedStaticEndpoints!;
+        return LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
     }
 
     /// <summary>Parses a proxy endpoint definition from JSON, handling both legacy and extended formats</summary>

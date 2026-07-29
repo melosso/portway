@@ -1,14 +1,14 @@
 namespace PortwayApi.Services;
 
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
 /// <summary>Fan-out broadcaster for Server-Sent Events. Each connected SSE client gets its own bounded channel. If a client is slow, old events are silently dropped so it'll n ever blocks the broadcaster</summary>
 public sealed class SseBroadcaster : IDisposable
 {
-    private readonly List<Channel<string>> _channels = [];
-    private readonly object _lock = new();
-    private bool _disposed;
+    private readonly ConcurrentDictionary<Channel<string>, byte> _channels = new();
+    private volatile bool _disposed;
 
     /// <summary>Returns an async sequence of SSE-formatted strings for one client. The channel is automatically removed when the client disconnects</summary>
     public IAsyncEnumerable<string> SubscribeAsync(CancellationToken ct)
@@ -18,7 +18,7 @@ public sealed class SseBroadcaster : IDisposable
             FullMode    = BoundedChannelFullMode.DropOldest,
             SingleReader = true
         });
-        lock (_lock) _channels.Add(ch);
+        _channels[ch] = 0;
         return ReadAndRemove(ch, ct);
     }
 
@@ -33,7 +33,7 @@ public sealed class SseBroadcaster : IDisposable
         }
         finally
         {
-            lock (_lock) _channels.Remove(ch);
+            _channels.TryRemove(ch, out _);
         }
     }
 
@@ -41,19 +41,18 @@ public sealed class SseBroadcaster : IDisposable
     public void Broadcast(string eventType, string json)
     {
         if (_disposed) return;
-        lock (_lock)
-            foreach (var ch in _channels)
-                ch.Writer.TryWrite($"event: {eventType}\ndata: {json}\n\n");
+
+        foreach (var ch in _channels.Keys)
+            ch.Writer.TryWrite($"event: {eventType}\ndata: {json}\n\n");
     }
 
     public void Dispose()
     {
         _disposed = true;
-        lock (_lock)
-        {
-            foreach (var ch in _channels)
-                ch.Writer.TryComplete();
-            _channels.Clear();
-        }
+
+        foreach (var ch in _channels.Keys)
+            ch.Writer.TryComplete();
+
+        _channels.Clear();
     }
 }

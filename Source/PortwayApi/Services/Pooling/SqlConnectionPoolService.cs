@@ -21,6 +21,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
     private readonly ConcurrentDictionary<string, string> _connectionStringCache = new();
     private readonly ConcurrentDictionary<string, DbConnection> _warmupConnections = new();
     private Timer? _maintenanceTimer;
+    private readonly SemaphoreSlim _maintenanceGate = new(1, 1);
     private readonly TimeSpan _maintenanceInterval = TimeSpan.FromMinutes(5);
     private readonly CancellationTokenSource _cts = new();
     private bool _disposed;
@@ -104,12 +105,19 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         }
     }
 
-    private async Task MaintenanceTaskAsync(object? state)
+    internal async Task MaintenanceTaskAsync()
     {
+        // Timer does not await the callback, so a stalled pass would otherwise overlap the next tick
+        if (!await _maintenanceGate.WaitAsync(0))
+            return;
+
         try
         {
             foreach (var entry in _warmupConnections)
             {
+                if (_cts.IsCancellationRequested)
+                    break;
+
                 string connStr = entry.Key;
                 DbConnection connection = entry.Value;
 
@@ -141,12 +149,16 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         {
             Log.Error(ex, "Error performing connection pool maintenance");
         }
+        finally
+        {
+            _maintenanceGate.Release();
+        }
     }
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _maintenanceTimer = new Timer(
-            async state => await MaintenanceTaskAsync(state),
+            _ => _ = MaintenanceTaskAsync(),
             null,
             TimeSpan.FromSeconds(30),
             _maintenanceInterval);
@@ -163,6 +175,10 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
             _cts.Cancel();
 
         _maintenanceTimer?.Change(Timeout.Infinite, 0);
+
+        // Drain an in-flight maintenance pass before disposing the connections it is using
+        if (await _maintenanceGate.WaitAsync(TimeSpan.FromSeconds(5), CancellationToken.None))
+            _maintenanceGate.Release();
 
         foreach (var connection in _warmupConnections.Values)
         {
@@ -190,6 +206,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         _disposed = true;
         _cts.Dispose();
         _maintenanceTimer?.Dispose();
+        _maintenanceGate.Dispose();
     }
 }
 

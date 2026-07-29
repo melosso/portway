@@ -18,10 +18,12 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     private readonly ConnectionMultiplexer? _redis;
     private readonly IDatabase? _db;
     private readonly string _instanceName;
-    private bool _isConnected;
+
+    // Written from Redis connection-event callbacks, lets read from request threads
+    private volatile bool _isConnected;
     private readonly ICacheProvider _fallbackProvider;
     private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
-    private DateTime _lastConnectionAttempt = DateTime.MinValue;
+    private long _lastConnectionAttemptTicks = DateTime.MinValue.Ticks;
     private readonly TimeSpan _reconnectInterval = TimeSpan.FromSeconds(30);
 
     public RedisCacheProvider(
@@ -478,7 +480,8 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     private async Task TryReconnectAsync()
     {
         // Avoid too frequent reconnection attempts
-        if (_isConnected || (DateTime.UtcNow - _lastConnectionAttempt) < _reconnectInterval)
+        var lastAttempt = new DateTime(Interlocked.Read(ref _lastConnectionAttemptTicks), DateTimeKind.Utc);
+        if (_isConnected || (DateTime.UtcNow - lastAttempt) < _reconnectInterval)
         {
             return;
         }
@@ -491,7 +494,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
 
         try
         {
-            _lastConnectionAttempt = DateTime.UtcNow;
+            Interlocked.Exchange(ref _lastConnectionAttemptTicks, DateTime.UtcNow.Ticks);
             
             if (_redis != null && !_redis.IsConnected)
             {

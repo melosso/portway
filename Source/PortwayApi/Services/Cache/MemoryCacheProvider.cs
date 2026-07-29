@@ -15,6 +15,10 @@ public class MemoryCacheProvider : ICacheProvider
     private readonly CacheOptions _options;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
+    // Lock keys carry the full request URL, so the table is pruned of unheld entries above this size
+    private const int MaxTrackedLocks = 1024;
+    private readonly object _lockTableGate = new();
+
     public MemoryCacheProvider(IOptions<CacheOptions> options)
     {
         _options = options.Value;
@@ -27,6 +31,9 @@ public class MemoryCacheProvider : ICacheProvider
         
         _cache = new MemoryCache(memoryCacheOptions);
     }
+
+    /// <summary>Number of live lock entries, exposed for diagnostics and tests</summary>
+    internal int TrackedLockCount => _locks.Count;
 
     /// <summary>Gets the cache provider type</summary>
     public string ProviderType => "Memory";
@@ -105,20 +112,19 @@ public class MemoryCacheProvider : ICacheProvider
     {
         string actualLockKey = $"lock:{lockKey}";
 
-        // Get or create a semaphore for this lock key
-        var lockObj = _locks.GetOrAdd(actualLockKey, _ => new SemaphoreSlim(1, 1));
+        var lockObj = GetOrCreateLock(actualLockKey);
 
         // Try to acquire the lock
         var waitTask = lockObj.WaitAsync(waitTime, cancellationToken);
-        
+
         try
         {
             if (await waitTask.ConfigureAwait(false))
             {
                 Log.Debug("Acquired memory lock for key: {LockKey}", actualLockKey);
-                return new MemoryLockHandle(this, actualLockKey, expiryTime);
+                return new MemoryLockHandle(lockObj, actualLockKey, expiryTime);
             }
-            
+
             Log.Warning("⏱️ Timed out waiting for memory lock: {LockKey}", actualLockKey);
             return null;
         }
@@ -129,36 +135,57 @@ public class MemoryCacheProvider : ICacheProvider
         }
     }
 
-    /// <summary>Private method to release a lock, called by the lock handle</summary>
-    internal void ReleaseLock(string lockKey)
+    private SemaphoreSlim GetOrCreateLock(string actualLockKey)
     {
-        if (_locks.TryGetValue(lockKey, out var lockObj))
+        // Gate is held for dictionary work only, so pruning cannot interleave with a handout
+        lock (_lockTableGate)
         {
-            try
-            {
-                lockObj.Release();
-                Log.Debug("Released memory lock for key: {LockKey}", lockKey);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Error releasing memory lock for key: {LockKey}", lockKey);
-            }
+            if (_locks.Count >= MaxTrackedLocks)
+                PruneUnheldLocks();
+
+            return _locks.GetOrAdd(actualLockKey, _ => new SemaphoreSlim(1, 1));
         }
+    }
+
+    // ponytail: drops unheld entries only; a key pruned between handout and WaitAsync can be
+    // acquired twice, costing one duplicate upstream fetch. Reference-count if that ever matters
+    private void PruneUnheldLocks()
+    {
+        foreach (var pair in _locks)
+        {
+            if (pair.Value.CurrentCount == 1)
+                _locks.TryRemove(pair);
+        }
+
+        Log.Debug("Pruned memory lock table down to {Count} entries", _locks.Count);
     }
 
     /// <summary>Memory-based lock handle implementation</summary>
     private class MemoryLockHandle : ILockHandle
     {
-        private readonly MemoryCacheProvider _provider;
+        private readonly SemaphoreSlim _semaphore;
         private readonly string _lockKey;
         private bool _isDisposed;
         private bool _isReleased;
 
-        public MemoryLockHandle(MemoryCacheProvider provider, string lockKey, TimeSpan expiryTime)
+        public MemoryLockHandle(SemaphoreSlim semaphore, string lockKey, TimeSpan expiryTime)
         {
-            _provider = provider;
+            _semaphore = semaphore;
             _lockKey = lockKey;
             ExpiresAt = DateTime.UtcNow.Add(expiryTime);
+        }
+
+        private void Release()
+        {
+            try
+            {
+                _semaphore.Release();
+                Log.Debug("Released memory lock for key: {LockKey}", _lockKey);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Error releasing memory lock for key: {LockKey}", _lockKey);
+            }
         }
 
         public string Key => _lockKey;
@@ -183,9 +210,9 @@ public class MemoryCacheProvider : ICacheProvider
             if (!_isReleased && !_isDisposed)
             {
                 _isReleased = true;
-                _provider.ReleaseLock(_lockKey);
+                Release();
             }
-            
+
             return Task.CompletedTask;
         }
 
@@ -195,7 +222,7 @@ public class MemoryCacheProvider : ICacheProvider
             {
                 if (!_isReleased)
                 {
-                    _provider.ReleaseLock(_lockKey);
+                    Release();
                     _isReleased = true;
                 }
                 
