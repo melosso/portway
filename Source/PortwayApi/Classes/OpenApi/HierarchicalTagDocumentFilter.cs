@@ -53,6 +53,9 @@ public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
 
             tag.Parent = new OpenApiTagReference(string.Join('/', segments.Take(segments.Length - 1)));
             tag.Kind ??= NamespaceTagKind;
+
+            // The name carries the path so the hierarchy survives; summary carries the leaf a reader should see
+            tag.Summary ??= segments[^1];
         }
 
         return Task.CompletedTask;

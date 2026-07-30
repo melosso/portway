@@ -180,7 +180,9 @@ Which status codes turn up on a given operation still depends on what that endpo
 
 Namespaces do double duty in the reference: each one becomes a tag, and your operations are grouped underneath the namespace they belong to. `NamespaceDisplayName` sets the label you see in the sidebar, and `Documentation.TagDescription` fills in the text below it.
 
-OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a namespace contains a `/`. Nest the directories to get it: an endpoint at `endpoints/SQL/WMS/Inbound/StagingBins` has the namespace `WMS/Inbound`, routes at `/api/{env}/WMS/Inbound/StagingBins`, and appears in the sidebar under `WMS`. Missing intermediate tags are created for you, so only the leaf needs a `TagDescription`.
+OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a namespace contains a `/`. Nest the directories to get it: an endpoint at `endpoints/SQL/WMS/Inbound/StagingBins` has the namespace `WMS/Inbound` and routes at `/api/{env}/WMS/Inbound/StagingBins`. The tag carries `parent`, `kind: nav`, and a `summary` holding just the leaf segment. Missing intermediate tags are created for you, so only the leaf needs a `TagDescription`.
+
+Scalar does not read `parent` yet, so today it lists `WMS` and `WMS/Inbound` as sibling groups rather than nesting one inside the other. The document is correct either way, and the sidebar will nest once Scalar implements the field. Progress is tracked in [scalar#6866](https://github.com/scalar/scalar/discussions/6866).
 
 ## Schema discovery
 

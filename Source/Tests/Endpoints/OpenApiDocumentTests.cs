@@ -149,6 +149,43 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.False(bearer.TryGetProperty("in", out _));
     }
 
+    // Audit: an operation whose summary is just "{METHOD} {name}" means its endpoint never wrote MethodDescriptions
+    [Fact]
+    public async Task EveryOperation_HasAuthoredSummary()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var verbs = new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "MERGE", "QUERY" };
+        var offenders = new List<string>();
+
+        foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())
+        foreach (var op in path.Value.EnumerateObject())
+        {
+            // Non-standard verbs sit under additionalOperations rather than directly on the path item
+            var operations = op.Name == "additionalOperations"
+                ? op.Value.EnumerateObject().Select(o => o.Value)
+                : [op.Value];
+
+            foreach (var operation in operations)
+            {
+                if (!operation.TryGetProperty("summary", out var summary)) continue;
+
+                var text = summary.GetString() ?? "";
+                if (verbs.Any(v => text.StartsWith(v + " ", StringComparison.Ordinal)))
+                {
+                    offenders.Add($"{path.Name} {op.Name}: {text}");
+                }
+            }
+        }
+
+        Assert.True(offenders.Count == 0,
+            "Operations falling back to a generated summary; give their endpoint a Documentation.MethodDescriptions entry:\n"
+            + string.Join("\n", offenders));
+    }
+
     // Bearer is the only scheme Portway publishes, so the reference UI opens with it selected
     [Fact]
     public async Task ScalarPage_PreselectsBearerScheme()

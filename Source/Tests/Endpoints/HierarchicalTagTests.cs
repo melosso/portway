@@ -35,6 +35,9 @@ public class HierarchicalTagTests
         var child = document.Tags!.Single(t => t.Name == "CRM/Accounts");
         Assert.Equal("CRM", child.Parent?.Name);
         Assert.Equal("nav", child.Kind);
+
+        // The name keeps the full path for the hierarchy, so the leaf lives in summary for display
+        Assert.Equal("Accounts", child.Summary);
     }
 
     [Fact]

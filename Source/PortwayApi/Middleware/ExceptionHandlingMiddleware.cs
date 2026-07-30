@@ -23,6 +23,11 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // The caller hung up; nothing failed and there is nobody left to answer
+            Log.Debug("Request cancelled by the client: {Path}", context.Request.Path);
+        }
         catch (Exception ex)
         {
             Log.Error(ex, "Unhandled exception occurred while processing request: {Path}", context.Request.Path);
@@ -46,6 +51,13 @@ public class ExceptionHandlingMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        // Headers are already on the wire, so the status cannot be changed and a body would corrupt the response
+        if (context.Response.HasStarted)
+        {
+            Log.Error("Error details (response already started, cannot return 500): {Message}", exception.Message);
+            return;
+        }
+
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
