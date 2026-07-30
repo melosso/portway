@@ -24,7 +24,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
     private readonly SemaphoreSlim _maintenanceGate = new(1, 1);
     private readonly TimeSpan _maintenanceInterval = TimeSpan.FromMinutes(5);
     private readonly CancellationTokenSource _cts = new();
-    private bool _disposed;
+    private volatile bool _disposed;
 
     public SqlConnectionPoolService(SqlPoolingOptions poolingOptions, ISqlProviderFactory providerFactory)
     {
@@ -171,9 +171,11 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        if (!_disposed)
-            _cts.Cancel();
+        // The host stops hosted services and the container disposes singletons, so this runs twice
+        if (_disposed)
+            return;
 
+        _cts.Cancel();
         _maintenanceTimer?.Change(Timeout.Infinite, 0);
 
         // Drain an in-flight maintenance pass before disposing the connections it is using
