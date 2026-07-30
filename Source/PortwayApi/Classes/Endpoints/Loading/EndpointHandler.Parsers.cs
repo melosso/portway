@@ -111,7 +111,8 @@ public static partial class EndpointHandler
             Type = ParseEndpointType(entity.Type),
             CompositeConfig = entity.CompositeConfig,
             CustomProperties = entity.CustomProperties,
-            DeletePatterns = entity.DeletePatterns
+            DeletePatterns = entity.DeletePatterns,
+            SupportsOData = entity.SupportsOData
         };
 
         entity.ApplyTo(definition);

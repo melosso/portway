@@ -1,9 +1,9 @@
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
-using PortwayApi.Classes.OpenApi;
 using System.Linq;
 
 /// <summary>Shared error-response schemas and a helper to attach a standard set of error responses to an operation</summary>
@@ -11,8 +11,10 @@ public static class StandardResponses
 {
     public const string ErrorSchemaId = "ErrorResponse";
     public const string ValidationSchemaId = "ValidationErrorResponse";
+    public const string ErrorMediaTypeId = "ErrorJson";
+    public const string ValidationMediaTypeId = "ValidationErrorJson";
 
-    private static readonly Dictionary<int, string> Descriptions = new()
+    private static readonly FrozenDictionary<int, string> Summaries = new Dictionary<int, string>
     {
         [200] = "OK",
         [201] = "Created",
@@ -33,16 +35,53 @@ public static class StandardResponses
         [422] = "Unprocessable Content",
         [500] = "Internal Server Error",
         [503] = "Service Unavailable"
-    };
+    }.ToFrozenDictionary();
 
-    /// <summary>The standard description for a status code, or null when none is defined</summary>
+    private static readonly FrozenDictionary<int, string> Descriptions = new Dictionary<int, string>
+    {
+        [200] = "The request succeeded and the payload is in the response body.",
+        [201] = "The record was created.",
+        [202] = "The request was accepted for processing and has not finished yet.",
+        [204] = "The request succeeded and returns no body.",
+        [206] = "The requested byte range of the file was returned.",
+        [304] = "The cached copy is still current, so no body is returned.",
+        [400] = "The request was malformed or failed the validation rules configured for this endpoint.",
+        [401] = "The bearer token is missing, expired or invalid.",
+        [403] = "The token is valid but is not authorized for this endpoint or environment.",
+        [404] = "No endpoint or record matches the request.",
+        [405] = "This endpoint does not allow the HTTP method that was used.",
+        [406] = "No representation matching the Accept header is available.",
+        [409] = "The request conflicts with the current state of the record.",
+        [413] = "The payload is larger than the limit configured for this endpoint.",
+        [415] = "The Content-Type of the request is not supported by this endpoint.",
+        [416] = "The requested byte range falls outside the file.",
+        [422] = "The payload is well formed but one or more fields failed validation.",
+        [500] = "The gateway or an upstream failed; traceId correlates the failure with the server log.",
+        [503] = "The endpoint is disabled or its upstream is unreachable."
+    }.ToFrozenDictionary();
+
+    /// <summary>The HTTP reason phrase for a status code, or null when none is defined</summary>
+    public static string? SummaryFor(int code) => Summaries.TryGetValue(code, out var s) ? s : null;
+
+    /// <summary>What the status code means for a Portway endpoint, or null when none is defined</summary>
     public static string? DescriptionFor(int code) => Descriptions.TryGetValue(code, out var d) ? d : null;
 
-    /// <summary>Registers the shared { success, error } and validation schemas as reusable components (once)</summary>
+    /// <summary>Registers the shared { success, error } and validation schemas, plus the media types wrapping them, as reusable components (once)</summary>
     public static void EnsureSchemas(OpenApiDocument document)
     {
         document.Components ??= new OpenApiComponents();
         document.Components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
+        document.Components.MediaTypes ??= new Dictionary<string, IOpenApiMediaType>();
+
+        document.Components.MediaTypes.TryAdd(ErrorMediaTypeId, new OpenApiMediaType
+        {
+            Schema = new OpenApiSchemaReference(ErrorSchemaId, document)
+        });
+
+        document.Components.MediaTypes.TryAdd(ValidationMediaTypeId, new OpenApiMediaType
+        {
+            Schema = new OpenApiSchemaReference(ValidationSchemaId, document)
+        });
 
         if (!document.Components.Schemas.ContainsKey(ErrorSchemaId))
         {
@@ -121,16 +160,14 @@ public static class StandardResponses
 
         foreach (var code in codes)
         {
-            var schemaId = code == 422 ? ValidationSchemaId : ErrorSchemaId;
+            var mediaTypeId = code == 422 ? ValidationMediaTypeId : ErrorMediaTypeId;
             operation.Responses[code.ToString()] = new OpenApiResponse
             {
+                Summary = SummaryFor(code),
                 Description = DescriptionFor(code) ?? "Error",
                 Content = new Dictionary<string, IOpenApiMediaType>
                 {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchemaReference(schemaId)
-                    }
+                    ["application/json"] = new OpenApiMediaTypeReference(mediaTypeId)
                 }
             };
         }

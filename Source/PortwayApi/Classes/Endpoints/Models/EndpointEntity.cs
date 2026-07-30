@@ -25,6 +25,9 @@ public class EndpointEntity : EndpointEntityBase
     public List<string>? Methods { get; set; }
     public List<DeletePattern>? DeletePatterns { get; set; }
 
+    /// <summary>Set when the proxied service understands OData query parameters, so the documentation can advertise them</summary>
+    public bool SupportsOData { get; set; } = false;
+
     public string Type { get; set; } = "Standard"; // Standard, SQL, Composite
     public CompositeDefinition? CompositeConfig { get; set; }
 

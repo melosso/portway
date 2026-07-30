@@ -54,6 +54,7 @@ Each Globe+ service you want to expose gets a proxy endpoint definition. The end
 {
   "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
   "Methods": ["GET", "POST", "PUT", "DELETE"],
+  "SupportsOData": true,
   "AllowedEnvironments": ["500", "700"]
 }
 ```

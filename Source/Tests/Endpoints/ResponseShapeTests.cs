@@ -88,8 +88,8 @@ public class ResponseShapeTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        // Reports is a real demo file endpoint for environment 500; an empty listing still returns the envelope
-        var response = await _client.GetAsync("/api/500/files/Reports/list");
+        // CustomerData is a real demo file endpoint for environment 500; an empty listing still returns the envelope
+        var response = await _client.GetAsync("/api/500/files/CustomerData/list");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -118,7 +118,7 @@ public class ResponseShapeTests : ApiTestBase
 
         SetAllowedEnvironments("WMS");
 
-        // Shape is under test, so only the OData translation is stubbed; handler, driver and envelope stay real
+        // Shape is under test, so only the OData translation is stubbed; handler, driver and envelope remain intact
         _mockODataToSqlConverter
             .Setup(c => c.ConvertToSQL(
                 It.IsAny<string>(),

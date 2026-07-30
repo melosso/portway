@@ -58,7 +58,8 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 ```json
 {
   "Url": "http://nav-server:7048/DynamicsNAV130/ODataV4/Company('CRONUS%20International%20Ltd.')/Customer",
-  "Methods": ["GET", "POST", "PATCH", "DELETE"]
+  "Methods": ["GET", "POST", "PATCH", "DELETE"],
+  "SupportsOData": true
 }
 ```
 
@@ -67,7 +68,8 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 ```json
 {
   "Url": "http://nav-server:7048/DynamicsNAV130/ODataV4/Company('CRONUS%20International%20Ltd.')/Item",
-  "Methods": ["GET", "POST", "PATCH", "DELETE"]
+  "Methods": ["GET", "POST", "PATCH", "DELETE"],
+  "SupportsOData": true
 }
 ```
 
@@ -76,7 +78,8 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 ```json
 {
   "Url": "http://nav-server:7048/DynamicsNAV130/ODataV4/Company('CRONUS%20International%20Ltd.')/SalesHeader",
-  "Methods": ["GET", "POST", "PATCH", "DELETE"]
+  "Methods": ["GET", "POST", "PATCH", "DELETE"],
+  "SupportsOData": true
 }
 ```
 
@@ -85,7 +88,8 @@ Each NAV/BC OData service you want to expose gets its own endpoint definition. A
 ```json
 {
   "Url": "http://nav-server:7048/DynamicsNAV130/ODataV4/Company('CRONUS%20International%20Ltd.')/SalesLine", 
-  "Methods": ["GET", "POST", "PATCH", "DELETE"]
+  "Methods": ["GET", "POST", "PATCH", "DELETE"],
+  "SupportsOData": true
 }
 ```
 

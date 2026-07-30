@@ -1,21 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.OpenApi;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
-using PortwayApi.Classes.OpenApi;
 using Scalar.AspNetCore;
 using Serilog;
 
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 public static class OpenApiConfiguration
 {
@@ -97,14 +88,25 @@ public static class OpenApiConfiguration
                 {
                     document.Components ??= new OpenApiComponents();
                     document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-                    document.Components.SecuritySchemes[openApiSettings.SecurityDefinition.Name] = new OpenApiSecurityScheme
+                    var schemeType = ParseEnum<SecuritySchemeType>(openApiSettings.SecurityDefinition.Type, SecuritySchemeType.Http);
+                    var scheme = new OpenApiSecurityScheme
                     {
                         Description = openApiSettings.SecurityDefinition.Description,
-                        Name = "Authorization",
-                        In = ParseEnum<ParameterLocation>(openApiSettings.SecurityDefinition.In, ParameterLocation.Header),
-                        Type = ParseEnum<SecuritySchemeType>(openApiSettings.SecurityDefinition.Type, SecuritySchemeType.ApiKey),
-                        Scheme = openApiSettings.SecurityDefinition.Scheme
+                        Type = schemeType
                     };
+
+                    // name and in describe where an apiKey travels; an http scheme always carries its credentials in Authorization
+                    if (schemeType == SecuritySchemeType.ApiKey)
+                    {
+                        scheme.Name = "Authorization";
+                        scheme.In = ParseEnum<ParameterLocation>(openApiSettings.SecurityDefinition.In, ParameterLocation.Header);
+                    }
+                    else
+                    {
+                        scheme.Scheme = openApiSettings.SecurityDefinition.Scheme.ToLowerInvariant();
+                    }
+
+                    document.Components.SecuritySchemes[openApiSettings.SecurityDefinition.Name] = scheme;
 
                     return Task.CompletedTask;
                 });
@@ -140,8 +142,14 @@ public static class OpenApiConfiguration
 
                         document.Servers = new List<OpenApiServer>
                         {
-                            new OpenApiServer { Url = serverUrl, Description = "Current server" }
+                            new OpenApiServer { Url = serverUrl, Name = "current", Description = "Current server" }
                         };
+
+                        // The document's own URI, so other descriptions can reference it and relative refs resolve against it
+                        if (Uri.TryCreate($"{serverUrl}/docs/openapi/{currentSettings.Version}/openapi.json", UriKind.Absolute, out var selfUri))
+                        {
+                            document.Self = selfUri;
+                        }
 
                         Log.Debug("OpenAPI Server URL: {ServerUrl}", serverUrl);
                     }
@@ -222,6 +230,10 @@ public static class OpenApiConfiguration
             var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
             var sidebarConfig = openApiSettings.ScalarShowSidebar ? "true" : "false";
 
+            // Preselect the only scheme Portway publishes, so the auth panel opens ready to paste a token
+            var securitySchemeName = JsonEncodedText.Encode(
+                string.IsNullOrWhiteSpace(openApiSettings.SecurityDefinition?.Name) ? "Bearer" : openApiSettings.SecurityDefinition.Name);
+
             // Debug logging
             Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
                 openApiSettings.ScalarTheme, openApiSettings.ScalarLayout);
@@ -233,7 +245,8 @@ public static class OpenApiConfiguration
                     ""documentDownloadType"": ""{(openApiSettings.ScalarHideDownloadButton ? "none" : "both")}"",
                     ""hideModels"": {(openApiSettings.ScalarHideModels ? "true" : "false")},
                     ""hideClientButton"": {(openApiSettings.ScalarHideClientButton ? "true" : "false")},
-                    ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")}
+                    ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")},
+                    ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }}
                 }}";
 
             string Base64Url(byte[] input)

@@ -1,25 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Caching.Memory;
-using System.Data.Common;
-using PortwayApi.Services.Providers;
-
-using Dapper;
-using System.Data;
-using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
-using System.Collections.Concurrent;
-using System.Security.Cryptography;
-using System.Xml.Linq;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
-using PortwayApi.Interfaces;
 using PortwayApi.Services;
-using PortwayApi.Services.Files;
 using Serilog;
-using System.Runtime.CompilerServices;
 
 namespace PortwayApi.Api;
 
@@ -545,6 +529,57 @@ public partial class EndpointController
         catch (Exception ex)
         {
             return HandleUnexpectedProblem(ex, "PATCH");
+        }
+    }
+
+    /// <summary>Handles MERGE requests, the OData spelling of a partial update; endpoints opt in by listing MERGE in Methods</summary>
+    [AcceptVerbs("MERGE", Route = "{env}/{**catchall}")]
+    public async Task<IActionResult> MergeAsync(
+        string env,
+        string catchall)
+    {
+        try
+        {
+            var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
+
+            Log.Debug("Processing {Type} endpoint: {Name} for MERGE", endpointType, endpointName);
+
+            var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, endpointType);
+            if (!isAllowed)
+            {
+                return errorResponse!;
+            }
+
+            switch (endpointType)
+            {
+                case EndpointType.Proxy:
+                    var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    return await HandleProxyRequest(env, proxyKey, id, remainingPath, "MERGE");
+
+                case EndpointType.SQL:
+                    var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
+                    JsonDocument requestBody;
+                    try
+                    {
+                        requestBody = await JsonDocument.ParseAsync(Request.Body);
+                    }
+                    catch (JsonException)
+                    {
+                        return PortwayResults.BadRequest("Invalid JSON format in request");
+                    }
+                    using (requestBody)
+                    {
+                        return await HandleSqlPatchRequest(env, sqlKey, requestBody, "MERGE");
+                    }
+
+                default:
+                    Log.Warning("{Type} endpoints don't support MERGE requests", endpointType);
+                    return PortwayResults.MethodNotAllowed();
+            }
+        }
+        catch (Exception ex)
+        {
+            return HandleUnexpectedProblem(ex, "MERGE");
         }
     }
 

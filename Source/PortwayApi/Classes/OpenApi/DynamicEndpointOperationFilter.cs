@@ -1,9 +1,7 @@
-using System;
-using System.Collections.Generic;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 public class DynamicEndpointOperationFilter : IOpenApiOperationTransformer
 {

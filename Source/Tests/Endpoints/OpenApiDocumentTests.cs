@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Net;
 using System.Text.Json;
 using PortwayApi.Tests.Base;
@@ -59,12 +58,119 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var badRequestRef = responses.GetProperty("400")
             .GetProperty("content").GetProperty("application/json")
-            .GetProperty("schema").GetProperty("$ref").GetString();
-        Assert.Equal("#/components/schemas/ErrorResponse", badRequestRef);
+            .GetProperty("$ref").GetString();
+        Assert.Equal("#/components/mediaTypes/ErrorJson", badRequestRef);
 
-        // Response descriptions are the standard HTTP reason phrase per status code
-        Assert.Equal("Bad Request", responses.GetProperty("400").GetProperty("description").GetString());
-        Assert.Equal("OK", responses.GetProperty("200").GetProperty("description").GetString());
+        // Response summaries are the standard HTTP reason phrase; descriptions explain what it means here
+        Assert.Equal("Bad Request", responses.GetProperty("400").GetProperty("summary").GetString());
+        Assert.Equal("OK", responses.GetProperty("200").GetProperty("summary").GetString());
+        Assert.Contains("validation", responses.GetProperty("400").GetProperty("description").GetString());
+    }
+
+    // The shared error envelope is registered once as a reusable media type, not repeated per response
+    [Fact]
+    public async Task SharedErrorResponse_MediaTypeComponent_IsRegistered()
+    {
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var mediaTypes = doc.RootElement.GetProperty("components").GetProperty("mediaTypes");
+
+        Assert.Equal("#/components/schemas/ErrorResponse",
+            mediaTypes.GetProperty("ErrorJson").GetProperty("schema").GetProperty("$ref").GetString());
+        Assert.Equal("#/components/schemas/ValidationErrorResponse",
+            mediaTypes.GetProperty("ValidationErrorJson").GetProperty("schema").GetProperty("$ref").GetString());
+    }
+
+    // CSV and XML bodies are not JSON, so their examples travel as serializedValue rather than a quoted JSON string
+    [Fact]
+    public async Task NonJsonStaticEndpoints_UseSerializedValueExamples()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var paths = doc.RootElement.GetProperty("paths");
+
+        foreach (var (path, mediaType) in new[]
+                 {
+                     ("/api/{env}/Production/Lines", "text/csv"),
+                     ("/api/{env}/Production/Machines", "application/xml")
+                 })
+        {
+            var content = paths.GetProperty(path).GetProperty("get")
+                .GetProperty("responses").GetProperty("200")
+                .GetProperty("content").GetProperty(mediaType);
+
+            var example = content.GetProperty("examples").EnumerateObject().First().Value;
+
+            Assert.True(example.TryGetProperty("serializedValue", out var serialized), $"{path} should carry serializedValue");
+            Assert.False(example.TryGetProperty("value", out _), $"{path} should not also carry a JSON value");
+            Assert.False(string.IsNullOrWhiteSpace(serialized.GetString()));
+        }
+    }
+
+    // Static endpoints serve QUERY through the same read path, so filterable ones document it
+    [Fact]
+    public async Task FilterableStaticEndpoint_DocumentsQueryOperation()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy");
+
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var pathItem = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/Masterdata/Countries");
+        var query = pathItem.GetProperty("query");
+
+        var bodyProps = query.GetProperty("requestBody").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema").GetProperty("properties");
+        Assert.True(bodyProps.TryGetProperty("filter", out _));
+
+        // The criteria move into the body, so no OData query parameters remain alongside
+        var locations = query.GetProperty("parameters").EnumerateArray()
+            .Select(p => p.GetProperty("in").GetString());
+        Assert.All(locations, l => Assert.Equal("path", l));
+    }
+
+    // Portway authenticates with Authorization: Bearer, which is an http scheme and not an apiKey
+    [Fact]
+    public async Task SecurityScheme_IsHttpBearer()
+    {
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var bearer = doc.RootElement.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
+
+        Assert.Equal("http", bearer.GetProperty("type").GetString());
+        Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
+
+        // name and in belong to apiKey schemes; emitting them here would describe a scheme Portway does not use
+        Assert.False(bearer.TryGetProperty("name", out _));
+        Assert.False(bearer.TryGetProperty("in", out _));
+    }
+
+    // Bearer is the only scheme Portway publishes, so the reference UI opens with it selected
+    [Fact]
+    public async Task ScalarPage_PreselectsBearerScheme()
+    {
+        var response = await _client.GetAsync("/docs");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"\"preferredSecurityScheme\"\": \"\"Bearer\"\"".Replace("\"\"", "\""), html);
+    }
+
+    // The document names its own URI so other descriptions can reference it
+    [Fact]
+    public async Task Document_DeclaresSelfUri()
+    {
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        var self = doc.RootElement.GetProperty("$self").GetString();
+        Assert.NotNull(self);
+        Assert.EndsWith("/docs/openapi/v1/openapi.json", self);
+        Assert.True(Uri.IsWellFormedUriString(self, UriKind.Absolute));
     }
 
     // Audit: no operation may inline its own error schema, whatever endpoint type produced it
@@ -88,13 +194,12 @@ public class OpenApiDocumentTests : ApiTestBase
 
                 var reference = r.Value.TryGetProperty("content", out var content) &&
                                 content.TryGetProperty("application/json", out var media) &&
-                                media.TryGetProperty("schema", out var schema) &&
-                                schema.TryGetProperty("$ref", out var refValue)
+                                media.TryGetProperty("$ref", out var refValue)
                     ? refValue.GetString()
                     : null;
 
-                if (reference != "#/components/schemas/ErrorResponse" &&
-                    reference != "#/components/schemas/ValidationErrorResponse")
+                if (reference != "#/components/mediaTypes/ErrorJson" &&
+                    reference != "#/components/mediaTypes/ValidationErrorJson")
                 {
                     offenders.Add($"{path.Name} {op.Name} {r.Name}: {reference ?? "no $ref"}");
                 }
@@ -177,7 +282,7 @@ public class OpenApiDocumentTests : ApiTestBase
             foreach (var r in resp.EnumerateObject())
             {
                 if (!int.TryParse(r.Name, out var code)) continue;
-                var expected = PortwayApi.Classes.StandardResponses.DescriptionFor(code);
+                var expected = PortwayApi.Classes.OpenApi.StandardResponses.DescriptionFor(code);
                 if (expected == null) continue;
                 if (!r.Value.TryGetProperty("description", out var d) || d.GetString() != expected)
                 {

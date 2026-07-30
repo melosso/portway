@@ -75,6 +75,19 @@ If no explicit `Namespace` is specified, the namespace is inferred from the dire
 - **Inferred Namespace**: `Account`
 - **Endpoint Name**: `Contacts`
 
+### Nested namespaces
+
+Directories may nest more than one level. Every folder above the endpoint becomes part of the namespace:
+
+**Directory**: `/endpoints/SQL/WMS/Inbound/StagingBins/entity.json`
+- **Inferred Namespace**: `WMS/Inbound`
+- **Endpoint Name**: `StagingBins`
+- **Request path**: `/api/{env}/WMS/Inbound/StagingBins`
+
+Each segment is validated on its own, so the naming rules below apply per segment rather than to the joined namespace. In the OpenAPI reference a nested namespace renders as a tag tree, with `WMS/Inbound` sitting under `WMS`. A working example ships as `WMS/Inbound/StagingBins` in the SQLite demo environment.
+
+Longer paths win when they match: with both `WMS/Bins` and `WMS/Inbound/StagingBins` configured, a request to `/api/{env}/WMS/Inbound/StagingBins` resolves the nested endpoint rather than treating `Inbound` as a record id.
+
 ### Namespace priority
 
 The effective namespace follows this priority order:
@@ -270,11 +283,11 @@ Composite endpoints are stored in the `/endpoints/Proxy/` directory with `"Type"
 
 ### Namespace naming rules
 
-Namespace names follow these conventions:
+Namespace names follow these conventions, applied to each segment of a nested namespace:
 
 - **Start with a letter** (A-Z, a-z)
-- **Contain only** letters, numbers, and underscores
-- **Maximum length** of 50 characters
+- **Contain only** letters, numbers, and underscores, with `/` separating nested segments
+- **Maximum length** of 50 characters across the whole namespace
 - **Case-sensitive** (but URLs are case-insensitive)
 
 **Valid Examples**:
@@ -357,7 +370,7 @@ During migration, both URL patterns work:
 
 #### 1. Namespace validation errors
 
-**Error**: `Namespace must start with a letter and contain only letters, numbers, and underscores`
+**Error**: `Namespace segment 'X' must start with a letter and contain only letters, numbers, and underscores`
 
 **Solution**: Check namespace naming follows conventions:
 ```json

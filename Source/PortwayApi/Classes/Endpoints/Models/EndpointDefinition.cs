@@ -1,9 +1,5 @@
 namespace PortwayApi.Classes;
 
-using System.Text.Json;
-using Serilog;
-using PortwayApi.Helpers;
-
 /// <summary>Unified endpoint definition that handles all endpoint types</summary>
 public class EndpointDefinition
 {
@@ -12,6 +8,8 @@ public class EndpointDefinition
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
     public List<string> Methods { get; set; } = new List<string>();
+    /// <summary>True when the proxied service understands OData query parameters; Portway itself only forwards them</summary>
+    public bool SupportsOData { get; set; } = false;
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
     /// <summary>When false the endpoint returns 503 instead of serving requests</summary>
@@ -161,22 +159,31 @@ public class EndpointDefinition
 
         if (!string.IsNullOrEmpty(namespaceToCheck))
         {
-            // Check namespace naming rules
-            if (!System.Text.RegularExpressions.Regex.IsMatch(namespaceToCheck, @"^[A-Za-z][A-Za-z0-9_]*$"))
+            // Nesting is expressed with slashes, so every segment is validated on its own
+            var segments = namespaceToCheck.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var reserved = new[] { "api", "docs", "openapi", "health", "admin", "system", "composite", "webhook", "files" };
+
+            if (segments.Length == 0)
             {
-                errors.Add("Namespace must start with a letter and contain only letters, numbers, and underscores");
+                errors.Add("Namespace cannot consist only of separators");
+            }
+
+            foreach (var segment in segments)
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(segment, @"^[A-Za-z][A-Za-z0-9_]*$"))
+                {
+                    errors.Add($"Namespace segment '{segment}' must start with a letter and contain only letters, numbers, and underscores");
+                }
+
+                if (reserved.Contains(segment.ToLowerInvariant()))
+                {
+                    errors.Add($"'{segment}' is a reserved namespace name");
+                }
             }
 
             if (namespaceToCheck.Length > 50)
             {
                 errors.Add("Namespace cannot exceed 50 characters");
-            }
-
-            // Reserved namespace names
-            var reserved = new[] { "api", "docs", "openapi", "health", "admin", "system", "composite", "webhook", "files" };
-            if (reserved.Contains(namespaceToCheck.ToLowerInvariant()))
-            {
-                errors.Add($"'{namespaceToCheck}' is a reserved namespace name");
             }
         }
 

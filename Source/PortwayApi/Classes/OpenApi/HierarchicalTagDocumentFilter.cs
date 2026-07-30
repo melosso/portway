@@ -6,6 +6,9 @@ using Microsoft.OpenApi;
 /// <summary>Turns slash-delimited namespace tags into an OpenAPI 3.2 tag hierarchy so nested namespaces render as a tree</summary>
 public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
 {
+    // "nav" is the registered tag-kind for navigation grouping; renderers key their sidebar tree off it
+    private const string NamespaceTagKind = "nav";
+
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
         if (document.Tags is null || document.Tags.Count == 0)
@@ -23,38 +26,38 @@ public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
             }
         }
 
+        // Create every missing ancestor first, so tags nested more than one level deep can find their own parent below
         foreach (var tag in document.Tags.ToList())
         {
-            var name = tag.Name ?? string.Empty;
-            if (!name.Contains('/'))
-            {
-                continue;
-            }
-
-            var segments = name.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (segments.Length < 2)
-            {
-                continue;
-            }
-
-            // Ensure a tag exists for every ancestor segment
+            var segments = Segments(tag.Name);
             for (int i = 1; i < segments.Length; i++)
             {
                 var ancestor = string.Join('/', segments.Take(i));
                 if (!byName.ContainsKey(ancestor))
                 {
-                    var parent = new OpenApiTag { Name = ancestor, Kind = "namespace" };
-                    document.Tags.Add(parent);
-                    byName[ancestor] = parent;
+                    var created = new OpenApiTag { Name = ancestor };
+                    document.Tags.Add(created);
+                    byName[ancestor] = created;
                 }
             }
+        }
 
-            // Link this tag to its immediate parent segment
-            var parentName = string.Join('/', segments.Take(segments.Length - 1));
-            tag.Parent = new OpenApiTagReference(parentName);
-            tag.Kind ??= "namespace";
+        // Link every namespaced tag to its immediate parent segment
+        foreach (var tag in document.Tags)
+        {
+            var segments = Segments(tag.Name);
+            if (segments.Length < 2)
+            {
+                continue;
+            }
+
+            tag.Parent = new OpenApiTagReference(string.Join('/', segments.Take(segments.Length - 1)));
+            tag.Kind ??= NamespaceTagKind;
         }
 
         return Task.CompletedTask;
     }
+
+    private static string[] Segments(string? tagName) =>
+        string.IsNullOrEmpty(tagName) ? [] : tagName.Split('/', StringSplitOptions.RemoveEmptyEntries);
 }

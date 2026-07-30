@@ -10,10 +10,12 @@ Your endpoint definitions do double duty: besides routing requests, they feed th
 Portway builds on **OpenAPI 3.2**, which gives the reference room to describe things earlier versions of the format could not:
 
 - QUERY endpoints appear as native `query` operations
+- `MERGE` endpoints appear under `additionalOperations` rather than borrowing another verb's name
 - Namespaces become the tag structure
 - `Deprecated` endpoints are shown as such
 - File uploads describe their multipart encoding
-- Every error points at one shared schema
+- Every error points at one shared schema, reused as a single media type
+- Each response carries both its status phrase and an explanation of what it means
 
 All of it follows from your endpoint definitions, so there is usually nothing extra to configure.
 
@@ -40,9 +42,9 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
     },
     "SecurityDefinition": {
       "Name": "Bearer",
-      "Description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+      "Description": "Bearer token issued by Portway. Send it as: Authorization: Bearer {token}",
       "In": "Header",
-      "Type": "ApiKey",
+      "Type": "Http",
       "Scheme": "Bearer"
     },
     "EnableFilter": false,
@@ -70,7 +72,7 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
 | `Footer.Url` | string | URL for the footer link |
 | `SecurityDefinition.Name` | string | Name of the security scheme (e.g., "Bearer") |
 | `SecurityDefinition.Description` | string | Description of the authentication method |
-| `SecurityDefinition.In` | string | Location of the API key (`Header`, `Query`, `Cookie`) |
+| `SecurityDefinition.In` | string | Location of the API key (`Header`, `Query`, `Cookie`). Applies only when `Type` is `ApiKey` |
 | `SecurityDefinition.Type` | string | Type of security scheme (`ApiKey`, `Http`, `OAuth2`, `OpenIdConnect`) |
 | `SecurityDefinition.Scheme` | string | Authentication scheme (e.g., "Bearer", "Basic") |
 | `ForceHttpsInProduction` | boolean | Force HTTPS URLs in production environments |
@@ -178,7 +180,7 @@ Which status codes turn up on a given operation still depends on what that endpo
 
 Namespaces do double duty in the reference: each one becomes a tag, and your operations are grouped underneath the namespace they belong to. `NamespaceDisplayName` sets the label you see in the sidebar, and `Documentation.TagDescription` fills in the text below it.
 
-OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a tag name contains a `/`. In practice you are unlikely to see it yet, because namespaces are a single directory level today and routing does not resolve deeper nesting. The support is in place for when that changes.
+OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a namespace contains a `/`. Nest the directories to get it: an endpoint at `endpoints/SQL/WMS/Inbound/StagingBins` has the namespace `WMS/Inbound`, routes at `/api/{env}/WMS/Inbound/StagingBins`, and appears in the sidebar under `WMS`. Missing intermediate tags are created for you, so only the leaf needs a `TagDescription`.
 
 ## Schema discovery
 

@@ -1,9 +1,9 @@
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-/// <summary>Standardizes every response description to the shared per-status-code phrase; endpoint specifics stay on the operation summary/description</summary>
+/// <summary>Standardizes every response onto the shared per-status-code phrase (summary) and explanation (description); endpoint specifics stay on the operation</summary>
 public class ResponseDescriptionDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -29,11 +29,19 @@ public class ResponseDescriptionDocumentFilter : IOpenApiDocumentTransformer
 
                 foreach (var (statusCode, response) in operation.Responses)
                 {
-                    if (int.TryParse(statusCode, out var code) &&
-                        StandardResponses.DescriptionFor(code) is { } standard &&
-                        response is OpenApiResponse concrete)
+                    if (!int.TryParse(statusCode, out var code) || response is not OpenApiResponse concrete)
                     {
-                        concrete.Description = standard;
+                        continue;
+                    }
+
+                    if (StandardResponses.SummaryFor(code) is { } summary)
+                    {
+                        concrete.Summary = summary;
+                    }
+
+                    if (StandardResponses.DescriptionFor(code) is { } description)
+                    {
+                        concrete.Description = description;
                     }
                 }
             }

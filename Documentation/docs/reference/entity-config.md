@@ -140,7 +140,7 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 | `AllowedColumns`      | array   | Yes      | List of accessible columns (supports aliases)                                                |
 | `ResponseTransforms`  | object  | No       | `Remove`, `Rename` and `Mask` rules applied to query results after alias mapping             |
 | `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
-| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for body-carried reads (RFC 10008) |
+| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for body-carried reads (RFC 10008), or `MERGE` as an alias of `PATCH` |
 | `Deprecated`          | boolean | No       | Shows the endpoint's operations as deprecated in the OpenAPI documentation                    |
 | `Enabled`             | boolean | No       | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`)     |
 | `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
@@ -256,6 +256,7 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 | `Retry` | object | No | `Attempts` per URL (default 1) and `DelayMs` between tries (default 200) |
 | `ResponseTransforms` | object | No | `Remove`, `Rename` and `Mask` rules for JSON response fields |
 | `Methods` | array | Yes | Allowed HTTP methods |
+| `SupportsOData` | boolean | No | Set to `true` when the proxied service understands OData query parameters, so the documentation advertises them (default: `false`) |
 | `Hidden` | boolean | No | Leaves the endpoint out of the OpenAPI documentation; it keeps serving (default: `false`) |
 | `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
