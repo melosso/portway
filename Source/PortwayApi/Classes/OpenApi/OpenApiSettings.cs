@@ -3,7 +3,6 @@ namespace PortwayApi.Classes.OpenApi;
 public class OpenApiSettings
 {
     public bool Enabled { get; set; } = true;
-    public string? BaseProtocol { get; set; } = "https";
     public string Title { get; set; } = "API Documentation";
     public string Version { get; set; } = "v1";
     public string Description { get; set; } = "A summary of the API documentation.";

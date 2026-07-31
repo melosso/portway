@@ -203,13 +203,15 @@ To increase log verbosity:
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "PortwayApi.Classes.CompositeEndpointHandler": "Debug"
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug"
     }
   }
 }
 ```
+
+Each step logs its name, target URL and method at `Debug`, so you can see where a composite stops.
 
 ## Next steps
 

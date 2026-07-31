@@ -5,37 +5,35 @@ description: "A practical guide for diagnosing and resolving issues with Portway
 
 # Troubleshooting
 
-When something goes wrong with your gateway, the fastest path to a fix is usually understanding what the system is trying to tell you. This guide walks you through the most common issues you will encounter in production, explains what is actually happening behind each error, and shows you where to look for answers. Rather than just listing fixes, the goal is to help you build intuition about the underlying causes so recurring problems become rare.
+This guide covers the issues you are most likely to hit in production: what each error means, where to look, and how to resolve it.
 
 ## Common issues
 
-The issues below represent the most frequent problems reported from production deployments. Each section explains how the problem shows up, why it tends to happen, and how to resolve it.
-
 ### Authentication failures
 
-Authentication issues are the most common problems reported by API consumers, and fortunately they are usually quick to diagnose. They come in two flavors: requests that cannot be verified at all, and requests with credentials that lack the right permissions.
+Authentication issues come in two forms: requests that cannot be verified at all, and requests with credentials that lack the right permissions.
 
 #### Missing or invalid tokens
 
-When users receive `401 Unauthorized` responses, or you spot "Authentication required" and "Invalid or expired token" messages in your logs, the request is arriving without a token the gateway can verify. This usually traces back to a missing Authorization header, an expired or revoked token, or a Bearer header that is formatted incorrectly.
+A `401 Unauthorized`, or "Authentication required" and "Invalid or expired token" in your logs, means the request arrived without a token the gateway can verify: a missing Authorization header, an expired or revoked token, or a malformed Bearer header.
 
-A good first step is checking what the client is actually sending. The header should look like this:
+Check what the client is actually sending. The header should look like this:
 
 ```http
 Authorization: Bearer YOUR_TOKEN
 ```
 
-If the header looks right, open the [Web UI](/guide/webui) and navigate to **Tokens** to confirm the token exists and has not been revoked or expired. Should the token turn out to be stale, creating a replacement there and revoking the old one resolves the issue immediately.
+If the header looks right, open the [Web UI](/guide/webui) and go to **Tokens** to confirm the token exists and has not been revoked or expired. If it is stale, create a replacement there and revoke the old one.
 
-When several users are affected at once, it is worth reviewing the authentication logs for patterns. A cluster of failures from one integration often points to a deployment that shipped with an outdated token, while failures spread across many clients may suggest a configuration change on the gateway side.
+When several clients fail at once, the pattern tells you where to look. A cluster of failures from one integration usually points to a deployment shipped with an outdated token, while failures spread across many clients suggest a change on the gateway side.
 
 ::: tip Security Best Practice
-Tokens are essentially API keys. It is recommended that users store them in environment variables or a dedicated secret management system, and keep them out of version control entirely.
+Tokens are API keys. Storing them in environment variables or a dedicated secret manager, and keeping them out of version control, is recommended.
 :::
 
 #### Insufficient token permissions
 
-A `403 Forbidden` response tells a different story: the token is valid, but it is not allowed to do what the request asks. You will see "Access denied to endpoint" or "Access denied to environment" messages in the logs. The token may lack the scope for the requested endpoint, or the user may be reaching for an environment their token does not cover.
+A `403 Forbidden` means the token is valid but not allowed to do what the request asks. The logs show "Access denied to endpoint" or "Access denied to environment". Either the token lacks the scope for that endpoint, or it does not cover the environment being reached.
 
 You can inspect what a token is allowed to do directly from its file:
 
@@ -62,11 +60,11 @@ Then compare that against what the endpoint configuration expects:
 }
 ```
 
-If the user legitimately needs the access, editing the token in the [Web UI](/guide/webui) under **Tokens** to add the missing scopes or environments is all it takes. While you are there, it is a good moment to confirm the endpoint's access rules still match your business requirements, and to note somewhere which scopes different integrations actually need. That documentation pays for itself the next time this question comes up.
+If the access is legitimate, edit the token in the [Web UI](/guide/webui) under **Tokens** to add the missing scopes or environments.
 
 ### Rate limiting issues
 
-Rate limiting protects the gateway from being overwhelmed. When users report `429 Too Many Requests` responses, or you find "Rate limit exceeded" and "IP blocked" messages in the logs, someone is sending more requests than the configured thresholds allow. Sometimes that is legitimate high-volume usage; sometimes it is a development team hammering the API during integration testing, or an automated script with an aggressive retry loop.
+`429 Too Many Requests`, or "Rate limit exceeded" and "IP blocked" in the logs, means someone is sending more requests than the configured thresholds allow. That can be genuine high-volume usage, integration testing, or a retry loop without backoff.
 
 Start by checking what the current limits actually are:
 
@@ -100,7 +98,7 @@ grep -h "Rate limit" ./log/*.log | tail -n 20
 
 :::
 
-If the pattern is isolated to one user or IP, a conversation about retry logic with exponential backoff usually fixes it at the source. If legitimate usage has simply outgrown the thresholds, raising the limits in configuration is the right long-term answer.
+If the pattern is isolated to one client or IP, exponential backoff in their retry logic fixes it at the source. If legitimate usage has outgrown the thresholds, raising the limits is the better answer.
 
 For immediate relief during an incident, restarting Portway resets all counters:
 
@@ -117,18 +115,16 @@ Restart-WebAppPool -Name "PortwayAppPool"
 :::
 
 ::: warning A note on restarts
-Rate limiting uses in-memory token buckets, so restarting the application resets every counter to zero. That is helpful in an emergency, but it is not a long-term solution if users are consistently hitting limits. Follow up by addressing the underlying request pattern or adjusting the configuration.
+Rate limiting uses in-memory token buckets, so restarting resets every counter to zero. That helps in an emergency, but it is not a fix if clients consistently hit limits. Follow up on the request pattern or the configuration.
 :::
 
 ### Connection issues
 
-Connection problems can be frustrating because they often indicate issues with underlying services that your gateway depends on. Let's walk through the two main types you'll encounter.
-
 #### When your database won't connect
 
-Database connection failures will typically show up as `500 Internal Server Error` responses when you try to access SQL-based endpoints. These errors happen when the gateway can't reach your SQL database or when the connection is dropped unexpectedly.
+Database connection failures show up as `500 Internal Server Error` on SQL endpoints, when the gateway cannot reach your database or the connection drops.
 
-Your first step should be verifying that your connection string is correct and complete:
+First verify the connection string is correct and complete:
 
 ```json
 {
@@ -136,7 +132,7 @@ Your first step should be verifying that your connection string is correct and c
 }
 ```
 
-Before diving into complex troubleshooting, test whether you can connect to your SQL database at all from your gateway server:
+Then test whether the gateway server can reach the database at all:
 
 ::: code-group
 
@@ -161,25 +157,13 @@ sqlcmd -S YOUR_SERVER -d 500 -Q "SELECT 1" && echo "Connection successful"
 
 :::
 
-If basic connectivity works but you're still having issues, the problem might be with connection pooling settings. The gateway manages a pool of database connections to improve performance, but if these settings are misconfigured, you might see intermittent failures:
-
-```json
-{
-  "SqlConnectionPooling": {
-    "MinPoolSize": 5,
-    "MaxPoolSize": 100,
-    "ConnectionTimeout": 15,
-    "CommandTimeout": 30,
-    "Enabled": true
-  }
-}
-```
+If basic connectivity works but failures persist, a pool that is too small for your traffic shows up as intermittent errors. The `SqlConnectionPooling` properties and their defaults are in [Application Settings](/reference/app-settings#sql-connection-pooling).
 
 #### When proxy endpoints stop responding
 
-Proxy endpoints act as intermediaries between your API consumers and your backend services. When these fail, you'll typically see timeout errors, "Error processing endpoint" messages, or `503 Service Unavailable` responses. This is pretty common with legacy applications, where high availability of an API isn't guaranteed.
+Failing proxy endpoints surface as timeout errors, "Error processing endpoint" messages, or `503 Service Unavailable`. This is common with legacy backends where availability is not guaranteed.
 
-Start by testing whether the target service is actually available. Try accessing it directly:
+Test whether the target service is reachable directly:
 
 ::: code-group
 
@@ -195,7 +179,7 @@ curl -I http://localhost:8020/services/Exact.Entity.REST.EG/Account
 
 :::
 
-If the direct connection works, check your proxy configuration to ensure the URL and settings are correct:
+If the direct connection works, check the proxy configuration for the URL and settings:
 
 ```json
 {
@@ -205,7 +189,7 @@ If the direct connection works, check your proxy configuration to ensure the URL
 }
 ```
 
-Sometimes proxy issues are related to environment-specific configurations. Review your environment settings to make sure they match what the backend service expects:
+Environment settings are worth a look too, since they carry what the backend expects:
 
 ::: code-group
 
@@ -223,13 +207,11 @@ cat ./environments/500/settings.json | jq .
 
 ### Health check failures
 
-The gateway includes built-in health monitoring to help you identify problems before they impact your users. When health checks fail, it's usually indicating a resource constraint or connectivity issue that needs immediate attention.
-
 #### When you're running out of disk space
 
-One of the most critical health issues you can encounter is low disk space. When the system detects critically low storage, health checks will show `"Unhealthy"` status with warnings about remaining disk space. This can lead to log write failures and eventually cause the entire application to stop functioning.
+Low storage shows as `"Unhealthy"` status with warnings about remaining disk space. Left alone it causes log write failures and eventually stops the application.
 
-Start by checking exactly how much space you have available:
+Check how much space is available:
 
 ::: code-group
 
@@ -248,7 +230,7 @@ df -h
 
 :::
 
-If you're running low on space, the quickest relief usually comes from cleaning up old log files. The gateway can generate substantial logs over time, especially with traffic logging enabled:
+Old log files are usually the quickest win, especially with traffic logging enabled:
 
 ::: code-group
 
@@ -266,7 +248,7 @@ find ./log -type f -mtime +30 -delete
 
 :::
 
-For ongoing space management, configure automatic log rotation to prevent this problem from recurring:
+For ongoing space management, configure rotation so it does not recur:
 
 ```json
 {
@@ -279,16 +261,16 @@ For ongoing space management, configure automatic log rotation to prevent this p
 
 #### When your backend services aren't responding
 
-Sometimes health checks will report that "one or more proxy services are not responding properly." This indicates that while your gateway is running fine, some of the backend services it depends on are having problems.
+"One or more proxy services are not responding properly" means the gateway is fine but a backend it depends on is not.
 
-To get detailed information about which specific services are failing, request a detailed health report:
+Request a detailed health report to see which services are failing:
 
 ```http
 GET /health/details
 Authorization: Bearer YOUR_TOKEN
 ```
 
-Once you know which endpoints are problematic, test them individually to isolate the issue:
+Then test the problematic endpoints individually:
 
 ::: code-group
 
@@ -307,7 +289,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" https://your-gateway/api/500/Products
 
 :::
 
-If specific endpoints are consistently failing, review their error logs to understand what's happening:
+For endpoints that keep failing, check their error logs:
 
 ::: code-group
 
@@ -326,13 +308,9 @@ grep "endpoint: Products" ./log/*.log | grep "ERROR"
 
 ### Performance issues
 
-Performance problems can be subtle at first but significantly impact user experience as they worsen. The gateway includes monitoring capabilities to help you identify and resolve these issues before they become critical.
+High latency, timeouts, or durations over `1000ms` in the logs point to database bottlenecks, network issues, or resource constraints.
 
-#### When everything feels slow
-
-If you're experiencing high latency on API calls, timeout errors, or seeing duration measurements over `1000ms` in your logs, you're dealing with performance degradation. This can stem from various causes, including database bottlenecks, network issues, or resource constraints.
-
-First, enable detailed traffic logging to get visibility into exactly where time is being spent:
+Enable detailed traffic logging to see where time is spent:
 
 ```json
 {
@@ -343,7 +321,7 @@ First, enable detailed traffic logging to get visibility into exactly where time
 }
 ```
 
-With logging enabled, you can analyze which requests are taking the longest to complete. If you're using SQLite for traffic logging, you can query this data directly:
+With SQLite traffic logging you can query the slowest requests directly:
 
 ```sql
 -- Find slow requests (using SQLite logging)
@@ -354,29 +332,13 @@ ORDER BY DurationMs DESC
 LIMIT 20;
 ```
 
-Often, performance issues are related to database connection management. If your connection pool is too small or configured incorrectly, requests may wait for available connections. Try optimizing these settings:
-
-```json
-{
-  "SqlConnectionPooling": {
-    "MinPoolSize": 10,
-    "MaxPoolSize": 200,
-    "ConnectionTimeout": 30
-  }
-}
-```
+Database connection management is a frequent cause. If the pool is too small, requests wait for a free connection, and raising `MaxPoolSize` in [`SqlConnectionPooling`](/reference/app-settings#sql-connection-pooling) is where to start. Queries cut off mid-run are a different problem: `CommandTimeout` bounds how long a single statement may run, so a query dying at exactly that mark needs either a higher timeout or a faster query.
 
 ## Diagnostic tools
 
-Effective troubleshooting is mostly about knowing where to look. The gateway generates extensive diagnostic data, and once you know which source answers which kind of question, most investigations become short.
-
 ### Understanding your log files
 
-The gateway creates several different types of logs, each serving a specific purpose in helping you understand what's happening in your system. Knowing which log to check for which type of problem will save you significant time during troubleshooting.
-
 #### Where to find your logs
-
-Your logs are organized in a logical structure, with different types of information stored in different locations:
 
 | Log Type | Default Location | What You'll Find Here |
 |----------|-----------------|-------------|
@@ -386,8 +348,6 @@ Your logs are organized in a logical structure, with different types of informat
 | Auth Database | `./auth.db` | Token authentication data and user information |
 
 #### Handy commands for log analysis
-
-When you're troubleshooting an active issue, these commands will help you quickly find relevant information.
 
 To find recent errors across all log files:
 
@@ -409,7 +369,7 @@ find ./log -name "*.log" -mmin -60 -exec grep -HnE "ERROR|EXCEPTION" {} +
 
 :::
 
-To understand what types of errors are most common:
+To see which errors are most common:
 
 ::: code-group
 
@@ -448,11 +408,9 @@ tail -n 50 -f "./log/portwayapi-$(date +%Y%m%d).log"
 
 ### Database diagnostics
 
-The gateway uses SQLite databases to store authentication and traffic data. These databases contain valuable information for troubleshooting authentication issues and analyzing usage patterns.
-
 #### Checking authentication status
 
-When users report authentication problems, start by verifying their token status in the database:
+When a client reports authentication problems, verify their token status:
 
 ```sql
 -- Using SQLite browser or command line
@@ -462,11 +420,9 @@ WHERE RevokedAt IS NULL
 ORDER BY CreatedAt DESC;
 ```
 
-This query shows you all active tokens, when they were created, when they expire, and what permissions they have.
-
 #### Understanding traffic patterns and errors
 
-The traffic logs database is particularly useful for identifying patterns in errors or performance issues:
+The traffic logs database shows which endpoints carry the highest error rates:
 
 ```sql
 -- Error distribution by endpoint
@@ -481,11 +437,9 @@ HAVING Errors > 0
 ORDER BY ErrorRate DESC;
 ```
 
-This query helps you identify which endpoints are experiencing the highest error rates, giving you a clear starting point for investigation.
-
 ### Network and connectivity diagnostics
 
-Sometimes the issue isn't with the gateway itself, but with the network connections it depends on. These commands help you verify connectivity to essential services:
+These tell you quickly whether the problem is basic connectivity or something inside the application:
 
 ::: code-group
 
@@ -515,11 +469,7 @@ ss -tlnp | grep -E ':(80|443|8080)\b'
 
 :::
 
-These tests will quickly tell you if the problem is a basic connectivity issue versus something more complex within the application itself.
-
 ## Understanding error messages
-
-When troubleshooting issues, the specific error codes and messages you encounter provide valuable clues about what's going wrong. Rather than just memorizing these codes, understanding what they actually mean will help you diagnose problems more effectively.
 
 ### Common error codes and what they really mean
 
@@ -535,8 +485,6 @@ When troubleshooting issues, the specific error codes and messages you encounter
 
 ### Recognizing log message patterns
 
-The gateway uses a familiar logging pattern to help you quickly identify different types of events:
-
 ```text
 [INF] Rate limit enforced for {Identifier} - Someone hit the rate limits
 [WRN] Tokens detected in the tokens directory. Relocate them to a secure location - Warning, take action
@@ -544,15 +492,11 @@ The gateway uses a familiar logging pattern to help you quickly identify differe
 [DBG] SQL Query Request: {Url} - Database query being executed
 ```
 
-These patterns help you quickly scan logs and identify the types of issues you're dealing with.
-
 ## Emergency procedures
-
-Sometimes things go seriously wrong and you need to get the system back online quickly. These procedures are for emergency situations when normal troubleshooting isn't sufficient.
 
 ### Application not starting
 
-If your gateway won't start, the problem is usually at the infrastructure level rather than within the application code itself. Start by asking the host what it saw:
+When the gateway will not start, the cause is usually at the infrastructure level rather than in the application. Start by asking the host what it saw:
 
 ::: code-group
 
@@ -638,45 +582,27 @@ iisreset /start
 
 :::
 
-After performing a reset, monitor the application logs carefully to ensure it starts up properly and test a few basic endpoints to verify functionality.
+After a reset, watch the application logs as it starts and test a few endpoints to confirm it came back cleanly.
 
 ## Keeping it healthy
 
-Prevention is always better than cure when it comes to gateway operations. By following these practices, you can avoid many of the common issues described in this guide and catch problems before they impact your users.
-
 ### Proactive monitoring and maintenance
 
-Regular maintenance doesn't have to be complicated, but it does benefit from consistency. Here are the key activities that will keep your gateway running smoothly:
-
-- **Keep an eye on your storage space.** Disk space issues are one of the most common causes of gateway failures, but they're also completely preventable. Set up monitoring to alert you when disk space drops below 20%, and establish a routine for cleaning up old log files. The gateway can generate substantial logs, especially with detailed traffic logging enabled.
-
-- **Monitor your health endpoints regularly.** Rather than waiting for users to report problems, set up automated health checks that call your `/health` endpoint and alert you to issues. Consider setting up simple monitoring scripts that test both the basic health endpoint and a few key API endpoints to confirm end-to-end functionality. The [Telemetry](/guide/opentelemetry) guide shows how to feed gateway metrics into your existing monitoring stack.
-
-- **Test connectivity to your backend services.** The gateway is only as reliable as the services it connects to. Regularly verify that your SQL database connections are working and that proxy endpoints can reach their target services. This is especially important after any network changes or server maintenance.
-
-- **Keep audit logs of configuration changes.** When you modify endpoint configurations, token scopes, or other settings, document what you changed and why. This information becomes invaluable when troubleshooting issues that appear after configuration updates.
-
-- **Rotate your tokens periodically.** Authentication tokens deserve the same care as passwords: change them regularly and immediately revoke any tokens that are no longer needed. This reduces your security exposure and ensures that only current, authorized integrations have access to your gateway.
+- **Disk space.** Alert below 20% free and clear old logs on a schedule. Traffic logging generates substantial volume.
+- **Health endpoints.** Automate checks against `/health` plus a few real endpoints. The [Telemetry](/guide/opentelemetry) guide covers feeding gateway metrics into an existing monitoring stack.
+- **Backend connectivity.** Verify SQL and proxy targets after network changes or server maintenance.
+- **Configuration changes.** Record what changed and why, which shortens the next investigation that follows a config update.
+- **Token rotation.** Rotate periodically and revoke tokens that are no longer in use.
 
 ### Security considerations
 
-Security isn't just about preventing attacks. It's also about maintaining clean diagnostic information and ensuring you can trust your troubleshooting data.
+- **Keep detailed errors away from external clients.** The gateway returns generic errors to clients and logs the detail internally, which is worth keeping that way.
+- **Monitor failed authentication attempts.** Repeated failures from one IP indicate either a misconfigured integration or a probe.
+- **Secure your diagnostic tools.** The queries and logs that help you troubleshoot also expose sensitive data, so restrict access to them.
 
-- **Keep detailed error messages away from external clients.** While detailed error information is crucial for troubleshooting, it can also reveal sensitive information about your internal systems to potential attackers. The gateway returns generic error messages to clients by default while logging detailed information internally, and it is worth keeping it that way.
+## Related topics
 
-- **Monitor failed authentication attempts.** Keep track of repeated authentication failures, especially from the same IP addresses. This can indicate either misconfigured integrations that need attention or potential security threats that need investigation.
-
-- **Secure your diagnostic tools.** The same database queries and log analysis tools that help you troubleshoot can also reveal sensitive information. It is a good idea to restrict access to logs, databases, and diagnostic endpoints to authorized personnel only.
-
-## Where to go from here
-
-This troubleshooting guide covers the most common issues you'll encounter, but every environment is unique. As you become more familiar with your specific gateway configuration and usage patterns, you'll develop intuition about where to look first when problems arise.
-
-For deeper information about specific aspects of gateway operation and configuration, these additional guides will provide more detailed guidance:
-
-- **[Monitoring Guide](/guide/monitoring)** - Set up comprehensive monitoring and alerting for your gateway
-- **[Security Guide](/guide/security)** - Implement robust security practices and threat monitoring
-- **[Deployment Guide](/guide/deployment)** - Best practices for deploying and configuring your gateway
-- **[API Endpoints Guide](/guide/endpoints-sql)** - Detailed information about configuring and managing your API endpoints
-
-Remember that troubleshooting is a skill that improves with practice. The more familiar you become with your gateway's normal operation patterns, the more quickly you'll be able to identify and resolve issues when they occur.
+- **[Monitoring Guide](/guide/monitoring)** - Set up monitoring and alerting for your gateway
+- **[Security Guide](/guide/security)** - Security practices and threat monitoring
+- **[Deployment Guide](/guide/deployment)** - Deploying and configuring your gateway
+- **[API Endpoints Guide](/guide/endpoints-sql)** - Configuring and managing your API endpoints

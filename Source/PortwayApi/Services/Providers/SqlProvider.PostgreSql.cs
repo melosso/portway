@@ -21,6 +21,7 @@ public class PostgreSqlProvider : SqlProviderBase
             MinPoolSize = options.MinPoolSize,
             MaxPoolSize = options.MaxPoolSize,
             ConnectionIdleLifetime = options.ConnectionTimeout,
+            CommandTimeout = options.CommandTimeout,
             Pooling = options.EnablePooling,
             ApplicationName = options.ApplicationName
         };

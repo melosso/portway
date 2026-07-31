@@ -186,4 +186,4 @@ Most Globe+ issues fall into one of these categories:
 | Authentication failures (401/403) | Service account permissions in Globe+; NTLM enabled on IIS Application Pool; correct domain user bound |
 | Transaction errors | Globe+ application logs; locked records; re-use same TransactionKey UUID across all lines in a composite |
 | Missing data in responses | Environment headers (`DatabaseName`, `ServerName`) correctly set in `settings.json` |
-| URL links in responses broken | URL rewriting is automatic. Verify `BaseProtocol` in `appsettings.json` matches your public hostname |
+| URL links in responses broken | URL rewriting is automatic and follows the incoming request scheme. Behind a TLS-terminating proxy, add it to `ForwardedHeaders:KnownProxies` or `KnownNetworks` so the scheme survives |

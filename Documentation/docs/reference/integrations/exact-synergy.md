@@ -151,7 +151,7 @@ Most Synergy issues fall into one of these categories:
 |---------|-------|
 | Authentication failures (401/403) | Domain user permissions in Synergy; NTLM enabled on IIS Application Pool |
 | Connection refused | Synergy web service running; firewall rules from Portway host to Synergy server |
-| URL links in responses broken | URL rewriting is automatic. Verify `BaseProtocol` in `appsettings.json` matches your public hostname |
+| URL links in responses broken | URL rewriting is automatic and follows the incoming request scheme. Behind a TLS-terminating proxy, add it to `ForwardedHeaders:KnownProxies` or `KnownNetworks` so the scheme survives |
 | Missing data | Proxy endpoint `Url` points to correct Synergy REST service path |
 
 :::warning

@@ -79,7 +79,6 @@ flowchart TD
     "Enabled": true,
     "DefaultCacheDurationSeconds": 300,
     "ProviderType": "Memory",
-    "MemoryCacheMaxItems": 10000,
     "MemoryCacheSizeLimitMB": 100,
     "CacheableContentTypes": [
       "application/json",
@@ -100,8 +99,7 @@ flowchart TD
 | `Enabled` | boolean | `true` | Enable response caching |
 | `DefaultCacheDurationSeconds` | integer | `300` | Default TTL for cached responses |
 | `ProviderType` | string | `"Memory"` | Cache backend: `"Memory"` or `"Redis"` |
-| `MemoryCacheMaxItems` | integer | `10000` | Maximum number of items in memory cache |
-| `MemoryCacheSizeLimitMB` | integer | `100` | Memory cap in MB |
+| `MemoryCacheSizeLimitMB` | integer | `100` | Memory budget in MB; entries are evicted once cached payloads exceed it |
 | `CacheableContentTypes` | array | `["application/json", ...]` | Only cache responses with these content types |
 | `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
 
@@ -218,7 +216,7 @@ redis-cli ttl "Portway:proxy:600:Products::"
 | Cache not working | `Caching.Enabled` is false, or non-GET request | Set `Enabled: true`; confirm it's a GET |
 | Content type not cached | Not in `CacheableContentTypes` | Add the content type |
 | Redis connection failures | Wrong connection string or unreachable server | Verify `ConnectionString`; check firewall |
-| High memory usage | Long TTL or too many items | Reduce `DefaultCacheDurationSeconds` or `MemoryCacheMaxItems` |
+| High memory usage | Long TTL or a generous budget | Reduce `DefaultCacheDurationSeconds` or `MemoryCacheSizeLimitMB` |
 
 ## Related topics
 

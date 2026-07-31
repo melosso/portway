@@ -174,19 +174,23 @@ LIMIT 20;
 
 ## Log levels
 
-The application log can be tuned per component, which is handy when you want detail from Portway itself without drowning in framework chatter. Verbosity lives in `appsettings.json`:
+Verbosity lives in `appsettings.json`, under the `Serilog` section. `Default` sets the level for Portway's own events, and the `Override` entries quiet the framework so you get detail without drowning in ASP.NET and Entity Framework chatter:
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
+  "Serilog": {
+    "MinimumLevel": {
       "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Microsoft.EntityFrameworkCore": "Warning"
+      "Override": {
+        "Microsoft.AspNetCore": "Warning",
+        "Microsoft.EntityFrameworkCore": "Warning"
+      }
     }
   }
 }
 ```
+
+Overrides match on the source context that a log event carries. Portway's own events are written through Serilog's static logger and carry no source context, so they follow `Default` rather than any per-namespace override. Raise `Default` to `Debug` when you want the detailed traces.
 
 Rotation is handled for you: application logs roll over daily (`portwayapi-20250503.log`) while traffic logs roll by file size (`proxy_traffic_20250503_143000.json`).
 
@@ -198,19 +202,7 @@ If your gateway leans heavily on SQL endpoints, the connection pool is worth a p
 SQL Connection Pool Status: Active connections: 12, Available: 88
 ```
 
-Pool sizing can be adjusted in `appsettings.json` if the defaults do not fit your workload:
-
-```json
-{
-  "SqlConnectionPooling": {
-    "Enabled": true,
-    "MinPoolSize": 5,
-    "MaxPoolSize": 100,
-    "ConnectionTimeout": 15,
-    "CommandTimeout": 30
-  }
-}
-```
+Pool sizing can be adjusted in `appsettings.json` if the defaults do not fit your workload. The `SqlConnectionPooling` properties and their defaults are listed in [Application Settings](/reference/app-settings#sql-connection-pooling).
 
 ## Prometheus integration
 

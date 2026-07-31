@@ -27,15 +27,13 @@ When you want to shape how Portway behaves at its core (logging, security, rate 
   "RateLimiting": { ... },
   "ForwardedHeaders": { ... },
   "RequestTrafficLogging": { ... },
-  "LogSettings": { ... },
   "SqlConnectionPooling": { ... },
   "Caching": { ... },
   "FileStorage": { ... },
   "Telemetry": { ... },
   "Mcp": { ... },
   "EndpointReloading": { ... },
-  "Serilog": { ... },
-  "Logging": { ... }
+  "Serilog": { ... }
 }
 ```
 
@@ -76,25 +74,11 @@ Portway uses Serilog for structured logging with configurable sinks and filterin
         }
       }
     ]
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
   }
 }
 ```
 
-### Log levels
-
-| Level | Description | Use Case |
-|-------|-------------|----------|
-| `Debug` | Debugging information | Development troubleshooting |
-| `Information` | General flow of events | Normal operations |
-| `Warning` | Abnormal or unexpected events | Potential issues |
-| `Error` | Error events | Application errors |
-| `Fatal` | Critical failures | System failures |
+Serilog replaces the standard .NET logging factory here, so the `Serilog` section is the only one that shapes output. A `Logging` section, if you add one, is read by nothing.
 
 ### Changing log levels
 
@@ -109,6 +93,8 @@ To change the logging level, modify the `Default` value in `appsettings.json`:
   }
 }
 ```
+
+Serilog owns the effective level, so this is the setting that changes what reaches the console and the log files. What each level covers, along with rotation, retention and structured output, is described in [Logging](/reference/logging).
 
 ## OpenAPI configuration
 
@@ -195,7 +181,7 @@ The `RequestTrafficLogging` section records every proxied request to file or SQL
 }
 ```
 
-The full property reference, the stored record shape and retention behaviour live in [Audit and traffic logging](/reference/audit).
+The full property reference, the stored record shape and retention behaviour live in [Audit and traffic logging](/reference/audit). Response bodies are captured here too: set `IncludeResponseBodies`, and cap what gets stored with `MaxBodyCaptureSizeBytes`.
 
 ## SQL connection pooling
 
@@ -286,8 +272,7 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 {
   "EndpointReloading": {
     "Enabled": true,
-    "DebounceMs": 2000,
-    "LogLevel": "Information"
+    "DebounceMs": 2000
   }
 }
 ```
@@ -298,7 +283,6 @@ Controls hot-reload behaviour when endpoint JSON files change on disk.
 |----------|------|---------|-------------|
 | `Enabled` | boolean | `true` | Watch endpoint files and reload on change without restart |
 | `DebounceMs` | integer | `2000` | Minimum milliseconds between reloads for the same file (prevents double-fires from editors) |
-| `LogLevel` | string | `"Information"` | Log level for reload events (`"Debug"`, `"Information"`, `"Warning"`) |
 
 ## Telemetry
 
@@ -344,22 +328,6 @@ The `Mcp` section exposes endpoints as Model Context Protocol tools.
 ```
 
 The property reference, per-endpoint exposure and the built-in tools are covered in the [MCP server guide](/guide/mcp).
-
-## Log settings
-
-### Configuration structure
-
-```json
-{
-  "LogSettings": {
-    "LogResponseToFile": false
-  }
-}
-```
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `LogResponseToFile` | boolean | `false` | Write raw response bodies to the log file (useful for debugging; disable in production) |
 
 ## General settings
 
@@ -445,10 +413,12 @@ Both fields support standard Markdown (bold, links, inline code).
 `appsettings.Development.json`:
 ```json
 {
-  "Logging": {
-    "LogLevel": {
+  "Serilog": {
+    "MinimumLevel": {
       "Default": "Debug",
-      "Microsoft.EntityFrameworkCore.Database.Command": "Information"
+      "Override": {
+        "Microsoft.EntityFrameworkCore.Database.Command": "Information"
+      }
     }
   },
   "RequestTrafficLogging": {
@@ -464,10 +434,12 @@ Both fields support standard Markdown (bold, links, inline code).
 `appsettings.Production.json`:
 ```json
 {
-  "Logging": {
-    "LogLevel": {
+  "Serilog": {
+    "MinimumLevel": {
       "Default": "Warning",
-      "PortwayApi": "Information"
+      "Override": {
+        "PortwayApi": "Information"
+      }
     }
   },
   "RateLimiting": {
@@ -480,65 +452,19 @@ Both fields support standard Markdown (bold, links, inline code).
 
 ## Security settings
 
-### CORS configuration
+### Host filtering and CORS
 
-CORS is configured to allow all origins in the default configuration:
-```json
-{
-  "AllowedHosts": "*"
-}
-```
+These are two separate controls, and it helps to keep them apart.
 
-For production, restrict to specific domains:
+`AllowedHosts` filters on the `Host` header of incoming requests. The default `"*"` accepts any host, and you can narrow it to the names you serve:
+
 ```json
 {
   "AllowedHosts": "api.company.com;app.company.com"
 }
 ```
 
-## Performance tuning
-
-### Connection pool optimization
-
-```json
-{
-  "SqlConnectionPooling": {
-    "MinPoolSize": 10,
-    "MaxPoolSize": 200,
-    "ConnectionTimeout": 30,
-    "CommandTimeout": 60,
-    "Enabled": true
-  }
-}
-```
-
-### Rate limiting for high traffic
-
-```json
-{
-  "RateLimiting": {
-    "Enabled": true,
-    "IpLimit": 500,
-    "IpWindow": 60,
-    "TokenLimit": 5000,
-    "TokenWindow": 60
-  }
-}
-```
-
-### Traffic logging for debugging
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Enabled": true,
-    "StorageType": "sqlite",
-    "IncludeRequestBodies": true,
-    "IncludeResponseBodies": true,
-    "MaxBodyCaptureSizeBytes": 8192
-  }
-}
-```
+Browser cross-origin access is governed by `WebUi:CorsOrigins` instead, which is an explicit allowlist of origins. [Web UI settings](/reference/webui) covers it along with `PublicOrigins`, which controls who may reach the admin interface from outside the local network.
 
 ## Environment variables
 
@@ -598,13 +524,15 @@ For production, restrict to specific domains:
 
 ### Configuration debugging
 
-1. Enable detailed logging:
+1. Enable detailed logging. Serilog sets the effective level, so lower `Serilog:MinimumLevel` rather than the `Logging` section:
 ```json
 {
-  "Logging": {
-    "LogLevel": {
+  "Serilog": {
+    "MinimumLevel": {
       "Default": "Debug",
-      "Microsoft": "Information"
+      "Override": {
+        "Microsoft": "Information"
+      }
     }
   }
 }
@@ -626,63 +554,9 @@ echo $ASPNETCORE_ENVIRONMENT
 
 3. Review startup logs for configuration issues
 
-## Complete example configuration
+## A complete file to start from
 
-### Production appsettings.json
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning",
-      "Microsoft.EntityFrameworkCore": "Warning"
-    }
-  },
-  "AllowedHosts": "api.company.com",
-  "OpenApi": {
-    "Enabled": true,
-    "BaseProtocol": "https",
-    "Title": "Company API Gateway",
-    "Version": "v1",
-    "Description": "Production API Gateway",
-    "Contact": {
-      "Name": "API Support",
-      "Email": "api-support@company.com"
-    },
-    "SecurityDefinition": {
-      "Name": "Bearer",
-      "Description": "Enter 'Bearer' [space] and then your token",
-      "In": "Header",
-      "Type": "ApiKey",
-      "Scheme": "Bearer"
-    }
-  },
-  "RateLimiting": {
-    "Enabled": true,
-    "IpLimit": 200,
-    "IpWindow": 60,
-    "TokenLimit": 2000,
-    "TokenWindow": 60
-  },
-  "RequestTrafficLogging": {
-    "Enabled": false,
-    "StorageType": "sqlite",
-    "SqlitePath": "log/traffic.db",
-    "CaptureHeaders": true,
-    "IncludeRequestBodies": false,
-    "IncludeResponseBodies": false
-  },
-  "SqlConnectionPooling": {
-    "ApplicationName": "Company API Gateway",
-    "MinPoolSize": 10,
-    "MaxPoolSize": 150,
-    "ConnectionTimeout": 30,
-    "CommandTimeout": 30,
-    "Enabled": true
-  }
-}
-```
+The `appsettings.json` that ships with Portway is the working reference: it carries every section above with its default value, so you can read it as the canonical example. Rather than replacing it wholesale, keep it as your base and put deployment-specific values in `appsettings.Production.json`, as shown in [Environment-Specific configuration](#environment-specific-configuration).
 
 ## Related topics
 

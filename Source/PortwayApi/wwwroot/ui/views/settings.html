@@ -396,8 +396,7 @@ async function load() {
       boolItem('Enabled', c.enabled),
       settingItem('Provider',         c.provider                 ?? '—'),
       settingItem('Default Duration', c.default_duration_seconds != null ? `${c.default_duration_seconds}s` : '—'),
-      settingItem('Max Items',        c.max_items                ?? '—'),
-      settingItem('Max Size',         c.max_size_mb              != null ? `${c.max_size_mb} MB`             : '—'),
+      settingItem('Memory Budget',    c.max_size_mb              != null ? `${c.max_size_mb} MB`             : '—'),
     ].join('');
 
     document.getElementById('sqlBody').innerHTML = [

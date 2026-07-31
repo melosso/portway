@@ -21,6 +21,7 @@ public class MySqlProvider : SqlProviderBase
             MinimumPoolSize = (uint)options.MinPoolSize,
             MaximumPoolSize = (uint)options.MaxPoolSize,
             ConnectionTimeout = (uint)options.ConnectionTimeout,
+            DefaultCommandTimeout = (uint)options.CommandTimeout,
             Pooling = options.EnablePooling,
             ApplicationName = options.ApplicationName
         };

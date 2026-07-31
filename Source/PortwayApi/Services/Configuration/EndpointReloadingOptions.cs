@@ -8,7 +8,4 @@ public class EndpointReloadingOptions
 
     /// <summary>Debounce time in milliseconds to prevent duplicate reload events</summary>
     public int DebounceMs { get; set; } = 2000;
-
-    /// <summary>Log level for endpoint reload events (Information, Debug, Warning)</summary>
-    public string LogLevel { get; set; } = "Information";
 }

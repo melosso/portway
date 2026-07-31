@@ -314,9 +314,9 @@ To increase log verbosity for environment issues:
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "PortwayApi.Classes.EnvironmentSettings": "Debug"
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug"
     }
   }
 }

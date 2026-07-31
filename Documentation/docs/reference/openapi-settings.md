@@ -27,7 +27,6 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
 {
   "OpenApi": {
     "Enabled": true,
-    "BaseProtocol": "https",
     "Title": "Portway: API Gateway",
     "Version": "v1",
     "Description": "This is Portway. A lightweight API gateway that connects your platforms to your data sources and services, with a simple and fast setup.",
@@ -61,7 +60,6 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
 | Property | Type | Description |
 |----------|------|-------------|
 | `Enabled` | boolean | Enable/disable API documentation generation |
-| `BaseProtocol` | string | Protocol for API base URLs (http/https) |
 | `Title` | string | Main title shown in documentation header |
 | `Version` | string | API version displayed in documentation |
 | `Description` | string | Main API description (supports markdown formatting) |

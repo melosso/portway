@@ -94,4 +94,25 @@ public class SqlProviderTests
         Assert.Empty(columns);
         Assert.Empty(parameters);
     }
+
+    // CommandTimeout rides the connection string so every Dapper call inherits it without passing commandTimeout
+    [Theory]
+    [InlineData(SqlProviderType.SqlServer, "Server=localhost;Database=db;")]
+    [InlineData(SqlProviderType.PostgreSql, "Host=localhost;Database=db;")]
+    [InlineData(SqlProviderType.MySql, "Server=localhost;Database=db;")]
+    public void OptimizeConnectionString_AppliesConfiguredCommandTimeout(SqlProviderType type, string connectionString)
+    {
+        var provider = Providers.Single(p => p.ProviderType == type);
+        var options = new SqlPoolingOptions(5, 100, 15, true, "PortwayTest", CommandTimeout: 77);
+
+        var optimized = provider.OptimizeConnectionString(connectionString, options);
+
+        var actual = type switch
+        {
+            SqlProviderType.SqlServer => new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(optimized).CommandTimeout,
+            SqlProviderType.PostgreSql => new Npgsql.NpgsqlConnectionStringBuilder(optimized).CommandTimeout,
+            _ => (int)new MySqlConnector.MySqlConnectionStringBuilder(optimized).DefaultCommandTimeout
+        };
+        Assert.Equal(77, actual);
+    }
 }

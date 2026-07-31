@@ -12,10 +12,7 @@ public class CacheOptions
     /// <summary>Default cache duration in seconds</summary>
     public int DefaultCacheDurationSeconds { get; set; } = 300;
 
-    /// <summary>Maximum number of items in memory cache</summary>
-    public int MemoryCacheMaxItems { get; set; } = 10000;
-
-    /// <summary>Size limit for memory cache in MB</summary>
+    /// <summary>Memory budget for cached entries in MB, enforced by evicting on entry byte size</summary>
     public int MemoryCacheSizeLimitMB { get; set; } = 100;
 
     /// <summary>Which cache provider to use</summary>

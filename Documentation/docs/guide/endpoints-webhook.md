@@ -147,9 +147,9 @@ To increase log verbosity:
 
 ```json
 {
-  "Logging": {
-    "LogLevel": {
-      "PortwayApi.Api.EndpointController": "Debug"
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug"
     }
   }
 }

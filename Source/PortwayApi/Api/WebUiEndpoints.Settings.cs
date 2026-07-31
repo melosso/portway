@@ -90,7 +90,6 @@ public static partial class WebUiEndpointExtensions
                 enabled                  = config.GetValue<bool>("Caching:Enabled"),
                 provider                 = config.GetValue<string>("Caching:ProviderType") ?? "Memory",
                 default_duration_seconds = config.GetValue<int>("Caching:DefaultCacheDurationSeconds"),
-                max_items                = config.GetValue<int>("Caching:MemoryCacheMaxItems"),
                 max_size_mb              = config.GetValue<int>("Caching:MemoryCacheSizeLimitMB")
             },
             sql_pooling = new

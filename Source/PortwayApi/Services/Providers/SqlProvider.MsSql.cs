@@ -20,6 +20,7 @@ public class MsSqlProvider : SqlProviderBase
             MinPoolSize = options.MinPoolSize,
             MaxPoolSize = options.MaxPoolSize,
             ConnectTimeout = options.ConnectionTimeout,
+            CommandTimeout = options.CommandTimeout,
             Pooling = options.EnablePooling,
             ApplicationName = options.ApplicationName
         };

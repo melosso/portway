@@ -36,8 +36,8 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         Npgsql.NpgsqlConnection.ClearAllPools();
         MySqlConnector.MySqlConnection.ClearAllPools();
 
-        Log.Information("Database Connection Pool initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, AppName: '{AppName}'",
-            _poolingOptions.MinPoolSize, _poolingOptions.MaxPoolSize, _poolingOptions.ConnectionTimeout, _poolingOptions.ApplicationName);
+        Log.Information("Database Connection Pool initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, CommandTimeout: {CommandTimeout}s, AppName: '{AppName}'",
+            _poolingOptions.MinPoolSize, _poolingOptions.MaxPoolSize, _poolingOptions.ConnectionTimeout, _poolingOptions.CommandTimeout, _poolingOptions.ApplicationName);
     }
 
     /// <summary>Returns an optimized connection string for the detected provider</summary>
@@ -221,7 +221,8 @@ public static class SqlConnectionPoolingExtensions
             MaxPoolSize: configuration.GetValue<int>("SqlConnectionPooling:MaxPoolSize", 100),
             ConnectionTimeout: configuration.GetValue<int>("SqlConnectionPooling:ConnectionTimeout", 15),
             EnablePooling: configuration.GetValue<bool>("SqlConnectionPooling:Enabled", true),
-            ApplicationName: configuration.GetValue<string>("SqlConnectionPooling:ApplicationName", "PortwayAPI")!
+            ApplicationName: configuration.GetValue<string>("SqlConnectionPooling:ApplicationName", "PortwayAPI")!,
+            CommandTimeout: configuration.GetValue<int>("SqlConnectionPooling:CommandTimeout", 30)
         );
 
         services.AddSingleton(options);

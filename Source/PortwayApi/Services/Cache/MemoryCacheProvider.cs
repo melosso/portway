@@ -22,14 +22,37 @@ public class MemoryCacheProvider : ICacheProvider
     public MemoryCacheProvider(IOptions<CacheOptions> options)
     {
         _options = options.Value;
-        
-        // Create memory cache with appropriate limits
+
+        // Entries are sized in bytes, so the limit is the configured megabyte budget
         var memoryCacheOptions = new MemoryCacheOptions
         {
-            SizeLimit = _options.MemoryCacheMaxItems
+            SizeLimit = Math.Max(1, _options.MemoryCacheSizeLimitMB) * 1024L * 1024L
         };
-        
+
         _cache = new MemoryCache(memoryCacheOptions);
+    }
+
+    /// <summary>Approximate payload size in bytes; fast paths cover the byte and text payloads Portway caches</summary>
+    private static long MeasureSize(object value)
+    {
+        switch (value)
+        {
+            case byte[] bytes:
+                return bytes.Length;
+            case string text:
+                return text.Length * 2L;
+            default:
+                try
+                {
+                    return System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(value).Length;
+                }
+                catch (Exception ex)
+                {
+                    // Unserializable payloads still need a non-zero size or the budget cannot hold them back
+                    Log.Debug(ex, "Unable to measure cache entry size, charging 4 KB");
+                    return 4096;
+                }
+        }
     }
 
     /// <summary>Number of live lock entries, exposed for diagnostics and tests</summary>
@@ -57,15 +80,15 @@ public class MemoryCacheProvider : ICacheProvider
     /// <summary>Sets a value in the cache</summary>
     public Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class
     {
-        // Set cache options with appropriate size
+        var size = MeasureSize(value);
         var entryOptions = new MemoryCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = expiration,
-            Size = 1 // Default size, can be made more accurate if needed
+            Size = size
         };
 
         _cache.Set(key, value, entryOptions);
-        Log.Debug("Added item to memory cache: {Key}, expires in {Duration}s", key, expiration.TotalSeconds);
+        Log.Debug("Added item to memory cache: {Key}, {Size} bytes, expires in {Duration}s", key, size, expiration.TotalSeconds);
 
         return Task.CompletedTask;
     }
@@ -94,10 +117,10 @@ public class MemoryCacheProvider : ICacheProvider
             var entryOptions = new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = expiration,
-                Size = 1
+                Size = value is null ? 1 : MeasureSize(value)
             };
 
-            _cache.Set(key, value, entryOptions);
+            _cache.Set(key, value!, entryOptions);
             Log.Debug("Refreshed expiration for memory cache item: {Key}, new duration: {Duration}s", 
                 key, expiration.TotalSeconds);
             
