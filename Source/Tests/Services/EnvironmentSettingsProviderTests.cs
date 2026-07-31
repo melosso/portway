@@ -161,13 +161,14 @@ public class EnvironmentSettingsProviderTests : IDisposable
 
         // Editor truncated the file and still holds it, exactly what the watcher sees
         var writer = new FileStream(settingsPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        var releaseWriter = Task.Run(async () =>
+
+        // Dedicated thread, a pooled task can start too late on a loaded CI runner
+        var releaseWriter = Task.Factory.StartNew(() =>
         {
-            await Task.Delay(150);
-            await writer.WriteAsync(System.Text.Encoding.UTF8.GetBytes(json));
-            await writer.FlushAsync();
-            await writer.DisposeAsync();
-        });
+            Thread.Sleep(50);
+            writer.Write(System.Text.Encoding.UTF8.GetBytes(json));
+            writer.Dispose();
+        }, TaskCreationOptions.LongRunning);
 
         provider.EncryptEnvironmentIfNeeded(_envName);
         await releaseWriter;

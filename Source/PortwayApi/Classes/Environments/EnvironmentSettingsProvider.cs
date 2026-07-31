@@ -172,7 +172,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     // The watcher fires as soon as an editor truncates the file, so retry briefly until content lands
     private static string ReadSettingsWhenWritable(string path)
     {
-        for (var attempt = 0; attempt < 3; attempt++)
+        for (var attempt = 0; attempt < 10; attempt++)
         {
             try
             {
