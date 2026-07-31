@@ -152,7 +152,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
         try
         {
-            var json   = File.ReadAllText(settingsPath);
+            var json = ReadSettingsWhenWritable(settingsPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Log.Debug("Skipping encryption for '{Env}': settings.json was empty or locked while being written", envName);
+                return;
+            }
+
             var config = JsonSerializer.Deserialize<EnvironmentConfig>(json);
             if (config == null) return;
             AutoEncryptIfNeeded(settingsPath, config, envName);
@@ -161,6 +167,27 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         {
             Log.Error(ex, "Error encrypting environment '{Env}' after file change", envName);
         }
+    }
+
+    // The watcher fires as soon as an editor truncates the file, so retry briefly until content lands
+    private static string ReadSettingsWhenWritable(string path)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                var json = File.ReadAllText(path);
+                if (!string.IsNullOrWhiteSpace(json)) return json;
+            }
+            catch (IOException)
+            {
+                // File still locked by the writer
+            }
+
+            Thread.Sleep(100);
+        }
+
+        return string.Empty;
     }
 
     private enum EncryptionResult

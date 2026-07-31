@@ -143,4 +143,36 @@ public class EnvironmentSettingsProviderTests : IDisposable
         Assert.Equal("Invalid Connection String format", resultConfig.ConnectionString);
         Assert.False(SettingsEncryptionHelper.IsEncrypted(resultConfig.ConnectionString!));
     }
+
+    [Fact]
+    public async Task EncryptEnvironmentIfNeeded_WaitsForFileStillBeingWritten()
+    {
+        var provider = CreateProvider();
+
+        var envDir = Path.Combine(_environmentsDir, _envName);
+        Directory.CreateDirectory(envDir);
+        var settingsPath = Path.Combine(envDir, "settings.json");
+
+        var config = new EnvironmentConfig
+        {
+            ConnectionString = "Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;"
+        };
+        var json = JsonSerializer.Serialize(config);
+
+        // Editor truncated the file and still holds it, exactly what the watcher sees
+        var writer = new FileStream(settingsPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        var releaseWriter = Task.Run(async () =>
+        {
+            await Task.Delay(150);
+            await writer.WriteAsync(System.Text.Encoding.UTF8.GetBytes(json));
+            await writer.FlushAsync();
+            await writer.DisposeAsync();
+        });
+
+        provider.EncryptEnvironmentIfNeeded(_envName);
+        await releaseWriter;
+
+        var resultConfig = JsonSerializer.Deserialize<EnvironmentConfig>(File.ReadAllText(settingsPath))!;
+        Assert.True(SettingsEncryptionHelper.IsEncrypted(resultConfig.ConnectionString!));
+    }
 }
