@@ -31,10 +31,21 @@ jobs:
       with:
         path: portway
 
+    # Resolves the latest concrete v0.2.x tag to prevent floating upstream changes; update pattern for minor bumps.
+    - name: Resolve latest Bark v0.2.x
+      id: bark
+      run: |
+        tag=$(git ls-remote --tags --refs --sort=-v:refname \
+          https://github.com/melosso/bark.git 'v0.2.*' | head -1 | sed 's#.*/##')
+        [ -n "$tag" ] || { echo "::error::No v0.2.* tag on melosso/bark"; exit 1; }
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        echo "Building docs with Bark $tag"
+
     - name: Checkout Bark
       uses: actions/checkout@v4
       with:
         repository: melosso/bark
+        ref: ${{ steps.bark.outputs.tag }}
         path: bark
 
     - name: Setup .NET
