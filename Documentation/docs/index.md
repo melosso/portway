@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-  name: "Portway"
-  text:
-  tagline: Expose SQL databases, internal services, and files as MCP-tools and REST endpoints.
+  name: Portway
+  text: Bridge your infrastructure to AI and REST.
+  tagline: Instantly expose SQL databases, internal services, and files as secure MCP tools and OData endpoints.
   actions:
     - theme: brand
       text: Get Started
@@ -15,17 +15,17 @@ hero:
 
 features:
   - icon: |
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-    title: SQL endpoints
-    details: Expose tables and stored procedures via OData. Control access per column.
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 12 2.1 12.1"/><path d="M12 12v9.9"/><path d="M12 12l7.07-7.07"/></svg>
+    title: MCP & OData Support
+    details: Expose SQL databases, webhooks, and internal APIs as AI tools using the Model Context Protocol or standard OData REST endpoints.
   - icon: |
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-    title: HTTP proxy
-    details: Forward requests to existing services. Add auth and rate limiting.
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    title: Secure Service Routing
+    details: Control access down to specific SQL columns with granular rate limiting, Azure Key Vault integration, and request validation.
   - icon: |
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/></svg>
-    title: Webhooks
-    details: Receive, validate, and process inbound webhooks.
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    title: File-Based Configuration
+    details: Set up endpoints and environments using simple JSON configs. Includes full audit logging, caching, and automated docs out of the box.
 ---
 
 <div class="home-platforms">
