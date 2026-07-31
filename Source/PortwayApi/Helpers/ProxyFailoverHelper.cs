@@ -15,6 +15,7 @@ public static class ProxyFailoverHelper
         List<string>? fallbackUrls,
         ProxyRetryOptions? retry,
         string logContext,
+        Func<string, bool> isUrlSafe,
         CancellationToken ct)
     {
         int attemptsPerUrl = Math.Max(1, retry?.Attempts ?? 1);
@@ -24,9 +25,18 @@ public static class ProxyFailoverHelper
 
         for (int urlIndex = 0; urlIndex < candidateUrls.Count; urlIndex++)
         {
+            var targetUrl = candidateUrls[urlIndex];
+
+            // Revalidate every candidate against the SSRF allow list; fallback URLs are not checked upstream
+            if (!isUrlSafe(targetUrl))
+            {
+                Log.Warning("Proxy candidate {Url} for {Context} failed URL safety validation, skipping",
+                    targetUrl, logContext);
+                continue;
+            }
+
             for (int attempt = 1; attempt <= attemptsPerUrl; attempt++)
             {
-                var targetUrl = candidateUrls[urlIndex];
                 bool lastTry = urlIndex == candidateUrls.Count - 1 && attempt == attemptsPerUrl;
 
                 try

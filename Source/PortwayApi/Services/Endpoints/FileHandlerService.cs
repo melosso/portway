@@ -1,9 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.IO;
-using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using PortwayApi.Helpers;
 using PortwayApi.Services.Caching;
@@ -78,17 +74,7 @@ public class FileHandlerService : IDisposable
         }
 
         // Validate file extension
-        string extension = Path.GetExtension(filename).ToLowerInvariant();
-
-        if (_optionsMonitor.CurrentValue.BlockedExtensions.Contains(extension))
-        {
-            throw new ArgumentException($"Files with extension {extension} are not allowed", nameof(filename));
-        }
-
-        if (_optionsMonitor.CurrentValue.AllowedExtensions.Count > 0 && !_optionsMonitor.CurrentValue.AllowedExtensions.Contains(extension))
-        {
-            throw new ArgumentException($"Only files with extensions {string.Join(", ", _optionsMonitor.CurrentValue.AllowedExtensions)} are allowed", nameof(filename));
-        }
+        ValidateExtension(filename);
 
         // Sanitize filename to prevent path traversal attacks
         string safeFilename = SanitizeFileName(filename);
@@ -323,7 +309,15 @@ public class FileHandlerService : IDisposable
         
         // Reconstruct the full path with sanitized filename
         string directoryPath = Path.GetDirectoryName(absoluteFilePath) ?? baseDirectory;
-        string fullPath = Path.Combine(directoryPath, sanitizedFileName);
+        string fullPath = Path.GetFullPath(Path.Combine(directoryPath, sanitizedFileName));
+
+        // Reject blocked or disallowed extensions on this branch too
+        ValidateExtension(sanitizedFileName);
+
+        // Ensure the resolved path stays within the configured base directory
+        string baseRoot = Path.GetFullPath(baseDirectory);
+        if (!fullPath.StartsWith(baseRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) && fullPath != baseRoot)
+            throw new UnauthorizedAccessException("Access denied: resolved path escapes the configured base directory.");
 
         // Create directory if it doesn't exist
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath) ?? baseDirectory);
@@ -698,6 +692,18 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>Sanitizes a filename to prevent path traversal attacks</summary>
+    /// <summary>Rejects files whose extension is blocked or not in the configured allow list</summary>
+    private void ValidateExtension(string filename)
+    {
+        string extension = Path.GetExtension(filename).ToLowerInvariant();
+
+        if (_optionsMonitor.CurrentValue.BlockedExtensions.Contains(extension))
+            throw new ArgumentException($"Files with extension {extension} are not allowed", nameof(filename));
+
+        if (_optionsMonitor.CurrentValue.AllowedExtensions.Count > 0 && !_optionsMonitor.CurrentValue.AllowedExtensions.Contains(extension))
+            throw new ArgumentException($"Only files with extensions {string.Join(", ", _optionsMonitor.CurrentValue.AllowedExtensions)} are allowed", nameof(filename));
+    }
+
     private string SanitizeFileName(string filename)
     {
         filename = Path.GetFileName(filename);

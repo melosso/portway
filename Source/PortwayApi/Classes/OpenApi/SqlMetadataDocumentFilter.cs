@@ -314,12 +314,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             operation.Description = (operation.Description ?? "") +
                 $"\n\n**Primary Key:** `{idField.ColumnName}` ({idField.DataType})";
         }
-
-        // Add procedure info if DELETE uses a stored procedure
-        if (!string.IsNullOrEmpty(definition.Procedure))
-        {
-            operation.Description += $"\n\n**Uses Stored Procedure:** `{definition.Procedure}`";
-        }
     }
 
     /// <summary>Creates an OpenAPI schema from object metadata (table/view columns)</summary>

@@ -94,30 +94,32 @@ public class RateLimiter
         return $"{token[..4]}...{token[^4..]}";
     }
 
+    // Safely map tokens to buckets using SHA-256
+    private static string HashToken(string token)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes);
+    }
+
     public async Task InvokeAsync(HttpContext context)
     {
         var pathBase = context.Request.PathBase.Value ?? "";
 
-        // Exempt authenticated admin UI requests from rate limiting
-        // When auth is disabled, all /ui/* traffic is trusted
-        // When auth is enabled, only requests that carry the session cookie are exempt -
-        // unauthenticated paths (login page, auth API) still run through the rate limiter
-        // to guard against brute-force attacks. The auth middleware upstream redirects
-        // invalid cookies before they reach here, so cookie presence implies valid auth
+        // Rate-limit exemption logic for /ui routes:
+        // - Exempt all /ui traffic if UI auth is disabled.
+        // - If auth is enabled, exempt only authenticated sessions on non-auth routes.
+        // - Never exempt login/auth endpoints to protect against brute-force attacks.
         if (context.Request.Path.StartsWithSegments("/ui"))
         {
-            // When auth is disabled all UI traffic is trusted
             if (!_uiAuthEnabled)
             {
                 await _next(context);
                 return;
             }
 
-            // Never exempt the credential endpoints; the login and CSRF-token routes are the brute-force and token-flood surface
             bool isAuthPath = context.Request.Path.StartsWithSegments("/ui/api/auth") ||
                               context.Request.Path.StartsWithSegments("/ui/login");
 
-            // Exempt only requests carrying a cryptographically valid session cookie, not merely a present one
             bool hasValidSession = context.Request.Cookies.TryGetValue("portway_auth", out var sessionCookie) &&
                                    WebUiAuthHelper.IsValidSessionCookie(sessionCookie, _adminApiKey);
 
@@ -198,8 +200,7 @@ public class RateLimiter
             return;
         }
 
-        // Extract token for per-token rate limiting (if present)
-        // Auth enforcement is handled exclusively by TokenAuthMiddleware
+        // Extract token for rate limiting (auth is enforced by TokenAuthMiddleware)
         string? token = null;
         RateLimitLease? tokenLease = null;
         if (context.Request.Headers.TryGetValue("Authorization", out var authHeader))
@@ -212,10 +213,10 @@ public class RateLimiter
         if (token != null)
         {
             var maskedToken = MaskToken(token);
-            string tokenKey = $"token:{token}";
+            // Key on a hash, not the raw secret, so the token never lands in the store/Redis key space
+            string tokenKey = $"token:{HashToken(token)}";
 
-            // Per-token override from the token record, null falls back to global settings
-            // Lookup is cache-backed (30s TTL) so this does not hash per request
+            // Resolve per-token limits with fallback to global defaults (cached for 30s)
             var (effectiveLimit, effectiveWindow) = await ResolveTokenLimitsAsync(context, token);
 
             // Check if token is currently blocked
@@ -384,8 +385,7 @@ public class RateLimiter
         await context.Response.WriteAsync(JsonSerializer.Serialize(errorObject, _jsonOptions));
     }
 
-    // Use RemoteIpAddress set by UseForwardedHeaders middleware rather than reading
-    // X-Forwarded-For directly; direct header reads are spoofable by clients
+    // Use RemoteIpAddress set by UseForwardedHeaders (direct X-Forwarded-For reads are spoofable)
     private string GetClientIpAddress(HttpContext context)
     {
         var remoteIp = context.Connection.RemoteIpAddress;

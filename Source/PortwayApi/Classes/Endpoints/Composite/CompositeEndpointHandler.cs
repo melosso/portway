@@ -4,9 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Helpers;
 using Serilog;
 
@@ -18,15 +16,18 @@ public class CompositeEndpointHandler
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly Dictionary<string, ProxyEndpointInfo> _endpointMap;
     private readonly string _serverName;
-    
+    private readonly Helpers.UrlValidator _urlValidator;
+
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
         Dictionary<string, ProxyEndpointInfo> endpointMap,
-        string serverName)
+        string serverName,
+        Helpers.UrlValidator urlValidator)
     {
         _httpClientFactory = httpClientFactory;
         _endpointMap = endpointMap;
         _serverName = serverName;
+        _urlValidator = urlValidator;
     }
     
     /// <summary>Process a composite endpoint request</summary>
@@ -319,7 +320,7 @@ public class CompositeEndpointHandler
 
         var response = await Helpers.ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpoint.Url, endpoint.FallbackUrls,
-            endpoint.Retry, $"step '{step.Name}'", ct);
+            endpoint.Retry, $"step '{step.Name}'", _urlValidator.IsUrlSafe, ct);
 
         // Read the response content now to include in error messages if needed
         var responseContent = await response.Content.ReadAsStringAsync(ct);

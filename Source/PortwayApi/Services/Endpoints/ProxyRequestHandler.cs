@@ -1,11 +1,9 @@
 namespace PortwayApi.Services;
 
-using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
@@ -646,15 +644,21 @@ public sealed class ProxyRequestHandler
 
         var response = await PortwayApi.Helpers.ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpointConfig.Url, endpointDefinition?.FallbackUrls,
-            endpointDefinition?.Retry, $"endpoint '{endpointName}'", context.RequestAborted);
+            endpointDefinition?.Retry, $"endpoint '{endpointName}'", _urlValidator.IsUrlSafe, context.RequestAborted);
 
         // Store response headers for cache and apply to current response
         var responseHeaders = new Dictionary<string, string>();
 
+        // Do not echo backend-identifying headers to the client
+        var responseHeadersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Content-Length", "Server", "X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version"
+        };
+
         // Copy response headers
         foreach (var header in response.Headers)
         {
-            if (!header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+            if (!responseHeadersToStrip.Contains(header.Key))
             {
                 context.Response.Headers[header.Key] = header.Value.ToArray();
                 responseHeaders[header.Key] = string.Join(",", header.Value);

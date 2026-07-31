@@ -7,6 +7,10 @@ using SqlKata.Compilers;
 
 public class PostgreSqlProvider : SqlProviderBase
 {
+    // Function argument names are spliced into SQL text as identifiers, so they must be strictly validated
+    private static readonly System.Text.RegularExpressions.Regex SafeIdentifier =
+        new(@"^[A-Za-z_][A-Za-z0-9_]*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     public override SqlProviderType ProviderType => SqlProviderType.PostgreSql;
     public override bool SupportsTvf => true;
     public override string DefaultSchema => "public";
@@ -35,6 +39,12 @@ public class PostgreSqlProvider : SqlProviderBase
     public override (string CommandText, System.Data.CommandType CommandType) BuildProcedureInvocation(
         string schema, string procedureName, IReadOnlyCollection<string> parameterNames)
     {
+        foreach (var p in parameterNames)
+        {
+            if (!SafeIdentifier.IsMatch(p))
+                throw new ArgumentException($"Invalid procedure parameter name: {p}", nameof(parameterNames));
+        }
+
         var arguments = string.Join(", ", parameterNames.Select(p => $"{p.ToLowerInvariant()} => @{p}"));
         return ($"SELECT * FROM \"{schema}\".\"{procedureName}\"({arguments})", System.Data.CommandType.Text);
     }

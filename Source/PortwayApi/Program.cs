@@ -101,7 +101,8 @@ try
         new CompositeEndpointHandler(
             provider.GetRequiredService<IHttpClientFactory>(),
             proxyEndpointMap,
-            serverName
+            serverName,
+            provider.GetRequiredService<UrlValidator>()
         )
     );
 

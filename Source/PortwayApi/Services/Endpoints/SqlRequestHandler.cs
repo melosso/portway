@@ -326,11 +326,22 @@ public sealed partial class SqlRequestHandler
 
             // Step 7: Convert OData to SQL (provider-aware for correct dialect)
             var detectedProviderType = SqlProviderDetector.Detect(connectionString);
-            var (query, parameters) = _oDataToSqlConverter.ConvertToSQL(
-                $"{schema}.{objectName}",
-                odataParams,
-                detectedProviderType,
-                endpoint.Relationships);
+            string query;
+            Dictionary<string, object> parameters;
+            try
+            {
+                (query, parameters) = _oDataToSqlConverter.ConvertToSQL(
+                    $"{schema}.{objectName}",
+                    odataParams,
+                    detectedProviderType,
+                    endpoint.Relationships);
+            }
+            catch (Exception odataEx) when (odataEx is not DbException)
+            {
+                // Malformed OData is a client error, not a server fault
+                Log.Warning("Invalid OData query for endpoint {Endpoint}: {Message}", endpointName, odataEx.Message);
+                return PortwayResults.BadRequest("Invalid OData query. Check $filter, $select, $orderby and $expand syntax.");
+            }
 
             // Step 8: Check cache first if enabled
             // $count=true adds the unpaged total matching the filter to the response

@@ -214,12 +214,13 @@ public static class OpenApiConfiguration
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi/{documentName}/openapi.json");
 
-        // Serve stub source maps for Scalar's vendor JS (which embeds /sm/... sourceMappingURL comments)
-        // Scalar's own middleware normally handles these, but we serve the JS as a static vendor file,
-        // so we return a minimal valid source map to suppress DevTools 404 warnings
+        // Warn in production if unauthenticated OpenAPI docs expose endpoint topology
+        if (app.Environment.IsProduction())
+            Log.Warning("Unauthenticated OpenAPI specification active at '/docs'. Restrict access via proxy/network rule or set OpenApi:Enabled=false. You can dismiss this warning if you are intentionally exposing the OpenAPI spec for public consumption.");
+
+        // Serve minimal source maps for Scalar vendor JS to prevent DevTools 404 warnings
         app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
-
         // Configure unified documentation interface at /docs using Scalar
         app.MapGet("/docs", (HttpContext context) =>
         {
