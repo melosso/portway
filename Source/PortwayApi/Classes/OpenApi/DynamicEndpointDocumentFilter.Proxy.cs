@@ -1,16 +1,13 @@
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
-using PortwayApi.Classes.OpenApi;
 
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 public partial class DynamicEndpointDocumentFilter
 {
 
     private void AddProxyDeleteOperation(
         OpenApiDocument document,
-        string endpointName,
         EndpointDefinition definition,
         ref int operationIdCounter)
     {
@@ -27,18 +24,18 @@ public partial class DynamicEndpointDocumentFilter
             ? $"{OpenApiEndpointCatalog.BasePath(definition)}/{{id}}"
             : OpenApiEndpointCatalog.BasePath(definition);
 
-        if (!document.Paths.ContainsKey(deletePath))
+        if (!document.Paths.TryGetValue(deletePath, out _))
         {
-            document.Paths[deletePath] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
+            document.Paths[deletePath] = new OpenApiPathItem { Operations = [] };
         }
 
         var operation = new OpenApiOperation
         {
-            Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(definition.DocumentationTag) },
+            Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) },
             Summary = GetOperationSummary("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             Description = GetOperationDescription("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             OperationId = $"delete_{definition.FullPath}".Replace("/", "_"),
-            Parameters = new List<IOpenApiParameter>()
+            Parameters = []
         };
 
         // Environment parameter
@@ -94,9 +91,9 @@ public partial class DynamicEndpointDocumentFilter
         operationIdCounter++;
     }
 
-    private DeletePattern GetDeletePatternForDocs(EndpointDefinition definition)
+    private static DeletePattern GetDeletePatternForDocs(EndpointDefinition definition)
     {
-        if (definition.DeletePatterns?.Any() == true)
+        if (definition.DeletePatterns?.Count > 0)
         {
             return definition.DeletePatterns.First();
         }
@@ -136,9 +133,9 @@ public partial class DynamicEndpointDocumentFilter
 
             string path = OpenApiEndpointCatalog.BasePath(definition);
 
-            if (!document.Paths.ContainsKey(path))
+            if (!document.Paths.TryGetValue(path, out _))
             {
-                document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
+                document.Paths[path] = new OpenApiPathItem { Operations = [] };
             }
 
             // Determine content type from CustomProperties or default to application/json
@@ -153,11 +150,11 @@ public partial class DynamicEndpointDocumentFilter
 
                 var operation = new OpenApiOperation
                 {
-                    Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(definition.DocumentationTag) },
+                    Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) },
                     Summary = GetOperationSummary(method, definition.DisplayName ?? definition.EndpointName, definition),
                     Description = GetOperationDescription(method, definition.DisplayName ?? definition.EndpointName, definition),
                     OperationId = $"{method.ToLower()}_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
-                    Parameters = new List<IOpenApiParameter>()
+                    Parameters = []
                 };
 
                 // Add environment parameter
@@ -170,8 +167,26 @@ public partial class DynamicEndpointDocumentFilter
                     Description = $"Environment to target. Allowed values: {string.Join(", ", effectiveEnvironments)}"
                 });
 
-                // Add OData style query parameters for GET requests
-                if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
+                // Portway forwards the query string untouched, so only endpoints whose upstream speaks OData may advertise it
+                if (method.Equals("GET", StringComparison.OrdinalIgnoreCase) && !definition.SupportsOData)
+                {
+                    // OpenAPI 3.2 forbids mixing querystring with named query parameters, which suits passthrough exactly
+                    operation.Parameters.Add(new OpenApiParameter
+                    {
+                        Name = "query",
+                        In = ParameterLocation.QueryString,
+                        Required = false,
+                        Description = "Query parameters are forwarded to the proxied service unchanged. Consult that service for the parameters it accepts.",
+                        Content = new Dictionary<string, IOpenApiMediaType>
+                        {
+                            ["application/x-www-form-urlencoded"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
+                            }
+                        }
+                    });
+                }
+                else if (method.Equals("GET", StringComparison.OrdinalIgnoreCase))
                 {
                     // Add $select parameter
                     operation.Parameters.Add(new OpenApiParameter
@@ -270,7 +285,7 @@ public partial class DynamicEndpointDocumentFilter
             // Special handling for DELETE
             if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
-                AddProxyDeleteOperation(document, endpointName, definition, ref operationIdCounter);
+                AddProxyDeleteOperation(document, definition, ref operationIdCounter);
             }
         }
     }
@@ -279,7 +294,7 @@ public partial class DynamicEndpointDocumentFilter
     private List<string> GetEffectiveEnvironments(EndpointDefinition? definition)
         => OpenApiEndpointCatalog.EffectiveEnvironments(definition, _environmentSettings);
 
-    private HttpMethod? GetOperationType(string method)
+    private static HttpMethod? GetOperationType(string method)
     {
         return method.ToUpperInvariant() switch
         {
@@ -290,8 +305,8 @@ public partial class DynamicEndpointDocumentFilter
             "PATCH" => HttpMethod.Patch,
             "OPTIONS" => HttpMethod.Options,
             "HEAD" => HttpMethod.Head,
-            "MERGE" => HttpMethod.Patch, // Map MERGE to PATCH as they're semantically similar
-            "QUERY" => HttpMethod.Parse("QUERY"), // OpenAPI 3.2 renders this as a native query operation
+            "MERGE" => OpenApiHttpMethods.Merge, // OpenAPI 3.2 renders this under additionalOperations
+            "QUERY" => OpenApiHttpMethods.Query, // OpenAPI 3.2 renders this as a native query operation
             _ => null
         };
     }

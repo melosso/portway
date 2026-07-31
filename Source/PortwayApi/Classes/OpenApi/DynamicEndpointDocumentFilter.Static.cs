@@ -1,21 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.OpenApi;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
-using PortwayApi.Classes.OpenApi;
-using Serilog;
 
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 public partial class DynamicEndpointDocumentFilter
 {
@@ -132,10 +118,11 @@ public partial class DynamicEndpointDocumentFilter
                                     }
                                     : new Dictionary<string, IOpenApiExample>
                                     {
+                                        // SerializedValue keeps non-JSON bodies literal instead of quoting them as a JSON string
                                         ["sample_text"] = new OpenApiExample
                                         {
                                             Summary = "Sample text content",
-                                            Value = JsonValue.Create("Hello world")
+                                            SerializedValue = "Hello world"
                                         }
                                     }
                             }
@@ -350,6 +337,54 @@ public partial class DynamicEndpointDocumentFilter
                 StandardResponses.AddErrors(getOperation, ApiOperationKind.Static);
 
             document.Paths[path].Operations![HttpMethod.Get] = getOperation;
+
+            // Static endpoints serve QUERY through the same read path, so a filterable one documents the body-carried form too
+            if (enableFiltering && (contentType.Contains("json") || contentType.Contains("xml")))
+            {
+                document.Paths[path].Operations![OpenApiHttpMethods.Query] = BuildStaticQueryOperation(getOperation);
+            }
         }
+    }
+
+    /// <summary>Mirrors a static GET as a QUERY operation whose OData criteria travel in the body instead of the URL</summary>
+    private static OpenApiOperation BuildStaticQueryOperation(OpenApiOperation getOperation)
+    {
+        var queryOperation = new OpenApiOperation
+        {
+            Tags = getOperation.Tags,
+            Summary = getOperation.Summary,
+            Description = getOperation.Description,
+            OperationId = $"{getOperation.OperationId}_query",
+            Deprecated = getOperation.Deprecated,
+            Responses = getOperation.Responses,
+            // OData criteria move into the body, so only the path parameters carry over
+            Parameters = getOperation.Parameters?
+                .Where(p => p.In == ParameterLocation.Path)
+                .ToList(),
+            RequestBody = new OpenApiRequestBody
+            {
+                Description = "Query criteria (RFC 10008). Send OData-style fields in the body instead of the URL",
+                Content = new Dictionary<string, IOpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaType
+                    {
+                        Schema = new OpenApiSchema
+                        {
+                            Type = JsonSchemaType.Object,
+                            Properties = new Dictionary<string, IOpenApiSchema>
+                            {
+                                ["select"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Comma-separated fields to return" },
+                                ["filter"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $filter expression" },
+                                ["orderby"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $orderby expression" },
+                                ["top"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(10) },
+                                ["skip"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(0) }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        return queryOperation;
     }
 }

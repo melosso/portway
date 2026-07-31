@@ -1,9 +1,8 @@
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using PortwayApi.Classes.OpenApi;
 
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 /// <summary>This adds dynamic example loading while keeping all existing hardcoded examples as fallback</summary>
 public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer

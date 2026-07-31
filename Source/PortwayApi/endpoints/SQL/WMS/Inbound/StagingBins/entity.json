@@ -1,0 +1,28 @@
+{
+  "DatabaseObjectName": "Bins",
+  "Namespace": "WMS/Inbound",
+  "NamespaceDisplayName": "WMS/Inbound",
+  "AllowedEnvironments": [
+    "WMS"
+  ],
+  "AllowedMethods": [
+    "GET"
+  ],
+  "AllowedColumns": [
+    "Id",
+    "Code",
+    "Zone",
+    "CapacityUnits",
+    "IsActive"
+  ],
+  "Documentation": {
+    "TagDescription": "Staging bins used while inbound goods are being received. Demonstrates a nested namespace: the tag names `WMS` as its parent in the OpenAPI document.",
+    "MethodDescriptions": {
+      "GET": "Retrieve inbound staging bins"
+    },
+    "MethodDocumentation": {
+      "GET": "Read-only view of the bins reserved for inbound receiving. The endpoint lives at `endpoints/SQL/WMS/Inbound/StagingBins`, so its namespace is `WMS/Inbound` and it nests under `WMS` in the documentation."
+    }
+  },
+  "DatabaseSchema": "dbo"
+}

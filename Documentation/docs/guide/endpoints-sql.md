@@ -166,7 +166,7 @@ For write operations that require business logic, validation, or audit logging, 
 }
 ```
 
-The procedure receives the HTTP method as `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`):
+The procedure receives the HTTP method as `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`). Requests that arrive as `MERGE` come through as `PATCH` (as an alias), no need to built seperate stored procedure branch for it:
 
 ```sql
 CREATE PROCEDURE [dbo].[sp_ManageServiceRequests]

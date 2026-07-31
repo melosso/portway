@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
-using PortwayApi.Services;
 
 namespace PortwayApi.Api;
 
@@ -56,14 +55,15 @@ public partial class EndpointController
     private async Task<IActionResult> HandleSqlPatchRequest(
         string env,
         string endpointName,
-        JsonDocument requestBody)
+        JsonDocument requestBody,
+        string method = "PATCH")
     {
         if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
         {
             return resolveError;
         }
 
-        return await _sqlRequestHandler.HandleSqlPatchRequest(HttpContext, endpoint, env, endpointName, requestBody);
+        return await _sqlRequestHandler.HandleSqlPatchRequest(HttpContext, endpoint, env, endpointName, requestBody, method);
     }
 
     private async Task<IActionResult> HandleSqlDeleteRequest(

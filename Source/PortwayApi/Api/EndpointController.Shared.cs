@@ -79,11 +79,11 @@ public partial class EndpointController
 
         Log.Debug("Parsing endpoint: Segments=[{Segments}]", string.Join(", ", segments));
 
-        // Try to parse as namespaced endpoint first
-        if (segments.Length >= 2)
+        // Try namespaced endpoints longest first, so Sales/EMEA/Orders wins over Sales/EMEA
+        for (int nameIndex = segments.Length - 1; nameIndex >= 1; nameIndex--)
         {
-            var potentialNamespace = segments[0];
-            var potentialEndpointRaw = segments[1];
+            var potentialNamespace = string.Join('/', segments.Take(nameIndex));
+            var potentialEndpointRaw = segments[nameIndex];
 
             // Remove any OData-style key appended to the endpoint name (e.g. "Cancellations(123)" or "Cancellations(guid'...')")
             var potentialEndpoint = Regex.Replace(potentialEndpointRaw, @"\([^\)]*\)$", "");
@@ -121,10 +121,10 @@ public partial class EndpointController
                     };
                 }
 
-                // If there's a third segment, it may contain ID or remaining path
-                if (segments.Length > 2)
+                // The segment after the endpoint may contain an ID or the remaining path
+                if (segments.Length > nameIndex + 1)
                 {
-                    var thirdSegment = segments[2];
+                    var thirdSegment = segments[nameIndex + 1];
 
                     // Extract ID if it matches expected patterns (only if we didn't already get id)
                     if (id == null)
@@ -153,22 +153,22 @@ public partial class EndpointController
                         };
 
                         // Set remaining path if there are segments after the ID
-                        if (id != null && segments.Length > 3)
+                        if (id != null && segments.Length > nameIndex + 2)
                         {
-                            remainingPath = string.Join('/', segments.Skip(3));
+                            remainingPath = string.Join('/', segments.Skip(nameIndex + 2));
                         }
                         else if (id == null)
                         {
-                            // third segment not an ID -> treat as remaining path
-                            remainingPath = string.Join('/', segments.Skip(2));
+                            // segment after the endpoint is not an ID -> treat as remaining path
+                            remainingPath = string.Join('/', segments.Skip(nameIndex + 1));
                         }
                     }
                     else
                     {
-                        // we already have id from segment[1], so third+ are remaining path
-                        if (segments.Length > 2)
+                        // we already have the id from the endpoint segment, so everything after is remaining path
+                        if (segments.Length > nameIndex + 1)
                         {
-                            remainingPath = string.Join('/', segments.Skip(2));
+                            remainingPath = string.Join('/', segments.Skip(nameIndex + 1));
                         }
                     }
                 }

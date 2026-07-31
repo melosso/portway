@@ -46,6 +46,18 @@ The `Authorization` header is forwarded unchanged, enabling pass-through authent
 
 The query string is forwarded verbatim, including the provided OData options in your (HTTP) request. In particular `$expand` is never parsed, validated or rejected on a proxy endpoint: it reaches the upstream exactly as written, so a service that implements `$expand` natively keeps working. That's a long way of saying: Portway only handles `$expand` itself on [SQL Table and View endpoints](/reference/expand).
 
+Because forwarding is all Portway does here, the documentation cannot infer which query parameters a proxied service accepts. Set `SupportsOData` when the service behind the endpoint understands them:
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET"],
+  "SupportsOData": true
+}
+```
+
+With the flag set, the endpoint's GET operation lists `$select`, `$top` and `$filter` so callers can discover them. Without it, the operation says instead that any query parameters are passed through untouched, which keeps the reference transparent about services that never implemented OData.
+
 Environment headers defined in `environments/{env}/settings.json` are appended to every forwarded request:
 
 ```http

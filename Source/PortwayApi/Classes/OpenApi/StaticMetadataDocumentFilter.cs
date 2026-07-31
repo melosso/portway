@@ -119,9 +119,8 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         var headerLine = string.Join(delimiter.ToString(), columns);
         var mockRows = Enumerable.Range(0, 3).Select(_ => MockDataGenerator.GenerateCsvRow(columns, delimiter));
         var exampleContent = $"{headerLine}\n{string.Join("\n", mockRows)}";
-        var example = JsonValue.Create(exampleContent);
 
-        UpdateEndpointDocumentation(document, definition, contentType, schema, example);
+        UpdateEndpointDocumentation(document, definition, contentType, schema, example: null, serialized: exampleContent);
         Log.Debug("Enriched documentation for static CSV endpoint {EndpointName} with randomized mock data", endpointName);
     }
 
@@ -133,9 +132,8 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         var schema = CreateSchemaFromXElement(xdoc.Root);
         var mockXDoc = CreateMockFromXElement(xdoc.Root);
-        var example = JsonValue.Create(mockXDoc.ToString());
 
-        UpdateEndpointDocumentation(document, definition, contentType, schema, example);
+        UpdateEndpointDocumentation(document, definition, contentType, schema, example: null, serialized: mockXDoc.ToString());
         Log.Debug("Enriched documentation for static XML endpoint {EndpointName} with randomized mock data", endpointName);
     }
 
@@ -290,12 +288,14 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         return string.Empty;
     }
 
+    /// <summary>Attaches the schema and example to an endpoint's 200 response; serialized carries non-JSON media types verbatim instead of as a JSON string</summary>
     private void UpdateEndpointDocumentation(
-        OpenApiDocument document, 
-        EndpointDefinition definition, 
+        OpenApiDocument document,
+        EndpointDefinition definition,
         string contentType,
         OpenApiSchema schema,
-        JsonNode? example)
+        JsonNode? example,
+        string? serialized = null)
     {
         var path = OpenApiEndpointCatalog.BasePath(definition);
         if (!document.Paths.ContainsKey(path)) return;
@@ -315,14 +315,15 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
                 Schema = schema
             };
 
-            if (example != null)
+            if (example != null || serialized != null)
             {
                 mediaType.Examples = new Dictionary<string, IOpenApiExample>
                 {
                     ["mock_data"] = new OpenApiExample
                     {
                         Summary = "Randomized mock example (not real content)",
-                        Value = example
+                        Value = example,
+                        SerializedValue = serialized
                     }
                 };
             }

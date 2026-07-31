@@ -17,7 +17,7 @@ Every endpoint declares which methods it accepts through `AllowedMethods` in its
 | `PUT` | Full update | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `PATCH` | Partial update | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `DELETE` | Remove a record or file | ✅ | ✅ | ❌ | ❌ | ✅ |
-| `MERGE` | Legacy update verb for older backends | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `MERGE` | Partial update under its OData name | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 The accepted values for `AllowedMethods` are `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE` and `QUERY`. Anything else is flagged as a configuration error when the endpoint loads. File endpoints manage uploads and downloads through their own routes, so their table column above reflects upload (`POST`), download (`GET`) and removal (`DELETE`).
 
@@ -74,7 +74,11 @@ On Proxy endpoints these methods forward to the backing service as-is, unless a 
 
 ## MERGE and method translation
 
-Some older backends, notably classic OData services, expect `MERGE` instead of `PATCH` or `PUT`. Proxy endpoints can translate on the way through:
+`MERGE` is the OData spelling of a partial update, and Portway treats it as an alias of `PATCH`. Endpoints opt in by listing it in `AllowedMethods`, and clients that speak it reach the same write path as `PATCH`. Stored procedures still receive `@Method` as `PATCH` for both spellings, so an endpoint can accept `MERGE` without any change to the procedure behind it.
+
+In the OpenAPI document `MERGE` appears under a path item's `additionalOperations`, which is where OpenAPI 3.2 places methods that have no field of their own.
+
+Some older backends, notably classic OData services, expect `MERGE` on the way out instead of `PATCH` or `PUT`. Proxy endpoints can translate:
 
 ```json
 {

@@ -5,7 +5,6 @@ using System.Data.Common;
 using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using PortwayApi.Classes;
 using PortwayApi.Services.Providers;
 using PortwayApi.Helpers;
@@ -698,13 +697,14 @@ public sealed partial class SqlRequestHandler
         }
     }
 
-    /// <summary>Handles SQL PATCH requests (partial updates)</summary>
+    /// <summary>Handles SQL partial updates; method is PATCH or its OData spelling MERGE, which the endpoint must have declared</summary>
     public async Task<IActionResult> HandleSqlPatchRequest(
         HttpContext context,
         EndpointDefinition endpoint,
         string env,
         string endpointName,
-        JsonDocument requestBody)
+        JsonDocument requestBody,
+        string method = "PATCH")
     {
         try
         {
@@ -717,7 +717,7 @@ public sealed partial class SqlRequestHandler
             }
 
 
-            if (!(endpoint.Methods?.Contains("PATCH") ?? false))
+            if (!(endpoint.Methods?.Contains(method, StringComparer.OrdinalIgnoreCase) ?? false))
             {
                 return PortwayResults.MethodNotAllowed();
             }
@@ -732,7 +732,7 @@ public sealed partial class SqlRequestHandler
             var data = requestBody.RootElement;
 
             // Validate against allowed columns, required columns, and regex patterns
-            var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, "PATCH");
+            var (isValid, errorMessage, validationErrors) = SqlInputValidator.Validate(data, endpoint, method);
             if (!isValid)
             {
                 if (validationErrors != null && validationErrors.Any())
@@ -764,7 +764,7 @@ public sealed partial class SqlRequestHandler
             // Step 6: Prepare stored procedure parameters
             var dynamicParams = new DynamicParameters();
 
-            // Add method parameter - use "PATCH" to differentiate from full UPDATE
+            // Procedures see "PATCH" for both spellings, so MERGE endpoints work against existing procedures
             dynamicParams.Add("@Method", "PATCH");
 
             // Add user parameter if available

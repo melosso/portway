@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Api;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
+using PortwayApi.Classes.OpenApi;
 using PortwayApi.Services.Configuration;
 using PortwayApi.Endpoints;
 using PortwayApi.Interfaces;

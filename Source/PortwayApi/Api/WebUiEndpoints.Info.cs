@@ -1,23 +1,11 @@
 namespace PortwayApi.Endpoints;
 
-using System.Net;
-using System.Reflection;
-using System.Security.Cryptography;
-using Serilog;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using PortwayApi.Auth;
 using PortwayApi.Classes;
-using PortwayApi.Helpers;
-using PortwayApi.Interfaces;
-using PortwayApi.Services;
+using PortwayApi.Classes.OpenApi;
 
 
 public static partial class WebUiEndpointExtensions

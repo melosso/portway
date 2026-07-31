@@ -11,6 +11,7 @@
     "POST",
     "PUT",
     "PATCH",
+    "MERGE",
     "DELETE"
   ],
   "WriteMode": "Table",
@@ -26,5 +27,24 @@
     "Code",
     "Zone",
     "CapacityUnits"
-  ]
+  ],
+  "Documentation": {
+    "TagDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
+    "MethodDescriptions": {
+      "GET": "Retrieve storage bins",
+      "POST": "Create a storage bin",
+      "PUT": "Replace a storage bin",
+      "PATCH": "Update part of a storage bin",
+      "MERGE": "Update part of a storage bin",
+      "DELETE": "Remove a storage bin"
+    },
+    "MethodDocumentation": {
+      "GET": "Browse the storage bins of a warehouse, each one belonging to a zone and carrying a capacity in units. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip`.",
+      "POST": "Add a bin. `Code`, `Zone` and `CapacityUnits` are required, and the generated `Id` comes back in the response.",
+      "PUT": "Replace a bin in full. Send every column you want to keep, including the `Id` that identifies the row.",
+      "PATCH": "Send only the columns that change, along with the `Id`. Columns you leave out keep their current values.",
+      "MERGE": "Identical to `PATCH`, under the name OData clients use. Both reach the same write path.",
+      "DELETE": "Remove a bin by its `Id`. Deleting a bin that does not exist returns `404`."
+    }
+  }
 }

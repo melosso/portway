@@ -1,5 +1,6 @@
 { 
     "Url": "http://localhost/Synergy/services/Exact.Entity.REST.svc/ContactPerson", 
+    "SupportsOData": true,
     "Methods": ["GET","PUT"],
     "Namespace": "Account",
     "NamespaceDisplayName": "Account",

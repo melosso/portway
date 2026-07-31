@@ -2,7 +2,6 @@ using PortwayApi.Services.Database;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using PortwayApi.Classes;
 using Serilog;
 
 namespace PortwayApi.Classes.OpenApi;
@@ -78,6 +77,12 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             if (pathItem.Operations.TryGetValue(HttpMethod.Patch, out var patchOperation))
             {
                 EnrichModificationOperationWithProcedureMetadata(patchOperation, endpointName, definition, "PATCH");
+            }
+
+            // Enrich MERGE operation with procedure metadata
+            if (pathItem.Operations.TryGetValue(OpenApiHttpMethods.Merge, out var mergeOperation))
+            {
+                EnrichModificationOperationWithProcedureMetadata(mergeOperation, endpointName, definition, "MERGE");
             }
 
             // Enrich DELETE operation with object metadata (for primary key info)

@@ -11,11 +11,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
-using PortwayApi.Classes.OpenApi;
 using Scalar.AspNetCore;
 using Serilog;
 
-namespace PortwayApi.Classes;
+namespace PortwayApi.Classes.OpenApi;
 
 public class ContactInfo
 {

@@ -1,5 +1,6 @@
 { 
     "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account", 
+    "SupportsOData": true,
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Namespace": "Account",
     "NamespaceDisplayName": "Account",

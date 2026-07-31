@@ -27,6 +27,7 @@ One endpoint covers the Service Layer root:
 {
   "Url": "https://sap-server:50000/b1s/v1",
   "Methods": ["GET", "POST", "PATCH", "DELETE"],
+  "SupportsOData": true,
   "AllowedEnvironments": ["prod"]
 }
 ```
