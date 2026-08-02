@@ -203,7 +203,8 @@ public static class SqlTableValuedFunctionHelper
         {
             try
             {
-                if (!Regex.IsMatch(value, param.ValidationPattern))
+                // timeout bounds ReDoS from operator-supplied patterns
+                if (!Regex.IsMatch(value, param.ValidationPattern, RegexOptions.None, TimeSpan.FromSeconds(1)))
                 {
                     return (false, $"Parameter '{param.Name}' does not match required pattern");
                 }
