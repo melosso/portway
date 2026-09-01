@@ -1,6 +1,6 @@
 services:
   portway_docs:
-    image: ghcr.io/melosso/bark:latest
+    image: ghcr.io/hawkinslabdev/bark:latest
     container_name: portway_docs
     volumes:
       - ./docs:/app/docs

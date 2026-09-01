@@ -8,7 +8,7 @@
   "favicon": "🌊",
   "lastUpdated": true,
   "promo": "**Coming up!** Version 0.7.0-preview is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
-  "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/melosso/bark/).",
+  "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/hawkinslabdev/bark/).",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
     "text": "Edit this page on GitHub"

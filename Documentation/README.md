@@ -1,6 +1,6 @@
 # Portway Documentation
 
-This directory contains the Portway documentation, served by [Bark](https://github.com/melosso/bark). Pages are plain markdown under `docs/`, with site configuration in `docs/config.json`.
+This directory contains the Portway documentation, served by [Bark](https://github.com/hawkinslabdev/bark). Pages are plain markdown under `docs/`, with site configuration in `docs/config.json`.
 
 ## Running locally
 
