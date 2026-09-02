@@ -111,9 +111,13 @@ Portway encrypts plaintext secrets in `settings.json` files on next startup. Con
 
 Automatic encryption applies only to per-environment `settings.json` files and the MCP configuration store (`mcp.db`). It does **not** rewrite `appsettings.json`, so values placed there (such as `WebUi:AdminApiKey`) stay in plaintext.
 
-### Web UI admin key
+### Web UI accounts
 
-Never store a real admin key in `appsettings.json`. The shipped file intentionally contains the placeholder `INSECURE-CHANGE-ME-admin-api-key`, which Portway rejects in production: Web UI authentication is disabled and an error is logged until a real key is provided.
+Signing in to the Web UI uses an account with a username and password, stored in `auth.db`. Passwords are hashed with PBKDF2-SHA256.
+
+On the first start with no accounts, an existing `WebUi:AdminApiKey` becomes the account `admin`, with the key as its password, and a warning says so. After that the setting is no longer read for sign-in and can be removed.
+
+Never store a real admin key in `appsettings.json`. The shipped file intentionally contains the placeholder `INSECURE-CHANGE-ME-admin-api-key`, which Portway rejects in production: no account is seeded from it and an error is logged.
 
 Supply the key through the environment instead:
 
@@ -223,11 +227,26 @@ Enable request traffic logging to capture headers and bodies for security analys
 
 See [Monitoring](/guide/monitoring) for traffic logging configuration details.
 
+### Recovering an account
+
+Accounts are managed from the shell when nobody can sign in. Run these from the directory Portway runs in, so `auth.db` is found:
+
+```bash
+portway accounts list
+portway accounts password <username> <new-password>
+portway accounts create <username> <password> [administrator|viewer]
+```
+
+`promote`, `demote`, `enable`, `disable` and `delete` are available too. Portway refuses any of them that would leave no active administrator.
+
+Sessions are signed with `portway.key`, written next to `auth.db` on first use. Deleting that file signs everyone out.
+
 ## Pre-deployment checklist
 
 - [ ] HTTPS binding configured in IIS
 - [ ] IIS Application Pool using minimum-privilege identity
-- [ ] `WebUi__AdminApiKey` set via environment variable or Key Vault (32+ random characters, never in `appsettings.json`)
+- [ ] Web UI account created with a strong password, and `WebUi__AdminApiKey` removed once it has been migrated
+- [ ] `portway.key` kept with the deployment and excluded from backups that others can read
 - [ ] Azure Key Vault configured (if applicable)
 - [ ] Initial token file removed from disk
 - [ ] Tokens created with specific scopes and environments

@@ -225,24 +225,24 @@
 
         switch (field.type) {
           case 'textarea':
-            inputHtml = `<textarea id="${id}" name="${field.name}" placeholder="${field.placeholder || ''}" rows="4">${field.value || ''}</textarea>`;
+            inputHtml = `<textarea id="${id}" name="${field.name}" class="input" placeholder="${field.placeholder || ''}" rows="4">${field.value || ''}</textarea>`;
             break;
           case 'select':
             const options = (field.options || []).map(o => 
               `<option value="${o.value}" ${o.value === field.value ? 'selected' : ''}>${o.label}</option>`
             ).join('');
-            inputHtml = `<select id="${id}" name="${field.name}">${options}</select>`;
+            inputHtml = `<select id="${id}" name="${field.name}" class="input">${options}</select>`;
             break;
           case 'checkbox':
             inputHtml = `<label class="dialog-checkbox"><input type="checkbox" name="${field.name}" ${field.value ? 'checked' : ''}><span>${field.checkboxLabel || ''}</span></label>`;
             break;
           default:
-            inputHtml = `<input type="${field.type || 'text'}" id="${id}" name="${field.name}" value="${field.value || ''}" placeholder="${field.placeholder || ''}">`;
+            inputHtml = `<input type="${field.type || 'text'}" id="${id}" name="${field.name}" class="input" value="${field.value || ''}" placeholder="${field.placeholder || ''}">`;
         }
 
         return `
-          <div class="dialog-field">
-            ${field.type !== 'checkbox' ? `<label for="${id}">${field.label}</label>` : ''}
+          <div class="field">
+            ${field.type !== 'checkbox' ? `<label class="field-label" for="${id}">${field.label}</label>` : ''}
             ${inputHtml}
           </div>
         `;

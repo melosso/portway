@@ -24,12 +24,12 @@ public static class StartupLogHelper
     /// <summary>Verifies configured ports are free before Kestrel binds; returns false when a port is taken</summary>
     public static bool TryReservePorts(WebApplication app, IConfiguration configuration)
     {
-        // Resolves the same URL list that LogHostingUrls uses as a fallback
+        // Same order the host itself resolves: --urls beats ASPNETCORE_URLS, and configuration
+        // holds both because the ASPNETCORE_ prefix is stripped into the "urls" key
         var urlsToCheck = app.Urls.Count > 0
             ? app.Urls
-            : (Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
+            : (configuration["urls"]
                 ?? configuration["Kestrel:Endpoints:Http:Url"]
-                ?? configuration["urls"]
                 ?? "http://localhost:5000").Split(';');
 
         foreach (var rawUrl in urlsToCheck)
@@ -47,10 +47,16 @@ public static class StartupLogHelper
                 probe.Start();
                 probe.Stop();
             }
-            catch (System.Net.Sockets.SocketException)
+            catch (System.Net.Sockets.SocketException ex)
+                when (ex.SocketErrorCode == System.Net.Sockets.SocketError.AddressAlreadyInUse)
             {
-                Log.Fatal("Port {Port} is already in use. Stop the existing process and try again.", uri.Port);
+                Log.Fatal("Port {Port} is already in use. Stop the existing process, or pass --urls to use another port.", uri.Port);
                 return false;
+            }
+            catch (System.Net.Sockets.SocketException ex)
+            {
+                // Anything else, a reserved port or a blocked address, is Kestrel's to report
+                Log.Debug(ex, "Could not probe {Url}; leaving the bind to Kestrel", rawUrl);
             }
         }
 
@@ -76,9 +82,9 @@ public static class StartupLogHelper
         }
         else
         {
-            var serverUrls = Environment.GetEnvironmentVariable("ASPNETCORE_URLS")
+            // Same order as TryReservePorts, so the banner names the ports actually bound
+            var serverUrls = configuration["urls"]
                 ?? configuration["Kestrel:Endpoints:Http:Url"]
-                ?? configuration["urls"]
                 ?? "http://localhost:5000";
 
             var formattedUrls = serverUrls.Replace(";", "; ");

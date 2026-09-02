@@ -27,7 +27,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance) =>
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -40,6 +40,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             var adminKey = config.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
+            var accountCount = await users.CountAsync();
             var corsOriginsCount   = config.GetSection("WebUi:CorsOrigins").Get<string[]>()?.Length ?? 0;
             var publicOriginsCount = config.GetSection("WebUi:PublicOrigins").Get<string[]>()?.Length ?? 0;
             var trustedProxyCount  = (config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>()?.Length ?? 0)
@@ -65,10 +66,10 @@ public static partial class WebUiEndpointExtensions
             },
             security = new
             {
-                webui_auth_enabled = !string.IsNullOrEmpty(adminKey) && adminKey != "INSECURE-CHANGE-ME-admin-api-key",
-                admin_key_strength = string.IsNullOrEmpty(adminKey) ? "not-set"
-                    : adminKey == "INSECURE-CHANGE-ME-admin-api-key" ? "placeholder"
-                    : adminKey.Length < 32 ? "weak" : "strong",
+                webui_auth_enabled = PortwayApi.Helpers.WebUiAuthState.Enabled,
+                admin_accounts     = accountCount,
+                // The key only ever seeds the first account now; left in place it is a secret with no job
+                legacy_admin_key   = !string.IsNullOrEmpty(adminKey),
                 https_enabled       = httpsOn,
                 secure_cookies      = config.GetValue<bool>("WebUi:SecureCookies", false),
                 cors_origins_count  = corsOriginsCount,
@@ -140,8 +141,51 @@ public static partial class WebUiEndpointExtensions
                 configured = chatCfg?.IsConfigured ?? false,
                 provider   = chatCfg?.Provider ?? string.Empty,
                 model      = chatCfg?.Model ?? string.Empty
-            }
+            },
+            writable = PortwayApi.Services.Configuration.SettingsWriteService.Schema
+                .Select(w => new
+                {
+                    key              = w.Key,
+                    kind             = w.Kind,
+                    requires_restart = w.RequiresRestart,
+                    min              = w.Min,
+                    max              = w.Max,
+                    choices          = w.Choices
+                })
         });
+        }).ExcludeFromDescription();
+
+        // Applies a whitelisted subset of configuration; everything else is refused by name
+        app.MapPut("/ui/api/settings", async (
+            HttpContext ctx,
+            PortwayApi.Services.Configuration.SettingsWriteService writer) =>
+        {
+            Dictionary<string, JsonElement>? changes;
+            try
+            {
+                changes = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(ctx.Request.Body);
+            }
+            catch (JsonException)
+            {
+                return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400);
+            }
+
+            if (changes is null || changes.Count == 0)
+                return Results.Json(new { error = "No settings supplied" }, statusCode: 400);
+
+            if (changes.Count > 50)
+                return Results.Json(new { error = "Too many settings in one request" }, statusCode: 400);
+
+            var result = await writer.ApplyAsync(changes);
+            if (!result.Ok)
+                return Results.Json(new { error = result.Error, field = result.Field }, statusCode: 400);
+
+            Audit(ctx, "update", "settings", string.Join(", ", changes.Keys),
+                $"{changes.Count} setting(s) changed");
+
+            Log.Information("Settings updated through the Web UI: {Keys}", string.Join(", ", changes.Keys));
+
+            return Results.Json(new { ok = true, restart_required = result.RestartRequired });
         }).ExcludeFromDescription();
 
         // MCP Configuration endpoints

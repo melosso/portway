@@ -28,9 +28,7 @@
 
     refresh: async function() {
       try {
-        const response = await fetch('/ui/api/customization');
-        if (!response.ok) return;
-        const data = await response.json();
+        const data = await api('/ui/api/customization', { silent: true });
         
         const isLogin = window.location.pathname.endsWith('/ui/login') || window.location.pathname.endsWith('/ui/login.html');
         const shouldShow = data.promo_text && !(isLogin && !data.promo_login);

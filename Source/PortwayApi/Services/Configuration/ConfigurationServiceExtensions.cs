@@ -10,6 +10,7 @@ public static class ConfigurationServiceExtensions
     {
         services.AddSingleton<ReloadTracker>();
         services.AddSingleton<ConfigAuditService>();
+        services.AddSingleton<SettingsWriteService>();
         services.AddHostedService<ConfigurationReloadService>();
         services.AddHostedService<EnvironmentFileWatcher>();
         services.AddHostedService<EndpointFileWatcher>();

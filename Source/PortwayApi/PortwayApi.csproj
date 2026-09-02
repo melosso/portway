@@ -30,6 +30,9 @@
 
   <ItemGroup>
     <!-- Versioning -->
+    <PackageReference Include="DiceBear.Core" />
+    <PackageReference Include="DiceBear.Styles" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="MinVer" PrivateAssets="All" IncludeAssets="runtime;build;native;contentfiles;analyzers" />
 

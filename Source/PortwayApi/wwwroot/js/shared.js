@@ -37,6 +37,34 @@ function esc(s) {
 // Include <script src="/js/components/toast.js"></script> in your page
 // Requires: <div class="toast-container" id="toastContainer"></div>
 
+async function api(url, options = {}) {
+  const { method = 'GET', body, success, failure = 'Something went wrong.', silent = false } = options;
+  const init = { method };
+  if (body !== undefined) {
+    init.headers = { 'Content-Type': 'application/json' };
+    init.body = typeof body === 'string' ? body : JSON.stringify(body);
+  }
+  let res;
+  try {
+    res = await fetch(url, init);
+  } catch (e) {
+    if (!silent) toast(failure, 'error');
+    throw e;
+  }
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) {
+    const message = (data && (data.error || data.message)) || failure;
+    if (!silent) toast(message, 'error');
+    const err = new Error(message);
+    err.status = res.status;
+    err.field = data && data.field;
+    throw err;
+  }
+  if (success) toast(success, 'success');
+  return data ?? {};
+}
+
 // Password field show/hide toggle
 function togglePasswordVis(inputId, btn) {
   const el = document.getElementById(inputId);
@@ -64,12 +92,7 @@ function animateCounter(el, target, duration) {
     var p = Math.min((now - start) / duration, 1);
     var eased = 1 - Math.pow(1 - p, 3); // ease-out-cubic
     el.textContent = Math.round(fromNum + (targetNum - fromNum) * eased) + (p < 1 ? '' : suffix);
-    if (p < 1) {
-      requestAnimationFrame(step);
-    } else {
-      el.classList.add('pw-popped');
-      setTimeout(function() { el.classList.remove('pw-popped'); }, 250);
-    }
+    if (p < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }

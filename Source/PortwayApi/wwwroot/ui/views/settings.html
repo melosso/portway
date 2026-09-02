@@ -1,5 +1,4 @@
   <script src="js/components/dialog.js"></script>
-  <script src="js/components/alert-dialog.js"></script>
   <style>
   /* Wizard & dialog styles */
   .wizard-intro {
@@ -58,80 +57,15 @@
     display: inline-block;
   }
   .wizard-details[open] summary::before { transform: rotate(90deg); }
-  .dialog-field-hint {
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    margin-top: 0.35rem;
-    line-height: 1.5;
-  }
-  .dialog-field-hint code {
-    font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 0.78em;
-    background: hsl(var(--muted));
-    border: 1px solid hsl(var(--border));
-    border-radius: 3px;
-    padding: 0.1em 0.3em;
-  }
-
-  /* Beacon-style settings layout: left sub-nav, one section visible at a time */
-  .settings-layout { display: flex; gap: 3rem; align-items: flex-start; }
-  .settings-subnav { width: 200px; flex-shrink: 0; position: sticky; top: 1rem; }
-  .settings-subnav-nav { display: flex; flex-direction: column; gap: 2px; }
-  .settings-subnav-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius);
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: hsl(var(--foreground));
-    text-decoration: none;
-    transition: background 0.15s, color 0.15s;
-    white-space: nowrap;
-  }
-  .settings-subnav-item:hover { background: hsl(var(--muted)); }
-  .settings-subnav-item:focus-visible { outline: 2px solid hsl(var(--foreground)); outline-offset: -2px; }
-  .settings-subnav-item.active { background: hsl(var(--muted)); }
-  .settings-subnav-item svg { color: hsl(var(--muted-foreground)); flex-shrink: 0; }
-  .settings-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  @media (max-width: 900px) {
-    .settings-layout { flex-direction: column; gap: 1rem; }
-    .settings-subnav { width: 100%; position: static; }
-    .settings-subnav-nav { flex-direction: row; flex-wrap: wrap; }
-  }
 
   /* Section groupings */
-  .settings-section { display: none; flex-direction: column; gap: 0.75rem; }
+  .settings-section { display: none; flex-direction: column; gap: 2rem; }
   .settings-section.active { display: flex; }
-  .settings-section-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: hsl(var(--muted-foreground));
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid hsl(var(--border));
-    user-select: none;
-  }
-  .settings-grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    align-items: start;
-  }
-  .settings-grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    align-items: start;
-  }
-  @media (max-width: 1100px) {
-    .settings-grid-3 { grid-template-columns: 1fr 1fr; }
-  }
-  @media (max-width: 800px) {
-    .settings-grid-3,
-    .settings-grid-2 { grid-template-columns: 1fr; }
+  .settings-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    max-width: 46rem;
   }
 
   /* Setting value variants */
@@ -149,9 +83,12 @@
 <main>
   <div class="page-header">
     <div class="page-title">
-      <h1 class="select-none">Settings</h1>
+      <div class="page-heading">
+        <h1 class="select-none">Settings</h1>
+        <p class="page-sub">Rate limits, caching, storage and integrations.</p>
+      </div>
     </div>
-    <div class="header-actions">
+    <div class="page-actions">
       <button class="btn btn-outline" id="refreshBtn" onclick="load()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
@@ -159,41 +96,16 @@
     </div>
   </div>
 
-  <div class="page-body">
+  <div class="main-content">
 
-    <div class="settings-layout">
-
-    <aside class="settings-subnav select-none">
-      <nav class="settings-subnav-nav">
-        <a href="#security" class="settings-subnav-item active" data-section="security" onclick="showSettingsSection('security');return false;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Security
-        </a>
-        <a href="#performance" class="settings-subnav-item" data-section="performance" onclick="showSettingsSection('performance');return false;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Performance
-        </a>
-        <a href="#storage" class="settings-subnav-item" data-section="storage" onclick="showSettingsSection('storage');return false;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          Storage &amp; Logs
-        </a>
-        <a href="#integrations" class="settings-subnav-item" data-section="integrations" onclick="showSettingsSection('integrations');return false;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          Integrations
-        </a>
-      </nav>
-    </aside>
-
-    <div class="settings-content">
 
     <!-- Section: Security & Change Controls -->
     <div class="settings-section active" id="section-security">
-      <div class="settings-section-label">Security &amp; Change Controls</div>
-      <div class="settings-grid-2">
+      <div class="settings-pane">
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Security Posture</span>
+            <h2 class="card-title">Security Posture</h2>
           </div>
           <div class="card-body" id="securityBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -202,7 +114,7 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Recent Configuration Changes</span>
+            <h2 class="card-title">Recent Configuration Changes</h2>
           </div>
           <div class="card-body" id="auditBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -214,12 +126,11 @@
 
     <!-- Section: Performance -->
     <div class="settings-section" id="section-performance">
-      <div class="settings-section-label">Performance</div>
-      <div class="settings-grid-3">
+      <div class="settings-pane">
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Rate Limiting</span>
+            <h2 class="card-title">Rate Limiting</h2>
           </div>
           <div class="card-body" id="rateLimitBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -228,7 +139,7 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Caching</span>
+            <h2 class="card-title">Caching</h2>
           </div>
           <div class="card-body" id="cachingBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -237,7 +148,7 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">SQL Connection Pooling</span>
+            <h2 class="card-title">SQL Connection Pooling</h2>
           </div>
           <div class="card-body" id="sqlBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -249,18 +160,26 @@
 
     <!-- Section: Storage & Observability -->
     <div class="settings-section" id="section-storage">
-      <div class="settings-section-label">Storage &amp; Observability</div>
-      <div class="settings-grid-3">
+      <div class="settings-pane">
 
         <div class="card">
-          <div class="card-header"><span class="card-title">File Storage</span></div>
+          <div class="card-header">
+            <h2 class="card-title">Database Maintenance</h2>
+          </div>
+          <div class="card-body" id="maintenanceBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">File Storage</h2></div>
           <div class="card-body" id="fileBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-header"><span class="card-title">Logging</span></div>
+          <div class="card-header"><h2 class="card-title">Logging</h2></div>
           <div class="card-body" id="loggingBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
           </div>
@@ -268,31 +187,31 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Endpoint Reloading</span>
+            <h2 class="card-title">Endpoint Reloading</h2>
           </div>
           <div class="card-body" id="reloadBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-header"><span class="card-title">Telemetry</span></div>
-          <div class="card-body" id="telemetryBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
 
       </div>
     </div>
 
     <!-- Section: Integrations -->
     <div class="settings-section" id="section-integrations">
-      <div class="settings-section-label">Integrations</div>
-      <div class="settings-grid-2">
+      <div class="settings-pane">
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Telemetry</h2></div>
+          <div class="card-body" id="telemetryBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">MCP (Model Context Protocol)</span>
+            <h2 class="card-title">MCP (Model Context Protocol)</h2>
           </div>
           <div class="card-body" id="mcpBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -301,7 +220,7 @@
 
         <div class="card card-featured">
           <div class="card-header">
-            <span class="card-title">AI Provider (Chat)</span>
+            <h2 class="card-title">AI Provider (Chat)</h2>
             <div id="aiProviderActions"></div>
           </div>
           <div class="card-body" id="aiBody">
@@ -312,33 +231,32 @@
       </div>
     </div>
 
-    </div>
-
-    </div>
-
   </div>
 </main>
 
 <script>
 // Helpers
 
+let _writable = {};
+
+function labelBlock(label, desc, forId) {
+  return `<div class="setting-label">
+      <label${forId ? ` for="${forId}"` : ''}>${label}</label>
+      ${desc ? `<p>${esc(desc)}</p>` : ''}
+    </div>`;
+}
+
 function settingItem(label, value, desc) {
-  return `<div class="settings-item">
-    <div>
-      <div class="settings-item-label">${label}</div>
-      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
-    </div>
-    <span class="settings-item-value">${esc(String(value ?? '—'))}</span>
+  return `<div class="setting-row">
+    ${labelBlock(label, desc)}
+    <span class="setting-value">${esc(String(value ?? '—'))}</span>
   </div>`;
 }
 
 function settingItemRaw(label, valueHtml, desc) {
-  return `<div class="settings-item">
-    <div>
-      <div class="settings-item-label">${label}</div>
-      ${desc ? `<div class="settings-item-desc">${esc(desc)}</div>` : ''}
-    </div>
-    <span class="settings-item-value">${valueHtml}</span>
+  return `<div class="setting-row">
+    ${labelBlock(label, desc)}
+    <span class="setting-value">${valueHtml}</span>
   </div>`;
 }
 
@@ -349,6 +267,96 @@ function boolItem(label, value, desc) {
   return settingItemRaw(label, html, desc);
 }
 
+// Editable rows; each falls back to a read-only row when the server does not list the key as writable
+
+function switchRow(key, label, value, desc) {
+  const spec = _writable[key];
+  if (!spec) return boolItem(label, value, desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  return `<div class="setting-row">
+    ${labelBlock(label, desc, id)}
+    <label class="switch">
+      <input type="checkbox" id="${id}" data-setting="${key}" data-kind="bool" ${value ? 'checked' : ''}>
+      <span class="slider"></span>
+    </label>
+  </div>`;
+}
+
+function numberRow(key, label, value, desc, unit) {
+  const spec = _writable[key];
+  if (!spec) return settingItem(label, value != null ? `${value}${unit ?? ''}` : '—', desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  const min = spec.min != null ? ` min="${spec.min}"` : '';
+  const max = spec.max != null ? ` max="${spec.max}"` : '';
+  return `<div class="setting-row">
+    ${labelBlock(label, desc, id)}
+    <input type="number" class="input" id="${id}" data-setting="${key}" data-kind="int"${min}${max} value="${value ?? ''}">
+  </div>`;
+}
+
+function choiceRow(key, label, value, desc) {
+  const spec = _writable[key];
+  if (!spec) return settingItem(label, value, desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  const opts = (spec.choices ?? []).map(c =>
+    `<option value="${esc(c)}"${c === value ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  return `<div class="setting-row">
+    ${labelBlock(label, desc, id)}
+    <select class="input" id="${id}" data-setting="${key}" data-kind="choice">${opts}</select>
+  </div>`;
+}
+
+function timeRow(key, label, value, desc) {
+  const spec = _writable[key];
+  if (!spec) return settingItem(label, value, desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  return `<div class="setting-row">
+    ${labelBlock(label, desc, id)}
+    <input type="time" class="input" id="${id}" data-setting="${key}" data-kind="time" value="${esc(value ?? '')}">
+  </div>`;
+}
+
+function cardFooter(bodyId) {
+  return `<div class="card-footer">
+    <span class="restart-note" id="${bodyId}-note"></span>
+    <button class="btn btn-primary" onclick="saveCard('${bodyId}', this)">Save</button>
+  </div>`;
+}
+
+// Collects the editable controls in one card and sends them as a single request
+async function saveCard(bodyId, btn) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const changes = {};
+  body.querySelectorAll('[data-setting]').forEach(el => {
+    const key = el.dataset.setting;
+    el.classList.remove('input-invalid');
+    if (el.dataset.kind === 'bool') changes[key] = el.checked;
+    else if (el.dataset.kind === 'int') changes[key] = Number(el.value);
+    else changes[key] = el.value;
+  });
+  if (!Object.keys(changes).length) return;
+
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    const r = await api('/ui/api/settings', {
+      method: 'PUT', body: changes, success: 'Settings saved', failure: 'Failed to save settings'
+    });
+    const note = document.getElementById(bodyId + '-note');
+    if (note) note.textContent = r.restart_required ? 'Saved. Restart Portway to apply.' : '';
+    await load();
+  } catch(e) {
+    if (e.field) {
+      const el = body.querySelector(`[data-setting="${e.field}"]`);
+      if (el) { el.classList.add('input-invalid'); el.focus(); }
+    }
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
 // Settings load
 
 async function load() {
@@ -356,7 +364,8 @@ async function load() {
   if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
 
   try {
-    const d   = await fetch('/ui/api/settings').then(r => r.json());
+    const d   = await api('/ui/api/settings', { failure: 'Failed to load settings' });
+    _writable = Object.fromEntries((d.writable ?? []).map(w => [w.key, w]));
     const rl  = d.rate_limiting      ?? {};
     const c   = d.caching            ?? {};
     const sql = d.sql_pooling        ?? {};
@@ -368,43 +377,55 @@ async function load() {
     const sec = d.security           ?? {};
     const dbm = d.database_maintenance ?? {};
 
-    const strengthLabels = { 'strong': 'Strong', 'weak': 'Weak (< 32 chars)', 'placeholder': 'Placeholder (auth disabled)', 'not-set': 'Not set (auth disabled)' };
-    const strengthOk = sec.admin_key_strength === 'strong';
+    const accounts = sec.admin_accounts ?? 0;
     document.getElementById('securityBody').innerHTML = [
-      boolItem('Web UI Authentication', sec.webui_auth_enabled),
-      settingItemRaw('Admin Key Strength',
-        `<span class="${strengthOk ? 'setting-on' : 'setting-off'}">${esc(strengthLabels[sec.admin_key_strength] ?? '—')}</span>`,
-        'Set WebUi:AdminApiKey to a random value of 32+ characters'),
+      settingItemRaw('Sign-in required',
+        sec.webui_auth_enabled
+          ? '<span class="setting-on">Yes</span>'
+          : '<span class="setting-off">No, anyone can reach the console</span>',
+        'Sign-in is required as soon as one account exists'),
+      settingItemRaw('Accounts',
+        `<span class="${accounts > 0 ? 'setting-on' : 'setting-off'}">${accounts}</span>`,
+        'Manage them on the Users page'),
+      ...(sec.legacy_admin_key ? [settingItemRaw('WebUi:AdminApiKey',
+        '<span class="setting-off">Still set</span>',
+        'Only used to seed the first account. Remove it once you can sign in.')] : []),
       boolItem('HTTPS', sec.https_enabled),
       boolItem('Secure Cookies', sec.secure_cookies, 'Enable WebUi:SecureCookies when serving over HTTPS'),
       boolItem('CSRF Protection', sec.csrf_protection),
       settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
       settingItem('Public UI Origins', sec.public_origins_count ?? 0),
-      settingItem('DB Maintenance', dbm.enabled
-        ? (dbm.last_run_utc ? `Last run ${new Date(dbm.last_run_utc).toLocaleString()}` : `Scheduled ${dbm.schedule}`)
-        : 'Disabled', 'Nightly SQLite ANALYZE and conditional VACUUM'),
     ].join('');
+
+    document.getElementById('maintenanceBody').innerHTML = [
+      switchRow('DatabaseMaintenance:Enabled', 'Enabled', dbm.enabled, 'Nightly SQLite ANALYZE and conditional VACUUM'),
+      timeRow('DatabaseMaintenance:Schedule', 'Run at', dbm.schedule, 'Server local time, 24-hour clock'),
+      settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet'),
+    ].join('') + cardFooter('maintenanceBody');
 
     document.getElementById('rateLimitBody').innerHTML = [
-      boolItem('Enabled', rl.enabled),
-      settingItem('Store',       rl.store ?? 'Memory'),
-      settingItem('IP Limit',    rl.ip_limit    != null ? `${rl.ip_limit} req / ${rl.ip_window_seconds}s`       : '—'),
-      settingItem('Token Limit', rl.token_limit != null ? `${rl.token_limit} req / ${rl.token_window_seconds}s` : '—'),
-    ].join('');
+      switchRow('RateLimiting:Enabled', 'Enabled', rl.enabled),
+      settingItem('Store', rl.store ?? 'Memory', 'Memory or Redis, chosen at startup'),
+      numberRow('RateLimiting:IpLimit',      'Requests per IP',    rl.ip_limit,           'Requests allowed from one address per window'),
+      numberRow('RateLimiting:IpWindow',     'IP window',          rl.ip_window_seconds,  'Length of the window in seconds', 's'),
+      numberRow('RateLimiting:TokenLimit',   'Requests per token', rl.token_limit,        'Default for tokens without their own limit'),
+      numberRow('RateLimiting:TokenWindow',  'Token window',       rl.token_window_seconds, 'Length of the window in seconds', 's'),
+    ].join('') + cardFooter('rateLimitBody');
 
     document.getElementById('cachingBody').innerHTML = [
-      boolItem('Enabled', c.enabled),
-      settingItem('Provider',         c.provider                 ?? '—'),
-      settingItem('Default Duration', c.default_duration_seconds != null ? `${c.default_duration_seconds}s` : '—'),
-      settingItem('Memory Budget',    c.max_size_mb              != null ? `${c.max_size_mb} MB`             : '—'),
-    ].join('');
+      switchRow('Caching:Enabled', 'Enabled', c.enabled),
+      settingItem('Provider', c.provider ?? '—', 'Memory or Redis, chosen at startup'),
+      numberRow('Caching:DefaultCacheDurationSeconds', 'Default duration', c.default_duration_seconds, 'How long a cached response stays fresh, in seconds', 's'),
+      numberRow('Caching:MemoryCacheSizeLimitMB',      'Memory budget',    c.max_size_mb,              'Upper bound for the in-memory cache', ' MB'),
+    ].join('') + cardFooter('cachingBody');
 
     document.getElementById('sqlBody').innerHTML = [
-      boolItem('Enabled', sql.enabled),
-      settingItem('Pool Size',           sql.min_pool_size        != null ? `${sql.min_pool_size} – ${sql.max_pool_size}` : '—'),
-      settingItem('Connection Timeout',  sql.connection_timeout   != null ? `${sql.connection_timeout}s`                  : '—'),
-      settingItem('Command Timeout',     sql.command_timeout      != null ? `${sql.command_timeout}s`                     : '—'),
-    ].join('');
+      switchRow('SqlConnectionPooling:Enabled', 'Enabled', sql.enabled),
+      numberRow('SqlConnectionPooling:MinPoolSize',       'Minimum pool size',  sql.min_pool_size,      'Connections kept open per connection string'),
+      numberRow('SqlConnectionPooling:MaxPoolSize',       'Maximum pool size',  sql.max_pool_size,      'Upper bound before requests queue'),
+      numberRow('SqlConnectionPooling:ConnectionTimeout', 'Connection timeout', sql.connection_timeout, 'Seconds to wait when opening a connection', 's'),
+      numberRow('SqlConnectionPooling:CommandTimeout',    'Command timeout',    sql.command_timeout,    'Seconds to wait for a statement to finish', 's'),
+    ].join('') + cardFooter('sqlBody');
 
     document.getElementById('fileBody').innerHTML = [
       settingItem('Storage Directory', f.directory        || '—'),
@@ -412,14 +433,14 @@ async function load() {
     ].join('');
 
     document.getElementById('loggingBody').innerHTML = [
-      settingItem('Minimum Level', log.min_level              ?? '—'),
-      settingItem('Sinks',         (log.sinks ?? []).join(', ') || '—'),
-    ].join('');
+      choiceRow('Serilog:MinimumLevel:Default', 'Minimum level', log.min_level, 'Events below this level are not written'),
+      settingItem('Sinks', (log.sinks ?? []).join(', ') || '—', 'Configured in appsettings.json'),
+    ].join('') + cardFooter('loggingBody');
 
     document.getElementById('reloadBody').innerHTML = [
-      boolItem('Enabled',  ep.enabled),
-      settingItem('Debounce', ep.debounce_ms != null ? `${ep.debounce_ms}ms` : '—'),
-    ].join('');
+      switchRow('EndpointReloading:Enabled', 'Enabled', ep.enabled, 'Watch endpoints and environments for edits'),
+      numberRow('EndpointReloading:DebounceMs', 'Debounce', ep.debounce_ms, 'Milliseconds to wait after a change before reloading', 'ms'),
+    ].join('') + cardFooter('reloadBody');
 
     const telActive = tel.provider && tel.provider !== 'None';
     document.getElementById('telemetryBody').innerHTML = [
@@ -434,17 +455,19 @@ async function load() {
     ].join('');
 
     document.getElementById('mcpBody').innerHTML = [
-      boolItem('Enabled',              m.enabled),
-      settingItem('Path',              m.path  ?? '—'),
-      boolItem('Require Auth',         m.require_authentication),
-      boolItem('MCP Apps (UI)',        m.apps_enabled),
-      settingItem('MCP Apps Path',     m.apps_path ?? '—'),
-    ].join('');
+      switchRow('Mcp:Enabled',               'Enabled',       m.enabled),
+      settingItem('Path', m.path ?? '—', 'Changing the route needs an edit to appsettings.json'),
+      switchRow('Mcp:RequireAuthentication', 'Require a token', m.require_authentication, 'Reject MCP calls that carry no bearer token'),
+      switchRow('Mcp:AppsEnabled',           'MCP apps',      m.apps_enabled, 'Serve the resource UI at /mcp/apps'),
+      switchRow('Mcp:ChatEnabled',           'Chat',          d.chat?.enabled ?? false, 'Enable the chat console'),
+      settingItem('MCP Apps Path', m.apps_path ?? '—'),
+    ].join('') + cardFooter('mcpBody');
 
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody'].forEach(id => {
-      document.getElementById(id).innerHTML = msg;
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = msg;
     });
   }
 
@@ -456,7 +479,7 @@ async function load() {
 async function loadAudit() {
   const el = document.getElementById('auditBody');
   try {
-    const d = await fetch('/ui/api/audit?limit=15').then(r => r.json());
+    const d = await api('/ui/api/audit?limit=15', { silent: true });
     const entries = d.entries ?? [];
     if (!entries.length) {
       el.innerHTML = '<span class="muted" style="font-size:0.8rem">No configuration changes recorded yet</span>';
@@ -480,17 +503,20 @@ async function loadAudit() {
   }
 }
 
-async function restoreChange(id) {
-  if (!confirm('Restore the configuration file to its state before this change? The current state is backed up first.')) return;
+function restoreChange(id) {
+  AlertDialog.show({
+    title: 'Restore this configuration?',
+    description: 'The file returns to its state before this change. The current state is backed up first.',
+    actionLabel: 'Restore',
+    onConfirm: () => doRestoreChange(id)
+  });
+}
+
+async function doRestoreChange(id) {
   try {
-    const r = await fetch(`/ui/api/audit/${id}/restore`, { method: 'POST' });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Restore failed');
-    if (typeof showToast === 'function') showToast('Configuration restored', 'success');
+    await api(`/ui/api/audit/${id}/restore`, { method: 'POST', success: 'Configuration restored', failure: 'Restore failed' });
     loadAudit();
-  } catch(e) {
-    if (typeof showToast === 'function') showToast(e.message, 'error'); else alert(e.message);
-  }
+  } catch(e) {}
 }
 
 load();
@@ -502,7 +528,7 @@ async function loadAiConfig() {
   const aiBody    = document.getElementById('aiBody');
   const aiActions = document.getElementById('aiProviderActions');
   try {
-    const cfg = await fetch('/ui/api/mcp/config').then(r => r.json());
+    const cfg = await api('/ui/api/mcp/config', { silent: true });
 
     if (!cfg.configured) {
       aiBody.innerHTML = `<div class="settings-item">
@@ -606,26 +632,26 @@ function _aiWizardStep2() {
     size: 'small',
     content: `
       <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
-      <div class="dialog-field">
-        <label for="wiz-model">Model</label>
+      <div class="field">
+        <label class="field-label" for="wiz-model">Model</label>
         <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
       </div>
-      <div class="dialog-field" style="margin-top:1rem;">
-        <label for="wiz-key">API Key <span style="color:hsl(var(--destructive))">*</span></label>
+      <div class="field" style="margin-top:1rem;">
+        <label class="field-label" for="wiz-key">API Key <span style="color:hsl(var(--destructive))">*</span></label>
         <div style="position:relative;display:flex;align-items:center;">
           <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;" placeholder="Paste your ${esc(p.label)} API key..." autocomplete="off" spellcheck="false" />
           <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <div class="dialog-field-hint">Your keys are safely encrypted.</div>
+        <div class="field-help">Your keys are safely encrypted.</div>
       </div>
       <details class="wizard-details">
         <summary>Internal API token <span style="color:hsl(var(--muted-foreground));font-weight:400;">(optional)</span></summary>
-        <div class="dialog-field" style="margin-top:0.75rem;">
-          <label for="wiz-token">Portway Bearer Token</label>
+        <div class="field" style="margin-top:0.75rem;">
+          <label class="field-label" for="wiz-token">Portway Bearer Token</label>
           <input id="wiz-token" type="password" class="input" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
-          <div class="dialog-field-hint">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
+          <div class="field-help">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
         </div>
       </details>
       <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
@@ -659,21 +685,16 @@ async function _aiWizardSave() {
   btn.textContent = 'Saving...';
 
   try {
-    const res = await fetch('/ui/api/mcp/config', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
+    await api('/ui/api/mcp/config', {
+      method: 'POST',
+      body: {
         provider:         _wizardProvider.id,
         model:            model || _wizardProvider.model,
         apiKey:           apiKey,
         internalApiToken: token
-      })
+      },
+      silent: true
     });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body?.error ?? `HTTP ${res.status}`);
-    }
 
     Dialog.close('ai-setup');
     await loadAiConfig();
@@ -699,13 +720,9 @@ function confirmClearAiConfig() {
 
 async function clearAiConfig() {
   try {
-    const res = await fetch('/ui/api/mcp/config', { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await api('/ui/api/mcp/config', { method: 'DELETE', success: 'AI provider configuration cleared.', failure: 'Failed to clear configuration' });
     await loadAiConfig();
-    toast('AI provider configuration cleared.', 'success');
-  } catch(e) {
-    toast('Failed to clear: ' + e.message, 'error');
-  }
+  } catch(e) {}
 }
 
 loadAiConfig();
@@ -714,7 +731,7 @@ loadAiConfig();
 function showSettingsSection(key) {
   document.querySelectorAll('.settings-section').forEach(el =>
     el.classList.toggle('active', el.id === 'section-' + key));
-  document.querySelectorAll('.settings-subnav-item').forEach(el =>
+  document.querySelectorAll('.nav-child').forEach(el =>
     el.classList.toggle('active', el.dataset.section === key));
   if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
 }
@@ -723,4 +740,9 @@ function showSettingsSection(key) {
   const key = (location.hash || '').replace('#', '');
   if (key && document.getElementById('section-' + key)) showSettingsSection(key);
 })();
+
+window.addEventListener('hashchange', () => {
+  const key = (location.hash || '').replace('#', '');
+  if (key && document.getElementById('section-' + key)) showSettingsSection(key);
+});
 </script>

@@ -5,23 +5,29 @@ description: "Browser-based interface for monitoring endpoints, managing tokens,
 
 # Web UI
 
-When you'd rather click through your gateway than query it, the Web UI gives you a browser view of your endpoints, tokens, logs, and settings. It stays disabled until you set `WebUi__AdminApiKey`; without that setting, `/ui` is simply not served.
+When you'd rather click through your gateway than query it, the Web UI gives you a browser view of your endpoints, tokens, logs, and settings. Sign-in uses an account. Until one exists, `/ui` is served without asking for anything, and a warning says so at startup.
 
 ## Configuration
 
-The three settings you need to get started are the admin key, the permitted origins and the cookie policy. The complete `WebUi` property reference, including the landing page and login page customisation options, lives in [Application settings](/reference/app-settings#web-ui-configuration).
+The two settings you need to get started are the permitted origins and the cookie policy. The complete `WebUi` property reference, including the landing page and login page customisation options, lives in [Application settings](/reference/app-settings#web-ui-configuration).
 
 ```yaml
 environment:
-  - WebUi__AdminApiKey=your-secure-password
   - WebUi__PublicOrigins__0=https://example.com
   - WebUi__SecureCookies=true
 ```
 
-Once configured, access the UI at `http://localhost:8080/ui` and log in with the admin key.
+Access the UI at `http://localhost:8080/ui` and sign in with a username and password.
 
-::: warning Admin key handling
-Set the admin key via the `WebUi__AdminApiKey` environment variable or Azure Key Vault, never in `appsettings.json`, because that file is not covered by Portway's automatic encryption. The shipped placeholder value is rejected in production (authentication stays disabled until replaced). Use a random key of 32+ characters; see [Security → Web UI admin key](/guide/security#web-ui-admin-key).
+The first account comes from `WebUi__AdminApiKey` if you already have one set: on the first start it becomes the account `admin`, with the key as its password. Create the rest on the **Users** page, or from the shell:
+
+```bash
+portway accounts create <username> <password>
+portway accounts password <username> <new-password>
+```
+
+::: warning Losing access
+If nobody can sign in, reset a password with `portway accounts password`, run from the directory Portway runs in. See [Security → Recovering an account](/guide/security#recovering-an-account).
 :::
 
 ## Pages
@@ -32,6 +38,7 @@ Set the admin key via the `WebUi__AdminApiKey` environment variable or Azure Key
 | **Endpoints** | All configured endpoints grouped by type |
 | **Environments** | Allowed environments and server names |
 | **Tokens** | Create, revoke, rotate, and audit access tokens |
+| **Users** | Accounts that can sign in, their roles and status |
 | **Settings** | Rate limiting, caching, SQL pooling, logging configuration |
 | **Logs** | Paginated application log viewer |
 
@@ -44,6 +51,12 @@ GET    /ui/api/overview
 GET    /ui/api/endpoints
 GET    /ui/api/environments
 GET    /ui/api/settings
+PUT    /ui/api/settings
+GET    /ui/api/users
+GET    /ui/api/users/me
+POST   /ui/api/users
+PUT    /ui/api/users/{id}
+DELETE /ui/api/users/{id}
 GET    /ui/api/tokens
 POST   /ui/api/tokens
 PUT    /ui/api/tokens/{id}
@@ -54,11 +67,13 @@ GET    /ui/api/logs
 GET    /ui/api/events
 ```
 
-All `/ui/api/*` endpoints require the `portway_auth` session cookie (set at login) or the `Authorization: Bearer {adminApiKey}` header.
+All `/ui/api/*` endpoints require the `portway_auth` session cookie, set at sign-in.
+
+`PUT /ui/api/settings` takes a flat object of configuration keys and applies them together, or none of them. Only a fixed list of keys is writable; anything else is refused by name. Changes are written to `appsettings.overrides.json`, layered over `appsettings.json` so that file stays yours. The response says whether a restart is needed.
 
 ## Security
 
-Session cookies are HMAC-SHA256 signed with a 12-hour expiry. By default, the UI is accessible only from the local network. Set `WebUi__PublicOrigins` to allow access from external origins and enable `WebUi__SecureCookies` for HTTPS-only deployments.
+Session cookies are HMAC-SHA256 signed with a 12-hour expiry, using `portway.key` next to `auth.db`. Deleting that file signs everyone out. By default, the UI is accessible only from the local network. Set `WebUi__PublicOrigins` to allow access from external origins and enable `WebUi__SecureCookies` for HTTPS-only deployments.
 
 All mutating UI API calls (POST/PUT/PATCH/DELETE) are protected by a CSRF double-submit check: the `portway_csrf` cookie issued at login must be echoed in the `X-CSRF-Token` header. The bundled pages handle this automatically; external automation must send the header itself.
 
