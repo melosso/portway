@@ -31,56 +31,40 @@ fetch \
     "$VENDOR_DIR/scalar-api-reference.js"
 echo "   Saved to: wwwroot/js/vendor/scalar-api-reference.js"
 
-# Inter font (Google Fonts / gstatic)
+# Onest font (Google Fonts / gstatic)
 echo ""
-echo "[Inter font]"
+echo "[Onest font]"
 
 # Fetch the CSS from Google Fonts (Chrome UA to get woff2 + variable-font ranges)
 FONTS_CSS="$(curl -fsSL \
     -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36" \
-    "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap")"
+    "https://fonts.googleapis.com/css2?family=Onest:wght@400..700&display=swap")"
 
-# Parse out the version tag (e.g. v20) from one of the URLs
-INTER_VERSION="$(echo "$FONTS_CSS" \
-    | grep -oP 'gstatic\.com/s/inter/\K[^/]+' \
+# Parse out the version tag (e.g. v6) from one of the URLs
+ONEST_VERSION="$(echo "$FONTS_CSS" \
+    | grep -oP 'gstatic\.com/s/onest/\K[^/]+' \
     | head -1)"
-echo "   Latest: Inter ${INTER_VERSION}"
+echo "   Latest: Onest ${ONEST_VERSION}"
 
-# Extract unique woff2 URLs and their unicode-range blocks, download each file
-# Map subset comment → local filename
-declare -A SUBSET_MAP=(
-    ["cyrillic-ext"]="inter-cyrillic-ext.woff2"
-    ["cyrillic"]="inter-cyrillic.woff2"
-    ["greek-ext"]="inter-greek-ext.woff2"
-    ["greek"]="inter-greek.woff2"
-    ["vietnamese"]="inter-vietnamese.woff2"
-    ["latin-ext"]="inter-latin-ext.woff2"
-    ["latin"]="inter-latin.woff2"
-)
+# Onest ships latin and latin-ext only; the @font-face blocks live at the top of site.css
+SUBSETS=("latin-ext" "latin")
 
-# Build a temporary file for the new inter.css
 TMP_CSS="$(mktemp)"
-cat > "$TMP_CSS" <<CSS
-/* Inter ${INTER_VERSION}, self-hosted, variable font (weights 400/700) */
 
-CSS
+for subset in "${SUBSETS[@]}"; do
+    filename="onest-${subset}.woff2"
 
-# Process each subset, find unique urls per subset name (first occurrence per subset)
-for subset in "cyrillic-ext" "cyrillic" "greek-ext" "greek" "vietnamese" "latin-ext" "latin"; do
-    filename="${SUBSET_MAP[$subset]}"
-
-    # Extract the woff2 URL for this subset (pick one, all weights share the same file)
     url="$(echo "$FONTS_CSS" \
         | grep -A6 "/\* $subset \*/" \
         | grep -oP 'https://[^\)]+\.woff2' \
         | head -1)"
 
     if [ -z "$url" ]; then
-        echo "   WARN: no URL found for subset '$subset', skipping"
-        continue
+        echo "   ERROR: no URL found for subset '$subset'"
+        rm -f "$TMP_CSS"
+        exit 1
     fi
 
-    # Extract the unicode-range for this subset (first occurrence)
     unicode_range="$(echo "$FONTS_CSS" \
         | grep -A8 "/\* $subset \*/" \
         | grep "unicode-range" \
@@ -90,26 +74,36 @@ for subset in "cyrillic-ext" "cyrillic" "greek-ext" "greek" "vietnamese" "latin-
 
     fetch "$url" "$FONTS_DIR/$filename"
 
-    # Append @font-face block for this subset
     cat >> "$TMP_CSS" <<CSS
-/* $subset */
 @font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400 700;
-  font-display: swap;
-  src: url('/fonts/$filename') format('woff2');
-  $unicode_range;
+    font-family: 'Onest';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('../fonts/$filename') format('woff2');
+    $unicode_range;
 }
+
 CSS
 done
 
-# Replace inter.css
-mv "$TMP_CSS" "$CSS_DIR/inter.css"
-echo "   Updated: wwwroot/css/inter.css"
+# Splice the generated blocks in ahead of the first :root, leaving the rest of site.css untouched
+SITE_CSS="$CSS_DIR/site.css"
+if ! grep -q '^:root {' "$SITE_CSS"; then
+    echo "   ERROR: no ':root {' anchor in site.css, refusing to rewrite it"
+    rm -f "$TMP_CSS"
+    exit 1
+fi
+
+TMP_SITE="$(mktemp)"
+cat "$TMP_CSS" > "$TMP_SITE"
+sed -n '/^:root {/,$p' "$SITE_CSS" >> "$TMP_SITE"
+mv "$TMP_SITE" "$SITE_CSS"
+rm -f "$TMP_CSS"
+echo "   Updated: wwwroot/css/site.css (@font-face blocks)"
 
 # Done
 echo ""
 echo "Done. Vendor assets are up to date."
 echo "  Scalar : $SCALAR_VERSION  → wwwroot/js/vendor/scalar-api-reference.js"
-echo "  Inter  : ${INTER_VERSION}       → wwwroot/fonts/ + wwwroot/css/inter.css"
+echo "  Onest  : ${ONEST_VERSION}       → wwwroot/fonts/ + wwwroot/css/site.css"
