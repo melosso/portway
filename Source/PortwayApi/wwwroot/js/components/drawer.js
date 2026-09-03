@@ -51,12 +51,19 @@
     this._dirtyState[drawerId] = false;
   },
 
-  close: function(drawerId, force = false) {
-    // Warn before closing with unsaved changes
+  close: async function(drawerId, force = false) {
     if (!force && this._dirtyState[drawerId]) {
-      if (!window.confirm('You have unsaved changes. Close without saving?')) {
-        return;
-      }
+      const discard = await new Promise(resolve => {
+        AlertDialog.show({
+          title: 'Discard unsaved changes?',
+          description: 'This drawer has changes that have not been saved.',
+          actionLabel: 'Discard changes',
+          variant: 'destructive',
+          onConfirm: () => resolve(true),
+          onCancel: () => resolve(false)
+        });
+      });
+      if (!discard) return false;
     }
 
     const backdrop = this._findBackdrop(drawerId);
@@ -77,6 +84,7 @@
     if (this._closeCallbacks[drawerId]) {
       this._closeCallbacks[drawerId]();
     }
+    return true;
   },
 
     toggle: function(drawerId) {

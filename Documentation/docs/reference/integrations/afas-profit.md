@@ -95,8 +95,6 @@ Routing AFAS through Portway does useful work at every layer:
 
 ## Things to keep in mind
 
-A few properties of the pattern are worth knowing before you build on it:
-
 - Filtering and paging use AFAS parameters (`skip`, `take`, `filterfieldids`, `filtervalues`, `operatortypes`), not OData.
 - The endpoint exposes whatever fields the connector definition in AFAS exposes. Field curation happens in AFAS, not in Portway.
 - App connector tokens are powerful. Scope the connector in AFAS to the minimum set of Get and UpdateConnectors the integration needs.

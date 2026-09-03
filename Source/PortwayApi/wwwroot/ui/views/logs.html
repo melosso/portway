@@ -1,10 +1,12 @@
 <main>
   <div class="page-header">
     <div class="page-title">
-      <h1 class="select-none">Logs</h1>
-      <span class="page-subtitle" id="fileLabel"></span>
+      <div class="page-heading">
+        <h1 class="select-none">Logs</h1>
+        <p class="page-sub" id="fileLabel"></p>
+      </div>
     </div>
-    <div class="header-actions">
+    <div class="page-actions">
       <button class="btn btn-outline" id="autoRefreshBtn" onclick="toggleAutoRefresh()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Auto-refresh
@@ -25,7 +27,7 @@
       <button class="log-level-btn" id="btn-DBG" onclick="setLevel('DBG')">DBG</button>
     </div>
     <div class="log-divider"></div>
-    <select id="limitSelect" onchange="resetAndLoad()">
+    <select id="limitSelect" class="input input-sm" onchange="resetAndLoad()">
       <option value="100">100 lines</option>
       <option value="200" selected>200 lines</option>
       <option value="500">500 lines</option>
@@ -83,7 +85,7 @@ async function load(append = false) {
   if (activeLevel && activeLevel !== 'ALL') params.set('level', activeLevel);
 
   try {
-    const d = await fetch(`/ui/api/logs?${params}`).then(r => r.json());
+    const d = await api(`/ui/api/logs?${params}`, { failure: 'Failed to load logs' });
     document.getElementById('fileLabel').textContent = d.file ?? '';
     
     const newLogs = d.lines ?? [];

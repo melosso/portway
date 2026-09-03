@@ -158,8 +158,6 @@ Portway automatically rewrites Globe+ URLs in responses to maintain proxy routin
 - Original: `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')`
 - Rewritten: `https://api.company.com/api/500/Account(guid'123')`
 
-This ensures that related links in responses continue to work through the proxy.
-
 ## Transaction management
 
 ### TransactionKey handling
@@ -178,8 +176,6 @@ Composite endpoints ensure atomicity:
 - Detailed error information is provided for troubleshooting
 
 ## Troubleshooting
-
-Most Globe+ issues fall into one of these categories:
 
 | Symptom | Check |
 |---------|-------|

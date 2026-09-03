@@ -26,3 +26,5 @@ Documentation/package-lock.json
 # Hidden directories except .github
 .*/
 !.github/
+appsettings.overrides.json
+portway.key

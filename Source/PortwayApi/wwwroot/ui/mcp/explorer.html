@@ -4,13 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MCP · Portway</title>
-  <link href="css/inter.css" rel="stylesheet">
   <link href="css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script src="js/components/toast.js"></script>
   <script src="js/components/promobar.js"></script>
-  <script src="js/sidebar.js"></script>
   <script src="js/shared.js"></script>
+  <script src="js/sidebar.js"></script>
 </head>
 <body>
 
@@ -23,7 +22,7 @@
     </div>
   </div>
 
-  <div class="page-body">
+  <div class="main-content">
     <div class="card" style="margin-bottom: 1.5rem;">
       <div class="card-header">
         <span class="card-title">How MCP works</span>
@@ -73,7 +72,7 @@ function boolItem(label, value, desc) {
 
 async function load() {
   try {
-    const settings = await fetch('/ui/api/settings').then(r => r.json());
+    const settings = await api('/ui/api/settings', { failure: 'Failed to load MCP settings' });
     const mcp  = settings.mcp  || {};
     const chat = settings.chat || {};
 
@@ -84,7 +83,7 @@ async function load() {
       banner.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
         '<span>Chat is enabled but not configured. <a href="/ui/mcp/chat">Open Chat</a> to complete setup.</span>';
-      document.querySelector('.page-body').prepend(banner);
+      document.querySelector('.main-content').prepend(banner);
     }
 
     document.getElementById('mcpConfig').innerHTML = [
@@ -95,8 +94,8 @@ async function load() {
     ].join('');
 
     const [endpointsRes, toolsRes] = await Promise.all([
-      fetch('/ui/api/endpoints').then(r => r.json()),
-      fetch('/ui/api/mcp/tools').then(r => r.json()).catch(() => ({}))
+      api('/ui/api/endpoints', { silent: true }),
+      api('/ui/api/mcp/tools', { silent: true }).catch(() => ({}))
     ]);
     // Build a Set of "Namespace/Name" keys that have no SQL field metadata
     const missingMetadataKeys = new Set(toolsRes.missingMetadata ?? []);

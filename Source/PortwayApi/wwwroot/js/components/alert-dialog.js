@@ -80,7 +80,12 @@
       `;
 
       // Event listeners
-      document.getElementById('alertDialogCancel')?.addEventListener('click', this.hide);
+      document.getElementById('alertDialogCancel')?.addEventListener('click', () => {
+        if (_currentCancelCallback) {
+          _currentCancelCallback();
+        }
+        this.hide();
+      });
       document.getElementById('alertDialogAction')?.addEventListener('click', () => {
         if (_currentConfirmCallback) {
           _currentConfirmCallback();

@@ -29,7 +29,6 @@ public static partial class WebUiEndpointExtensions
     /// <summary>Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...</summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
     {
-        var uiAuthEnabled = !string.IsNullOrEmpty(adminApiKey);
         var publicOrigins = app.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
 
         app.Use(async (context, next) =>
@@ -62,18 +61,23 @@ public static partial class WebUiEndpointExtensions
                 }
             }
 
-            // Cookie auth check, skip for the login page and the auth endpoints themselves
-            if (uiAuthEnabled &&
+            // Read per request: accounts are seeded after this middleware is registered
+            if (WebUiAuthState.Enabled &&
                 !path.StartsWithSegments("/ui/login") &&
                 !path.StartsWithSegments("/ui/api/auth") &&
                 !path.StartsWithSegments("/ui/api/customization"))
             {
-                if (!context.Request.Cookies.TryGetValue(CookieName, out var cookie) ||
-                    !ValidateToken(cookie, adminApiKey))
+                var userId = context.Request.Cookies.TryGetValue(CookieName, out var cookie)
+                    ? WebUiAuthHelper.ResolveSession(cookie)
+                    : null;
+
+                if (userId is null)
                 {
                     context.Response.Redirect($"{context.Request.PathBase}/ui/login");
                     return;
                 }
+
+                context.Items[SignedInUserKey] = userId.Value;
 
                 // CSRF double-submit check on mutating UI API calls; client-error is sendBeacon and cannot set headers
                 if (path.StartsWithSegments("/ui/api") &&
@@ -92,6 +96,23 @@ public static partial class WebUiEndpointExtensions
                         await context.Response.WriteAsJsonAsync(new { error = "CSRF token missing or invalid" });
                         return;
                     }
+
+                    // Viewers read the console and manage their own sign-in; every other write is administrator-only.
+                    // Read per request rather than from the cookie so a demoted account loses access at once.
+                    if (!IsSelfServiceWrite(path))
+                    {
+                        var accounts = context.RequestServices.GetRequiredService<AdminUserService>();
+                        var account = await accounts.FindByIdAsync(userId.Value);
+                        if (account is null || !account.IsActive || account.Role != AdminUserRoles.Administrator)
+                        {
+                            Log.Warning("Console account {UserId} was refused {Method} {Path}: administrator role required",
+                                userId.Value, context.Request.Method, path.Value);
+                            context.Response.StatusCode = 403;
+                            context.Response.ContentType = "application/json";
+                            await context.Response.WriteAsJsonAsync(new { error = "This action needs an administrator account" });
+                            return;
+                        }
+                    }
                 }
             }
 
@@ -99,6 +120,17 @@ public static partial class WebUiEndpointExtensions
         });
 
         return app;
+    }
+
+    /// <summary>Writes any signed-in account may make about itself, so the viewer role stays usable</summary>
+    private static bool IsSelfServiceWrite(PathString path)
+    {
+        if (path.StartsWithSegments("/ui/api/client-error")) return true;
+        if (path.StartsWithSegments("/ui/api/oidc/link")) return true;
+
+        // Binding this account to a provider: /ui/api/oidc/providers/{slug}/link
+        return path.StartsWithSegments("/ui/api/oidc/providers")
+            && (path.Value ?? "").EndsWith("/link", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Returns true if the request's effective origin matches any of the configured PublicOrigins patterns. Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com"</summary>
@@ -129,7 +161,6 @@ public static partial class WebUiEndpointExtensions
     /// <summary>Maps all /ui/* page routes and /ui/api/* data endpoints</summary>
     public static WebApplication MapWebUiEndpoints(this WebApplication app, string adminApiKey)
     {
-        var uiAuthEnabled = !string.IsNullOrEmpty(adminApiKey);
         var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ui");
         var appVersion = typeof(WebUiEndpointExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
@@ -142,10 +173,12 @@ public static partial class WebUiEndpointExtensions
         var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
         
 
-        MapPageAndAuthRoutes(app, adminApiKey, uiAuthEnabled, wwwroot, appVersion, secureCookies);
+        MapPageAndAuthRoutes(app, adminApiKey, wwwroot, appVersion, secureCookies);
         MapInfoRoutes(app, appVersion);
         MapEnvironmentRoutes(app, configAudit);
         MapSettingsRoutes(app, configAudit);
+        MapUserRoutes(app, configAudit);
+        MapOidcRoutes(app, configAudit, secureCookies);
         MapAuditRoutes(app, configAudit);
         MapTokenRoutes(app);
         MapRateLimitRoutes(app);
@@ -156,13 +189,32 @@ public static partial class WebUiEndpointExtensions
         return app;
     }
 
-    private static string GenerateToken(string adminApiKey)
+    private static string GenerateToken(int userId)
+        => WebUiAuthHelper.IssueSessionCookie(userId, TokenExpiryHours);
+
+    /// <summary>The signed session, plus the CSRF cookie the pages echo back in X-CSRF-Token</summary>
+    internal static void IssueSessionCookies(HttpContext context, int userId, bool secureCookies)
     {
-        var expiry     = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours).ToUnixTimeSeconds().ToString();
-        var signingKey = SHA256.HashData(Encoding.UTF8.GetBytes(adminApiKey));
-        using var hmac = new HMACSHA256(signingKey);
-        var sig        = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(expiry)));
-        return $"{expiry}.{sig}";
+        var expires = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours);
+
+        context.Response.Cookies.Append(CookieName, GenerateToken(userId), new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secureCookies,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = expires
+        });
+
+        // Readable by page JS, so a fetch can echo it; that is the point of a double-submit check
+        context.Response.Cookies.Append(CsrfCookieName, Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)), new CookieOptions
+        {
+            HttpOnly = false,
+            Secure = secureCookies,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = expires
+        });
     }
 
     private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
@@ -220,8 +272,7 @@ public static partial class WebUiEndpointExtensions
         _           => null
     };
 
-    private static bool ValidateToken(string token, string adminApiKey)
-        => WebUiAuthHelper.IsValidSessionCookie(token, adminApiKey);
+    internal const string SignedInUserKey = "portway.user";
 
     /// <summary>Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing</summary>
     private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)
@@ -252,7 +303,7 @@ public static partial class WebUiEndpointExtensions
             {
                 var footerHtml = ParseMarkdownToHtml(footerMd);
                 html = html.Replace("<!-- LOGIN_FOOTER_PLACEHOLDER -->",
-                    $"<div class=\"auth-footer\">{footerHtml}</div>");
+                    $"<div class=\"signin-footer\">{footerHtml}</div>");
             }
         }
 

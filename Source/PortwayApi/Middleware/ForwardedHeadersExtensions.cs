@@ -38,12 +38,18 @@ public static class ForwardedHeadersExtensions
             if (System.Net.IPNetwork.TryParse(network, out var net))
                 forwardedHeadersOptions.KnownIPNetworks.Add(net);
 
+        // ForwardedHeadersMiddleware only compares the peer against the trusted lists when at least one
+        // entry exists: with both empty it skips the check and applies X-Forwarded-For from anyone, letting
+        // any client pick its own RemoteIpAddress. Leaving it unregistered is what actually ignores the header.
         if (forwardedHeadersOptions.KnownProxies.Count == 0 && forwardedHeadersOptions.KnownIPNetworks.Count == 0)
-            Log.Warning("ForwardedHeaders: no trusted proxies configured; X-Forwarded-For is ignored. Behind a reverse proxy, client IPs will be the proxy IP, which weakens per-IP rate limiting and the Web UI network gate. Set ForwardedHeaders:KnownProxies to fix.");
+        {
+            Log.Warning("ForwardedHeaders: no trusted proxies configured, so X-Forwarded-For is ignored and RemoteIpAddress stays the TCP peer. Behind a reverse proxy every client will look like the proxy, which blurs per-IP rate limiting, the login lockout and the Web UI network gate. Set ForwardedHeaders:KnownProxies to the proxy's address.");
+        }
         else
+        {
             Log.Information("ForwardedHeaders: trusting {ProxyCount} proxy IP(s) and {NetworkCount} network(s) for X-Forwarded-For", forwardedHeadersOptions.KnownProxies.Count, forwardedHeadersOptions.KnownIPNetworks.Count);
-
-        app.UseForwardedHeaders(forwardedHeadersOptions);
+            app.UseForwardedHeaders(forwardedHeadersOptions);
+        }
 
         // Trust CF-Connecting-IP / CF-Visitor only when the TCP connection originates from a real Cloudflare IP; CF-Ray alone is not sufficient
         app.Use((context, next) =>

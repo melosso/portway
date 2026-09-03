@@ -5,7 +5,7 @@ description: "A practical guide for diagnosing and resolving issues with Portway
 
 # Troubleshooting
 
-This guide covers the issues you are most likely to hit in production: what each error means, where to look, and how to resolve it.
+The issues you are most likely to hit in production, and how to resolve them.
 
 ## Common issues
 
@@ -471,12 +471,11 @@ ss -tlnp | grep -E ':(80|443|8080)\b'
 
 ## Understanding error messages
 
-### Common error codes and what they really mean
+### Error codes
 
-| Status Code | Error Message | What's Actually Happening | How to Fix It |
-|------------|---------------|---------------------------|---------------|
+| Status | Message | Cause | Fix |
+|---|---|---|---|
 | `400` | "Environment '{env}' is not allowed" | The environment specified in your URL path isn't configured as valid for this endpoint | Check the allowed environments list in your endpoint's `settings.json` file |
-| `401` | "Authentication required" | Your request doesn't include a valid Authorization header with a Bearer token | Add the proper Authorization header to your request |
 | `403` | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update the token's scopes in the Web UI under **Tokens** |
 | `404` | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
 | `429` | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
@@ -586,23 +585,13 @@ After a reset, watch the application logs as it starts and test a few endpoints 
 
 ## Keeping it healthy
 
-### Proactive monitoring and maintenance
-
 - **Disk space.** Alert below 20% free and clear old logs on a schedule. Traffic logging generates substantial volume.
 - **Health endpoints.** Automate checks against `/health` plus a few real endpoints. The [Telemetry](/guide/opentelemetry) guide covers feeding gateway metrics into an existing monitoring stack.
 - **Backend connectivity.** Verify SQL and proxy targets after network changes or server maintenance.
-- **Configuration changes.** Record what changed and why, which shortens the next investigation that follows a config update.
-- **Token rotation.** Rotate periodically and revoke tokens that are no longer in use.
-
-### Security considerations
-
-- **Keep detailed errors away from external clients.** The gateway returns generic errors to clients and logs the detail internally, which is worth keeping that way.
-- **Monitor failed authentication attempts.** Repeated failures from one IP indicate either a misconfigured integration or a probe.
-- **Secure your diagnostic tools.** The queries and logs that help you troubleshoot also expose sensitive data, so restrict access to them.
 
 ## Related topics
 
-- **[Monitoring Guide](/guide/monitoring)** - Set up monitoring and alerting for your gateway
-- **[Security Guide](/guide/security)** - Security practices and threat monitoring
-- **[Deployment Guide](/guide/deployment)** - Deploying and configuring your gateway
-- **[API Endpoints Guide](/guide/endpoints-sql)** - Configuring and managing your API endpoints
+- [Monitoring Guide](/guide/monitoring)
+- [Security Guide](/guide/security)
+- [Deployment Guide](/guide/deployment)
+- [API Endpoints Guide](/guide/endpoints-sql)

@@ -580,63 +580,16 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 
 ## Troubleshooting
 
-### Common issues
-
-1. **Endpoint Not Found**
-   - Verify file location: `/endpoints/[Type]/[EntityName]/entity.json`
-   - Check JSON syntax
-   - Ensure file permissions
-
-2. **Method Not Allowed**
-   - Check `AllowedMethods` array
-   - Verify method name spelling
-   - Consider environment restrictions
-
-3. **Environment Access Denied**
-   - Verify `AllowedEnvironments` includes target environment
-   - Check environment name spelling
-   - Ensure environment is configured in settings
-
-4. **Composite Step Failures**
-   - Verify endpoint names match exactly
-   - Check step dependencies
-   - Validate transformation syntax
-   - Review step order
-
-5. **File Upload Failures**
-   - Check file extension against `AllowedExtensions`
-   - Verify file size is within limits
-   - Ensure base directory exists and is writable
-   - Check disk space availability
-
-6. **File Download Issues**
-   - Validate file ID format
-   - Check file existence in storage
-   - Verify environment matches upload environment
-   - Ensure permissions on storage location
-
-### Validation checklist
-
-- [ ] Valid JSON syntax
-- [ ] Required properties present
-- [ ] Endpoint names match folder names
-- [ ] URLs are accessible
-- [ ] Methods are properly capitalized
-- [ ] Environment names match configuration
-- [ ] Column names match database schema
-- [ ] Stored procedure exists in database
-- [ ] File extensions in correct format (e.g., ".pdf" not "pdf")
-- [ ] Storage directories exist and are writable
+See the [troubleshooting guide](/guide/troubleshooting) for endpoint, environment, and file operation failures.
 
 ## Server configuration options
-
 
 Endpoint files describe individual endpoints. The server-wide settings they depend on live elsewhere: file storage limits and blocked extensions in [Application settings](/reference/app-settings#file-storage-configuration), and the allowed environment list in [Environment settings](/reference/environment-settings#global-settings).
 
 ## Related topics
 
-- [Environment Settings](/reference/environment-settings) - Environment configuration
-- [API Overview](/reference/) - API endpoint patterns
-- [SQL Endpoints](/guide/endpoints-sql) - SQL endpoint guide
-- [Composite Endpoints](/guide/endpoints-composite) - Composite endpoint guide
-- [File Operations](/guide/endpoints-file) - File handling guide
+- [Environment Settings](/reference/environment-settings)
+- [API Overview](/reference/)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Composite Endpoints](/guide/endpoints-composite)
+- [File Operations](/guide/endpoints-file)
