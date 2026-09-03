@@ -105,8 +105,6 @@ Beyond solving the authentication handoff, the gateway earns its place in the ch
 
 ## Things to keep in mind
 
-A few properties of the proxy pattern are worth knowing before you build on it:
-
 - Query syntax is Teable's own, not OData. OData translation applies to [SQL endpoints](/guide/endpoints-sql) only.
 - Proxy endpoints expose the table's full field surface; there is no column allowlisting.
 - Teable stores its data in Postgres. A [SQL endpoint](/guide/endpoints-sql) against that database gives you curated, OData-queryable read access. Writes through that route bypass Teable's field logic and permissions, so keep it to reporting.

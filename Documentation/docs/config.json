@@ -112,6 +112,10 @@
             "path": "guide/webui"
           },
           {
+            "title": "Single sign-on",
+            "path": "guide/sso"
+          },
+          {
             "title": "Security",
             "path": "guide/security"
           },

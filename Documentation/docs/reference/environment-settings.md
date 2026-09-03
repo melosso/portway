@@ -152,7 +152,6 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 
 ## Connection string configuration
 
-
 The `ConnectionString` value determines both the target database and the SQL driver Portway uses. No additional property is needed, the provider is detected automatically from the connection string itself.
 
 ```json
@@ -189,33 +188,11 @@ The network access policy in `network-access-policy.json` prevents Server-Side R
 
 ## Troubleshooting
 
-### Common issues
-
-1. **Environment Not Found**
-   - Check environment name in `AllowedEnvironments`
-   - Verify folder structure: `/environments/[name]/settings.json`
-   - Ensure correct file permissions
-
-2. **Database Connection Failed**
-   - Test connection string with SQL tools
-   - Verify server name and database
-   - Check firewall rules
-   - Validate credentials
-
-3. **Headers Not Applied**
-   - Confirm headers in environment settings
-   - Check for typos in header names
-   - Verify environment is selected correctly
-
-4. **Network Access Denied**
-   - Review allowed hosts list
-   - Check if IP is in blocked ranges
-   - Validate DNS resolution
-   - Test with diagnostic tools
+See the [troubleshooting guide](/guide/troubleshooting).
 
 ## Related topics
 
-- [Entity Configuration](/reference/entity-config) - Endpoint configuration
-- [Security Guide](/guide/security) - Security best practices
-- [Deployment Guide](/guide/deployment) - Production deployment
-- [Application Settings](/reference/app-settings) - Application configuration
+- [Entity Configuration](/reference/entity-config)
+- [Security Guide](/guide/security)
+- [Deployment Guide](/guide/deployment)
+- [Application Settings](/reference/app-settings)

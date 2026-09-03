@@ -141,11 +141,7 @@ Portway automatically rewrites Synergy URLs in responses to maintain proxy routi
 - Original: `http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account(guid'12345')`
 - Rewritten: `https://api.company.com/api/Synergy/Account(guid'12345')`
 
-This ensures that related links in responses continue to work through the proxy.
-
 ## Troubleshooting
-
-Most Synergy issues fall into one of these categories:
 
 | Symptom | Check |
 |---------|-------|

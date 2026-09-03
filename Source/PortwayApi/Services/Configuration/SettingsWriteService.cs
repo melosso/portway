@@ -1,5 +1,6 @@
 namespace PortwayApi.Services.Configuration;
 
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -66,6 +67,25 @@ public sealed class SettingsWriteService
             ["Mcp:ChatEnabled"]                         = new("Mcp:ChatEnabled", "bool", true),
 
             ["WebUi:SecureCookies"]                     = new("WebUi:SecureCookies", "bool", true),
+            ["WebUi:Customization:EnableLandingPage"]   = new("WebUi:Customization:EnableLandingPage", "bool", true),
+            ["WebUi:Customization:PromoText"]           = new("WebUi:Customization:PromoText", "text", false, Max: 2_000),
+            ["WebUi:Customization:PromoLogin"]          = new("WebUi:Customization:PromoLogin", "bool", false),
+            ["WebUi:Customization:LoginFooter"]         = new("WebUi:Customization:LoginFooter", "text", false, Max: 2_000),
+
+            ["Oidc:Enabled"]                            = new("Oidc:Enabled", "bool", false),
+            ["OpenApi:Enabled"]                         = new("OpenApi:Enabled", "bool", true),
+            ["RequestTrafficLogging:Enabled"]           = new("RequestTrafficLogging:Enabled", "bool", true),
+
+            ["FileStorage:MaxFileSizeBytes"]            = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
+
+            // Deployment shape. These decide who reaches the console and whose IP is believed, so the
+            // endpoint additionally refuses a change that would lock the caller out of the console.
+            ["WebUi:PublicOrigins"]                     = new("WebUi:PublicOrigins", "originlist", true, Max: 50),
+            ["ForwardedHeaders:KnownProxies"]           = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
+            ["ForwardedHeaders:KnownNetworks"]          = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
+
+            // Write-only in the safe direction: the seeding key can be cleared, never set
+            ["WebUi:AdminApiKey"]                       = new("WebUi:AdminApiKey", "clear", true),
         };
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);
@@ -149,12 +169,97 @@ public sealed class SettingsWriteService
             ? (JsonValue.Create(spec.Choices!.First(c => c.Equals(raw.GetString(), StringComparison.OrdinalIgnoreCase))), null)
             : (null, $"'{spec.Key}' must be one of {string.Join(", ", spec.Choices!)}"),
 
+        // Free text bounded by Max; null clears the override back to whatever appsettings.json declares
+        "text" => ReadText(spec, raw),
+
+        "iplist"     => ReadList(spec, raw, ParseIp),
+        "cidrlist"   => ReadList(spec, raw, ParseNetwork),
+        "originlist" => ReadList(spec, raw, ParseOrigin),
+
+        // Only ever accepts the empty string: a credential may be removed here, never introduced
+        "clear" => raw.ValueKind == JsonValueKind.String && raw.GetString() == ""
+            ? (JsonValue.Create(""), null)
+            : (null, $"'{spec.Key}' can only be cleared from here, not set"),
+
         "time" => raw.ValueKind == JsonValueKind.String && ScheduleFormat.IsMatch(raw.GetString() ?? "")
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be a 24-hour time such as 03:00"),
 
         _ => (null, $"'{spec.Key}' has no validator"),
     };
+
+    /// <summary>Reads a JSON array of strings, running every entry through the kind's own parser</summary>
+    private static (JsonNode? Node, string? Error) ReadList(
+        WritableSetting spec, JsonElement raw, Func<string, string?> validate)
+    {
+        if (raw.ValueKind != JsonValueKind.Array)
+            return (null, $"'{spec.Key}' expects a list");
+
+        var items = new JsonArray();
+        foreach (var element in raw.EnumerateArray())
+        {
+            if (element.ValueKind != JsonValueKind.String)
+                return (null, $"'{spec.Key}' expects a list of text entries");
+
+            var value = (element.GetString() ?? "").Trim();
+            if (value.Length == 0) continue;
+
+            if (validate(value) is { } problem)
+                return (null, problem);
+
+            items.Add(JsonValue.Create(value));
+        }
+
+        if (spec.Max is { } max && items.Count > max)
+            return (null, $"'{spec.Key}' allows at most {max:0} entries");
+
+        return (items, null);
+    }
+
+    private static string? ParseIp(string value) =>
+        IPAddress.TryParse(value, out _) ? null : $"'{value}' is not an IP address";
+
+    private static string? ParseNetwork(string value)
+    {
+        if (!IPNetwork.TryParse(value, out var network))
+            return $"'{value}' is not a network in CIDR form, such as 10.0.0.0/8";
+
+        // A zero-length prefix trusts every address on the internet to forge its own client IP.
+        // ponytail: only the catastrophic case is refused; a needlessly wide private range is the operator's call
+        if (network.PrefixLength == 0)
+            return $"'{value}' covers every address; name the proxy's network instead";
+
+        return null;
+    }
+
+    private static string? ParseOrigin(string value)
+    {
+        if (!value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return $"'{value}' must start with http:// or https://";
+
+        var host = value.Split("//", 2)[1].TrimEnd('/');
+        if (host.Length == 0 || host.Contains('/'))
+            return $"'{value}' must be a scheme and host only, such as https://portway.example.com";
+
+        // A bare wildcard would match every host the pattern's suffix allows nothing to narrow
+        if (host is "*" || host.StartsWith("*.") && host.Count(c => c == '.') < 2)
+            return $"'{value}' is too broad; a wildcard needs a registrable domain, such as https://*.example.com";
+
+        return null;
+    }
+
+    private static (JsonNode? Node, string? Error) ReadText(WritableSetting spec, JsonElement raw)
+    {
+        if (raw.ValueKind == JsonValueKind.Null) return (null, null);
+        if (raw.ValueKind != JsonValueKind.String)
+            return (null, $"'{spec.Key}' expects text");
+
+        var value = raw.GetString() ?? "";
+        if (spec.Max is { } max && value.Length > max)
+            return (null, $"'{spec.Key}' must be {max:0} characters or fewer");
+        return (JsonValue.Create(value), null);
+    }
 
     private static (JsonNode? Node, string? Error) ReadInt(WritableSetting spec, JsonElement raw)
     {

@@ -96,6 +96,23 @@ public static partial class WebUiEndpointExtensions
                         await context.Response.WriteAsJsonAsync(new { error = "CSRF token missing or invalid" });
                         return;
                     }
+
+                    // Viewers read the console and manage their own sign-in; every other write is administrator-only.
+                    // Read per request rather than from the cookie so a demoted account loses access at once.
+                    if (!IsSelfServiceWrite(path))
+                    {
+                        var accounts = context.RequestServices.GetRequiredService<AdminUserService>();
+                        var account = await accounts.FindByIdAsync(userId.Value);
+                        if (account is null || !account.IsActive || account.Role != AdminUserRoles.Administrator)
+                        {
+                            Log.Warning("Console account {UserId} was refused {Method} {Path}: administrator role required",
+                                userId.Value, context.Request.Method, path.Value);
+                            context.Response.StatusCode = 403;
+                            context.Response.ContentType = "application/json";
+                            await context.Response.WriteAsJsonAsync(new { error = "This action needs an administrator account" });
+                            return;
+                        }
+                    }
                 }
             }
 
@@ -103,6 +120,17 @@ public static partial class WebUiEndpointExtensions
         });
 
         return app;
+    }
+
+    /// <summary>Writes any signed-in account may make about itself, so the viewer role stays usable</summary>
+    private static bool IsSelfServiceWrite(PathString path)
+    {
+        if (path.StartsWithSegments("/ui/api/client-error")) return true;
+        if (path.StartsWithSegments("/ui/api/oidc/link")) return true;
+
+        // Binding this account to a provider: /ui/api/oidc/providers/{slug}/link
+        return path.StartsWithSegments("/ui/api/oidc/providers")
+            && (path.Value ?? "").EndsWith("/link", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Returns true if the request's effective origin matches any of the configured PublicOrigins patterns. Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com"</summary>

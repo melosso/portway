@@ -126,8 +126,6 @@ NAV/BC specific error responses are preserved and forwarded:
 
 ## Notes
 
-A few NAV/BC specifics that save debugging time:
-
 - NAV/BC OData field names use underscores (e.g., `Sell_to_Customer_No`). Use these exact names in `$filter` and `$select` expressions.
 - The `Company` header value needs to be URL-encoded (e.g., `CRONUS%20International%20Ltd.`).
 - Test against a NAV/BC test company before connecting to production.

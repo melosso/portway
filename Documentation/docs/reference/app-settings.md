@@ -98,7 +98,6 @@ Serilog owns the effective level, so this is the setting that changes what reach
 
 ## OpenAPI configuration
 
-
 The `OpenApi` section controls the generated API documentation and the Scalar UI that renders it.
 
 ```json
@@ -114,7 +113,6 @@ The `OpenApi` section controls the generated API documentation and the Scalar UI
 Every property, including the contact block, security definition and the full set of Scalar display options, is listed in [OpenAPI settings](/reference/openapi-settings).
 
 ## Rate limiting configuration
-
 
 The `RateLimiting` section sets the per-IP and per-token request budgets.
 
@@ -159,7 +157,9 @@ When Portway runs directly on Kestrel, the client IP it sees is the one connecti
 
 Portway only honors `X-Forwarded-For` when the request arrives from an address you have listed here, which keeps clients from spoofing their own IP. You can register individual proxy addresses in `KnownProxies`, describe a whole range in `KnownNetworks`, or combine both when your setup calls for it. A common starting point for a proxy sharing the host with Portway is `127.0.0.1` and `::1`.
 
-Leaving both lists empty is perfectly valid, and it is the default. In that case `X-Forwarded-For` is ignored entirely and the connecting address is used as-is. That is the safe choice when nothing sits in front of Portway, though behind a proxy it means per-IP rate limiting and the network-based Web UI gate will see the proxy rather than the real caller. If you rely on either of those, registering your proxy here is recommended.
+Leaving both lists empty is perfectly valid, and it is the default. In that case `X-Forwarded-For` is ignored entirely and the connecting address is used as-is. That is the safe choice when nothing sits in front of Portway, though behind a proxy it means per-IP rate limiting, the console sign-in lockout, and the network-based Web UI gate will all see the proxy rather than the real caller. If you rely on any of those, registering your proxy here is recommended.
+
+The Web UI shows which of the two applies. Open **Settings → Security** and read the **Client addresses** row: it gives the client address Portway saw for your request, and warns when a forwarded address arrived with no proxy trusted to send it. Add the proxy from **Deployment & Access** on the same page.
 
 ::: Note
 If you front Portway with Cloudflare, its client IP is recovered separately from the `CF-Connecting-IP` header when the request genuinely originates from a Cloudflare address, so you do not need to list Cloudflare ranges here.
@@ -168,7 +168,6 @@ If you front Portway with Cloudflare, its client IP is recovered separately from
 The Settings posture panel in the Web UI reflects whether any trusted proxies are configured, which is a quick way to confirm the setup took effect.
 
 ## Request traffic logging
-
 
 The `RequestTrafficLogging` section records every proxied request to file or SQLite. It stays off until you enable it.
 
@@ -212,7 +211,6 @@ The full property reference, the stored record shape and retention behaviour liv
 | `Enabled` | boolean | `true` | Enable connection pooling |
 
 ## Caching configuration
-
 
 The `Caching` section controls response caching for proxy and SQL endpoints, backed by memory or Redis.
 
@@ -314,7 +312,6 @@ The `Otlp` provider pushes traces and metrics to a collector over gRPC; the `Pro
 
 ## MCP configuration
 
-
 The `Mcp` section exposes endpoints as Model Context Protocol tools.
 
 ```json
@@ -376,8 +373,8 @@ The built-in admin interface settings.
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `AdminApiKey` | string | `""` | Password for web UI login (empty = disabled) |
-| `PublicOrigins` | array | `[]` | Allowed CORS origins for external access |
+| `AdminApiKey` | string | `""` | Seeds the first console account on a fresh install. Not used for sign-in afterwards |
+| `PublicOrigins` | array | `[]` | Origins allowed to reach `/ui` from outside the local network. Not a CORS setting: see `CorsOrigins` for that |
 | `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies |
 | `Customization.EnableLandingPage` | boolean | `true` | Show the landing page at `/` for local/allowed clients. Set to `false` to redirect all root requests straight to `/docs` (useful for production systems where the UI should not be discoverable). |
 | `Customization.PromoText` | string | `""` | Markdown banner shown at the top of the login page |
@@ -386,8 +383,9 @@ The built-in admin interface settings.
 
 ### Security
 
-- Without `AdminApiKey`, the web UI is disabled
+- Portway asks for a sign-in as soon as one console account exists. `AdminApiKey` only creates that first account, so you can clear it once you can sign in
 - Without `PublicOrigins`, only local network IPs can access the UI
+- `PublicOrigins` is matched against the request's `Origin` header, which any client can set. It widens who can reach the sign-in page; it does not authenticate anyone. Keep the console behind your proxy, VPN, or firewall when it should not be public
 - Cookie auth uses HMAC-SHA256 signing
 - Set `Customization.EnableLandingPage` to `false` on internet-facing or production deployments to prevent the admin UI from being surfaced at the root path
 
@@ -466,6 +464,22 @@ These are two separate controls, and it helps to keep them apart.
 
 Browser cross-origin access is governed by `WebUi:CorsOrigins` instead, which is an explicit allowlist of origins. [Web UI settings](/reference/webui) covers it along with `PublicOrigins`, which controls who may reach the admin interface from outside the local network.
 
+### Turning features off
+
+Each of these turns off one subsystem and leaves its configuration in place:
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Oidc:Enabled` | boolean | `true` | Every single sign-on provider at once. Off hides them all on the sign-in page and refuses the start and callback routes, including providers whose own flag is set |
+| `OpenApi:Enabled` | boolean | `true` | The specification and the reference at `/docs` |
+| `Mcp:Enabled` | boolean | `true` | The MCP server |
+| `RequestTrafficLogging:Enabled` | boolean | `false` | Recording of proxied requests |
+| `WebUi:Customization:EnableLandingPage` | boolean | `true` | The public page at the root path |
+
+Portway reads `Oidc:Enabled` on each request, so a change applies without a restart and the provider records stay as they are. [Single sign-on](/guide/sso) covers the providers.
+
+Set any of these from **Settings → Security → Feature Toggles** in the console, or in `appsettings.json`.
+
 ## Environment variables
 
 ### Common variables
@@ -482,8 +496,10 @@ Browser cross-origin access is governed by `WebUi:CorsOrigins` instead, which is
 | `AllowedHosts` | Allowed host names | `*` |
 | `PathBase` | Base path | `/api` |
 | `Mcp__ChatEnabled` | Override `Mcp:ChatEnabled` at runtime | `true` |
-| `WebUi__AdminApiKey` | Web UI password | `secret` |
-| `WebUi__PublicOrigins__0` | CORS origin (array) | `https://example.com` |
+| `WebUi__AdminApiKey` | Seeds the first console account | `secret` |
+| `WebUi__PublicOrigins__0` | Origin allowed to reach `/ui` (array) | `https://example.com` |
+| `Oidc__Enabled` | Turn single sign-on off | `false` |
+| `ForwardedHeaders__KnownProxies__0` | Trusted reverse proxy (array) | `127.0.0.1` |
 | `WebUi__SecureCookies` | Secure cookies | `true` |
 | `WebUi__Customization__EnableLandingPage` | Show landing page at root | `false` |
 
@@ -499,28 +515,6 @@ Browser cross-origin access is governed by `WebUi:CorsOrigins` instead, which is
 4. Default values
 
 ## Troubleshooting configuration
-
-### Common issues
-
-1. **Application Won't Start**
-   - Check JSON syntax in appsettings files
-   - Verify required environment variables
-   - Review startup logs
-
-2. **Database Connection Failures**
-   - Verify connection strings
-   - Check SQL Server availability
-   - Review firewall settings
-
-3. **Rate Limiting Too Restrictive**
-   - Adjust IpLimit and TokenLimit
-   - Increase time windows
-   - Monitor traffic patterns
-
-4. **Logging Not Working**
-   - Check log file permissions
-   - Verify log directory exists
-   - Review LogLevel settings
 
 ### Configuration debugging
 
@@ -560,7 +554,7 @@ The `appsettings.json` that ships with Portway is the working reference: it carr
 
 ## Related topics
 
-- [Environment Settings](/reference/environment-settings) - Environment-specific configuration
-- [Security Guide](/guide/security) - Security configuration
-- [Deployment Guide](/guide/deployment) - Production deployment
-- [Logging](/reference/logging) - Logging configuration
+- [Environment Settings](/reference/environment-settings)
+- [Security Guide](/guide/security)
+- [Deployment Guide](/guide/deployment)
+- [Logging](/reference/logging)

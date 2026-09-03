@@ -68,9 +68,20 @@
     max-width: 46rem;
   }
 
+  /* Markdown fields need the full card width, not the 22rem control column */
+  .setting-row-stacked { grid-template-columns: minmax(0, 1fr); }
+  .setting-row-stacked textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 3.5rem;
+    font-family: inherit;
+    line-height: 1.5;
+  }
+
   /* Setting value variants */
-  .setting-on  { color: hsl(var(--success)); font-weight: 600; }
-  .setting-off { color: hsl(var(--muted-foreground)); }
+  .setting-on   { color: hsl(var(--success)); font-weight: 600; }
+  .setting-off  { color: hsl(var(--muted-foreground)); }
+  .setting-warn { color: hsl(var(--warning, var(--destructive))); font-weight: 600; }
 
   /* AI Provider card */
   .card-featured .ai-clear-row {
@@ -108,6 +119,33 @@
             <h2 class="card-title">Security Posture</h2>
           </div>
           <div class="card-body" id="securityBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Deployment &amp; Access</h2>
+          </div>
+          <div class="card-body" id="deploymentBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Feature Toggles</h2>
+          </div>
+          <div class="card-body" id="featuresBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Console Customization</h2>
+          </div>
+          <div class="card-body" id="customizationBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
           </div>
         </div>
@@ -260,6 +298,14 @@ function settingItemRaw(label, valueHtml, desc) {
   </div>`;
 }
 
+// A posture row that reads as a verdict: green when correct, amber when it needs attention
+function riskItem(label, ok, okText, badText, desc) {
+  return settingItemRaw(label,
+    ok ? `<span class="setting-on">${esc(okText)}</span>`
+       : `<span class="setting-warn">${esc(badText)}</span>`,
+    desc);
+}
+
 function boolItem(label, value, desc) {
   const html = value
     ? '<span class="setting-on">Enabled</span>'
@@ -316,11 +362,52 @@ function timeRow(key, label, value, desc) {
   </div>`;
 }
 
+function textRow(key, label, value, desc, placeholder) {
+  const spec = _writable[key];
+  if (!spec) return settingItem(label, value || '—', desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
+  return `<div class="setting-row setting-row-stacked">
+    ${labelBlock(label, desc, id)}
+    <textarea class="input" rows="2" id="${id}" data-setting="${key}" data-kind="text"${max} placeholder="${esc(placeholder ?? '')}">${esc(value ?? '')}</textarea>
+  </div>`;
+}
+
+function listRow(key, label, values, desc, placeholder) {
+  const spec = _writable[key];
+  const shown = (values ?? []).join('\n');
+  if (!spec) return settingItem(label, (values ?? []).join(', ') || 'None', desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  return `<div class="setting-row setting-row-stacked">
+    ${labelBlock(label, desc, id)}
+    <textarea class="input" rows="3" id="${id}" data-setting="${key}" data-kind="list" spellcheck="false" placeholder="${esc(placeholder ?? '')}">${esc(shown)}</textarea>
+  </div>`;
+}
+
 function cardFooter(bodyId) {
   return `<div class="card-footer">
     <span class="restart-note" id="${bodyId}-note"></span>
     <button class="btn btn-primary" onclick="saveCard('${bodyId}', this)">Save</button>
   </div>`;
+}
+
+// Clears the seeding key. Only the empty value is accepted server side, so this cannot set a secret.
+function clearAdminKey() {
+  AlertDialog.show({
+    title:       'Remove the seeding key?',
+    description: 'WebUi:AdminApiKey only ever created the first account. Accounts and active sessions are unaffected.',
+    actionLabel: 'Remove',
+    variant:     'destructive',
+    onConfirm:   async () => {
+      try {
+        await api('/ui/api/settings', {
+          method: 'PUT', body: { 'WebUi:AdminApiKey': '' },
+          success: 'Seeding key removed', failure: 'Failed to remove the key'
+        });
+        await load();
+      } catch(e) {}
+    }
+  });
 }
 
 // Collects the editable controls in one card and sends them as a single request
@@ -333,6 +420,7 @@ async function saveCard(bodyId, btn) {
     el.classList.remove('input-invalid');
     if (el.dataset.kind === 'bool') changes[key] = el.checked;
     else if (el.dataset.kind === 'int') changes[key] = Number(el.value);
+    else if (el.dataset.kind === 'list') changes[key] = el.value.split('\n').map(v => v.trim()).filter(Boolean);
     else changes[key] = el.value;
   });
   if (!Object.keys(changes).length) return;
@@ -375,6 +463,8 @@ async function load() {
     const tel = d.telemetry          ?? {};
     const m   = d.mcp                ?? {};
     const sec = d.security           ?? {};
+    const feat = d.features          ?? {};
+    const cus  = d.customization     ?? {};
     const dbm = d.database_maintenance ?? {};
 
     const accounts = sec.admin_accounts ?? 0;
@@ -387,15 +477,58 @@ async function load() {
       settingItemRaw('Accounts',
         `<span class="${accounts > 0 ? 'setting-on' : 'setting-off'}">${accounts}</span>`,
         'Manage them on the Users page'),
-      ...(sec.legacy_admin_key ? [settingItemRaw('WebUi:AdminApiKey',
-        '<span class="setting-off">Still set</span>',
-        'Only used to seed the first account. Remove it once you can sign in.')] : []),
-      boolItem('HTTPS', sec.https_enabled),
-      boolItem('Secure Cookies', sec.secure_cookies, 'Enable WebUi:SecureCookies when serving over HTTPS'),
+      riskItem('Client addresses', !sec.forwarded_ignored,
+        sec.client_ip || 'Direct', 'Seeing the proxy, not the client',
+        sec.forwarded_ignored
+          ? `Requests arrive through a proxy but none is trusted, so every client looks like ${sec.client_ip || 'one address'}. The console gate, per-IP rate limits and the login lockout all key on this. Add the proxy below.`
+          : `The address this request was judged by${sec.behind_proxy ? ', taken from the trusted proxy chain' : ''}`),
+      riskItem('Console reach', !sec.console_public,
+        'Local network only', 'Reachable from configured origins',
+        sec.console_public
+          ? 'Public origins are matched on the Origin header, which any client can set. Treat this as exposure of the sign-in page, not as access control.'
+          : 'Only loopback and local addresses reach /ui'),
+      riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
+        'HSTS is only sent over HTTPS, and depends on a trusted proxy forwarding the scheme'),
+      riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
+        sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
+        'The session cookie is a bearer credential; mark it Secure whenever there is TLS'),
       boolItem('CSRF Protection', sec.csrf_protection),
-      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
-      settingItem('Public UI Origins', sec.public_origins_count ?? 0),
+      boolItem('Administrator-only writes', true, 'Viewer accounts can read the console and manage their own sign-in, nothing else'),
+      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0, 'Configured in appsettings.json'),
     ].join('');
+
+    const dep = d.deployment ?? {};
+    document.getElementById('deploymentBody').innerHTML = [
+      listRow('ForwardedHeaders:KnownProxies', 'Trusted proxies', dep.known_proxies,
+        'One IP per line. Only these are believed when they forward a client address.',
+        sec.behind_proxy && sec.client_ip ? sec.client_ip : '10.0.0.8'),
+      listRow('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', dep.known_networks,
+        'One CIDR range per line, for a proxy whose address is not fixed', '172.18.0.0/16'),
+      listRow('WebUi:PublicOrigins', 'Public console origins', dep.public_origins,
+        'One origin per line. Empty keeps /ui on the local network. Matched on the Origin header, so this widens reach rather than authenticating it.',
+        'https://portway.example.com'),
+      ...(sec.legacy_admin_key ? [settingItemRaw('Seeding key',
+        '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
+        'WebUi:AdminApiKey only ever seeded the first account. Remove it once you can sign in.')] : []),
+    ].join('') + cardFooter('deploymentBody');
+
+    document.getElementById('featuresBody').innerHTML = [
+      switchRow('Oidc:Enabled', 'Single sign-on', feat.oidc,
+        feat.oidc_providers ? `${feat.oidc_providers} provider(s) enabled; off hides them all and refuses every callback`
+                            : 'No providers configured yet; off refuses every callback'),
+      switchRow('OpenApi:Enabled', 'OpenAPI specification', feat.openapi, 'Serves the spec and the reference at /docs'),
+      switchRow('RequestTrafficLogging:Enabled', 'Request traffic logging', feat.traffic_logging, 'Records proxied requests to file or SQLite'),
+      switchRow('WebUi:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serve the public page at the root path'),
+      switchRow('Mcp:Enabled', 'MCP server', d.mcp?.enabled ?? false, 'Also configurable under Integrations'),
+    ].join('') + cardFooter('featuresBody');
+
+    document.getElementById('customizationBody').innerHTML = [
+      textRow('WebUi:Customization:PromoText', 'Promo banner', cus.promo_text,
+        'Shown across the console. Supports **bold**, *italic* and [links](https://example.com)', 'Leave empty to hide the banner'),
+      switchRow('WebUi:Customization:PromoLogin', 'Show on sign-in', cus.promo_login, 'The banner is visible before anyone signs in'),
+      textRow('WebUi:Customization:LoginFooter', 'Sign-in footer', cus.login_footer,
+        'Markdown under the sign-in form, usually a contact address', 'Contact your [administrator](mailto:...)'),
+    ].join('') + cardFooter('customizationBody');
 
     document.getElementById('maintenanceBody').innerHTML = [
       switchRow('DatabaseMaintenance:Enabled', 'Enabled', dbm.enabled, 'Nightly SQLite ANALYZE and conditional VACUUM'),
@@ -429,8 +562,8 @@ async function load() {
 
     document.getElementById('fileBody').innerHTML = [
       settingItem('Storage Directory', f.directory        || '—'),
-      settingItem('Max File Size',     f.max_file_size_mb != null ? `${f.max_file_size_mb} MB` : '—'),
-    ].join('');
+      numberRow('FileStorage:MaxFileSizeBytes', 'Max file size', f.max_file_size_bytes, 'Largest upload accepted, in bytes', ' bytes'),
+    ].join('') + cardFooter('fileBody');
 
     document.getElementById('loggingBody').innerHTML = [
       choiceRow('Serilog:MinimumLevel:Default', 'Minimum level', log.min_level, 'Events below this level are not written'),
@@ -465,7 +598,7 @@ async function load() {
 
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody'].forEach(id => {
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','featuresBody','customizationBody','deploymentBody'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = msg;
     });

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
 using PortwayApi.Helpers;
@@ -19,8 +20,10 @@ public static partial class WebUiEndpointExtensions
             => configAudit.Record(action, "oidc-provider", target, ctx.Connection.RemoteIpAddress?.ToString(), details, null);
 
         // The sign-in page paints its buttons from this and hides the block when there are none
-        app.MapGet("/ui/api/auth/providers", async (AuthDbContext db) =>
+        app.MapGet("/ui/api/auth/providers", async (AuthDbContext db, IConfiguration config) =>
         {
+            if (!OidcEnabled(config)) return Results.Json(new { providers = Array.Empty<object>() });
+
             var providers = await db.OidcProviders
                 .Where(p => p.IsEnabled)
                 .OrderBy(p => p.Id)
@@ -30,9 +33,9 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { providers });
         }).ExcludeFromDescription();
 
-        app.MapGet($"{OidcBase}/{{slug}}/start", async (AuthDbContext db, HttpContext ctx, string slug) =>
+        app.MapGet($"{OidcBase}/{{slug}}/start", async (AuthDbContext db, IConfiguration config, HttpContext ctx, string slug) =>
         {
-            var provider = await UsableAsync(db, slug);
+            var provider = await UsableAsync(db, config, slug);
             if (provider is null) return Results.NotFound();
 
             try
@@ -51,7 +54,7 @@ public static partial class WebUiEndpointExtensions
         // The account is fixed here, from a session that is already authenticated, before the redirect
         // is built. What comes back from the provider is written, never matched.
         app.MapPost("/ui/api/oidc/providers/{slug}/link", async (
-            AuthDbContext db, HttpContext ctx, AdminUserService users, string slug) =>
+            AuthDbContext db, IConfiguration config, HttpContext ctx, AdminUserService users, string slug) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me)
                 return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
@@ -60,7 +63,7 @@ public static partial class WebUiEndpointExtensions
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
             catch (JsonException) { return Results.Json(new { error = "Invalid JSON body" }, statusCode: 400); }
 
-            var provider = await UsableAsync(db, slug);
+            var provider = await UsableAsync(db, config, slug);
             if (provider is null) return Results.NotFound();
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -111,7 +114,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         app.MapGet($"{OidcBase}/{{slug}}/callback", async (
-            AuthDbContext db, HttpContext ctx, AdminUserService users, IHttpClientFactory clients,
+            AuthDbContext db, IConfiguration config, HttpContext ctx, AdminUserService users, IHttpClientFactory clients,
             string slug, string? code, string? state, string? error) =>
         {
             // The state is spent here whatever happens next, so a code cannot be presented twice
@@ -121,7 +124,7 @@ public static partial class WebUiEndpointExtensions
             if (!string.IsNullOrEmpty(error) || string.IsNullOrEmpty(code))
                 return Results.Redirect(Back(ctx, OidcFlow.Denied));
 
-            var provider = await UsableAsync(db, slug);
+            var provider = await UsableAsync(db, config, slug);
             if (provider is null || provider.Id != flow.ProviderId)
                 return Results.Redirect(Back(ctx, OidcFlow.Failed));
 
@@ -264,8 +267,13 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
     }
 
-    private static Task<OidcProvider?> UsableAsync(AuthDbContext db, string slug) =>
-        db.OidcProviders.FirstOrDefaultAsync(p => p.Slug == slug && p.IsEnabled);
+    /// <summary>Global kill switch; read per request so flipping it takes effect without a restart</summary>
+    private static bool OidcEnabled(IConfiguration config) => config.GetValue("Oidc:Enabled", true);
+
+    private static Task<OidcProvider?> UsableAsync(AuthDbContext db, IConfiguration config, string slug) =>
+        OidcEnabled(config)
+            ? db.OidcProviders.FirstOrDefaultAsync(p => p.Slug == slug && p.IsEnabled)
+            : Task.FromResult<OidcProvider?>(null);
 
     /// <summary>Back to the sign-in page with a reason the page can show</summary>
     private static string Back(HttpContext ctx, string reason) =>

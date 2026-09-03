@@ -5,10 +5,10 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 # Security
 
-Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go. This page walks through each layer in turn, from authentication down to a pre-deployment checklist you can run before going live.
+Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go.
 
 ::: Note
-This page must be read as a sensible starting point; rather than a policy to follow. It is worth aligning them with your organisation's security policies before exposing Portway to production traffic.
+Treat this page as a starting point rather than a policy. Align it with your organisation's security policies before exposing Portway to production traffic.
 :::
 
 ## Authentication
@@ -101,21 +101,23 @@ Portway adds these headers to all responses automatically:
 | `X-Frame-Options` | `DENY` |
 | `Strict-Transport-Security` | `max-age=31536000` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Content-Security-Policy` | `default-src 'self'; object-src 'none'; ...` |
+| `Content-Security-Policy` | `default-src 'self'; object-src 'none'; frame-ancestors 'none'; ...` |
+
+Console pages at `/ui` add `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy`, both `same-origin`. See [Headers](/reference/headers) for the full set.
 
 ## Secrets management
 
 ### Automatic encryption
 
-Portway encrypts plaintext secrets in `settings.json` files on next startup. Connection strings and authentication values written in plaintext become `PWENC:...` format. The original value is no longer stored.
+Portway encrypts plaintext secrets in `settings.json` files on next startup. Connection strings and authentication values written in plaintext become `PWENC:...` format.
 
 Automatic encryption applies only to per-environment `settings.json` files and the MCP configuration store (`mcp.db`). It does **not** rewrite `appsettings.json`, so values placed there (such as `WebUi:AdminApiKey`) stay in plaintext.
 
 ### Web UI accounts
 
-Signing in to the Web UI uses an account with a username and password, stored in `auth.db`. Passwords are hashed with PBKDF2-SHA256.
+Web UI accounts live in `auth.db`, with passwords hashed using PBKDF2-SHA256.
 
-On the first start with no accounts, an existing `WebUi:AdminApiKey` becomes the account `admin`, with the key as its password, and a warning says so. After that the setting is no longer read for sign-in and can be removed.
+On the first start with no accounts, an existing `WebUi:AdminApiKey` becomes the account `admin`, with the key as its password. After that the setting is no longer read for sign-in and can be removed.
 
 Never store a real admin key in `appsettings.json`. The shipped file intentionally contains the placeholder `INSECURE-CHANGE-ME-admin-api-key`, which Portway rejects in production: no account is seeded from it and an error is logged.
 
@@ -239,6 +241,18 @@ portway accounts create <username> <password> [administrator|viewer]
 
 `promote`, `demote`, `enable`, `disable` and `delete` are available too. Portway refuses any of them that would leave no active administrator.
 
+### Account roles
+
+Accounts are either `administrator` or `viewer`.
+
+An administrator can change anything the console exposes: settings, endpoints, environments, tokens, and other accounts. A viewer can read all of those pages, change its own password, and link or unlink its own [single sign-on](/guide/sso) identity. Every other write returns `403`, including creating accounts, so a viewer cannot promote itself.
+
+Portway reads the role from the database on each write rather than from the session cookie. A demoted account loses write access on its next request, without waiting for its session to expire.
+
+::: warning Accounts created before this behavior existed
+Earlier builds stored the role but did not enforce it, so anything marked `viewer` still had full write access. After upgrading, open the Users page and check the accounts listed there.
+:::
+
 Sessions are signed with `portway.key`, written next to `auth.db` on first use. Deleting that file signs everyone out.
 
 ## Pre-deployment checklist
@@ -246,6 +260,8 @@ Sessions are signed with `portway.key`, written next to `auth.db` on first use. 
 - [ ] HTTPS binding configured in IIS
 - [ ] IIS Application Pool using minimum-privilege identity
 - [ ] Web UI account created with a strong password, and `WebUi__AdminApiKey` removed once it has been migrated
+- [ ] `ForwardedHeaders__KnownProxies` set to your reverse proxy, so per-IP rate limiting, the sign-in lockout, and the Web UI network gate see real client addresses
+- [ ] Account roles reviewed, so anyone who only needs to read the console holds `viewer`
 - [ ] `portway.key` kept with the deployment and excluded from backups that others can read
 - [ ] Azure Key Vault configured (if applicable)
 - [ ] Initial token file removed from disk

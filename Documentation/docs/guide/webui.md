@@ -19,7 +19,7 @@ environment:
 
 Access the UI at `http://localhost:8080/ui` and sign in with a username and password.
 
-The first account comes from `WebUi__AdminApiKey` if you already have one set: on the first start it becomes the account `admin`, with the key as its password. Create the rest on the **Users** page, or from the shell:
+The first account comes from `WebUi__AdminApiKey` if you already have one set: on the first start it becomes the account `admin`, with the key as its password. Once you can sign in, that setting is no longer read, and you can clear it from **Settings → Security → Deployment & Access**. Create the rest on the **Users** page, or from the shell:
 
 ```bash
 portway accounts create <username> <password>
@@ -39,7 +39,7 @@ If nobody can sign in, reset a password with `portway accounts password`, run fr
 | **Environments** | Allowed environments and server names |
 | **Tokens** | Create, revoke, rotate, and audit access tokens |
 | **Users** | Accounts that can sign in, their roles and status |
-| **Settings** | Rate limiting, caching, SQL pooling, logging configuration |
+| **Settings** | Security posture, feature switches, deployment access, rate limiting, caching, SQL pooling, logging |
 | **Logs** | Paginated application log viewer |
 
 ## UI API endpoints
@@ -71,9 +71,19 @@ All `/ui/api/*` endpoints require the `portway_auth` session cookie, set at sign
 
 `PUT /ui/api/settings` takes a flat object of configuration keys and applies them together, or none of them. Only a fixed list of keys is writable; anything else is refused by name. Changes are written to `appsettings.overrides.json`, layered over `appsettings.json` so that file stays yours. The response says whether a restart is needed.
 
+The **Security** section shows how the deployment is reachable: the client address Portway saw for your request, whether it honors forwarded headers, and whether the console is limited to the local network. **Deployment & Access** edits the settings behind those readings: trusted proxies, trusted proxy networks, and public console origins.
+
+Those three settings decide who reaches the console, so Portway tests a change against your own request before storing it, and returns `400` when the new values would exclude you. Add an entry that matches your own address or origin, or edit `appsettings.json` on the server.
+
+The seeding key can be removed here as well. `WebUi:AdminApiKey` accepts only an empty value from the console, which clears it.
+
 ## Security
 
 Session cookies are HMAC-SHA256 signed with a 12-hour expiry, using `portway.key` next to `auth.db`. Deleting that file signs everyone out. By default, the UI is accessible only from the local network. Set `WebUi__PublicOrigins` to allow access from external origins and enable `WebUi__SecureCookies` for HTTPS-only deployments.
+
+Accounts hold either the `administrator` or the `viewer` role. Viewers can read every page, change their own password, and link their own single sign-on identity. Every other write returns `403`. See [Account roles](/guide/security#account-roles).
+
+Accounts can also sign in through an OpenID Connect provider alongside a password. See [Single sign-on](/guide/sso).
 
 All mutating UI API calls (POST/PUT/PATCH/DELETE) are protected by a CSRF double-submit check: the `portway_csrf` cookie issued at login must be echoed in the `X-CSRF-Token` header. The bundled pages handle this automatically; external automation must send the header itself.
 

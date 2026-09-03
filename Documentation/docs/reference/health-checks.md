@@ -340,29 +340,6 @@ startupProbe:
 
 ## Troubleshooting
 
-### Common issues
-
-1. **Health Check Timeouts**
-   ```
-   Symptom: Health checks timing out
-   Cause: Slow database or proxy responses
-   Solution: Increase timeout values or investigate performance
-   ```
-
-2. **Cache Issues**
-   ```
-   Symptom: Stale health data
-   Cause: Cache not expiring properly
-   Solution: Check cache headers and configuration
-   ```
-
-3. **Authentication Failures**
-   ```
-   Symptom: 401 Unauthorized on /health
-   Cause: Missing or invalid token
-   Solution: Provide valid authentication token
-   ```
-
 ### Diagnostic commands
 
 ::: code-group
