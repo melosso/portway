@@ -7,6 +7,8 @@ using System.ComponentModel;
 public sealed record EndpointInfoResult
 {
     public string? Error { get; init; }
+    // pass this to CallEndpoint
+    public string? InvokeName { get; init; }
     public string? Name { get; init; }
     public string? Ns { get; init; }
     public string? Method { get; init; }

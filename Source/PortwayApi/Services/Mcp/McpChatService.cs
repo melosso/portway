@@ -388,7 +388,8 @@ public sealed partial class McpChatService
         }
     }
 
-    private async Task<string> ExecuteToolAsync(
+    // internal, reused by mcp tool call
+    internal async Task<string> ExecuteToolAsync(
         string toolName,
         string inputJson,
         string defaultEnvironment,
@@ -447,7 +448,8 @@ public sealed partial class McpChatService
         {
             // Resolve token: caller-forwarded Bearer > InternalApiToken from encrypted DB config
             string? token = authToken;
-            if (string.IsNullOrWhiteSpace(token))
+            var usedFallbackToken = string.IsNullOrWhiteSpace(token);
+            if (usedFallbackToken)
             {
                 var cfg = await _configService.GetConfigAsync(ct);
                 token = cfg.InternalApiToken;
@@ -467,8 +469,9 @@ public sealed partial class McpChatService
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             sw.Stop();
 
-            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url})",
-                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url);
+            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url}), auth={AuthSource}",
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url,
+                usedFallbackToken ? "internal-fallback" : "caller-token");
 
             if (resp.IsSuccessStatusCode)
             {

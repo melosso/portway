@@ -62,6 +62,26 @@ public class PortwayMcpToolsTests
     }
 
     [Fact]
+    public void ListEndpoints_ShowsNameThatFindByNameAccepts()
+    {
+        var registry = new McpEndpointRegistry();
+        var appsProvider = new McpAppsResourceProvider();
+        PortwayMcpTools.Initialize(registry);
+
+        var endpoints = new[]
+        {
+            new EndpointMcpInfo { Name = "Products", Namespace = "inventory", Url = "/api/500/inventory/Products", Methods = new[] { "GET" } }
+        };
+        registry.RegisterEndpoints(endpoints);
+
+        var invokeName = Assert.Single(registry.ToolsByInvokeName.Keys);
+        var listed = PortwayMcpTools.ListEndpoints();
+
+        Assert.Contains(invokeName, listed, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(registry.FindByName(invokeName));
+    }
+
+    [Fact]
     public void GetEndpointInfo_WithNoEndpoints_ReturnsNotFound()
     {
         var registry = new McpEndpointRegistry();
@@ -113,9 +133,10 @@ public class PortwayMcpToolsTests
         };
         registry.RegisterEndpoints(endpoints);
 
-        var result = PortwayMcpTools.GetEndpointInfo("Products");
+        var result = PortwayMcpTools.GetEndpointInfo("inventory_Products");
 
         Assert.Null(result.Error);
+        Assert.Equal("inventory_Products", result.InvokeName);
         Assert.Equal("Products", result.Name);
         Assert.Equal("inventory", result.Ns);
         Assert.Equal("GET", result.Method);

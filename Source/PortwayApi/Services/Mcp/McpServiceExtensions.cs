@@ -32,7 +32,9 @@ public static class McpServiceExtensions
             });
 
             services.AddMcpServer()
-                .WithHttpTransport();
+                // stateless explicit not implied
+                .WithHttpTransport(o => o.Stateless = true)
+                .WithToolsFromAssembly();
         }
 
         return services;

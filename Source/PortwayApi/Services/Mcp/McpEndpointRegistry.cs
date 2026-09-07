@@ -27,6 +27,9 @@ public class McpEndpointRegistry
     public McpToolDescriptor? FindByName(string sanitizedName) =>
         _toolByName.TryGetValue(sanitizedName, out var t) ? t : null;
 
+    // same map findbyname uses
+    public ImmutableDictionary<string, McpToolDescriptor> ToolsByInvokeName => _toolByName;
+
     public void RegisterEndpoints(IEnumerable<EndpointMcpInfo> endpoints)
     {
         var builder    = ImmutableList.CreateBuilder<McpToolDescriptor>();
