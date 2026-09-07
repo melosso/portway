@@ -5,7 +5,7 @@
   "theme": "default",
   "brand": "Portway",
   "brandImage": "/assets/brand-image.webp",
-  "favicon": "🇵",
+  "favicon": "🌊",
   "lastUpdated": true,
   "promo": "**Coming up!** Version 0.7-preview is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
   "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/hawkinslabdev/bark/).",
