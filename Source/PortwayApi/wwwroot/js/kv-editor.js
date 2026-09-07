@@ -6,8 +6,8 @@
 function buildKvEditor(headers) {
   return Object.entries(headers).map(([k, v]) =>
     `<div class="kv-row">
-      <input type="text" value="${esc(k)}" placeholder="Key" class="kv-key-input" oninput="markDirty()">
-      <input type="text" value="${esc(v)}" placeholder="Value" class="kv-val-input" oninput="markDirty()">
+      <input type="text" value="${esc(k)}" placeholder="Key" class="input kv-key-input" oninput="markDirty()">
+      <input type="text" value="${esc(v)}" placeholder="Value" class="input kv-val-input" oninput="markDirty()">
       <button class="btn-icon" onclick="this.closest('.kv-row').remove(); markDirty();" title="Remove">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -22,8 +22,8 @@ function addKvRow(containerId, options = {}) {
   if (!c) return;
   const row = document.createElement('div');
   row.className = 'kv-row';
-  row.innerHTML = `<input type="text" placeholder="Key" class="kv-key-input" oninput="markDirty()">` +
-    `<input type="text" placeholder="Value" class="kv-val-input" oninput="markDirty()">` +
+  row.innerHTML = `<input type="text" placeholder="Key" class="input kv-key-input" oninput="markDirty()">` +
+    `<input type="text" placeholder="Value" class="input kv-val-input" oninput="markDirty()">` +
     `<button class="btn-icon" onclick="this.closest('.kv-row').remove(); markDirty();">` +
       `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>` +
     `</button>`;

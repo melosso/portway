@@ -419,22 +419,11 @@ During migration, both URL patterns work:
 }
 ```
 
-### Validation checklist
-
-- [ ] Namespace name follows naming conventions
-- [ ] Namespace is not a reserved word
-- [ ] Directory structure matches namespace organization
-- [ ] `NamespaceDisplayName` provided for documentation
-- [ ] URLs accessible with namespaced patterns (SQL, Proxy, Static, Composite only)
-- [ ] File and Webhook endpoints use simple directory structure (no namespaces)
-- [ ] Backward compatibility maintained for existing clients
-- [ ] Environment consistency across dev/test/prod
-
 ## Related topics
 
-- [Entity Configuration](/reference/entity-config) - Complete endpoint configuration reference
-- [Environment Settings](/reference/environment-settings) - Environment configuration
-- [API Overview](/reference/) - API endpoint patterns
-- [SQL Endpoints](/guide/endpoints-sql) - SQL endpoint guide
-- [Proxy Endpoints](/guide/endpoints-proxy) - Proxy endpoint guide
-- [Composite Endpoints](/guide/endpoints-composite) - Composite endpoint guide
+- [Entity Configuration](/reference/entity-config)
+- [Environment Settings](/reference/environment-settings)
+- [API Overview](/reference/)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Proxy Endpoints](/guide/endpoints-proxy)
+- [Composite Endpoints](/guide/endpoints-composite)

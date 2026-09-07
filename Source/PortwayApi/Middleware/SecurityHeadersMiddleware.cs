@@ -20,6 +20,7 @@ public class SecurityHeadersMiddleware
         _unsafeResponseHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "Server",
+            "X-Powered-By",
             "X-AspNet-Version",
             "X-SourceFiles",
             "X-AspNetMvc-Version"
@@ -28,9 +29,6 @@ public class SecurityHeadersMiddleware
         // Carefully configured security headers
         _securityHeaders = new Dictionary<string, string>
         {
-            // Custom branding
-            { "X-Powered-By", "Portway API" },
-            
             // Prevent MIME type sniffing
             { "X-Content-Type-Options", "nosniff" },
             
@@ -47,6 +45,7 @@ public class SecurityHeadersMiddleware
                 "font-src 'self'; " +
                 "object-src 'none'; " +
                 "base-uri 'self'; " +
+                "frame-ancestors 'none'; " +
                 "form-action 'none'"
             },
             
@@ -99,6 +98,13 @@ public class SecurityHeadersMiddleware
 
             // Add security headers
             AddSecurityHeaders(context.Response.Headers);
+
+            // Console-only isolation: same-origin here would break cross-origin consumers of the gateway itself
+            if (context.Request.Path.StartsWithSegments("/ui"))
+            {
+                context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
+                context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
+            }
 
             // HSTS: only emit over HTTPS to prevent browsers caching it for HTTP-only deployments
             // (e.g. Docker behind a TLS-terminating reverse proxy with plain HTTP internally)

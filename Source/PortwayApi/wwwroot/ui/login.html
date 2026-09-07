@@ -4,20 +4,25 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sign In · Portway</title>
-  <link href="css/inter.css" rel="stylesheet">
   <link href="css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script src="js/components/tooltip.js"></script>
+  <script src="js/connection.js"></script>
+  <script src="js/theme-toggle.js"></script>
   <script src="js/shared.js"></script>
   <script src="js/components/promobar.js"></script>
 </head>
 <body>
 
-<div class="auth-overlay">
-  <div style="display:flex;flex-direction:column;align-items:center">
+<div class="signin-theme">
+  <button type="button" class="theme-toggle" id="themeToggle" onclick="cycleTheme()" data-tooltip="Toggle theme" aria-label="Toggle theme"></button>
+</div>
 
-    <div class="auth-brand" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.25rem">
-      <div class="brand-avatar" style="width:28px;height:28px">
-        <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-avatar-bg" aria-hidden="true">
+<main class="signin">
+
+  <div class="signin-mark select-none">
+    <div class="brand-avatar" style="width:28px;height:28px">
+      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" class="brand-avatar-bg" aria-hidden="true">
           <g clip-path="url(#portway-login-clip)">
             <rect width="20" height="20" fill="#000" rx="5.5"/>
             <rect width="20" height="20" fill="url(#portway-login-grad)" fill-opacity="0.2" rx="5.5"/>
@@ -49,27 +54,51 @@
           <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
         </svg>
       </div>
-      <span class="select-none" style="font-size:1.1rem;font-weight:600;letter-spacing:-0.02em">Portway</span>
-    </div>
-
-    <div class="auth-box select-none">
-      <h2>Sign In</h2>
-      <p>Enter your admin API key to access the dashboard.</p>
-      <label for="apiKeyInput" class="sr-only">Admin API Key</label>
-      <input type="password" id="apiKeyInput" placeholder="Admin API Key" autocomplete="current-password"
-             aria-describedby="authError"
-             onkeydown="if(event.key==='Enter')signIn()">
-      <div class="auth-error" id="authError" role="alert" aria-live="assertive">Invalid API key</div>
-      <button class="btn btn-primary" id="signInBtn" style="width:100%;justify-content:center" onclick="signIn()">
-        <span class="btn-label"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle;margin-right:0.4rem"><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>Sign In</span><span class="btn-spinner"></span>
-      </button>
-    </div>
-
-    <div class="auth-footer"><!-- LOGIN_FOOTER_PLACEHOLDER --></div>
+    <span class="signin-wordmark">Portway</span>
   </div>
-</div>
+
+  <form class="signin-panel" onsubmit="event.preventDefault();signIn()">
+    <header class="signin-header">
+      <h1>Sign in</h1>
+      <p>Please sign in to open the dashboard.</p>
+    </header>
+
+    <div class="field">
+      <label class="field-label" for="usernameInput">Username</label>
+      <input type="text" id="usernameInput" class="input" autocomplete="username"
+             required autofocus aria-describedby="authError">
+    </div>
+
+    <div class="field">
+      <label class="field-label" for="passwordInput">Password</label>
+      <input type="password" id="passwordInput" class="input" autocomplete="current-password"
+             required aria-describedby="authError">
+    </div>
+
+    <div class="field" id="newPasswordField" hidden>
+      <label class="field-label" for="newPasswordInput">New password</label>
+      <input type="password" id="newPasswordInput" class="input" autocomplete="new-password">
+      <div class="field-help">At least 12 characters. Choose this yourself, the current one was not.</div>
+    </div>
+
+    <div class="signin-error" id="authError" role="alert" aria-live="assertive">Invalid username or password</div>
+
+    <button type="submit" class="btn btn-primary btn-block signin-submit" id="signInBtn">
+      <span class="btn-label">Sign In</span><span class="btn-spinner"></span>
+    </button>
+  </form>
+
+  <div class="signin-sso" id="ssoBlock" hidden>
+    <p class="signin-or">or</p>
+    <div class="signin-providers" id="ssoProviders"></div>
+  </div>
+
+  <div class="signin-footer-main"><!-- LOGIN_FOOTER_PLACEHOLDER --></div>
+
+</main>
 
 <script>
+
   let csrfToken = '';
 
   async function initCsrf() {
@@ -85,29 +114,87 @@
   }
   initCsrf();
 
+  async function initProviders() {
+    const base = window.PortwayBase || '';
+    let providers = [];
+    try {
+      const r = await fetch(base + '/ui/api/auth/providers');
+      if (!r.ok) return;
+      providers = (await r.json()).providers || [];
+    } catch(e) {
+      return;
+    }
+    if (!providers.length) return;
+    const host = document.getElementById('ssoProviders');
+    for (const p of providers) {
+      const a = document.createElement('a');
+      a.className = 'btn btn-outline sso-btn';
+      a.rel = 'nofollow';
+      a.href = base + '/ui/api/auth/oidc/' + encodeURIComponent(p.slug) + '/start';
+      a.textContent = 'Continue with ' + p.name;
+      host.append(a);
+    }
+    document.getElementById('ssoBlock').hidden = false;
+  }
+  initProviders();
+
+  // A federated sign-in that was refused comes back here with a reason
+  (function () {
+    const reason = new URLSearchParams(location.search).get('sso');
+    if (!reason) return;
+    const messages = {
+      failed:     'That sign-in could not be completed. Check the server log.',
+      denied:     'The sign-in was cancelled.',
+      no_account: 'That account is not allowed to use this console.',
+      inactive:   'That account is inactive.',
+    };
+    const err = document.getElementById('authError');
+    err.textContent = messages[reason] ?? messages.failed;
+    err.style.display = 'block';
+    history.replaceState(null, '', location.pathname);
+  })();
+
+  let _changing = false;
+
   async function signIn() {
-    const key = document.getElementById('apiKeyInput').value;
+    const username = document.getElementById('usernameInput').value;
+    const password = document.getElementById('passwordInput').value;
+    const newPassword = document.getElementById('newPasswordInput').value;
     const btn = document.getElementById('signInBtn');
     const err = document.getElementById('authError');
     err.style.display = 'none';
     btn.classList.add('is-loading');
     btn.disabled = true;
     try {
-      const r = await fetch('/ui/api/auth', {
+      const r = await fetch(_changing ? '/ui/api/auth/password' : '/ui/api/auth', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: key, csrf: csrfToken })
+        body: JSON.stringify({ username, password, newPassword, csrf: csrfToken })
       });
+      const d = await r.json().catch(() => ({}));
+
+      // A first sign-in stops here: the account picks its own password before it gets a session
+      if (r.ok && d.must_change_password) {
+        _changing = true;
+        document.getElementById('newPasswordField').hidden = false;
+        document.querySelector('.signin-header p').textContent = 'Choose a new password to finish signing in.';
+        document.querySelector('#signInBtn .btn-label').textContent = 'Set password';
+        err.style.display = 'none';
+        btn.classList.remove('is-loading');
+        btn.disabled = false;
+        document.getElementById('newPasswordInput').focus();
+        return;
+      }
+
       if (r.ok) {
         window.location.href = (window.PortwayBase || '') + '/ui/dashboard';
       } else {
-        const d = await r.json();
-        err.textContent = d.error || 'Invalid API key';
+        err.textContent = d.error || 'Invalid username or password';
         err.style.display = 'block';
         btn.classList.remove('is-loading');
         btn.disabled = false;
-        document.getElementById('apiKeyInput').focus();
+        document.getElementById('passwordInput').focus();
         initCsrf();
       }
     } catch(e) {

@@ -1,0 +1,618 @@
+  <script src="js/components/drawer.js"></script>
+
+<main>
+  <div class="page-header">
+    <div class="page-title">
+      <div class="page-heading">
+        <h1 class="select-none">Users</h1>
+        <p class="page-sub">Accounts that can sign in to this console.</p>
+      </div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-outline" id="refreshBtn" onclick="load()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-primary" onclick="openCreateDrawer()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New user
+      </button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Accounts</h2>
+      </div>
+      <div class="table-wrap">
+        <div class="scroll-area">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>Sign-in</th>
+              <th>Status</th>
+              <th>Last signed in</th>
+              <th style="width:96px; text-align:right; padding-right:1rem;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="usersBody">
+            <tr><td colspan="6" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="myLinkCard" hidden>
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Your sign-in</h2>
+          <p class="muted">Bind a provider identity to the account you are signed in with, so you can use it to sign in.</p>
+        </div>
+      </div>
+      <div class="card-body" id="myLinkBody"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2 class="card-title">Sign-in providers</h2>
+          <p class="muted">OpenID Connect, for Authelia, Authentik, Pocket ID, Keycloak and anything else publishing a discovery document.</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="openProviderDrawer()">Add provider</button>
+      </div>
+      <div class="card-body" id="providersBody">
+        <span class="muted" style="font-size:0.8rem">Loading…</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="drawer-backdrop" id="providerBackdrop" data-drawer-backdrop="providerDrawer"></div>
+<div class="drawer" id="providerDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="providerTitle">Add provider</span>
+    <button class="btn-icon" data-drawer-close="providerDrawer" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="field">
+      <label class="field-label" for="provName">Name</label>
+      <input type="text" id="provName" class="input" placeholder="e.g. Authelia">
+      <div class="field-help">Shown on the sign-in button.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="provSlug">Key</label>
+      <input type="text" id="provSlug" class="input" placeholder="e.g. authelia">
+      <div class="field-help">Appears in the redirect URI, so renaming the provider does not break it. Lowercase letters, numbers and hyphens.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="provAuthority">Issuer URL</label>
+      <input type="text" id="provAuthority" class="input" placeholder="https://auth.example.com">
+      <div class="field-help">Discovery is read from <code>/.well-known/openid-configuration</code> under this URL.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="provClientId">Client ID</label>
+      <input type="text" id="provClientId" class="input">
+    </div>
+    <div class="field">
+      <label class="field-label" for="provClientSecret">Client secret</label>
+      <input type="password" id="provClientSecret" class="input" autocomplete="new-password">
+      <div class="field-help">Leave blank for a public client, which is how Pocket ID registers one. PKCE is always used.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="provScopes">Scopes</label>
+      <input type="text" id="provScopes" class="input" value="openid profile email">
+    </div>
+    <div class="field">
+      <label class="field-label" for="provClaim">Username claim</label>
+      <input type="text" id="provClaim" class="input" value="preferred_username">
+      <div class="field-help">Authelia, Authentik and Pocket ID all send <code>preferred_username</code>.</div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <label for="provEnabled">Enabled</label>
+        <p>Offer this provider on the sign-in page.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="provEnabled" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <label for="provCreate">Create accounts</label>
+        <p>Off means an unknown person is refused instead of given an account.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="provCreate">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="field">
+      <label class="field-label" for="provRole">Role for new accounts</label>
+      <select id="provRole" class="input">
+        <option value="viewer">Viewer</option>
+        <option value="administrator">Administrator</option>
+      </select>
+    </div>
+    <div class="field" id="provRedirectField" hidden>
+      <label class="field-label">Redirect URI</label>
+      <div class="code-block" id="provRedirect"></div>
+      <div class="field-help">Register this at the provider.</div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-primary btn-block" onclick="saveProvider()" id="provSaveBtn">Save provider</button>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
+<div class="drawer" id="createDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title">New user</span>
+    <button class="btn-icon" data-drawer-close="createDrawer" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="field">
+      <label class="field-label" for="createUsername">Username</label>
+      <input type="text" id="createUsername" class="input" autocomplete="off" placeholder="e.g. jules">
+      <div class="field-help">Letters, numbers, dots, hyphens and underscores.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="createPassword">Password</label>
+      <input type="password" id="createPassword" class="input" autocomplete="new-password">
+      <div class="field-help">At least 12 characters.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="createEmail">Email</label>
+      <input type="email" id="createEmail" class="input" autocomplete="off" placeholder="optional">
+      <div class="field-help">A provider identity carrying this address binds to this account.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="createRole">Role</label>
+      <select id="createRole" class="input">
+        <option value="administrator">Administrator</option>
+        <option value="viewer">Viewer</option>
+      </select>
+      <div class="field-help">Administrators can change configuration. Viewers can only read it.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="createConfirm">Your password</label>
+      <input type="password" id="createConfirm" class="input" autocomplete="current-password">
+      <div class="field-help">Confirms it is you changing who can sign in.</div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-primary btn-block" onclick="createUser()" id="createBtn">Create user</button>
+  </div>
+</div>
+
+<div class="drawer-backdrop" id="editBackdrop" data-drawer-backdrop="editDrawer"></div>
+<div class="drawer" id="editDrawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="editTitle">Edit user</span>
+    <button class="btn-icon" data-drawer-close="editDrawer" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body">
+    <div class="field">
+      <label class="field-label" for="editPassword">New password</label>
+      <input type="password" id="editPassword" class="input" autocomplete="new-password">
+      <div class="field-help">Leave blank to keep the current password.</div>
+    </div>
+    <div class="field">
+      <label class="field-label" for="editEmail">Email</label>
+      <input type="email" id="editEmail" class="input" autocomplete="off" placeholder="optional">
+    </div>
+    <div class="field">
+      <label class="field-label" for="editRole">Role</label>
+      <select id="editRole" class="input">
+        <option value="administrator">Administrator</option>
+        <option value="viewer">Viewer</option>
+      </select>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">
+        <label for="editActive">Active</label>
+        <p>An inactive account cannot sign in.</p>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="editActive">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="field">
+      <label class="field-label" for="editConfirm">Your password</label>
+      <input type="password" id="editConfirm" class="input" autocomplete="current-password">
+      <div class="field-help">Confirms it is you changing who can sign in.</div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn btn-primary btn-block" onclick="saveUser()" id="saveBtn">Save changes</button>
+  </div>
+</div>
+
+<script>
+let _users = [];
+let _meId = null;
+let _editingId = null;
+
+const ROLE_LABELS = { administrator: 'Administrator', viewer: 'Viewer' };
+
+async function load() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+
+  const tbody = document.getElementById('usersBody');
+  try {
+    const d = await api('/ui/api/users', { failure: 'Failed to load users' });
+    _users = d.users ?? [];
+    _meId = d.signed_in_user_id ?? null;
+
+    if (!_users.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users yet</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = _users.map(u => `<tr>
+      <td>
+        <span style="display:inline-flex;align-items:center;gap:0.5rem">
+          <span class="avatar-sm">${u.avatar ? `<img src="${u.avatar}" alt="" width="24" height="24">` : esc(u.username.charAt(0).toUpperCase())}</span>
+          <strong>${esc(u.username)}</strong>${u.id === _meId ? ' <span class="badge badge-muted">you</span>' : ''}
+        </span>
+      </td>
+      <td>${esc(ROLE_LABELS[u.role] ?? u.role)}</td>
+      <td>${u.provider === 'local' ? 'Password' : esc(u.provider)}</td>
+      <td>${u.is_active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-muted">Inactive</span>'}</td>
+      <td class="col-mono">${u.last_login_at ? new Date(u.last_login_at).toLocaleString() : '—'}</td>
+      <td style="text-align:right; padding-right:1rem; white-space:nowrap;">
+        <button class="btn-icon" onclick="openEditDrawer(${u.id})" data-tooltip="Edit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </button>
+        <button class="btn-icon" onclick="confirmDelete(${u.id})" data-tooltip="Delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </td>
+    </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Failed to load: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+function openCreateDrawer() {
+  document.getElementById('createUsername').value = '';
+  document.getElementById('createPassword').value = '';
+  document.getElementById('createEmail').value = '';
+  document.getElementById('createConfirm').value = '';
+  document.getElementById('createRole').value = 'administrator';
+  Drawer.open('createDrawer');
+  setTimeout(() => document.getElementById('createUsername').focus(), 220);
+}
+
+async function closeCreateDrawer() {
+  await Drawer.close('createDrawer');
+}
+
+async function createUser() {
+  const btn = document.getElementById('createBtn');
+  const body = {
+    username: document.getElementById('createUsername').value.trim(),
+    password: document.getElementById('createPassword').value,
+    email: document.getElementById('createEmail').value.trim(),
+    role: document.getElementById('createRole').value,
+    current_password: document.getElementById('createConfirm').value
+  };
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    await api('/ui/api/users', { method: 'POST', body, success: 'User created', failure: 'Failed to create user' });
+    await closeCreateDrawer();
+    await load();
+  } catch(e) {
+    const map = { username: 'createUsername', password: 'createPassword', role: 'createRole', current_password: 'createConfirm' };
+    const el = document.getElementById(map[e.field]);
+    if (el) { el.classList.add('input-invalid'); el.focus(); }
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+function openEditDrawer(id) {
+  const u = _users.find(x => x.id === id);
+  if (!u) return;
+  _editingId = id;
+  document.getElementById('editTitle').textContent = u.username;
+  document.getElementById('editPassword').value = '';
+  document.getElementById('editEmail').value = u.email ?? '';
+  document.getElementById('editConfirm').value = '';
+  document.getElementById('editRole').value = u.role;
+  document.getElementById('editActive').checked = u.is_active;
+  Drawer.open('editDrawer');
+}
+
+async function closeEditDrawer() {
+  if (await Drawer.close('editDrawer')) _editingId = null;
+}
+
+async function saveUser() {
+  if (_editingId === null) return;
+  const btn = document.getElementById('saveBtn');
+  const password = document.getElementById('editPassword').value;
+  const body = {
+    role: document.getElementById('editRole').value,
+    email: document.getElementById('editEmail').value.trim(),
+    is_active: document.getElementById('editActive').checked,
+    current_password: document.getElementById('editConfirm').value
+  };
+  if (password) body.password = password;
+
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    await api(`/ui/api/users/${_editingId}`, { method: 'PUT', body, success: 'User updated', failure: 'Failed to save changes' });
+    await closeEditDrawer();
+    await load();
+  } catch(e) {
+    const map = { password: 'editPassword', current_password: 'editConfirm' };
+    const el = document.getElementById(map[e.field]);
+    if (el) { el.classList.add('input-invalid'); el.focus(); }
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+function confirmDelete(id) {
+  const u = _users.find(x => x.id === id);
+  if (!u) return;
+  AlertDialog.show({
+    title: `Delete ${u.username}?`,
+    description: 'The account is removed and any open session for it stops working.',
+    actionLabel: 'Delete user',
+    variant: 'destructive',
+    extraHtml: `<div class="field" style="margin-top:0.75rem">
+      <label class="field-label" for="deleteConfirm">Your password</label>
+      <input type="password" id="deleteConfirm" class="input" autocomplete="current-password">
+    </div>`,
+    onConfirm: () => doDelete(id, document.getElementById('deleteConfirm')?.value ?? '')
+  });
+}
+
+async function doDelete(id, currentPassword) {
+  try {
+    await api(`/ui/api/users/${id}`, {
+      method: 'DELETE', body: { current_password: currentPassword },
+      success: 'User deleted', failure: 'Failed to delete user'
+    });
+    await load();
+  } catch(e) {}
+}
+
+// Sign-in providers
+
+let _providers = [];
+let _editingProviderId = null;
+
+async function loadProviders() {
+  const el = document.getElementById('providersBody');
+  try {
+    const d = await api('/ui/api/oidc/providers', { failure: 'Failed to load providers' });
+    _providers = d.providers ?? [];
+
+    if (!_providers.length) {
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No providers yet. Accounts sign in with a password.</span>';
+      return;
+    }
+
+    el.innerHTML = _providers.map(p => `<div class="setting-row">
+      <div class="setting-label">
+        <label>${esc(p.name)} ${p.is_enabled ? '' : '<span class="badge badge-muted">Disabled</span>'}</label>
+        <p>${esc(p.authority)}${p.create_accounts ? ' · creates accounts as ' + esc(p.created_role) : ' · existing accounts only'}</p>
+      </div>
+      <span style="display:flex;gap:0.25rem;justify-content:flex-end">
+        <button class="btn-icon" onclick="openProviderDrawer(${p.id})" data-tooltip="Edit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        </button>
+        <button class="btn-icon" onclick="confirmDeleteProvider(${p.id})" data-tooltip="Delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </span>
+    </div>`).join('');
+  } catch(e) {
+    el.innerHTML = `<span class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</span>`;
+  }
+}
+
+function openProviderDrawer(id) {
+  const p = id != null ? _providers.find(x => x.id === id) : null;
+  _editingProviderId = p ? p.id : null;
+
+  document.getElementById('providerTitle').textContent = p ? p.name : 'Add provider';
+  document.getElementById('provName').value = p?.name ?? '';
+  document.getElementById('provSlug').value = p?.slug ?? '';
+  document.getElementById('provSlug').disabled = false;
+  document.getElementById('provAuthority').value = p?.authority ?? '';
+  document.getElementById('provClientId').value = p?.client_id ?? '';
+  document.getElementById('provClientSecret').value = '';
+  document.getElementById('provClientSecret').placeholder = p?.has_client_secret ? 'Unchanged' : '';
+  document.getElementById('provScopes').value = p?.scopes ?? 'openid profile email';
+  document.getElementById('provClaim').value = p?.username_claim ?? 'preferred_username';
+  document.getElementById('provEnabled').checked = p ? p.is_enabled : true;
+  document.getElementById('provCreate').checked = p ? p.create_accounts : false;
+  document.getElementById('provRole').value = p?.created_role ?? 'viewer';
+
+  const redirectField = document.getElementById('provRedirectField');
+  if (p) {
+    document.getElementById('provRedirect').textContent = location.origin + p.redirect_uri;
+    redirectField.hidden = false;
+  } else {
+    redirectField.hidden = true;
+  }
+
+  Drawer.open('providerDrawer');
+}
+
+async function saveProvider() {
+  const btn = document.getElementById('provSaveBtn');
+  const body = {
+    name: document.getElementById('provName').value.trim(),
+    slug: document.getElementById('provSlug').value.trim(),
+    authority: document.getElementById('provAuthority').value.trim(),
+    client_id: document.getElementById('provClientId').value.trim(),
+    scopes: document.getElementById('provScopes').value.trim(),
+    username_claim: document.getElementById('provClaim').value.trim(),
+    is_enabled: document.getElementById('provEnabled').checked,
+    create_accounts: document.getElementById('provCreate').checked,
+    created_role: document.getElementById('provRole').value,
+  };
+  // Absent leaves the stored secret alone
+  const secret = document.getElementById('provClientSecret').value;
+  if (secret) body.client_secret = secret;
+
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    if (_editingProviderId === null) {
+      await api('/ui/api/oidc/providers', { method: 'POST', body, success: 'Provider added', failure: 'Failed to add provider' });
+    } else {
+      await api(`/ui/api/oidc/providers/${_editingProviderId}`, { method: 'PUT', body, success: 'Provider updated', failure: 'Failed to save provider' });
+    }
+    await Drawer.close('providerDrawer');
+    await loadProviders();
+    await loadMyLink();
+  } catch(e) {
+    const map = { name: 'provName', slug: 'provSlug', authority: 'provAuthority', client_id: 'provClientId', created_role: 'provRole' };
+    const el = document.getElementById(map[e.field]);
+    if (el) { el.classList.add('input-invalid'); el.focus(); }
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+function confirmDeleteProvider(id) {
+  const p = _providers.find(x => x.id === id);
+  if (!p) return;
+  AlertDialog.show({
+    title: `Delete ${p.name}?`,
+    description: 'Accounts that sign in only through this provider will have no way in afterwards.',
+    actionLabel: 'Delete provider',
+    variant: 'destructive',
+    onConfirm: () => doDeleteProvider(id)
+  });
+}
+
+async function doDeleteProvider(id) {
+  try {
+    const r = await api(`/ui/api/oidc/providers/${id}`, { method: 'DELETE', failure: 'Failed to delete provider' });
+    toast(r.stranded_accounts
+      ? `Provider deleted. ${r.stranded_accounts} account(s) now have no way to sign in.`
+      : 'Provider deleted', r.stranded_accounts ? 'warning' : 'success');
+    await loadProviders();
+    // The accounts that used it are unbound now, so both the table and this account's own card change
+    await Promise.all([load(), loadMyLink()]);
+  } catch(e) {}
+}
+
+// The signed-in account's own binding
+
+let _me = null;
+
+async function loadMyLink() {
+  const card = document.getElementById('myLinkCard');
+  const el = document.getElementById('myLinkBody');
+  try {
+    _me = await api('/ui/api/users/me', { silent: true });
+    if (!_me?.signed_in) { card.hidden = true; return; }
+
+    const linked = _me.provider && _me.provider !== 'local';
+    const enabled = _providers.filter(p => p.is_enabled);
+    if (!linked && !enabled.length) { card.hidden = true; return; }
+    card.hidden = false;
+
+    if (linked) {
+      const p = _providers.find(x => x.slug === _me.provider);
+      el.innerHTML = `<div class="setting-row">
+        <div class="setting-label">
+          <label>${esc(p?.name ?? _me.provider)}</label>
+          <p>${esc(_me.username)} signs in through this provider.${_me.has_password ? '' : ' There is no password on this account.'}</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="unlinkMe()" ${_me.has_password ? '' : 'disabled title="Set a password first"'}>Unlink</button>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = enabled.map(p => `<div class="setting-row">
+      <div class="setting-label">
+        <label>${esc(p.name)}</label>
+        <p>${esc(p.authority)}</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="linkMe('${esc(p.slug)}','${esc(p.name)}')">Link</button>
+    </div>`).join('');
+  } catch(e) {
+    card.hidden = true;
+  }
+}
+
+function linkMe(slug, name) {
+  AlertDialog.show({
+    title: `Link ${name}?`,
+    description: 'You will be sent to the provider. Whichever identity signs in there becomes bound to this account.',
+    actionLabel: 'Continue',
+    extraHtml: `<div class="field" style="margin-top:0.75rem">
+      <p class="alert-dialog-description" style="margin-bottom:0.25rem">Please confirm your password to continue.</p>
+      <label class="field-label" for="linkConfirm">Your password</label>
+      <input type="password" id="linkConfirm" class="input" autocomplete="current-password">
+    </div>`,
+    onConfirm: () => startLink(slug, document.getElementById('linkConfirm')?.value ?? '')
+  });
+}
+
+async function startLink(slug, currentPassword) {
+  try {
+    const r = await api(`/ui/api/oidc/providers/${encodeURIComponent(slug)}/link`, {
+      method: 'POST', body: { current_password: currentPassword }, failure: 'Could not start linking'
+    });
+    window.location.href = r.authorize_url;
+  } catch(e) {}
+}
+
+function unlinkMe() {
+  AlertDialog.show({
+    title: 'Unlink this provider?',
+    description: 'You will sign in with a password afterwards.',
+    actionLabel: 'Unlink',
+    variant: 'destructive',
+    onConfirm: doUnlinkMe
+  });
+}
+
+async function doUnlinkMe() {
+  try {
+    await api('/ui/api/oidc/link', { method: 'DELETE', success: 'Unlinked', failure: 'Could not unlink' });
+    await loadMyLink();
+    await load();
+  } catch(e) {}
+}
+
+// A link attempt comes back here with its outcome
+(function () {
+  const outcome = new URLSearchParams(location.search).get('link');
+  if (!outcome) return;
+  if (outcome === 'linked') toast('Provider linked to your account', 'success');
+  else toast('That identity could not be linked. It may already belong to another account.', 'error');
+  history.replaceState(null, '', location.pathname);
+})();
+
+load();
+loadProviders().then(loadMyLink);
+</script>

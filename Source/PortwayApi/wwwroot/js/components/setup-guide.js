@@ -60,7 +60,7 @@
   // Load
   async function _load() {
     try {
-      const d = await fetch('/ui/api/overview').then(function (r) { return r.json(); });
+      const d = await api('/ui/api/overview', { silent: true });
       const hasEnvs = (d.environments ?? 0) > 0;
       const hasEps  = (d.endpoints?.total ?? 0) > 0;
       _render(hasEnvs, hasEps);
@@ -101,7 +101,7 @@
       (allDone
         ? '<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid hsl(var(--border));' +
             'font-size:0.75rem;color:hsl(var(--muted-foreground))">' +
-            'The dashboard updates in real time as traffic flows through Portway. ' +
+            'The dashboard displays live Portway traffic data. ' +
             '<button onclick="SetupGuide.dismiss()" style="background:none;border:none;cursor:pointer;' +
               'font-size:0.75rem;color:hsl(var(--foreground));text-decoration:underline;' +
               'text-underline-offset:2px;padding:0">Dismiss this guide</button>' +

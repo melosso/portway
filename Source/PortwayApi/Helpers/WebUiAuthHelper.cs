@@ -84,26 +84,34 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>Validates an HMAC-signed session cookie against the admin key; returns false on tamper or expiry</summary>
-    public static bool IsValidSessionCookie(string? token, string adminApiKey)
+    /// <summary>Signs a session for one account; the id travels in the cookie so the console knows who is asking</summary>
+    public static string IssueSessionCookie(int userId, int expiryHours)
     {
-        if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(adminApiKey))
-            return false;
+        var expiry = DateTimeOffset.UtcNow.AddHours(expiryHours).ToUnixTimeSeconds().ToString();
+        return $"{userId}.{expiry}.{SignSession(userId, expiry)}";
+    }
 
-        var dot = token.IndexOf('.');
-        if (dot < 0)
-            return false;
+    /// <summary>The account id in a valid, unexpired session cookie, or null</summary>
+    public static int? ResolveSession(string? token)
+    {
+        if (string.IsNullOrEmpty(token)) return null;
 
-        var expiryStr = token[..dot];
-        if (!long.TryParse(expiryStr, out var expiry) ||
-            DateTimeOffset.FromUnixTimeSeconds(expiry) < DateTimeOffset.UtcNow)
-            return false;
+        var parts = token.Split('.');
+        if (parts.Length != 3) return null;
+        if (!int.TryParse(parts[0], out var userId)) return null;
+        if (!long.TryParse(parts[1], out var expiry) ||
+            DateTimeOffset.FromUnixTimeSeconds(expiry) < DateTimeOffset.UtcNow) return null;
 
-        var signingKey = SHA256.HashData(Encoding.UTF8.GetBytes(adminApiKey));
-        using var hmac = new HMACSHA256(signingKey);
-        var expected = Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(expiryStr)));
+        var expected = SignSession(userId, parts[1]);
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expected),
-            Encoding.UTF8.GetBytes(token[(dot + 1)..]));
+            Encoding.UTF8.GetBytes(parts[2])) ? userId : null;
+    }
+
+    private static string SignSession(int userId, string expiry)
+    {
+        using var hmac = new HMACSHA256(SessionKeyProvider.Key);
+        return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
     }
 
     /// <summary>Generates a new CSRF token</summary>

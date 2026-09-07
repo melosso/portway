@@ -62,8 +62,6 @@ Fronting Data Hub with Portway does useful work at every layer:
 
 ## Things to keep in mind
 
-A few properties of this setup deserve attention before you build on it:
-
 - All calls are `POST` to one endpoint per Data Hub configuration. Caching applies poorly, since identical URLs carry different query bodies.
 - What an integration can read or write is bounded by the Data Hub configuration in Pimcore, not by Portway. Review that schema when you review access.
 - Data Hub endpoints and keys are managed in the Pimcore admin. Rotating a key means updating the endpoint file; endpoint files reload without a restart.

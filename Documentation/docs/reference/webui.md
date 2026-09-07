@@ -9,28 +9,57 @@ Everything you can do by clicking through the Web UI, you can also do programmat
 
 ## Authentication
 
-The Web UI uses cookie-based authentication. Set `WebUi__AdminApiKey` to enable.
+The Web UI uses cookie-based authentication against a console account. See [Web UI](/guide/webui#configuration) for how the first account is created.
 
 ### Login
+
+Fetch a one-time CSRF token, then post it with the credentials:
+
+```http
+GET /ui/api/auth/csrf
+```
+
+```json
+{ "csrf": "..." }
+```
 
 ```http
 POST /ui/api/auth
 Content-Type: application/json
 
 {
-  "apiKey": "your-admin-api-key"
+  "username": "admin",
+  "password": "your-password",
+  "csrf": "..."
 }
 ```
 
 Response:
 ```json
+{ "ok": true }
+```
+
+Sets the `portway_auth` and `portway_csrf` cookies.
+
+An account that has not chosen its own password yet answers with `{ "ok": false, "must_change_password": true }` and no cookies. Complete the sign-in by posting a new password with a fresh CSRF token:
+
+```http
+POST /ui/api/auth/password
+Content-Type: application/json
+
 {
-  "ok": true,
-  "expires": "2025-01-01T00:00:00Z"
+  "username": "admin",
+  "password": "your-current-password",
+  "newPassword": "your-new-password",
+  "csrf": "..."
 }
 ```
 
-Sets the `portway_auth` cookie.
+### Making changes
+
+On `POST`, `PUT`, `PATCH` and `DELETE` under `/ui/api`, send the `portway_csrf` cookie value back in an `X-CSRF-Token` header. Requests without it return `403`.
+
+These also return `403` for an account holding the `viewer` role, apart from linking and unlinking its own single sign-on identity. See [Account roles](/guide/security#account-roles).
 
 ---
 
@@ -181,9 +210,60 @@ Response:
   "logging": {
     "min_level": "Information",
     "sinks": ["Console", "File"]
-  }
+  },
+  "security": {
+    "webui_auth_enabled": true,
+    "admin_accounts": 2,
+    "https_enabled": true,
+    "secure_cookies": true,
+    "client_ip": "203.0.113.9",
+    "behind_proxy": true,
+    "forwarded_ignored": false,
+    "console_public": false,
+    "trusted_proxies_configured": true,
+    "csrf_protection": true
+  },
+  "features": {
+    "oidc": true,
+    "openapi": true,
+    "traffic_logging": false,
+    "landing_page": true,
+    "oidc_providers": 1
+  },
+  "deployment": {
+    "public_origins": [],
+    "known_proxies": ["127.0.0.1"],
+    "known_networks": []
+  },
+  "writable": [
+    { "key": "RateLimiting:Enabled", "kind": "bool", "requires_restart": true }
+  ]
 }
 ```
+
+`security.client_ip` is the client address Portway saw for the request. `forwarded_ignored` is `true` when a forwarded address arrived with no proxy trusted to send it. `writable` lists the keys `PUT /ui/api/settings` accepts, with the validation applied to each.
+
+### PUT /ui/api/settings
+
+Applies a flat object of configuration keys together, or none of them.
+
+```http
+PUT /ui/api/settings
+Content-Type: application/json
+X-CSRF-Token: {csrf}
+
+{
+  "RateLimiting:IpLimit": 200,
+  "ForwardedHeaders:KnownProxies": ["127.0.0.1", "::1"]
+}
+```
+
+Response:
+```json
+{ "ok": true, "restart_required": true }
+```
+
+The call returns `400` with an `error` and the offending `field` for a key outside the writable list, a value outside its range, or a change to `WebUi:PublicOrigins` or the proxy lists that would stop your own requests reaching the console.
 
 ### GET /ui/api/tokens
 

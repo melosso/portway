@@ -124,6 +124,6 @@ Use cryptographically strong keys for ApiKey and HMAC methods. Rotate credential
 
 ## Related topics
 
-- [Environment Settings](/reference/environment-settings) - General environment configuration
-- [API Authentication](/reference/api-auth) - Standard Portway token system
-- [Security Guide](/guide/security) - General security practices
+- [Environment Settings](/reference/environment-settings)
+- [API Authentication](/reference/api-auth)
+- [Security Guide](/guide/security)

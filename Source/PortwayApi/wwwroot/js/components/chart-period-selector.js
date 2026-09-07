@@ -12,11 +12,11 @@ class ChartPeriodSelector {
     this._active    = periods[0];
 
     const wrap = document.createElement('div');
-    wrap.className = 'cps-tabs';
+    wrap.className = 'segmented';
 
     this._buttons = periods.map(p => {
       const btn = document.createElement('button');
-      btn.className = 'cps-btn' + (p === this._active ? ' cps-btn--active' : '');
+      btn.className = 'seg-btn' + (p === this._active ? ' seg-btn--active' : '');
       btn.textContent = p.toUpperCase();
       btn.addEventListener('click', () => this._select(p));
       wrap.appendChild(btn);
@@ -30,7 +30,7 @@ class ChartPeriodSelector {
     if (period === this._active) return;
     this._active = period;
     for (const [p, btn] of this._buttons) {
-      btn.classList.toggle('cps-btn--active', p === period);
+      btn.classList.toggle('seg-btn--active', p === period);
     }
     this._onChange(period);
   }

@@ -89,15 +89,11 @@ Routing NocoDB through Portway is not just indirection. Each layer does useful w
 
 ## Things to keep in mind
 
-A few properties of the proxy pattern are worth knowing before you build on it:
-
 - Filtering, sorting, and pagination use NocoDB's query syntax (`where`, `sort`, `limit`, `offset`), not OData. OData translation applies to SQL endpoints only.
 - Proxy endpoints expose the table's full field surface; there is no column allowlisting. For a curated column set, use a [SQL endpoint](/guide/endpoints-sql) against the underlying database.
 - Writes through the underlying database bypass NocoDB's formulas, webhooks, and permissions. Keep that route to read-heavy reporting.
 
 ## Troubleshooting
-
-When something misbehaves, these are the usual suspects:
 
 | Symptom | Check |
 |---------|-------|

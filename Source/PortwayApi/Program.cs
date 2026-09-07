@@ -20,6 +20,10 @@ using PortwayApi.Services.Telemetry.Prometheus;
 using Serilog;
 using System.Reflection;
 
+// Account recovery without the console; runs instead of the web host
+if (args.Length > 0 && args[0] == "accounts")
+    return await PortwayApi.Startup.AccountsCli.RunAsync(args);
+
 // Create log directory
 Directory.CreateDirectory("log");
 
@@ -27,6 +31,13 @@ Directory.CreateDirectory("log");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+
+    // Settings the Web UI writes land here, layered over appsettings.json so that file stays the operator's
+    PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
+    builder.Configuration.AddJsonFile(
+        PortwayApi.Services.Configuration.SettingsWriteService.OverridesFileName,
+        optional: true,
+        reloadOnChange: true);
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -186,7 +197,7 @@ try
     await app.InitializeMcpConfigDatabaseAsync();
 
     // Initialise auth.db and create a default token if none exist
-    await app.InitializeAuthDatabaseAsync(serverName);
+    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey);
 
     // Log cache configuration
     app.LogCacheConfiguration();
@@ -224,15 +235,14 @@ try
         app.MapMcpChatEndpoints();
 
     // Web UI Routes
-    if (!string.IsNullOrEmpty(adminApiKey))
-        app.MapWebUiEndpoints(adminApiKey);
+    app.MapWebUiEndpoints(adminApiKey);
 
     // Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
     app.MapPortwayFallback();
 
     // Pre-flight: verify configured ports are available before Kestrel tries to bind
     if (!StartupLogHelper.TryReservePorts(app, builder.Configuration))
-        return;
+        return 1;
 
     // Log hosting URLs, Web UI auth status and configuration reload status
     StartupLogHelper.LogHostingSummary(app, builder.Configuration, adminApiKey);
@@ -247,11 +257,13 @@ try
 
     // Run the application
     app.Run();
+    return 0;
 }
 catch (Exception ex)
 {
     Log.Fatal("");
     Log.Fatal(ex, "Application failed to start.");
+    return 1;
 }
 finally
 {

@@ -89,15 +89,11 @@ The gateway earns its place even without credential injection:
 
 ## Things to keep in mind
 
-A few properties of this setup deserve attention before you build on it:
-
 - Odoo credentials pass through the gateway inside request bodies. Body capture in [traffic logging](/reference/audit) is off by default; leave it off for this endpoint, or the log will contain API keys.
 - All calls are `POST` to one endpoint, so per-table endpoint splitting does not apply. Odoo's model-level access rights are the tool for narrowing what an integration can touch.
 - Responses are JSON-RPC envelopes. Caching applies poorly here, since identical URLs carry different bodies.
 
 ## Troubleshooting
-
-RPC integrations fail in characteristic ways, so check these first:
 
 | Symptom | Check |
 |---------|-------|

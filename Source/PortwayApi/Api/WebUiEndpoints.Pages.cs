@@ -22,11 +22,11 @@ using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
 {
-    private static void MapPageAndAuthRoutes(WebApplication app, string adminApiKey, bool uiAuthEnabled, string wwwroot, string appVersion, bool secureCookies)
+    private static void MapPageAndAuthRoutes(WebApplication app, string adminApiKey, string wwwroot, string appVersion, bool secureCookies)
     {
         // Login
         app.MapGet("/ui/login", (HttpContext ctx) =>
-            uiAuthEnabled
+            WebUiAuthState.Enabled
                 ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase, appVersion, app.Configuration)
                 : Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
             .ExcludeFromDescription();
@@ -58,39 +58,72 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
             
-            var provided = body.TryGetProperty("apiKey", out var kp) ? kp.GetString() ?? "" : "";
-            var provHash = SHA256.HashData(Encoding.UTF8.GetBytes(provided));
-            var expHash  = SHA256.HashData(Encoding.UTF8.GetBytes(adminApiKey));
-            if (!CryptographicOperations.FixedTimeEquals(provHash, expHash))
+            var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
+            var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
+
+            var users = context.RequestServices.GetRequiredService<AdminUserService>();
+            var account = await users.AuthenticateAsync(username, password);
+            if (account is null)
             {
                 WebUiAuthHelper.RecordFailedAttempt(clientIp);
-                return Results.Json(new { error = "Invalid API key" }, statusCode: 401);
+                Log.Warning("Failed console sign-in for {Username} from {ClientIp}", username, clientIp);
+                return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
             }
 
             // Success - clear failed attempts
             WebUiAuthHelper.ClearFailedAttempts(clientIp);
+
+            // No session until the account owns its password: it was generated or read from configuration.
+            // The token stays unspent, the change request that follows is the rest of this sign-in.
+            if (account.MustChangePassword)
+                return Results.Json(new { ok = false, must_change_password = true });
+
             // Consume the CSRF token (one-time use)
             WebUiAuthHelper.ConsumeCsrfToken(csrfToken!);
 
-            var token = GenerateToken(adminApiKey);
-            context.Response.Cookies.Append(CookieName, token, new CookieOptions
+            IssueSessionCookies(context, account.Id, secureCookies);
+            return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
+        // Completes a first sign-in: verifies the old password again and issues the session only once the new one is set
+        app.MapPost("/ui/api/auth/password", async (HttpContext context) =>
+        {
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            if (WebUiAuthHelper.CheckAccess(clientIp) is { } blocked)
+                return Results.Json(new { error = blocked }, statusCode: 429);
+
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+
+            var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
+            if (!WebUiAuthHelper.ValidateCsrfToken(csrf))
             {
-                HttpOnly = true,
-                Secure = secureCookies, // Configurable - set to true in production with HTTPS
-                SameSite = SameSiteMode.Lax,
-                Path     = "/",
-                Expires  = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours)
-            });
-            // Session CSRF cookie for the double-submit check; readable by page JS so fetches can echo it in X-CSRF-Token
-            var sessionCsrf = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-            context.Response.Cookies.Append(CsrfCookieName, sessionCsrf, new CookieOptions
+                WebUiAuthHelper.RecordFailedAttempt(clientIp);
+                return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
+            }
+
+            var username = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+            var current  = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
+            var next     = body.TryGetProperty("newPassword", out var n) ? n.GetString() ?? "" : "";
+
+            if (AdminUserService.ValidatePassword(next) is { } problem)
+                return Results.Json(new { error = problem, field = "newPassword" }, statusCode: 400);
+            if (next == current)
+                return Results.Json(new { error = "Choose a password you have not used here before", field = "newPassword" }, statusCode: 400);
+
+            var users = context.RequestServices.GetRequiredService<AdminUserService>();
+            if (!await users.ChangePasswordAsync(username, current, next))
             {
-                HttpOnly = false,
-                Secure = secureCookies,
-                SameSite = SameSiteMode.Lax,
-                Path     = "/",
-                Expires  = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours)
-            });
+                WebUiAuthHelper.RecordFailedAttempt(clientIp);
+                return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
+            }
+
+            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            WebUiAuthHelper.ConsumeCsrfToken(csrf!);
+
+            var account = await users.FindAsync(username);
+            Log.Information("Console account {Username} set its own password", username);
+
+            IssueSessionCookies(context, account!.Id, secureCookies);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -126,6 +159,7 @@ public static partial class WebUiEndpointExtensions
             ["endpoints"]    = "Endpoints",
             ["environments"] = "Environments",
             ["tokens"]       = "Access Tokens",
+            ["users"]        = "Users",
             ["settings"]     = "Settings",
             ["logs"]         = "Logs"
         };

@@ -1,36 +1,37 @@
-  <script src="js/components/tooltip.js"></script>
   <script src="js/components/drawer.js"></script>
-  <script src="js/components/alert-dialog.js"></script>
   <style>
     main { display: flex; flex-direction: column; }
-    .page-body-fill { flex: 1; display: flex; flex-direction: column; }
   </style>
 
 <main>
   <div class="page-header">
     <div class="page-title">
-      <h1 class="select-none">Endpoints</h1>
+      <div class="page-heading">
+        <h1 class="select-none">Endpoints</h1>
+        <p class="page-sub">Define the routes this gateway serves.</p>
+      </div>
     </div>
-    <div class="header-actions">
+    <div class="page-actions">
       <div class="search-wrap">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="epSearch" placeholder="Search..." oninput="filterList()">
+        <input type="text" class="input" id="epSearch" placeholder="Search..." oninput="filterList()">
       </div>
       <button class="btn btn-outline" onclick="refreshAll()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
       </button>
-      <button class="btn btn-outline" onclick="openCreateDrawer()" aria-label="Add endpoint">
+      <button class="btn btn-primary" onclick="openCreateDrawer()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New endpoint
       </button>
     </div>
   </div>
 
   <!-- Tab strip -->
-  <div class="ep-tabs" id="epTabs"></div>
+  <div class="tabs" id="epTabs"></div>
 
   <!-- Split panel -->
-  <div class="page-body-fill" style="padding:0.75rem;padding-top:0.5rem;">
+  <div class="main-content-fill">
     <div class="ep-split">
       <!-- Left: list -->
       <div class="ep-list">
@@ -158,7 +159,7 @@ window.addEventListener('beforeunload', e => {
 async function refreshAll() {
   confirmNavigate(async () => {
     try {
-      const d = await fetch('/ui/api/endpoints').then(r => r.json());
+      const d = await api('/ui/api/endpoints', { failure: 'Failed to load endpoints' });
       _allData = {
         sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
         proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
@@ -171,7 +172,7 @@ async function refreshAll() {
       renderList();
       if (_selected) selectEndpoint(_selected.type, _selected.name, false);
     } catch(e) {
-      showToast('Failed to load endpoints: ' + e.message, 'error');
+      toast('Failed to load endpoints: ' + e.message, 'error');
     }
   });
 }
@@ -181,9 +182,9 @@ function renderTabs() {
   const total = Object.values(_allData).reduce((s, a) => s + a.length, 0);
   const tabs = [{ key: 'all', label: 'All', count: total }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label, count: (_allData[t.key] ?? []).length }))];
   document.getElementById('epTabs').innerHTML = tabs.map(t => `
-    <button class="ep-tab ${_activeTab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">
+    <button class="tab ${_activeTab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">
       ${esc(t.label)}
-      <span class="ep-tab-badge">${t.count}</span>
+      <span class="tab-badge">${t.count}</span>
     </button>`).join('');
 }
 
@@ -283,8 +284,7 @@ async function selectEndpoint(type, name, scroll = true) {
   detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
 
   try {
-    const d = await fetch(`/ui/api/endpoints/${type}/${name}`).then(r => r.json());
-    if (d.error) throw new Error(d.error);
+    const d = await api(`/ui/api/endpoints/${type}/${name}`, { silent: true });
     _detailData = d;
     _dirty = false;
     _rawMode = false;
@@ -302,7 +302,7 @@ function renderDetail() {
   const isWebhook = type === 'webhook';
 
   const nameDisplay = _renaming
-    ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" style="font-size:1rem;font-weight:600;flex:1;min-width:0;border:1px solid hsl(var(--primary));border-radius:var(--radius);padding:0.2rem 0.5rem;background:hsl(var(--background));color:hsl(var(--foreground))" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
+    ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" class="input input-title" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
        <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
        <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
     : `<h2>${esc(name)}</h2>
@@ -313,7 +313,7 @@ function renderDetail() {
       <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
       ${nameDisplay}
       ${_renaming ? '' : `<div class="actions">
-        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm shadcn-tooltip" onclick="startRename()" data-tooltip="Rename endpoint name">
+        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startRename()" data-tooltip="Rename endpoint name">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Rename
         </button>`}
@@ -341,7 +341,7 @@ function renderDetail() {
 function renderRawForm(raw) {
   const pretty = (() => { try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; } })();
   return `<div class="ep-raw-editor">
-    <textarea id="rawContent" spellcheck="false">${esc(pretty)}</textarea>
+    <textarea id="rawContent" class="input input-code" spellcheck="false">${esc(pretty)}</textarea>
   </div>`;
 }
 
@@ -363,25 +363,25 @@ function renderStructuredForm(type, content) {
 // Field helpers
 
 function fieldText(id, label, value) {
-  return `<div class="ep-field">
-    <label for="${id}">${label}</label>
-    <input type="text" id="${id}" value="${esc(value ?? '')}" oninput="markDirty()">
+  return `<div class="field">
+    <label class="field-label" for="${id}">${label}</label>
+    <input type="text" class="input" id="${id}" value="${esc(value ?? '')}" oninput="markDirty()">
   </div>`;
 }
 
 function fieldSelect(id, label, value, options) {
   const opts = options.map(o => `<option ${value === o ? 'selected' : ''}>${esc(o)}</option>`).join('');
-  return `<div class="ep-field">
-    <label for="${id}">${label}</label>
-    <select id="${id}" onchange="markDirty()">${opts}</select>
+  return `<div class="field">
+    <label class="field-label" for="${id}">${label}</label>
+    <select class="input" id="${id}" onchange="markDirty()">${opts}</select>
   </div>`;
 }
 
 function fieldMethods(selected, id = 'methodPicker') {
   const all = ['GET','POST','PUT','PATCH','DELETE','QUERY'];
   const sel = [].concat(selected ?? ['GET']);   // normalise: string → [string], null/undefined → ['GET']
-  return `<div class="ep-field">
-    <label>Methods</label>
+  return `<div class="field">
+    <label class="field-label">Methods</label>
     <div class="method-picker" id="${id}">
       ${all.map(m => `<button type="button" class="method-btn m-${m.toLowerCase()} ${sel.includes(m) ? 'active' : ''}" onclick="toggleMethod(this); markDirty()">${m}</button>`).join('')}
     </div>
@@ -394,9 +394,9 @@ function toggleMethod(btn) {
 
 function fieldKV(id, label, obj) {
   const rows = Object.entries(obj ?? {}).map(([k, v]) => kvRow(k, v)).join('');
-  return `<div class="ep-field">
-    <label>${label}</label>
-    <div class="ep-kv-editor" id="${id}">${rows}</div>
+  return `<div class="field">
+    <label class="field-label">${label}</label>
+    <div class="kv-editor" id="${id}">${rows}</div>
     <button type="button" class="ep-add-row" onclick="addKvRow('${id}')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add row
@@ -405,9 +405,9 @@ function fieldKV(id, label, obj) {
 }
 
 function fieldTextarea(id, label, value, minHeight = '80px', isCode = false) {
-  return `<div class="ep-field">
-    <label for="${id}">${label}</label>
-    <textarea id="${id}" class="ep-textarea${isCode ? ' ep-textarea-code' : ''}" style="min-height:${minHeight}" oninput="markDirty()">${esc(value ?? '')}</textarea>
+  return `<div class="field">
+    <label class="field-label" for="${id}">${label}</label>
+    <textarea id="${id}" class="input${isCode ? ' input-code' : ''}" style="min-height:${minHeight}" oninput="markDirty()">${esc(value ?? '')}</textarea>
   </div>`;
 }
 
@@ -428,8 +428,8 @@ function readDocumentation(c) {
 
 function kvRow(k = '', v = '') {
   return `<div class="ep-kv-row">
-    <input type="text" placeholder="Key" value="${esc(k)}" oninput="markDirty()">
-    <input type="text" placeholder="Value" value="${esc(v)}" oninput="markDirty()">
+    <input type="text" class="input" placeholder="Key" value="${esc(k)}" oninput="markDirty()">
+    <input type="text" class="input" placeholder="Value" value="${esc(v)}" oninput="markDirty()">
     <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove(); markDirty()" title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
@@ -451,8 +451,8 @@ function readKV(id) {
 
 function fieldColumns(id, label, arr) {
   const rows = (arr ?? []).map(col => colRow(col)).join('');
-  return `<div class="ep-field">
-    <label>${label}</label>
+  return `<div class="field">
+    <label class="field-label">${label}</label>
     <div class="ep-col-list" id="${id}">${rows}</div>
     <button type="button" class="ep-add-row" onclick="addColRow('${id}')">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -463,7 +463,7 @@ function fieldColumns(id, label, arr) {
 
 function colRow(val = '') {
   return `<div class="ep-col-row">
-    <input type="text" placeholder="ColumnName" value="${esc(val)}" oninput="markDirty()">
+    <input type="text" class="input" placeholder="ColumnName" value="${esc(val)}" oninput="markDirty()">
     <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-col-row').remove(); markDirty()" title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
@@ -506,7 +506,7 @@ function fieldJson(id, label, value, minHeight = '100px') {
 }
 
 function fieldExampleIcon(fnName) {
-  return `<span class="field-example-icon" onmouseenter="ShadcnTooltip.show(this,${fnName}(),{side:'right'})" onmouseleave="ShadcnTooltip.hide()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>`;
+  return `<span class="field-example-icon" onmouseenter="Tooltip.show(this,${fnName}(),{side:'right'})" onmouseleave="Tooltip.hide()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>`;
 }
 
 function deletePatternsExample() {
@@ -557,16 +557,16 @@ function fieldDocumentation(c) {
 // [Columns accordion], [Advanced accordion], Documentation
 function renderSqlForm(c) {
   return `
-    <div class="ep-section">
-      <div class="ep-section-title">Database Object</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Database Object</h2></div>
       ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
       ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
       ${fieldSelect('objectType', 'Type', c.DatabaseObjectType ?? 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       ${fieldText('procedure', 'Procedure', c.Procedure ?? '')}
       ${fieldText('primaryKey', 'Primary Key', c.PrimaryKey ?? '')}
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Access</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldMethods(c.AllowedMethods)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
@@ -579,8 +579,8 @@ function renderSqlForm(c) {
         <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
       </div>
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Metadata</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
       ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
@@ -600,12 +600,12 @@ function renderProxyForm(c) {
   const cp = c.CustomProperties ?? {};
   const hasCp = !!(cp.ContentType || cp.HttpMethodTranslation || cp.HttpMethodAppendHeaders);
   return `
-    <div class="ep-section">
-      <div class="ep-section-title">Target</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Target</h2></div>
       ${fieldText('url', 'URL', c.Url ?? '')}
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Access</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
@@ -618,8 +618,8 @@ function renderProxyForm(c) {
         <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
       </div>
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Metadata</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
       ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
@@ -639,8 +639,8 @@ function renderProxyForm(c) {
 function renderCompositeForm(c) {
   const cfg = c.CompositeConfig ?? {};
   return `
-    <div class="ep-section">
-      <div class="ep-section-title">Access</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
@@ -653,14 +653,14 @@ function renderCompositeForm(c) {
         <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
       </div>
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Metadata</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
       ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Composite Config</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Composite Config</h2></div>
       ${fieldText('compositeConfigName', 'Name', cfg.Name ?? '')}
       ${fieldTextarea('compositeConfigDesc', 'Description', cfg.Description ?? '', '60px')}
       ${fieldJson('compositeSteps', 'Steps (JSON)', cfg.Steps ?? [], '160px')}
@@ -672,14 +672,14 @@ function renderCompositeForm(c) {
 //               AllowedEnvironments, Hidden, Documentation
 function renderFileForm(c) {
   return `
-    <div class="ep-section">
-      <div class="ep-section-title">Storage</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Storage</h2></div>
       ${fieldSelect('storageType', 'Storage Type', c.StorageType ?? 'Local', ['Local','AzureBlob','S3'])}
       ${fieldText('baseDirectory', 'Base Directory', c.BaseDirectory ?? '')}
       ${fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '))}
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Access</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
@@ -691,8 +691,8 @@ function renderFileForm(c) {
         <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
       </div>
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Metadata</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
       ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
@@ -704,14 +704,14 @@ function renderFileForm(c) {
 //                 AllowedEnvironments, Hidden, Documentation
 function renderStaticForm(c) {
   return `
-    <div class="ep-section">
-      <div class="ep-section-title">Content</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Content</h2></div>
       ${fieldText('contentType', 'Content-Type', c.ContentType ?? 'application/json')}
       ${fieldText('contentFile', 'Content File', c.ContentFile ?? '')}
       ${fieldToggle('enableFiltering', 'Enable OData Filtering', c.EnableFiltering ?? false)}
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Access</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
@@ -723,8 +723,8 @@ function renderStaticForm(c) {
         <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
       </div>
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Metadata</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
       ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
@@ -737,13 +737,13 @@ function renderStaticForm(c) {
 function renderWebhookForm(c) {
   const hasAdvanced = !!(c.RequiredColumns?.length || c.ColumnValidation);
   return `
-    <div class="ep-section">
-      <div class="ep-section-title">Database Object</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Database Object</h2></div>
       ${fieldText('objectName', 'Object Name', c.DatabaseObjectName ?? '')}
       ${fieldText('schema', 'Schema', c.DatabaseSchema ?? 'dbo')}
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Access</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldMethods(c.AllowedMethods)}
       ${fieldColumns('allowedCols', 'Allowed Tables', c.AllowedColumns)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
@@ -757,8 +757,8 @@ function renderWebhookForm(c) {
         <span style="font-size:0.8125rem;font-weight:500;">Expose in MCP</span>
       </div>
     </div>
-    <div class="ep-section">
-      <div class="ep-section-title">Metadata</div>
+    <div class="card">
+      <div class="card-header"><h2 class="card-title">Metadata</h2></div>
       ${fieldText('namespace', 'Namespace', c.Namespace ?? '')}
       ${fieldText('namespaceDisplayName', 'Namespace Label', c.NamespaceDisplayName ?? '')}
       ${fieldText('displayName', 'Display Name', c.DisplayName ?? '')}
@@ -978,27 +978,21 @@ async function saveEndpoint() {
   try {
     if (_rawMode) {
       const raw = document.getElementById('rawContent')?.value ?? '';
-      try { JSON.parse(raw); } catch(e) { showToast('Invalid JSON: ' + e.message, 'error'); return; }
+      try { JSON.parse(raw); } catch(e) { toast('Invalid JSON: ' + e.message, 'error'); return; }
       body = { content: raw };
-      const r = await fetch(`/ui/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? r.statusText);
-      showToast('Saved', 'success');
+      await api(`/ui/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
       _dirty = false;
       await refreshAll();
     } else {
       const errs = validateForm(type);
-      if (errs.length) { showToast(errs[0], 'error'); return; }
+      if (errs.length) { toast(errs[0], 'error'); return; }
       const cfg = collectFormConfig(type, _detailData.content);
       body = { content: cfg };
-      const r = await fetch(`/ui/api/endpoints/${type}/${name}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error ?? r.statusText);
-      showToast('Saved', 'success');
+      await api(`/ui/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
       _dirty = false;
       await refreshAll();
     }
-  } catch(e) { showToast('Save failed: ' + e.message, 'error'); }
+  } catch(e) {}
   finally { saveBtn?.classList.remove('is-loading'); }
 }
 
@@ -1051,10 +1045,7 @@ async function confirmDelete() {
   if (!_selected) return;
   const { type, name } = _selected;
   try {
-    const r = await fetch(`/ui/api/endpoints/${type}/${name}`, { method: 'DELETE' });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error ?? r.statusText);
-    showToast(`${name} deleted`, 'success');
+    await api(`/ui/api/endpoints/${type}/${name}`, { method: 'DELETE', success: `${name} deleted`, failure: 'Delete failed' });
     _selected = null;
     _detailData = null;
     document.getElementById('epDetail').innerHTML = `<div class="ep-empty">
@@ -1063,7 +1054,7 @@ async function confirmDelete() {
     </div>`;
     await refreshAll();
   } catch(e) {
-    showToast('Delete failed: ' + e.message, 'error');
+    toast('Delete failed: ' + e.message, 'error');
   }
 }
 
@@ -1081,23 +1072,19 @@ function cancelRename() {
 
 async function confirmRename() {
   const newName = document.getElementById('renameInput')?.value?.trim() ?? '';
-  if (!newName) { showToast('Name is required', 'error'); return; }
+  if (!newName) { toast('Name is required', 'error'); return; }
   if (!/^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*$/.test(newName)) {
-    showToast('Name may only contain letters, numbers, hyphens, underscores, or forward slashes', 'error'); return;
+    toast('Name may only contain letters, numbers, hyphens, underscores, or forward slashes', 'error'); return;
   }
   const { type, name } = _selected;
   try {
-    const r = await fetch(`/ui/api/endpoints/${type}/${name}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ new_name: newName })
+    await api(`/ui/api/endpoints/${type}/${name}`, {
+      method: 'PATCH', body: { new_name: newName }, success: 'Renamed successfully', failure: 'Rename failed'
     });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error ?? r.statusText);
-    showToast('Renamed successfully', 'success');
     _renaming = false;
     await refreshAll();
     selectEndpoint(type, newName);
-  } catch(e) { showToast('Rename failed: ' + e.message, 'error'); }
+  } catch(e) {}
 }
 
 // Create Drawer
@@ -1110,8 +1097,8 @@ function openCreateDrawer() {
   Drawer.open('createDrawer');
 }
 
-function closeCreateDrawer() {
-  Drawer.close('createDrawer');
+async function closeCreateDrawer() {
+  await Drawer.close('createDrawer');
 }
 
 function renderCreateTypePicker() {
@@ -1130,26 +1117,26 @@ function setCreateType(key) {
 function renderCreateForm() {
   const typeCfg = ENDPOINT_TYPES.find(t => t.key === _createType);
   const def = typeCfg?.defaultContent ?? {};
-  let html = `<div class="ep-section">
-    <div class="ep-section-title">Identity</div>
+  let html = `<div class="card">
+    <div class="card-header"><h2 class="card-title">Identity</h2></div>
     ${fieldText('createName', 'Name', '')}
   </div>`;
 
   switch(_createType) {
     case 'sql':
-      html += `<div class="ep-section">
-        <div class="ep-section-title">Database Object</div>
+      html += `<div class="card">
+        <div class="card-header"><h2 class="card-title">Database Object</h2></div>
         ${fieldText('createObjectName', 'Object Name', '')}
         ${fieldText('createSchema', 'Schema', 'dbo')}
         ${fieldSelect('createObjectType', 'Type', 'Table', ['Table','View','StoredProcedure','TableValuedFunction'])}
       </div>
-      <div class="ep-section">
-        <div class="ep-section-title">Metadata</div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Metadata</h2></div>
         ${fieldText('createDisplayName', 'Display Name', '')}
         ${fieldText('createNamespaceDisplayName', 'Namespace Label', '')}
       </div>
-      <div class="ep-section">
-        <div class="ep-section-title">Access</div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Access</h2></div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createHidden', 'Private', false)}
@@ -1157,12 +1144,12 @@ function renderCreateForm() {
       ${fieldDocumentation({})}`;
       break;
     case 'proxy':
-      html += `<div class="ep-section">
-        <div class="ep-section-title">Target</div>
+      html += `<div class="card">
+        <div class="card-header"><h2 class="card-title">Target</h2></div>
         ${fieldText('createUrl', 'URL', '')}
       </div>
-      <div class="ep-section">
-        <div class="ep-section-title">Access</div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Access</h2></div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createHidden', 'Private', false)}
@@ -1170,40 +1157,40 @@ function renderCreateForm() {
       ${fieldDocumentation({})}`;
       break;
     case 'composite':
-      html += `<div class="ep-section">
-        <div class="ep-section-title">Access</div>
+      html += `<div class="card">
+        <div class="card-header"><h2 class="card-title">Access</h2></div>
         ${fieldMethods(['GET'], 'createMethodPicker')}
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createHidden', 'Private', false)}
       </div>
-      <div class="ep-section">
-        <div class="ep-section-title">Steps (JSON)</div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Steps (JSON)</h2></div>
         ${fieldTextarea('createSteps', 'Steps Array', '[]', '100px', true)}
       </div>
       ${fieldDocumentation({})}`;
       break;
     case 'file':
-      html += `<div class="ep-section">
-        <div class="ep-section-title">Storage</div>
+      html += `<div class="card">
+        <div class="card-header"><h2 class="card-title">Storage</h2></div>
         ${fieldSelect('createStorageType', 'Storage Type', 'Local', ['Local','AzureBlob','S3'])}
         ${fieldText('createBaseDir', 'Base Directory', '')}
         ${fieldText('createExtensions', 'Allowed Extensions', '.jpg, .png, .pdf')}
       </div>
-      <div class="ep-section">
-        <div class="ep-section-title">Access</div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Access</h2></div>
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createHidden', 'Private', false)}
       </div>`;
       break;
     case 'static':
-      html += `<div class="ep-section">
-        <div class="ep-section-title">Content</div>
+      html += `<div class="card">
+        <div class="card-header"><h2 class="card-title">Content</h2></div>
         ${fieldText('createContentFile', 'Content File', '')}
         ${fieldText('createContentType', 'Content-Type', 'application/json')}
         ${fieldToggle('createEnableFiltering', 'Enable OData Filtering', false)}
       </div>
-      <div class="ep-section">
-        <div class="ep-section-title">Access</div>
+      <div class="card">
+        <div class="card-header"><h2 class="card-title">Access</h2></div>
         ${fieldAllowedEnvs('*')}
         ${fieldToggle('createHidden', 'Private', false)}
       </div>`;
@@ -1215,8 +1202,8 @@ function renderCreateForm() {
 
 async function submitCreate() {
   const name = (document.getElementById('createName')?.value ?? '').trim();
-  if (!name) { showToast('Name is required', 'error'); return; }
-  if (!/^[a-zA-Z0-9_-]+$/.test(name)) { showToast('Name must use only letters, numbers, hyphens, or underscores', 'error'); return; }
+  if (!name) { toast('Name is required', 'error'); return; }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) { toast('Name must use only letters, numbers, hyphens, or underscores', 'error'); return; }
 
   const methods = readMethods('createMethodPicker');
   const envs = readEnvs();
@@ -1304,27 +1291,19 @@ async function submitCreate() {
       content = {};
   }
 
-  if (validationErr) { showToast(validationErr, 'error'); return; }
+  if (validationErr) { toast(validationErr, 'error'); return; }
 
   try {
-    const r = await fetch(`/ui/api/endpoints/${_createType}`, {
+    await api(`/ui/api/endpoints/${_createType}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, content: JSON.stringify(content, null, 2) })
+      body: { name, content: JSON.stringify(content, null, 2) },
+      success: `${name} created`, failure: 'Create failed'
     });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error ?? r.statusText);
-    showToast(`${name} created`, 'success');
-    closeCreateDrawer();
+    await closeCreateDrawer();
     await refreshAll();
     selectEndpoint(_createType, name);
-  } catch(e) {
-    showToast('Create failed: ' + e.message, 'error');
-  }
+  } catch(e) {}
 }
-
-// Toast helper
-function showToast(msg, type = 'success') { toast(msg, type); }
 
 // Bootstrap
 Drawer.onClose('createDrawer', () => { _dirty = _preDrawerDirty; });

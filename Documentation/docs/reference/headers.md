@@ -86,13 +86,18 @@ Example from environment settings:
 
 Portway automatically adds security headers to all responses:
 
-| Header | Value | Purpose |
-|--------|-------|---------|
-| `X-Content-Type-Options` | `nosniff` | Prevent MIME sniffing |
-| `X-Frame-Options` | `DENY` | Prevent clickjacking |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Enforce HTTPS |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Control referrer info |
-| `Permissions-Policy` | `geolocation=(), camera=(), microphone=()` | Restrict features |
+| Header | Value |
+|--------|-------|
+| `X-Content-Type-Options` | `nosniff` |
+| `X-Frame-Options` | `DENY` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | `geolocation=(), camera=(), microphone=()` |
+| `Content-Security-Policy` | `default-src 'self'; object-src 'none'; frame-ancestors 'none'; ...` |
+
+On `/ui` responses Portway also sends `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin`. They apply to `/ui` only, so cross-origin clients of your gateway endpoints are unaffected.
+
+Portway also removes `Server`, `X-Powered-By`, and the `X-AspNet*` version headers from responses.
 
 ### Rate limiting headers
 
@@ -284,7 +289,7 @@ curl -X POST \
 
 ## Related topics
 
-- [Authentication](/reference/api-auth) - Token and authorization headers
-- [API Overview](/reference/) - General API reference
-- [Environment Settings](/reference/environment-settings) - Environment-specific headers
-- [Security Guide](/guide/security) - Security header configuration
+- [Authentication](/reference/api-auth)
+- [API Overview](/reference/)
+- [Environment Settings](/reference/environment-settings)
+- [Security Guide](/guide/security)

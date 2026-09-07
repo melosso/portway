@@ -28,9 +28,7 @@
 
     refresh: async function() {
       try {
-        const response = await fetch('/ui/api/customization');
-        if (!response.ok) return;
-        const data = await response.json();
+        const data = await api('/ui/api/customization', { silent: true });
         
         const isLogin = window.location.pathname.endsWith('/ui/login') || window.location.pathname.endsWith('/ui/login.html');
         const shouldShow = data.promo_text && !(isLogin && !data.promo_login);
@@ -98,18 +96,23 @@
       if (!text) return '';
       
       return text
-        // Escape HTML
+        // Escape HTML; the quote matters because link hrefs are built as attributes below
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
         // Bold: **text** or __text__
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.*?)__/g, '<strong>$1</strong>')
         // Italic: *text* or _text_
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/_(.*?)_/g, '<em>$1</em>')
-        // Links: [text](url)
-        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        // Links: [text](url), http(s)/mailto only so javascript: and data: cannot ride in
+        .replace(/\[(.*?)\]\((.*?)\)/g, function(match, label, url) {
+          return /^(https?:\/\/|mailto:|\/)/i.test(url.trim())
+            ? '<a href="' + url.trim() + '" target="_blank" rel="noopener noreferrer">' + label + '</a>'
+            : label;
+        });
     }
   };
 

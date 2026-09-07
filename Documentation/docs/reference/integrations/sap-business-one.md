@@ -75,8 +75,6 @@ Even with sessions handled client-side, the gateway does real work:
 
 ## Things to keep in mind
 
-A few properties of the passthrough pattern deserve attention:
-
 - SAP credentials pass through the gateway in the login body. Body capture in [traffic logging](/reference/audit) is off by default; leave it off for this endpoint.
 - The Service Layer speaks its own OData dialect natively, so `$filter`, `$select`, and `$top` work as documented by SAP. Portway passes them through without translation.
 - The whole Service Layer surface sits behind one endpoint. Narrowing what an integration can do happens through SAP B1 authorizations, not endpoint definitions.

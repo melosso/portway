@@ -1,24 +1,17 @@
 ---
 title: Versioning
-description: "Versioning in Portway allows you to manage multiple versions of your API gateway, enabling transitions between versions and ensuring backward compatibility"
+description: "Run multiple Portway versions side by side on IIS, with routing and environment variables to pick the default"
 ---
 
 # Versioning
 
-Versioning in Portway allows you to manage multiple versions of your API gateway, enabling transitions between versions and ensuring backward compatibility. This guide explains how to set up versioning using IIS (Internet Information Services) and environment variables.
+Run more than one version of Portway side by side, so you can move traffic between them without a hard cutover. Setup uses IIS and environment variables.
 
 ## Overview
 
 Versioning relies on having multiple Portway installations in separate version-specific folders (e.g., `v1`, `v2`). Requests are routed to the appropriate version folder based on the configuration in IIS or environment variables.
 
-### Key concepts
-- **Version Folders**: Each version of Portway resides in its own folder (e.g., `v1`, `v2`).
-- **Default Version**: Requests to the root URL are redirected to the default version (e.g., `v1`).
-- **Environment Variables**: You can use environment variables to dynamically configure the default version.
-
-### Key concepts visualization
-
-To better understand the key concepts of versioning in Portway, refer to the simplified diagram below:
+Requests to the root URL are redirected to a default version, which you can set with an environment variable.
 
 ```mermaid
 graph TD
@@ -148,8 +141,6 @@ In each version folder, update the `PathBase` property in the `appsettings.json`
 > [!WARNING]
 > Make sure to set-up different instance names for the various data sources that you may be working with (Redis, SQL Server), to make sure you can differentiate traffic from the (now) multiple versions.
 
-This ensures that the application correctly identifies the base path for each version.
-
 ### 4. Create separate Application Pools
 
 The same application pool can't be used twice for the same application. To circumvent this limitation, make sure to create seperate application pools for each version (e.g. `PortwayApi_v1` and `PortwayApi_v2`) and bind them to each site.
@@ -159,12 +150,3 @@ The same application pool can't be used twice for the same application. To circu
 1. Open a browser and navigate to the root URL of your site.
 2. Verify that requests are redirected to the default version (e.g., `/v1/`).
 3. Test other versions by navigating to their specific paths (e.g., `/v2/`).
-
-## Best practices
-
-1. **Use Clear Versioning**: Name version folders clearly (e.g., `v1`, `v2`).
-2. **Test Thoroughly**: Ensure all redirects and configurations work as expected.
-3. **Monitor Logs**: Check IIS logs for any issues with versioning.
-4. **Document Changes**: Keep a record of version-specific changes for future reference.
-
-By following this guide, you can effectively manage multiple versions of your Portway API gateway, ensuring a smooth experience for your users and developers.

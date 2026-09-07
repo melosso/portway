@@ -9,6 +9,8 @@ public class AuthDbContext : DbContext
     public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
     public DbSet<AuthToken> Tokens { get; set; }
     public DbSet<AuthTokenAudit> TokenAudits { get; set; }
+    public DbSet<AdminUser> AdminUsers { get; set; }
+    public DbSet<OidcProvider> OidcProviders { get; set; }
 
     public void EnsureTablesCreated()
     {
@@ -17,6 +19,11 @@ public class AuthDbContext : DbContext
             // Check if the Tokens table exists
             bool tokensTableExists = CheckTableExists("Tokens");
             bool auditsTableExists = CheckTableExists("TokenAudits");
+
+            if (!CheckTableExists("AdminUsers")) CreateAdminUsersTable();
+            else EnsureAdminUserColumns();
+            if (!CheckTableExists("OidcProviders")) CreateOidcProvidersTable();
+            else EnsureOidcProviderColumns();
             
             if (tokensTableExists && auditsTableExists)
             {
@@ -163,6 +170,119 @@ public class AuthDbContext : DbContext
         catch (Exception ex)
         {
             Log.Error(ex, "Error creating Tokens table: {Message}", ex.Message);
+            throw;
+        }
+    }
+
+    private void CreateAdminUsersTable()
+    {
+        try
+        {
+            OpenConnection().Execute(@"
+                CREATE TABLE AdminUsers (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Username TEXT NOT NULL,
+                    PasswordHash TEXT NOT NULL DEFAULT '',
+                    Provider TEXT NOT NULL DEFAULT 'local',
+                    ExternalId TEXT NULL,
+                    Email TEXT NOT NULL DEFAULT '',
+                    Role TEXT NOT NULL DEFAULT 'administrator',
+                    IsActive INTEGER NOT NULL DEFAULT 1,
+                    MustChangePassword INTEGER NOT NULL DEFAULT 0,
+                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    LastLoginAt DATETIME NULL
+                )");
+
+            OpenConnection().Execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS IX_AdminUsers_Username ON AdminUsers (Username)");
+
+            Log.Debug("Created new AdminUsers table");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error creating AdminUsers table: {Message}", ex.Message);
+            throw;
+        }
+    }
+
+    private void EnsureAdminUserColumns()
+    {
+        try
+        {
+            foreach (var (column, definition) in new[]
+            {
+                ("MustChangePassword", "INTEGER NOT NULL DEFAULT 0"),
+                ("Email", "TEXT NOT NULL DEFAULT ''"),
+            })
+            {
+                var present = OpenConnection().ExecuteScalar<int>(
+                    "SELECT COUNT(*) FROM pragma_table_info('AdminUsers') WHERE name=@name",
+                    new { name = column }) > 0;
+
+                if (present) continue;
+                OpenConnection().Execute($"ALTER TABLE AdminUsers ADD COLUMN {column} {definition}");
+                Log.Information("Added {Column} column to AdminUsers table", column);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error checking AdminUsers columns");
+        }
+    }
+
+    private void EnsureOidcProviderColumns()
+    {
+        try
+        {
+            foreach (var (column, definition) in new[]
+            {
+                ("EmailClaim", "TEXT NOT NULL DEFAULT 'email'"),
+            })
+            {
+                var present = OpenConnection().ExecuteScalar<int>(
+                    "SELECT COUNT(*) FROM pragma_table_info('OidcProviders') WHERE name=@name",
+                    new { name = column }) > 0;
+
+                if (present) continue;
+                OpenConnection().Execute($"ALTER TABLE OidcProviders ADD COLUMN {column} {definition}");
+                Log.Information("Added {Column} column to OidcProviders table", column);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error checking OidcProviders columns");
+        }
+    }
+
+    private void CreateOidcProvidersTable()
+    {
+        try
+        {
+            OpenConnection().Execute(@"
+                CREATE TABLE OidcProviders (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Slug TEXT NOT NULL,
+                    Name TEXT NOT NULL DEFAULT '',
+                    Authority TEXT NOT NULL DEFAULT '',
+                    ClientId TEXT NOT NULL DEFAULT '',
+                    ClientSecret TEXT NOT NULL DEFAULT '',
+                    Scopes TEXT NOT NULL DEFAULT 'openid profile email',
+                    UsernameClaim TEXT NOT NULL DEFAULT 'preferred_username',
+                    EmailClaim TEXT NOT NULL DEFAULT 'email',
+                    IsEnabled INTEGER NOT NULL DEFAULT 0,
+                    CreateAccounts INTEGER NOT NULL DEFAULT 0,
+                    CreatedRole TEXT NOT NULL DEFAULT 'viewer',
+                    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                )");
+
+            OpenConnection().Execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS IX_OidcProviders_Slug ON OidcProviders (Slug)");
+
+            Log.Debug("Created new OidcProviders table");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error creating OidcProviders table: {Message}", ex.Message);
             throw;
         }
     }

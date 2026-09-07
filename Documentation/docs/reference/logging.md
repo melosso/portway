@@ -91,23 +91,6 @@ Logs are automatically enriched with:
 
 ## Troubleshooting
 
-### Common issues
-
-1. **Missing Log Files**
-   - Check write permissions on log directory
-   - Verify log path configuration
-   - Ensure application has started successfully
-
-2. **Excessive Log Volume**
-   - Adjust minimum log levels
-   - Enable filtering for noisy components
-   - Configure appropriate retention policies
-
-3. **Performance Impact**
-   - Enable buffered writing
-   - Increase flush intervals
-   - Filter high-frequency events
-
 ### Diagnostic tools
 
 Handy commands for log analysis:

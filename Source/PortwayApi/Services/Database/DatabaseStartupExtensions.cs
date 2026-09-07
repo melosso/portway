@@ -28,17 +28,22 @@ public static class DatabaseStartupExtensions
     }
 
     /// <summary>Creates auth.db when needed and generates a default token if none exist</summary>
-    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName)
+    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, string adminApiKey)
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var tokenService = scope.ServiceProvider.GetRequiredService<TokenService>();
+        var users = scope.ServiceProvider.GetRequiredService<AdminUserService>();
 
         try
         {
             // Set up database and migrate if required
             context.Database.EnsureCreated();
             context.EnsureTablesCreated();
+
+            // Console accounts replaced WebUi:AdminApiKey; move an existing key into the first account
+            await users.SeedFirstAccountAsync(adminApiKey);
+            PortwayApi.Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
 
             // Create a default token if none exist
             var activeTokens = await tokenService.GetActiveTokensAsync();

@@ -332,6 +332,6 @@ Documentation is automatically filtered by environment. Only endpoints available
 
 ## Related topics
 
-- [Entity Configuration](/reference/entity-config) - Complete entity configuration guide
-- [API Overview](/reference/) - API endpoint patterns and usage
-- [Environment Settings](/reference/environment-settings) - Environment configuration
+- [Entity Configuration](/reference/entity-config)
+- [API Overview](/reference/)
+- [Environment Settings](/reference/environment-settings)

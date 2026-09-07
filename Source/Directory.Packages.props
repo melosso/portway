@@ -18,6 +18,9 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Versioning -->
+    <PackageVersion Include="DiceBear.Core" Version="10.7.0" />
+    <PackageVersion Include="DiceBear.Styles" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
     <PackageVersion Include="Microsoft.OpenApi" Version="3.9.0" />
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
@@ -30,9 +33,9 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="$(AspNetCoreVersion)" />
   </ItemGroup>
   <ItemGroup Label="Authentication">
-    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.20.0" />
-    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.20.0" />
-    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.20.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.22.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.22.0" />
   </ItemGroup>
   <ItemGroup Label="Entity Framework">
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkVersion)" />

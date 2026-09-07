@@ -8,6 +8,8 @@ public static class AuthServiceExtensions
     {
         var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "auth.db");
         services.AddDbContext<AuthDbContext>(options => options.UseSqlite($"Data Source={dbPath}"));
+        services.AddScoped<AdminUserService>();
+        services.AddSingleton<PortwayApi.Services.Avatars.AvatarService>();
         services.AddSingleton<ITokenVerificationCache, TokenVerificationCache>();
         services.AddScoped<TokenService>();
         services.AddScoped<EnvironmentAuthService>();

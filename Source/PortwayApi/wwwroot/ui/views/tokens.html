@@ -1,13 +1,15 @@
-  <script src="js/components/tooltip.js"></script>
   <script src="js/components/drawer.js"></script>
   <script src="js/components/dialog.js"></script>
 
 <main>
   <div class="page-header">
     <div class="page-title">
-      <h1 class="select-none">Access Tokens</h1>
+      <div class="page-heading">
+        <h1 class="select-none">Access Tokens</h1>
+        <p class="page-sub">Bearer tokens and what each one may reach.</p>
+      </div>
     </div>
-    <div class="header-actions">
+    <div class="page-actions">
       <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; color:hsl(var(--muted-foreground)); cursor:pointer;" onclick="document.getElementById('showRevokedCb').click()">
         <label class="switch" onclick="event.stopPropagation()">
           <input type="checkbox" id="showRevokedCb" onchange="loadTokens()">
@@ -17,22 +19,23 @@
       </div>
       <div class="search-wrap">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="searchInput" placeholder="Search tokens…" oninput="applyFilters()">
+        <input type="text" class="input" id="searchInput" placeholder="Search tokens…" oninput="applyFilters()">
       </div>
       <button class="btn btn-outline" onclick="refreshAll()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
       </button>
-      <button class="btn btn-outline" onclick="openCreateDrawer()">
+      <button class="btn btn-primary" onclick="openCreateDrawer()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New token
       </button>
     </div>
   </div>
 
-  <div style="flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0;">
-    <div class="table-wrapper" style="flex:1; display:flex; flex-direction:column; min-height:0; border-left:none; border-right:none; border-bottom:none; border-radius:0;">
-      <div class="scroll-area" style="flex:1;">
-        <table>
+  <div class="main-content-fill">
+    <div class="table-wrap">
+      <div class="scroll-area">
+        <table class="table">
           <thead>
             <tr>
               <th style="width:36px; padding-left:1rem;">
@@ -62,13 +65,12 @@
           </tbody>
         </table>
       </div>
-    </div>
 
     <!-- Pagination footer -->
     <div class="table-footer">
       <div style="display:flex; align-items:center; gap:0.5rem;">
         <span>Rows per page:</span>
-        <select id="rowsPerPage" onchange="currentPage=1;applyFilters()">
+        <select id="rowsPerPage" class="input input-sm" onchange="currentPage=1;applyFilters()">
           <option value="10">10</option>
           <option value="25">25</option>
           <option value="50">50</option>
@@ -84,6 +86,7 @@
       </div>
     </div>
   </div>
+  </div>
 </main>
 
 <!-- Create Drawer -->
@@ -96,43 +99,43 @@
     </button>
   </div>
   <div class="drawer-body">
-    <div class="drawer-field">
-      <label>Name <span style="color:hsl(var(--destructive))">*</span></label>
-      <input type="text" id="createName" placeholder="e.g. ci-bot" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    <div class="field">
+      <label class="field-label">Name <span style="color:hsl(var(--destructive))">*</span></label>
+      <input type="text" id="createName" placeholder="e.g. ci-bot" class="input">
     </div>
-    <div class="drawer-field">
-      <label>Description</label>
-      <input type="text" id="createDesc" placeholder="Optional description" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    <div class="field">
+      <label class="field-label">Description</label>
+      <input type="text" id="createDesc" placeholder="Optional description" class="input">
     </div>
-    <div class="drawer-field">
-      <label>Expiration (days)</label>
-      <input type="number" id="createExpiry" placeholder="Leave blank for never" min="1" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    <div class="field">
+      <label class="field-label">Expiration (days)</label>
+      <input type="number" id="createExpiry" placeholder="Leave blank for never" min="1" class="input">
     </div>
-    <div class="drawer-field">
-      <label>Rate limit</label>
+    <div class="field">
+      <label class="field-label">Rate limit</label>
       <div style="display:flex; align-items:center; gap:0.5rem;">
-        <input type="number" id="createRateLimit" placeholder="Global" min="1" style="flex:1; min-width:0; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <input type="number" id="createRateLimit" placeholder="Global" min="1" class="input" style="flex:1; min-width:0">
         <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground)); white-space:nowrap;">requests per</span>
-        <input type="number" id="createRateWindow" placeholder="60" min="1" max="86400" style="width:5rem; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <input type="number" id="createRateWindow" placeholder="60" min="1" max="86400" class="input" style="width:5rem">
         <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">s</span>
       </div>
-      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Blank uses the global token limit.</div>
+      <div class="field-help">Blank uses the global token limit.</div>
     </div>
-    <div class="drawer-field">
-      <label>Scopes</label>
+    <div class="field">
+      <label class="field-label">Scopes</label>
       <div class="tag-input-wrapper" id="createScopesWrapper">
         <input type="text" id="createScopesInput" class="tag-input" placeholder="Type to search or * for all">
       </div>
       <div class="tag-dropdown" id="createScopesDropdown"></div>
-      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Enter endpoint names or <code>*</code> for all. Press Enter or click to add.</div>
+      <div class="field-help">Enter endpoint names or <code>*</code> for all. Press Enter or click to add.</div>
     </div>
-    <div class="drawer-field">
-      <label>Environments</label>
+    <div class="field">
+      <label class="field-label">Environments</label>
       <div class="tag-input-wrapper" id="createEnvsWrapper">
         <input type="text" id="createEnvsInput" class="tag-input" placeholder="Type to search or * for all">
       </div>
       <div class="tag-dropdown" id="createEnvsDropdown"></div>
-      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Enter environment names or <code>*</code> for all.</div>
+      <div class="field-help">Enter environment names or <code>*</code> for all.</div>
     </div>
   </div>
   <div class="drawer-footer">
@@ -158,48 +161,48 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
-  <div class="drawer-tabs">
-    <button class="drawer-tab active" id="tabPolicy" onclick="switchTab('policy')">Policy</button>
-    <button class="drawer-tab" id="tabAudit" onclick="switchTab('audit')">Audit Log</button>
+  <div class="tabs">
+    <button class="tab active" id="tabPolicy" onclick="switchTab('policy')">Policy</button>
+    <button class="tab" id="tabAudit" onclick="switchTab('audit')">Audit Log</button>
   </div>
   <div class="drawer-body" id="policyPanel">
-    <div class="drawer-field">
-      <label>Description</label>
-      <input type="text" id="editDesc" placeholder="Optional description" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+    <div class="field">
+      <label class="field-label">Description</label>
+      <input type="text" id="editDesc" placeholder="Optional description" class="input">
     </div>
-    <div class="drawer-field">
-      <label>Scopes</label>
+    <div class="field">
+      <label class="field-label">Scopes</label>
       <div class="tag-input-wrapper" id="editScopesWrapper">
         <input type="text" id="editScopesInput" class="tag-input" placeholder="Type to search or * for all">
       </div>
       <div class="tag-dropdown" id="editScopesDropdown"></div>
     </div>
-    <div class="drawer-field">
-      <label>Environments</label>
+    <div class="field">
+      <label class="field-label">Environments</label>
       <div class="tag-input-wrapper" id="editEnvsWrapper">
         <input type="text" id="editEnvsInput" class="tag-input" placeholder="Type to search or * for all">
       </div>
       <div class="tag-dropdown" id="editEnvsDropdown"></div>
     </div>
-    <div class="drawer-field">
-      <label>Rate limit</label>
+    <div class="field">
+      <label class="field-label">Rate limit</label>
       <div style="display:flex; align-items:center; gap:0.5rem;">
-        <input type="number" id="editRateLimit" placeholder="Global" min="1" style="flex:1; min-width:0; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <input type="number" id="editRateLimit" placeholder="Global" min="1" class="input" style="flex:1; min-width:0">
         <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground)); white-space:nowrap;">requests per</span>
-        <input type="number" id="editRateWindow" placeholder="60" min="1" max="86400" style="width:5rem; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
+        <input type="number" id="editRateWindow" placeholder="60" min="1" max="86400" class="input" style="width:5rem">
         <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">s</span>
       </div>
-      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.375rem">Clear to revert to the global token limit.</div>
+      <div class="field-help">Clear to revert to the global token limit.</div>
     </div>
-    <div class="drawer-field">
-      <label>Expiration</label>
-      <input type="datetime-local" id="editExpiry" style="width:100%; padding:0.5rem 0.625rem; border:1px solid hsl(var(--border)); border-radius:var(--radius); background:hsl(var(--background)); color:hsl(var(--foreground)); font-family:inherit; font-size:0.8125rem; outline:none; transition:border-color 0.15s; color-scheme:dark light;" onfocus="this.style.borderColor='hsl(var(--primary)/0.5)'" onblur="this.style.borderColor='hsl(var(--border))'">
-      <div style="font-size:0.72rem; color:hsl(var(--muted-foreground)); margin-top:0.25rem">Leave blank to keep existing expiration unchanged.</div>
+    <div class="field">
+      <label class="field-label">Expiration</label>
+      <input type="datetime-local" id="editExpiry" class="input">
+      <div class="field-help">Leave blank to keep existing expiration unchanged.</div>
     </div>
   </div>
   <div class="drawer-body" id="auditPanel" style="display:none; padding:0;">
     <div style="flex:1; overflow:auto;">
-      <table>
+      <table class="table">
         <thead>
           <tr>
             <th>Operation</th>
@@ -224,7 +227,7 @@
 
 <!-- Token Reveal Modal -->
 <div id="revealBackdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); z-index:200; align-items:center; justify-content:center;">
-  <div style="background:hsl(var(--background)); border:1px solid hsl(var(--border)); border-radius:var(--radius); padding:2rem; width:540px; max-width:92vw; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);">
+  <div style="background:hsl(var(--background)); border:1px solid hsl(var(--border)); border-radius:var(--nav-radius); padding:2rem; width:540px; max-width:92vw; box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);">
     <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.875rem;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="hsl(38,92%,50%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       <strong style="font-size:1rem">Success</strong>
@@ -399,14 +402,12 @@ class TagInput {
 // Data Loading
 async function loadTokens() {
   const includeRevoked = document.getElementById('showRevokedCb').checked;
+  const qs = includeRevoked ? '?include_revoked=true' : '';
   try {
-    const qs = includeRevoked ? '?include_revoked=true' : '';
-    allTokens = await fetch(`/ui/api/tokens${qs}`).then(r => r.json());
+    allTokens = await api(`/ui/api/tokens${qs}`, { failure: 'Failed to load tokens' });
     currentPage = 1;
     applyFilters();
-  } catch(e) {
-    toast('Failed to load tokens', 'error');
-  }
+  } catch(e) {}
 }
 
 function tokenStatus(t) {
@@ -415,8 +416,8 @@ function tokenStatus(t) {
 
 async function refreshAll() {
   const [epsResult, envResult] = await Promise.allSettled([
-    fetch('/ui/api/endpoints').then(r => r.json()),
-    fetch('/ui/api/environments').then(r => r.json())
+    api('/ui/api/endpoints', { failure: 'Failed to load endpoints' }),
+    api('/ui/api/environments', { failure: 'Failed to load environments' })
   ]);
 
   if (epsResult.status === 'fulfilled') {
@@ -528,11 +529,11 @@ function renderTable() {
     const isActive  = !t.revoked_at && t.is_active;
     const revokeBtn = t.revoked_at
       ? (showArchived
-          ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Restore token" onclick="unarchiveToken(${t.id})">${unarchiveIcon}</button>`
-          : `<button class="btn-icon shadcn-tooltip" disabled data-tooltip="Already archived" style="opacity:0.3; cursor:default">${archiveIcon}</button>`)
-      : `<button class="btn-icon shadcn-tooltip" data-tooltip="Archive token" onclick="confirmRevoke(${t.id},this)">${archiveIcon}</button>`;
+          ? `<button class="btn-icon" data-tooltip="Restore token" onclick="unarchiveToken(${t.id})">${unarchiveIcon}</button>`
+          : `<button class="btn-icon" disabled data-tooltip="Already archived" style="opacity:0.3; cursor:default">${archiveIcon}</button>`)
+      : `<button class="btn-icon" data-tooltip="Archive token" onclick="confirmRevoke(${t.id},this)">${archiveIcon}</button>`;
     const rotateBtn = isActive
-      ? `<button class="btn-icon shadcn-tooltip" data-tooltip="Rotate token" onclick="confirmRotate(${t.id},this)">${rotateIcon}</button>`
+      ? `<button class="btn-icon" data-tooltip="Rotate token" onclick="confirmRotate(${t.id},this)">${rotateIcon}</button>`
       : '';
 
     return `<tr>
@@ -549,7 +550,7 @@ function renderTable() {
       <td>${badge}</td>
       <td style="text-align:right; padding-right:1rem; width:112px;">
         <div style="display:inline-flex; gap:2px; align-items:center;">
-          <button class="btn-icon shadcn-tooltip" data-tooltip="Edit token" onclick="openEditDrawer(${t.id})">${editIcon}</button>
+          <button class="btn-icon" data-tooltip="Edit token" onclick="openEditDrawer(${t.id})">${editIcon}</button>
           ${rotateBtn}
           ${revokeBtn}
         </div>
@@ -601,8 +602,8 @@ function openCreateDrawer() {
   setTimeout(() => document.getElementById('createName').focus(), 220);
 }
 
-function closeCreateDrawer() {
-  Drawer.close('createDrawer');
+async function closeCreateDrawer() {
+  await Drawer.close('createDrawer');
 }
 
 async function createToken() {
@@ -639,23 +640,13 @@ async function createToken() {
       body.rate_limit_window_seconds = rateLimit.window;
     }
 
-    const r = await fetch('/ui/api/tokens', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const d = await r.json();
-    if (!r.ok || !d.ok) {
-      toast(d.error || 'Failed to create token', 'error');
-      if (r.status === 409) document.getElementById('createName').focus();
-      return;
-    }
+    const d = await api('/ui/api/tokens', { method: 'POST', body, failure: 'Failed to create token' });
 
-    closeCreateDrawer();
+    await closeCreateDrawer();
     await loadTokens();
     showRevealModal(d.token, body);
   } catch(e) {
-    toast('Failed to create token', 'error');
+    if (e.status === 409) document.getElementById('createName').focus();
   } finally {
     btn.classList.remove('is-loading');
     btn.disabled = false;
@@ -707,9 +698,8 @@ function openEditDrawer(id) {
   Drawer.open('editDrawer');
 }
 
-function closeEditDrawer() {
-  Drawer.close('editDrawer');
-  editingTokenId = null;
+async function closeEditDrawer() {
+  if (await Drawer.close('editDrawer')) editingTokenId = null;
 }
 
 function switchTab(tab) {
@@ -750,19 +740,11 @@ async function saveToken() {
       body.expires_at = dt.toISOString();
     }
 
-    const r = await fetch(`/ui/api/tokens/${editingTokenId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.error || 'Save failed', 'error'); return; }
+    await api(`/ui/api/tokens/${editingTokenId}`, { method: 'PUT', body, success: 'Token updated', failure: 'Save failed' });
 
-    toast('Token updated', 'success');
-    closeEditDrawer();
+    await closeEditDrawer();
     await loadTokens();
-  } catch(e) {
-    toast('Failed to save changes', 'error');
-  } finally {
+  } catch(e) {} finally {
     btn.classList.remove('is-loading');
     btn.disabled = false;
   }
@@ -772,7 +754,7 @@ async function loadAudit(id) {
   const tbody = document.getElementById('auditTableBody');
   tbody.innerHTML = `<tr><td colspan="3" class="empty-state">Loading…</td></tr>`;
   try {
-    const entries = await fetch(`/ui/api/tokens/${id}/audit`).then(r => r.json());
+    const entries = await api(`/ui/api/tokens/${id}/audit`, { failure: 'Failed to load audit log' });
     if (!entries.length) {
       tbody.innerHTML = `<tr><td colspan="3" class="empty-state">No audit entries found</td></tr>`;
       return;
@@ -809,30 +791,18 @@ function confirmRevoke(id, btn) {
 
 async function revokeToken(id) {
   try {
-    const r = await fetch(`/ui/api/tokens/${id}`, { method: 'DELETE' });
-    if (r.status === 409) {
-      const d = await r.json().catch(() => ({}));
-      toast(d.error || 'Token cannot be archived', 'warning');
-      await loadTokens();
-      return;
-    }
-    if (!r.ok) { toast('Failed to archive token', 'error'); return; }
-    toast('Token archived', 'success');
+    await api(`/ui/api/tokens/${id}`, { method: 'DELETE', success: 'Token archived', failure: 'Failed to archive token' });
     await loadTokens();
   } catch(e) {
-    toast('Failed to archive token', 'error');
+    if (e.status === 409) await loadTokens();
   }
 }
 
 async function unarchiveToken(id) {
   try {
-    const r = await fetch(`/ui/api/tokens/${id}/unarchive`, { method: 'POST' });
-    if (!r.ok) { const d = await r.json().catch(() => ({})); toast(d.error || 'Failed to restore token', 'error'); return; }
-    toast('Token restored', 'success');
+    await api(`/ui/api/tokens/${id}/unarchive`, { method: 'POST', success: 'Token restored', failure: 'Failed to restore token' });
     await loadTokens();
-  } catch(e) {
-    toast('Failed to restore token', 'error');
-  }
+  } catch(e) {}
 }
 
 // Rotate
@@ -848,14 +818,10 @@ function confirmRotate(id, btn) {
 
 async function rotateToken(id) {
   try {
-    const r = await fetch(`/ui/api/tokens/${id}/rotate`, { method: 'POST' });
-    const d = await r.json();
-    if (!r.ok || !d.ok) { toast(d.error || 'Failed to rotate token', 'error'); await loadTokens(); return; }
+    const d = await api(`/ui/api/tokens/${id}/rotate`, { method: 'POST', success: 'Token rotated', failure: 'Failed to rotate token' });
     await loadTokens();
     showRevealModal(d.token, { username: d.username, allowed_scopes: d.allowed_scopes, allowed_environments: d.allowed_environments, expires_in_days: d.expires_in_days });
-    toast('Token rotated', 'success');
   } catch(e) {
-    toast('Failed to rotate token', 'error');
     await loadTokens();
   }
 }
@@ -922,8 +888,8 @@ async function copyRevealToken() {
 // Init 
 async function init() {
   const [epsResult, envResult] = await Promise.allSettled([
-    fetch('/ui/api/endpoints').then(r => r.json()),
-    fetch('/ui/api/environments').then(r => r.json())
+    api('/ui/api/endpoints', { failure: 'Failed to load endpoints' }),
+    api('/ui/api/environments', { failure: 'Failed to load environments' })
   ]);
 
   if (epsResult.status === 'fulfilled') {

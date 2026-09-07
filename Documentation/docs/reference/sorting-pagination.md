@@ -422,16 +422,12 @@ GET /api/prod/Products?$orderby=DiscountPrice desc
 
 ### Common issues
 
-1. **Inconsistent Pagination Results**
-   - Always include $orderby for consistent pagination
-   - Use a unique identifier as a tiebreaker
-
-2. **Slow Performance**
+1. **Slow Performance**
    - Sort on indexed columns when possible
    - Limit page size to reasonable numbers
    - Avoid deep pagination (high $skip values)
 
-3. **Unexpected Sort Order**
+2. **Unexpected Sort Order**
    - Check field names for case sensitivity
    - Verify sort direction (asc/desc)
    - Consider data type effects on sorting
