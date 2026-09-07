@@ -118,9 +118,9 @@ public partial class DynamicEndpointDocumentFilter
                                 Properties = new Dictionary<string, IOpenApiSchema>
                                 {
                                     ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("Request processed successfully.") },
+                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Request processed successfully.")] },
                                     ["result"]  = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null },
-                                    ["id"]      = new OpenApiSchema { Type = JsonSchemaType.Integer, Example = JsonValue.Create(12345) }
+                                    ["id"]      = new OpenApiSchema { Type = JsonSchemaType.Integer, Examples = [JsonValue.Create(12345)] }
                                 }
                             },
                             Example = new JsonObject
@@ -146,7 +146,7 @@ public partial class DynamicEndpointDocumentFilter
                                 Properties = new Dictionary<string, IOpenApiSchema>
                                 {
                                     ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Example = JsonValue.Create(false) }
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Examples = [JsonValue.Create(false)] }
                                 }
                             },
                             Example = new JsonObject
@@ -216,7 +216,7 @@ public partial class DynamicEndpointDocumentFilter
                                 Properties = new Dictionary<string, IOpenApiSchema>
                                 {
                                     ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Example = JsonValue.Create(false) }
+                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Examples = [JsonValue.Create(false)] }
                                 }
                             },
                             Example = new JsonObject

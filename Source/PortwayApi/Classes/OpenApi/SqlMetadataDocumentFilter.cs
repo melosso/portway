@@ -122,13 +122,13 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                     {
                         Type = JsonSchemaType.Boolean,
                         Description = "Indicates if the request was successful",
-                        Example = JsonValue.Create(true)
+                        Examples = [JsonValue.Create(true)]
                     },
                     ["count"] = new OpenApiSchema
                     {
                         Type = JsonSchemaType.Integer,
                         Description = "Total number of records returned",
-                        Example = JsonValue.Create(5)
+                        Examples = [JsonValue.Create(5)]
                     },
                     ["value"] = new OpenApiSchema
                     {
@@ -140,7 +140,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                     {
                         Type = JsonSchemaType.String | JsonSchemaType.Null,
                         Description = "URL for pagination (null if no more pages)",
-                        Example = null
+                        Examples = null
                     }
                 },
                 Required = new HashSet<string> { "success", "count", "value" }
@@ -206,7 +206,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                             Type = JsonSchemaType.Object,
                             Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["Id"] = new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("12345") }
+                                ["Id"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("12345")] }
                             }
                         }
                     }
@@ -489,7 +489,8 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         }
 
         // Add example values based on type
-        columnSchema.Example = GenerateExampleValue(column);
+        var columnExample = GenerateExampleValue(column);
+        columnSchema.Examples = columnExample is null ? null : [columnExample];
 
         return columnSchema;
     }
@@ -545,7 +546,8 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         }
 
         // Add example value
-        parameterSchema.Example = GenerateExampleValueFromParameter(parameter, parameterNameWithoutAt);
+        var parameterExample = GenerateExampleValueFromParameter(parameter, parameterNameWithoutAt);
+        parameterSchema.Examples = parameterExample is null ? null : [parameterExample];
 
         return parameterSchema;
     }

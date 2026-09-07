@@ -100,7 +100,7 @@ public static class StandardResponses
                     }
                 },
                 Required = new HashSet<string> { "success", "error" },
-                Example = new JsonObject { ["success"] = false, ["error"] = "A human-readable message" }
+                Examples = [new JsonObject { ["success"] = false, ["error"] = "A human-readable message" }]
             };
         }
 
@@ -129,12 +129,15 @@ public static class StandardResponses
                     }
                 },
                 Required = new HashSet<string> { "success", "error" },
-                Example = new JsonObject
-                {
-                    ["success"] = false,
-                    ["error"] = "Validation failed",
-                    ["details"] = new JsonArray { new JsonObject { ["field"] = "Price", ["message"] = "is required" } }
-                }
+                Examples =
+                [
+                    new JsonObject
+                    {
+                        ["success"] = false,
+                        ["error"] = "Validation failed",
+                        ["details"] = new JsonArray { new JsonObject { ["field"] = "Price", ["message"] = "is required" } }
+                    }
+                ]
             };
         }
     }

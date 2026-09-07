@@ -266,8 +266,8 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
             Type = JsonSchemaType.Object,
             Properties = new Dictionary<string, IOpenApiSchema>
             {
-                { "OrderDebtor", new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("60093") } },
-                { "YourReference", new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("Connect async") } }
+                { "OrderDebtor", new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("60093")] } },
+                { "YourReference", new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Connect async")] } }
             },
             Description = "Header information for the sales order"
         };
@@ -282,9 +282,9 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 Type = JsonSchemaType.Object,
                 Properties = new Dictionary<string, IOpenApiSchema>
                 {
-                    { "Itemcode", new OpenApiSchema { Type = JsonSchemaType.String, Example = JsonValue.Create("ITEM-001") } },
-                    { "Quantity", new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", Example = JsonValue.Create(2.0f) } },
-                    { "Price", new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", Example = JsonValue.Create(0.0f) } }
+                    { "Itemcode", new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("ITEM-001")] } },
+                    { "Quantity", new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", Examples = [JsonValue.Create(2.0f)] } },
+                    { "Price", new OpenApiSchema { Type = JsonSchemaType.Number, Format = "float", Examples = [JsonValue.Create(0.0f)] } }
                 }
             }
         };
