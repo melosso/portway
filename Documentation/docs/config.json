@@ -2,7 +2,7 @@
   "title": "Portway",
   "description": "A fully-featured fast, file-configured .NET API gateway",
   "lang": "en",
-  "theme": "laserwave",
+  "theme": "default",
   "brand": "Portway",
   "brandImage": "/assets/brand-image.webp",
   "favicon": "🇵",
