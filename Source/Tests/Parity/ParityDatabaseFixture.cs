@@ -39,7 +39,7 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
     protected abstract ISqlProvider CreateProvider();
     protected abstract IEnumerable<string> SchemaStatements { get; }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         if (!DockerProbe.IsAvailable)
             return; // Tests carry [DockerFact] and skip; the fixture must not fail the collection
@@ -53,7 +53,7 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
             await connection.ExecuteAsync(statement);
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (DockerProbe.IsAvailable)
             await StopContainerAsync();

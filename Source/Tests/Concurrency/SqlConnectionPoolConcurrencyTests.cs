@@ -18,13 +18,13 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
 
     private string _connectionString = string.Empty;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _postgres.StartAsync();
         _connectionString = _postgres.GetConnectionString();
     }
 
-    public async Task DisposeAsync() => await _postgres.DisposeAsync();
+    public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
 
     private static SqlConnectionPoolService BuildPool() => new(
         new SqlPoolingOptions(
