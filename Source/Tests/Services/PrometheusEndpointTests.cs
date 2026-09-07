@@ -94,14 +94,14 @@ public class PrometheusScrapeEndpointTests : IDisposable
     private readonly string _authDbPath;
     private readonly string _mcpDbPath;
 
-    // Mints a session cookie in the same format WebUiEndpoints.GenerateToken produces
+    // Generates a session cookie matching the format expected by WebUiAuthHelper.ResolveSession
     private static string MintSessionCookie()
     {
+        const int userId = 1;
         var expiry = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
-        var signingKey = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(AdminKey));
-        using var hmac = new System.Security.Cryptography.HMACSHA256(signingKey);
-        var sig = Convert.ToBase64String(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(expiry)));
-        return Uri.EscapeDataString($"{expiry}.{sig}");
+        using var hmac = new System.Security.Cryptography.HMACSHA256(PortwayApi.Helpers.SessionKeyProvider.Key);
+        var sig = Convert.ToBase64String(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
+        return Uri.EscapeDataString($"{userId}.{expiry}.{sig}");
     }
 
     public PrometheusScrapeEndpointTests()

@@ -22,6 +22,7 @@ public class RateLimiter
     private readonly RateLimiterState _state;
     private readonly TimeProvider _timeProvider;
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
+    private readonly bool _uiAuthEnabled;
     private readonly string _adminApiKey;
     private readonly string? _metricsPath;
     private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
@@ -55,6 +56,7 @@ public class RateLimiter
 
         // Use the resolved Web UI admin key so the exemption check agrees with UseWebUiAuth
         _adminApiKey = adminApiKey ?? string.Empty;
+        _uiAuthEnabled = !string.IsNullOrEmpty(_adminApiKey);
 
         if (_settings.Enabled)
         {
@@ -109,7 +111,7 @@ public class RateLimiter
         // - Never exempt login/auth endpoints to protect against brute-force attacks.
         if (context.Request.Path.StartsWithSegments("/ui"))
         {
-            if (!PortwayApi.Helpers.WebUiAuthState.Enabled)
+            if (!_uiAuthEnabled)
             {
                 await _next(context);
                 return;
