@@ -31,13 +31,13 @@ jobs:
       with:
         path: portway
 
-    # Resolves the latest concrete v0.2.x tag to prevent floating upstream changes; update pattern for minor bumps.
-    - name: Resolve latest Bark v0.2.x
+    # Resolves the latest concrete v0.0.x tag to prevent floating upstream changes; update pattern for minor bumps.
+    - name: Resolve latest Bark v0.0.x
       id: bark
       run: |
         tag=$(git ls-remote --tags --refs --sort=-v:refname \
-          https://github.com/hawkinslabdev/bark.git 'v0.2.*' | head -1 | sed 's#.*/##')
-        [ -n "$tag" ] || { echo "::error::No v0.2.* tag on hawkinslabdev/bark"; exit 1; }
+          https://github.com/hawkinslabdev/bark.git 'v0.0.*' | head -1 | sed 's#.*/##')
+        [ -n "$tag" ] || { echo "::error::No v0.0.* tag on hawkinslabdev/bark"; exit 1; }
         echo "tag=$tag" >> "$GITHUB_OUTPUT"
         echo "Building docs with Bark $tag"
 
