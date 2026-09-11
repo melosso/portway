@@ -228,7 +228,7 @@ try
     // Map MCP endpoints (conditionally enabled)
     var mcpEnabled = builder.Configuration.GetValue<bool>("Mcp:Enabled", false);
     if (mcpEnabled)
-        app.MapMcpRegistry(proxyEndpointsDirectory);
+        app.MapMcpRegistry();
 
     app.MapMcpEndpoints(builder.Configuration);
     if (mcpEnabled)
