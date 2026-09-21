@@ -443,23 +443,16 @@ public sealed partial class McpChatService
         if (!string.IsNullOrEmpty(query))
             url += $"?{query.TrimStart('?')}";
 
+        // Tool execution must run under the caller's own API token
+        if (string.IsNullOrWhiteSpace(authToken))
+            return "Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.";
+
         var sw = Stopwatch.StartNew();
         try
         {
-            // Resolve token: caller-forwarded Bearer > InternalApiToken from encrypted DB config
-            string? token = authToken;
-            var usedFallbackToken = string.IsNullOrWhiteSpace(token);
-            if (usedFallbackToken)
-            {
-                var cfg = await _configService.GetConfigAsync(ct);
-                token = cfg.InternalApiToken;
-            }
-
             using var http = _httpFactory.CreateClient("internal");
             using var req  = new HttpRequestMessage(method, url);
-
-            if (!string.IsNullOrWhiteSpace(token))
-                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
 
             if (body is not null && method != HttpMethod.Get)
                 req.Content = new StringContent(body, Encoding.UTF8, new MediaTypeHeaderValue("application/json"));
@@ -469,9 +462,8 @@ public sealed partial class McpChatService
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             sw.Stop();
 
-            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url}), auth={AuthSource}",
-                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url,
-                usedFallbackToken ? "internal-fallback" : "caller-token");
+            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url})",
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url);
 
             if (resp.IsSuccessStatusCode)
             {
