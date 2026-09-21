@@ -316,27 +316,22 @@ public class TokenService
         token.RevokedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(ct);
 
-        // Immediately invalidate the verification cache so the revoked token is rejected
-        // within the 30s TTL window rather than waiting for natural expiry
+        // Immediately invalidate the verification cache so the revoked token is rejected within the 30s TTL window rather than waiting for natural expiry
         _tokenCache.Invalidate(tokenId);
 
-        // Also append a .revoked suffix to the token file
+        // Delete the plaintext token file; the DB (hash-only) is the sole record of a revoked token from here on
         try
         {
             string tokenFilePath = Path.Combine(_tokenFolderPath, $"{token.Username}.txt");
             if (File.Exists(tokenFilePath))
             {
-                string revokedPath = Path.Combine(_tokenFolderPath, $"{token.Username}.revoked.txt");
-                if (File.Exists(revokedPath))
-                    File.Delete(revokedPath);
-                    
-                File.Move(tokenFilePath, revokedPath);
-                Log.Information("Marked token file as revoked: {FilePath}", revokedPath);
+                File.Delete(tokenFilePath);
+                Log.Information("Deleted token file for revoked token: {Username}", token.Username);
             }
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "Could not rename token file for revoked token");
+            Log.Warning(ex, "Could not delete token file for revoked token");
         }
         
         await LogAuditAsync(token.Id, token.Username, "Revoked", token.TokenHash, null,
@@ -354,24 +349,6 @@ public class TokenService
 
         token.RevokedAt = null;
         await _dbContext.SaveChangesAsync(ct);
-
-        // Rename .revoked.txt back to .txt
-        try
-        {
-            string revokedPath = Path.Combine(_tokenFolderPath, $"{token.Username}.revoked.txt");
-            if (File.Exists(revokedPath))
-            {
-                string tokenFilePath = Path.Combine(_tokenFolderPath, $"{token.Username}.txt");
-                if (File.Exists(tokenFilePath))
-                    File.Delete(tokenFilePath);
-                File.Move(revokedPath, tokenFilePath);
-                Log.Information("Restored token file: {FilePath}", tokenFilePath);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Could not restore token file for unarchived token");
-        }
 
         await LogAuditAsync(token.Id, token.Username, "Unarchived", null, null,
             JsonSerializer.Serialize(new { RestoredAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") }));
