@@ -387,13 +387,7 @@ public static partial class WebUiEndpointExtensions
         var account = await db.AdminUsers.FirstOrDefaultAsync(u =>
             u.Provider == provider.Slug && u.ExternalId == identity.Subject);
 
-        // The claim is matched, never validated: a handle this console would not issue can still
-        // name an account, and one that matches nothing falls through to the address below
-        if (account is null && identity.Username.Length > 0)
-            account = await Linkable(db, provider, u => u.Username == identity.Username);
-
-        // Only when the provider says it verified the address. An unverified email claim is a
-        // claim to somebody else's account.
+        // Only when the provider says it verified the address. An unverified email claim is a claim to somebody else's account.
         if (account is null && identity.EmailVerified && identity.Email.Length > 0)
             account = await Linkable(db, provider, u => u.Email == identity.Email);
 
