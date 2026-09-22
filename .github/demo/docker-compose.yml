@@ -5,17 +5,18 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config/environments:/app/environments
-      - ./config/endpoints:/app/endpoints
-      - ./tokens:/app/tokens
-      - ./log:/app/log
-      - ./data:/app/data
+      - ./config/environments:/app/environments:z
+      - ./config/endpoints:/app/endpoints:z
+      - ./tokens:/app/tokens:z
+      - ./log:/app/log:z
+      - ./data:/app/data:z
       - type: bind
         source: ./data/auth.db
         target: /app/auth.db
         bind:
           create_host_path: false
-      - ./keys:/app/.core
+          selinux: z
+      - ./keys:/app/.core:z
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
       - PORTWAY_ALLOWED_HOSTS=*
@@ -39,7 +40,7 @@ services:
     image: nginx:alpine
     container_name: demo-nginx
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro,z
     ports:
       - "8000:80"
     restart: unless-stopped
