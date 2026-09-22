@@ -2797,6 +2797,10 @@ body.has-promo .signin {
     height: calc(100vh - var(--promo-height));
 }
 
+body.has-promo .signin-theme {
+    top: calc(0.75rem + var(--promo-height));
+}
+
 .promo-bar {
     position: fixed;
     top: 0;
