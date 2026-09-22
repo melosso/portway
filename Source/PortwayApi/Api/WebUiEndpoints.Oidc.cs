@@ -51,8 +51,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        // The account is fixed here, from a session that is already authenticated, before the redirect
-        // is built. What comes back from the provider is written, never matched.
+        // The account is fixed here from a session that is already authenticated before the redirect is built. What comes back from the provider is written, never matched.
         app.MapPost("/ui/api/oidc/providers/{slug}/link", async (
             AuthDbContext db, IConfiguration config, HttpContext ctx, AdminUserService users, string slug) =>
         {
@@ -146,8 +145,7 @@ public static partial class WebUiEndpointExtensions
             var (account, problem) = await ResolveAccountAsync(db, provider, identity);
             if (account is null)
             {
-                // The provider only, never the subject or the token: a log an operator reads
-                // should say which door was tried, not carry the credential that tried it
+                // Log the provider only, never the subject or the token, so the log shows which door was tried without carrying the credential that tried it
                 Log.Warning("Refused console sign-in through {Provider} ({Problem})", provider.Name, problem);
                 return Results.Redirect(Back(ctx, problem));
             }
@@ -241,8 +239,7 @@ public static partial class WebUiEndpointExtensions
             var provider = await db.OidcProviders.FirstOrDefaultAsync(p => p.Id == id);
             if (provider is null) return Results.Json(new { error = "Provider not found" }, statusCode: 404);
 
-            // A binding to a provider that no longer exists is a dangling reference: the account
-            // still reports it, and no other provider can adopt the account while it stands
+            // A binding to a provider that no longer exists is a dangling reference. The account still reports it, and no other provider can adopt the account while it stands
             var bound = await db.AdminUsers.Where(u => u.Provider == provider.Slug).ToListAsync();
             foreach (var account in bound)
             {
@@ -279,11 +276,7 @@ public static partial class WebUiEndpointExtensions
     private static string Back(HttpContext ctx, string reason) =>
         $"{ctx.Request.PathBase}/ui/login?sso={reason}";
 
-    /// <summary>
-    /// The address registered at the provider. Built from the request when there is one so a
-    /// reverse proxy and a PathBase are included, and from configuration when the console asks
-    /// what to register.
-    /// </summary>
+    /// <summary>The address registered at the provider. Built from the request when there is one so a reverse proxy and a PathBase are included, and from configuration when the console asks what to register.</summary>
     private static string RedirectUri(HttpContext? ctx, string slug)
     {
         if (ctx is null) return $"{OidcBase}/{slug}/callback";
@@ -344,10 +337,7 @@ public static partial class WebUiEndpointExtensions
         return null;
     }
 
-    /// <summary>
-    /// Writes the identity onto the account that started the flow. Nothing is matched here: the
-    /// account was chosen by an authenticated, password-confirmed session before the redirect.
-    /// </summary>
+    /// <summary>Writes the identity onto the account that started the flow. Nothing is matched here, the account was chosen by an authenticated, password confirmed session before the redirect.</summary>
     private static async Task<IResult> CompleteLinkAsync(
         AuthDbContext db, HttpContext ctx, OidcProvider provider, OidcFlow.PendingFlow flow, OidcIdentity identity)
     {
@@ -376,11 +366,7 @@ public static partial class WebUiEndpointExtensions
     private static string BackToUsers(HttpContext ctx, string reason) =>
         $"{ctx.Request.PathBase}/ui/users?link={reason}";
 
-    /// <summary>
-    /// Finds the account this identity belongs to. A subject already bound wins; otherwise the
-    /// username claim may adopt an existing account, and a new one is created only when the
-    /// provider is allowed to. A claim never chooses an account that is already federated elsewhere.
-    /// </summary>
+    /// <summary>Finds the account this identity belongs to. A subject already bound wins, otherwise the username claim may adopt an existing account, and a new one is created only when the provider is allowed to. A claim never chooses an account that is already federated elsewhere.</summary>
     private static async Task<(AdminUser? Account, string Problem)> ResolveAccountAsync(
         AuthDbContext db, OidcProvider provider, OidcIdentity identity)
     {
@@ -401,8 +387,7 @@ public static partial class WebUiEndpointExtensions
         {
             if (!provider.CreateAccounts)
             {
-                // The subject is the only handle the link command takes, and a refused sign-in is
-                // the one place it is ever seen
+                // The subject is the only handle the link command takes, and a refused sign-in is the one place it is ever seen
                 Log.Warning(
                     "{Provider} sign-in failed: subject {Subject} ({PresentedAs}) is not linked to an account. " +
                     "Link it from the Users page, or turn on account creation for this provider.",

@@ -13,9 +13,7 @@ using PortwayApi.Services;
 using PortwayApi.Services.Mcp.Providers;
 using Serilog;
 
-/// <summary>
-/// Orchestrates a single chat turn: resolves the AI provider, builds tool definitions from the MCP registry, runs the tool-use loop, and writes SSE events to the response
-/// </summary>
+/// <summary>Orchestrates a single chat turn. Resolves the AI provider, builds tool definitions from the MCP registry, runs the tool use loop, and writes SSE events to the response.</summary>
 public sealed partial class McpChatService
 {
     private static readonly JsonSerializerOptions _jsonOpts = new()
@@ -249,11 +247,7 @@ public sealed partial class McpChatService
     }
 
     /// <summary>Runs a complete chat turn with the tool-use loop</summary>
-    /// <remarks>
-    /// Writes SSE events directly to <paramref name="writer"/>.
-    /// Event format: data: {json}\n\n
-    /// Types: text | tool_call | done | error
-    /// </remarks>
+    /// <remarks>Writes SSE events directly to writer. Each event is a line starting with data followed by the json payload. Event types are text, tool_call, done, and error.</remarks>
     public async Task StreamAsync(
         IReadOnlyList<ChatMessage> history,
         string defaultEnvironment,
@@ -371,8 +365,7 @@ public sealed partial class McpChatService
     /// <summary>Truncates the content of tool-result history messages from early rounds to keep the total history size manageable across many tool-use rounds</summary>
     private static void TrimEarlyToolResultsInHistory(List<ChatMessage> history, int maxChars)
     {
-        // Skip the system prompt (index 0) and the last 4 entries (current round's assistant + user pair,
-        // and the previous round's pair). Only compress messages before that window
+        // Skip the system prompt and the last 4 entries, which are the current round pair and the previous round pair, and only compress messages before that window
         var trimBefore = history.Count - 4;
         for (var i = 1; i < trimBefore; i++)
         {
@@ -410,8 +403,7 @@ public sealed partial class McpChatService
 
         var environment = input?["environment"]?.GetValue<string>() ?? defaultEnvironment;
 
-        // If the tool has an allowed-environments restriction and the selected env isn't in it,
-        // automatically fall back to the first allowed environment so the call succeeds
+        // If the tool has an allowed environments restriction and the selected env is not in it, automatically fall back to the first allowed environment so the call succeeds
         if (tool.AllowedEnvironments is { Count: > 0 } &&
             !tool.AllowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
         {
@@ -422,9 +414,7 @@ public sealed partial class McpChatService
         var body   = input?["body"]?.GetValue<string>();
         var method = new HttpMethod(tool.Method.ToUpperInvariant());
 
-        // --- Server-side $top enforcement ---
-        // If the LLM generated a GET query without $top, auto-inject the configured default
-        // If $top exceeds MaxPageSize, clamp it.  This prevents unbounded table scans
+        // Server side top enforcement. If the LLM generated a GET query without top, auto inject the configured default, and if top exceeds MaxPageSize clamp it to prevent unbounded table scans
         if (method == HttpMethod.Get && !string.IsNullOrEmpty(query))
         {
             query = EnforceTopLimit(query, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
@@ -457,8 +447,7 @@ public sealed partial class McpChatService
             if (body is not null && method != HttpMethod.Get)
                 req.Content = new StringContent(body, Encoding.UTF8, new MediaTypeHeaderValue("application/json"));
 
-            // Use ResponseHeadersRead for early abort on large responses; avoids buffering
-            // the entire body into memory before we know if it exceeds MaxToolResultChars
+            // Use ResponseHeadersRead for early abort on large responses, this avoids buffering the entire body into memory before checking if it exceeds MaxToolResultChars
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             sw.Stop();
 
