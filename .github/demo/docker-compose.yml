@@ -13,10 +13,10 @@ services:
       - ./keys:/app/.core
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
-      - AllowedHosts=*
-      - WebUi__AdminApiKey=demo-admin-key
+      - PORTWAY_ALLOWED_HOSTS=*
+      - PORTWAY_ADMIN_KEY=demo-admin-key
       - WebUi__PublicOrigins__0=https://portway-demo.melosso.com
-      - WebUi__SecureCookies=true
+      - PORTWAY_SECURE_COOKIES=true
       - WebUi__Customization__PromoText=This is a demo instance. Some functions are disabled. All data will be reset periodically.
       - WebUi__Customization__PromoLogin=true
       - WebUi__Customization__LoginFooter=Use `demo-admin-key` for access. Please read the [documentation](https://github.com/melosso/portway) to learn more.

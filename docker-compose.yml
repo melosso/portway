@@ -13,26 +13,26 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - AllowedHosts=*
-      - PathBase=
+      - PORTWAY_ALLOWED_HOSTS=*
+      - PORTWAY_PATH_BASE=
 
       # Configure Web UI settings
-      - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
+      - PORTWAY_ADMIN_KEY=INSECURE-CHANGE-ME-admin-api-key
       #- WebUi__PublicOrigins__0=https://example.com
       #- WebUi__PublicOrigins__1=https://api.example.com
-      #- WebUi__SecureCookies=false
-      
+      #- PORTWAY_SECURE_COOKIES=false
+
       # Model Context Protocol (MCP)
       - Mcp__Enabled=true
       - Mcp__Path=/mcp
 
       # Proxy settings for Kerberos/NTLM
-      # - PROXY_USERNAME=serviceaccount
-      # - PROXY_PASSWORD=password
-      # - PROXY_DOMAIN=YOURDOMAIN
+      # - PORTWAY_PROXY_USERNAME=serviceaccount
+      # - PORTWAY_PROXY_PASSWORD=password
+      # - PORTWAY_PROXY_DOMAIN=YOURDOMAIN
 
       # Azure credentials
-      # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
+      # - PORTWAY_KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
       # - AZURE_CLIENT_ID=your-client-id
       # - AZURE_TENANT_ID=your-tenant-id
       # - AZURE_CLIENT_SECRET=your-client-secret
