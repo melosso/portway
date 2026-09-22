@@ -270,13 +270,13 @@ public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
     public QueryBearingUrlEndpointTests()
     {
         SetAllowedEnvironments("500", "700");
-        _upstream = new UpstreamCapture(8020);
+        _upstream = new UpstreamCapture(8021);
 
         // Temporary endpoint fixture with a query baked into the Url; removed in Dispose
         Directory.CreateDirectory(EndpointDir);
         File.WriteAllText(Path.Combine(EndpointDir, "entity.json"), """
             {
-              "Url": "http://localhost:8020/graphql?apikey=SECRET",
+              "Url": "http://localhost:8021/graphql?apikey=SECRET",
               "Methods": ["GET", "POST"]
             }
             """);
