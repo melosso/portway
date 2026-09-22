@@ -13,6 +13,7 @@ TrimmerRoots.xml
 *.db
 !Source/PortwayApi/environments/WMS/demo.db
 !.github/demo/data/demo.db
+!.github/demo/data/auth.db
 .venv/
 /logs/
 /.core/

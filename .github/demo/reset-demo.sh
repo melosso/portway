@@ -38,6 +38,7 @@ files=(
     "config/endpoints/Proxy/Production/entity.json"
     "config/endpoints/SQL/WMS/Warehouses/entity.json"
     "data/demo.db"
+    "data/auth.db"
 )
 
 for file in "${files[@]}"; do
