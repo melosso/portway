@@ -82,15 +82,20 @@ public class WebUiSecurityTests : IDisposable
         AllowAutoRedirect = false
     });
 
-    // WebUi:AdminApiKey seeds the account "admin" with the key as its password and MustChangePassword set,
-    // so the first sign-in is a two-step: authenticate, then choose a password to get the session.
+    // The seeded "admin" account gets a random one-time password
     private const string SeededPassword = "T3st-console-pw-9f2b";
 
-    /// <summary>
-    /// Signs in as the seeded administrator and returns the auth and csrf cookie values
-    /// </summary>
-    private Task<(string AuthCookie, string CsrfCookie)> LoginAsync(HttpClient client) =>
-        SignInAsync(client, "admin", AdminKey, SeededPassword);
+    private async Task<(string AuthCookie, string CsrfCookie)> LoginAsync(HttpClient client)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<PortwayApi.Auth.AuthDbContext>();
+        var admin = await db.AdminUsers.FirstAsync(u => u.Username == "admin");
+        admin.PasswordHash = PortwayApi.Auth.AdminUserService.HashPassword(SeededPassword);
+        admin.MustChangePassword = false;
+        await db.SaveChangesAsync();
+
+        return await SignInAsync(client, "admin", SeededPassword);
+    }
 
     /// <summary>
     /// Signs in, completing a first-sign-in password change when the account still owes one
