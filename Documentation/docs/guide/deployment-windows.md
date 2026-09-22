@@ -13,7 +13,7 @@ The steps assume working knowledge of IIS and your network and data sources; the
 
 - Windows Server with IIS installed and running
 - Administrator access
-- [.NET 11 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/11.0)
+- [.NET 11 ASP.NET Core Hosting Bundle](https://get.dot.net/11)
 - A TLS/SSL certificate (self-signed is acceptable for internal deployments)
 
 :::warning

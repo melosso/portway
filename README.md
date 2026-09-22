@@ -25,9 +25,7 @@ Out of the box, Portway handles proxy pass-through, SQL endpoints, and webhooks,
 
 Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
 
-* .NET Hosting Bundle
-  * Preview >= `v0.7.0`: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/11.0" target="_blank" rel="noopener noreferrer">.NET 11</a> (currently a preview)
-  * Production: <a href="https://dotnet.microsoft.com/en-us/download/dotnet/10.0" target="_blank" rel="noopener noreferrer">.NET 10 LTS</a> build remains available
+* .NET Hosting Bundle: <a href="https://get.dot.net/11" target="_blank" rel="noopener noreferrer">.NET 11</a>
 * If you're running on Windows: Internet Information Services (IIS)
 * A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 

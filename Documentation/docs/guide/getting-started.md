@@ -16,9 +16,7 @@ Please note you may need additional configuration to mount your configuration to
 
 **Windows Server / IIS:**
 - Windows Server (or Windows 11 for development)
-- [.NET 11 ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/11.0)
-
-> Note: Portway targets .NET 11. Because .NET 11 is currently a preview of the framework, you may prefer to stay on the .NET 10 LTS build of Portway for production deployments until .NET 11 reaches general availability. Both are fully supported; the choice is simply about how conservative you would like your runtime to be.
+- [.NET 11 ASP.NET Core Hosting Bundle](https://get.dot.net/11)
 - Internet Information Services (IIS)
 
 :::warning
