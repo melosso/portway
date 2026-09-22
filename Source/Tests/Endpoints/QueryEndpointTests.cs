@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for the QUERY method (RFC 10008) against demo endpoints</summary>
+/// <summary>
+/// Integration tests for the QUERY method (RFC 10008) against demo endpoints
+/// </summary>
 /// <remarks>
 /// Fixtures:
 /// - SQL Inventory/StockLevels  : AllowedMethods ["QUERY"], envs 500/700 (QUERY-only read endpoint)

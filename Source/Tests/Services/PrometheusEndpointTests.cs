@@ -11,7 +11,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Services;
 
-/// <summary>Tests for Prometheus provider configuration binding and registration</summary>
+/// <summary>
+/// Tests for Prometheus provider configuration binding and registration
+/// </summary>
 public class PrometheusOptionsTests
 {
     // Option binding
@@ -83,7 +85,9 @@ public class PrometheusOptionsTests
             .Build();
 }
 
-/// <summary>Integration tests exercising the scrape endpoint against the full pipeline</summary>
+/// <summary>
+/// Integration tests exercising the scrape endpoint against the full pipeline
+/// </summary>
 [Collection("Integration")]
 public class PrometheusScrapeEndpointTests : IDisposable
 {
@@ -172,7 +176,7 @@ public class PrometheusScrapeEndpointTests : IDisposable
     [Fact]
     public async Task MetricsEndpoint_AfterApiRequest_ExposesRequestDurationHistogram()
     {
-        // Any /api request (even a 404) flows through the request metrics middleware
+        // Any /api request, even a 404, is recorded by the request metrics middleware
         await _client.GetAsync("/api/600/nonexistent");
 
         var response = await _client.GetAsync("/metrics");
@@ -191,7 +195,9 @@ public class PrometheusScrapeEndpointTests : IDisposable
     }
 }
 
-/// <summary>Stamps loopback as the remote IP so the Web UI network gate admits TestServer requests</summary>
+/// <summary>
+/// Stamps loopback as the remote IP so the Web UI network gate admits TestServer requests
+/// </summary>
 file sealed class LoopbackRemoteIpStartupFilter : Microsoft.AspNetCore.Hosting.IStartupFilter
 {
     public Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> Configure(Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> next) =>
@@ -206,7 +212,9 @@ file sealed class LoopbackRemoteIpStartupFilter : Microsoft.AspNetCore.Hosting.I
         };
 }
 
-/// <summary>Verifies the scrape endpoint stays unmapped when Prometheus is not the provider</summary>
+/// <summary>
+/// Verifies the scrape endpoint stays unmapped when Prometheus is not the provider
+/// </summary>
 public class PrometheusDisabledTests : Base.ApiTestBase
 {
     [Fact]

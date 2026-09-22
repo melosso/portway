@@ -3,10 +3,14 @@ using System.IO;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Provides content type mappings for file extensions</summary>
+/// <summary>
+/// Provides content type mappings for file extensions
+/// </summary>
 public static class ContentTypeHelper
 {
-    /// <summary>Determines the content type for a filename based on its extension</summary>
+    /// <summary>
+    /// Determines the content type for a filename based on its extension
+    /// </summary>
     public static string GetContentType(string filename)
     {
         string extension = Path.GetExtension(filename).ToLowerInvariant();
@@ -86,7 +90,9 @@ public static class ContentTypeHelper
         };
     }
 
-    /// <summary>Returns a dictionary of extension to content type for static file caching</summary>
+    /// <summary>
+    /// Returns a dictionary of extension to content type for static file caching
+    /// </summary>
     public static IReadOnlyDictionary<string, string> StaticFileExtensions => _staticFileExtensions;
 
     private static readonly FrozenDictionary<string, string> _staticFileExtensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -165,7 +171,9 @@ public static class ContentTypeHelper
         { ".mkv", "video/x-matroska" },
     }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Gets cache duration based on file extension category</summary>
+    /// <summary>
+    /// Gets cache duration based on file extension category
+    /// </summary>
     public static TimeSpan GetCacheDuration(string extension)
     {
         var ext = extension.ToLowerInvariant();

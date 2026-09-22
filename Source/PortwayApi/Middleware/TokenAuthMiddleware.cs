@@ -183,7 +183,9 @@ public class TokenAuthMiddleware
         await _next(context);
     }
 
-    /// <summary>Extract the endpoint name from the request path</summary>
+    /// <summary>
+    /// Extract the endpoint name from the request path
+    /// </summary>
     private string? ExtractEndpointName(PathString path)
     {
         // Parse patterns like:
@@ -197,7 +199,7 @@ public class TokenAuthMiddleware
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments == null || segments.Length < 3)
             return null;
-            
+
         if (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase))
         {
             // For composite endpoints: /api/{env}/composite/{endpointName}
@@ -205,25 +207,13 @@ public class TokenAuthMiddleware
             {
                 return $"composite/{segments[3]}";
             }
-            
-            // For regular endpoints, check if this is a namespaced endpoint
-            // We need to determine if segments[2] is a namespace or an endpoint
-            // by checking against loaded endpoints
-            if (segments.Length >= 4)
+
+            // Same longest match resolver as the controller; keeps scope checks and dispatch aligned.
+            if (PortwayApi.Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { } resolved)
             {
-                // Try namespaced format first: /api/{env}/{namespace}/{endpoint}
-                string namespacedEndpoint = $"{segments[2]}/{segments[3]}";
-                
-                // Check if this namespaced endpoint exists
-                var sqlEndpoints = Classes.EndpointHandler.GetSqlEndpoints();
-                var proxyEndpoints = Classes.EndpointHandler.GetProxyEndpoints();
-                
-                if (sqlEndpoints.ContainsKey(namespacedEndpoint) || proxyEndpoints.ContainsKey(namespacedEndpoint))
-                {
-                    return namespacedEndpoint;
-                }
+                return $"{resolved.Namespace}/{resolved.Name}";
             }
-            
+
             // Fall back to non-namespaced format: /api/{env}/{endpointName}
             if (segments.Length >= 3)
             {
@@ -242,7 +232,9 @@ public class TokenAuthMiddleware
         return null;
     }
 
-    /// <summary>Extract the environment from the request path</summary>
+    /// <summary>
+    /// Extract the environment from the request path
+    /// </summary>
     private string ExtractEnvironmentFromPath(PathString path)
     {
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -260,7 +252,9 @@ public class TokenAuthMiddleware
         return string.Empty;
     }
     
-    /// <summary>Log failed authentication attempts for security auditing</summary>
+    /// <summary>
+    /// Log failed authentication attempts for security auditing
+    /// </summary>
     private static async Task LogFailedAuthAttemptAsync(AuthDbContext dbContext, string tokenString, HttpContext context)
     {
         try
@@ -296,7 +290,9 @@ public class TokenAuthMiddleware
         }
     }
     
-    /// <summary>Log authorization failures for security auditing</summary>
+    /// <summary>
+    /// Log authorization failures for security auditing
+    /// </summary>
     private static async Task LogAuthorizationFailureAsync(AuthDbContext dbContext, AuthToken tokenDetails, 
         HttpContext context, string resourceType, string resourceName)
     {

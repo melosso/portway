@@ -5,7 +5,9 @@ namespace PortwayApi.Classes.OpenApi;
 
 public partial class DynamicEndpointDocumentFilter
 {
-    /// <summary>Collects file endpoint tags for documentation (operations are handled by EndpointController)</summary>
+    /// <summary>
+    /// Collects file endpoint tags for documentation (operations are handled by EndpointController)
+    /// </summary>
     private void CollectFileEndpointTags(Dictionary<string, string> documentTags)
     {
         // Get file endpoints and collect their tag descriptions
@@ -28,7 +30,9 @@ public partial class DynamicEndpointDocumentFilter
         }
     }
 
-    /// <summary>Adds static endpoints to the OpenAPI document</summary>
+    /// <summary>
+    /// Adds static endpoints to the OpenAPI document
+    /// </summary>
     private void AddStaticEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
     {
         var staticEndpoints = EndpointHandler.GetStaticEndpoints();
@@ -346,7 +350,9 @@ public partial class DynamicEndpointDocumentFilter
         }
     }
 
-    /// <summary>Mirrors a static GET as a QUERY operation whose OData criteria travel in the body instead of the URL</summary>
+    /// <summary>
+    /// Mirrors a static GET as a QUERY operation whose OData criteria travel in the body instead of the URL
+    /// </summary>
     private static OpenApiOperation BuildStaticQueryOperation(OpenApiOperation getOperation)
     {
         var queryOperation = new OpenApiOperation

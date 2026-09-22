@@ -4,7 +4,9 @@ using System.Text.Json;
 
 namespace PortwayApi.Classes;
 
-/// <summary>Single directory-scan loader shared by the Proxy, SQL, Static and File endpoint types</summary>
+/// <summary>
+/// Single directory-scan loader shared by the Proxy, SQL, Static and File endpoint types
+/// </summary>
 internal static class EndpointDirectoryLoader
 {
     public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec)
@@ -61,7 +63,9 @@ internal static class EndpointDirectoryLoader
         return endpoints;
     }
 
-    /// <summary>Namespace-aware key: folder inference, explicit-namespace warnings, validation, "{ns}/{name}" routing key</summary>
+    /// <summary>
+    /// Namespace-aware key: folder inference, explicit-namespace warnings, validation, "{ns}/{name}" routing key
+    /// </summary>
     private static string? BuildNamespacedKey(string file, string endpointsDirectory, EndpointDefinition definition)
     {
         var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
@@ -117,7 +121,9 @@ internal static class EndpointDirectoryLoader
             : endpointName;
     }
 
-    /// <summary>Flat key: the immediate folder name, no namespace machinery (File endpoints)</summary>
+    /// <summary>
+    /// Flat key: the immediate folder name, no namespace machinery (File endpoints)
+    /// </summary>
     private static string? BuildFlatKey(string file, EndpointDefinition definition)
     {
         var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";

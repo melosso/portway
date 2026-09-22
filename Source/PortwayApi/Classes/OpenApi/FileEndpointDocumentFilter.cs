@@ -127,7 +127,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         return defaultDescription;
     }
 
-    /// <summary>Media types accepted for the multipart file part, derived from the endpoint's AllowedExtensions</summary>
+    /// <summary>
+    /// Media types accepted for the multipart file part, derived from the endpoint's AllowedExtensions
+    /// </summary>
     private static string GetUploadPartContentType(EndpointDefinition endpoint)
     {
         if (endpoint.Properties?.GetValueOrDefault("AllowedExtensions") is not List<string> extensions || extensions.Count == 0)

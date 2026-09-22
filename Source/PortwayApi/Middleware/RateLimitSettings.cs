@@ -8,9 +8,13 @@ public class RateLimitSettings
     public int TokenLimit { get; set; } = 1000;
     public int TokenWindow { get; set; } = 60; // seconds
 
-    /// <summary>Bucket store: Memory (default) or Redis for multi-instance deployments</summary>
+    /// <summary>
+    /// Bucket store: Memory (default) or Redis for multi-instance deployments
+    /// </summary>
     public string Store { get; set; } = "Memory";
 
-    /// <summary>Redis connection for the rate limit store, falls back to Caching:Redis:ConnectionString when empty</summary>
+    /// <summary>
+    /// Redis connection for the rate limit store, falls back to Caching:Redis:ConnectionString when empty
+    /// </summary>
     public string? RedisConnectionString { get; set; }
 }

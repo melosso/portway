@@ -7,7 +7,9 @@ using PortwayApi.Services.Mcp;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>Monitors the endpoints folder for changes and invalidates endpoint/metadata caches</summary>
+/// <summary>
+/// Monitors the endpoints folder for changes and invalidates endpoint/metadata caches
+/// </summary>
 public class EndpointFileWatcher : FileWatchPump
 {
     private readonly SqlMetadataService _sqlMetadataService;

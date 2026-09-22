@@ -2,7 +2,9 @@ namespace PortwayApi.Services.Mcp.Providers;
 
 using System.Text.Json.Nodes;
 
-/// <summary>Builds the request payload fragments shared by the chat providers</summary>
+/// <summary>
+/// Builds the request payload fragments shared by the chat providers
+/// </summary>
 internal static class ChatPayloadFactory
 {
     public static JsonArray Messages(IReadOnlyList<ChatMessage> history)

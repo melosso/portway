@@ -25,7 +25,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Handles composite endpoint requests</summary>
+    /// <summary>
+    /// Handles composite endpoint requests
+    /// </summary>
     private async Task<IActionResult> HandleCompositeRequest(
         string env,
         string endpointName,

@@ -5,7 +5,9 @@ using Serilog;
 
 public static partial class EndpointHandler
 {
-    /// <summary>Parses a webhook endpoint definition; reuses the SQL parser and tags the result as a Webhook</summary>
+    /// <summary>
+    /// Parses a webhook endpoint definition; reuses the SQL parser and tags the result as a Webhook
+    /// </summary>
     private static EndpointDefinition? ParseWebhookEndpointDefinition(string json)
     {
         var definition = ParseSqlEndpointDefinition(json);
@@ -16,15 +18,21 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    /// <summary>Internal method to load all file endpoints from the endpoints directory</summary>
+    /// <summary>
+    /// Internal method to load all file endpoints from the endpoints directory
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory)
         => EndpointDirectoryLoader.Load(endpointsDirectory, FileLoaderSpec);
 
-    /// <summary>Internal method to load all static endpoints from the endpoints directory</summary>
+    /// <summary>
+    /// Internal method to load all static endpoints from the endpoints directory
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory)
         => EndpointDirectoryLoader.Load(endpointsDirectory, StaticLoaderSpec);
 
-    /// <summary>Parses a file endpoint definition from JSON</summary>
+    /// <summary>
+    /// Parses a file endpoint definition from JSON
+    /// </summary>
     private static EndpointDefinition? ParseFileEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -52,7 +60,9 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    /// <summary>Parses a static endpoint definition from JSON</summary>
+    /// <summary>
+    /// Parses a static endpoint definition from JSON
+    /// </summary>
     private static EndpointDefinition? ParseStaticEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -86,14 +96,18 @@ public static partial class EndpointHandler
         return LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
     }
 
-    /// <summary>Gets Static endpoints from the /endpoints/Static directory</summary>
+    /// <summary>
+    /// Gets Static endpoints from the /endpoints/Static directory
+    /// </summary>
     public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
     {
         string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
         return LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);
     }
 
-    /// <summary>Parses a proxy endpoint definition from JSON, handling both legacy and extended formats</summary>
+    /// <summary>
+    /// Parses a proxy endpoint definition from JSON, handling both legacy and extended formats
+    /// </summary>
     private static EndpointDefinition? ParseProxyEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -119,7 +133,9 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    /// <summary>Parses a SQL endpoint definition from JSON</summary>
+    /// <summary>
+    /// Parses a SQL endpoint definition from JSON
+    /// </summary>
     private static EndpointDefinition? ParseSqlEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -159,7 +175,9 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    /// <summary>Validates SQL endpoint configuration to prevent runtime errors</summary>
+    /// <summary>
+    /// Validates SQL endpoint configuration to prevent runtime errors
+    /// </summary>
     private static List<string> ValidateSqlEndpointConfiguration(EndpointEntity entity)
     {
         var errors = new List<string>();
@@ -230,7 +248,9 @@ public static partial class EndpointHandler
         return errors;
     }
 
-    /// <summary>Converts a string type to the EndpointType enum</summary>
+    /// <summary>
+    /// Converts a string type to the EndpointType enum
+    /// </summary>
     private static EndpointType ParseEndpointType(string? typeString)
     {
         if (string.IsNullOrWhiteSpace(typeString))
@@ -245,7 +265,9 @@ public static partial class EndpointHandler
         };
     }
 
-    /// <summary>Logs information about a loaded endpoint with appropriate emoji based on type</summary>
+    /// <summary>
+    /// Logs information about a loaded endpoint with appropriate emoji based on type
+    /// </summary>
     private static void LogEndpointLoading(string endpointName, EndpointDefinition definition)
     {
         if (definition.Hidden)

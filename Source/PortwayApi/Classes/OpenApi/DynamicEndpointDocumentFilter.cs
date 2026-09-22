@@ -88,7 +88,9 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>Gets the appropriate OpenAPI schema type for a given content type</summary>
+    /// <summary>
+    /// Gets the appropriate OpenAPI schema type for a given content type
+    /// </summary>
     private static OpenApiSchema GetSchemaForContentType(string contentType)
     {
         if (contentType.Contains("json", StringComparison.OrdinalIgnoreCase))
@@ -97,7 +99,9 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         return new OpenApiSchema { Type = JsonSchemaType.String };
     }
 
-    /// <summary>Gets the operation summary, using custom summary if available or default format</summary>
+    /// <summary>
+    /// Gets the operation summary, using custom summary if available or default format
+    /// </summary>
     private string GetOperationSummary(string method, string endpointName, EndpointDefinition definition)
     {
         // Check if there's a custom summary for this method in MethodDescriptions
@@ -133,7 +137,9 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         return $"{method} {endpointName}";
     }
 
-    /// <summary>Gets the operation description, using custom description if available or default format</summary>
+    /// <summary>
+    /// Gets the operation description, using custom description if available or default format
+    /// </summary>
     private string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
     {
         // Check if there's a custom detailed description for this method in MethodDocumentation
@@ -169,7 +175,9 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>Gets the operation description for static endpoints, using custom description if available or default format</summary>
+    /// <summary>
+    /// Gets the operation description for static endpoints, using custom description if available or default format
+    /// </summary>
     private string GetStaticOperationDescription(string method, string endpointName, EndpointDefinition definition, string contentType)
     {
         // Check if there's a custom description for this method
@@ -183,7 +191,9 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         return $"Returns {contentType} content from the {endpointName} endpoint.";
     }
 
-    /// <summary>Adds all collected tags with descriptions to the OpenAPI document</summary>
+    /// <summary>
+    /// Adds all collected tags with descriptions to the OpenAPI document
+    /// </summary>
     private void AddTagsToDocument(OpenApiDocument document, Dictionary<string, string> documentTags)
     {
         // Initialize tags collection if it doesn't exist
@@ -216,7 +226,9 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         document.Tags = new HashSet<OpenApiTag>(document.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase));
     }
 
-    /// <summary>Load webhook documentation from entity.json file</summary>
+    /// <summary>
+    /// Load webhook documentation from entity.json file
+    /// </summary>
     private Documentation? LoadWebhookDocumentation()
     {
         try

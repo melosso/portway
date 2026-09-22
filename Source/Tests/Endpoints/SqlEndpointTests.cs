@@ -22,7 +22,7 @@ public class SqlEndpointTests : ApiTestBase
         // Ensure the environment is allowed
         SetAllowedEnvironments("500", "700");
         
-        // Mock ODataToSqlConverter to return a simple query; Note: The endpoint name is "Products" but it maps to "dbo.Items" in the database
+        // Endpoint name "Products" maps to table dbo.Items
         var mockQueryResult = ("SELECT * FROM [dbo].[Items] WHERE [ItemCode] = @p0", 
             new Dictionary<string, object> { { "p0", "TEST001" } });
             
@@ -143,7 +143,7 @@ public class SqlEndpointTests : ApiTestBase
         // Act
         var response = await _client.SendAsync(request);
         
-        // Assert; We expect OK or InternalServerError (SQL unavailable), but NOT Unauthorized
+        // Assert: OK or InternalServerError (SQL unavailable) is acceptable, but never Unauthorized
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

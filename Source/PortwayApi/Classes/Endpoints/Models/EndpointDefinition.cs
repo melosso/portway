@@ -1,6 +1,8 @@
 namespace PortwayApi.Classes;
 
-/// <summary>Unified endpoint definition that handles all endpoint types</summary>
+/// <summary>
+/// Unified endpoint definition that handles all endpoint types
+/// </summary>
 public class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
@@ -8,17 +10,25 @@ public class EndpointDefinition
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
     public List<string> Methods { get; set; } = new List<string>();
-    /// <summary>True when the proxied service understands OData query parameters; Portway itself only forwards them</summary>
+    /// <summary>
+    /// True when the proxied service understands OData query parameters; Portway itself only forwards them
+    /// </summary>
     public bool SupportsOData { get; set; } = false;
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
-    /// <summary>When false the endpoint returns 503 instead of serving requests</summary>
+    /// <summary>
+    /// When false the endpoint returns 503 instead of serving requests
+    /// </summary>
     public bool Enabled { get; set; } = true;
     public bool Hidden { get; set; } = false;
-    /// <summary>Marks the endpoint's operations as deprecated in the OpenAPI document</summary>
+    /// <summary>
+    /// Marks the endpoint's operations as deprecated in the OpenAPI document
+    /// </summary>
     public bool Deprecated { get; set; } = false;
     public McpSettings? Mcp { get; set; }
-    /// <summary>Computed from Mcp.Exposed for backward compatibility with tuple consumers.</summary>
+    /// <summary>
+    /// Computed from Mcp.Exposed for backward compatibility with tuple consumers.
+    /// </summary>
     public bool IsMcpExposed => Mcp?.Exposed == true;
 
     // SQL endpoint properties
@@ -30,16 +40,22 @@ public class EndpointDefinition
     public string? Procedure { get; set; }
     public string? PrimaryKey { get; set; }
 
-    /// <summary>Write strategy: Procedure (default) or Table for generated parameterized statements</summary>
+    /// <summary>
+    /// Write strategy: Procedure (default) or Table for generated parameterized statements
+    /// </summary>
     public string? WriteMode { get; set; }
 
-    /// <summary>True when this endpoint opts into direct table writes</summary>
+    /// <summary>
+    /// True when this endpoint opts into direct table writes
+    /// </summary>
     public bool UsesTableWrites => string.Equals(WriteMode, "Table", StringComparison.OrdinalIgnoreCase);
     
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }
 
-    /// <summary>To-one navigations exposed via OData $expand; empty for endpoints without $expand</summary>
+    /// <summary>
+    /// To-one navigations exposed via OData $expand; empty for endpoints without $expand
+    /// </summary>
     public List<EndpointRelationship>? Relationships { get; set; }
 
     // Column mappings lazy-load from AllowedColumns; holder reference makes publication atomic under concurrent reads
@@ -77,19 +93,29 @@ public class EndpointDefinition
     // DELETE operation patterns
     public List<DeletePattern>? DeletePatterns { get; set; }
 
-    /// <summary>Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory") Takes precedence over folder-inferred namespace</summary>
+    /// <summary>
+    /// Optional namespace for grouping related endpoints (e.g., "CRM", "Inventory") Takes precedence over folder-inferred namespace
+    /// </summary>
     public string? Namespace { get; set; }
     
-    /// <summary>Display name for this specific endpoint (e.g., "Account Management") Used in OpenAPI documentation and UI displays</summary>
+    /// <summary>
+    /// Display name for this specific endpoint (e.g., "Account Management") Used in OpenAPI documentation and UI displays
+    /// </summary>
     public string? DisplayName { get; set; }
     
-    /// <summary>Display name for the namespace (e.g., "Customer Relationship Management") Used as documentation tag description and documentation grouping</summary>
+    /// <summary>
+    /// Display name for the namespace (e.g., "Customer Relationship Management") Used as documentation tag description and documentation grouping
+    /// </summary>
     public string? NamespaceDisplayName { get; set; }
 
-    /// <summary>Folder name where the endpoint definition is located (for backward compatibility) Used as fallback for DocumentationTag when DisplayName is not specified</summary>
+    /// <summary>
+    /// Folder name where the endpoint definition is located (for backward compatibility) Used as fallback for DocumentationTag when DisplayName is not specified
+    /// </summary>
     public string? FolderName { get; set; }
     
-    /// <summary>Namespace inferred from folder structure (for internal use)</summary>
+    /// <summary>
+    /// Namespace inferred from folder structure (for internal use)
+    /// </summary>
     public string? InferredNamespace { get; set; }
 
     // Helper properties to simplify type checking
@@ -100,24 +126,36 @@ public class EndpointDefinition
     public bool IsStatic => Type == EndpointType.Static;
     
     // Namespace helper properties
-    /// <summary>Gets the effective namespace (explicit namespace takes precedence over inferred)</summary>
+    /// <summary>
+    /// Gets the effective namespace (explicit namespace takes precedence over inferred)
+    /// </summary>
     public string? EffectiveNamespace => Namespace ?? InferredNamespace;
     
-    /// <summary>Indicates if this endpoint has a namespace (explicit or inferred)</summary>
+    /// <summary>
+    /// Indicates if this endpoint has a namespace (explicit or inferred)
+    /// </summary>
     public bool HasNamespace => !string.IsNullOrEmpty(EffectiveNamespace);
     
-    /// <summary>Gets the endpoint name for URL and key generation</summary>
+    /// <summary>
+    /// Gets the endpoint name for URL and key generation
+    /// </summary>
     public string EndpointName => FolderName ?? (IsSql ? DatabaseObjectName : Path.GetFileNameWithoutExtension(Url)) ?? "Unknown";
     
-    /// <summary>Gets the full path including namespace (for routing keys)</summary>
+    /// <summary>
+    /// Gets the full path including namespace (for routing keys)
+    /// </summary>
     public string FullPath => HasNamespace ? $"{EffectiveNamespace}/{EndpointName}" : EndpointName;
     
-    /// <summary>Gets the display path for documentation and UI</summary>
+    /// <summary>
+    /// Gets the display path for documentation and UI
+    /// </summary>
     public string DisplayPath => HasNamespace && !string.IsNullOrEmpty(DisplayName) 
         ? $"{NamespaceDisplayName ?? EffectiveNamespace} - {DisplayName}" 
         : DisplayName ?? EndpointName;
     
-    /// <summary>Gets the appropriate documentation tag name for OpenAPI grouping</summary>
+    /// <summary>
+    /// Gets the appropriate documentation tag name for OpenAPI grouping
+    /// </summary>
     public string DocumentationTag
     {
         get
@@ -132,7 +170,9 @@ public class EndpointDefinition
         }
     }
 
-    /// <summary>Creates URL patterns for routing (supports both namespaced and non-namespaced)</summary>
+    /// <summary>
+    /// Creates URL patterns for routing (supports both namespaced and non-namespaced)
+    /// </summary>
     public List<string> GetUrlPatterns()
     {
         var patterns = new List<string>();
@@ -151,7 +191,9 @@ public class EndpointDefinition
         return patterns;
     }
 
-    /// <summary>Validates namespace naming conventions</summary>
+    /// <summary>
+    /// Validates namespace naming conventions
+    /// </summary>
     public List<string> ValidateNamespace()
     {
         var errors = new List<string>();
@@ -190,7 +232,9 @@ public class EndpointDefinition
         return errors;
     }
     
-    /// <summary>Converts EndpointDefinition to the ProxyEndpointInfo snapshot used by composite and MCP consumers</summary>
+    /// <summary>
+    /// Converts EndpointDefinition to the ProxyEndpointInfo snapshot used by composite and MCP consumers
+    /// </summary>
     public ProxyEndpointInfo ToProxyEndpointInfo()
     {
         return new ProxyEndpointInfo(

@@ -16,7 +16,9 @@ public static partial class OdataExpandRelationshipValidator
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*(/[A-Za-z_][A-Za-z0-9_]*)?$")]
     private static partial Regex EndpointRef();
 
-    /// <summary>Returns config shape errors for the entity's relationships; empty when valid or none declared</summary>
+    /// <summary>
+    /// Returns config shape errors for the entity's relationships; empty when valid or none declared
+    /// </summary>
     public static List<string> ValidateShape(EndpointEntity entity)
     {
         var errors = new List<string>();

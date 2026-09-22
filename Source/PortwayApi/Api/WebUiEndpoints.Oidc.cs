@@ -19,7 +19,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string target, string? details = null)
             => configAudit.Record(action, "oidc-provider", target, ctx.Connection.RemoteIpAddress?.ToString(), details, null);
 
-        // The sign-in page paints its buttons from this and hides the block when there are none
+        // Sign-in page renders one button per enabled provider from this list, and hides the block entirely when it is empty
         app.MapGet("/ui/api/auth/providers", async (AuthDbContext db, IConfiguration config) =>
         {
             if (!OidcEnabled(config)) return Results.Json(new { providers = Array.Empty<object>() });
@@ -51,7 +51,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        // The account is fixed here from a session that is already authenticated before the redirect is built. What comes back from the provider is written, never matched.
+        // Account is fixed from the already-authenticated session before redirect; the provider's callback data is written, never matched
         app.MapPost("/ui/api/oidc/providers/{slug}/link", async (
             AuthDbContext db, IConfiguration config, HttpContext ctx, AdminUserService users, string slug) =>
         {
@@ -69,7 +69,7 @@ public static partial class WebUiEndpointExtensions
             if (WebUiAuthHelper.CheckAccess(clientIp) is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
-            // A borrowed session must not be able to bolt a second way in onto somebody else's account
+            // Require the current password so a hijacked session cannot attach a new sign-in method to the account
             var confirm = body.TryGetProperty("current_password", out var c) ? c.GetString() ?? "" : "";
             if (!await users.ConfirmPasswordAsync(me, confirm))
             {
@@ -145,7 +145,7 @@ public static partial class WebUiEndpointExtensions
             var (account, problem) = await ResolveAccountAsync(db, provider, identity);
             if (account is null)
             {
-                // Log the provider only, never the subject or the token, so the log shows which door was tried without carrying the credential that tried it
+                // Log the provider only, never the subject or token, so the entry shows which door was tried without carrying the credential
                 Log.Warning("Refused console sign-in through {Provider} ({Problem})", provider.Name, problem);
                 return Results.Redirect(Back(ctx, problem));
             }
@@ -225,7 +225,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "That key is already in use", field = "slug" }, statusCode: 409);
 
             await db.SaveChangesAsync();
-            // A rotated secret or a moved authority must not be served from the cached document
+            // Evict the cached discovery document so a rotated secret or changed authority takes effect immediately
             OidcFlow.Forget(provider.Id);
 
             Audit(ctx, "update", provider.Slug, provider.Authority);
@@ -239,7 +239,7 @@ public static partial class WebUiEndpointExtensions
             var provider = await db.OidcProviders.FirstOrDefaultAsync(p => p.Id == id);
             if (provider is null) return Results.Json(new { error = "Provider not found" }, statusCode: 404);
 
-            // A binding to a provider that no longer exists is a dangling reference. The account still reports it, and no other provider can adopt the account while it stands
+            // A deleted provider leaves bound accounts with a dangling reference that blocks any other provider from adopting them
             var bound = await db.AdminUsers.Where(u => u.Provider == provider.Slug).ToListAsync();
             foreach (var account in bound)
             {
@@ -247,7 +247,7 @@ public static partial class WebUiEndpointExtensions
                 account.ExternalId = null;
             }
 
-            // Those without a password have just lost their only way in
+            // Accounts with no password set now have no way to sign in at all
             var stranded = bound.Count(u => u.PasswordHash.Length == 0 && u.IsActive);
 
             db.OidcProviders.Remove(provider);
@@ -264,7 +264,9 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
     }
 
-    /// <summary>Global kill switch; read per request so flipping it takes effect without a restart</summary>
+    /// <summary>
+    /// Global kill switch; read per request so flipping it takes effect without a restart
+    /// </summary>
     private static bool OidcEnabled(IConfiguration config) => config.GetValue("Oidc:Enabled", true);
 
     private static Task<OidcProvider?> UsableAsync(AuthDbContext db, IConfiguration config, string slug) =>
@@ -272,11 +274,15 @@ public static partial class WebUiEndpointExtensions
             ? db.OidcProviders.FirstOrDefaultAsync(p => p.Slug == slug && p.IsEnabled)
             : Task.FromResult<OidcProvider?>(null);
 
-    /// <summary>Back to the sign-in page with a reason the page can show</summary>
+    /// <summary>
+    /// Back to the sign-in page with a reason the page can show
+    /// </summary>
     private static string Back(HttpContext ctx, string reason) =>
         $"{ctx.Request.PathBase}/ui/login?sso={reason}";
 
-    /// <summary>The address registered at the provider. Built from the request when there is one so a reverse proxy and a PathBase are included, and from configuration when the console asks what to register.</summary>
+    /// <summary>
+    /// Redirect URI registered at the provider: derived from the live request (so reverse-proxy scheme/host and PathBase are correct) when ctx is available, otherwise from configuration for display purposes
+    /// </summary>
     private static string RedirectUri(HttpContext? ctx, string slug)
     {
         if (ctx is null) return $"{OidcBase}/{slug}/callback";
@@ -337,7 +343,9 @@ public static partial class WebUiEndpointExtensions
         return null;
     }
 
-    /// <summary>Writes the identity onto the account that started the flow. Nothing is matched here, the account was chosen by an authenticated, password confirmed session before the redirect.</summary>
+    /// <summary>
+    /// Sets provider identity on the account that started the flow; no matching happens here since the account was already chosen by an authenticated, password-confirmed session before the redirect
+    /// </summary>
     private static async Task<IResult> CompleteLinkAsync(
         AuthDbContext db, HttpContext ctx, OidcProvider provider, OidcFlow.PendingFlow flow, OidcIdentity identity)
     {
@@ -366,7 +374,9 @@ public static partial class WebUiEndpointExtensions
     private static string BackToUsers(HttpContext ctx, string reason) =>
         $"{ctx.Request.PathBase}/ui/users?link={reason}";
 
-    /// <summary>Finds the account this identity belongs to. A subject already bound wins, otherwise the username claim may adopt an existing account, and a new one is created only when the provider is allowed to. A claim never chooses an account that is already federated elsewhere.</summary>
+    /// <summary>
+    /// Resolves the account for this identity: a subject already bound to this provider takes priority; otherwise the username claim may match an existing local account; a new account is created only if CreateAccounts is set. Never matches an account already bound to a different provider.
+    /// </summary>
     private static async Task<(AdminUser? Account, string Problem)> ResolveAccountAsync(
         AuthDbContext db, OidcProvider provider, OidcIdentity identity)
     {
@@ -406,7 +416,9 @@ public static partial class WebUiEndpointExtensions
         return account.IsActive ? (account, "") : (null, OidcFlow.Inactive);
     }
 
-    /// <summary>An account already tied to another provider is not a candidate: linking it would move it</summary>
+    /// <summary>
+    /// Excludes accounts already bound to a different provider; only Local and this provider's own accounts are eligible to link
+    /// </summary>
     private static Task<AdminUser?> Linkable(
         AuthDbContext db, OidcProvider provider, System.Linq.Expressions.Expression<Func<AdminUser, bool>> match) =>
         db.AdminUsers
@@ -414,7 +426,9 @@ public static partial class WebUiEndpointExtensions
             .Where(match)
             .FirstOrDefaultAsync();
 
-    /// <summary>Says so when the claim arrived but this console would never issue that handle</summary>
+    /// <summary>
+    /// Returns a warning when the username claim fails ValidateUsername, explaining that only an exact-name match applies
+    /// </summary>
     private static string UnusableNameNote(OidcProvider provider, OidcIdentity identity)
     {
         if (identity.Username.Length == 0) return "";
@@ -425,7 +439,9 @@ public static partial class WebUiEndpointExtensions
             "handle, or give the account an email address and let the provider send a verified one.";
     }
 
-    /// <summary>Four different reasons an address did not match, and a refusal naming none of them audits the wrong thing</summary>
+    /// <summary>
+    /// Logs which of the four reasons blocked an email match: no address, unverified, or no bound account
+    /// </summary>
     private static string WhyNoEmailMatch(OidcProvider provider, OidcIdentity identity)
     {
         if (identity.Email.Length == 0)
@@ -441,7 +457,7 @@ public static partial class WebUiEndpointExtensions
 
     private static AdminUser Provision(AuthDbContext db, OidcProvider provider, OidcIdentity identity)
     {
-        // A handle this console would not issue is replaced rather than refused
+        // Derive a valid username from the email/subject when the claimed one fails validation, rather than refusing sign-in
         var username = identity.Username;
         if (AdminUserService.ValidateUsername(username) is not null)
             username = DeriveUsername(identity.Email.Length > 0 ? identity.Email : identity.Subject);
@@ -460,7 +476,9 @@ public static partial class WebUiEndpointExtensions
         return created;
     }
 
-    /// <summary>A handle out of an address or a subject, keeping only characters a username may hold</summary>
+    /// <summary>
+    /// Derives a username-safe string from an email address or subject claim, stripping characters a username may not contain
+    /// </summary>
     private static string DeriveUsername(string source)
     {
         var at = source.IndexOf('@');

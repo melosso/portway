@@ -6,7 +6,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
 
-/// <summary>Guards the shared error envelope for handlers returning minimal-API results</summary>
+/// <summary>
+/// Guards the shared error envelope for handlers returning minimal-API results
+/// </summary>
 public class PortwayResultsTests
 {
     // An unhandled error must never carry exception text back to the caller

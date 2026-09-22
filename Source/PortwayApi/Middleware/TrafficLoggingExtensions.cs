@@ -20,10 +20,14 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>Extension methods for setting up proxy traffic logging</summary>
+/// <summary>
+/// Extension methods for setting up proxy traffic logging
+/// </summary>
 public static class TrafficLoggingExtensions
 {
-    /// <summary>Adds proxy traffic logging services to the service collection</summary>
+    /// <summary>
+    /// Adds proxy traffic logging services to the service collection
+    /// </summary>
     public static IServiceCollection AddRequestTrafficLogging(this IServiceCollection services, IConfiguration configuration)
     {
         // Bind options from configuration
@@ -64,7 +68,9 @@ public static class TrafficLoggingExtensions
         return services;
     }
 
-    /// <summary>Adds the proxy traffic logging middleware to the application pipeline</summary>
+    /// <summary>
+    /// Adds the proxy traffic logging middleware to the application pipeline
+    /// </summary>
     public static IApplicationBuilder UseRequestTrafficLogging(this IApplicationBuilder app)
     {
         var options = app.ApplicationServices.GetService<IOptions<ProxyTrafficLoggerOptions>>();

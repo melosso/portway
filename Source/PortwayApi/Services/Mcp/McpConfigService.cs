@@ -26,7 +26,9 @@ public sealed class McpConfigService
         _dbFactory = dbFactory;
     }
 
-    /// <summary>Immutable snapshot of the current MCP chat configuration</summary>
+    /// <summary>
+    /// Immutable snapshot of the current MCP chat configuration
+    /// </summary>
     public sealed record ConfigSnapshot(
         string  Provider,
         string  Model,
@@ -34,12 +36,16 @@ public sealed class McpConfigService
         string? InternalApiToken
     )
     {
-        /// <summary>True when a provider and API key are both present.</summary>
+        /// <summary>
+        /// True when a provider and API key are both present.
+        /// </summary>
         public bool IsConfigured => !string.IsNullOrWhiteSpace(Provider)
                                  && !string.IsNullOrWhiteSpace(ApiKey);
     }
 
-    /// <summary>Returns the current config snapshot, reading from DB on the first call and after each <see cref="SaveConfigAsync"/> call. The environment variable <c>PORTWAY_CHAT_API_KEY</c> overrides the stored API key</summary>
+    /// <summary>
+    /// Returns the current config snapshot, reading from DB on the first call and after each <see cref="SaveConfigAsync"/> call. The environment variable <c>PORTWAY_CHAT_API_KEY</c> overrides the stored API key
+    /// </summary>
     public async Task<ConfigSnapshot> GetConfigAsync(CancellationToken ct = default)
     {
         if (_cache is { } cached) return cached;
@@ -78,7 +84,9 @@ public sealed class McpConfigService
         return snapshot;
     }
 
-    /// <summary>Persists chat configuration to the DB. <para>ApiKey and InternalApiToken are encrypted before storage.</para> Pass <c>null</c> to leave a value unchanged</summary>
+    /// <summary>
+    /// Persists chat configuration to the DB. <para>ApiKey and InternalApiToken are encrypted before storage.</para> Pass <c>null</c> to leave a value unchanged
+    /// </summary>
     public async Task SaveConfigAsync(
         string? provider,
         string? model,
@@ -110,7 +118,9 @@ public sealed class McpConfigService
         Log.Information("McpConfig: configuration saved");
     }
 
-    /// <summary>Removes all stored configuration entries and invalidates the cache. Chat will be unavailable until <see cref="SaveConfigAsync"/> is called again</summary>
+    /// <summary>
+    /// Removes all stored configuration entries and invalidates the cache. Chat will be unavailable until <see cref="SaveConfigAsync"/> is called again
+    /// </summary>
     public async Task ClearConfigAsync(CancellationToken ct = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
@@ -120,7 +130,9 @@ public sealed class McpConfigService
         Log.Information("McpConfig: configuration cleared");
     }
 
-    /// <summary>Returns a masked view of the config for safe display in the UI (API key is never returned).</summary>
+    /// <summary>
+    /// Returns a masked view of the config for safe display in the UI (API key is never returned).
+    /// </summary>
     public async Task<object> GetStatusAsync(CancellationToken ct = default)
     {
         var cfg = await GetConfigAsync(ct);
@@ -167,7 +179,9 @@ public sealed class McpConfigService
 
 internal static class StringExtensions
 {
-    /// <summary>Returns null when the string is null, empty, or whitespace-only.</summary>
+    /// <summary>
+    /// Returns null when the string is null, empty, or whitespace-only.
+    /// </summary>
     internal static string? NullIfEmpty(this string? s) =>
         string.IsNullOrWhiteSpace(s) ? null : s;
 }

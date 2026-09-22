@@ -2,7 +2,9 @@ namespace PortwayApi.Middleware;
 
 using Serilog;
 
-/// <summary>Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients</summary>
+/// <summary>
+/// Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
+/// </summary>
 public static class FallbackEndpointExtensions
 {
     public static WebApplication MapPortwayFallback(this WebApplication app)

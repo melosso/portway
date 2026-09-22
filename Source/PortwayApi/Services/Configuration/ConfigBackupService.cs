@@ -4,14 +4,18 @@ using Serilog;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>Timestamped copies of config files before Web UI writes; keeps the last 10 distinct versions per file</summary>
+/// <summary>
+/// Timestamped copies of config files before Web UI writes; keeps the last 10 distinct versions per file
+/// </summary>
 public static class ConfigBackupService
 {
     private const int MaxBackupsPerFile = 10;
 
     private static string BackupRoot => Path.Combine(Directory.GetCurrentDirectory(), ".backups");
 
-    /// <summary>Copies the file into .backups; identical content reuses the existing backup</summary>
+    /// <summary>
+    /// Copies the file into .backups; identical content reuses the existing backup
+    /// </summary>
     public static string? Backup(string filePath)
     {
         try
@@ -49,7 +53,9 @@ public static class ConfigBackupService
         }
     }
 
-    /// <summary>Restores a backup onto its target; target must live under endpoints/ or environments/</summary>
+    /// <summary>
+    /// Restores a backup onto its target; target must live under endpoints/ or environments/
+    /// </summary>
     public static bool Restore(string backupPath, string targetPath)
     {
         try

@@ -25,7 +25,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Handle file uploads</summary>
+    /// <summary>
+    /// Handle file uploads
+    /// </summary>
     [HttpPost("{env}/files/{**catchall}")]
     public async Task<IActionResult> UploadFileAsync(
         string env,
@@ -49,7 +51,7 @@ public partial class EndpointController
             // Check if we have namespace/endpoint format (2+ segments)
             if (segments.Length >= 2)
             {
-                // Could be namespace/endpoint/subpath or just endpoint/subpath; Try to determine if first segment is a namespace by checking if namespace/endpoint exists
+                // Ambiguous: namespace/endpoint/subpath or endpoint/subpath; disambiguate by checking if namespace/endpoint exists
                 var potentialNamespace = segments[0];
                 var potentialEndpoint = segments[1];
                 var allFileEndpoints = EndpointHandler.GetFileEndpoints();
@@ -179,7 +181,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handle file downloads</summary>
+    /// <summary>
+    /// Handle file downloads
+    /// </summary>
     [HttpGet("{env}/files/{**catchall}")]
     public async Task<IActionResult> DownloadFileAsync(
         string env,
@@ -214,7 +218,7 @@ public partial class EndpointController
             }
 
             // Download the file
-            var (fileStream, filename, contentType) = await _fileHandlerService.DownloadFileAsync(fileId);
+            var (fileStream, filename, contentType) = await _fileHandlerService.DownloadFileAsync(fileId, env);
 
             // Return the file
             return File(fileStream, contentType, filename);
@@ -222,6 +226,11 @@ public partial class EndpointController
         catch (FileNotFoundException ex)
         {
             return PortwayResults.NotFound($"File not found: {ex.FileName}");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Same response as a genuinely missing file, so a mismatched environment cannot be told apart from "does not exist"
+            return PortwayResults.NotFound("File not found");
         }
         catch (ArgumentException ex)
         {
@@ -233,7 +242,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handle file deletions</summary>
+    /// <summary>
+    /// Handle file deletions
+    /// </summary>
     [HttpDelete("{env}/files/{**catchall}")]
     public async Task<IActionResult> DeleteFileAsync(
         string env,
@@ -262,9 +273,13 @@ public partial class EndpointController
             }
 
             // Delete the file
-            await _fileHandlerService.DeleteFileAsync(fileId);
+            await _fileHandlerService.DeleteFileAsync(fileId, env);
 
             return PortwayResults.Mutation("File deleted successfully");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return PortwayResults.NotFound("File not found");
         }
         catch (ArgumentException ex)
         {
@@ -276,7 +291,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>List files in an endpoint</summary>
+    /// <summary>
+    /// List files in an endpoint
+    /// </summary>
     [HttpGet("{env}/files/{endpointName}/list")]
     public async Task<IActionResult> ListFilesAsync(
         string env,
@@ -284,7 +301,9 @@ public partial class EndpointController
         [FromQuery] string? prefix = null)
         => await ListFilesCore(env, null, endpointName, prefix);
 
-    /// <summary>Lists files for a (possibly namespaced) file endpoint</summary>
+    /// <summary>
+    /// Lists files for a (possibly namespaced) file endpoint
+    /// </summary>
     private async Task<IActionResult> ListFilesCore(string env, string? namespaceName, string endpointName, string? prefix)
     {
         try

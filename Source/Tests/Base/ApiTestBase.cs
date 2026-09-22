@@ -19,9 +19,21 @@ using System.Text;
 
 namespace PortwayApi.Tests.Base;
 
-/// <summary>xUnit collection that serializes all integration tests sharing WebApplicationFactory. Without this, parallel factory creation races on SQLite file access and the MCP HTTP transport</summary>
+/// <summary>
+/// xUnit collection that serializes all integration tests sharing WebApplicationFactory. Without this, parallel factory creation races on SQLite file access and the MCP HTTP transport
+/// </summary>
 [CollectionDefinition("Integration")]
 public class IntegrationTestCollection { }
+
+/// <summary>
+/// Sets a fixed key so the test host never fails the encryption key check
+/// </summary>
+internal static class TestEncryptionKeySetup
+{
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void SetEncryptionKey() =>
+        Environment.SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", "test-only-fixed-encryption-key-0123456789-0123456789");
+}
 
 [Collection("Integration")]
 public class ApiTestBase : IDisposable
@@ -104,7 +116,7 @@ public class ApiTestBase : IDisposable
             {
                 builder.ConfigureAppConfiguration(config =>
                 {
-                    // Use per-instance SQLite paths and disable the MCP HTTP server in tests; The MCP HTTP transport registers a hosted service that conflicts when multiple; WebApplicationFactory instances start in parallel
+                    // Disable the MCP HTTP server: its hosted service conflicts when parallel WebApplicationFactory instances start
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["Mcp:Enabled"] = "false"
@@ -171,11 +183,15 @@ public class ApiTestBase : IDisposable
         _testEnvironmentSettings.SetAllowedEnvironments(environments.ToList());
     }
 
-    /// <summary>Absolute path to the WMS SQLite demo database copied next to the test assembly</summary>
+    /// <summary>
+    /// Absolute path to the WMS SQLite demo database copied next to the test assembly
+    /// </summary>
     protected static string WmsDemoDbPath =>
         Path.Combine(AppContext.BaseDirectory, "environments", "WMS", "demo.db");
 
-    /// <summary>True when the WMS demo database is present, so shape tests can assert instead of skipping</summary>
+    /// <summary>
+    /// True when the WMS demo database is present, so shape tests can assert instead of skipping
+    /// </summary>
     protected static bool WmsDemoDbAvailable => File.Exists(WmsDemoDbPath);
 
     private static string ConnectionStringFor(string environment) =>

@@ -13,7 +13,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for Web UI CSRF enforcement, audit trail and security posture endpoint</summary>
+/// <summary>
+/// Integration tests for Web UI CSRF enforcement, audit trail and security posture endpoint
+/// </summary>
 [Collection("Integration")]
 public class WebUiSecurityTests : IDisposable
 {
@@ -84,11 +86,15 @@ public class WebUiSecurityTests : IDisposable
     // so the first sign-in is a two-step: authenticate, then choose a password to get the session.
     private const string SeededPassword = "T3st-console-pw-9f2b";
 
-    /// <summary>Signs in as the seeded administrator and returns the auth and csrf cookie values</summary>
+    /// <summary>
+    /// Signs in as the seeded administrator and returns the auth and csrf cookie values
+    /// </summary>
     private Task<(string AuthCookie, string CsrfCookie)> LoginAsync(HttpClient client) =>
         SignInAsync(client, "admin", AdminKey, SeededPassword);
 
-    /// <summary>Signs in, completing a first-sign-in password change when the account still owes one</summary>
+    /// <summary>
+    /// Signs in, completing a first-sign-in password change when the account still owes one
+    /// </summary>
     private static async Task<(string AuthCookie, string CsrfCookie)> SignInAsync(
         HttpClient client, string username, string password, string? newPassword = null)
     {
@@ -144,9 +150,22 @@ public class WebUiSecurityTests : IDisposable
     public async Task UnauthenticatedUiApiRequest_RedirectsToLogin()
     {
         var client = CreateClient();
-        var resp = await client.GetAsync("/ui/api/settings");
+        var resp = await client.GetAsync("/ui/api/settings", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
         Assert.Contains("/ui/login", resp.Headers.Location!.ToString());
+    }
+
+    [Fact]
+    public async Task EmptyAdminApiKey_DeniesUiApiInsteadOfLeavingItUnguarded()
+    {
+        // Middleware must deny ui api routes itself now that it always runs
+        using var offFactory = _factory.WithWebHostBuilder(b =>
+            b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "" })));
+        var client = offFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var resp = await client.GetAsync("/ui/api/environments/500", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, resp.StatusCode);
     }
 
     [Fact]
@@ -156,10 +175,10 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, _) = await LoginAsync(client);
 
         var req = AuthedRequest(HttpMethod.Put, "/ui/api/environments/settings", authCookie, csrfHeader: null, body: new { });
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.Contains("CSRF", json.GetProperty("error").GetString());
     }
 
@@ -171,13 +190,13 @@ public class WebUiSecurityTests : IDisposable
 
         var put = AuthedRequest(HttpMethod.Put, "/ui/api/environments/settings", authCookie, csrfCookie,
             new { server_name = "localhost", allowed_environments = new[] { "500", "700" } });
-        var resp = await client.SendAsync(put);
+        var resp = await client.SendAsync(put, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
         var auditReq = AuthedRequest(HttpMethod.Get, "/ui/api/audit", authCookie);
-        var auditResp = await client.SendAsync(auditReq);
+        var auditResp = await client.SendAsync(auditReq, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, auditResp.StatusCode);
-        var audit = await auditResp.Content.ReadFromJsonAsync<JsonElement>();
+        var audit = await auditResp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         var entries = audit.GetProperty("entries").EnumerateArray().ToList();
         Assert.Contains(entries, e =>
             e.GetProperty("action").GetString() == "update" &&
@@ -197,10 +216,10 @@ public class WebUiSecurityTests : IDisposable
 
         var req = AuthedRequest(HttpMethod.Post, $"/ui/api/endpoints/{type}/validate", authCookie, csrfCookie,
             new { content });
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.Equal(expectValid, json.GetProperty("valid").GetBoolean());
     }
 
@@ -212,9 +231,9 @@ public class WebUiSecurityTests : IDisposable
 
         var req = AuthedRequest(HttpMethod.Post, "/ui/api/endpoints/sql/validate", authCookie, csrfCookie,
             new { content = "{ not json" });
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.False(json.GetProperty("valid").GetBoolean());
         Assert.Contains("Invalid JSON", json.GetProperty("errors")[0].GetString());
     }
@@ -226,10 +245,10 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, _) = await LoginAsync(client);
 
         var req = AuthedRequest(HttpMethod.Get, "/ui/settings", authCookie);
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
-        var html = await resp.Content.ReadAsStringAsync();
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("<title>Settings · Portway</title>", html);
         Assert.Contains("toastContainer", html);          // shell
         Assert.Contains("id=\"securityBody\"", html);     // view fragment
@@ -243,10 +262,10 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, _) = await LoginAsync(client);
 
         var req = AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie);
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         var security = json.GetProperty("security");
         Assert.True(security.GetProperty("webui_auth_enabled").GetBoolean());
         Assert.True(security.GetProperty("admin_accounts").GetInt32() > 0);
@@ -261,24 +280,54 @@ public class WebUiSecurityTests : IDisposable
 
         var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
             new { username = "read-only", password = "V13wer-account-pw-77", role = "viewer", current_password = SeededPassword });
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
 
         var (viewerCookie, viewerCsrf) = await SignInAsync(client, "read-only", "V13wer-account-pw-77");
 
         // Reading the console stays open to a viewer
         var read = AuthedRequest(HttpMethod.Get, "/ui/api/settings", viewerCookie);
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(read)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(read, TestContext.Current.CancellationToken)).StatusCode);
 
         // Writing settings is administrator-only, CSRF satisfied or not
         var write = AuthedRequest(HttpMethod.Put, "/ui/api/settings", viewerCookie, viewerCsrf,
             new Dictionary<string, object> { ["Caching:Enabled"] = false });
-        var writeResp = await client.SendAsync(write);
+        var writeResp = await client.SendAsync(write, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, writeResp.StatusCode);
 
         // And it must not be able to hand itself an administrator account
         var escalate = AuthedRequest(HttpMethod.Post, "/ui/api/users", viewerCookie, viewerCsrf,
             new { username = "climber", password = "Esc4lation-pw-1234", role = "administrator" });
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(escalate)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(escalate, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task DeactivatedAccount_LosesAccessImmediately_EvenOnAPlainReadRequest()
+    {
+        // Separate clients per account: WebApplicationFactory's client auto-tracks Set-Cookie,
+        // so reusing one client across two logins would silently overwrite the admin's session
+        var adminClient = CreateClient();
+        var (adminCookie, adminCsrf) = await LoginAsync(adminClient);
+
+        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
+            new { username = "soon-deactivated", password = "D3act1vate-me-pw-42", role = "viewer", current_password = SeededPassword });
+        var createResp = await adminClient.SendAsync(create, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, createResp.StatusCode);
+        var created = await createResp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var targetId = created.GetProperty("id").GetInt32();
+
+        var targetClient = CreateClient();
+        var (targetCookie, _) = await SignInAsync(targetClient, "soon-deactivated", "D3act1vate-me-pw-42");
+
+        // The now-deactivated account's own cookie still authenticates a plain GET before the fix
+        var deactivate = AuthedRequest(HttpMethod.Put, $"/ui/api/users/{targetId}", adminCookie, adminCsrf,
+            new Dictionary<string, object> { ["is_active"] = false, ["current_password"] = SeededPassword });
+        Assert.Equal(HttpStatusCode.OK, (await adminClient.SendAsync(deactivate, TestContext.Current.CancellationToken)).StatusCode);
+
+        var readAfterDeactivation = AuthedRequest(HttpMethod.Get, "/ui/api/settings", targetCookie);
+        var resp = await targetClient.SendAsync(readAfterDeactivation, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
+        Assert.Contains("/ui/login", resp.Headers.Location!.ToString());
     }
 
     [Fact]
@@ -289,18 +338,20 @@ public class WebUiSecurityTests : IDisposable
 
         var secret = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "stolen" });
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(secret)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(secret, TestContext.Current.CancellationToken)).StatusCode);
 
         var tooLong = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = new string('x', 2_001) });
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(tooLong)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(tooLong, TestContext.Current.CancellationToken)).StatusCode);
 
         var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = "Hello **there**" });
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
     }
 
-    /// <summary>Puts one enabled provider in the database so the kill switch has something to hide</summary>
+    /// <summary>
+    /// Puts one enabled provider in the database so the kill switch has something to hide
+    /// </summary>
     private async Task SeedProviderAsync(WebApplicationFactory<Program> factory)
     {
         using var scope = factory.Services.CreateScope();
@@ -324,7 +375,7 @@ public class WebUiSecurityTests : IDisposable
 
         // The provider is live while the switch is on, so the assertions below test the switch and not an empty table
         var on = CreateClient();
-        var listed = await on.GetFromJsonAsync<JsonElement>("/ui/api/auth/providers");
+        var listed = await on.GetFromJsonAsync<JsonElement>("/ui/api/auth/providers", TestContext.Current.CancellationToken);
         Assert.Contains(listed.GetProperty("providers").EnumerateArray(),
             p => p.GetProperty("slug").GetString() == "acme");
 
@@ -333,15 +384,15 @@ public class WebUiSecurityTests : IDisposable
                 new Dictionary<string, string?> { ["Oidc:Enabled"] = "false" })));
         var client = offFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var providers = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/providers");
+        var providers = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/providers", TestContext.Current.CancellationToken);
         Assert.Empty(providers.GetProperty("providers").EnumerateArray());
 
-        var stillEnabled = await client.GetAsync("/ui/api/auth/oidc/acme/start");
+        var stillEnabled = await client.GetAsync("/ui/api/auth/oidc/acme/start", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, stillEnabled.StatusCode);
 
         // The switch has to hold at the start route too, not just hide the buttons:
         // with it off every slug is unknown, which is the same 404 an unknown slug already gets
-        var unknown = await client.GetAsync("/ui/api/auth/oidc/anything/start");
+        var unknown = await client.GetAsync("/ui/api/auth/oidc/anything/start", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
 
@@ -361,7 +412,7 @@ public class WebUiSecurityTests : IDisposable
 
         var req = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { [key] = values });
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(expectOk ? HttpStatusCode.OK : HttpStatusCode.BadRequest, resp.StatusCode);
     }
@@ -376,16 +427,16 @@ public class WebUiSecurityTests : IDisposable
         // Replacing the entry that admits it must be refused rather than applied and discovered on restart.
         var evict = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
-        var evictResp = await client.SendAsync(evict);
+        var evictResp = await client.SendAsync(evict, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, evictResp.StatusCode);
-        var problem = await evictResp.Content.ReadFromJsonAsync<JsonElement>();
+        var problem = await evictResp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.Contains("refuse your own requests", problem.GetProperty("error").GetString());
 
         // Keeping an entry that still covers the caller is allowed
         var keep = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "http://localhost", "https://elsewhere.example.com" } });
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(keep)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(keep, TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -396,11 +447,11 @@ public class WebUiSecurityTests : IDisposable
 
         var set = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "a-brand-new-secret-value" });
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(set)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(set, TestContext.Current.CancellationToken)).StatusCode);
 
         var clear = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "" });
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(clear)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(clear, TestContext.Current.CancellationToken)).StatusCode);
     }
 
     [Fact]
@@ -414,7 +465,8 @@ public class WebUiSecurityTests : IDisposable
 
         var req = AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie);
         req.Headers.Add("X-Forwarded-For", "203.0.113.9");
-        var json = await (await client.SendAsync(req)).Content.ReadFromJsonAsync<JsonElement>();
+        var json = await (await client.SendAsync(req, TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
 
         var security = json.GetProperty("security");
         Assert.False(security.GetProperty("trusted_proxies_configured").GetBoolean());
@@ -429,9 +481,9 @@ public class WebUiSecurityTests : IDisposable
 
         var req = AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie);
         req.Headers.Add("X-Forwarded-For", "203.0.113.9");
-        var resp = await client.SendAsync(req);
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         var security = json.GetProperty("security");
 
         var behindProxy = security.GetProperty("behind_proxy").GetBoolean();
@@ -448,7 +500,7 @@ public class WebUiSecurityTests : IDisposable
     public async Task ConsoleResponses_CarryTheHardenedSecurityHeaders()
     {
         var client = CreateClient();
-        var resp = await client.GetAsync("/ui/login");
+        var resp = await client.GetAsync("/ui/login", TestContext.Current.CancellationToken);
 
         Assert.False(resp.Headers.Contains("X-Powered-By"));
         Assert.Equal("same-origin", resp.Headers.GetValues("Cross-Origin-Opener-Policy").Single());

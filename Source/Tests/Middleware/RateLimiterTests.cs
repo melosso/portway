@@ -125,6 +125,23 @@ public class RateLimiterTests
         Assert.Equal(2, passed);
     }
 
+    // Lowercase auth schemes must match TokenAuthMiddleware's case-insensitive check to trigger per-token accounting over the shared IP bucket.
+    [Fact]
+    public async Task InvokeAsync_LowercaseBearerScheme_StillRateLimitedPerToken()
+    {
+        var passed = 0;
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 10000, tokenLimit: 2, timeProvider: new FakeTimeProvider());
+
+        for (var i = 0; i < 5; i++)
+        {
+            var ctx = BuildContext();
+            ctx.Request.Headers.Authorization = "bearer my-lowercase-token";
+            await limiter.InvokeAsync(ctx);
+        }
+
+        Assert.Equal(2, passed);
+    }
+
     [Fact]
     public async Task InvokeAsync_TwoDistinctTokens_LimitedIndependently()
     {

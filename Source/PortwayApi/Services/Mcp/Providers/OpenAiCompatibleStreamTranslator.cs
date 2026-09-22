@@ -3,7 +3,9 @@ namespace PortwayApi.Services.Mcp.Providers;
 using System.Text;
 using System.Text.Json.Nodes;
 
-/// <summary>Reads OpenAI choice deltas, accumulating tool call fragments until the finish reason</summary>
+/// <summary>
+/// Reads OpenAI choice deltas, accumulating tool call fragments until the finish reason
+/// </summary>
 internal sealed class OpenAiCompatibleStreamTranslator : IChatStreamTranslator
 {
     private readonly StringBuilder _pendingToolArgs = new();

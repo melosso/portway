@@ -3,28 +3,44 @@ using System.Collections.Generic;
 
 namespace PortwayApi.Services.Caching;
 
-/// <summary>Configuration options for caching</summary>
+/// <summary>
+/// Configuration options for caching
+/// </summary>
 public class CacheOptions
 {
-    /// <summary>Whether caching is enabled for the application</summary>
+    /// <summary>
+    /// Whether caching is enabled for the application
+    /// </summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Default cache duration in seconds</summary>
+    /// <summary>
+    /// Default cache duration in seconds
+    /// </summary>
     public int DefaultCacheDurationSeconds { get; set; } = 300;
 
-    /// <summary>Memory budget for cached entries in MB, enforced by evicting on entry byte size</summary>
+    /// <summary>
+    /// Memory budget for cached entries in MB, enforced by evicting on entry byte size
+    /// </summary>
     public int MemoryCacheSizeLimitMB { get; set; } = 100;
 
-    /// <summary>Which cache provider to use</summary>
+    /// <summary>
+    /// Which cache provider to use
+    /// </summary>
     public CacheProviderType ProviderType { get; set; } = CacheProviderType.Memory;
 
-    /// <summary>Redis configuration options (if Redis provider is used)</summary>
+    /// <summary>
+    /// Redis configuration options (if Redis provider is used)
+    /// </summary>
     public RedisOptions Redis { get; set; } = new RedisOptions();
 
-    /// <summary>Endpoint-specific cache durations</summary>
+    /// <summary>
+    /// Endpoint-specific cache durations
+    /// </summary>
     public Dictionary<string, int> EndpointCacheDurations { get; set; } = new Dictionary<string, int>();
 
-    /// <summary>Content types that should be cached</summary>
+    /// <summary>
+    /// Content types that should be cached
+    /// </summary>
     public List<string> CacheableContentTypes { get; set; } = new List<string>
     {
         "application/json",
@@ -33,7 +49,9 @@ public class CacheOptions
         "text/xml"
     };
 
-    /// <summary>Get cache duration for an endpoint</summary>
+    /// <summary>
+    /// Get cache duration for an endpoint
+    /// </summary>
     public TimeSpan GetCacheDurationForEndpoint(string endpointName)
     {
         if (EndpointCacheDurations.TryGetValue(endpointName, out int seconds))

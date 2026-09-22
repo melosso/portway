@@ -27,7 +27,9 @@ public static class OidcFlow
     public const string Linked = "linked";
     public const string NotLinked = "not_linked";
 
-    /// <summary>As long as a person takes to sign in at the provider</summary>
+    /// <summary>
+    /// As long as a person takes to sign in at the provider
+    /// </summary>
     public static readonly TimeSpan FlowLifetime = TimeSpan.FromMinutes(10);
 
     // Per process. Portway is one instance over one SQLite file, so a sign-in that starts here finishes here.
@@ -49,7 +51,9 @@ public static class OidcFlow
     public static string MetadataAddress(string authority) =>
         $"{authority.TrimEnd('/')}/.well-known/openid-configuration";
 
-    /// <summary>A self-hosted provider on loopback may use plain http; anything else must be https or the tokens travel in the clear</summary>
+    /// <summary>
+    /// A self-hosted provider on loopback may use plain http; anything else must be https or the tokens travel in the clear
+    /// </summary>
     public static bool AllowsPlainHttp(string authority) =>
         Uri.TryCreate(authority, UriKind.Absolute, out var uri) && uri.IsLoopback;
 
@@ -59,7 +63,9 @@ public static class OidcFlow
             new OpenIdConnectConfigurationRetriever(),
             new HttpDocumentRetriever { RequireHttps = !AllowsPlainHttp(provider.Authority) })).GetConfigurationAsync(token);
 
-    /// <summary>Dropped when a provider is edited or removed, so a rotated secret is not served from cache</summary>
+    /// <summary>
+    /// Dropped when a provider is edited or removed, so a rotated secret is not served from cache
+    /// </summary>
     public static void Forget(int providerId)
     {
         foreach (var key in Documents.Keys)
@@ -70,7 +76,9 @@ public static class OidcFlow
     public static async Task<Start> BeginAsync(OidcProvider provider, string redirectUri, CancellationToken token, int linkTo = 0) =>
         Begin(await DocumentAsync(provider, token), provider, redirectUri, linkTo);
 
-    /// <summary>Split from the fetch so the redirect and its one-time state are testable without a provider</summary>
+    /// <summary>
+    /// Split from the fetch so the redirect and its one-time state are testable without a provider
+    /// </summary>
     internal static Start Begin(OpenIdConnectConfiguration document, OidcProvider provider, string redirectUri, int linkTo = 0)
     {
         if (string.IsNullOrEmpty(document.AuthorizationEndpoint))
@@ -98,7 +106,9 @@ public static class OidcFlow
         return new Start(Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(document.AuthorizationEndpoint, query), state);
     }
 
-    /// <summary>A state is spent by the first callback presenting it, so a replayed code buys no second attempt</summary>
+    /// <summary>
+    /// A state is spent by the first callback presenting it, so a replayed code buys no second attempt
+    /// </summary>
     public static PendingFlow? Claim(string? state)
     {
         if (string.IsNullOrEmpty(state) || !Pending.TryRemove(state, out var flow)) return null;

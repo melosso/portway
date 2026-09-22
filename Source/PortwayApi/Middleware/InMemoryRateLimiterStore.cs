@@ -3,7 +3,9 @@ namespace PortwayApi.Middleware;
 using System.Collections.Concurrent;
 using Serilog;
 
-/// <summary>Default single-instance store, one TokenBucket per key with idle eviction</summary>
+/// <summary>
+/// Default single-instance store, one TokenBucket per key with idle eviction
+/// </summary>
 public class InMemoryRateLimiterStore : IRateLimiterStore, IDisposable
 {
     private readonly ConcurrentDictionary<string, TokenBucket> _buckets = new();
@@ -26,10 +28,14 @@ public class InMemoryRateLimiterStore : IRateLimiterStore, IDisposable
         return ValueTask.FromResult(bucket.TryConsume(1));
     }
 
-    /// <summary>Number of live buckets, exposed for diagnostics and tests</summary>
+    /// <summary>
+    /// Number of live buckets, exposed for diagnostics and tests
+    /// </summary>
     public int BucketCount => _buckets.Count;
 
-    /// <summary>Current state of every bucket without consuming, for the diagnostics endpoint</summary>
+    /// <summary>
+    /// Current state of every bucket without consuming, for the diagnostics endpoint
+    /// </summary>
     public IEnumerable<(string Key, RateLimitLease Lease)> Snapshot()
     {
         foreach (var pair in _buckets)

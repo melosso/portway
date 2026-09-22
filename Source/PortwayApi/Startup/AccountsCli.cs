@@ -10,7 +10,9 @@ using PortwayApi.Auth;
 /// </summary>
 public static class AccountsCli
 {
-    /// <summary>What to type to run this build, which differs between a published apphost and `dotnet Portway.dll`</summary>
+    /// <summary>
+    /// What to type to run this build, which differs between a published apphost and `dotnet Portway.dll`
+    /// </summary>
     public static string Invocation()
     {
         var dll = System.Reflection.Assembly.GetEntryAssembly()?.Location ?? "";

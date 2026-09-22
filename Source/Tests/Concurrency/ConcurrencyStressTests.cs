@@ -22,7 +22,9 @@ public class ConcurrencyStressTests
     private static readonly TimeSpan RunFor = TimeSpan.FromSeconds(2);
     private static readonly int Readers = Math.Max(4, Environment.ProcessorCount);
 
-    /// <summary>Runs readers and writers together, collecting every exception either side throws</summary>
+    /// <summary>
+    /// Runs readers and writers together, collecting every exception either side throws
+    /// </summary>
     private static ConcurrentBag<Exception> Hammer(Action reader, Action writer, int readerCount)
     {
         var errors = new ConcurrentBag<Exception>();
@@ -162,7 +164,7 @@ public class ConcurrencyStressTests
             // Delete half of them concurrently so the counter is driven in both directions at once
             var toDelete = ids.Take(filesPerRound / 2).ToList();
             await Parallel.ForEachAsync(toDelete, new ParallelOptions { MaxDegreeOfParallelism = 32 },
-                async (id, ct) => await service.DeleteFileAsync(id));
+                async (id, ct) => await service.DeleteFileAsync(id, "prod"));
         }
 
         Assert.Equal(service.MeasuredMemoryUsage, service.CurrentMemoryUsage);

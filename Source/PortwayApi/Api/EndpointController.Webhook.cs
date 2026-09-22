@@ -25,7 +25,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Handles webhook requests</summary>
+    /// <summary>
+    /// Handles webhook requests
+    /// </summary>
     private async Task<IActionResult> HandleWebhookRequest(
         string env,
         string webhookEndpointKey,

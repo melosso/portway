@@ -9,7 +9,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Handles GET requests to endpoints</summary>
+    /// <summary>
+    /// Handles GET requests to endpoints
+    /// </summary>
     [HttpGet("{env}/{**catchall}")]
     [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
     public async Task<IActionResult> GetAsync(
@@ -68,7 +70,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handles QUERY requests (RFC 10008): a safe, idempotent, cacheable read whose query lives in the request body</summary>
+    /// <summary>
+    /// Handles QUERY requests (RFC 10008): a safe, idempotent, cacheable read that puts the query in the request body instead of the URL
+    /// </summary>
     [AcceptVerbs("QUERY", Route = "{env}/{**catchall}")]
     [ResponseCache(Duration = 300, VaryByHeader = "Authorization")]
     public async Task<IActionResult> QueryAsync(string env, string catchall)
@@ -150,7 +154,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>OData-style parameters carried in a QUERY request body; accepts both bare and $-prefixed keys</summary>
+    /// <summary>
+    /// OData-style parameters carried in a QUERY request body; accepts both bare and $-prefixed keys
+    /// </summary>
     private sealed class QueryBody
     {
         public string? Select { get; init; }
@@ -160,7 +166,9 @@ public partial class EndpointController
         public int? Skip { get; init; }
     }
 
-    /// <summary>Parses a QUERY JSON body into OData parameters. Returns null when the body is not a JSON object; empty body yields defaults</summary>
+    /// <summary>
+    /// Parses a QUERY JSON body into OData parameters. Returns null when the body is not a JSON object; empty body yields defaults
+    /// </summary>
     private static QueryBody? ParseQueryBody(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -197,7 +205,9 @@ public partial class EndpointController
         };
     }
 
-    /// <summary>Sets Content-Location to the equivalent GET URL for a SQL QUERY (RFC 10008), when the query is URL-representable</summary>
+    /// <summary>
+    /// Sets Content-Location to the equivalent GET URL for a SQL QUERY (RFC 10008), when the query is URL-representable
+    /// </summary>
     private void SetQueryContentLocation(string env, string endpointPath, QueryBody q)
     {
         var parts = new List<string>();
@@ -212,7 +222,9 @@ public partial class EndpointController
         Response.Headers["Content-Location"] = url;
     }
 
-    /// <summary>Handles HEAD requests to static endpoints</summary>
+    /// <summary>
+    /// Handles HEAD requests to static endpoints
+    /// </summary>
     [HttpHead("{env}/{**catchall}")]
     public IActionResult Head(string env, string catchall)
     {
@@ -294,7 +306,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handles POST requests to endpoints</summary>
+    /// <summary>
+    /// Handles POST requests to endpoints
+    /// </summary>
     [HttpPost("{env}/{**catchall}")]
     public async Task<IActionResult> PostAsync(
         string env,
@@ -375,7 +389,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handles PUT requests to endpoints</summary>
+    /// <summary>
+    /// Handles PUT requests to endpoints
+    /// </summary>
     [HttpPut("{env}/{**catchall}")]
     public async Task<IActionResult> PutAsync(
         string env,
@@ -422,7 +438,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handles DELETE requests to endpoints</summary>
+    /// <summary>
+    /// Handles DELETE requests to endpoints
+    /// </summary>
     [HttpDelete("{env}/{**catchall}")]
     public async Task<IActionResult> DeleteAsync(
         string env,
@@ -479,7 +497,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handles PATCH requests to endpoints</summary>
+    /// <summary>
+    /// Handles PATCH requests to endpoints
+    /// </summary>
     [HttpPatch("{env}/{**catchall}")]
     public async Task<IActionResult> PatchAsync(
         string env,
@@ -532,7 +552,9 @@ public partial class EndpointController
         }
     }
 
-    /// <summary>Handles MERGE requests, the OData spelling of a partial update; endpoints opt in by listing MERGE in Methods</summary>
+    /// <summary>
+    /// Handles MERGE requests, the OData spelling of a partial update; endpoints opt in by listing MERGE in Methods
+    /// </summary>
     [AcceptVerbs("MERGE", Route = "{env}/{**catchall}")]
     public async Task<IActionResult> MergeAsync(
         string env,

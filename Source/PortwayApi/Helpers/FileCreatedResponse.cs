@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace PortwayApi.Helpers;
 
-// 201 Created; File upload (distinct shape per HTTP semantics)
+// 201 Created response shape for file uploads, distinct from other endpoints' success responses
 public sealed record FileCreatedResponse(
     [property: JsonPropertyName("success")]     bool   Success,
     [property: JsonPropertyName("fileId")]      string FileId,

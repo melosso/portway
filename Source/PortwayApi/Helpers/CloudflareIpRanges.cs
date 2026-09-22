@@ -2,7 +2,9 @@ using System.Net;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Cloudflare published IP ranges > https://www.cloudflare.com/ips/</summary>
+/// <summary>
+/// Cloudflare published IP ranges > https://www.cloudflare.com/ips/
+/// </summary>
 /// <remarks>
 /// CF headers (CF-Connecting-IP, CF-Visitor) are only trustworthy when the TCP
 /// connection originates from one of these ranges. Any client can send these

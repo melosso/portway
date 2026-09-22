@@ -1,6 +1,8 @@
 namespace PortwayApi.Classes;
 
-/// <summary>Represents an endpoint entity with support for both proxy and SQL endpoints</summary>
+/// <summary>
+/// Represents an endpoint entity with support for both proxy and SQL endpoints
+/// </summary>
 public class EndpointEntity : EndpointEntityBase
 {
     // SQL endpoint properties
@@ -17,7 +19,9 @@ public class EndpointEntity : EndpointEntityBase
     public string? DatabaseObjectType { get; set; } = "Table"; // Table, View, TableValuedFunction
     public List<TVFParameter>? FunctionParameters { get; set; }
 
-    /// <summary>To-one navigations exposed via OData $expand (SQL Table/View endpoints only)</summary>
+    /// <summary>
+    /// To-one navigations exposed via OData $expand (SQL Table/View endpoints only)
+    /// </summary>
     public List<EndpointRelationship>? Relationships { get; set; }
 
     // Proxy endpoint properties
@@ -25,7 +29,9 @@ public class EndpointEntity : EndpointEntityBase
     public List<string>? Methods { get; set; }
     public List<DeletePattern>? DeletePatterns { get; set; }
 
-    /// <summary>Set when the proxied service understands OData query parameters, so the documentation can advertise them</summary>
+    /// <summary>
+    /// Set when the proxied service understands OData query parameters, so the documentation can advertise them
+    /// </summary>
     public bool SupportsOData { get; set; } = false;
 
     public string Type { get; set; } = "Standard"; // Standard, SQL, Composite

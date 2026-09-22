@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -20,7 +21,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>Middleware for logging proxy traffic</summary>
+/// <summary>
+/// Middleware for logging proxy traffic
+/// </summary>
 public class ProxyTrafficLoggerMiddleware
 {
     private readonly RequestDelegate _next;
@@ -65,7 +68,6 @@ public class ProxyTrafficLoggerMiddleware
             Timestamp = DateTime.UtcNow,
             Method = context.Request.Method,
             Path = context.Request.Path.Value ?? string.Empty,
-            QueryString = context.Request.QueryString.Value ?? string.Empty,
             ClientIp = GetClientIpAddress(context),
             TraceId = traceId
         };
@@ -74,7 +76,11 @@ public class ProxyTrafficLoggerMiddleware
         ParseApiPath(context.Request.Path.Value, out string? env, out string? endpoint);
         logEntry.Environment = env ?? string.Empty;
         logEntry.EndpointName = endpoint ?? string.Empty;
-        
+
+        // Get environment-specific sensitive header and query param names for redaction
+        var (extraHeaderNames, queryParamNames) = await GetEnvironmentAuthNamesAsync(env);
+        logEntry.QueryString = RedactQueryString(context, queryParamNames);
+
         // Log at debug level only
         Serilog.Log.Debug($"[Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
 
@@ -83,11 +89,11 @@ public class ProxyTrafficLoggerMiddleware
         {
             logEntry.TargetUrl = targetUrl.ToString() ?? string.Empty;
         }
-        
+
         // Capture request headers if enabled
         if (_options.CaptureHeaders)
         {
-            CaptureRequestHeaders(context, logEntry);
+            CaptureRequestHeaders(context, logEntry, extraHeaderNames);
         }
 
         // Setup for request body capture
@@ -356,31 +362,34 @@ public class ProxyTrafficLoggerMiddleware
         }
     }
 
-    private void CaptureRequestHeaders(HttpContext context, ProxyTrafficLogEntry logEntry)
+    private void CaptureRequestHeaders(HttpContext context, ProxyTrafficLogEntry logEntry, ISet<string> extraSensitiveHeaderNames)
     {
         try
         {
             var headers = context.Request.Headers;
-            
+
             // Pre-allocate dictionary capacity
             logEntry.RequestHeaders = new Dictionary<string, string>(headers.Count, StringComparer.OrdinalIgnoreCase);
-            
+
             foreach (var header in headers)
             {
                 string headerName = header.Key;
                 string headerValue = header.Value.ToString();
-                
+
                 // Check if this is a sensitive header
-                bool isSensitive = false;
-                foreach (var sensitiveHeader in _sensitiveHeaders)
+                bool isSensitive = extraSensitiveHeaderNames.Contains(headerName);
+                if (!isSensitive)
                 {
-                    if (string.Equals(headerName, sensitiveHeader, StringComparison.OrdinalIgnoreCase))
+                    foreach (var sensitiveHeader in _sensitiveHeaders)
                     {
-                        isSensitive = true;
-                        break;
+                        if (string.Equals(headerName, sensitiveHeader, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isSensitive = true;
+                            break;
+                        }
                     }
                 }
-                
+
                 // Add to dictionary with appropriate value
                 logEntry.RequestHeaders[headerName] = isSensitive ? "[REDACTED]" : headerValue;
             }
@@ -389,6 +398,64 @@ public class ProxyTrafficLoggerMiddleware
         {
             Serilog.Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error capturing request headers");
         }
+    }
+
+    /// <summary>
+    /// Header and query-param names the environment's own auth config uses, so a custom credential name still gets redacted
+    /// </summary>
+    private async Task<(HashSet<string> HeaderNames, HashSet<string> QueryParamNames)> GetEnvironmentAuthNamesAsync(string? env)
+    {
+        var headerNames     = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var queryParamNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (string.IsNullOrEmpty(env))
+            return (headerNames, queryParamNames);
+
+        try
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var environmentProvider = scope.ServiceProvider.GetService<Interfaces.IEnvironmentSettingsProvider>();
+            var config = environmentProvider is null ? null : await environmentProvider.GetEnvironmentConfigAsync(env);
+
+            foreach (var method in config?.Authentication?.Methods ?? new List<Classes.AuthenticationMethod>())
+            {
+                if (string.IsNullOrWhiteSpace(method.Name))
+                    continue;
+
+                // Cookie-carried credentials are already covered: the whole Cookie header is always redacted
+                if (string.Equals(method.In, "Query", StringComparison.OrdinalIgnoreCase))
+                    queryParamNames.Add(method.Name);
+                else if (!string.Equals(method.In, "Cookie", StringComparison.OrdinalIgnoreCase))
+                    headerNames.Add(method.Name);
+            }
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Debug(ex, "Could not resolve environment auth config for traffic-log redaction of {Environment}", env);
+        }
+
+        return (headerNames, queryParamNames);
+    }
+
+    /// <summary>
+    /// Rebuilds the query string with any sensitive parameter's value replaced, instead of logging it raw
+    /// </summary>
+    private static string RedactQueryString(HttpContext context, ISet<string> queryParamNamesToRedact)
+    {
+        var raw = context.Request.QueryString.Value ?? string.Empty;
+        if (raw.Length == 0 || queryParamNamesToRedact.Count == 0)
+            return raw;
+
+        var query = context.Request.Query;
+        if (!query.Keys.Any(queryParamNamesToRedact.Contains))
+            return raw;
+
+        var rebuilt = Microsoft.AspNetCore.Http.QueryString.Create(
+            query.Select(kv => new KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>(
+                kv.Key,
+                queryParamNamesToRedact.Contains(kv.Key) ? "[REDACTED]" : kv.Value)));
+
+        return rebuilt.Value ?? string.Empty;
     }
 
     private string GetClientIpAddress(HttpContext context)

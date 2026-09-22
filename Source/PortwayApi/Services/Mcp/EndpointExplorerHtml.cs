@@ -53,16 +53,42 @@ public static class EndpointExplorerHtml
             <script>
                 var endpoints = [{0}];
                 var container = document.getElementById('endpoints');
+                var knownMethods = { GET: 1, POST: 1, PUT: 1, DELETE: 1 };
                 for (var i = 0; i < endpoints.length; i++) {{
                     var ep = endpoints[i];
                     var card = document.createElement('div');
                     card.className = 'endpoint-card';
-                    var methodsHtml = '';
+
+                    var header = document.createElement('div');
+                    header.className = 'endpoint-header';
+
                     for (var j = 0; j < ep.methods.length; j++) {{
-                        methodsHtml += '<span class="method ' + ep.methods[j] + '">' + ep.methods[j] + '</span>';
+                        var m = ep.methods[j];
+                        var badge = document.createElement('span');
+                        badge.className = 'method' + (knownMethods[m] ? ' ' + m : '');
+                        badge.textContent = m;
+                        header.appendChild(badge);
                     }}
-                    var nsHtml = ep.ns ? '<span class="endpoint-ns">(' + ep.ns + ')</span>' : '';
-                    card.innerHTML = '<div class="endpoint-header">' + methodsHtml + '<span class="endpoint-name">' + ep.name + '</span>' + nsHtml + '</div><div class="endpoint-url">' + ep.url + '</div>';
+
+                    var nameSpan = document.createElement('span');
+                    nameSpan.className = 'endpoint-name';
+                    nameSpan.textContent = ep.name;
+                    header.appendChild(nameSpan);
+
+                    if (ep.ns) {{
+                        var nsSpan = document.createElement('span');
+                        nsSpan.className = 'endpoint-ns';
+                        nsSpan.textContent = '(' + ep.ns + ')';
+                        header.appendChild(nsSpan);
+                    }}
+
+                    var urlDiv = document.createElement('div');
+                    urlDiv.className = 'endpoint-url';
+                    urlDiv.textContent = ep.url;
+
+                    card.appendChild(header);
+                    card.appendChild(urlDiv);
+
                     var epData = ep;
                     card.onclick = (function(e) {{
                         return function() {{ window.parent.postMessage({{ type: 'mcp-call-tool', tool: e.name, namespace: e.ns }}, '*'); }};

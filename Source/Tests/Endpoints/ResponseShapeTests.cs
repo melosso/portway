@@ -9,7 +9,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Verifies standardized HTTP response shapes from EndpointController. Uses JsonDocument to assert body shape without coupling to record types</summary>
+/// <summary>
+/// Verifies standardized HTTP response shapes from EndpointController. Uses JsonDocument to assert body shape without coupling to record types
+/// </summary>
 public class ResponseShapeTests : ApiTestBase
 {
     // Error shape tests

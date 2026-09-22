@@ -4,7 +4,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Auth;
 
-/// <summary>Verifies the negative-cache primitive that shields token verification from invalid-token floods</summary>
+/// <summary>
+/// Verifies the negative-cache primitive that shields token verification from invalid-token floods
+/// </summary>
 public class TokenVerificationCacheTests
 {
     private static TokenVerificationCache CreateCache()

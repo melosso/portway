@@ -6,7 +6,9 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Serilog;
 
-/// <summary>A setting the Web UI and API are allowed to change, with the validation that guards it</summary>
+/// <summary>
+/// A setting the Web UI and API are allowed to change, with the validation that guards it
+/// </summary>
 public sealed record WritableSetting(
     string Key,
     string Kind,
@@ -15,7 +17,9 @@ public sealed record WritableSetting(
     double? Max = null,
     string[]? Choices = null);
 
-/// <summary>Outcome of a write attempt; Field names the setting that failed so a caller can mark it</summary>
+/// <summary>
+/// Outcome of a write attempt; Field names the setting that failed so a caller can mark it
+/// </summary>
 public sealed record SettingsWriteResult(bool Ok, string? Error = null, string? Field = null, bool RestartRequired = false);
 
 /// <summary>
@@ -111,7 +115,9 @@ public sealed class SettingsWriteService
         }
     }
 
-    /// <summary>Validates every entry, then writes them together; nothing is applied when one fails</summary>
+    /// <summary>
+    /// Validates every entry, then writes them together; nothing is applied when one fails
+    /// </summary>
     public async Task<SettingsWriteResult> ApplyAsync(IDictionary<string, JsonElement> changes)
     {
         if (changes.Count == 0)
@@ -188,7 +194,9 @@ public sealed class SettingsWriteService
         _ => (null, $"'{spec.Key}' has no validator"),
     };
 
-    /// <summary>Reads a JSON array of strings, running every entry through the kind's own parser</summary>
+    /// <summary>
+    /// Reads a JSON array of strings, running every entry through the kind's own parser
+    /// </summary>
     private static (JsonNode? Node, string? Error) ReadList(
         WritableSetting spec, JsonElement raw, Func<string, string?> validate)
     {
@@ -310,7 +318,9 @@ public sealed class SettingsWriteService
         else File.Move(temp, OverridesPath);
     }
 
-    /// <summary>Writes a colon-separated configuration key into the nested JSON document</summary>
+    /// <summary>
+    /// Writes a colon-separated configuration key into the nested JSON document
+    /// </summary>
     private static void SetPath(JsonObject root, string key, JsonNode? value)
     {
         var segments = key.Split(':');

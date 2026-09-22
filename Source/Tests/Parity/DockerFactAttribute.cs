@@ -3,7 +3,9 @@ namespace PortwayApi.Tests.Parity;
 using System.Diagnostics;
 using Xunit;
 
-/// <summary>Fact that skips when no container runtime is reachable, keeps plain dotnet test green without Docker</summary>
+/// <summary>
+/// Fact that skips when no container runtime is reachable, keeps plain dotnet test green without Docker
+/// </summary>
 public sealed class DockerFactAttribute : FactAttribute
 {
     public DockerFactAttribute()

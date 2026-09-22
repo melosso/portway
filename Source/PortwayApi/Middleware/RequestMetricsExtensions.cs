@@ -3,7 +3,9 @@ namespace PortwayApi.Middleware;
 using PortwayApi.Services;
 using PortwayApi.Services.Telemetry;
 
-/// <summary>Records request metrics for all non-health paths; UI and API tracked separately</summary>
+/// <summary>
+/// Records request metrics for all non-health paths; UI and API tracked separately
+/// </summary>
 public static class RequestMetricsExtensions
 {
     public static WebApplication UsePortwayRequestMetrics(this WebApplication app)
@@ -38,7 +40,9 @@ public static class RequestMetricsExtensions
         return app;
     }
 
-    /// <summary>Parses "/api/{env}/{name}" or "/webhook/{env}/{name}" to "{name}"; composite paths yield "composite/{name}"</summary>
+    /// <summary>
+    /// Parses "/api/{env}/{name}" or "/webhook/{env}/{name}" to "{name}"; composite paths yield "composite/{name}"
+    /// </summary>
     internal static string ParseEndpointName(string? path)
     {
         if (string.IsNullOrEmpty(path)) return "";

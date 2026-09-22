@@ -1,6 +1,8 @@
 namespace PortwayApi.Middleware;
 
-/// <summary>Continuous-refill token bucket, thread-safe via a short lock</summary>
+/// <summary>
+/// Continuous-refill token bucket, thread-safe via a short lock
+/// </summary>
 public class TokenBucket
 {
     private readonly int _capacity;
@@ -24,13 +26,17 @@ public class TokenBucket
 
     public int Capacity => _capacity;
 
-    /// <summary>Time of the last consumption attempt, used for idle eviction</summary>
+    /// <summary>
+    /// Time of the last consumption attempt, used for idle eviction
+    /// </summary>
     public DateTimeOffset LastActivity
     {
         get { lock (_syncLock) return _lastActivity; }
     }
 
-    /// <summary>Attempts to take tokens and reports the post-attempt bucket state</summary>
+    /// <summary>
+    /// Attempts to take tokens and reports the post-attempt bucket state
+    /// </summary>
     public RateLimitLease TryConsume(int tokenCount)
     {
         lock (_syncLock)
@@ -47,7 +53,9 @@ public class TokenBucket
         }
     }
 
-    /// <summary>Reports current bucket state without consuming</summary>
+    /// <summary>
+    /// Reports current bucket state without consuming
+    /// </summary>
     public RateLimitLease Peek()
     {
         lock (_syncLock)

@@ -20,7 +20,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>Enhanced log entry</summary>
+/// <summary>
+/// Enhanced log entry
+/// </summary>
 public class ProxyTrafficLogEntry
 {
     public long Id { get; set; }
@@ -42,7 +44,9 @@ public class ProxyTrafficLogEntry
     public string TraceId { get; set; } = string.Empty;
     public Dictionary<string, string> RequestHeaders { get; set; } = new();
 
-    /// <summary>Validates the log entry before storage</summary>
+    /// <summary>
+    /// Validates the log entry before storage
+    /// </summary>
     public bool IsValid()
     {
         return !string.IsNullOrWhiteSpace(Method) 
@@ -50,7 +54,9 @@ public class ProxyTrafficLogEntry
                 && !string.IsNullOrWhiteSpace(TraceId);
     }
 
-    /// <summary>Truncates body content if it exceeds max size</summary>
+    /// <summary>
+    /// Truncates body content if it exceeds max size
+    /// </summary>
     public void TruncateBodyContent(int maxSize)
     {
         if (!string.IsNullOrEmpty(RequestBody) && RequestBody.Length > maxSize)

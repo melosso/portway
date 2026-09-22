@@ -6,7 +6,9 @@ using Serilog;
 
 namespace PortwayApi.Classes.OpenApi;
 
-/// <summary>Document filter that enriches SQL endpoint documentation with database column metadata</summary>
+/// <summary>
+/// Document filter that enriches SQL endpoint documentation with database column metadata
+/// </summary>
 public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly Services.SqlMetadataService _metadataService;
@@ -30,7 +32,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return Task.CompletedTask;
     }
 
-    /// <summary>Enriches SQL endpoints in the OpenAPI document with column metadata</summary>
+    /// <summary>
+    /// Enriches SQL endpoints in the OpenAPI document with column metadata
+    /// </summary>
     private void EnrichSqlEndpointsWithMetadata(OpenApiDocument document)
     {
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
@@ -95,7 +99,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>Enriches GET operation with object metadata (table/view columns)</summary>
+    /// <summary>
+    /// Enriches GET operation with object metadata (table/view columns)
+    /// </summary>
     private void EnrichGetOperationWithObjectMetadata(
         OpenApiOperation operation,
         string endpointName,
@@ -159,7 +165,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             endpointName, metadata.Count);
     }
 
-    /// <summary>Enriches modification operations (POST, PUT, PATCH) with procedure metadata</summary>
+    /// <summary>
+    /// Enriches modification operations (POST, PUT, PATCH) with procedure metadata
+    /// </summary>
     private void EnrichModificationOperationWithProcedureMetadata(
         OpenApiOperation operation,
         string endpointName,
@@ -252,7 +260,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             method, endpointName, parameters.Count);
     }
 
-    /// <summary>Creates an example success response for PUT/PATCH operations</summary>
+    /// <summary>
+    /// Creates an example success response for PUT/PATCH operations
+    /// </summary>
     private JsonNode? CreateSuccessResponseExample()
     {
         return new JsonObject
@@ -292,7 +302,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return obj;
     }
 
-    /// <summary>Enriches DELETE operation with object metadata (for primary key information)</summary>
+    /// <summary>
+    /// Enriches DELETE operation with object metadata (for primary key information)
+    /// </summary>
     private void EnrichDeleteOperationWithObjectMetadata(
         OpenApiOperation operation,
         string endpointName,
@@ -316,7 +328,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         }
     }
 
-    /// <summary>Creates an OpenAPI schema from object metadata (table/view columns)</summary>
+    /// <summary>
+    /// Creates an OpenAPI schema from object metadata (table/view columns)
+    /// </summary>
     private OpenApiSchema CreateSchemaFromObjectMetadata(
         List<ColumnMetadata> metadata,
         bool excludePrimaryKey = false,
@@ -357,7 +371,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return schema;
     }
 
-    /// <summary>Creates an OpenAPI schema from procedure metadata</summary>
+    /// <summary>
+    /// Creates an OpenAPI schema from procedure metadata
+    /// </summary>
     private OpenApiSchema CreateSchemaFromProcedureMetadata(
         List<ParameterMetadata> parameters,
         EndpointDefinition endpoint,
@@ -442,7 +458,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return schema;
     }
 
-    /// <summary>Creates a schema for a single column from object metadata</summary>
+    /// <summary>
+    /// Creates a schema for a single column from object metadata
+    /// </summary>
     private OpenApiSchema CreateColumnSchema(
         ColumnMetadata column,
         EndpointDefinition? endpoint = null)
@@ -495,7 +513,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return columnSchema;
     }
 
-    /// <summary>Creates a schema for a single procedure parameter</summary>
+    /// <summary>
+    /// Creates a schema for a single procedure parameter
+    /// </summary>
     private OpenApiSchema CreateParameterSchema(
         ParameterMetadata parameter,
         EndpointDefinition endpoint)
@@ -552,7 +572,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return parameterSchema;
     }
 
-    /// <summary>Builds a descriptive text for a column</summary>
+    /// <summary>
+    /// Builds a descriptive text for a column
+    /// </summary>
     private string BuildColumnDescription(
         ColumnMetadata column,
         EndpointDefinition? endpoint = null)
@@ -590,7 +612,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return string.Join(" | ", parts);
     }
 
-    /// <summary>Builds a descriptive text for a procedure parameter</summary>
+    /// <summary>
+    /// Builds a descriptive text for a procedure parameter
+    /// </summary>
     private string BuildParameterDescription(ParameterMetadata parameter)
     {
         var parts = new List<string>();
@@ -631,7 +655,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return string.Join(" | ", parts);
     }
 
-    /// <summary>Gets the request body description based on method</summary>
+    /// <summary>
+    /// Gets the request body description based on method
+    /// </summary>
     private string GetRequestBodyDescription(string method)
     {
         return method switch
@@ -643,7 +669,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    /// <summary>Gets the schema description based on method</summary>
+    /// <summary>
+    /// Gets the schema description based on method
+    /// </summary>
     private string GetSchemaDescription(string method, int parameterCount)
     {
         return method switch
@@ -655,7 +683,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    /// <summary>Creates a validation error response schema</summary>
+    /// <summary>
+    /// Creates a validation error response schema
+    /// </summary>
     private OpenApiResponse CreateValidationErrorResponse()
     {
         return new OpenApiResponse
@@ -691,7 +721,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    /// <summary>Creates an example object from procedure parameters</summary>
+    /// <summary>
+    /// Creates an example object from procedure parameters
+    /// </summary>
     private JsonNode? CreateExampleObjectFromProcedure(
         List<ParameterMetadata> parameters,
         string method,
@@ -746,17 +778,18 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return obj;
     }
 
-    /// <summary>Maps a parameter name to a JSON property name using column mappings</summary>
+    /// <summary>
+    /// Maps a parameter name to a JSON property name using column mappings
+    /// </summary>
     private string? MapParameterToPropertyName(
         string parameterName,
         Dictionary<string, string> databaseToAlias,
         Dictionary<string, string> aliasToDatabase,
         EndpointDefinition definition)
     {
-        // Special case: primary key parameters should always be allowed for PUT operations; Check if this parameter maps to the primary key column
+        // Primary key parameters are always allowed on PUT operations
         if (!string.IsNullOrEmpty(definition.PrimaryKey))
         {
-            // If parameter name matches primary key directly
             if (parameterName.Equals(definition.PrimaryKey, StringComparison.OrdinalIgnoreCase))
             {
                 return definition.PrimaryKey;
@@ -795,18 +828,24 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return parameterName;
     }
 
-    /// <summary>Checks if a parameter name is reserved and should be excluded</summary>
+    /// <summary>
+    /// Checks if a parameter name is reserved and should be excluded
+    /// </summary>
     private bool IsReservedParameterName(string parameterName)
     {
         var reservedNames = new[] { "method", "action", "operation" };
         return reservedNames.Contains(parameterName.ToLowerInvariant());
     }
 
-    /// <summary>Generates an example value based on column metadata</summary>
+    /// <summary>
+    /// Generates an example value based on column metadata
+    /// </summary>
     private static JsonNode? GenerateExampleValue(ColumnMetadata column)
         => SqlExampleValueGenerator.FromColumn(column);
 
-    /// <summary>Checks if a field name matches common ID field patterns (same logic as EndpointController)</summary>
+    /// <summary>
+    /// Checks if a field name matches common ID field patterns (same logic as EndpointController)
+    /// </summary>
     private bool IsIdField(string fieldName)
     {
         var idFieldNames = new[]
@@ -820,11 +859,15 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         return idFieldNames.Contains(fieldName, StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>Generates an example value based on parameter metadata and property name</summary>
+    /// <summary>
+    /// Generates an example value based on parameter metadata and property name
+    /// </summary>
     private static JsonNode? GenerateExampleValueFromParameter(ParameterMetadata parameter, string propertyName)
         => SqlExampleValueGenerator.FromParameter(parameter, propertyName);
 
-    /// <summary>Maps CLR type to OpenAPI type</summary>
+    /// <summary>
+    /// Maps CLR type to OpenAPI type
+    /// </summary>
     private JsonSchemaType MapClrTypeToOpenApiType(string clrType)
     {
         return clrType switch
@@ -841,7 +884,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    /// <summary>Gets the format string for integer types</summary>
+    /// <summary>
+    /// Gets the format string for integer types
+    /// </summary>
     private string GetIntegerFormat(string clrType)
     {
         return clrType switch

@@ -45,7 +45,7 @@ public static class TelemetryServiceExtensions
                 }
             });
 
-        // Tracing pushes spans to a collector, so only the Otlp provider carries it
+        // Tracing needs a collector to push spans to; only the Otlp provider has one configured
         if (provider == TelemetryProvider.Otlp)
             otel.WithOtlpTracing(options);
 

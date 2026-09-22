@@ -2,7 +2,9 @@ namespace PortwayApi.Helpers;
 
 using Serilog;
 
-/// <summary>Creates support folders like .core and .backups, hidden on Windows where the dot prefix means nothing</summary>
+/// <summary>
+/// Creates support folders like .core and .backups, hidden on Windows where the dot prefix means nothing
+/// </summary>
 public static class HiddenDirectoryHelper
 {
     public static DirectoryInfo Ensure(string path)

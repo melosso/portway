@@ -8,7 +8,9 @@ using System.Security.Cryptography;
 
 namespace PortwayApi.Auth;
 
-/// <summary>Service to perform environment-specific authentication validation</summary>
+/// <summary>
+/// Service to perform environment-specific authentication validation
+/// </summary>
 public class EnvironmentAuthService
 {
     private readonly Serilog.ILogger _logger;
@@ -19,7 +21,9 @@ public class EnvironmentAuthService
     }
 
 
-    /// <summary>Validates a request against environment-specific authentication settings</summary>
+    /// <summary>
+    /// Validates a request against environment-specific authentication settings
+    /// </summary>
     /// <returns>True if authentication succeeded, false otherwise</returns>
     public async Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings)
     {

@@ -2,6 +2,7 @@ namespace PortwayApi.Services.Mcp;
 
 using Microsoft.AspNetCore.Http;
 using ModelContextProtocol.Server;
+using PortwayApi.Auth;
 using System.ComponentModel;
 using System.Text.Json;
 
@@ -15,12 +16,36 @@ public static class PortwayMcpTools
         _registry = registry;
     }
 
+    /// <summary>
+    /// Same bearer extraction CallEndpoint uses, reused so every tool checks the caller's real token
+    /// </summary>
+    private static async Task<AuthToken?> ResolveCallerTokenAsync(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
+    {
+        var authHeader = httpContextAccessor.HttpContext?.Request.Headers.Authorization.FirstOrDefault();
+        var token = authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
+            ? authHeader["Bearer ".Length..].Trim()
+            : null;
+
+        return token is null ? null : await tokenService.GetTokenDetailsByTokenAsync(token);
+    }
+
+    /// <summary>
+    /// Same key TokenAuthMiddleware checks scope against, so listings match what the token can actually call
+    /// </summary>
+    private static string ScopeKey(McpToolDescriptor tool) =>
+        string.IsNullOrEmpty(tool.Namespace) ? tool.EndpointName : $"{tool.Namespace}/{tool.EndpointName}";
+
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Browse available Portway endpoints with an interactive UI")]
-    public static string ListEndpoints()
+    public static async Task<string> ListEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
     {
         if (_registry is null) return "MCP not initialized";
 
-        var byInvokeName = _registry.ToolsByInvokeName;
+        var caller = await ResolveCallerTokenAsync(httpContextAccessor, tokenService);
+        if (caller is null) return "No endpoints registered";
+
+        var byInvokeName = _registry.ToolsByInvokeName
+            .Where(kv => caller.HasAccessToEndpoint(ScopeKey(kv.Value)))
+            .ToList();
         if (byInvokeName.Count == 0) return "No endpoints registered";
 
         var sb      = new System.Text.StringBuilder();
@@ -43,7 +68,8 @@ public static class PortwayMcpTools
     }
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Get details about a specific endpoint including available methods and URL. Pass the name shown by ListEndpoints")]
-    public static EndpointInfoResult GetEndpointInfo(string endpointName)
+    public static async Task<EndpointInfoResult> GetEndpointInfo(
+        IHttpContextAccessor httpContextAccessor, TokenService tokenService, string endpointName)
     {
         if (_registry is null)
             return new EndpointInfoResult { Error = "MCP not initialized" };
@@ -51,6 +77,10 @@ public static class PortwayMcpTools
         var tool = _registry.FindByName(endpointName);
 
         if (tool is null)
+            return new EndpointInfoResult { Error = $"Endpoint '{endpointName}' not found" };
+
+        var caller = await ResolveCallerTokenAsync(httpContextAccessor, tokenService);
+        if (caller is null || !caller.HasAccessToEndpoint(ScopeKey(tool)))
             return new EndpointInfoResult { Error = $"Endpoint '{endpointName}' not found" };
 
         return new EndpointInfoResult
@@ -67,13 +97,17 @@ public static class PortwayMcpTools
     }
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("List endpoints that have MCP Apps UI support")]
-    public static UiEnabledEndpointsResult ListUiEnabledEndpoints()
+    public static async Task<UiEnabledEndpointsResult> ListUiEnabledEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
     {
         if (_registry is null)
             return new UiEnabledEndpointsResult(0, []);
 
+        var caller = await ResolveCallerTokenAsync(httpContextAccessor, tokenService);
+        if (caller is null)
+            return new UiEnabledEndpointsResult(0, []);
+
         var endpoints = _registry.Tools
-            .Where(t => !string.IsNullOrEmpty(t.UiResourceUri))
+            .Where(t => !string.IsNullOrEmpty(t.UiResourceUri) && caller.HasAccessToEndpoint(ScopeKey(t)))
             .GroupBy(t => t.EndpointName)
             .Select(g => new UiEndpointItem(g.Key, g.First().UiResourceUri))
             .ToList();

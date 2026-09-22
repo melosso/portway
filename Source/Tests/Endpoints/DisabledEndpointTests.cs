@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Endpoints switched off through Enabled report a deliberate outage instead of serving</summary>
+/// <summary>
+/// Endpoints switched off through Enabled report a deliberate outage instead of serving
+/// </summary>
 /// <remarks>
 /// endpoints/Static/Production/Machines ships with Enabled false as the worked example.
 /// Every controller-served type (SQL, Proxy, Static, Webhook, Files) passes the same gate in

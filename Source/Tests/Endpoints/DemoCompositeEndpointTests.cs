@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for the demo Composite endpoint: Financial/SalesInvoice</summary>
+/// <summary>
+/// Integration tests for the demo Composite endpoint: Financial/SalesInvoice
+/// </summary>
 /// <remarks>
 /// Config: endpoints/Proxy/Financial/SalesInvoice/entity.json
 /// - Type: Composite

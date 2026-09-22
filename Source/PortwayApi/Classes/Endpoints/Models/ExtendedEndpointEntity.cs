@@ -1,6 +1,8 @@
 namespace PortwayApi.Classes;
 
-/// <summary>Represents an endpoint entity with extended support for composite operations</summary>
+/// <summary>
+/// Represents an endpoint entity with extended support for composite operations
+/// </summary>
 public class ExtendedEndpointEntity : EndpointEntityBase
 {
     public string Url { get; set; } = string.Empty;

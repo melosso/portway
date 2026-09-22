@@ -4,7 +4,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 
-/// <summary>Providers speaking the OpenAI chat completions wire format; they differ only by name and base URL</summary>
+/// <summary>
+/// Providers speaking the OpenAI chat completions wire format; they differ only by name and base URL
+/// </summary>
 public sealed class OpenAiCompatibleChatProvider(
     string providerName,
     string apiKey,
@@ -16,7 +18,9 @@ public sealed class OpenAiCompatibleChatProvider(
     public const string MistralUrl = "https://api.mistral.ai/v1/chat/completions";
     public const string CodestralUrl = "https://codestral.mistral.ai/v1/chat/completions";
 
-    /// <summary>Mistral serves codestral models from a dedicated host</summary>
+    /// <summary>
+    /// Mistral serves codestral models from a dedicated host
+    /// </summary>
     public static string MistralUrlFor(string model)
         => model.StartsWith("codestral", StringComparison.OrdinalIgnoreCase) ? CodestralUrl : MistralUrl;
 

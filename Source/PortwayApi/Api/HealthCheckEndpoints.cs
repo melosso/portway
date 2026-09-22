@@ -5,7 +5,9 @@ using PortwayApi.Services;
 using PortwayApi.Services.Configuration;
 using System.Reflection;
 
-/// <summary>Extension methods for mapping health check endpoints</summary>
+/// <summary>
+/// Extension methods for mapping health check endpoints
+/// </summary>
 public static class HealthCheckEndpointExtensions
 {
     public static WebApplication MapHealthCheckEndpoints(this WebApplication app)

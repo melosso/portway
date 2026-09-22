@@ -5,14 +5,18 @@ using Serilog;
 
 namespace PortwayApi.Services.Database;
 
-/// <summary>Nightly SQLite self-tuning: ANALYZE refreshes index statistics, VACUUM reclaims space when a database is bloated</summary>
+/// <summary>
+/// Nightly SQLite self-tuning: ANALYZE refreshes index statistics, VACUUM reclaims space when a database is bloated
+/// </summary>
 public class DatabaseMaintenanceService : BackgroundService
 {
     private readonly IOptionsMonitor<DatabaseMaintenanceOptions> _options;
     private readonly IConfiguration _configuration;
     private readonly ConfigAuditService _audit;
 
-    /// <summary>Results of the most recent run; empty until the first run completes</summary>
+    /// <summary>
+    /// Results of the most recent run; empty until the first run completes
+    /// </summary>
     public IReadOnlyList<DatabaseMaintenanceResult> LastRunResults { get; private set; } = [];
     public DateTime? LastRunUtc { get; private set; }
 
@@ -62,7 +66,9 @@ public class DatabaseMaintenanceService : BackgroundService
         }
     }
 
-    /// <summary>Time until the next occurrence of the configured local time of day; falls back to 03:00 on bad input</summary>
+    /// <summary>
+    /// Time until the next occurrence of the configured local time of day; falls back to 03:00 on bad input
+    /// </summary>
     internal static TimeSpan DelayUntilNextRun(string schedule, DateTime? nowLocal = null)
     {
         if (!TimeSpan.TryParse(schedule, out var timeOfDay) || timeOfDay < TimeSpan.Zero || timeOfDay >= TimeSpan.FromDays(1))
@@ -74,7 +80,9 @@ public class DatabaseMaintenanceService : BackgroundService
         return next - now;
     }
 
-    /// <summary>Runs one maintenance pass over all Portway SQLite databases that exist on disk</summary>
+    /// <summary>
+    /// Runs one maintenance pass over all Portway SQLite databases that exist on disk
+    /// </summary>
     public async Task<List<DatabaseMaintenanceResult>> RunOnceAsync(CancellationToken ct = default)
     {
         var results = new List<DatabaseMaintenanceResult>();

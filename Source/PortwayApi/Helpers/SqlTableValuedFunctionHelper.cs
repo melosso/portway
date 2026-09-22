@@ -6,10 +6,14 @@ using PortwayApi.Classes;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Helper class for handling Table Valued Function (TVF) parameter extraction and SQL generation</summary>
+/// <summary>
+/// Helper class for handling Table Valued Function (TVF) parameter extraction and SQL generation
+/// </summary>
 public static class SqlTableValuedFunctionHelper
 {
-    /// <summary>Determines if an endpoint is a Table Valued Function</summary>
+    /// <summary>
+    /// Determines if an endpoint is a Table Valued Function
+    /// </summary>
     /// <param name="endpoint">Endpoint definition</param>
     /// <returns>True if it's a TVF endpoint</returns>
     public static bool IsTableValuedFunction(EndpointDefinition endpoint)
@@ -18,7 +22,9 @@ public static class SqlTableValuedFunctionHelper
                endpoint.DatabaseObjectType.Equals("TableValuedFunction", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Extracts parameter values from HTTP request based on TVF parameter configuration</summary>
+    /// <summary>
+    /// Extracts parameter values from HTTP request based on TVF parameter configuration
+    /// </summary>
     /// <param name="functionParameters">TVF parameter definitions</param>
     /// <param name="request">HTTP request</param>
     /// <param name="pathSegments">URL path segments after the endpoint name</param>
@@ -70,7 +76,7 @@ public static class SqlTableValuedFunctionHelper
                 // Use default value if parameter not found and default is specified
                 if (!found && !string.IsNullOrEmpty(param.DefaultValue))
                 {
-                    // Don't add SQL keywords like "DEFAULT" to parameters dictionary; They will be handled directly in BuildFunctionCall
+                    // SQL keywords like "DEFAULT" are handled directly in BuildFunctionCall, not added to the parameters dictionary
                     if (!param.DefaultValue.Equals("DEFAULT", StringComparison.OrdinalIgnoreCase))
                     {
                         parameters[param.Name] = param.DefaultValue;
@@ -104,7 +110,9 @@ public static class SqlTableValuedFunctionHelper
         return (parameters, errors);
     }
 
-    /// <summary>Builds the SQL function call with parameters</summary>
+    /// <summary>
+    /// Builds the SQL function call with parameters
+    /// </summary>
     /// <param name="schema">Database schema</param>
     /// <param name="functionName">Function name</param>
     /// <param name="parameterValues">Parameter values</param>
@@ -154,7 +162,9 @@ public static class SqlTableValuedFunctionHelper
         return (sqlBuilder.ToString(), sqlParameters);
     }
 
-    /// <summary>Extracts a parameter value from the URL path</summary>
+    /// <summary>
+    /// Extracts a parameter value from the URL path
+    /// </summary>
     private static object? ExtractPathParameter(TVFParameter param, string[] pathSegments)
     {
         if (param.Position <= 0 || param.Position > pathSegments.Length)
@@ -167,7 +177,9 @@ public static class SqlTableValuedFunctionHelper
         return string.IsNullOrEmpty(segment) ? null : segment;
     }
 
-    /// <summary>Extracts a parameter value from query parameters</summary>
+    /// <summary>
+    /// Extracts a parameter value from query parameters
+    /// </summary>
     private static object? ExtractQueryParameter(TVFParameter param, IQueryCollection query)
     {
         var queryKey = param.QueryParameterName ?? param.Name;
@@ -181,7 +193,9 @@ public static class SqlTableValuedFunctionHelper
         return null;
     }
 
-    /// <summary>Extracts a parameter value from request headers</summary>
+    /// <summary>
+    /// Extracts a parameter value from request headers
+    /// </summary>
     private static object? ExtractHeaderParameter(TVFParameter param, IHeaderDictionary headers)
     {
         var headerKey = param.HeaderName ?? param.Name;
@@ -195,7 +209,9 @@ public static class SqlTableValuedFunctionHelper
         return null;
     }
 
-    /// <summary>Validates a parameter value against its configuration</summary>
+    /// <summary>
+    /// Validates a parameter value against its configuration
+    /// </summary>
     private static (bool IsValid, string? Error) ValidateParameterValue(TVFParameter param, string value)
     {
         // Check validation pattern if specified
@@ -220,7 +236,9 @@ public static class SqlTableValuedFunctionHelper
         return ValidateSqlType(value, param.SqlType);
     }
 
-    /// <summary>Validates that a value can be converted to the specified SQL type</summary>
+    /// <summary>
+    /// Validates that a value can be converted to the specified SQL type
+    /// </summary>
     private static (bool IsValid, string? Error) ValidateSqlType(string value, string sqlType)
     {
         var normalizedType = sqlType.ToUpper();
@@ -273,7 +291,9 @@ public static class SqlTableValuedFunctionHelper
         }
     }
 
-    /// <summary>Converts a string value to the appropriate .NET type for SQL parameters</summary>
+    /// <summary>
+    /// Converts a string value to the appropriate .NET type for SQL parameters
+    /// </summary>
     private static object ConvertToSqlType(object value, string sqlType)
     {
         var stringValue = value.ToString()!;

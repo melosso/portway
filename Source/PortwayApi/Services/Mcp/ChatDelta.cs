@@ -1,6 +1,8 @@
 namespace PortwayApi.Services.Mcp;
 
-/// <summary>A single streamed chunk from the LLM; either a text delta or a completed tool call</summary>
+/// <summary>
+/// A single streamed chunk from the LLM; either a text delta or a completed tool call
+/// </summary>
 public sealed record ChatDelta
 {
     public ChatDeltaType Type  { get; init; } = ChatDeltaType.Text;

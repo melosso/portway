@@ -61,6 +61,54 @@ public class EndpointExplorerHtmlTests
         Assert.DoesNotContain("<>", html);
         Assert.Contains("Test", html);
     }
+
+    [Fact]
+    public void Generate_NeverBuildsCardMarkupWithInnerHtml()
+    {
+        var endpoints = new[]
+        {
+            new EndpointMcpInfo { Name = "Products", Namespace = "inventory", Url = "/api/500/inventory/Products", Methods = new[] { "GET" } }
+        };
+
+        var html = EndpointExplorerHtml.Generate(endpoints);
+
+        // The old vulnerable pattern concatenated untrusted fields straight into innerHTML
+        Assert.DoesNotContain("card.innerHTML", html);
+        Assert.Contains("nameSpan.textContent = ep.name", html);
+        Assert.Contains("urlDiv.textContent = ep.url", html);
+        Assert.Contains("nsSpan.textContent", html);
+        Assert.Contains("badge.textContent = m", html);
+    }
+
+    [Fact]
+    public void Generate_MaliciousUrlIsJsEscapedAndNeverAppearsAsRawMarkup()
+    {
+        var payload = "\" onmouseover=\"alert(1)";
+        var endpoints = new[]
+        {
+            new EndpointMcpInfo { Name = "Evil", Url = $"<img src=x onerror=alert(document.cookie)>{payload}", Methods = new[] { "GET" } }
+        };
+
+        var html = EndpointExplorerHtml.Generate(endpoints);
+
+        // The JS-string escape layer still applies; a literal "<" must never reach the output
+        Assert.DoesNotContain("<img", html);
+        Assert.Contains("\\u003Cimg", html);
+    }
+
+    [Fact]
+    public void Generate_MethodClassNameOnlyAppliesForKnownMethods()
+    {
+        var endpoints = new[]
+        {
+            new EndpointMcpInfo { Name = "Weird", Url = "/api/500/Weird", Methods = new[] { "GET\" onmouseover=\"alert(1)" } }
+        };
+
+        var html = EndpointExplorerHtml.Generate(endpoints);
+
+        // A malicious method value must not be concatenated into the class attribute unguarded
+        Assert.Contains("knownMethods[m]", html);
+    }
 }
 
 public class McpEndpointRegistryTests

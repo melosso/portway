@@ -4,31 +4,47 @@ using Dapper;
 using PortwayApi.Services.Providers;
 using Xunit;
 
-/// <summary>Starts one database container, creates the shared parity schema and seeds five products</summary>
+/// <summary>
+/// Starts one database container, creates the shared parity schema and seeds five products
+/// </summary>
 public abstract class ParityDatabaseFixture : IAsyncLifetime
 {
     public abstract SqlProviderType ProviderType { get; }
 
-    /// <summary>Schema-qualified entity name as a client would address it in OData</summary>
+    /// <summary>
+    /// Schema-qualified entity name as a client would address it in OData
+    /// </summary>
     public abstract string QualifiedProductsTable { get; }
 
-    /// <summary>Schema-qualified related table for $expand parity (Products.CategoryId -> Categories.CategoryId)</summary>
+    /// <summary>
+    /// Schema-qualified related table for $expand parity (Products.CategoryId -> Categories.CategoryId)
+    /// </summary>
     public abstract string QualifiedCategoriesTable { get; }
 
-    /// <summary>Schema passed to GetProcedureParametersAsync</summary>
+    /// <summary>
+    /// Schema passed to GetProcedureParametersAsync
+    /// </summary>
     public abstract string ProcedureSchema { get; }
     public abstract string ProcedureName { get; }
 
-    /// <summary>TVF used for column discovery, empty when the provider has no TVF support</summary>
+    /// <summary>
+    /// TVF used for column discovery, empty when the provider has no TVF support
+    /// </summary>
     public virtual string TvfName => string.Empty;
 
-    /// <summary>Column count the TVF exposes, differs per fixture shape</summary>
+    /// <summary>
+    /// Column count the TVF exposes, differs per fixture shape
+    /// </summary>
     public virtual int TvfColumnCount => 0;
 
-    /// <summary>Rowset-returning write routine following the Portway procedure contract</summary>
+    /// <summary>
+    /// Rowset-returning write routine following the Portway procedure contract
+    /// </summary>
     public abstract string WriteProcedureName { get; }
 
-    /// <summary>Dialect-quoted cleanup so write scenarios leave the seed data untouched</summary>
+    /// <summary>
+    /// Dialect-quoted cleanup so write scenarios leave the seed data untouched
+    /// </summary>
     public abstract string DeleteProductByIdSql { get; }
 
     public string ConnectionString { get; private set; } = string.Empty;
@@ -59,7 +75,9 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
             await StopContainerAsync();
     }
 
-    /// <summary>Values shared by every dialect, fixtures wrap them in their own identifier quoting</summary>
+    /// <summary>
+    /// Values shared by every dialect, fixtures wrap them in their own identifier quoting
+    /// </summary>
     protected const string SeedValues = """
         (1, 'Anvil', 25.00, '2023-03-01'),
         (2, 'Rocket Skates', 79.99, '2024-01-15'),
@@ -68,7 +86,9 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
         (5, 'Tornado Kit', 33.10, '2024-09-09')
         """;
 
-    /// <summary>Two categories; products 1 and 2 map to 10, product 4 to 20, products 3 and 5 stay unmatched</summary>
+    /// <summary>
+    /// Two categories; products 1 and 2 map to 10, product 4 to 20, products 3 and 5 stay unmatched
+    /// </summary>
     protected const string CategorySeedValues = """
         (10, 'Tools'),
         (20, 'Toys')

@@ -4,7 +4,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Portway forwards proxy query strings untouched, so only endpoints declaring SupportsOData may advertise OData parameters</summary>
+/// <summary>
+/// Portway forwards proxy query strings untouched, so only endpoints declaring SupportsOData may advertise OData parameters
+/// </summary>
 /// <remarks>
 /// Fixtures:
 /// - Proxy Account/Accounts : SupportsOData true, fronts an Exact REST service

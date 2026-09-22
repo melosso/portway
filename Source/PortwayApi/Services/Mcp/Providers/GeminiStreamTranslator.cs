@@ -2,7 +2,9 @@ namespace PortwayApi.Services.Mcp.Providers;
 
 using System.Text.Json.Nodes;
 
-/// <summary>Reads Gemini candidate parts, each carrying text or a complete function call</summary>
+/// <summary>
+/// Reads Gemini candidate parts, each carrying text or a complete function call
+/// </summary>
 internal sealed class GeminiStreamTranslator : IChatStreamTranslator
 {
     public bool IsComplete => false;

@@ -6,7 +6,9 @@ using PortwayApi.Helpers;
 using SqlKata;
 using Xunit;
 
-/// <summary>Parity oracle: the same scenarios run against every provider's real database (issue #29)</summary>
+/// <summary>
+/// Parity oracle: the same scenarios run against every provider's real database (issue #29)
+/// </summary>
 [Trait("Category", "Parity")]
 public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFixture<TFixture>
     where TFixture : ParityDatabaseFixture

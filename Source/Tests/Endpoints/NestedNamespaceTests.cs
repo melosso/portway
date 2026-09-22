@@ -8,11 +8,15 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Namespaces nested more than one level deep, which the loader has always produced but routing could not reach</summary>
+/// <summary>
+/// Namespaces nested more than one level deep, which the loader has always produced but routing could not reach
+/// </summary>
 /// <remarks>Fixture: SQL WMS/Inbound/StagingBins, env WMS, backed by the committed SQLite demo database</remarks>
 public class NestedNamespaceTests : ApiTestBase
 {
-    /// <summary>Only the OData translation is stubbed; routing, handler, driver and envelope remain intact</summary>
+    /// <summary>
+    /// Only the OData translation is stubbed; routing, handler, driver and envelope remain intact
+    /// </summary>
     private void StubODataTranslation(string sql)
     {
         _mockODataToSqlConverter

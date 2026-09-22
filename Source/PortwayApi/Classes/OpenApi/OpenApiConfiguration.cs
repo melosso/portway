@@ -95,7 +95,7 @@ public static class OpenApiConfiguration
                         Type = schemeType
                     };
 
-                    // name and in describe where an apiKey travels; an http scheme always carries its credentials in Authorization
+                    // name and in only apply to an apiKey scheme; an http scheme always sends its credentials in the Authorization header
                     if (schemeType == SecuritySchemeType.ApiKey)
                     {
                         scheme.Name = "Authorization";

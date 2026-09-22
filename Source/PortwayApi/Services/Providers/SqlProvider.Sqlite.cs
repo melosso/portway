@@ -38,7 +38,9 @@ public class SqliteProvider : SqlProviderBase
         _ => "System.Object"
     };
 
-    /// <summary>Gets column metadata for a SQLite table using PRAGMA table_info</summary>
+    /// <summary>
+    /// Gets column metadata for a SQLite table using PRAGMA table_info
+    /// </summary>
     public async Task<List<ColumnMetadata>> GetColumnsViaPragmaAsync(
         DbConnection connection, string tableName, CancellationToken cancellationToken)
     {

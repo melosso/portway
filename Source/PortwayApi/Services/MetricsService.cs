@@ -3,7 +3,9 @@ namespace PortwayApi.Services;
 using System.Collections.Concurrent;
 using System.Threading.Channels;
 
-/// <summary>Thread-safe in-memory ring buffer for HTTP request metrics. Records status code, method, source (api/ui/other) and endpoint name per request. Auto-prunes entries older than 31 days, capped at MaxEntries to bound memory</summary>
+/// <summary>
+/// Thread-safe in-memory ring buffer for HTTP request metrics. Records status code, method, source (api/ui/other) and endpoint name per request. Auto-prunes entries older than 31 days, capped at MaxEntries to bound memory
+/// </summary>
 public sealed class MetricsService
 {
     internal readonly record struct RequestEntry(DateTime Timestamp, int StatusCode, string Method, string Source, string Endpoint);
@@ -19,7 +21,9 @@ public sealed class MetricsService
     internal readonly Channel<RequestEntry> PersistenceChannel = Channel.CreateBounded<RequestEntry>(
         new BoundedChannelOptions(20_000) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true, SingleWriter = false });
 
-    /// <summary>Records a completed HTTP request.</summary>
+    /// <summary>
+    /// Records a completed HTTP request.
+    /// </summary>
     public void Record(int statusCode, string method, string source = "api", string endpoint = "")
     {
         var now = DateTime.UtcNow;

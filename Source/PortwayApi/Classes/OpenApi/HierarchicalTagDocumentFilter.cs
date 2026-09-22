@@ -3,7 +3,9 @@ namespace PortwayApi.Classes.OpenApi;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
-/// <summary>Turns slash-delimited namespace tags into an OpenAPI 3.2 tag hierarchy so nested namespaces render as a tree</summary>
+/// <summary>
+/// Turns slash-delimited namespace tags into an OpenAPI 3.2 tag hierarchy so nested namespaces render as a tree
+/// </summary>
 public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
 {
     // "nav" is the registered tag-kind for navigation grouping; renderers key their sidebar tree off it
@@ -54,7 +56,7 @@ public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
             tag.Parent = new OpenApiTagReference(string.Join('/', segments.Take(segments.Length - 1)));
             tag.Kind ??= NamespaceTagKind;
 
-            // The name carries the path so the hierarchy survives; summary carries the leaf a reader should see
+            // tag.Name keeps the full path so the hierarchy survives; Summary holds just the leaf segment for display
             tag.Summary ??= segments[^1];
         }
 

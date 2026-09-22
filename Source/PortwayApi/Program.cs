@@ -141,6 +141,9 @@ try
     // Web UI admin key; placeholder rejected in production, empty disables Web UI auth
     var adminApiKey = AdminApiKeyValidator.Resolve(builder.Configuration, app.Environment);
 
+    // Refuse to start outside Development without a proper encryption key
+    SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
+
     var publicOrigins = builder.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
     var enableLandingPage = builder.Configuration.GetValue<bool>("WebUi:Customization:EnableLandingPage", true);
 
@@ -154,15 +157,14 @@ try
     app.UseContentNegotiation();
 
     // Forwarded headers for reverse proxies plus Cloudflare client IP and scheme restoration
-    app.UsePortwayForwardedHeaders();
+    app.UseProxyForwardedHeaders();
 
     // Configure unified documentation
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
 
-    // Configure Web UI authentication and static file serving..
-    if (!string.IsNullOrEmpty(adminApiKey))
-        app.UseWebUiAuth(adminApiKey);
+    // Always registered; the middleware itself denies an empty admin key
+    app.UseWebUiAuth(adminApiKey);
 
     // Record request metrics for all non-health paths (UI and API tracked separately)
     app.UsePortwayRequestMetrics();
@@ -213,7 +215,7 @@ try
 
     EndpointSummaryHelper.LogEndpointSummary(sqlEndpointList, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 
-    // Map controller routes; data plane is Bearer authenticated so automatic cross-origin CSRF marking must not poison form access for CORS clients
+    // Disable antiforgery: the Bearer-authenticated data plane must not inherit CSRF marking meant for form/cookie clients
     app.MapControllers().DisableAntiforgery();
 
     // Register Composite middleware

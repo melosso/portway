@@ -8,7 +8,9 @@ namespace PortwayApi.Helpers;
 
 public static class EndpointSummaryHelper
 {
-    /// <summary>Validates endpoint configuration for naming conflicts</summary>
+    /// <summary>
+    /// Validates endpoint configuration for naming conflicts
+    /// </summary>
     public static void ValidateAndLogDuplicateEndpoints(
         Dictionary<string, EndpointDefinition> sqlEndpoints,
         Dictionary<string, ProxyEndpointInfo> proxyEndpointMap,
@@ -49,7 +51,9 @@ public static class EndpointSummaryHelper
         }
     }
     
-    /// <summary>Logs a config ERROR when a declared $expand Target is not a registered SQL endpoint; the expand is refused at runtime too</summary>
+    /// <summary>
+    /// Logs a config ERROR when a declared $expand Target is not a registered SQL endpoint; the expand is refused at runtime too
+    /// </summary>
     private static void ValidateRelationshipTargets(Dictionary<string, EndpointDefinition> sqlEndpoints)
     {
         foreach (var (name, definition) in sqlEndpoints)
@@ -70,7 +74,9 @@ public static class EndpointSummaryHelper
         }
     }
 
-    /// <summary>Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility</summary>
+    /// <summary>
+    /// Adds endpoints to registry while filtering out dual-key duplicates from namespace backward compatibility
+    /// </summary>
     private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, EndpointDefinition> endpoints, string type)
     {
         foreach (var kvp in endpoints)
@@ -84,7 +90,7 @@ public static class EndpointSummaryHelper
                 var namespacedVersion = endpoints.Keys.FirstOrDefault(k => k.Contains('/') && k.EndsWith($"/{key}"));
                 if (namespacedVersion != null)
                 {
-                    // This is a backward-compatibility key, skip it to avoid false conflicts
+                    // Backward-compatibility key; skip to avoid a false conflict
                     continue;
                 }
             }
@@ -95,7 +101,9 @@ public static class EndpointSummaryHelper
         }
     }
     
-    /// <summary>Adds proxy endpoints to registry with composite filtering</summary>
+    /// <summary>
+    /// Adds proxy endpoints to registry with composite filtering
+    /// </summary>
     private static void AddUniqueEndpoints(Dictionary<string, List<string>> registry, Dictionary<string, ProxyEndpointInfo> endpoints, string type, bool excludeComposite = false, bool onlyComposite = false)
     {
         foreach (var kvp in endpoints)

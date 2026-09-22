@@ -4,7 +4,9 @@ using System.Text;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Provides security hardening for Web UI (/ui) authentication including rate limiting, CSRF, and account lockout</summary>
+/// <summary>
+/// Provides security hardening for Web UI (/ui) authentication including rate limiting, CSRF, and account lockout
+/// </summary>
 public static class WebUiAuthHelper
 {
     // Rate limiting: max attempts per window
@@ -29,7 +31,9 @@ public static class WebUiAuthHelper
         _cleanupTimer = new Timer(_ => CleanupExpiredEntries(), null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
     }
 
-    /// <summary>Checks if the client is rate limited or locked out</summary>
+    /// <summary>
+    /// Checks if the client is rate limited or locked out
+    /// </summary>
     /// <returns>Error message if blocked, null if allowed</returns>
     public static string? CheckAccess(string clientIp)
     {
@@ -52,7 +56,9 @@ public static class WebUiAuthHelper
         return null; // Allowed
     }
 
-    /// <summary>Records a failed authentication attempt</summary>
+    /// <summary>
+    /// Records a failed authentication attempt
+    /// </summary>
     public static void RecordFailedAttempt(string clientIp)
     {
         var now = DateTime.UtcNow;
@@ -77,21 +83,29 @@ public static class WebUiAuthHelper
             });
     }
 
-    /// <summary>Clears failed attempts after successful auth</summary>
+    /// <summary>
+    /// Clears failed attempts after successful auth
+    /// </summary>
     public static void ClearFailedAttempts(string clientIp)
     {
         _failedAttempts.TryRemove(clientIp, out _);
     }
 
-    /// <summary>Validates an HMAC-signed session cookie against the admin key; returns false on tamper or expiry</summary>
-    /// <summary>Signs a session for one account; the id travels in the cookie so the console knows who is asking</summary>
+    /// <summary>
+    /// Validates an HMAC-signed session cookie against the admin key; returns false on tamper or expiry
+    /// </summary>
+    /// <summary>
+    /// Signs a session for one account; the id travels in the cookie so the console knows who is asking
+    /// </summary>
     public static string IssueSessionCookie(int userId, int expiryHours)
     {
         var expiry = DateTimeOffset.UtcNow.AddHours(expiryHours).ToUnixTimeSeconds().ToString();
         return $"{userId}.{expiry}.{SignSession(userId, expiry)}";
     }
 
-    /// <summary>The account id in a valid, unexpired session cookie, or null</summary>
+    /// <summary>
+    /// The account id in a valid, unexpired session cookie, or null
+    /// </summary>
     public static int? ResolveSession(string? token)
     {
         if (string.IsNullOrEmpty(token)) return null;
@@ -114,7 +128,9 @@ public static class WebUiAuthHelper
         return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
     }
 
-    /// <summary>Generates a new CSRF token</summary>
+    /// <summary>
+    /// Generates a new CSRF token
+    /// </summary>
     public static string GenerateCsrfToken()
     {
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
@@ -122,7 +138,9 @@ public static class WebUiAuthHelper
         return token;
     }
 
-    /// <summary>Validates a CSRF token</summary>
+    /// <summary>
+    /// Validates a CSRF token
+    /// </summary>
     /// <returns>True if valid</returns>
     public static bool ValidateCsrfToken(string? token)
     {
@@ -142,7 +160,9 @@ public static class WebUiAuthHelper
         return false;
     }
 
-    /// <summary>Removes a CSRF token after use (one-time use)</summary>
+    /// <summary>
+    /// Removes a CSRF token after use (one-time use)
+    /// </summary>
     public static void ConsumeCsrfToken(string token)
     {
         _csrfTokens.TryRemove(token, out _);

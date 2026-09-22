@@ -3,7 +3,9 @@ namespace PortwayApi.Services.Mcp.Providers;
 using System.Text;
 using System.Text.Json.Nodes;
 
-/// <summary>Google Gemini API (streamGenerateContent) with function declarations</summary>
+/// <summary>
+/// Google Gemini API (streamGenerateContent) with function declarations
+/// </summary>
 public sealed class GeminiChatProvider(string apiKey, string model, IHttpClientFactory httpFactory)
     : SseChatProvider("Gemini", httpFactory)
 {

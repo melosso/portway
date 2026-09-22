@@ -5,7 +5,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Handles Static GET requests</summary>
+    /// <summary>
+    /// Handles Static GET requests
+    /// </summary>
     private async Task<IActionResult> HandleStaticGetRequest(
         string env,
         string endpointName,

@@ -9,7 +9,9 @@ using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using Serilog;
 
-/// <summary>Serves static endpoint content with optional OData-style filtering</summary>
+/// <summary>
+/// Serves static endpoint content with optional OData-style filtering
+/// </summary>
 public sealed class StaticRequestHandler
 {
     private readonly Services.Caching.CacheManager _cacheManager;
@@ -21,7 +23,9 @@ public sealed class StaticRequestHandler
 
     private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
 
-    /// <summary>Serves a resolved static endpoint request</summary>
+    /// <summary>
+    /// Serves a resolved static endpoint request
+    /// </summary>
     public async Task<IActionResult> HandleAsync(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -131,7 +135,9 @@ public sealed class StaticRequestHandler
         }
     }
 
-    /// <summary>Applies JSON filtering using OData-style parameters</summary>
+    /// <summary>
+    /// Applies JSON filtering using OData-style parameters
+    /// </summary>
     private Task<IActionResult> ApplyJsonFiltering(
         HttpContext context,
         byte[] jsonBytes,
@@ -229,7 +235,9 @@ public sealed class StaticRequestHandler
         }
     }
     
-    /// <summary>Applies OData-style filtering to JSON items</summary>
+    /// <summary>
+    /// Applies OData-style filtering to JSON items
+    /// </summary>
     private List<JsonElement> ApplyFilter(List<JsonElement> items, string filter)
     {
         try
@@ -260,7 +268,7 @@ public sealed class StaticRequestHandler
                 }).ToList();
             }
 
-            // Parse filter expression (simplified OData filter support). Supports: field eq 'value', field ne 'value', field gt number, field lt number, etc
+            // Simplified OData filter parsing: field {eq|ne|gt|lt} value
             var filterParts = filter.Split(' ');
             if (filterParts.Length >= 3)
             {
@@ -316,7 +324,9 @@ public sealed class StaticRequestHandler
         }
     }
 
-    /// <summary>Applies OData-style ordering to JSON items</summary>
+    /// <summary>
+    /// Applies OData-style ordering to JSON items
+    /// </summary>
     private List<JsonElement> ApplyOrderBy(List<JsonElement> items, string orderby)
     {
         try
@@ -336,7 +346,9 @@ public sealed class StaticRequestHandler
         }
     }
     
-    /// <summary>Case-insensitive property lookup: tries exact name first, then falls back to a linear scan</summary>
+    /// <summary>
+    /// Case-insensitive property lookup: tries exact name first, then falls back to a linear scan
+    /// </summary>
     private static bool TryGetPropertyCI(JsonElement item, string field, out JsonElement value)
     {
         if (item.TryGetProperty(field, out value))
@@ -353,7 +365,9 @@ public sealed class StaticRequestHandler
         return false;
     }
 
-    /// <summary>Gets a sortable value from a JSON element</summary>
+    /// <summary>
+    /// Gets a sortable value from a JSON element
+    /// </summary>
     private object GetSortableValue(JsonElement item, string field)
     {
         if (!TryGetPropertyCI(item, field, out var fieldValue))
@@ -369,7 +383,9 @@ public sealed class StaticRequestHandler
         };
     }
     
-    /// <summary>Applies field selection to JSON items</summary>
+    /// <summary>
+    /// Applies field selection to JSON items
+    /// </summary>
     private List<JsonElement> ApplySelect(List<JsonElement> items, string select)
     {
         try
@@ -403,7 +419,9 @@ public sealed class StaticRequestHandler
         }
     }
 
-    /// <summary>Applies XML filtering using OData-style parameters</summary>
+    /// <summary>
+    /// Applies XML filtering using OData-style parameters
+    /// </summary>
     private Task<IActionResult> ApplyXmlFiltering(
         HttpContext context,
         byte[] xmlBytes,
@@ -543,7 +561,9 @@ public sealed class StaticRequestHandler
         }
     }
 
-    /// <summary>Serializes a JsonElement to an object for JSON output</summary>
+    /// <summary>
+    /// Serializes a JsonElement to an object for JSON output
+    /// </summary>
     private object? SerializeJsonElement(JsonElement element)
     {
         return element.ValueKind switch
@@ -559,14 +579,20 @@ public sealed class StaticRequestHandler
         };
     }
 
-    /// <summary>Auto-detects content type based on file extension (uses shared ContentTypeHelper)</summary>
+    /// <summary>
+    /// Auto-detects content type based on file extension (uses shared ContentTypeHelper)
+    /// </summary>
     internal static string GetContentTypeFromExtension(string fileName) => ContentTypeHelper.GetContentType(fileName);
 
-    /// <summary>Common ID field names for validation</summary>
+    /// <summary>
+    /// Common ID field names for validation
+    /// </summary>
 
 
 
-    /// <summary>Applies XML filtering using OData $filter syntax</summary>
+    /// <summary>
+    /// Applies XML filtering using OData $filter syntax
+    /// </summary>
     private List<XElement> ApplyXmlFilter(List<XElement> items, string filter)
     {
         try
@@ -631,7 +657,9 @@ public sealed class StaticRequestHandler
         }
     }
 
-    /// <summary>Applies XML ordering using OData $orderby syntax</summary>
+    /// <summary>
+    /// Applies XML ordering using OData $orderby syntax
+    /// </summary>
     private List<XElement> ApplyXmlOrderBy(List<XElement> items, string orderby)
     {
         try
@@ -666,7 +694,9 @@ public sealed class StaticRequestHandler
         }
     }
 
-    /// <summary>Applies XML field selection using OData $select syntax</summary>
+    /// <summary>
+    /// Applies XML field selection using OData $select syntax
+    /// </summary>
     private List<XElement> ApplyXmlSelect(List<XElement> items, string select)
     {
         try

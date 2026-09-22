@@ -4,7 +4,9 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
-/// <summary>Console accounts: hashing, verification and the one-time migration off WebUi:AdminApiKey</summary>
+/// <summary>
+/// Console accounts: hashing, verification and the one-time migration off WebUi:AdminApiKey
+/// </summary>
 public class AdminUserService
 {
     // PBKDF2-SHA256 above the OWASP minimum, in the same envelope Baseport uses
@@ -50,7 +52,9 @@ public class AdminUserService
         return CryptographicOperations.FixedTimeEquals(actual, expected);
     }
 
-    /// <summary>Null when the name is acceptable, otherwise the reason it is not</summary>
+    /// <summary>
+    /// Null when the name is acceptable, otherwise the reason it is not
+    /// </summary>
     public static string? ValidateUsername(string? username)
     {
         if (string.IsNullOrWhiteSpace(username)) return "A username is required";
@@ -89,7 +93,9 @@ public class AdminUserService
         return await _db.AdminUsers.CountAsync();
     }
 
-    /// <summary>Verifies a sign-in and stamps the login time; null on any failure, with no reason leaked to the caller</summary>
+    /// <summary>
+    /// Verifies a sign-in and stamps the login time; null on any failure, with no reason leaked to the caller
+    /// </summary>
     public async Task<AdminUser?> AuthenticateAsync(string username, string password)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);
@@ -144,7 +150,9 @@ public class AdminUserService
         return true;
     }
 
-    /// <summary>True when this is the last account that can still administer the console</summary>
+    /// <summary>
+    /// True when this is the last account that can still administer the console
+    /// </summary>
     public async Task<bool> IsLastAdministratorAsync(int id)
     {
         var others = await _db.AdminUsers.CountAsync(u =>
@@ -210,7 +218,9 @@ public class AdminUserService
         return VerifyPassword(password, user.PasswordHash);
     }
 
-    /// <summary>Replaces a password the account did not choose; verifies the current one so a borrowed session cannot do it</summary>
+    /// <summary>
+    /// Replaces a password the account did not choose; verifies the current one so a borrowed session cannot do it
+    /// </summary>
     public async Task<bool> ChangePasswordAsync(string username, string currentPassword, string newPassword)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);

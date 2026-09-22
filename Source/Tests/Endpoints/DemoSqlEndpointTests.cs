@@ -9,7 +9,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for the demo SQL endpoint: WMS/Warehouses</summary>
+/// <summary>
+/// Integration tests for the demo SQL endpoint: WMS/Warehouses
+/// </summary>
 /// <remarks>
 /// Config: endpoints/SQL/WMS/Warehouses/entity.json
 /// - DatabaseObjectName: Warehouses

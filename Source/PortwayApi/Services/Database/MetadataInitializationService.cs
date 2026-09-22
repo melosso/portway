@@ -5,7 +5,9 @@ using Serilog;
 
 namespace PortwayApi.Services;
 
-/// <summary>Background service that initializes the SQL metadata cache after the application has started listening, so startup is never blocked by database connectivity</summary>
+/// <summary>
+/// Background service that initializes the SQL metadata cache after the application has started listening, so startup is never blocked by database connectivity
+/// </summary>
 public sealed class MetadataInitializationService : BackgroundService
 {
     private readonly SqlMetadataService _metadataService;

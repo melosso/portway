@@ -4,7 +4,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 
-/// <summary>Anthropic Messages API (claude-* models) with streaming and tool use. Uses the raw REST API, no SDK dependency</summary>
+/// <summary>
+/// Anthropic Messages API (claude-* models) with streaming and tool use. Uses the raw REST API, no SDK dependency
+/// </summary>
 public sealed class AnthropicChatProvider(string apiKey, string model, IHttpClientFactory httpFactory)
     : SseChatProvider("Anthropic", httpFactory)
 {

@@ -1,6 +1,8 @@
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>One recorded configuration change</summary>
+/// <summary>
+/// One recorded configuration change
+/// </summary>
 public sealed record ConfigAuditEntry(
     long Id,
     string Timestamp,

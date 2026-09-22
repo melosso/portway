@@ -3,7 +3,9 @@ namespace PortwayApi.Services.Mcp.Providers;
 using System.Text;
 using System.Text.Json.Nodes;
 
-/// <summary>Reads Anthropic content block events, accumulating tool input until the block closes</summary>
+/// <summary>
+/// Reads Anthropic content block events, accumulating tool input until the block closes
+/// </summary>
 internal sealed class AnthropicStreamTranslator : IChatStreamTranslator
 {
     private readonly StringBuilder _currentToolInput = new();

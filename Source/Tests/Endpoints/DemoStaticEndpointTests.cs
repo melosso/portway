@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for the demo Static endpoint: Masterdata/CostCenters</summary>
+/// <summary>
+/// Integration tests for the demo Static endpoint: Masterdata/CostCenters
+/// </summary>
 /// <remarks>
 /// Config: endpoints/Static/Masterdata/CostCenters/entity.json
 /// - ContentType: application/json

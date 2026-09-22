@@ -2,7 +2,9 @@ using System.Text.Json;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Bootstraps environments/network-access-policy.json with safe defaults when missing</summary>
+/// <summary>
+/// Bootstraps environments/network-access-policy.json with safe defaults when missing
+/// </summary>
 public static class NetworkAccessPolicy
 {
     public static string EnsurePolicyFile()

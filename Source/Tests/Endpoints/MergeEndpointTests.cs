@@ -6,7 +6,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for MERGE, the OData spelling of a partial update</summary>
+/// <summary>
+/// Integration tests for MERGE, the OData spelling of a partial update
+/// </summary>
 /// <remarks>
 /// Fixtures:
 /// - SQL WMS/Bins       : AllowedMethods include MERGE, env WMS (table writes against the SQLite demo db)

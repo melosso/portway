@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using PortwayApi.Classes;
 
-/// <summary>Marks operations of endpoints in a given config state; Deprecated is the only state OpenAPI can express</summary>
+/// <summary>
+/// Marks operations of endpoints in a given config state; Deprecated is the only state OpenAPI can express
+/// </summary>
 public sealed class EndpointStateDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly Func<EndpointDefinition, bool> _matches;
@@ -16,10 +18,14 @@ public sealed class EndpointStateDocumentFilter : IOpenApiDocumentTransformer
         _summaryPrefix = summaryPrefix;
     }
 
-    /// <summary>Endpoints switched off through Enabled, so an outage does not read as a deletion</summary>
+    /// <summary>
+    /// Endpoints switched off through Enabled, so an outage does not read as a deletion
+    /// </summary>
     public static EndpointStateDocumentFilter Disabled() => new(d => !d.Enabled, "[Disabled] ");
 
-    /// <summary>Endpoints flagged Deprecated in config</summary>
+    /// <summary>
+    /// Endpoints flagged Deprecated in config
+    /// </summary>
     public static EndpointStateDocumentFilter Deprecated() => new(d => d.Deprecated);
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)

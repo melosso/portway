@@ -206,7 +206,7 @@ public class RateLimiter
         if (context.Request.Headers.TryGetValue("Authorization", out var authHeader))
         {
             var auth = authHeader.ToString();
-            if (auth.StartsWith("Bearer ", StringComparison.Ordinal))
+            if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                 token = auth["Bearer ".Length..].Trim();
         }
 

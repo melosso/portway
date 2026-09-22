@@ -3,10 +3,14 @@ using Serilog;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Builds candidate upstream URLs and classifies transient failures for proxy failover</summary>
+/// <summary>
+/// Builds candidate upstream URLs and classifies transient failures for proxy failover
+/// </summary>
 public static class ProxyFailoverHelper
 {
-    /// <summary>Sends a request with retry per URL and failover across fallbacks; single attempt when not configured</summary>
+    /// <summary>
+    /// Sends a request with retry per URL and failover across fallbacks; single attempt when not configured
+    /// </summary>
     public static async Task<HttpResponseMessage> SendWithRetryAsync(
         HttpClient client,
         Func<string, HttpRequestMessage> buildRequest,

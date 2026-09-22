@@ -9,7 +9,9 @@ using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using Serilog;
 
-/// <summary>Forwards proxy endpoint requests upstream with caching, retry and failover</summary>
+/// <summary>
+/// Forwards proxy endpoint requests upstream with caching, retry and failover
+/// </summary>
 public sealed class ProxyRequestHandler
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -327,7 +329,9 @@ public sealed class ProxyRequestHandler
         }
     }
 
-    /// <summary>Constructs the DELETE URL based on configured DeletePattern</summary>
+    /// <summary>
+    /// Constructs the DELETE URL based on configured DeletePattern
+    /// </summary>
     private string ConstructDeleteUrl(
         string baseUrl,
         string? id,
@@ -434,7 +438,9 @@ public sealed class ProxyRequestHandler
         return baseUrl;
     }
 
-    /// <summary>Computes a SHA-256 hash of the (buffered) request body and rewinds it, for use in QUERY cache keys</summary>
+    /// <summary>
+    /// Computes a SHA-256 hash of the (buffered) request body and rewinds it, for use in QUERY cache keys
+    /// </summary>
     private static async Task<string> ComputeBodyHashAsync(HttpContext context)
     {
         if (context.Request.Body == null)
@@ -454,7 +460,9 @@ public sealed class ProxyRequestHandler
         return Convert.ToHexString(SHA256.HashData(ms.ToArray()));
     }
 
-    /// <summary>Creates a cache key based on request details</summary>
+    /// <summary>
+    /// Creates a cache key based on request details
+    /// </summary>
     private string CreateCacheKey(string env, string endpointName, string path, string queryString, IHeaderDictionary headers)
     {
         var keyBuilder = new StringBuilder();
@@ -481,7 +489,9 @@ public sealed class ProxyRequestHandler
         return keyBuilder.ToString();
     }
 
-    /// <summary>Executes the actual proxy request and writes the response</summary>
+    /// <summary>
+    /// Executes the actual proxy request and writes the response
+    /// </summary>
     private async Task<(bool IsSuccessful, string Content, Dictionary<string, string> Headers, int StatusCode, string? ContentType)> ExecuteProxyRequest(
         HttpContext context,
         string method, string fullUrl, string env, 
@@ -512,7 +522,7 @@ public sealed class ProxyRequestHandler
             bodyBytes = memoryStream.ToArray();
         }
 
-        // Strip client-supplied headers that could enable IP spoofing or HTTP desync attacks; X-Forwarded-* headers are rebuilt from the verified connection IP; Transfer-Encoding and Content-Length are recalculated by HttpClient after body buffering
+        // Strip client-supplied headers that enable IP spoofing or HTTP desync: X-Forwarded-* is rebuilt from the verified connection IP, Transfer-Encoding/Content-Length are recomputed by HttpClient after body buffering
         var headersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             // Hop-by-hop headers (RFC 2616)
@@ -767,7 +777,9 @@ public sealed class ProxyRequestHandler
     }
 
 
-    /// <summary>Gets the DELETE pattern for a proxy endpoint (with default fallback)</summary>
+    /// <summary>
+    /// Gets the DELETE pattern for a proxy endpoint (with default fallback)
+    /// </summary>
     private DeletePattern GetDeletePatternForProxy(string endpointName)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();

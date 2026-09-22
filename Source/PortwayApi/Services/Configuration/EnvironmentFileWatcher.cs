@@ -5,7 +5,9 @@ using PortwayApi.Services;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>Monitors the environments folder for changes and invalidates cached environment settings</summary>
+/// <summary>
+/// Monitors the environments folder for changes and invalidates cached environment settings
+/// </summary>
 public class EnvironmentFileWatcher : FileWatchPump
 {
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;

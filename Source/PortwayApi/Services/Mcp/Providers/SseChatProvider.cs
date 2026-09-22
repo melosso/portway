@@ -5,7 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Serilog;
 
-/// <summary>Shared SSE transport: sends the turn, reports failures as deltas, feeds chunks to a translator</summary>
+/// <summary>
+/// Shared SSE transport: sends the turn, reports failures as deltas, feeds chunks to a translator
+/// </summary>
 public abstract class SseChatProvider(string providerName, IHttpClientFactory httpFactory) : IChatProvider
 {
     private const string DataPrefix = "data: ";

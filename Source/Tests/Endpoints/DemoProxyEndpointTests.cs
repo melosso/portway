@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for the demo Proxy endpoint: Account/Accounts</summary>
+/// <summary>
+/// Integration tests for the demo Proxy endpoint: Account/Accounts
+/// </summary>
 /// <remarks>
 /// Config: endpoints/Proxy/Account/Accounts/entity.json
 /// - Url: http://localhost:8020/.../Account

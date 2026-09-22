@@ -1,6 +1,8 @@
 namespace PortwayApi.Services.Providers;
 
-/// <summary>Detects the SQL provider type from a connection string without allocating</summary>
+/// <summary>
+/// Detects the SQL provider type from a connection string without allocating
+/// </summary>
 /// <remarks>
 /// any intermediate strings. All comparisons use OrdinalIgnoreCase
 ///
@@ -17,7 +19,9 @@ namespace PortwayApi.Services.Providers;
 /// </remarks>
 public static class SqlProviderDetector
 {
-    /// <summary>Keywords that appear exclusively in SQL Server connection strings. Any single hit is conclusive, SQL Server doesn't share these with other providers. Source: https://www.connectionstrings.com/sql-server/</summary>
+    /// <summary>
+    /// Keywords that appear exclusively in SQL Server connection strings. Any single hit is conclusive, SQL Server doesn't share these with other providers. Source: https://www.connectionstrings.com/sql-server/
+    /// </summary>
     private static readonly string[] SqlServerKeywords =
     [
         // SqlClient encryption / auth
@@ -79,7 +83,7 @@ public static class SqlProviderDetector
                 return SqlProviderType.SqlServer;
         }
 
-        // 2. SQL Server OLE DB providers; Matches SQLOLEDB, MSOLEDBSQL, SQLNCLI / SQLNCLI10 / SQLNCLI11, SQLXMLOLEDB
+        // 2. SQL Server OLE DB providers: SQLOLEDB, MSOLEDBSQL, SQLNCLI/SQLNCLI10/SQLNCLI11, SQLXMLOLEDB
         if (connectionString.Contains("provider=sqloledb",   StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("provider=msoledbsql", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("provider=sqlncli",    StringComparison.OrdinalIgnoreCase)
@@ -133,7 +137,9 @@ public static class SqlProviderDetector
         return SqlProviderType.SqlServer;
     }
 
-    /// <summary>Span-based, zero-allocation parser that checks whether the "Data Source" value in a connection string points to an SQLite file or in-memory database</summary>
+    /// <summary>
+    /// Span-based, zero-allocation parser that checks whether the "Data Source" value in a connection string points to an SQLite file or in-memory database
+    /// </summary>
     private static bool IsSqliteDataSource(ReadOnlySpan<char> connectionString)
     {
         var remaining = connectionString;

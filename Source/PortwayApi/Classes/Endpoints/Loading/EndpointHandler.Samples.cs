@@ -5,7 +5,9 @@ using Serilog;
 
 public static partial class EndpointHandler
 {
-    /// <summary>Creates sample endpoint definitions if none exist</summary>
+    /// <summary>
+    /// Creates sample endpoint definitions if none exist
+    /// </summary>
     public static void CreateSampleEndpoints(string baseDirectory)
     {
         try

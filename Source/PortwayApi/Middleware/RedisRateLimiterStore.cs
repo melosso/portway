@@ -3,7 +3,9 @@ namespace PortwayApi.Middleware;
 using StackExchange.Redis;
 using Serilog;
 
-/// <summary>Opt-in Redis-backed store so limits hold across instances, falls back to memory when Redis is down</summary>
+/// <summary>
+/// Opt-in Redis-backed store so limits hold across instances, falls back to memory when Redis is down
+/// </summary>
 public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
 {
     // Atomic token bucket: refill by elapsed time, consume if enough, return state

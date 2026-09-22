@@ -1,12 +1,16 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
+using Moq;
+using PortwayApi.Auth;
 using PortwayApi.Tests.Base;
 using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Pins namespaced route resolution to the correct endpoint type; probe order reordering must fail here</summary>
+/// <summary>
+/// Pins namespaced route resolution to the correct endpoint type; probe order reordering must fail here
+/// </summary>
 public class NamespacedRoutingTests : ApiTestBase
 {
     // Resolves to the SQL handler, which then fails on connect rather than on routing
@@ -80,5 +84,28 @@ public class NamespacedRoutingTests : ApiTestBase
         var response = await _client.GetAsync("/api/500/NoSuchNamespace/NoSuchEndpoint");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    // A token scoped only to the top level namespace must not reach a deeper nested endpoint under it
+    [Fact]
+    public async Task TokenScopedToTopLevelNamespace_CannotReachNestedEndpointBeneathIt()
+    {
+        SetAllowedEnvironments("WMS");
+
+        _mockTokenService.Setup(s => s.VerifyTokenAsync("wms-scoped-token")).ReturnsAsync(true);
+        _mockTokenService.Setup(s => s.GetTokenDetailsByTokenAsync("wms-scoped-token"))
+            .ReturnsAsync(new AuthToken
+            {
+                Username = "narrow-user",
+                TokenHash = "hash",
+                TokenSalt = "salt",
+                AllowedEnvironments = "*",
+                AllowedScopes = "WMS"
+            });
+        AddAuthorizationHeader("wms-scoped-token");
+
+        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

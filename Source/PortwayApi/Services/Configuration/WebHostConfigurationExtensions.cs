@@ -4,7 +4,9 @@ using System.IO.Compression;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
-/// <summary>Kestrel hardening, HTTPS opt-in detection and response compression for the Portway web host</summary>
+/// <summary>
+/// Kestrel hardening, HTTPS opt-in detection and response compression for the Portway web host
+/// </summary>
 public static class WebHostConfigurationExtensions
 {
     public static WebApplicationBuilder ConfigurePortwayWebHost(this WebApplicationBuilder builder)

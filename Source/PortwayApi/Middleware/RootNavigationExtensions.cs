@@ -4,10 +4,14 @@ using PortwayApi.Endpoints;
 using PortwayApi.Helpers;
 using Serilog;
 
-/// <summary>Path base setup, index.html path base injection and root path redirects</summary>
+/// <summary>
+/// Path base setup, index.html path base injection and root path redirects
+/// </summary>
 public static class RootNavigationExtensions
 {
-    /// <summary>Applies ASPNETCORE_PATHBASE or PathBase config when set; no-op otherwise</summary>
+    /// <summary>
+    /// Applies ASPNETCORE_PATHBASE or PathBase config when set; no-op otherwise
+    /// </summary>
     public static WebApplication UsePortwayPathBase(this WebApplication app)
     {
         var pathBase = Environment.GetEnvironmentVariable("ASPNETCORE_PATHBASE")
@@ -39,7 +43,9 @@ public static class RootNavigationExtensions
         return app;
     }
 
-    /// <summary>Injects base href and window.PortwayBase into index.html before static files serve it</summary>
+    /// <summary>
+    /// Injects base href and window.PortwayBase into index.html before static files serve it
+    /// </summary>
     public static WebApplication UseIndexHtmlPathBaseInjection(this WebApplication app)
     {
         app.Use(async (context, next) =>
@@ -64,7 +70,9 @@ public static class RootNavigationExtensions
         return app;
     }
 
-    /// <summary>Root path and legacy /swagger redirects; landing page for local or allowed public origins</summary>
+    /// <summary>
+    /// Root path and legacy /swagger redirects; landing page for local or allowed public origins
+    /// </summary>
     public static WebApplication UsePortwayRootRedirects(
         this WebApplication app,
         string adminApiKey,

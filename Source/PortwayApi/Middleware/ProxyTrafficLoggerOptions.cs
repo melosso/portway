@@ -20,7 +20,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>Enhanced configuration options for proxy traffic logging with validation</summary>
+/// <summary>
+/// Enhanced configuration options for proxy traffic logging with validation
+/// </summary>
 public class ProxyTrafficLoggerOptions
 {
     public bool Enabled { get; set; } = false;

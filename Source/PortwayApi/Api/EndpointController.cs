@@ -23,7 +23,9 @@ using System.Runtime.CompilerServices;
 
 namespace PortwayApi.Api;
 
-/// <summary>Unified controller that handles all endpoint types (SQL, Proxy, Composite, Webhook)</summary>
+/// <summary>
+/// Unified controller that handles all endpoint types (SQL, Proxy, Composite, Webhook)
+/// </summary>
 /// <remarks>No [ProducesResponseType] here; catchall paths are stripped from the document, StandardErrorCodes is the source!!</remarks>
 [ApiController]
 [Route("api")] // Base route only, we'll use action-level routing
@@ -39,7 +41,9 @@ public partial class EndpointController : ControllerBase
     private readonly SqlRequestHandler _sqlRequestHandler;
     private readonly ProxyRequestHandler _proxyRequestHandler;
 
-    /// <summary>Validates if the environment is allowed both globally and for the specific endpoint</summary>
+    /// <summary>
+    /// Validates if the environment is allowed both globally and for the specific endpoint
+    /// </summary>
     private (bool IsAllowed, IActionResult? ErrorResponse) ValidateEnvironmentRestrictions(
         string env,
         string? namespaceName,
@@ -91,7 +95,9 @@ public partial class EndpointController : ControllerBase
         _proxyRequestHandler = proxyRequestHandler;
     }
 
-    /// <summary>Resolves namespace, endpoint name, and file id from a files catchall path</summary>
+    /// <summary>
+    /// Resolves namespace, endpoint name, and file id from a files catchall path
+    /// </summary>
     private (string? Namespace, string EndpointName, string? FileId) ParseFileEndpointPath(string catchall)
     {
         var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);

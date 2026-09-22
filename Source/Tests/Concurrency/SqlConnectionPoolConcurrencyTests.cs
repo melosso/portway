@@ -35,7 +35,7 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
             ApplicationName: "PortwayConcurrencyTest"),
         new SqlProviderFactory([new MsSqlProvider(), new PostgreSqlProvider(), new MySqlProvider(), new SqliteProvider()]));
 
-    // The host stops hosted services and the container disposes singletons, prevent `Cannot access a disposed object.` from happening again after pool is disposed
+    // Regression guard: host shutdown disposes the singleton pool, then stops hosted services, which must not throw `Cannot access a disposed object.`
     [Fact]
     public async Task StopAsync_AfterDispose_DoesNotThrow()
     {

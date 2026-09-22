@@ -3,7 +3,9 @@ namespace PortwayApi.Middleware;
 using Microsoft.AspNetCore.Http;
 using Serilog;
 
-/// <summary>Middleware for handling content negotiation and request validation. Ensures consistent Content-Type validation on requests and proper Accept header handling</summary>
+/// <summary>
+/// Middleware for handling content negotiation and request validation. Ensures consistent Content-Type validation on requests and proper Accept header handling
+/// </summary>
 public class ContentNegotiationMiddleware
 {
     private readonly RequestDelegate _next;
@@ -56,7 +58,9 @@ public class ContentNegotiationMiddleware
         await _next(context);
     }
 
-    /// <summary>Determines if validation should be skipped for this path</summary>
+    /// <summary>
+    /// Determines if validation should be skipped for this path
+    /// </summary>
     private bool ShouldSkipValidation(string path)
     {
         // Skip for file uploads, health checks, docs
@@ -70,7 +74,9 @@ public class ContentNegotiationMiddleware
         return IsProxyFamilyPath(path);
     }
 
-    /// <summary>Resolves /api/{env}/{name} paths against the loaded proxy endpoint definitions</summary>
+    /// <summary>
+    /// Resolves /api/{env}/{name} paths against the loaded proxy endpoint definitions
+    /// </summary>
     internal static bool IsProxyFamilyPath(string path)
     {
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -93,7 +99,9 @@ public class ContentNegotiationMiddleware
         return false;
     }
 
-    /// <summary>Checks if the HTTP method typically includes a request body</summary>
+    /// <summary>
+    /// Checks if the HTTP method typically includes a request body
+    /// </summary>
     private static bool IsRequestWithBody(string method)
     {
         return HttpMethods.IsPost(method) || 
@@ -101,7 +109,9 @@ public class ContentNegotiationMiddleware
                HttpMethods.IsPatch(method);
     }
 
-    /// <summary>Validates the Content-Type header for requests with body</summary>
+    /// <summary>
+    /// Validates the Content-Type header for requests with body
+    /// </summary>
     private (bool IsValid, int StatusCode, string Error, string Detail) ValidateRequestContentType(HttpContext context)
     {
         var contentType = context.Request.ContentType;
@@ -150,7 +160,9 @@ public class ContentNegotiationMiddleware
         return (true, 0, string.Empty, string.Empty);
     }
 
-    /// <summary>Ensures the response has a Content-Type header set</summary>
+    /// <summary>
+    /// Ensures the response has a Content-Type header set
+    /// </summary>
     private static void EnsureResponseContentType(HttpContext context)
     {
         // Only set if not already set and response is successful
@@ -167,7 +179,9 @@ public class ContentNegotiationMiddleware
         }
     }
 
-    /// <summary>Writes a standardized error response</summary>
+    /// <summary>
+    /// Writes a standardized error response
+    /// </summary>
     private static async Task WriteErrorResponse(HttpContext context, int statusCode, string error, string detail)
     {
         context.Response.StatusCode = statusCode;
@@ -182,10 +196,14 @@ public class ContentNegotiationMiddleware
     }
 }
 
-/// <summary>Extension methods for ContentNegotiationMiddleware registration</summary>
+/// <summary>
+/// Extension methods for ContentNegotiationMiddleware registration
+/// </summary>
 public static class ContentNegotiationMiddlewareExtensions
 {
-    /// <summary>Adds content negotiation middleware to the pipeline. This validates Content-Type on POST/PUT/PATCH and ensures proper response headers</summary>
+    /// <summary>
+    /// Adds content negotiation middleware to the pipeline. This validates Content-Type on POST/PUT/PATCH and ensures proper response headers
+    /// </summary>
     public static IApplicationBuilder UseContentNegotiation(this IApplicationBuilder builder)
     {
         return builder.UseMiddleware<ContentNegotiationMiddleware>();

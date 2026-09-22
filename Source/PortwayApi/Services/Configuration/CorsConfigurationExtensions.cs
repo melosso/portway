@@ -1,6 +1,8 @@
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>CORS policy wiring; never AllowAnyOrigin in production, operators configure WebUi:CorsOrigins</summary>
+/// <summary>
+/// CORS policy wiring; never AllowAnyOrigin in production, operators configure WebUi:CorsOrigins
+/// </summary>
 public static class CorsConfigurationExtensions
 {
     private const string PolicyName = "AllowConfiguredOrigins";

@@ -6,7 +6,9 @@ using PortwayApi.Services.Database;
 using Serilog;
 using SqlKata.Compilers;
 
-/// <summary>Shared provider plumbing: capability defaults, command helpers and ANSI information_schema metadata</summary>
+/// <summary>
+/// Shared provider plumbing: capability defaults, command helpers and ANSI information_schema metadata
+/// </summary>
 public abstract class SqlProviderBase : ISqlProvider
 {
     public abstract SqlProviderType ProviderType { get; }
@@ -70,7 +72,9 @@ public abstract class SqlProviderBase : ISqlProvider
     protected static string ReadString(DbDataReader reader, string column)
         => reader[column]?.ToString() ?? string.Empty;
 
-    /// <summary>ANSI information_schema.parameters lookup shared by PostgreSQL (pattern match) and MySQL (exact match)</summary>
+    /// <summary>
+    /// ANSI information_schema.parameters lookup shared by PostgreSQL (pattern match) and MySQL (exact match)
+    /// </summary>
     protected async Task<List<ParameterMetadata>> QueryInformationSchemaParametersAsync(
         DbConnection connection, string schema, string procedureName, bool patternMatch, CancellationToken cancellationToken)
     {

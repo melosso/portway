@@ -2,7 +2,9 @@ namespace PortwayApi.Tests.Support;
 
 using IOPath = System.IO.Path;
 
-/// <summary>Scratch directory for tests, created on construction and removed on dispose</summary>
+/// <summary>
+/// Scratch directory for tests, created on construction and removed on dispose
+/// </summary>
 public sealed class TempDirectory : IDisposable
 {
     public string Path { get; }

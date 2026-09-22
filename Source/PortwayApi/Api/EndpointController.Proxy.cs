@@ -6,7 +6,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Handles proxy requests for any HTTP method</summary>
+    /// <summary>
+    /// Handles proxy requests for any HTTP method
+    /// </summary>
     private async Task<IActionResult> HandleProxyRequest(
         string env,
         string endpointName,

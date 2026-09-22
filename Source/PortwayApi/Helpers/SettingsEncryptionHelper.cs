@@ -20,6 +20,25 @@ public static class SettingsEncryptionHelper
             return content.StartsWith(EncryptedHeader);
         }
 
+        /// <summary>
+        /// Refuses to start outside Development without a real encryption key
+        /// </summary>
+        public static void EnsureEncryptionKeyConfigured(Microsoft.AspNetCore.Hosting.IWebHostEnvironment environment) =>
+            EnsureEncryptionKeyConfigured(environment.IsDevelopment(), LoadEncryptionKey());
+
+        /// <summary>
+        /// Pure check, split out so the rule is testable without touching real env vars
+        /// </summary>
+        internal static void EnsureEncryptionKeyConfigured(bool isDevelopment, string resolvedKey)
+        {
+            if (isDevelopment)
+                return;
+
+            if (resolvedKey == _fallbackKey)
+                throw new InvalidOperationException(
+                    "PORTWAY_ENCRYPTION_KEY is not set. Set it before starting Portway outside Development.");
+        }
+
         // Get the current public key (from file, private key, or fallback to hardcoded)
         private static string GetCurrentPublicKey()
         {
@@ -77,7 +96,9 @@ public static class SettingsEncryptionHelper
             return _currentPublicKeyPem;
         }
 
-    /// <summary>Shared with EnvironmentSettingsProvider; resolves PORTWAY_ENCRYPTION_KEY from env, .env, then fallback</summary>
+    /// <summary>
+    /// Shared with EnvironmentSettingsProvider; resolves PORTWAY_ENCRYPTION_KEY from env, .env, then fallback
+    /// </summary>
     internal static string LoadEncryptionKey()
         {
             // Priority 1: Check Windows environment variable
@@ -130,7 +151,9 @@ public static class SettingsEncryptionHelper
             return _fallbackKey;
         }
 
-        /// <summary>Shared with EnvironmentSettingsProvider, which decrypts the same key file at startup</summary>
+        /// <summary>
+        /// Shared with EnvironmentSettingsProvider, which decrypts the same key file at startup
+        /// </summary>
         internal static string DecryptPrivateKey(string encrypted, string encryptionKey)
         {
             var bytes = Convert.FromBase64String(encrypted);
@@ -145,7 +168,9 @@ public static class SettingsEncryptionHelper
             return sr.ReadToEnd();
         }
 
-        /// <summary>AES-wraps a PEM private key for at-rest storage in the .core folder</summary>
+        /// <summary>
+        /// AES-wraps a PEM private key for at-rest storage in the .core folder
+        /// </summary>
         internal static string EncryptPrivateKey(string privateKeyPem, string encryptionKey)
         {
             using var aes = Aes.Create();
@@ -196,7 +221,9 @@ public static class SettingsEncryptionHelper
             return EncryptedHeader + Convert.ToBase64String(encryptedKeyIv) + "::" + Convert.ToBase64String(cipherBytes);
         }
 
-        /// <summary>Decrypts a PWENC-encrypted value using the machine-bound private key. Loads the private key automatically from .core/recovery.binlz4. Returns false if the key cannot be loaded or decryption fails</summary>
+        /// <summary>
+        /// Decrypts a PWENC-encrypted value using the machine-bound private key. Loads the private key automatically from .core/recovery.binlz4. Returns false if the key cannot be loaded or decryption fails
+        /// </summary>
         public static bool TryDecryptValue(string encryptedContent, out string plainText)
         {
             plainText = encryptedContent;

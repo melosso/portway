@@ -6,7 +6,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Covers the nested-namespace tag tree, which the sample endpoint configs never exercise because their namespaces are flat</summary>
+/// <summary>
+/// Covers the nested-namespace tag tree, which the sample endpoint configs never exercise because their namespaces are flat
+/// </summary>
 public class HierarchicalTagTests
 {
     private static async Task<OpenApiDocument> TransformAsync(params string[] tagNames)
@@ -36,7 +38,7 @@ public class HierarchicalTagTests
         Assert.Equal("CRM", child.Parent?.Name);
         Assert.Equal("nav", child.Kind);
 
-        // The name keeps the full path for the hierarchy, so the leaf lives in summary for display
+        // Name holds the full path for the hierarchy; the display leaf goes in Summary instead
         Assert.Equal("Accounts", child.Summary);
     }
 

@@ -6,7 +6,9 @@ using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
 using System.Linq;
 
-/// <summary>Shared error-response schemas and a helper to attach a standard set of error responses to an operation</summary>
+/// <summary>
+/// Shared error-response schemas and a helper to attach a standard set of error responses to an operation
+/// </summary>
 public static class StandardResponses
 {
     public const string ErrorSchemaId = "ErrorResponse";
@@ -60,13 +62,19 @@ public static class StandardResponses
         [503] = "The endpoint is disabled or its upstream is unreachable."
     }.ToFrozenDictionary();
 
-    /// <summary>The HTTP reason phrase for a status code, or null when none is defined</summary>
+    /// <summary>
+    /// The HTTP reason phrase for a status code, or null when none is defined
+    /// </summary>
     public static string? SummaryFor(int code) => Summaries.TryGetValue(code, out var s) ? s : null;
 
-    /// <summary>What the status code means for a Portway endpoint, or null when none is defined</summary>
+    /// <summary>
+    /// What the status code means for a Portway endpoint, or null when none is defined
+    /// </summary>
     public static string? DescriptionFor(int code) => Descriptions.TryGetValue(code, out var d) ? d : null;
 
-    /// <summary>Registers the shared { success, error } and validation schemas, plus the media types wrapping them, as reusable components (once)</summary>
+    /// <summary>
+    /// Registers the shared { success, error } and validation schemas, plus the media types wrapping them, as reusable components (once)
+    /// </summary>
     public static void EnsureSchemas(OpenApiDocument document)
     {
         document.Components ??= new OpenApiComponents();
@@ -142,11 +150,15 @@ public static class StandardResponses
         }
     }
 
-    /// <summary>Adds the error responses this operation kind documents, per the shared error-code matrix</summary>
+    /// <summary>
+    /// Adds the error responses this operation kind documents, per the shared error-code matrix
+    /// </summary>
     public static void AddErrors(OpenApiOperation operation, ApiOperationKind kind)
         => AddErrors(operation, StandardErrorCodes.For(kind));
 
-    /// <summary>Replaces every error response on an operation with the given codes, each referencing the shared schema (422 uses the validation schema)</summary>
+    /// <summary>
+    /// Replaces every error response on an operation with the given codes, each referencing the shared schema (422 uses the validation schema)
+    /// </summary>
     public static void AddErrors(OpenApiOperation operation, params int[] codes)
     {
         operation.Responses ??= new OpenApiResponses();

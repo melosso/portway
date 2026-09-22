@@ -4,7 +4,9 @@ using System.Text.Json;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 
-/// <summary>Background service that proactively refreshes the health cache on a fixed interval</summary>
+/// <summary>
+/// Background service that proactively refreshes the health cache on a fixed interval
+/// </summary>
 /// <remarks>
 /// This ensures /health always returns immediately from cache rather than blocking
 /// on SQL and proxy connectivity checks

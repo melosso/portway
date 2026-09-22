@@ -5,7 +5,9 @@ using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using PortwayApi.Auth;
 
-/// <summary>Token creation payload for the web UI, duplicate names are rejected via async validation</summary>
+/// <summary>
+/// Token creation payload for the web UI, duplicate names are rejected via async validation
+/// </summary>
 public sealed class TokenCreateRequest : IAsyncValidatableObject
 {
     [JsonPropertyName("username")]

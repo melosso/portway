@@ -11,7 +11,9 @@ using PortwayApi.Helpers;
 using PortwayApi.Interfaces;
 using Serilog;
 
-/// <summary>Executes SQL endpoint requests (OData reads, procedure writes) outside the controller</summary>
+/// <summary>
+/// Executes SQL endpoint requests (OData reads, procedure writes) outside the controller
+/// </summary>
 public sealed partial class SqlRequestHandler
 {
     private readonly IODataToSqlConverter _oDataToSqlConverter;
@@ -35,7 +37,9 @@ public sealed partial class SqlRequestHandler
 
     private readonly ISqlProviderFactory _providerFactory;
 
-    /// <summary>Runs a write procedure with the dialect-correct invocation for the environment's provider</summary>
+    /// <summary>
+    /// Runs a write procedure with the dialect-correct invocation for the environment's provider
+    /// </summary>
     private async Task<List<dynamic>> ExecuteProcedureAsync(
         DbConnection connection, string connectionString, string procedure, DynamicParameters parameters)
     {
@@ -46,7 +50,9 @@ public sealed partial class SqlRequestHandler
         return rows.ToList();
     }
 
-    /// <summary>Handles SQL GET requests</summary>
+    /// <summary>
+    /// Handles SQL GET requests
+    /// </summary>
     public async Task<IActionResult> HandleSqlGetRequest(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -183,7 +189,7 @@ public sealed partial class SqlRequestHandler
             // Step 4: Handle ID-based filtering
             if (!string.IsNullOrEmpty(id))
             {
-                // Get the actual database column name for the primary key; The primaryKey could be an alias, so we need to resolve it to the database column name
+                // primaryKey may be an alias; resolve it to the real database column name
                 string actualPrimaryKey = primaryKey;
                 
                 if (allowedColumns.Count > 0)
@@ -196,7 +202,7 @@ public sealed partial class SqlRequestHandler
                     }
                 }
                 
-                // Create appropriate filter expression by primary key; Check if the ID is a GUID
+                // Build the primary-key filter, quoting the value as a GUID literal when it parses as one
                 if (Guid.TryParse(id, out _))
                 {
                     filter = $"{actualPrimaryKey} eq guid'{id}'";
@@ -485,7 +491,9 @@ public sealed partial class SqlRequestHandler
             $"A data error occurred. Please contact support with reference: T{errorId}");
     }
 
-	/// <summary>Handles SQL POST requests (Create)</summary>
+	/// <summary>
+	/// Handles SQL POST requests (Create)
+	/// </summary>
     public async Task<IActionResult> HandleSqlPostRequest(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -593,7 +601,9 @@ public sealed partial class SqlRequestHandler
         }
     }
 
-    /// <summary>Handles SQL PUT requests (Update)</summary>
+    /// <summary>
+    /// Handles SQL PUT requests (Update)
+    /// </summary>
     public async Task<IActionResult> HandleSqlPutRequest(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -708,7 +718,9 @@ public sealed partial class SqlRequestHandler
         }
     }
 
-    /// <summary>Handles SQL partial updates; method is PATCH or its OData spelling MERGE, which the endpoint must have declared</summary>
+    /// <summary>
+    /// Handles SQL partial updates; method is PATCH or its OData spelling MERGE, which the endpoint must have declared
+    /// </summary>
     public async Task<IActionResult> HandleSqlPatchRequest(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -826,7 +838,9 @@ public sealed partial class SqlRequestHandler
         }
     }
 
-    /// <summary>Handles SQL DELETE requests</summary>
+    /// <summary>
+    /// Handles SQL DELETE requests
+    /// </summary>
     public async Task<IActionResult> HandleSqlDeleteRequest(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -942,7 +956,9 @@ public sealed partial class SqlRequestHandler
         "recordId", "RecordId"
     };
 
-    /// <summary>Helper method to build next link for pagination</summary>
+    /// <summary>
+    /// Builds the OData $skip/$top next-page link
+    /// </summary>
     private string BuildNextLink(
         string env, 
         string endpointPath, 
@@ -966,7 +982,9 @@ public sealed partial class SqlRequestHandler
         return nextLink;
     }
 
-    /// <summary>Helper method to convert JsonElement to appropriate parameter value</summary>
+    /// <summary>
+    /// Converts a JsonElement to its native CLR parameter value
+    /// </summary>
     private static object? GetParameterValue(JsonElement element)
     {
         return element.ValueKind switch
@@ -982,7 +1000,9 @@ public sealed partial class SqlRequestHandler
         };
     }
 
-    /// <summary>Parses a stored procedure name into schema and procedure name parts. Handles both "schema.procedure" and plain "procedure" formats, stripping brackets</summary>
+    /// <summary>
+    /// Parses a stored procedure name into schema and procedure name parts. Handles both "schema.procedure" and plain "procedure" formats, stripping brackets
+    /// </summary>
     private static (string Schema, string ProcedureName) ParseProcedureName(string procedure, ISqlProvider provider, DbConnection connection)
     {
         if (procedure.Contains('.'))
@@ -993,7 +1013,9 @@ public sealed partial class SqlRequestHandler
         return (SqlSchemaResolver.Resolve(null, provider, connection.Database), procedure);
     }
 
-    /// <summary>Applies the MaxPageSize limit from endpoint properties, overriding the requested top value if necessary</summary>
+    /// <summary>
+    /// Applies the MaxPageSize limit from endpoint properties, overriding the requested top value if necessary
+    /// </summary>
     private int ApplyMaxPageSizeLimit(int requestedTop, EndpointDefinition endpoint)
     {
         // Check if MaxPageSize is defined in endpoint properties
@@ -1014,7 +1036,9 @@ public sealed partial class SqlRequestHandler
         return requestedTop; // No limit defined, use original value
     }
 
-    /// <summary>Applies the DefaultSort from endpoint properties if no orderby is provided</summary>
+    /// <summary>
+    /// Applies the DefaultSort from endpoint properties if no orderby is provided
+    /// </summary>
     private string? ApplyDefaultSorting(string? requestedOrderBy, EndpointDefinition endpoint)
     {
         // Only apply default if no orderby was requested
@@ -1037,7 +1061,9 @@ public sealed partial class SqlRequestHandler
         return requestedOrderBy; // No default defined, use original value
     }
 
-    /// <summary>Checks if caching is enabled for the endpoint</summary>
+    /// <summary>
+    /// Checks if caching is enabled for the endpoint
+    /// </summary>
     private bool IsCacheEnabled(EndpointDefinition endpoint)
     {
         if (endpoint.Properties?.TryGetValue("CacheEnabled", out var cacheEnabledObj) == true)
@@ -1058,7 +1084,9 @@ public sealed partial class SqlRequestHandler
         return true;
     }
 
-    /// <summary>Gets the cache duration in minutes for the endpoint</summary>
+    /// <summary>
+    /// Gets the cache duration in minutes for the endpoint
+    /// </summary>
     private int GetCacheDurationMinutes(EndpointDefinition endpoint)
     {
         if (endpoint.Properties?.TryGetValue("CacheDurationMinutes", out var durationObj) == true)
@@ -1076,7 +1104,9 @@ public sealed partial class SqlRequestHandler
         return 5; // Default: 5 minutes
     }
 
-    /// <summary>Validates SQL parameters for update and delete operations</summary>
+    /// <summary>
+    /// Validates SQL parameters for update and delete operations
+    /// </summary>
     private (bool IsValid, string? ErrorMessage) ValidateSqlParameters(JsonElement data, string operation)
     {
 

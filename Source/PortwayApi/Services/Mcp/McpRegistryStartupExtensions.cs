@@ -3,7 +3,9 @@ using Serilog;
 
 namespace PortwayApi.Services.Mcp;
 
-/// <summary>Startup wiring for the MCP endpoint registry; builds the tool list, wires hot-reload and maps the MCP Apps route</summary>
+/// <summary>
+/// Startup wiring for the MCP endpoint registry; builds the tool list, wires hot-reload and maps the MCP Apps route
+/// </summary>
 public static class McpRegistryStartupExtensions
 {
     public static WebApplication MapMcpRegistry(this WebApplication app)

@@ -66,7 +66,7 @@ public static class McpChatEndpoints
             var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
             var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
 
-            // Forward the caller's Bearer token so tool execution can authenticate against the API; Falls back to Chat:InternalApiToken in appsettings if no token is present on this request
+            // Forward the caller's Bearer token for tool execution; falls back to Chat:InternalApiToken when the request has no Authorization header
             var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
             string? bearerToken = null;
             if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)

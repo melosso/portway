@@ -26,7 +26,9 @@ public static partial class WebUiEndpointExtensions
     private const int TokenExpiryHours = 12;
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
 
-    /// <summary>Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...</summary>
+    /// <summary>
+    /// Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
+    /// </summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
     {
         var publicOrigins = app.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
@@ -36,7 +38,16 @@ public static partial class WebUiEndpointExtensions
             var path = context.Request.Path;
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
 
-            // Allow external clients whose origin matches a configured PublicOrigins pattern; Otherwise restrict to local network only
+            // Deny every UI route when no admin key is configured
+            if (string.IsNullOrEmpty(adminApiKey))
+            {
+                context.Response.StatusCode = 503;
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { error = "Web UI is disabled: WebUi:AdminApiKey is not configured" });
+                return;
+            }
+
+            // Allow external clients only when their origin matches a configured PublicOrigins pattern, otherwise local network only
             var isPublicOrigin = publicOrigins.Length > 0 && IsPublicOriginAllowed(context.Request, publicOrigins);
 
             if (!isPublicOrigin)
@@ -79,6 +90,16 @@ public static partial class WebUiEndpointExtensions
 
                 context.Items[SignedInUserKey] = userId.Value;
 
+                // Server-side revocation, checked on every request (not just admin-only writes) so a
+                // deactivated or deleted account loses access at once instead of within the cookie's 12h life
+                var accounts = context.RequestServices.GetRequiredService<AdminUserService>();
+                var account = await accounts.FindByIdAsync(userId.Value);
+                if (account is null || !account.IsActive)
+                {
+                    context.Response.Redirect($"{context.Request.PathBase}/ui/login");
+                    return;
+                }
+
                 // CSRF double-submit check on mutating UI API calls; client-error is sendBeacon and cannot set headers
                 if (path.StartsWithSegments("/ui/api") &&
                     !path.StartsWithSegments("/ui/api/client-error") &&
@@ -97,21 +118,15 @@ public static partial class WebUiEndpointExtensions
                         return;
                     }
 
-                    // Viewers read the console and manage their own sign-in; every other write is administrator-only.
-                    // Read per request rather than from the cookie so a demoted account loses access at once.
-                    if (!IsSelfServiceWrite(path))
+                    // Viewers read the console and manage their own sign-in; every other write is administrator-only
+                    if (!IsSelfServiceWrite(path) && account.Role != AdminUserRoles.Administrator)
                     {
-                        var accounts = context.RequestServices.GetRequiredService<AdminUserService>();
-                        var account = await accounts.FindByIdAsync(userId.Value);
-                        if (account is null || !account.IsActive || account.Role != AdminUserRoles.Administrator)
-                        {
-                            Log.Warning("Console account {UserId} was refused {Method} {Path}: administrator role required",
-                                userId.Value, context.Request.Method, path.Value);
-                            context.Response.StatusCode = 403;
-                            context.Response.ContentType = "application/json";
-                            await context.Response.WriteAsJsonAsync(new { error = "This action needs an administrator account" });
-                            return;
-                        }
+                        Log.Warning("Console account {UserId} was refused {Method} {Path}: administrator role required",
+                            userId.Value, context.Request.Method, path.Value);
+                        context.Response.StatusCode = 403;
+                        context.Response.ContentType = "application/json";
+                        await context.Response.WriteAsJsonAsync(new { error = "This action needs an administrator account" });
+                        return;
                     }
                 }
             }
@@ -122,7 +137,9 @@ public static partial class WebUiEndpointExtensions
         return app;
     }
 
-    /// <summary>Writes any signed-in account may make about itself, so the viewer role stays usable</summary>
+    /// <summary>
+    /// Writes any signed-in account may make about itself, so the viewer role stays usable
+    /// </summary>
     private static bool IsSelfServiceWrite(PathString path)
     {
         if (path.StartsWithSegments("/ui/api/client-error")) return true;
@@ -133,7 +150,9 @@ public static partial class WebUiEndpointExtensions
             && (path.Value ?? "").EndsWith("/link", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Returns true if the request's effective origin matches any of the configured PublicOrigins patterns. Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com"</summary>
+    /// <summary>
+    /// Returns true if the request's effective origin matches any of the configured PublicOrigins patterns. Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com"
+    /// </summary>
     internal static bool IsPublicOriginAllowed(HttpRequest request, string[] patterns)
     {
         // Origin header is present on XHR/fetch; for navigation requests fall back to scheme+host
@@ -158,7 +177,9 @@ public static partial class WebUiEndpointExtensions
         return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
     }
 
-    /// <summary>Maps all /ui/* page routes and /ui/api/* data endpoints</summary>
+    /// <summary>
+    /// Maps all /ui/* page routes and /ui/api/* data endpoints
+    /// </summary>
     public static WebApplication MapWebUiEndpoints(this WebApplication app, string adminApiKey)
     {
         var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ui");
@@ -192,7 +213,9 @@ public static partial class WebUiEndpointExtensions
     private static string GenerateToken(int userId)
         => WebUiAuthHelper.IssueSessionCookie(userId, TokenExpiryHours);
 
-    /// <summary>The signed session, plus the CSRF cookie the pages echo back in X-CSRF-Token</summary>
+    /// <summary>
+    /// The signed session, plus the CSRF cookie the pages echo back in X-CSRF-Token
+    /// </summary>
     internal static void IssueSessionCookies(HttpContext context, int userId, bool secureCookies)
     {
         var expires = DateTimeOffset.UtcNow.AddHours(TokenExpiryHours);
@@ -274,7 +297,9 @@ public static partial class WebUiEndpointExtensions
 
     internal const string SignedInUserKey = "portway.user";
 
-    /// <summary>Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing</summary>
+    /// <summary>
+    /// Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing
+    /// </summary>
     private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)
     {
         var shellPath  = Path.Combine(wwwroot, "_shell.html");
@@ -310,7 +335,9 @@ public static partial class WebUiEndpointExtensions
         return FinishHtml(html, pathBase, version);
     }
 
-    /// <summary>Shared post-processing: base href + PortwayBase injection and cache-busting of local assets</summary>
+    /// <summary>
+    /// Shared post-processing: base href + PortwayBase injection and cache-busting of local assets
+    /// </summary>
     private static IResult FinishHtml(string html, PathString pathBase, string version)
     {
         var pb = pathBase.Value ?? "";

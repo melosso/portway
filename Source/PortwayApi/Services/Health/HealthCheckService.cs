@@ -15,7 +15,9 @@ using Serilog;
 
 namespace PortwayApi.Services;
 
-/// <summary>Service that caches health check results to avoid frequent executions</summary>
+/// <summary>
+/// Service that caches health check results to avoid frequent executions
+/// </summary>
 public class HealthCheckService
 {
     private readonly Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckService _healthCheckService;
@@ -44,7 +46,9 @@ public class HealthCheckService
         _sqlProviderFactory = sqlProviderFactory;
     }
 
-    /// <summary>Gets a health report, using a cached version if available and not expired</summary>
+    /// <summary>
+    /// Gets a health report, using a cached version if available and not expired
+    /// </summary>
     public async Task<HealthReport> CheckHealthAsync(CancellationToken cancellationToken = default)
     {
         if (IsCacheValid())

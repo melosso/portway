@@ -7,7 +7,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Captures what the proxy actually sends upstream, one request at a time</summary>
+/// <summary>
+/// Captures what the proxy actually sends upstream, one request at a time
+/// </summary>
 internal sealed class UpstreamCapture : IDisposable
 {
     private readonly HttpListener _listener = new();
@@ -19,7 +21,9 @@ internal sealed class UpstreamCapture : IDisposable
     public string? ContentType { get; private set; }
     public Dictionary<string, string> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Extra response headers for the next reply, e.g. Set-Cookie</summary>
+    /// <summary>
+    /// Extra response headers for the next reply, e.g. Set-Cookie
+    /// </summary>
     public Dictionary<string, string> ResponseHeaders { get; } = new();
 
     public UpstreamCapture(int port)

@@ -7,7 +7,9 @@ using Serilog;
 
 namespace PortwayApi.Classes.OpenApi;
 
-/// <summary>Document transformer that enriches static JSON, CSV, and XML endpoint documentation by analyzing actual content files while generating randomized mock data for examples to prevent data leakage</summary>
+/// <summary>
+/// Document transformer that enriches static JSON, CSV, and XML endpoint documentation by analyzing actual content files while generating randomized mock data for examples to prevent data leakage
+/// </summary>
 public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
 {
     private const long MaxFileSizeToAnalyze = 1 * 1024 * 1024; // 1 MB limit for analysis
@@ -288,7 +290,9 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         return string.Empty;
     }
 
-    /// <summary>Attaches the schema and example to an endpoint's 200 response; serialized carries non-JSON media types verbatim instead of as a JSON string</summary>
+    /// <summary>
+    /// Attaches the schema and example to an endpoint's 200 response; a non-JSON media type is written verbatim, not wrapped as a JSON string
+    /// </summary>
     private void UpdateEndpointDocumentation(
         OpenApiDocument document,
         EndpointDefinition definition,

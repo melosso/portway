@@ -1,6 +1,8 @@
 namespace PortwayApi.Classes;
 
-/// <summary>Declarative response shaping rules for proxy endpoints</summary>
+/// <summary>
+/// Declarative response shaping rules for proxy endpoints
+/// </summary>
 public sealed class ProxyResponseTransforms
 {
     public List<string>? Remove { get; set; }

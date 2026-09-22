@@ -2,12 +2,16 @@ using Serilog;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Validates the WebUi:AdminApiKey at startup; rejects the shipped placeholder in production</summary>
+/// <summary>
+/// Validates the WebUi:AdminApiKey at startup; rejects the shipped placeholder in production
+/// </summary>
 public static class AdminApiKeyValidator
 {
     private const string PlaceholderKey = "INSECURE-CHANGE-ME-admin-api-key";
 
-    /// <summary>Returns the effective admin key; empty string disables Web UI auth</summary>
+    /// <summary>
+    /// Returns the effective admin key; empty string disables Web UI auth
+    /// </summary>
     public static string Resolve(IConfiguration configuration, IWebHostEnvironment environment)
     {
         var adminApiKey = configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";

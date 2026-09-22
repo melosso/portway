@@ -4,13 +4,17 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
-/// <summary>Fan-out broadcaster for Server-Sent Events. Each connected SSE client gets its own bounded channel. If a client is slow, old events are silently dropped so it'll n ever blocks the broadcaster</summary>
+/// <summary>
+/// Fan-out broadcaster for Server-Sent Events. Each connected SSE client gets its own bounded channel. If a client is slow, old events are silently dropped so it'll n ever blocks the broadcaster
+/// </summary>
 public sealed class SseBroadcaster : IDisposable
 {
     private readonly ConcurrentDictionary<Channel<string>, byte> _channels = new();
     private volatile bool _disposed;
 
-    /// <summary>Returns an async sequence of SSE-formatted strings for one client. The channel is automatically removed when the client disconnects</summary>
+    /// <summary>
+    /// Returns an async sequence of SSE-formatted strings for one client. The channel is automatically removed when the client disconnects
+    /// </summary>
     public IAsyncEnumerable<string> SubscribeAsync(CancellationToken ct)
     {
         var ch = Channel.CreateBounded<string>(new BoundedChannelOptions(32)
@@ -37,7 +41,9 @@ public sealed class SseBroadcaster : IDisposable
         }
     }
 
-    /// <summary>Sends an SSE event to every currently connected client.</summary>
+    /// <summary>
+    /// Sends an SSE event to every currently connected client.
+    /// </summary>
     public void Broadcast(string eventType, string json)
     {
         if (_disposed) return;

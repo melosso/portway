@@ -13,7 +13,9 @@ using PortwayApi.Services;
 using PortwayApi.Services.Mcp.Providers;
 using Serilog;
 
-/// <summary>Orchestrates a single chat turn. Resolves the AI provider, builds tool definitions from the MCP registry, runs the tool use loop, and writes SSE events to the response.</summary>
+/// <summary>
+/// Orchestrates a single chat turn. Resolves the AI provider, builds tool definitions from the MCP registry, runs the tool use loop, and writes SSE events to the response.
+/// </summary>
 public sealed partial class McpChatService
 {
     private static readonly JsonSerializerOptions _jsonOpts = new()
@@ -149,14 +151,18 @@ public sealed partial class McpChatService
 
     public bool IsEnabled => _mcpOptions.ChatEnabled;
 
-    /// <summary>True when a provider and API key are configured in the encrypted DB store.</summary>
+    /// <summary>
+    /// True when a provider and API key are configured in the encrypted DB store.
+    /// </summary>
     public async Task<bool> IsConfiguredAsync(CancellationToken ct = default)
     {
         var cfg = await _configService.GetConfigAsync(ct);
         return cfg.IsConfigured;
     }
 
-    /// <summary>Returns tool definitions, using the registry's cached snapshot when available. The cache is invalidated automatically when <see cref="McpEndpointRegistry.RegisterEndpoints"/> is called</summary>
+    /// <summary>
+    /// Returns tool definitions, using the registry's cached snapshot when available. The cache is invalidated automatically when <see cref="McpEndpointRegistry.RegisterEndpoints"/> is called
+    /// </summary>
     public IReadOnlyList<ToolDefinition> GetToolDefinitions()
     {
         // Fast path: return cached list if the registry hasn't been re-populated since last call
@@ -217,7 +223,9 @@ public sealed partial class McpChatService
             })
             .ToList();
 
-    /// <summary>Returns the "Namespace/EndpointName" display keys of SQL tools whose field metadata could not be resolved. Used by the UI to surface health warnings without re-logging</summary>
+    /// <summary>
+    /// Returns the "Namespace/EndpointName" display keys of SQL tools whose field metadata could not be resolved. Used by the UI to surface health warnings without re-logging
+    /// </summary>
     public IReadOnlyList<string> GetMissingMetadataEndpoints()
     {
         if (_sqlMetadata is null) return [];
@@ -246,7 +254,9 @@ public sealed partial class McpChatService
             .ToList();
     }
 
-    /// <summary>Runs a complete chat turn with the tool-use loop</summary>
+    /// <summary>
+    /// Runs a complete chat turn with the tool-use loop
+    /// </summary>
     /// <remarks>Writes SSE events directly to writer. Each event is a line starting with data followed by the json payload. Event types are text, tool_call, done, and error.</remarks>
     public async Task StreamAsync(
         IReadOnlyList<ChatMessage> history,
@@ -316,7 +326,7 @@ public sealed partial class McpChatService
 
             if (pendingToolCalls.Count == 0) break;
 
-            // Execute tool calls and feed results back into history; Results are truncated to avoid blowing the model's context window
+            // Execute tool calls and feed results back into history, truncated to avoid blowing the model's context window
             var maxChars        = _mcpOptions.MaxToolResultChars;
             var toolResultParts = new StringBuilder();
             var assistantParts  = new StringBuilder("I called the following tools:\n");
@@ -351,7 +361,7 @@ public sealed partial class McpChatService
                 }, ct);
             }
 
-            // Append turn to history with correct role alternation; Earlier rounds: compress old tool results to a short summary to prevent history bloat
+            // Compress earlier rounds' tool results before appending this turn, to keep history bloat bounded
             if (round >= 2)
                 TrimEarlyToolResultsInHistory(mutableHistory, maxChars: 500);
 
@@ -362,10 +372,12 @@ public sealed partial class McpChatService
         await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Done }, ct);
     }
 
-    /// <summary>Truncates the content of tool-result history messages from early rounds to keep the total history size manageable across many tool-use rounds</summary>
+    /// <summary>
+    /// Truncates the content of tool-result history messages from early rounds to keep the total history size manageable across many tool-use rounds
+    /// </summary>
     private static void TrimEarlyToolResultsInHistory(List<ChatMessage> history, int maxChars)
     {
-        // Skip the system prompt and the last 4 entries, which are the current round pair and the previous round pair, and only compress messages before that window
+        // Compress only messages before the last 4 entries (current + previous round pairs); the system prompt is never touched
         var trimBefore = history.Count - 4;
         for (var i = 1; i < trimBefore; i++)
         {
@@ -403,7 +415,7 @@ public sealed partial class McpChatService
 
         var environment = input?["environment"]?.GetValue<string>() ?? defaultEnvironment;
 
-        // If the tool has an allowed environments restriction and the selected env is not in it, automatically fall back to the first allowed environment so the call succeeds
+        // Fall back to the tool's first allowed environment when the selected one is outside its restriction
         if (tool.AllowedEnvironments is { Count: > 0 } &&
             !tool.AllowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
         {
@@ -414,7 +426,7 @@ public sealed partial class McpChatService
         var body   = input?["body"]?.GetValue<string>();
         var method = new HttpMethod(tool.Method.ToUpperInvariant());
 
-        // Server side top enforcement. If the LLM generated a GET query without top, auto inject the configured default, and if top exceeds MaxPageSize clamp it to prevent unbounded table scans
+        // Server-side $top enforcement: inject the default when the LLM's query omits it, clamp to MaxPageSize to prevent unbounded table scans
         if (method == HttpMethod.Get && !string.IsNullOrEmpty(query))
         {
             query = EnforceTopLimit(query, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
@@ -447,7 +459,7 @@ public sealed partial class McpChatService
             if (body is not null && method != HttpMethod.Get)
                 req.Content = new StringContent(body, Encoding.UTF8, new MediaTypeHeaderValue("application/json"));
 
-            // Use ResponseHeadersRead for early abort on large responses, this avoids buffering the entire body into memory before checking if it exceeds MaxToolResultChars
+            // ResponseHeadersRead lets a large response abort early instead of buffering the full body before the MaxToolResultChars check
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             sw.Stop();
 
@@ -463,7 +475,7 @@ public sealed partial class McpChatService
                     return $"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
                            $"read in chat. The user should download it directly from the Portway API.";
 
-                // Size-capped read: stream only up to MaxToolResultChars + a small buffer, tthen discard the rest. This avoids loading huge responses into memory
+                // Size-capped read: stream only up to MaxToolResultChars plus a small buffer, then discard the rest, so huge responses never load fully into memory
                 var maxChars = _mcpOptions.MaxToolResultChars;
                 var content  = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
 
@@ -539,7 +551,9 @@ public sealed partial class McpChatService
         }
     }
 
-    /// <summary>Reads response content up to <paramref name="maxChars"/> characters. Uses streaming to avoid buffering a gigantic response before checking its size</summary>
+    /// <summary>
+    /// Reads response content up to <paramref name="maxChars"/> characters. Uses streaming to avoid buffering a gigantic response before checking its size
+    /// </summary>
     private static async Task<string> ReadCappedAsync(HttpContent content, int maxChars, CancellationToken ct)
     {
         await using var stream = await content.ReadAsStreamAsync(ct);
@@ -559,7 +573,9 @@ public sealed partial class McpChatService
         return sb.ToString();
     }
 
-    /// <summary>Ensures the OData query string respects page size limits. Auto-injects $top if absent; clamps if it exceeds MaxPageSize</summary>
+    /// <summary>
+    /// Ensures the OData query string respects page size limits. Auto-injects $top if absent; clamps if it exceeds MaxPageSize
+    /// </summary>
     private static string EnforceTopLimit(string query, int defaultPageSize, int maxPageSize)
     {
         var match = TopValuePattern().Match(query);
@@ -635,7 +651,9 @@ public sealed partial class McpChatService
     private static string SanitiseName(string name) =>
         SanitisePattern().Replace(name, "_").ToLowerInvariant();
 
-    /// <summary>Looks up auto-discovered column names from <see cref="SqlMetadataService"/>. Only applies to SQL endpoints (EndpointKind == "api" and metadata service available)</summary>
+    /// <summary>
+    /// Looks up auto-discovered column names from <see cref="SqlMetadataService"/>. Only applies to SQL endpoints (EndpointKind == "api" and metadata service available)
+    /// </summary>
     private IReadOnlyList<string>? ResolveFieldsFromMetadata(string? ns, string endpointName, string endpointKind)
     {
         if (_sqlMetadata is null || endpointKind != "api") return null;

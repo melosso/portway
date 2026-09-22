@@ -59,31 +59,41 @@ public static partial class EndpointHandler
     // Resolved once; accessors read it per lookup and GetCurrentDirectory is a syscall
     private static readonly string EndpointsBasePath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints");
 
-    /// <summary>Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility</summary>
+    /// <summary>
+    /// Resolves the endpoints folder path, supporting both "Endpoints" and "endpoints" for cross-platform compatibility
+    /// </summary>
     private static string GetEndpointsBasePath() => EndpointsBasePath;
 
-    /// <summary>Gets SQL endpoints from the /endpoints/SQL directory</summary>
+    /// <summary>
+    /// Gets SQL endpoints from the /endpoints/SQL directory
+    /// </summary>
     public static Dictionary<string, EndpointDefinition> GetSqlEndpoints()
     {
         string sqlEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "SQL");
         return LoadSqlEndpointsIfNeeded(sqlEndpointsDirectory);
     }
 
-    /// <summary>Gets SQL webhook endpoints from the /endpoints/Webhooks directory</summary>
+    /// <summary>
+    /// Gets SQL webhook endpoints from the /endpoints/Webhooks directory
+    /// </summary>
     public static Dictionary<string, EndpointDefinition> GetSqlWebhookEndpoints()
     {
         string sqlWebhookEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Webhooks");
         return LoadSqlWebhookEndpointsIfNeeded(sqlWebhookEndpointsDirectory);
     }
 
-    /// <summary>Gets Proxy endpoints from the /endpoints/Proxy directory</summary>
+    /// <summary>
+    /// Gets Proxy endpoints from the /endpoints/Proxy directory
+    /// </summary>
     public static Dictionary<string, EndpointDefinition> GetProxyEndpoints()
     {
         string proxyEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Proxy");
         return LoadProxyEndpointsIfNeeded(proxyEndpointsDirectory);
     }
 
-    /// <summary>Gets all composite endpoint definitions from the endpoints directory</summary>
+    /// <summary>
+    /// Gets all composite endpoint definitions from the endpoints directory
+    /// </summary>
     public static Dictionary<string, CompositeDefinition> GetCompositeDefinitions(Dictionary<string, ProxyEndpointInfo> endpointMap)
     {
         // We already have endpoints loaded, so just extract the composite configs
@@ -103,21 +113,27 @@ public static partial class EndpointHandler
     }
 
     // Loaders return the dictionary under the lock; re-reading the field lets a concurrent reload null it
-    /// <summary>Loads file endpoints if they haven't been loaded yet</summary>
+    /// <summary>
+    /// Loads file endpoints if they haven't been loaded yet
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadFileEndpointsIfNeeded(string endpointsDirectory)
     {
         lock (_loadLock)
             return _loadedFileEndpoints ??= LoadFileEndpoints(endpointsDirectory);
     }
 
-    /// <summary>Loads static endpoints if they haven't been loaded yet</summary>
+    /// <summary>
+    /// Loads static endpoints if they haven't been loaded yet
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadStaticEndpointsIfNeeded(string endpointsDirectory)
     {
         lock (_loadLock)
             return _loadedStaticEndpoints ??= LoadStaticEndpoints(endpointsDirectory);
     }
 
-    /// <summary>Scans the specified directory for endpoint definition files and returns a dictionary of endpoints</summary>
+    /// <summary>
+    /// Scans the specified directory for endpoint definition files and returns a dictionary of endpoints
+    /// </summary>
     /// <param name="endpointsDirectory">Directory containing endpoint definitions</param>
     /// <returns>Dictionary with endpoint names as keys and tuples of (url, methods, isPrivate, isMcpExposed, type) as values</returns>
     public static Dictionary<string, ProxyEndpointInfo> GetEndpoints(string endpointsDirectory)
@@ -146,36 +162,48 @@ public static partial class EndpointHandler
         }
     }
 
-    /// <summary>Internal method to load proxy endpoints if they haven't been loaded yet</summary>
+    /// <summary>
+    /// Internal method to load proxy endpoints if they haven't been loaded yet
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadProxyEndpointsIfNeeded(string endpointsDirectory)
     {
         lock (_loadLock)
             return _loadedProxyEndpoints ??= LoadProxyEndpoints(endpointsDirectory);
     }
 
-    /// <summary>Internal method to load SQL endpoints if they haven't been loaded yet</summary>
+    /// <summary>
+    /// Internal method to load SQL endpoints if they haven't been loaded yet
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlEndpointsIfNeeded(string endpointsDirectory)
     {
         lock (_loadLock)
             return _loadedSqlEndpoints ??= LoadSqlEndpoints(endpointsDirectory);
     }
 
-    /// <summary>Internal method to load SQL endpoints if they haven't been loaded yet</summary>
+    /// <summary>
+    /// Internal method to load SQL endpoints if they haven't been loaded yet
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpointsIfNeeded(string endpointsDirectory)
     {
         lock (_loadLock)
             return _loadedSqlWebhookEndpoints ??= LoadSqlWebhookEndpoints(endpointsDirectory);
     }
 
-    /// <summary>Internal method to load all proxy endpoints from the endpoints directory</summary>
+    /// <summary>
+    /// Internal method to load all proxy endpoints from the endpoints directory
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadProxyEndpoints(string endpointsDirectory)
         => EndpointDirectoryLoader.Load(endpointsDirectory, ProxyLoaderSpec);
 
-    /// <summary>Internal method to load all SQL endpoints from the endpoints directory</summary>
+    /// <summary>
+    /// Internal method to load all SQL endpoints from the endpoints directory
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory)
         => EndpointDirectoryLoader.Load(endpointsDirectory, SqlLoaderSpec);
 
-    /// <summary>Internal method to load all webhook endpoints from the endpoints directory (namespace-aware)</summary>
+    /// <summary>
+    /// Internal method to load all webhook endpoints from the endpoints directory (namespace-aware)
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory)
         => EndpointDirectoryLoader.Load(endpointsDirectory, WebhookLoaderSpec);
 
@@ -186,7 +214,9 @@ public static partial class EndpointHandler
 
 
 
-    /// <summary>Reloads all endpoint definitions from disk</summary>
+    /// <summary>
+    /// Reloads all endpoint definitions from disk
+    /// </summary>
     public static void ReloadAllEndpoints()
     {
         lock (_loadLock)
@@ -201,7 +231,9 @@ public static partial class EndpointHandler
         }
     }
 
-    /// <summary>Reloads a specific endpoint type</summary>
+    /// <summary>
+    /// Reloads a specific endpoint type
+    /// </summary>
     public static void ReloadEndpointType(EndpointType type)
     {
         lock (_loadLock)
@@ -238,42 +270,54 @@ public static partial class EndpointHandler
         }
     }
 
-    /// <summary>Forces immediate reload of SQL endpoints</summary>
+    /// <summary>
+    /// Forces immediate reload of SQL endpoints
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> ReloadSqlEndpoints()
     {
         var sqlEndpointsDirectory = Path.Combine(EndpointsBasePath, "SQL");
         return LoadSqlEndpoints(sqlEndpointsDirectory);
     }
 
-    /// <summary>Forces immediate reload of proxy endpoints</summary>
+    /// <summary>
+    /// Forces immediate reload of proxy endpoints
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> ReloadProxyEndpoints()
     {
         var proxyEndpointsDirectory = Path.Combine(EndpointsBasePath, "Proxy");
         return LoadProxyEndpoints(proxyEndpointsDirectory);
     }
 
-    /// <summary>Forces immediate reload of file endpoints</summary>
+    /// <summary>
+    /// Forces immediate reload of file endpoints
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> ReloadFileEndpoints()
     {
         var fileEndpointsDirectory = Path.Combine(EndpointsBasePath, "Files");
         return LoadFileEndpoints(fileEndpointsDirectory);
     }
 
-    /// <summary>Forces immediate reload of webhook endpoints</summary>
+    /// <summary>
+    /// Forces immediate reload of webhook endpoints
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> ReloadWebhookEndpoints()
     {
         var webhookEndpointsDirectory = Path.Combine(EndpointsBasePath, "Webhooks");
         return LoadSqlWebhookEndpoints(webhookEndpointsDirectory);
     }
 
-    /// <summary>Forces immediate reload of static endpoints</summary>
+    /// <summary>
+    /// Forces immediate reload of static endpoints
+    /// </summary>
     private static Dictionary<string, EndpointDefinition> ReloadStaticEndpoints()
     {
         var staticEndpointsDirectory = Path.Combine(EndpointsBasePath, "Static");
         return LoadStaticEndpoints(staticEndpointsDirectory);
     }
 
-    /// <summary>Extracts endpoint type from file path</summary>
+    /// <summary>
+    /// Extracts endpoint type from file path
+    /// </summary>
     public static EndpointType? GetEndpointTypeFromPath(string filePath)
     {
         if (filePath.Contains("endpoints/SQL", StringComparison.OrdinalIgnoreCase) ||

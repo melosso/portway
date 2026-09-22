@@ -20,7 +20,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>SQLite implementation of log storage</summary>
+/// <summary>
+/// SQLite implementation of log storage
+/// </summary>
 public class SqliteTrafficLogStorage : ITrafficLogStorage
 {
     private readonly ProxyTrafficLoggerOptions _options;

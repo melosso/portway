@@ -4,7 +4,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Verifies the $count=true conversion produces a COUNT query shaped only by the filter</summary>
+/// <summary>
+/// Verifies the $count=true conversion produces a COUNT query shaped only by the filter
+/// </summary>
 public class ODataCountTests
 {
     private static ODataToSqlConverter CreateConverter()

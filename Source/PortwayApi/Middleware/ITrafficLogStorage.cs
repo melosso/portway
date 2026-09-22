@@ -20,7 +20,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>Interface for log storage providers</summary>
+/// <summary>
+/// Interface for log storage providers
+/// </summary>
 public interface ITrafficLogStorage
 {
     Task InitializeAsync();

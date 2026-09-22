@@ -3,7 +3,9 @@ using Serilog;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>Persists an audit trail of configuration changes made through the Web UI</summary>
+/// <summary>
+/// Persists an audit trail of configuration changes made through the Web UI
+/// </summary>
 public class ConfigAuditService
 {
     private readonly string _connectionString;
@@ -43,7 +45,9 @@ public class ConfigAuditService
         }
     }
 
-    /// <summary>Records a configuration change; never throws so mutations are not disrupted</summary>
+    /// <summary>
+    /// Records a configuration change; never throws so mutations are not disrupted
+    /// </summary>
     public void Record(string action, string targetType, string target, string? clientIp = null, string? details = null, string? backupPath = null)
     {
         try
@@ -71,7 +75,9 @@ public class ConfigAuditService
         }
     }
 
-    /// <summary>Returns the most recent audit entries, newest first</summary>
+    /// <summary>
+    /// Returns the most recent audit entries, newest first
+    /// </summary>
     public List<ConfigAuditEntry> GetRecent(int limit = 50)
     {
         var entries = new List<ConfigAuditEntry>();
@@ -104,7 +110,9 @@ public class ConfigAuditService
         return entries;
     }
 
-    /// <summary>Returns a single audit entry by id, or null</summary>
+    /// <summary>
+    /// Returns a single audit entry by id, or null
+    /// </summary>
     public ConfigAuditEntry? GetById(long id)
     {
         try

@@ -6,10 +6,14 @@ using PortwayApi.Services.Caching;
 using PortwayApi.Services.Mcp;
 using Serilog;
 
-/// <summary>Startup initialisation for the MCP config and auth databases plus cache connectivity logging</summary>
+/// <summary>
+/// Startup initialisation for the MCP config and auth databases plus cache connectivity logging
+/// </summary>
 public static class DatabaseStartupExtensions
 {
-    /// <summary>Initialises mcp.db unconditionally so the setup wizard works even before Mcp:Enabled is true</summary>
+    /// <summary>
+    /// Initialises mcp.db unconditionally so the setup wizard works even before Mcp:Enabled is true
+    /// </summary>
     public static async Task InitializeMcpConfigDatabaseAsync(this WebApplication app)
     {
         using var mcpScope = app.Services.CreateScope();
@@ -27,7 +31,9 @@ public static class DatabaseStartupExtensions
         }
     }
 
-    /// <summary>Creates auth.db when needed and generates a default token if none exist</summary>
+    /// <summary>
+    /// Creates auth.db when needed and generates a default token if none exist
+    /// </summary>
     public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, string adminApiKey)
     {
         using var scope = app.Services.CreateScope();
@@ -64,7 +70,9 @@ public static class DatabaseStartupExtensions
         }
     }
 
-    /// <summary>Logs the configured cache provider and its connection state</summary>
+    /// <summary>
+    /// Logs the configured cache provider and its connection state
+    /// </summary>
     public static void LogCacheConfiguration(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();

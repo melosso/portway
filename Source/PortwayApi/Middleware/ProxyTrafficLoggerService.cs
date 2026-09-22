@@ -20,7 +20,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>Background service that processes log entries from the queue</summary>
+/// <summary>
+/// Background service that processes log entries from the queue
+/// </summary>
 public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.BackgroundService
 {
     private readonly System.Threading.Channels.Channel<ProxyTrafficLogEntry> _logChannel;
@@ -68,7 +70,6 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                     }
                 }
 
-                // If we have items, process them
                 if (batch.Count > 0)
                 {
                     // A storage failure must not escape the loop; the host ignores background service exceptions, so an escape would stop tracing until the next restart
@@ -100,7 +101,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                     }
                     catch (OperationCanceledException)
                     {
-                        // This is expected - either timeout or cancellation
+                        // Expected: batch timeout or shutdown cancellation
                         if (stoppingToken.IsCancellationRequested)
                         {
                             break;

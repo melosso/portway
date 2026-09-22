@@ -4,7 +4,9 @@ using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
 
-/// <summary>The single error-code matrix; document builders ask here instead of listing codes inline</summary>
+/// <summary>
+/// The single error-code matrix; document builders ask here instead of listing codes inline
+/// </summary>
 public static class StandardErrorCodes
 {
     // Every operation can fail these ways regardless of endpoint type; 503 covers a disabled endpoint
@@ -28,7 +30,9 @@ public static class StandardErrorCodes
             [ApiOperationKind.FileList] = []
         }.ToFrozenDictionary();
 
-    /// <summary>Documented status codes, ascending</summary>
+    /// <summary>
+    /// Documented status codes, ascending
+    /// </summary>
     public static int[] For(ApiOperationKind kind)
     {
         var extra = Additional.TryGetValue(kind, out var additional) ? additional : [];
@@ -44,7 +48,9 @@ public static class StandardErrorCodes
         return codes;
     }
 
-    /// <summary>Maps a SQL endpoint's HTTP method onto the kind that describes its error surface</summary>
+    /// <summary>
+    /// Maps a SQL endpoint's HTTP method onto the kind that describes its error surface
+    /// </summary>
     public static ApiOperationKind SqlKindFor(string method) => method.ToUpperInvariant() switch
     {
         "POST" or "PUT" or "PATCH" or "MERGE" => ApiOperationKind.SqlWrite,

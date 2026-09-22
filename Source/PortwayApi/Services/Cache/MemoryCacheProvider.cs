@@ -8,7 +8,9 @@ using Serilog;
 
 namespace PortwayApi.Services.Caching;
 
-/// <summary>In-memory implementation of the cache provider</summary>
+/// <summary>
+/// In-memory implementation of the cache provider
+/// </summary>
 public class MemoryCacheProvider : ICacheProvider
 {
     private readonly IMemoryCache _cache;
@@ -32,7 +34,9 @@ public class MemoryCacheProvider : ICacheProvider
         _cache = new MemoryCache(memoryCacheOptions);
     }
 
-    /// <summary>Approximate payload size in bytes; fast paths cover the byte and text payloads Portway caches</summary>
+    /// <summary>
+    /// Approximate payload size in bytes; fast paths cover the byte and text payloads Portway caches
+    /// </summary>
     private static long MeasureSize(object value)
     {
         switch (value)
@@ -55,16 +59,24 @@ public class MemoryCacheProvider : ICacheProvider
         }
     }
 
-    /// <summary>Number of live lock entries, exposed for diagnostics and tests</summary>
+    /// <summary>
+    /// Number of live lock entries, exposed for diagnostics and tests
+    /// </summary>
     internal int TrackedLockCount => _locks.Count;
 
-    /// <summary>Gets the cache provider type</summary>
+    /// <summary>
+    /// Gets the cache provider type
+    /// </summary>
     public string ProviderType => "Memory";
 
-    /// <summary>Memory cache is always connected</summary>
+    /// <summary>
+    /// Memory cache is always connected
+    /// </summary>
     public bool IsConnected => true;
 
-    /// <summary>Gets a value from the cache</summary>
+    /// <summary>
+    /// Gets a value from the cache
+    /// </summary>
     public Task<T?> GetAsync<T>(string key) where T : class
     {
         if (_cache.TryGetValue(key, out T? result))
@@ -77,7 +89,9 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.FromResult<T?>(null);
     }
 
-    /// <summary>Sets a value in the cache</summary>
+    /// <summary>
+    /// Sets a value in the cache
+    /// </summary>
     public Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class
     {
         var size = MeasureSize(value);
@@ -93,7 +107,9 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.CompletedTask;
     }
 
-    /// <summary>Removes an item from the cache</summary>
+    /// <summary>
+    /// Removes an item from the cache
+    /// </summary>
     public Task RemoveAsync(string key)
     {
         _cache.Remove(key);
@@ -102,13 +118,17 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.CompletedTask;
     }
 
-    /// <summary>Checks if a cache key exists</summary>
+    /// <summary>
+    /// Checks if a cache key exists
+    /// </summary>
     public Task<bool> ExistsAsync(string key)
     {
         return Task.FromResult(_cache.TryGetValue(key, out _));
     }
 
-    /// <summary>Refreshes the expiration time for a cached item</summary>
+    /// <summary>
+    /// Refreshes the expiration time for a cached item
+    /// </summary>
     public Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration)
     {
         // Memory cache doesn't directly support changing expiration; We'd need to get the item and re-set it with new expiration
@@ -130,7 +150,9 @@ public class MemoryCacheProvider : ICacheProvider
         return Task.FromResult(false);
     }
 
-    /// <summary>Acquires a distributed lock for the specified key</summary>
+    /// <summary>
+    /// Acquires a distributed lock for the specified key
+    /// </summary>
     public async Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default)
     {
         string actualLockKey = $"lock:{lockKey}";
@@ -183,7 +205,9 @@ public class MemoryCacheProvider : ICacheProvider
         Log.Debug("Pruned memory lock table down to {Count} entries", _locks.Count);
     }
 
-    /// <summary>Memory-based lock handle implementation</summary>
+    /// <summary>
+    /// Memory-based lock handle implementation
+    /// </summary>
     private class MemoryLockHandle : ILockHandle
     {
         private readonly SemaphoreSlim _semaphore;

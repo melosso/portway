@@ -14,16 +14,24 @@ public class McpEndpointRegistry
     // Cached tool definitions built by McpChatService; stored as object to avoid a circular dependency, invalidated on RegisterEndpoints
     internal volatile object? CachedToolDefinitions;
 
-    /// <summary>Set during startup to re-build and register all MCP endpoints from disk; invoked via <see cref="Refresh"/> after hot-reload</summary>
+    /// <summary>
+    /// Set during startup to re-build and register all MCP endpoints from disk; invoked via <see cref="Refresh"/> after hot-reload
+    /// </summary>
     public Action? RefreshAction { get; set; }
 
-    /// <summary>Rebuilds the registry from the current endpoint files on disk</summary>
+    /// <summary>
+    /// Rebuilds the registry from the current endpoint files on disk
+    /// </summary>
     public void Refresh() => RefreshAction?.Invoke();
 
-    /// <summary>Lock-free snapshot of all registered tool descriptors</summary>
+    /// <summary>
+    /// Lock-free snapshot of all registered tool descriptors
+    /// </summary>
     public ImmutableList<McpToolDescriptor> Tools => _tools;
 
-    /// <summary>O(1) lookup by sanitized tool name; returns null if not found</summary>
+    /// <summary>
+    /// O(1) lookup by sanitized tool name; returns null if not found
+    /// </summary>
     public McpToolDescriptor? FindByName(string sanitizedName) =>
         _toolByName.TryGetValue(sanitizedName, out var t) ? t : null;
 

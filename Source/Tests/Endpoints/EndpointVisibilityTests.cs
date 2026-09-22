@@ -4,7 +4,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Covers the Hidden flag and the IsPrivate config alias across every entity model</summary>
+/// <summary>
+/// Covers the Hidden flag and the IsPrivate config alias across every entity model
+/// </summary>
 public class EndpointVisibilityTests
 {
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };

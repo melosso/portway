@@ -20,7 +20,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
 using Serilog;
 
-/// <summary>File-based implementation of log storage</summary>
+/// <summary>
+/// File-based implementation of log storage
+/// </summary>
 public class FileTrafficLogStorage : ITrafficLogStorage
 {
     private readonly ProxyTrafficLoggerOptions _options;

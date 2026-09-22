@@ -5,7 +5,9 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using PortwayApi.Classes;
 
-/// <summary>Uses author-provided examples from each endpoint's Documentation block as the OpenAPI success-response example</summary>
+/// <summary>
+/// Uses author-provided examples from each endpoint's Documentation block as the OpenAPI success-response example
+/// </summary>
 public class ConfigExampleDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)

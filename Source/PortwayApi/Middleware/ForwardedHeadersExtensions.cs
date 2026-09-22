@@ -5,10 +5,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 using PortwayApi.Helpers;
 using Serilog;
 
-/// <summary>Forwarded-header handling for reverse proxies plus Cloudflare client IP and scheme restoration</summary>
+/// <summary>
+/// Configures forwarded headers and Cloudflare IP/scheme restoration.
+/// </summary>
 public static class ForwardedHeadersExtensions
 {
-    public static WebApplication UsePortwayForwardedHeaders(this WebApplication app)
+    public static WebApplication UseProxyForwardedHeaders(this WebApplication app)
     {
         var forwardedHeadersOptions = new ForwardedHeadersOptions
         {
@@ -16,14 +18,14 @@ public static class ForwardedHeadersExtensions
                             ForwardedHeaders.XForwardedProto |
                             ForwardedHeaders.XForwardedHost,
 
-            // Off (framework default): IIS sends uneven header counts, symmetry would drop them and log warnings
+            // Disabled to prevent IIS header count symmetry warnings
             RequireHeaderSymmetry = false,
 
             // Support deep proxy chains
             ForwardLimit = null
         };
 
-        // Trust X-Forwarded-For only from explicitly configured proxies; empty means the header is ignored and RemoteIpAddress stays the real TCP peer
+        // Clear default trusted proxies and networks
         forwardedHeadersOptions.KnownIPNetworks.Clear();
         forwardedHeadersOptions.KnownProxies.Clear();
 
@@ -38,20 +40,18 @@ public static class ForwardedHeadersExtensions
             if (System.Net.IPNetwork.TryParse(network, out var net))
                 forwardedHeadersOptions.KnownIPNetworks.Add(net);
 
-        // ForwardedHeadersMiddleware only compares the peer against the trusted lists when at least one
-        // entry exists: with both empty it skips the check and applies X-Forwarded-For from anyone, letting
-        // any client pick its own RemoteIpAddress. Leaving it unregistered is what actually ignores the header.
+        // Skip middleware registration if no trusted proxies are configured
         if (forwardedHeadersOptions.KnownProxies.Count == 0 && forwardedHeadersOptions.KnownIPNetworks.Count == 0)
         {
-            Log.Warning("ForwardedHeaders: no trusted proxies configured, so X-Forwarded-For is ignored and RemoteIpAddress stays the TCP peer. Behind a reverse proxy every client will look like the proxy, which blurs per-IP rate limiting, the login lockout and the Web UI network gate. Set ForwardedHeaders:KnownProxies to the proxy's address.");
+            Log.Warning("ForwardedHeaders: No trusted proxies configured. X-Forwarded-For is ignored, and RemoteIpAddress remains the TCP peer. Set ForwardedHeaders:KnownProxies to avoid rate limiting and authentication issues.");
         }
         else
         {
-            Log.Information("ForwardedHeaders: trusting {ProxyCount} proxy IP(s) and {NetworkCount} network(s) for X-Forwarded-For", forwardedHeadersOptions.KnownProxies.Count, forwardedHeadersOptions.KnownIPNetworks.Count);
+            Log.Information("ForwardedHeaders: Trusting {ProxyCount} proxy IP(s) and {NetworkCount} network(s)", forwardedHeadersOptions.KnownProxies.Count, forwardedHeadersOptions.KnownIPNetworks.Count);
             app.UseForwardedHeaders(forwardedHeadersOptions);
         }
 
-        // Trust CF-Connecting-IP / CF-Visitor only when the TCP connection originates from a real Cloudflare IP; CF-Ray alone is not sufficient
+        // Restore Cloudflare client IP and scheme if coming from a valid Cloudflare IP
         app.Use((context, next) =>
         {
             if (context.Request.Headers.TryGetValue("CF-Ray", out _) &&

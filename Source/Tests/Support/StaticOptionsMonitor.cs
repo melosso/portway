@@ -2,7 +2,9 @@ namespace PortwayApi.Tests.Support;
 
 using Microsoft.Extensions.Options;
 
-/// <summary>IOptionsMonitor over a fixed value, for services that only read CurrentValue</summary>
+/// <summary>
+/// IOptionsMonitor over a fixed value, for services that only read CurrentValue
+/// </summary>
 public sealed class StaticOptionsMonitor<T>(T value) : IOptionsMonitor<T>
 {
     public T CurrentValue { get; } = value;

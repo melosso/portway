@@ -25,7 +25,9 @@ namespace PortwayApi.Api;
 
 public partial class EndpointController
 {
-    /// <summary>Resolves an endpoint via the central resolver; returns an error result when not found</summary>
+    /// <summary>
+    /// Resolves an endpoint via the central resolver; returns an error result when not found
+    /// </summary>
     private IActionResult? TryResolveEndpoint(
         EndpointType type,
         string endpointName,
@@ -52,7 +54,9 @@ public partial class EndpointController
         return PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
     }
 
-    /// <summary>Central boundary for unexpected handler errors: logs and returns a masked response</summary>
+    /// <summary>
+    /// Central boundary for unexpected handler errors: logs and returns a masked response
+    /// </summary>
     private IActionResult HandleUnexpectedError(
         Exception ex,
         string operation,
@@ -63,14 +67,38 @@ public partial class EndpointController
         return PortwayResults.ServerError(HttpContext, responseDetail ?? "An error occurred while processing your request");
     }
 
-    /// <summary>Central boundary returning masked ProblemDetails for unexpected dispatch errors</summary>
+    /// <summary>
+    /// Central boundary returning masked ProblemDetails for unexpected dispatch errors
+    /// </summary>
     private IActionResult HandleUnexpectedProblem(Exception ex, string operation)
     {
         Log.Error(ex, "Error processing {Operation} request for {Path}", operation, Request.Path);
         return PortwayResults.ServerError(HttpContext, "Error processing. Please check the logs for more details.");
     }
 
-    /// <summary>Parses the catchall segment to determine endpoint type and name with namespace support</summary>
+    /// <summary>
+    /// Longest match first, so Sales/EMEA/Orders wins over Sales/EMEA. Checked against every endpoint type. Token scope checks resolve the same URL through this, so they cannot disagree with dispatch about which endpoint it names
+    /// </summary>
+    internal static (EndpointType Type, string Namespace, string Name, int NameIndex)? ResolveEndpointIdentity(string[] segments)
+    {
+        for (int nameIndex = segments.Length - 1; nameIndex >= 1; nameIndex--)
+        {
+            var potentialNamespace = string.Join('/', segments.Take(nameIndex));
+
+            // Remove any OData-style key appended to the endpoint name (e.g. "Cancellations(123)" or "Cancellations(guid'...')")
+            var potentialEndpoint = Regex.Replace(segments[nameIndex], @"\([^\)]*\)$", "");
+            var namespacedKey = $"{potentialNamespace}/{potentialEndpoint}";
+
+            if (TryDetermineEndpointType(namespacedKey, out var endpointType))
+                return (endpointType, potentialNamespace, potentialEndpoint, nameIndex);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Parses the catchall segment to determine endpoint type and name with namespace support
+    /// </summary>
     private (EndpointType Type, string? Namespace, string Name, string? Id, string RemainingPath) ParseEndpoint(string catchall)
     {
         var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -79,21 +107,12 @@ public partial class EndpointController
 
         Log.Debug("Parsing endpoint: Segments=[{Segments}]", string.Join(", ", segments));
 
-        // Try namespaced endpoints longest first, so Sales/EMEA/Orders wins over Sales/EMEA
-        for (int nameIndex = segments.Length - 1; nameIndex >= 1; nameIndex--)
+        if (ResolveEndpointIdentity(segments) is { } resolved)
         {
-            var potentialNamespace = string.Join('/', segments.Take(nameIndex));
+            var (endpointType, potentialNamespace, potentialEndpoint, nameIndex) = resolved;
             var potentialEndpointRaw = segments[nameIndex];
-
-            // Remove any OData-style key appended to the endpoint name (e.g. "Cancellations(123)" or "Cancellations(guid'...')")
-            var potentialEndpoint = Regex.Replace(potentialEndpointRaw, @"\([^\)]*\)$", "");
-            var namespacedKey = $"{potentialNamespace}/{potentialEndpoint}";
-
-            // Check if this namespaced endpoint exists (using cleaned endpoint name)
-            if (TryDetermineEndpointType(namespacedKey, out var endpointType))
-            {
-                string? id = null;
-                string remainingPath = "";
+            string? id = null;
+            string remainingPath = "";
 
                 // If the endpoint part itself included the id (e.g. Cancellations(123) ) extract it
                 if (potentialEndpointRaw != potentialEndpoint)
@@ -177,7 +196,6 @@ public partial class EndpointController
                     potentialNamespace, potentialEndpoint, endpointType, id);
 
                 return (endpointType, potentialNamespace, potentialEndpoint, id, remainingPath);
-            }
         }
 
         // Fallback to traditional parsing (backward compatibility)
@@ -218,7 +236,9 @@ public partial class EndpointController
         return (fallbackEndpointType, null, endpointName, fallbackId, fallbackRemainingPath);
     }
 
-    /// <summary>Resolves existence and endpoint type in one pass; probe order decides ties, so it lives here only</summary>
+    /// <summary>
+    /// Resolves existence and endpoint type in one pass; probe order decides ties, so this method is the sole owner of that order
+    /// </summary>
     private static bool TryDetermineEndpointType(string key, out EndpointType type)
     {
         if (EndpointHandler.GetSqlEndpoints().ContainsKey(key))
@@ -255,7 +275,9 @@ public partial class EndpointController
         return false;
     }
 
-    /// <summary>Determines endpoint type for a given key (supports both namespaced and non-namespaced)</summary>
+    /// <summary>
+    /// Determines endpoint type for a given key (supports both namespaced and non-namespaced)
+    /// </summary>
     private static EndpointType DetermineEndpointType(string key)
     {
         if (key == "composite")
@@ -265,7 +287,9 @@ public partial class EndpointController
         return type;
     }
 
-    /// <summary>Replaces placeholders in the base directory with actual values</summary>
+    /// <summary>
+    /// Replaces placeholders in the base directory with actual values
+    /// </summary>
     private string ProcessBaseDirectory(string baseDirectory, string environment)
     {
         if (string.IsNullOrEmpty(baseDirectory))

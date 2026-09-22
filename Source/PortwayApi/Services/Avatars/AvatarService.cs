@@ -29,7 +29,9 @@ public sealed class AvatarService
 
     private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.Ordinal);
 
-    /// <summary>A data URI for the account, or null when the style could not be loaded</summary>
+    /// <summary>
+    /// A data URI for the account, or null when the style could not be loaded
+    /// </summary>
     public string? DataUriFor(string seed)
     {
         if (string.IsNullOrWhiteSpace(seed)) return null;

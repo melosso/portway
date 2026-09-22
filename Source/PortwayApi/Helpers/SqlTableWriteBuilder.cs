@@ -5,7 +5,9 @@ using PortwayApi.Classes;
 using PortwayApi.Services.Providers;
 using SqlKata;
 
-/// <summary>One compiled statement with its bound parameters</summary>
+/// <summary>
+/// One compiled statement with its bound parameters
+/// </summary>
 public sealed record TableWriteCommand(string Sql, Dictionary<string, object?> Parameters);
 
 /// <summary>Builds guarded INSERT/UPDATE/DELETE statements for WriteMode: Table endpoints.
@@ -16,7 +18,9 @@ public static partial class SqlTableWriteBuilder
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex SafeIdentifier();
 
-    /// <summary>Returns null when the endpoint is safely configured for table writes, an error otherwise</summary>
+    /// <summary>
+    /// Returns null when the endpoint is safely configured for table writes, an error otherwise
+    /// </summary>
     public static string? ValidateConfig(EndpointDefinition endpoint)
     {
         if (!endpoint.UsesTableWrites)
@@ -43,7 +47,9 @@ public static partial class SqlTableWriteBuilder
         return null;
     }
 
-    /// <summary>Maps payload aliases to database columns, rejecting anything outside the allowlist</summary>
+    /// <summary>
+    /// Maps payload aliases to database columns, rejecting anything outside the allowlist
+    /// </summary>
     public static bool TryResolveColumns(
         EndpointDefinition endpoint,
         IReadOnlyDictionary<string, object?> payload,

@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Verifies OpenAPI document generation end to end; guards the Microsoft.OpenApi upgrade path since Scalar only renders what this endpoint produces</summary>
+/// <summary>
+/// Verifies OpenAPI document generation end to end; guards the Microsoft.OpenApi upgrade path since Scalar only renders what this endpoint produces
+/// </summary>
 public class OpenApiDocumentTests : ApiTestBase
 {
     [Fact]
@@ -301,7 +303,7 @@ public class OpenApiDocumentTests : ApiTestBase
         return null;
     }
 
-    // Audit: every documented status code carries its canonical HTTP reason phrase
+    // Audit: every documented status code's description equals its canonical HTTP reason phrase
     [Fact]
     public async Task AllResponseDescriptions_AreStandardized()
     {
@@ -352,7 +354,7 @@ public class OpenApiDocumentTests : ApiTestBase
             "A QUERY-only endpoint must be documented as a query operation");
         Assert.True(queryOp.TryGetProperty("requestBody", out _),
             "The query operation should document its JSON request body");
-        // The author-provided example from the endpoint's Documentation block flows into the success response
+        // The author-provided example from the endpoint's Documentation block is copied into the success response
         Assert.Contains("SKU-1001", queryOp.GetRawText());
         Assert.False(stockPath.TryGetProperty("get", out _),
             "A QUERY-only endpoint must not be documented as GET");

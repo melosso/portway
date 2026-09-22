@@ -4,7 +4,9 @@ using Serilog;
 
 namespace PortwayApi.Services.Configuration;
 
-/// <summary>Watches a folder of JSON config files and feeds debounced change events to a single consumer</summary>
+/// <summary>
+/// Watches a folder of JSON config files and feeds debounced change events to a single consumer
+/// </summary>
 public abstract class FileWatchPump : IHostedService, IDisposable
 {
     private readonly Channel<(string Path, WatcherChangeTypes Type)> _eventChannel =
@@ -26,19 +28,29 @@ public abstract class FileWatchPump : IHostedService, IDisposable
         Description = description;
     }
 
-    /// <summary>Absolute folder the watcher observes</summary>
+    /// <summary>
+    /// Absolute folder the watcher observes
+    /// </summary>
     protected string WatchPath { get; }
 
-    /// <summary>Human-readable name used in log messages, for example "Endpoint" or "Environment"</summary>
+    /// <summary>
+    /// Human-readable name used in log messages, for example "Endpoint" or "Environment"
+    /// </summary>
     protected string Description { get; }
 
-    /// <summary>How long to ignore repeat events for the same file; re-read per event so config changes take effect</summary>
+    /// <summary>
+    /// How long to ignore repeat events for the same file; re-read per event so config changes take effect
+    /// </summary>
     protected virtual TimeSpan DebounceTime => TimeSpan.FromSeconds(2);
 
-    /// <summary>Return false to skip starting the watcher entirely, for example when hot-reload is disabled</summary>
+    /// <summary>
+    /// Return false to skip starting the watcher entirely, for example when hot-reload is disabled
+    /// </summary>
     protected virtual bool ShouldStart() => true;
 
-    /// <summary>Handles one debounced change event</summary>
+    /// <summary>
+    /// Handles one debounced change event
+    /// </summary>
     protected abstract Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType);
 
     public Task StartAsync(CancellationToken cancellationToken)

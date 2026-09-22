@@ -3,10 +3,14 @@ namespace PortwayApi.Helpers;
 using PortwayApi.Services.Providers;
 using Serilog;
 
-/// <summary>Resolves the effective schema for a provider, treating the template default dbo as portable</summary>
+/// <summary>
+/// Resolves the effective schema for a provider, treating the template default dbo as portable
+/// </summary>
 public static class SqlSchemaResolver
 {
-    /// <summary>Returns the schema to use, empty means unqualified (the connection's database scopes the object)</summary>
+    /// <summary>
+    /// Returns the schema to use, empty means unqualified (the connection's database scopes the object)
+    /// </summary>
     public static string Resolve(string? configuredSchema, ISqlProvider provider, string? connectionDatabase = null)
     {
         var fallback = provider.DefaultSchema.Length > 0

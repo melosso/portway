@@ -4,7 +4,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Endpoints;
 
-/// <summary>Integration tests for the $expand read-path gates and proxy passthrough</summary>
+/// <summary>
+/// Integration tests for the $expand read-path gates and proxy passthrough
+/// </summary>
 /// <remarks>
 /// Uses demo endpoints: WMS/Warehouses (SQL Table, no relationships), Company/Departments (TVF),
 /// Account/Accounts (Proxy). None declares a relationship, so any $expand on the SQL table is unknown.

@@ -5,10 +5,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog;
 
-/// <summary>Extension methods for Rate Limiting</summary>
+/// <summary>
+/// Extension methods for Rate Limiting
+/// </summary>
 public static class RateLimitingExtensions
 {
-    /// <summary>Adds rate limiting settings and the configured bucket store to the service collection</summary>
+    /// <summary>
+    /// Adds rate limiting settings and the configured bucket store to the service collection
+    /// </summary>
     public static IServiceCollection AddRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         var settings = new RateLimitSettings();

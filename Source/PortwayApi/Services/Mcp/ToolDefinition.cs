@@ -1,6 +1,8 @@
 namespace PortwayApi.Services.Mcp;
 
-/// <summary>A single tool offered to the LLM, built from a registered MCP endpoint</summary>
+/// <summary>
+/// A single tool offered to the LLM, built from a registered MCP endpoint
+/// </summary>
 public sealed record ToolDefinition(
     string Name,
     string Description,            // LLM-facing: includes fields/environment metadata

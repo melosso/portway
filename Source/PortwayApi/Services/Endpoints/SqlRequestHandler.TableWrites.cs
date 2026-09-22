@@ -8,12 +8,16 @@ using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using Serilog;
 
-/// <summary>Direct table writes for WriteMode: Table endpoints, guarded by allowlist + primary key predicates</summary>
+/// <summary>
+/// Direct table writes for WriteMode: Table endpoints, guarded by allowlist + primary key predicates
+/// </summary>
 public sealed partial class SqlRequestHandler
 {
     private enum TableWriteKind { Insert, Update, Delete }
 
-    /// <summary>Fail-closed gate shared by all verbs, returns an error result when the config is unsafe</summary>
+    /// <summary>
+    /// Fail-closed gate shared by all verbs, returns an error result when the config is unsafe
+    /// </summary>
     private static IActionResult? GuardTableWriteConfig(EndpointDefinition endpoint, string endpointName)
     {
         var configError = SqlTableWriteBuilder.ValidateConfig(endpoint);

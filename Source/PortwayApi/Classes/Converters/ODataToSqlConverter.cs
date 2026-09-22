@@ -6,7 +6,9 @@ using Serilog;
 
 namespace PortwayApi.Classes;
 
-/// <summary>Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect based on the connection string provider type</summary>
+/// <summary>
+/// Implements IODataToSqlConverter, routing OData queries to the correct SQL dialect based on the connection string provider type
+/// </summary>
 public class ODataToSqlConverter : IODataToSqlConverter
 {
     private readonly IReadOnlyDictionary<SqlProviderType, Compiler> _compilers;
@@ -149,7 +151,9 @@ public class ODataToSqlConverter : IODataToSqlConverter
         }
     }
 
-    /// <summary>Resolves the requested navigation names to EDM emission specs using the target endpoints' own schema/table/columns</summary>
+    /// <summary>
+    /// Resolves the requested navigation names to EDM emission specs using the target endpoints' own schema/table/columns
+    /// </summary>
     private static List<RelationalExpandSpec> BuildExpandSpecs(
         string expandValue,
         IReadOnlyList<EndpointRelationship> relationships,
@@ -185,7 +189,9 @@ public class ODataToSqlConverter : IODataToSqlConverter
         return specs;
     }
 
-    /// <summary>Target-by-name resolution: exact endpoint key or a namespaced key ending in the plain name</summary>
+    /// <summary>
+    /// Target-by-name resolution: exact endpoint key or a namespaced key ending in the plain name
+    /// </summary>
     private static bool TryResolveTarget(string target, Dictionary<string, EndpointDefinition> sqlEndpoints, out EndpointDefinition? endpoint)
     {
         if (sqlEndpoints.TryGetValue(target, out endpoint))

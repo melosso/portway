@@ -2,7 +2,9 @@ using Serilog;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Startup banner, port availability preflight and hosting URL logging</summary>
+/// <summary>
+/// Startup banner, port availability preflight and hosting URL logging
+/// </summary>
 public static class StartupLogHelper
 {
     // Single log event so sinks cannot interleave the banner with other startup lines
@@ -21,7 +23,9 @@ public static class StartupLogHelper
             version, Environment.MachineName, Environment.OSVersion.Platform, Environment.Version);
     }
 
-    /// <summary>Verifies configured ports are free before Kestrel binds; returns false when a port is taken</summary>
+    /// <summary>
+    /// Verifies configured ports are free before Kestrel binds; returns false when a port is taken
+    /// </summary>
     public static bool TryReservePorts(WebApplication app, IConfiguration configuration)
     {
         // Same order the host itself resolves: --urls beats ASPNETCORE_URLS, and configuration
@@ -63,7 +67,9 @@ public static class StartupLogHelper
         return true;
     }
 
-    /// <summary>Logs hosting URLs, Web UI auth status and configuration reload status</summary>
+    /// <summary>
+    /// Logs hosting URLs, Web UI auth status and configuration reload status
+    /// </summary>
     public static void LogHostingSummary(WebApplication app, IConfiguration configuration, string adminApiKey)
     {
         var urls = app.Urls;

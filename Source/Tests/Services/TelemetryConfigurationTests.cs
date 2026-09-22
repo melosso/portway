@@ -5,7 +5,9 @@ using Xunit;
 
 namespace PortwayApi.Tests.Services;
 
-/// <summary>Tests for telemetry configuration binding and service registration</summary>
+/// <summary>
+/// Tests for telemetry configuration binding and service registration
+/// </summary>
 /// <remarks>
 /// Uses the demo environment (WMS) as a reference configuration
 /// Telemetry is opt-in (Enabled: false by default), so these tests verify

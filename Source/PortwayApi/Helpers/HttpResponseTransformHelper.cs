@@ -4,12 +4,16 @@ using Serilog;
 
 namespace PortwayApi.Helpers;
 
-/// <summary>Applies declarative remove, rename and mask rules to JSON proxy responses</summary>
+/// <summary>
+/// Applies declarative remove, rename and mask rules to JSON proxy responses
+/// </summary>
 public static class HttpResponseTransformHelper
 {
     private const string MaskValue = "***";
 
-    /// <summary>Transforms top-level object fields, array elements and OData value wrappers; returns input unchanged on parse failure</summary>
+    /// <summary>
+    /// Transforms top-level object fields, array elements and OData value wrappers; returns input unchanged on parse failure
+    /// </summary>
     public static string Apply(string json, ProxyResponseTransforms transforms)
     {
         if (string.IsNullOrWhiteSpace(json) || !transforms.HasRules)
@@ -62,7 +66,9 @@ public static class HttpResponseTransformHelper
         }
     }
 
-    /// <summary>Applies the same rules to dictionary-shaped rows, e.g. SQL query results; returns transformed copies</summary>
+    /// <summary>
+    /// Applies the same rules to dictionary-shaped rows, e.g. SQL query results; returns transformed copies
+    /// </summary>
     public static List<object> ApplyToRows(IEnumerable<object> rows, ProxyResponseTransforms transforms)
     {
         var result = new List<object>();

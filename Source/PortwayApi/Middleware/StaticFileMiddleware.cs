@@ -5,10 +5,14 @@ using Serilog;
 
 namespace PortwayApi.Middleware;
 
-/// <summary>Extension methods for configuring static files and routing middleware</summary>
+/// <summary>
+/// Extension methods for configuring static files and routing middleware
+/// </summary>
 public static class StaticFilesMiddlewareExtensions
 {
-    /// <summary>Configures default document options for serving index files</summary>
+    /// <summary>
+    /// Configures default document options for serving index files
+    /// </summary>
     public static IApplicationBuilder UseDefaultFilesWithOptions(this IApplicationBuilder app)
     {
         var defaultFilesOptions = new DefaultFilesOptions();
@@ -21,7 +25,9 @@ public static class StaticFilesMiddlewareExtensions
         return app;
     }
 
-    /// <summary>Serves static files with per-extension cache durations from ContentTypeHelper</summary>
+    /// <summary>
+    /// Serves static files with per-extension cache durations from ContentTypeHelper
+    /// </summary>
     public static IApplicationBuilder UseStaticFilesWithCaching(this IApplicationBuilder app)
     {
         var staticFileOptions = new StaticFileOptions

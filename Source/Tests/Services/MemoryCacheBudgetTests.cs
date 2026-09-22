@@ -4,7 +4,9 @@ using Microsoft.Extensions.Options;
 using PortwayApi.Services.Caching;
 using Xunit;
 
-/// <summary>MemoryCacheSizeLimitMB is a byte budget, not an item count</summary>
+/// <summary>
+/// MemoryCacheSizeLimitMB is a byte budget, not an item count
+/// </summary>
 public class MemoryCacheBudgetTests
 {
     private static MemoryCacheProvider BuildProvider(int budgetMb) =>

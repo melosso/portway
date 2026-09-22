@@ -7,7 +7,9 @@ using Serilog;
 
 namespace PortwayApi.Services.Files;
 
-/// <summary>Service for handling file operations</summary>
+/// <summary>
+/// Service for handling file operations
+/// </summary>
 public class FileHandlerService : IDisposable
 {
     private readonly IOptionsMonitor<FileStorageOptions> _optionsMonitor;
@@ -24,10 +26,14 @@ public class FileHandlerService : IDisposable
     private int _refreshRunning;
     private bool _disposed = false;
 
-    /// <summary>Bytes currently held in the memory cache, exposed for diagnostics and tests</summary>
+    /// <summary>
+    /// Bytes currently held in the memory cache, exposed for diagnostics and tests
+    /// </summary>
     internal long CurrentMemoryUsage => Interlocked.Read(ref _currentMemoryUsage);
 
-    /// <summary>Bytes actually resident in the memory cache, used to assert the counter has not drifted</summary>
+    /// <summary>
+    /// Bytes actually resident in the memory cache, used to assert the counter has not drifted
+    /// </summary>
     internal long MeasuredMemoryUsage => _memoryCache.Values.Sum(s => s.Length);
 
     public FileHandlerService(IOptionsMonitor<FileStorageOptions> optionsMonitor, CacheManager cacheManager, Serilog.ILogger logger)
@@ -59,7 +65,9 @@ public class FileHandlerService : IDisposable
         _indexRefreshTimer = new Timer(RefreshIndices, null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
     }
 
-    /// <summary>Uploads a file to storage</summary>
+    /// <summary>
+    /// Uploads a file to storage
+    /// </summary>
     public async Task<string> UploadFileAsync(string environment, string filename, Stream fileStream, bool overwrite = false)
     {
         // Validate file
@@ -146,13 +154,20 @@ public class FileHandlerService : IDisposable
         return fileId;
     }
 
-    /// <summary>Downloads a file from storage</summary>
-    public async Task<(Stream FileStream, string Filename, string ContentType)> DownloadFileAsync(string fileId)
+    /// <summary>
+    /// Downloads a file from storage. The caller's authorized route environment must match the one encoded in the file ID
+    /// </summary>
+    public async Task<(Stream FileStream, string Filename, string ContentType)> DownloadFileAsync(string fileId, string expectedEnvironment)
     {
         // Parse the file ID to get environment and filename
         if (!ParseFileId(fileId, out string environment, out string filename))
         {
             throw new ArgumentException("Invalid file ID", nameof(fileId));
+        }
+
+        if (!string.Equals(environment, expectedEnvironment, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("File ID does not belong to the requested environment");
         }
 
         // Check if file exists in memory cache
@@ -229,13 +244,20 @@ public class FileHandlerService : IDisposable
         return (fileStream, filename, GetContentType(filename));
     }
 
-    /// <summary>Deletes a file from storage</summary>
-    public async Task DeleteFileAsync(string fileId)
+    /// <summary>
+    /// Deletes a file from storage. The caller's authorized route environment must match the one encoded in the file ID
+    /// </summary>
+    public async Task DeleteFileAsync(string fileId, string expectedEnvironment)
     {
         // Parse the file ID to get environment and filename
         if (!ParseFileId(fileId, out string environment, out string filename))
         {
             throw new ArgumentException("Invalid file ID", nameof(fileId));
+        }
+
+        if (!string.Equals(environment, expectedEnvironment, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("File ID does not belong to the requested environment");
         }
 
         // Remove from memory cache if present
@@ -269,7 +291,9 @@ public class FileHandlerService : IDisposable
         await _fileSystemIndex.UpdateIndexAsync(environment, filename, isDeleted: true);
     }
 
-    /// <summary>Lists files in an environment</summary>
+    /// <summary>
+    /// Lists files in an environment
+    /// </summary>
     public async Task<IEnumerable<FileInfo>> ListFilesAsync(string environment, string? prefix = null)
     {
         // Use the cached index instead of filesystem operations
@@ -288,7 +312,9 @@ public class FileHandlerService : IDisposable
         });
     }
 
-    /// <summary>Uploads a file to an absolute path location</summary>
+    /// <summary>
+    /// Uploads a file to an absolute path location
+    /// </summary>
     public async Task<string> UploadFileToAbsolutePathAsync(
         string environment, 
         string absoluteFilePath, 
@@ -337,7 +363,9 @@ public class FileHandlerService : IDisposable
         return fileId;
     }
 
-    /// <summary>Generates a special file ID for absolute path files</summary>
+    /// <summary>
+    /// Generates a special file ID for absolute path files
+    /// </summary>
     private string GenerateAbsoluteFileId(string environment, string absolutePath)
     {
         // Special encoding for absolute paths
@@ -349,7 +377,9 @@ public class FileHandlerService : IDisposable
             .TrimEnd('=');
     }
 
-    /// <summary>Flushes all dirty files from memory to disk</summary>
+    /// <summary>
+    /// Flushes all dirty files from memory to disk
+    /// </summary>
     public async Task FlushAllAsync()
     {
         foreach (var fileId in _memoryCache.Keys)
@@ -364,7 +394,9 @@ public class FileHandlerService : IDisposable
         Log.Information("Flushed all dirty files from memory cache to disk");
     }
 
-    /// <summary>Synchronously flushes all dirty files from memory to disk Use this during application shutdown</summary>
+    /// <summary>
+    /// Synchronously flushes all dirty files from memory to disk Use this during application shutdown
+    /// </summary>
     public void FlushAll()
     {
         foreach (var fileId in _memoryCache.Keys.ToList())
@@ -379,7 +411,9 @@ public class FileHandlerService : IDisposable
         Log.Information("Flushed all dirty files from memory cache to disk (sync)");
     }
 
-    /// <summary>Synchronously flushes a specific file to disk</summary>
+    /// <summary>
+    /// Synchronously flushes a specific file to disk
+    /// </summary>
     private void FlushFileToDisk(string fileId)
     {
         if (!_memoryCache.TryGetValue(fileId, out var memoryStream))
@@ -426,7 +460,9 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>Flushes a specific file from memory to disk</summary>
+    /// <summary>
+    /// Flushes a specific file from memory to disk
+    /// </summary>
     private async Task FlushFileToDiskAsync(string fileId)
     {
         // Check if file is in memory cache
@@ -475,7 +511,9 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>Timer callback to refresh file system indices</summary>
+    /// <summary>
+    /// Timer callback to refresh file system indices
+    /// </summary>
     private async void RefreshIndices(object? state)
     {
         // Timer does not await the callback, so a slow pass would otherwise overlap the next tick
@@ -496,7 +534,9 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>Timer callback to flush memory cache to disk</summary>
+    /// <summary>
+    /// Timer callback to flush memory cache to disk
+    /// </summary>
     private async void FlushMemoryCache(object? state)
     {
         // Overlapping ticks would open two FileStreams onto the same path and truncate the file
@@ -557,7 +597,9 @@ public class FileHandlerService : IDisposable
         }
     }
 
-    /// <summary>Flushes oldest files from memory until the specified amount of space is freed</summary>
+    /// <summary>
+    /// Flushes oldest files from memory until the specified amount of space is freed
+    /// </summary>
     private async Task FlushOldestFilesAsync(long bytesToFree)
     {
         if (bytesToFree <= 0)
@@ -609,7 +651,9 @@ public class FileHandlerService : IDisposable
         Log.Debug("Freed {FreedBytes} bytes from memory cache by removing oldest files", freedBytes);
     }
 
-    /// <summary>Generates a file ID from environment and filename</summary>
+    /// <summary>
+    /// Generates a file ID from environment and filename
+    /// </summary>
     private string GenerateFileId(string environment, string filename)
     {
         // Ensure fileName can contain subdirectory paths
@@ -621,7 +665,9 @@ public class FileHandlerService : IDisposable
             .TrimEnd('=');
     }
 
-    /// <summary>Validates the environment and filename components decoded from a fileId. Both components must be non-empty single-segment values with no path separators or traversal sequences</summary>
+    /// <summary>
+    /// Validates the environment and filename components decoded from a fileId. Both components must be non-empty single-segment values with no path separators or traversal sequences
+    /// </summary>
     internal static bool ValidateFileIdComponents(string? environment, string? filename)
     {
         if (string.IsNullOrWhiteSpace(environment) || string.IsNullOrWhiteSpace(filename))
@@ -649,7 +695,9 @@ public class FileHandlerService : IDisposable
         return true;
     }
 
-    /// <summary>Parses a file ID into environment and filename, rejecting any path traversal in either component</summary>
+    /// <summary>
+    /// Parses a file ID into environment and filename, rejecting any path traversal in either component
+    /// </summary>
     private bool ParseFileId(string fileId, out string environment, out string filename)
     {
         try
@@ -691,8 +739,12 @@ public class FileHandlerService : IDisposable
         return false;
     }
 
-    /// <summary>Sanitizes a filename to prevent path traversal attacks</summary>
-    /// <summary>Rejects files whose extension is blocked or not in the configured allow list</summary>
+    /// <summary>
+    /// Sanitizes a filename to prevent path traversal attacks
+    /// </summary>
+    /// <summary>
+    /// Rejects files whose extension is blocked or not in the configured allow list
+    /// </summary>
     private void ValidateExtension(string filename)
     {
         string extension = Path.GetExtension(filename).ToLowerInvariant();
@@ -717,7 +769,9 @@ public class FileHandlerService : IDisposable
         return filename;
     }
 
-    /// <summary>Determines the content type for a filename</summary>
+    /// <summary>
+    /// Determines the content type for a filename
+    /// </summary>
     private string GetContentType(string filename) => ContentTypeHelper.GetContentType(filename);
 
     public class FileInfo

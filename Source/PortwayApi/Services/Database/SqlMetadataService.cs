@@ -331,7 +331,9 @@ public class SqlMetadataService
         }
     }
 
-    /// <summary>Gets table/view columns using ADO.NET GetSchemaAsync first; falls back to provider-specific PRAGMA for SQLite</summary>
+    /// <summary>
+    /// Gets table/view columns using ADO.NET GetSchemaAsync first; falls back to provider-specific PRAGMA for SQLite
+    /// </summary>
     private async Task<List<Services.Database.ColumnMetadata>> GetTableColumnsAsync(
         DbConnection connection,
         ISqlProvider provider,

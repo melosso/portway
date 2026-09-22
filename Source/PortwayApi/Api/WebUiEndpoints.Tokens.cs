@@ -50,13 +50,19 @@ public static partial class WebUiEndpointExtensions
         app.MapPut("/ui/api/tokens/{id:int}", async (int id, HttpContext context, TokenService tokenService) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
-            
+
             if (body.TryGetProperty("allowed_scopes", out var scopes) && scopes.ValueKind == JsonValueKind.String)
-                await tokenService.UpdateTokenScopesAsync(id, scopes.GetString() ?? "*");
-            
+            {
+                if (!await tokenService.UpdateTokenScopesAsync(id, scopes.GetString() ?? "*"))
+                    return Results.Json(new { error = "Cannot narrow the last full-access token" }, statusCode: 409);
+            }
+
             if (body.TryGetProperty("allowed_environments", out var envs) && envs.ValueKind == JsonValueKind.String)
-                await tokenService.UpdateTokenEnvironmentsAsync(id, envs.GetString() ?? "*");
-            
+            {
+                if (!await tokenService.UpdateTokenEnvironmentsAsync(id, envs.GetString() ?? "*"))
+                    return Results.Json(new { error = "Cannot narrow the last full-access token" }, statusCode: 409);
+            }
+
             if (body.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
                 await tokenService.UpdateTokenDescriptionAsync(id, desc.GetString() ?? "");
             
