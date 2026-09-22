@@ -27,7 +27,7 @@ Before deploying Portway, make sure your environment meets the following require
 
 * .NET Hosting Bundle: <a href="https://get.dot.net/11" target="_blank" rel="noopener noreferrer">.NET 11</a>
 * If you're running on Windows: Internet Information Services (IIS)
-* A supported SQL database (if you're using SQL endpoints): SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
+* *Optional*: a supported SQL database: SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
 Ready to go? Then lets continue:
 
