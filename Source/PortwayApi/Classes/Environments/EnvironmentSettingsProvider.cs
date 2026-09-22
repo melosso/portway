@@ -22,7 +22,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         // Support both lowercase and uppercase folder names for cross-platform compatibility
         var baseDir = Directory.GetCurrentDirectory();
         _basePath = Path.Combine(baseDir, "environments");
-        _keyVaultUri = Environment.GetEnvironmentVariable("KEYVAULT_URI");
+        _keyVaultUri = EnvAliases.GetDirect("PORTWAY_KEYVAULT_URI");
         _certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
         
         try

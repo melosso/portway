@@ -3,6 +3,7 @@ namespace PortwayApi.Services.Configuration;
 using System.IO.Compression;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using PortwayApi.Helpers;
 
 /// <summary>
 /// Kestrel hardening, HTTPS opt-in detection and response compression for the Portway web host
@@ -11,8 +12,8 @@ public static class WebHostConfigurationExtensions
 {
     public static WebApplicationBuilder ConfigurePortwayWebHost(this WebApplicationBuilder builder)
     {
-        // In Docker HTTPS is opt-in (Use_HTTPS=true); on Windows Server/IIS it is on by default unless Use_HTTPS=false
-        var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
+        // In Docker HTTPS is opt-in (PORTWAY_USE_HTTPS=true); on Windows Server/IIS it is on by default unless =false
+        var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_USE_HTTPS");
         var runningInContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
         bool useHttps;
         if (runningInContainer)

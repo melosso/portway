@@ -31,6 +31,7 @@ Directory.CreateDirectory("log");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    EnvAliases.ApplyConfigAliases(builder.Configuration);
 
     // Settings the Web UI writes land here, layered over appsettings.json so that file stays the operator's
     PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
@@ -48,6 +49,8 @@ try
         .CreateLogger();
 
     builder.Host.UseSerilog();
+
+    EnvAliases.WarnOnLegacyUsage();
 
     builder.Services.Configure<HostOptions>(opts =>
         {
@@ -69,7 +72,6 @@ try
 
     // Add caching services (Redis and/or memory cache)
     builder.Services.AddCachingServices(builder.Configuration);
-
     builder.Services.AddRequestTrafficLogging(builder.Configuration);
     builder.Services.AddHttpContextAccessor();
 

@@ -75,9 +75,9 @@ services:
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
 
       # Configure CORS, prefix and access token
-      - AllowedHosts=*
-      - PathBase=
-      - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
+      - PORTWAY_ALLOWED_HOSTS=*
+      - PORTWAY_PATH_BASE=
+      - PORTWAY_ADMIN_KEY=INSECURE-CHANGE-ME-admin-api-key
 
 volumes:
   portway_app:

@@ -222,11 +222,11 @@ Store connection strings and other secrets in Azure Key Vault instead of `settin
    ::: code-group
 
    ```powershell [PowerShell]
-   $env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
+   $env:PORTWAY_KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
    ```
 
    ```bash [Bash]
-   export KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
+   export PORTWAY_KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
    ```
 
    :::

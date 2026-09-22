@@ -1,5 +1,6 @@
 using System.Net;
 using Serilog;
+using PortwayApi.Helpers;
 
 namespace PortwayApi.Middleware;
 
@@ -9,11 +10,11 @@ public static class ProxyHttpClientExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var proxyUsername = Environment.GetEnvironmentVariable("PROXY_USERNAME")
+        var proxyUsername = EnvAliases.GetDirect("PORTWAY_PROXY_USERNAME")
             ?? configuration["Proxy:Username"];
-        var proxyPassword = Environment.GetEnvironmentVariable("PROXY_PASSWORD")
+        var proxyPassword = EnvAliases.GetDirect("PORTWAY_PROXY_PASSWORD")
             ?? configuration["Proxy:Password"];
-        var proxyDomain = Environment.GetEnvironmentVariable("PROXY_DOMAIN")
+        var proxyDomain = EnvAliases.GetDirect("PORTWAY_PROXY_DOMAIN")
             ?? configuration["Proxy:Domain"];
 
         Log.Debug("Proxy credentials found: username={HasUsername}, password={HasPassword}, domain={HasDomain}",

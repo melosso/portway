@@ -484,27 +484,29 @@ Set any of these from **Settings → Security → Feature Toggles** in the conso
 
 ### Common variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
-| `PORTWAY_CHAT_API_KEY` | AI provider API key for Chat. Takes precedence over the encrypted database entry when set. | `sk-ant-...` |
-| `Use_HTTPS` | Whether Kestrel serves HTTPS directly (see note) | `false` |
-| `KEYVAULT_URI` | Azure Key Vault URI | `https://vault.azure.net` |
-| `PROXY_USERNAME` | Proxy authentication user | `domain\user` |
-| `PROXY_PASSWORD` | Proxy authentication password | `password` |
-| `PROXY_DOMAIN` | Proxy domain | `CONTOSO` |
-| `AllowedHosts` | Allowed host names | `*` |
-| `PathBase` | Base path | `/api` |
-| `Mcp__ChatEnabled` | Override `Mcp:ChatEnabled` at runtime | `true` |
-| `WebUi__AdminApiKey` | Seeds the first console account | `secret` |
-| `WebUi__PublicOrigins__0` | Origin allowed to reach `/ui` (array) | `https://example.com` |
-| `Oidc__Enabled` | Turn single sign-on off | `false` |
-| `ForwardedHeaders__KnownProxies__0` | Trusted reverse proxy (array) | `127.0.0.1` |
-| `WebUi__SecureCookies` | Secure cookies | `true` |
-| `WebUi__Customization__EnableLandingPage` | Show landing page at root | `false` |
+| Variable | Description | Example | Legacy name |
+|----------|-------------|---------|-------------|
+| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) | — |
+| `PORTWAY_CHAT_API_KEY` | AI provider API key for Chat. Takes precedence over the encrypted database entry when set. | `sk-ant-...` | — |
+| `PORTWAY_USE_HTTPS` | Whether Kestrel serves HTTPS directly (see note) | `false` | `Use_HTTPS` |
+| `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `https://vault.azure.net` | `KEYVAULT_URI` |
+| `PORTWAY_PROXY_USERNAME` | Proxy authentication user | `domain\user` | `PROXY_USERNAME` |
+| `PORTWAY_PROXY_PASSWORD` | Proxy authentication password | `password` | `PROXY_PASSWORD` |
+| `PORTWAY_PROXY_DOMAIN` | Proxy domain | `CONTOSO` | `PROXY_DOMAIN` |
+| `PORTWAY_ALLOWED_HOSTS` | Allowed host names | `*` | `AllowedHosts` |
+| `PORTWAY_PATH_BASE` | Base path | `/api` | `PathBase` |
+| `Mcp__ChatEnabled` | Override `Mcp:ChatEnabled` at runtime | `true` | — |
+| `PORTWAY_ADMIN_KEY` | Seeds the first console account | `secret` | `WebUi__AdminApiKey` |
+| `WebUi__PublicOrigins__0` | Origin allowed to reach `/ui` (array) | `https://example.com` | — |
+| `Oidc__Enabled` | Turn single sign-on off | `false` | — |
+| `ForwardedHeaders__KnownProxies__0` | Trusted reverse proxy (array) | `127.0.0.1` | — |
+| `PORTWAY_SECURE_COOKIES` | Secure cookies | `true` | `WebUi__SecureCookies` |
+| `WebUi__Customization__EnableLandingPage` | Show landing page at root | `false` | — |
+
+Legacy names still work but log a startup deprecation warning; the `PORTWAY_*` name wins if both are set.
 
 :::warning
-**`Use_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
+**`PORTWAY_USE_HTTPS=true` requires a TLS certificate reachable by Kestrel.** Without one the container fails immediately at startup with `BackgroundService failed / Hosting failed to start`. In Docker deployments where an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) handles SSL termination, leave this unset or set it to `false`. Only enable it when Portway is directly internet-facing **and** a certificate is supplied (e.g. via `Kestrel__Certificates__Default__Path`).
 :::
 
 ### Configuration priority

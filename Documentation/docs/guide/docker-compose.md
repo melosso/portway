@@ -37,24 +37,24 @@ services:
     environment:
       # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - AllowedHosts=*
-      - PathBase=
+      - PORTWAY_ALLOWED_HOSTS=*
+      - PORTWAY_PATH_BASE=
 
       # Web UI settings
-      - WebUi__AdminApiKey=INSECURE-CHANGE-ME-admin-api-key
+      - PORTWAY_ADMIN_KEY=INSECURE-CHANGE-ME-admin-api-key
       - WebUi__PublicOrigins__0=https://example.com
       - WebUi__PublicOrigins__1=https://api.example.com
-      - WebUi__SecureCookies=false  
+      - PORTWAY_SECURE_COOKIES=false
       - WebUi__Customization__PromoText=
       - WebUi__Customization__LoginFooter=If you don't have an account, please contact your [administrator](mailto:support@democompany.local).
     
       # Proxy settings for Kerberos/NTLM
-      # - PROXY_USERNAME=serviceaccount
-      # - PROXY_PASSWORD=password
-      # - PROXY_DOMAIN=YOURDOMAIN
+      # - PORTWAY_PROXY_USERNAME=serviceaccount
+      # - PORTWAY_PROXY_PASSWORD=password
+      # - PORTWAY_PROXY_DOMAIN=YOURDOMAIN
 
       # Azure credentials
-      # - KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
+      # - PORTWAY_KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
       # - AZURE_CLIENT_ID=your-client-id
       # - AZURE_TENANT_ID=your-tenant-id
       # - AZURE_CLIENT_SECRET=your-client-secret
@@ -72,34 +72,36 @@ volumes:
 
 ### Core settings
 
-| Variable | Description | Default Value |
-|----------|-------------|---------------|
-| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) |
-| `Use_HTTPS` | Whether Kestrel serves HTTPS directly. See note below. | `false` |
-| `AllowedHosts` | Allowed host names | `*` |
-| `PathBase` | Base path for the application | (empty) |
+| Variable | Description | Default Value | Legacy name |
+|----------|-------------|---------------|-------------|
+| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) | — |
+| `PORTWAY_USE_HTTPS` | Whether Kestrel serves HTTPS directly. See note below. | `false` | `Use_HTTPS` |
+| `PORTWAY_ALLOWED_HOSTS` | Allowed host names | `*` | `AllowedHosts` |
+| `PORTWAY_PATH_BASE` | Base path for the application | (empty) | `PathBase` |
+
+Legacy names still work but log a startup deprecation warning; the `PORTWAY_*` name wins if both are set.
 
 :::warning
-The flag `Use_HTTPS` **requires a TLS certificate to be available to Kestrel.** If you set this to `true` without mounting a valid certificate, the container will fail to start immediately with `BackgroundService failed / Hosting failed to start`.
+The flag `PORTWAY_USE_HTTPS` **requires a TLS certificate to be available to Kestrel.** If you set this to `true` without mounting a valid certificate, the container will fail to start immediately with `BackgroundService failed / Hosting failed to start`.
 
 <br>
 
-In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally, keep `Use_HTTPS=false` in that case. 
+In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally, keep `PORTWAY_USE_HTTPS=false` in that case. 
 
 <br>
 
-Only set `Use_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
+Only set `PORTWAY_USE_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
 :::
 
 ### Web UI settings
 
-| Variable | Description | Default Value |
-|----------|-------------|---------------|
-| `WebUi__AdminApiKey` | Admin API key for web UI access | (none) |
-| `WebUi__PublicOrigins` | Allowed origins for CORS (array) | (empty) |
-| `WebUi__SecureCookies` | Use secure cookies | `false` |
-| `WebUi__Customization__PromoText` | Banner text at the top | (none) |
-| `WebUi__Customization__LoginFooter` | Footer text below login area | (none) |
+| Variable | Description | Default Value | Legacy name |
+|----------|-------------|---------------|-------------|
+| `PORTWAY_ADMIN_KEY` | Admin API key for web UI access | (none) | `WebUi__AdminApiKey` |
+| `WebUi__PublicOrigins` | Allowed origins for CORS (array) | (empty) | — |
+| `PORTWAY_SECURE_COOKIES` | Use secure cookies | `false` | `WebUi__SecureCookies` |
+| `WebUi__Customization__PromoText` | Banner text at the top | (none) | — |
+| `WebUi__Customization__LoginFooter` | Footer text below login area | (none) | — |
 
 For `WebUi__PublicOrigins`, use index notation for multiple origins:
 ```yaml
@@ -111,26 +113,28 @@ For `WebUi__PublicOrigins`, use index notation for multiple origins:
 
 Configure these settings if your environment requires proxy authentication. Portway supports NTLM authentication for corporate proxy environments:
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `PROXY_USERNAME` | Proxy username | `serviceaccount` |
-| `PROXY_PASSWORD` | Proxy password | `password` |
-| `PROXY_DOMAIN` | Domain for proxy authentication (NTLM) | `YOURDOMAIN` |
+| Variable | Description | Example | Legacy name |
+|----------|-------------|---------|-------------|
+| `PORTWAY_PROXY_USERNAME` | Proxy username | `serviceaccount` | `PROXY_USERNAME` |
+| `PORTWAY_PROXY_PASSWORD` | Proxy password | `password` | `PROXY_PASSWORD` |
+| `PORTWAY_PROXY_DOMAIN` | Domain for proxy authentication (NTLM) | `YOURDOMAIN` | `PROXY_DOMAIN` |
 
 :::note
-When using NTLM authentication, ensure all three proxy variables are configured. The `PROXY_DOMAIN` is required for proper NTLM handshake with corporate proxy servers.
+When using NTLM authentication, ensure all three proxy variables are configured. `PORTWAY_PROXY_DOMAIN` is required for proper NTLM handshake with corporate proxy servers.
 :::
 
 ### Azure Key Vault (optional)
 
 For production environments, you can integrate with Azure Key Vault by uncommenting and configuring:
 
-| Variable | Description |
-|----------|-------------|
-| `KEYVAULT_URI` | Azure Key Vault URI |
-| `AZURE_CLIENT_ID` | Azure application client ID |
-| `AZURE_TENANT_ID` | Azure tenant ID |
-| `AZURE_CLIENT_SECRET` | Azure client secret |
+| Variable | Description | Legacy name |
+|----------|-------------|-------------|
+| `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
+| `AZURE_CLIENT_ID` | Azure application client ID | — |
+| `AZURE_TENANT_ID` | Azure tenant ID | — |
+| `AZURE_CLIENT_SECRET` | Azure client secret | — |
+
+`AZURE_*` vars are read directly by the Azure SDK's `DefaultAzureCredential`, not portway-prefixed.
 
 ## Data persistence
 
@@ -165,11 +169,11 @@ volumes:
 
 ## Managing tokens
 
-Token management is handled through the [Web UI](/guide/webui). Set `WebUi__AdminApiKey` in your environment configuration to enable it, then navigate to `http://localhost:8080/ui` and open **Tokens** to create, revoke, rotate, and audit tokens.
+Token management is handled through the [Web UI](/guide/webui). Set `PORTWAY_ADMIN_KEY` in your environment configuration to enable it, then navigate to `http://localhost:8080/ui` and open **Tokens** to create, revoke, rotate, and audit tokens.
 
 ```yaml
 environment:
-  - WebUi__AdminApiKey=your-secure-password
+  - PORTWAY_ADMIN_KEY=your-secure-password
 ```
 
 ## Going to production

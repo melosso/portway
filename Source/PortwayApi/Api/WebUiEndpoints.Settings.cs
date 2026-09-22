@@ -54,7 +54,7 @@ public static partial class WebUiEndpointExtensions
             var forwardedFor  = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy   = !string.IsNullOrEmpty(forwardedFor);
             var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
-            var useHttpsEnv = Environment.GetEnvironmentVariable("Use_HTTPS");
+            var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_USE_HTTPS");
             var httpsOn = inContainer
                 ? string.Equals(useHttpsEnv, "true", StringComparison.OrdinalIgnoreCase)
                 : !string.Equals(useHttpsEnv, "false", StringComparison.OrdinalIgnoreCase);

@@ -117,7 +117,7 @@ Automatic encryption applies only to per-environment `settings.json` files and t
 
 Web UI accounts live in `auth.db`, with passwords hashed using PBKDF2-SHA256.
 
-On the first start with no accounts, an existing `WebUi:AdminApiKey` becomes the account `admin`, with the key as its password. After that the setting is no longer read for sign-in and can be removed.
+On the first start with no accounts, an existing `PORTWAY_ADMIN_KEY` becomes the account `admin`, with the key as its password. After that the setting is no longer read for sign-in and can be removed.
 
 Never store a real admin key in `appsettings.json`. The shipped file intentionally contains the placeholder `INSECURE-CHANGE-ME-admin-api-key`, which Portway rejects in production: no account is seeded from it and an error is logged.
 
@@ -128,11 +128,11 @@ Supply the key through the environment instead:
 ```yaml [Docker]
 # docker-compose.yml
 environment:
-  - WebUi__AdminApiKey=${PORTWAY_ADMIN_KEY}
+  - PORTWAY_ADMIN_KEY=<your-key>
 ```
 
 ```powershell [Windows Server]
-[Environment]::SetEnvironmentVariable("WebUi__AdminApiKey", "<your-key>", "Machine")
+[Environment]::SetEnvironmentVariable("PORTWAY_ADMIN_KEY", "<your-key>", "Machine")
 ```
 
 :::
@@ -151,7 +151,7 @@ openssl rand -base64 48
 
 :::
 
-With Azure Key Vault configured (`KEYVAULT_URI`), the key can also be served from the vault through the standard ASP.NET Core configuration pipeline. Environment variables and Key Vault values override anything in `appsettings.json`.
+With Azure Key Vault configured (`PORTWAY_KEYVAULT_URI`), the key can also be served from the vault through the standard ASP.NET Core configuration pipeline. Environment variables and Key Vault values override anything in `appsettings.json`.
 
 The Settings page in the Web UI shows the current key strength (not set / placeholder / weak / strong) under **Security Posture**.
 
@@ -162,11 +162,11 @@ Store connection strings and server names in Azure Key Vault instead of `setting
 ::: code-group
 
 ```powershell [PowerShell]
-$env:KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
+$env:PORTWAY_KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
 ```
 
 ```bash [Bash]
-export KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
+export PORTWAY_KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
 ```
 
 :::
@@ -259,7 +259,7 @@ Sessions are signed with `portway.key`, written next to `auth.db` on first use. 
 
 - [ ] HTTPS binding configured in IIS
 - [ ] IIS Application Pool using minimum-privilege identity
-- [ ] Web UI account created with a strong password, and `WebUi__AdminApiKey` removed once it has been migrated
+- [ ] Web UI account created with a strong password, and `PORTWAY_ADMIN_KEY` removed once it has been migrated
 - [ ] `ForwardedHeaders__KnownProxies` set to your reverse proxy, so per-IP rate limiting, the sign-in lockout, and the Web UI network gate see real client addresses
 - [ ] Account roles reviewed, so anyone who only needs to read the console holds `viewer`
 - [ ] `portway.key` kept with the deployment and excluded from backups that others can read
