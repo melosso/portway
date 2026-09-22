@@ -15,6 +15,7 @@ services:
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345
       - PORTWAY_ALLOWED_HOSTS=*
+      - PORTWAY_ADMIN_KEY=demo-admin-key
       - PORTWAY_SECURE_COOKIES=true
       - WebUi__PublicOrigins__0=https://portway-demo.melosso.com
       - WebUi__Customization__PromoText=This is a demo instance. Some functions are disabled. All data will be reset periodically.
