@@ -119,6 +119,7 @@ public static class AccountsCli
         }
 
         account.PasswordHash = AdminUserService.HashPassword(password);
+        account.MustChangePassword = false;
         await db.SaveChangesAsync();
 
         Console.WriteLine($"Password set for {account.Username}.");

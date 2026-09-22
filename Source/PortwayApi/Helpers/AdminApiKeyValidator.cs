@@ -26,13 +26,12 @@ public static class AdminApiKeyValidator
 
         if (adminApiKey == PlaceholderKey && !environment.IsDevelopment())
         {
-            Log.Error("WebUi:AdminApiKey is set to the default placeholder value. " +
-                      "Web UI authentication has been DISABLED. Set a strong, unique key (≥32 chars) to enable it.");
+            Log.Error("WebUi:AdminApiKey cannot be the default placeholder value; a strong, unique key (32+ chars) is required");
             adminApiKey = "";
         }
         else if (!string.IsNullOrEmpty(adminApiKey) && adminApiKey.Length < 32 && !environment.IsDevelopment())
         {
-            Log.Warning("WebUi:AdminApiKey is shorter than 32 characters. Consider using a longer, randomly generated key.");
+            Log.Warning("WebUi:AdminApiKey is shorter than 32 characters; use a longer, randomly generated key");
         }
 
         return new AdminSeedKey(adminApiKey);

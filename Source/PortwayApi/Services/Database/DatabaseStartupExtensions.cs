@@ -58,7 +58,7 @@ public static class DatabaseStartupExtensions
             else
             {
                 Log.Debug("Total active tokens: {Count}", activeTokens.Count());
-                Log.Warning("Tokens detected in the tokens directory. Relocate them to a secure location to eliminate this security risk.");
+                Log.Warning("Tokens detected in the tokens directory; relocate them to a secure location");
             }
         }
         catch (Exception ex)
@@ -83,7 +83,7 @@ public static class DatabaseStartupExtensions
             }
             else
             {
-                Log.Warning("Cache is not connected. Caching functionality may be limited. Please enable Debug logs for more details.");
+                Log.Warning("Cache is not connected; caching functionality may be limited, enable Debug logs for details");
             }
         }
         catch (Exception ex)

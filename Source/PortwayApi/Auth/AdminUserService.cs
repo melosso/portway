@@ -157,9 +157,7 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Provision initial admin credentials for a new deployment.
-    /// Uses existing <c>WebUi:AdminApiKey</c> or generates a temporary password.
-    /// Requires a password reset on first login.
+    /// Provision the first console account with a one-time password, logged once; requires a reset on first sign-in
     /// </summary>
     public async Task SeedFirstAccountAsync(PortwayApi.Helpers.AdminSeedKey adminApiKey)
     {
@@ -173,7 +171,7 @@ public class AdminUserService
         var migrating = adminApiKey.IsConfigured;
 
         var username = migrating ? "admin" : "admin-" + RandomNumberGenerator.GetString(ReadableAlphabet, 8);
-        var password = migrating ? adminApiKey.Value! : RandomNumberGenerator.GetString(ReadableAlphabet, 24);
+        var password = RandomNumberGenerator.GetString(ReadableAlphabet, 24);
 
         _db.AdminUsers.Add(new AdminUser
         {
@@ -185,16 +183,9 @@ public class AdminUserService
         });
         await _db.SaveChangesAsync();
 
+        Log.Warning("Created console account {Username} with one-time password {Password}; sign in to set a permanent password", username, password);
         if (migrating)
-        {
-            Log.Warning("Migrated WebUi:AdminApiKey into the console account {Username}; sign in with the key as its password, choose a new one, then remove the setting", username);
-        }
-        else
-        {
-            Log.Warning("Created the first console account. Sign in and choose a new password; this is the only time it is printed.");
-            Log.Warning("    username: {Username}", username);
-            Log.Warning("    password: {Password}", password);
-        }
+            Log.Warning("WebUi:AdminApiKey was not used as the password; remove the setting once you have signed in");
     }
 
     /// <summary>
