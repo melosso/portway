@@ -73,7 +73,7 @@ public class SqlTableWriteBuilderTests
     {
         var provider = new SqliteProvider();
         await using var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
         await connection.ExecuteAsync("CREATE TABLE Bins (Id INTEGER PRIMARY KEY, Code TEXT NOT NULL, Capacity INTEGER)");
 
         var insert = SqlTableWriteBuilder.BuildInsert(provider, "Bins",

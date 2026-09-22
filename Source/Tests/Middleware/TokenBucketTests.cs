@@ -57,13 +57,13 @@ public class TokenBucketTests
         var clock = new FakeTimeProvider();
         using var store = new InMemoryRateLimiterStore(clock);
 
-        await store.TryConsumeAsync("ip:10.0.0.1", 10, 60);
-        await store.TryConsumeAsync("token:abc", 10, 60);
+        await store.TryConsumeAsync("ip:10.0.0.1", 10, 60, TestContext.Current.CancellationToken);
+        await store.TryConsumeAsync("token:abc", 10, 60, TestContext.Current.CancellationToken);
         Assert.Equal(2, store.BucketCount);
 
         // One bucket stays active, the other goes idle past the eviction age
         clock.Advance(TimeSpan.FromMinutes(29));
-        await store.TryConsumeAsync("ip:10.0.0.1", 10, 60);
+        await store.TryConsumeAsync("ip:10.0.0.1", 10, 60, TestContext.Current.CancellationToken);
         clock.Advance(TimeSpan.FromMinutes(2));
 
         store.EvictIdleBuckets();

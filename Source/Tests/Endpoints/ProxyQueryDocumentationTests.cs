@@ -71,8 +71,8 @@ public class ProxyQueryDocumentationTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var offenders = new List<string>();
         foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())

@@ -150,10 +150,10 @@ public class PrometheusScrapeEndpointTests : IDisposable
     [Fact]
     public async Task MetricsEndpoint_WhenEnabled_ReturnsPrometheusExposition()
     {
-        var response = await _client.GetAsync("/metrics");
+        var response = await _client.GetAsync("/metrics", TestContext.Current.CancellationToken);
 
         Assert.True(response.IsSuccessStatusCode);
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("# TYPE", content);
     }
 
@@ -162,10 +162,10 @@ public class PrometheusScrapeEndpointTests : IDisposable
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/ui/api/settings");
         request.Headers.Add("Cookie", $"portway_auth={MintSessionCookie()}");
-        var response = await _client.SendAsync(request);
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var doc = System.Text.Json.JsonDocument.Parse(json);
         var telemetry = doc.RootElement.GetProperty("telemetry");
 
@@ -177,10 +177,10 @@ public class PrometheusScrapeEndpointTests : IDisposable
     public async Task MetricsEndpoint_AfterApiRequest_ExposesRequestDurationHistogram()
     {
         // Any /api request, even a 404, is recorded by the request metrics middleware
-        await _client.GetAsync("/api/600/nonexistent");
+        await _client.GetAsync("/api/600/nonexistent", TestContext.Current.CancellationToken);
 
-        var response = await _client.GetAsync("/metrics");
-        var content  = await response.Content.ReadAsStringAsync();
+        var response = await _client.GetAsync("/metrics", TestContext.Current.CancellationToken);
+        var content  = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Contains("portway_request_duration", content);
     }
@@ -220,7 +220,7 @@ public class PrometheusDisabledTests : Base.ApiTestBase
     [Fact]
     public async Task MetricsEndpoint_WhenDisabled_Returns404()
     {
-        var response = await _client.GetAsync("/metrics");
+        var response = await _client.GetAsync("/metrics", TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }

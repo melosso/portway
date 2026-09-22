@@ -21,7 +21,7 @@ public class ExpandEndpointTests : ApiTestBase
     [Fact]
     public async Task Sql_UnknownExpand_ReturnsBadRequest()
     {
-        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses?$expand=Category");
+        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses?$expand=Category", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -29,7 +29,7 @@ public class ExpandEndpointTests : ApiTestBase
     [Fact]
     public async Task Sql_NestedExpandOptions_ReturnsBadRequest()
     {
-        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses?$expand=Category($select=Name)");
+        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses?$expand=Category($select=Name)", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -37,7 +37,7 @@ public class ExpandEndpointTests : ApiTestBase
     [Fact]
     public async Task Tvf_Expand_ReturnsBadRequest()
     {
-        var response = await _client.GetAsync("/api/500/Company/Departments?$expand=Foo");
+        var response = await _client.GetAsync("/api/500/Company/Departments?$expand=Foo", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -47,7 +47,7 @@ public class ExpandEndpointTests : ApiTestBase
     {
         // Portway must never parse or reject $expand on a proxy; the upstream owns it.
         // The demo upstream is unreachable, so a bad gateway or timeout is fine, a 400 is not
-        var response = await _client.GetAsync("/api/500/Account/Accounts?$expand=Lines");
+        var response = await _client.GetAsync("/api/500/Account/Accounts?$expand=Lines", TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

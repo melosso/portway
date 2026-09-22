@@ -53,10 +53,10 @@ public class TokenServiceLastFullAccessGuardTests : IDisposable
     {
         var id = await SeedTokenAsync("solo-admin", "*", "*");
 
-        var ok = await _tokenService.UpdateTokenScopesAsync(id, "Products");
+        var ok = await _tokenService.UpdateTokenScopesAsync(id, "Products", TestContext.Current.CancellationToken);
 
         Assert.False(ok);
-        var token = await _db.Tokens.FindAsync(id);
+        var token = await _db.Tokens.FindAsync(new object?[] { id }, TestContext.Current.CancellationToken);
         Assert.Equal("*", token!.AllowedScopes);
     }
 
@@ -65,10 +65,10 @@ public class TokenServiceLastFullAccessGuardTests : IDisposable
     {
         var id = await SeedTokenAsync("solo-admin", "*", "*");
 
-        var ok = await _tokenService.UpdateTokenEnvironmentsAsync(id, "500");
+        var ok = await _tokenService.UpdateTokenEnvironmentsAsync(id, "500", TestContext.Current.CancellationToken);
 
         Assert.False(ok);
-        var token = await _db.Tokens.FindAsync(id);
+        var token = await _db.Tokens.FindAsync(new object?[] { id }, TestContext.Current.CancellationToken);
         Assert.Equal("*", token!.AllowedEnvironments);
     }
 
@@ -78,10 +78,10 @@ public class TokenServiceLastFullAccessGuardTests : IDisposable
         var id = await SeedTokenAsync("admin-one", "*", "*");
         await SeedTokenAsync("admin-two", "*", "*");
 
-        var ok = await _tokenService.UpdateTokenScopesAsync(id, "Products");
+        var ok = await _tokenService.UpdateTokenScopesAsync(id, "Products", TestContext.Current.CancellationToken);
 
         Assert.True(ok);
-        var token = await _db.Tokens.FindAsync(id);
+        var token = await _db.Tokens.FindAsync(new object?[] { id }, TestContext.Current.CancellationToken);
         Assert.Equal("Products", token!.AllowedScopes);
     }
 
@@ -90,10 +90,10 @@ public class TokenServiceLastFullAccessGuardTests : IDisposable
     {
         var id = await SeedTokenAsync("scoped-user", "Products", "*");
 
-        var ok = await _tokenService.UpdateTokenScopesAsync(id, "Customers");
+        var ok = await _tokenService.UpdateTokenScopesAsync(id, "Customers", TestContext.Current.CancellationToken);
 
         Assert.True(ok);
-        var token = await _db.Tokens.FindAsync(id);
+        var token = await _db.Tokens.FindAsync(new object?[] { id }, TestContext.Current.CancellationToken);
         Assert.Equal("Customers", token!.AllowedScopes);
     }
 }

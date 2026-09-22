@@ -181,9 +181,7 @@ public class ConcurrencyStressTests
 
         for (var i = 0; i < distinctKeys; i++)
         {
-            using var handle = await provider.AcquireLockAsync(
-                $"proxy:prod:/api/items?page={i}",
-                TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10));
+            using var handle = await provider.AcquireLockAsync($"proxy:prod:/api/items?page={i}", TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10), TestContext.Current.CancellationToken);
 
             Assert.NotNull(handle);
         }

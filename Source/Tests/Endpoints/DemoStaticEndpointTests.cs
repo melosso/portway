@@ -30,7 +30,7 @@ public class DemoStaticEndpointTests : ApiTestBase
     public async Task GetCostCenters_ValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Act: content file may not exist in test environment → 404 is acceptable
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -44,7 +44,7 @@ public class DemoStaticEndpointTests : ApiTestBase
         SetAllowedEnvironments("500", "700", "Synergy");
 
         // Act
-        var response = await _client.GetAsync($"/api/Synergy/{EndpointPath}");
+        var response = await _client.GetAsync($"/api/Synergy/{EndpointPath}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -58,7 +58,7 @@ public class DemoStaticEndpointTests : ApiTestBase
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
         // Act
-        var response = await _client.GetAsync($"/api/WMS/{EndpointPath}");
+        var response = await _client.GetAsync($"/api/WMS/{EndpointPath}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -68,7 +68,7 @@ public class DemoStaticEndpointTests : ApiTestBase
     public async Task GetCostCenters_GloballyDisallowedEnvironment_ReturnsBadRequest()
     {
         // Act
-        var response = await _client.GetAsync("/api/invalid/Masterdata/CostCenters");
+        var response = await _client.GetAsync("/api/invalid/Masterdata/CostCenters", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -81,7 +81,7 @@ public class DemoStaticEndpointTests : ApiTestBase
         _client.DefaultRequestHeaders.Authorization = null;
 
         // Act
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -94,7 +94,7 @@ public class DemoStaticEndpointTests : ApiTestBase
         var body = new StringContent("{}", Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _client.PostAsync(ApiPath, body);
+        var response = await _client.PostAsync(ApiPath, body, TestContext.Current.CancellationToken);
 
         // Assert: static endpoints have no POST handler → not found
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -105,7 +105,7 @@ public class DemoStaticEndpointTests : ApiTestBase
     {
         // Arrange: EnableFiltering: true; OData params should be accepted
         // Act
-        var response = await _client.GetAsync($"{ApiPath}?$filter=Code eq 'CC100'");
+        var response = await _client.GetAsync($"{ApiPath}?$filter=Code eq 'CC100'", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -116,7 +116,7 @@ public class DemoStaticEndpointTests : ApiTestBase
     public async Task GetCostCenters_AltValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Arrange: 700 is also in AllowedEnvironments
-        var response = await _client.GetAsync($"/api/700/{EndpointPath}");
+        var response = await _client.GetAsync($"/api/700/{EndpointPath}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

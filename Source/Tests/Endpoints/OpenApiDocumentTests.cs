@@ -13,11 +13,11 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task OpenApiDocument_Generates_And_Parses()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var json = await response.Content.ReadAsStringAsync();
+        var json = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
@@ -32,10 +32,10 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task SharedErrorResponse_ComponentSchema_IsRegistered()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var schemas = doc.RootElement.GetProperty("components").GetProperty("schemas");
 
         Assert.True(schemas.TryGetProperty("ErrorResponse", out var err), "ErrorResponse component should exist");
@@ -51,8 +51,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
         var query = paths.GetProperty("/api/{env}/Inventory/StockLevels").GetProperty("query");
@@ -73,8 +73,8 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task SharedErrorResponse_MediaTypeComponent_IsRegistered()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var mediaTypes = doc.RootElement.GetProperty("components").GetProperty("mediaTypes");
 
@@ -90,8 +90,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
         foreach (var (path, mediaType) in new[]
@@ -118,8 +118,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var pathItem = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/Masterdata/Countries");
         var query = pathItem.GetProperty("query");
@@ -138,8 +138,8 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task SecurityScheme_IsHttpBearer()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var bearer = doc.RootElement.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
 
@@ -157,8 +157,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var verbs = new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "MERGE", "QUERY" };
         var offenders = new List<string>();
@@ -192,10 +192,10 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task ScalarPage_PreselectsBearerScheme()
     {
-        var response = await _client.GetAsync("/docs");
+        var response = await _client.GetAsync("/docs", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var html = await response.Content.ReadAsStringAsync();
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Contains("\"\"preferredSecurityScheme\"\": \"\"Bearer\"\"".Replace("\"\"", "\""), html);
     }
 
@@ -203,8 +203,8 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task Document_DeclaresSelfUri()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var self = doc.RootElement.GetProperty("$self").GetString();
         Assert.NotNull(self);
@@ -218,8 +218,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
         var offenders = new List<string>();
@@ -254,8 +254,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var upload = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/files/Images").GetProperty("post");
         var multipart = upload.GetProperty("requestBody").GetProperty("content").GetProperty("multipart/form-data");
@@ -272,8 +272,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
         // Product/Products declares an Assortment navigation; Product/Stock declares none
@@ -309,8 +309,8 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
         var offenders = new List<string>();
@@ -341,10 +341,10 @@ public class OpenApiDocumentTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
 
         // Generate the OpenAPI document (runs the document filter over the live endpoint definitions)
-        var docResponse = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        var docResponse = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, docResponse.StatusCode);
 
-        using var doc = JsonDocument.Parse(await docResponse.Content.ReadAsStringAsync());
+        using var doc = JsonDocument.Parse(await docResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
         // The QUERY-only endpoint is documented as a native OpenAPI 3.2 query operation, never as GET
@@ -360,7 +360,7 @@ public class OpenApiDocumentTests : ApiTestBase
             "A QUERY-only endpoint must not be documented as GET");
 
         // Generating the document must not have enabled GET at runtime
-        var getResponse = await _client.GetAsync("/api/500/Inventory/StockLevels");
+        var getResponse = await _client.GetAsync("/api/500/Inventory/StockLevels", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.MethodNotAllowed, getResponse.StatusCode);
     }
 }

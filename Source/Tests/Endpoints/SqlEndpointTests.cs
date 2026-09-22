@@ -31,7 +31,7 @@ public class SqlEndpointTests : ApiTestBase
             .Returns(mockQueryResult);
         
         // Act
-        var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}?$filter=ItemCode eq 'TEST001'");
+        var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}?$filter=ItemCode eq 'TEST001'", TestContext.Current.CancellationToken);
         
         // The converter runs before any database access, so this holds even when SQL is unreachable
         _mockODataToSqlConverter.Verify(
@@ -63,7 +63,7 @@ public class SqlEndpointTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
         
         // Act
-        var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}");
+        var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}", TestContext.Current.CancellationToken);
         
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -80,7 +80,7 @@ public class SqlEndpointTests : ApiTestBase
         _client.DefaultRequestHeaders.Authorization = null;
         
         // Act
-        var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}");
+        var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}", TestContext.Current.CancellationToken);
         
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -141,7 +141,7 @@ public class SqlEndpointTests : ApiTestBase
         request.Headers.Add("X-Signature", signature);
 
         // Act
-        var response = await _client.SendAsync(request);
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
         
         // Assert: OK or InternalServerError (SQL unavailable) is acceptable, but never Unauthorized
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

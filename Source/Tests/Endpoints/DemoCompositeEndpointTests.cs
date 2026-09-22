@@ -45,7 +45,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     public async Task PostSalesInvoice_ValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Act: composite handler will attempt to call the backend; failure is acceptable
-        var response = await _client.PostAsync(ApiPath, ValidInvoiceBody);
+        var response = await _client.PostAsync(ApiPath, ValidInvoiceBody, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -56,7 +56,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     public async Task PostSalesInvoice_AltValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Arrange: 700 is also in AllowedEnvironments
-        var response = await _client.PostAsync($"/api/700/{EndpointPath}", ValidInvoiceBody);
+        var response = await _client.PostAsync($"/api/700/{EndpointPath}", ValidInvoiceBody, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -70,7 +70,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
         SetAllowedEnvironments("500", "700", "Synergy");
 
         // Act
-        var response = await _client.PostAsync($"/api/Synergy/{EndpointPath}", ValidInvoiceBody);
+        var response = await _client.PostAsync($"/api/Synergy/{EndpointPath}", ValidInvoiceBody, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -80,7 +80,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     public async Task PostSalesInvoice_GloballyDisallowedEnvironment_ReturnsBadRequest()
     {
         // Act
-        var response = await _client.PostAsync($"/api/invalid/{EndpointPath}", ValidInvoiceBody);
+        var response = await _client.PostAsync($"/api/invalid/{EndpointPath}", ValidInvoiceBody, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -93,7 +93,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
         _client.DefaultRequestHeaders.Authorization = null;
 
         // Act
-        var response = await _client.PostAsync(ApiPath, ValidInvoiceBody);
+        var response = await _client.PostAsync(ApiPath, ValidInvoiceBody, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -104,7 +104,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     {
         // Arrange: composite endpoints only support POST; GET must return 405
         // Act
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
@@ -114,7 +114,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     public async Task DeleteSalesInvoice_CompositeEndpointDeleteNotSupported_ReturnsMethodNotAllowed()
     {
         // Act
-        var response = await _client.DeleteAsync($"{ApiPath}/some-id");
+        var response = await _client.DeleteAsync($"{ApiPath}/some-id", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);

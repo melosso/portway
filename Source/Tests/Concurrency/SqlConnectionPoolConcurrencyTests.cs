@@ -40,7 +40,7 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
     public async Task StopAsync_AfterDispose_DoesNotThrow()
     {
         var pool = BuildPool();
-        await pool.PrewarmConnectionPoolAsync(_connectionString);
+        await pool.PrewarmConnectionPoolAsync(_connectionString, TestContext.Current.CancellationToken);
         await pool.StartAsync(CancellationToken.None);
 
         await pool.DisposeAsync();
@@ -53,7 +53,7 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
     public async Task ConcurrentConnections_UnderLoad_AllSucceed()
     {
         await using var pool = BuildPool();
-        await pool.PrewarmConnectionPoolAsync(_connectionString);
+        await pool.PrewarmConnectionPoolAsync(_connectionString, TestContext.Current.CancellationToken);
         await pool.StartAsync(CancellationToken.None);
 
         const int workers = 64;
@@ -66,7 +66,7 @@ public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
         {
             for (var i = 0; i < 10; i++)
                 await pool.MaintenanceTaskAsync();
-        });
+        }, TestContext.Current.CancellationToken);
 
         await Parallel.ForEachAsync(
             Enumerable.Range(0, workers),

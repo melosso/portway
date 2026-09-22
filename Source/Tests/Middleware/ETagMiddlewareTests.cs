@@ -34,7 +34,7 @@ public class ETagMiddlewareTests
         Assert.StartsWith("\"", etag);
         Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
         context.Response.Body.Position = 0;
-        Assert.Equal("""{"value":[1,2]}""", await new StreamReader(context.Response.Body).ReadToEndAsync());
+        Assert.Equal("""{"value":[1,2]}""", await new StreamReader(context.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public class ETagMiddlewareTests
 
         Assert.True(string.IsNullOrEmpty(context.Response.Headers.ETag.ToString()));
         context.Response.Body.Position = 0;
-        Assert.Equal("payload", await new StreamReader(context.Response.Body).ReadToEndAsync());
+        Assert.Equal("payload", await new StreamReader(context.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -92,6 +92,6 @@ public class ETagMiddlewareTests
 
         Assert.True(string.IsNullOrEmpty(context.Response.Headers.ETag.ToString()));
         context.Response.Body.Position = 0;
-        Assert.Equal("""{"error":"boom"}""", await new StreamReader(context.Response.Body).ReadToEndAsync());
+        Assert.Equal("""{"error":"boom"}""", await new StreamReader(context.Response.Body).ReadToEndAsync(TestContext.Current.CancellationToken));
     }
 }

@@ -11,12 +11,12 @@ public class HealthCheckEndpointTests : ApiTestBase
     public async Task GetHealthLive_ReturnsOk()
     {
         // Act
-        var response = await _client.GetAsync("/health/live");
+        var response = await _client.GetAsync("/health/live", TestContext.Current.CancellationToken);
         
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.Equal("Alive", content);
     }
     
@@ -24,12 +24,12 @@ public class HealthCheckEndpointTests : ApiTestBase
     public async Task GetHealth_WithAuthorization_ReturnsOk()
     {
         // Act
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/health", TestContext.Current.CancellationToken);
         
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var result = JsonSerializer.Deserialize<Dictionary<string, object>>(content);
         
         Assert.NotNull(result);
@@ -41,12 +41,12 @@ public class HealthCheckEndpointTests : ApiTestBase
     public async Task GetHealthDetails_WithAuthorization_ReturnsOk()
     {
         // Act
-        var response = await _client.GetAsync("/health/details");
+        var response = await _client.GetAsync("/health/details", TestContext.Current.CancellationToken);
         
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         
-        var content = await response.Content.ReadAsStringAsync();
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var result = JsonSerializer.Deserialize<Dictionary<string, object>>(content);
         
         Assert.NotNull(result);
@@ -62,7 +62,7 @@ public class HealthCheckEndpointTests : ApiTestBase
         // The summary endpoint is public so the dashboard badge works without a Bearer token
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var response = await _client.GetAsync("/health");
+        var response = await _client.GetAsync("/health", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -73,7 +73,7 @@ public class HealthCheckEndpointTests : ApiTestBase
         // The detailed report keeps requiring a token
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var response = await _client.GetAsync("/health/details");
+        var response = await _client.GetAsync("/health/details", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

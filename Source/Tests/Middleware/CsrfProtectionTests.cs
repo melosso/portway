@@ -60,7 +60,7 @@ public class CsrfProtectionTests : ApiTestBase
         request.Headers.Add("Sec-Fetch-Site", "cross-site");
         request.Headers.Add("Origin", "https://evil.example");
 
-        var response = await _client.SendAsync(request);
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

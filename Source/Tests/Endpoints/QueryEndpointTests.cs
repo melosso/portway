@@ -29,7 +29,7 @@ public class QueryEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.SendAsync(Query("/api/500/Inventory/StockLevels", "{\"filter\":\"Quantity gt 0\"}"));
+        var response = await _client.SendAsync(Query("/api/500/Inventory/StockLevels", "{\"filter\":\"Quantity gt 0\"}"), TestContext.Current.CancellationToken);
 
         // Not gated out (405), not an auth/format error; a backend failure (500) is acceptable in the mocked test host
         Assert.NotEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
@@ -44,7 +44,7 @@ public class QueryEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/api/500/Inventory/StockLevels");
+        var response = await _client.GetAsync("/api/500/Inventory/StockLevels", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -55,7 +55,7 @@ public class QueryEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.SendAsync(Query("/api/WMS/WMS/Warehouses", "{\"filter\":\"Id eq 1\"}"));
+        var response = await _client.SendAsync(Query("/api/WMS/WMS/Warehouses", "{\"filter\":\"Id eq 1\"}"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -66,7 +66,7 @@ public class QueryEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.SendAsync(Query("/api/500/Account/Accounts"));
+        var response = await _client.SendAsync(Query("/api/500/Account/Accounts"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -77,7 +77,7 @@ public class QueryEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy");
 
-        var response = await _client.SendAsync(Query("/api/500/Masterdata/CostCenters"));
+        var response = await _client.SendAsync(Query("/api/500/Masterdata/CostCenters"), TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);

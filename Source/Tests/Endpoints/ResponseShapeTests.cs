@@ -19,7 +19,7 @@ public class ResponseShapeTests : ApiTestBase
     public async Task BadEnv_Returns400_WithErrorShape()
     {
         // Environment "notallowed" is not in the global allowed list
-        var response = await _client.GetAsync("/api/notallowed/SomeEndpoint");
+        var response = await _client.GetAsync("/api/notallowed/SomeEndpoint", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
@@ -41,8 +41,7 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         // POST to an unknown endpoint that won't match any type
-        var response = await _client.PostAsync("/api/500/nonexistent-xyz-unknown",
-            new StringContent("{}", Encoding.UTF8, "application/json"));
+        var response = await _client.PostAsync("/api/500/nonexistent-xyz-unknown", new StringContent("{}", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
@@ -59,7 +58,7 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         // GET to the demo composite endpoint (Financial/SalesInvoice only supports POST)
-        var response = await _client.GetAsync("/api/500/Financial/SalesInvoice");
+        var response = await _client.GetAsync("/api/500/Financial/SalesInvoice", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
 
@@ -73,7 +72,7 @@ public class ResponseShapeTests : ApiTestBase
     public async Task ErrorShape_HasExactlyTwoTopLevelKeys()
     {
         // Error shape must be { success, error }; nothing else
-        var response = await _client.GetAsync("/api/notallowed/SomeEndpoint");
+        var response = await _client.GetAsync("/api/notallowed/SomeEndpoint", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
@@ -91,7 +90,7 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         // CustomerData is a real demo file endpoint for environment 500; an empty listing still returns the envelope
-        var response = await _client.GetAsync("/api/500/files/CustomerData/list");
+        var response = await _client.GetAsync("/api/500/files/CustomerData/list", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -131,7 +130,7 @@ public class ResponseShapeTests : ApiTestBase
                 new Dictionary<string, object>()));
 
         // WMS/Warehouses is a real demo SQL endpoint with GET allowed
-        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses");
+        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -158,7 +157,7 @@ public class ResponseShapeTests : ApiTestBase
         // DELETE on a non-existent file returns 404 with error shape,
         // but a successful delete must return mutation shape
         // We test the error path here to verify shape correctness
-        var response = await _client.DeleteAsync("/api/500/files/attachments/nonexistent-file-id");
+        var response = await _client.DeleteAsync("/api/500/files/attachments/nonexistent-file-id", TestContext.Current.CancellationToken);
 
         // Either 404 (file not found) or 400/500; both should have { success, error }
         if (response.StatusCode == HttpStatusCode.NotFound ||
@@ -186,11 +185,11 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         // '/api/{env}/webhook/{id}' is no longer a webhook; GET resolves to an unknown endpoint
-        var response = await _client.GetAsync("/api/500/webhook/somewebhook");
+        var response = await _client.GetAsync("/api/500/webhook/somewebhook", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var bodyStr = await response.Content.ReadAsStringAsync();
+        var bodyStr = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.NotEmpty(bodyStr);
 
         // Should be valid JSON with { success: false, error: string }
@@ -207,11 +206,11 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500");
 
         var content = new StringContent("{}", Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync("/api/500/webhook/somewebhook", content);
+        var response = await _client.PostAsync("/api/500/webhook/somewebhook", content, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Gone, response.StatusCode);
 
-        var bodyStr = await response.Content.ReadAsStringAsync();
+        var bodyStr = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         Assert.NotEmpty(bodyStr);
 
         // Should be valid JSON with { success: false, error: string } and mention the new namespaced route
@@ -232,7 +231,7 @@ public class ResponseShapeTests : ApiTestBase
         {
             Content = new StringContent("{}", Encoding.UTF8, "text/plain")
         };
-        var response = await _client.SendAsync(req);
+        var response = await _client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
     }
@@ -247,7 +246,7 @@ public class ResponseShapeTests : ApiTestBase
         {
             Content = new StringContent("{ not json", Encoding.UTF8, "application/json")
         };
-        var response = await _client.SendAsync(req);
+        var response = await _client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -262,7 +261,7 @@ public class ResponseShapeTests : ApiTestBase
         {
             Content = new StringContent("[]", Encoding.UTF8, "application/json")
         };
-        var response = await _client.SendAsync(req);
+        var response = await _client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -277,7 +276,7 @@ public class ResponseShapeTests : ApiTestBase
         {
             Content = new StringContent("{\"filter\":\"Id eq 1\"}", Encoding.UTF8, "application/json")
         };
-        var response = await _client.SendAsync(req);
+        var response = await _client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -297,7 +296,7 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
 
         // No SQL server is reachable from the test host, so this endpoint fails on connect
-        var response = await _client.GetAsync("/api/500/Product/Products");
+        var response = await _client.GetAsync("/api/500/Product/Products", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
 

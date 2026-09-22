@@ -32,7 +32,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     public async Task GetAccounts_ValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Act
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert: auth and routing succeeded; backend failure is acceptable
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -43,7 +43,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     public async Task GetAccounts_GloballyDisallowedEnvironment_ReturnsBadRequest()
     {
         // Act
-        var response = await _client.GetAsync("/api/invalid/Account/Accounts");
+        var response = await _client.GetAsync("/api/invalid/Account/Accounts", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -56,7 +56,7 @@ public class DemoProxyEndpointTests : ApiTestBase
         _client.DefaultRequestHeaders.Authorization = null;
 
         // Act
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -69,7 +69,7 @@ public class DemoProxyEndpointTests : ApiTestBase
         var body = new StringContent("""{"Name":"Test Corp","Type":"Customer"}""", Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _client.PostAsync(ApiPath, body);
+        var response = await _client.PostAsync(ApiPath, body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -84,7 +84,7 @@ public class DemoProxyEndpointTests : ApiTestBase
         var body = new StringContent("""{"Name":"Updated Corp"}""", Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _client.PutAsync($"{ApiPath}/guid'some-guid'", body);
+        var response = await _client.PutAsync($"{ApiPath}/guid'some-guid'", body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -96,7 +96,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     public async Task DeleteAccounts_ValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Arrange: DELETE is an allowed method; Act
-        var response = await _client.DeleteAsync($"{ApiPath}/guid'some-guid'");
+        var response = await _client.DeleteAsync($"{ApiPath}/guid'some-guid'", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -111,7 +111,7 @@ public class DemoProxyEndpointTests : ApiTestBase
         _client.DefaultRequestHeaders.Authorization = null;
 
         // Act
-        var response = await _client.GetAsync($"/api/700/{EndpointPath}");
+        var response = await _client.GetAsync($"/api/700/{EndpointPath}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -121,7 +121,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     public async Task GetAccounts_AltValidEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Arrange: Account/Accounts has no AllowedEnvironments restriction, so 700 is valid; Act
-        var response = await _client.GetAsync($"/api/700/{EndpointPath}");
+        var response = await _client.GetAsync($"/api/700/{EndpointPath}", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

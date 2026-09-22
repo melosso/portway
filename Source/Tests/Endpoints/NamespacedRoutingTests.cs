@@ -19,7 +19,7 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/api/500/Product/Products");
+        var response = await _client.GetAsync("/api/500/Product/Products", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
     }
@@ -30,10 +30,10 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/api/500/Production/Lines");
+        var response = await _client.GetAsync("/api/500/Production/Lines", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.NotEmpty(await response.Content.ReadAsStringAsync());
+        Assert.NotEmpty(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
     }
 
     // Resolution runs before the Enabled gate, so disabled answers 503 not 404
@@ -43,7 +43,7 @@ public class NamespacedRoutingTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
 
         // Production/Machines ships with Enabled false
-        var response = await _client.GetAsync("/api/500/Production/Machines");
+        var response = await _client.GetAsync("/api/500/Production/Machines", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
@@ -54,11 +54,10 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.PostAsync("/api/500/Financial/SalesInvoice",
-            new StringContent("{}", Encoding.UTF8, "application/json"));
+        var response = await _client.PostAsync("/api/500/Financial/SalesInvoice", new StringContent("{}", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         // Only the composite handler reports which step failed
-        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.True(body.RootElement.TryGetProperty("step", out _),
             "Composite endpoints must resolve to the composite handler, not the proxy handler");
         Assert.True(body.RootElement.TryGetProperty("completedSteps", out _));
@@ -70,7 +69,7 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/api/500/Inventory/StockLevels");
+        var response = await _client.GetAsync("/api/500/Inventory/StockLevels", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -81,7 +80,7 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        var response = await _client.GetAsync("/api/500/NoSuchNamespace/NoSuchEndpoint");
+        var response = await _client.GetAsync("/api/500/NoSuchNamespace/NoSuchEndpoint", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
@@ -104,7 +103,7 @@ public class NamespacedRoutingTests : ApiTestBase
             });
         AddAuthorizationHeader("wms-scoped-token");
 
-        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins");
+        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

@@ -29,7 +29,7 @@ public class MergeEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.SendAsync(Merge("/api/WMS/WMS/Bins", "{\"Id\":1,\"Zone\":\"A\"}"));
+        var response = await _client.SendAsync(Merge("/api/WMS/WMS/Bins", "{\"Id\":1,\"Zone\":\"A\"}"), TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.NotFound, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
@@ -42,7 +42,7 @@ public class MergeEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.SendAsync(Merge("/api/WMS/WMS/Warehouses", "{\"Id\":1}"));
+        var response = await _client.SendAsync(Merge("/api/WMS/WMS/Warehouses", "{\"Id\":1}"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -53,7 +53,7 @@ public class MergeEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.SendAsync(Merge("/api/500/Account/Accounts"));
+        var response = await _client.SendAsync(Merge("/api/500/Account/Accounts"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -64,8 +64,8 @@ public class MergeEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var pathItem = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/WMS/Bins");
         var merge = pathItem.GetProperty("additionalOperations").GetProperty("MERGE");

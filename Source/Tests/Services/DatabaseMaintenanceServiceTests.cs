@@ -67,7 +67,7 @@ public class DatabaseMaintenanceServiceTests : IDisposable
         var sizeBefore = new FileInfo(dbPath).Length;
 
         var service = CreateService(new DatabaseMaintenanceOptions { FreePageRatioThreshold = 0.25 }, dbPath);
-        var results = await service.RunOnceAsync();
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
 
         var result = Assert.Single(results, r => r.Database == "traffic_logs.db");
         Assert.True(result.Analyzed);
@@ -97,7 +97,7 @@ public class DatabaseMaintenanceServiceTests : IDisposable
         SqliteConnection.ClearAllPools();
 
         var service = CreateService(new DatabaseMaintenanceOptions { FreePageRatioThreshold = 0.25 }, dbPath);
-        var results = await service.RunOnceAsync();
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
 
         var result = Assert.Single(results, r => r.Database == "traffic_logs.db");
         Assert.True(result.Analyzed);
@@ -109,7 +109,7 @@ public class DatabaseMaintenanceServiceTests : IDisposable
     public async Task RunOnce_IgnoresMissingDatabases()
     {
         var service = CreateService(new DatabaseMaintenanceOptions(), Path.Combine(_dir, "missing.db"));
-        var results = await service.RunOnceAsync();
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
         Assert.DoesNotContain(results, r => r.Database == "missing.db");
     }
 

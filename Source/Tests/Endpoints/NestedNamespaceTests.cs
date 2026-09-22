@@ -34,11 +34,11 @@ public class NestedNamespaceTests : ApiTestBase
         SetAllowedEnvironments("WMS");
         StubODataTranslation("SELECT Id, Code, Zone, CapacityUnits, IsActive FROM Bins LIMIT 10");
 
-        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins");
+        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.True(doc.RootElement.TryGetProperty("value", out _));
     }
 
@@ -49,7 +49,7 @@ public class NestedNamespaceTests : ApiTestBase
         SetAllowedEnvironments("WMS");
         StubODataTranslation("SELECT Id, Code, Name FROM Warehouses LIMIT 10");
 
-        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses");
+        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -61,7 +61,7 @@ public class NestedNamespaceTests : ApiTestBase
         SetAllowedEnvironments("WMS");
         StubODataTranslation("SELECT Id, Code, Zone, CapacityUnits, IsActive FROM Bins LIMIT 10");
 
-        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins/1");
+        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins/1", TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.NotFound, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.MethodNotAllowed, response.StatusCode);
@@ -73,8 +73,8 @@ public class NestedNamespaceTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var tags = doc.RootElement.GetProperty("tags").EnumerateArray().ToList();
 

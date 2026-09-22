@@ -46,7 +46,7 @@ public class DemoSqlEndpointTests : ApiTestBase
     public async Task GetWarehouses_ValidWmsEnvironment_NotUnauthorizedOrBadRequest()
     {
         // Act
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert: auth and routing succeeded; backend failure is acceptable
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -60,7 +60,7 @@ public class DemoSqlEndpointTests : ApiTestBase
         SetAllowedEnvironments("500", "WMS");
 
         // Act
-        var response = await _client.GetAsync("/api/500/WMS/Warehouses");
+        var response = await _client.GetAsync("/api/500/WMS/Warehouses", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -73,7 +73,7 @@ public class DemoSqlEndpointTests : ApiTestBase
         SetAllowedEnvironments(ValidEnv);
 
         // Act
-        var response = await _client.GetAsync("/api/invalid/WMS/Warehouses");
+        var response = await _client.GetAsync("/api/invalid/WMS/Warehouses", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -86,7 +86,7 @@ public class DemoSqlEndpointTests : ApiTestBase
         _client.DefaultRequestHeaders.Authorization = null;
 
         // Act
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -99,7 +99,7 @@ public class DemoSqlEndpointTests : ApiTestBase
         var body = new StringContent("""{"Code":"W01","Name":"Main"}""", Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _client.PostAsync(ApiPath, body);
+        var response = await _client.PostAsync(ApiPath, body, TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
@@ -109,7 +109,7 @@ public class DemoSqlEndpointTests : ApiTestBase
     public async Task GetWarehouses_WithODataFilter_ConverterCalledWithWarehousesObjectName()
     {
         // Act
-        var response = await _client.GetAsync($"{ApiPath}?$filter=IsActive eq true");
+        var response = await _client.GetAsync($"{ApiPath}?$filter=IsActive eq true", TestContext.Current.CancellationToken);
 
         // If the DB is reachable the assertion on the converter call confirms routing
 
@@ -127,7 +127,7 @@ public class DemoSqlEndpointTests : ApiTestBase
     public async Task GetWarehouses_WithODataSelect_ConverterCalledWithSelectParam()
     {
         // Act
-        var response = await _client.GetAsync($"{ApiPath}?$select=Code,Name,City");
+        var response = await _client.GetAsync($"{ApiPath}?$select=Code,Name,City", TestContext.Current.CancellationToken);
 
 
         // Assert
@@ -144,7 +144,7 @@ public class DemoSqlEndpointTests : ApiTestBase
     public async Task GetWarehouses_WithODataOrderBy_ConverterCalledWithOrderByParam()
     {
         // Act
-        var response = await _client.GetAsync($"{ApiPath}?$orderby=Code asc");
+        var response = await _client.GetAsync($"{ApiPath}?$orderby=Code asc", TestContext.Current.CancellationToken);
 
 
         // Assert
@@ -161,7 +161,7 @@ public class DemoSqlEndpointTests : ApiTestBase
     public async Task GetWarehouses_WithTopAndSkip_ConverterCalledWithPagingParams()
     {
         // Act
-        var response = await _client.GetAsync($"{ApiPath}?$top=10&$skip=20");
+        var response = await _client.GetAsync($"{ApiPath}?$top=10&$skip=20", TestContext.Current.CancellationToken);
 
 
         // Assert

@@ -25,12 +25,12 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task DisabledEndpoint_Returns503_WithSharedEnvelopeAndRetryAfter()
     {
-        var response = await _client.GetAsync(DisabledPath);
+        var response = await _client.GetAsync(DisabledPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Equal("3600", Assert.Single(response.Headers.GetValues("Retry-After")));
 
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         Assert.False(doc.RootElement.GetProperty("success").GetBoolean());
         Assert.False(string.IsNullOrWhiteSpace(doc.RootElement.GetProperty("error").GetString()));
     }
@@ -38,7 +38,7 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task DisabledEndpoint_RejectsFilteredReads_Too()
     {
-        var response = await _client.GetAsync($"{DisabledPath}?$filter=Id eq 1");
+        var response = await _client.GetAsync($"{DisabledPath}?$filter=Id eq 1", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
@@ -46,7 +46,7 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task EnabledEndpoint_IsUnaffected()
     {
-        var response = await _client.GetAsync("/api/500/Masterdata/CostCenters");
+        var response = await _client.GetAsync("/api/500/Masterdata/CostCenters", TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
@@ -54,8 +54,8 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task DisabledEndpoint_StaysInTheDocument_MarkedUnavailable()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var operation = doc.RootElement.GetProperty("paths")
             .GetProperty("/api/{env}/Production/Machines")
@@ -68,8 +68,8 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task EveryOperation_Documents503()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
-        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var offenders = new List<string>();
         foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())

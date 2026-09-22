@@ -102,8 +102,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     {
         var envelope = """{"jsonrpc":"2.0","method":"call","params":{"service":"common","method":"authenticate","args":["db","user","key",{}]}}""";
 
-        var response = await _client.PostAsync(ApiPath,
-            new StringContent(envelope, Encoding.UTF8, "application/json"));
+        var response = await _client.PostAsync(ApiPath, new StringContent(envelope, Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("POST", _upstream.Method);
@@ -116,8 +115,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     {
         var query = """{"query":"{ getProductListing(first: 25) { edges { node { id name } } } }"}""";
 
-        var response = await _client.PostAsync(ApiPath,
-            new StringContent(query, Encoding.UTF8, "application/json"));
+        var response = await _client.PostAsync(ApiPath, new StringContent(query, Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(query, _upstream.Body);
@@ -128,8 +126,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     {
         var xml = """<?xml version="1.0"?><methodCall><methodName>execute</methodName></methodCall>""";
 
-        var response = await _client.PostAsync(ApiPath,
-            new StringContent(xml, Encoding.UTF8, "application/xml"));
+        var response = await _client.PostAsync(ApiPath, new StringContent(xml, Encoding.UTF8, "application/xml"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(xml, _upstream.Body);
@@ -141,7 +138,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     [Fact]
     public async Task QueryParameters_PassThroughUntouched()
     {
-        var response = await _client.GetAsync(ApiPath + "?filterfieldids=ItemCode&filtervalues=A0001&take=100");
+        var response = await _client.GetAsync(ApiPath + "?filterfieldids=ItemCode&filtervalues=A0001&take=100", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("filterfieldids=ItemCode", _upstream.PathAndQuery);
@@ -156,7 +153,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     {
         SetEnvironmentHeaders(new() { ["xc-token"] = "nocodb-secret-token" });
 
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("nocodb-secret-token", _upstream.Headers["xc-token"]);
@@ -167,7 +164,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     [Fact]
     public async Task ClientAuthorization_IsForwardedUpstream()
     {
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Bearer test-token", _upstream.Headers["Authorization"]);
@@ -179,7 +176,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
         // Pins the documented collision: client bearer and environment value both reach upstream as a multi-valued header
         SetEnvironmentHeaders(new() { ["Authorization"] = "Bearer upstream_token" });
 
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var auth = _upstream.Headers["Authorization"];
@@ -195,7 +192,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Get, ApiPath);
         request.Headers.Add("Cookie", "B1SESSION=abc123; ROUTEID=.node1");
 
-        var response = await _client.SendAsync(request);
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("B1SESSION=abc123", _upstream.Headers["Cookie"]);
@@ -206,7 +203,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     {
         _upstream.ResponseHeaders["Set-Cookie"] = "B1SESSION=xyz789; Path=/; HttpOnly";
 
-        var response = await _client.GetAsync(ApiPath);
+        var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains(response.Headers, h =>
@@ -220,8 +217,7 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     public async Task PutMethod_TranslatesToMergeUpstream()
     {
         // Demo endpoint config: HttpMethodTranslation "PUT:MERGE" plus X-Custom-Original-Method append header
-        var response = await _client.PutAsync(ApiPath + "(guid'11111111-1111-1111-1111-111111111111')",
-            new StringContent("""{"Name":"Updated"}""", Encoding.UTF8, "application/json"));
+        var response = await _client.PutAsync(ApiPath + "(guid'11111111-1111-1111-1111-111111111111')", new StringContent("""{"Name":"Updated"}""", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("MERGE", _upstream.Method);
@@ -248,8 +244,7 @@ public class ContentNegotiationByEndpointTypeTests : ApiTestBase
     [Fact]
     public async Task XmlPost_ToSqlEndpoint_Returns415()
     {
-        var response = await _client.PostAsync("/api/700/Product/Products",
-            new StringContent("<item/>", System.Text.Encoding.UTF8, "application/xml"));
+        var response = await _client.PostAsync("/api/700/Product/Products", new StringContent("<item/>", System.Text.Encoding.UTF8, "application/xml"), TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.UnsupportedMediaType, response.StatusCode);
     }
@@ -257,8 +252,7 @@ public class ContentNegotiationByEndpointTypeTests : ApiTestBase
     [Fact]
     public async Task JsonPost_ToSqlEndpoint_PassesContentGate()
     {
-        var response = await _client.PostAsync("/api/700/Product/Products",
-            new StringContent("""{"x":1}""", System.Text.Encoding.UTF8, "application/json"));
+        var response = await _client.PostAsync("/api/700/Product/Products", new StringContent("""{"x":1}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         // Downstream SQL failure is fine; the content gate specifically is what must not fire
         Assert.NotEqual(System.Net.HttpStatusCode.UnsupportedMediaType, response.StatusCode);
@@ -292,8 +286,7 @@ public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
     [Fact]
     public async Task BakedQuery_TravelsWithPlainPost()
     {
-        var response = await _client.PostAsync("/api/500/QueryUrlTest",
-            new StringContent("""{"query":"{ ping }"}""", System.Text.Encoding.UTF8, "application/json"));
+        var response = await _client.PostAsync("/api/500/QueryUrlTest", new StringContent("""{"query":"{ ping }"}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("/graphql?apikey=SECRET", _upstream.PathAndQuery);
@@ -302,7 +295,7 @@ public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
     [Fact]
     public async Task ClientQuery_MergesAfterBakedQuery()
     {
-        var response = await _client.GetAsync("/api/500/QueryUrlTest?x=1");
+        var response = await _client.GetAsync("/api/500/QueryUrlTest?x=1", TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("/graphql?apikey=SECRET&x=1", _upstream.PathAndQuery);
@@ -311,7 +304,7 @@ public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
     [Fact]
     public async Task ClientParameter_CannotOverrideBakedParameter()
     {
-        var response = await _client.GetAsync("/api/500/QueryUrlTest?apikey=evil&x=1");
+        var response = await _client.GetAsync("/api/500/QueryUrlTest?apikey=evil&x=1", TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("/graphql?apikey=SECRET&x=1", _upstream.PathAndQuery);
@@ -320,7 +313,7 @@ public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
     [Fact]
     public async Task RemainingPath_AppendsToPathNotQuery()
     {
-        var response = await _client.GetAsync("/api/500/QueryUrlTest/sub/path");
+        var response = await _client.GetAsync("/api/500/QueryUrlTest/sub/path", TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("/graphql/sub/path?apikey=SECRET", _upstream.PathAndQuery);
