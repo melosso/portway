@@ -5,11 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 /// <summary>
-/// Console accounts: hashing, verification and the one-time migration off WebUi:AdminApiKey
+/// Console user authentication, account management, and initial seed migration.
 /// </summary>
 public class AdminUserService
 {
-    // PBKDF2-SHA256 above the OWASP minimum, in the same envelope Baseport uses
     private const int Iterations = 600_000;
     private const int SaltBytes = 16;
     private const int HashBytes = 32;
@@ -18,7 +17,6 @@ public class AdminUserService
     public const int PasswordMin = 12;
     public const int PasswordMax = 256;
 
-    // No characters a person misreads off a log line
     private const string ReadableAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
     private readonly AuthDbContext _db;
@@ -53,13 +51,12 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Null when the name is acceptable, otherwise the reason it is not
+    /// Validates username format and length constraints. Returns an error message if invalid.
     /// </summary>
     public static string? ValidateUsername(string? username)
     {
         if (string.IsNullOrWhiteSpace(username)) return "A username is required";
         if (username.Length > UsernameMax) return $"A username may be at most {UsernameMax} characters";
-        // Deliberately narrow: a username appears in logs and audit lines, and must not be able to forge one
         if (!System.Text.RegularExpressions.Regex.IsMatch(username, @"^[a-zA-Z0-9._-]+$"))
             return "A username may contain letters, numbers, dots, hyphens and underscores";
         return null;
@@ -94,13 +91,12 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Verifies a sign-in and stamps the login time; null on any failure, with no reason leaked to the caller
+    /// Authenticates credentials using constant-time evaluation and updates <c>LastLoginAt</c>.
     /// </summary>
     public async Task<AdminUser?> AuthenticateAsync(string username, string password)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);
 
-        // Hash regardless of whether the account exists, so a missing user and a wrong password cost the same
         var stored = user?.PasswordHash ?? HashPassword("no-such-account");
         var ok = VerifyPassword(password, stored);
 
@@ -151,7 +147,7 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// True when this is the last account that can still administer the console
+    /// Checks if the given account is the sole remaining active administrator.
     /// </summary>
     public async Task<bool> IsLastAdministratorAsync(int id)
     {
@@ -161,25 +157,23 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Gives a new deployment an account to sign in with. An existing WebUi:AdminApiKey becomes that
-    /// account's password so an upgrade stays reachable; otherwise one is generated and logged once.
-    /// Either way the password must be changed at the first sign-in, because it was printed or sat in configuration.
+    /// Provision initial admin credentials for a new deployment.
+    /// Uses existing <c>WebUi:AdminApiKey</c> or generates a temporary password.
+    /// Requires a password reset on first login.
     /// </summary>
-    public async Task SeedFirstAccountAsync(string adminApiKey)
+    public async Task SeedFirstAccountAsync(PortwayApi.Helpers.AdminSeedKey adminApiKey)
     {
         if (await _db.AdminUsers.AnyAsync())
         {
-            if (!string.IsNullOrEmpty(adminApiKey))
+            if (adminApiKey.IsConfigured)
                 Log.Warning("WebUi:AdminApiKey is set but no longer used for sign-in; console accounts have replaced it and the setting can be removed");
             return;
         }
 
-        var migrating = !string.IsNullOrEmpty(adminApiKey);
+        var migrating = adminApiKey.IsConfigured;
 
-        // A migration keeps a predictable name because the operator already holds the key. A new deployment
-        // does not, and a guessable operator name is half of every credential-stuffing attempt.
         var username = migrating ? "admin" : "admin-" + RandomNumberGenerator.GetString(ReadableAlphabet, 8);
-        var password = migrating ? adminApiKey : RandomNumberGenerator.GetString(ReadableAlphabet, 24);
+        var password = migrating ? adminApiKey.Value! : RandomNumberGenerator.GetString(ReadableAlphabet, 24);
 
         _db.AdminUsers.Add(new AdminUser
         {
@@ -204,22 +198,20 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Confirms the signed-in account's own password. A session is not enough to change who can sign
-    /// in: a borrowed one must not be able to add a way back in, or take somebody else's away.
+    /// Verifies current user password before executing high-privilege account actions.
     /// </summary>
     public async Task<bool> ConfirmPasswordAsync(int userId, string password)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null || !user.IsActive) return false;
 
-        // A federated account has no password to confirm with; it must set one before it can manage accounts
         if (user.PasswordHash.Length == 0) return false;
 
         return VerifyPassword(password, user.PasswordHash);
     }
 
     /// <summary>
-    /// Replaces a password the account did not choose; verifies the current one so a borrowed session cannot do it
+    /// Validates current password and updates to a new password while clearing <c>MustChangePassword</c>.
     /// </summary>
     public async Task<bool> ChangePasswordAsync(string username, string currentPassword, string newPassword)
     {

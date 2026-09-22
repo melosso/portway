@@ -29,8 +29,7 @@ public sealed class MetadataInitializationService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Wait until the HTTP server is fully started before touching the database,
-        // so the app is always ready to serve requests (health, UI, OpenAPI) immediately
+        // Wait until the HTTP server is fully started before touching the database
         await WaitForApplicationStartedAsync(stoppingToken);
 
         if (stoppingToken.IsCancellationRequested)

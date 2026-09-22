@@ -7,12 +7,12 @@ using PortwayApi.Services.Mcp;
 using Serilog;
 
 /// <summary>
-/// Startup initialisation for the MCP config and auth databases plus cache connectivity logging
+/// Startup extensions for database initialization and cache connection logging.
 /// </summary>
 public static class DatabaseStartupExtensions
 {
     /// <summary>
-    /// Initialises mcp.db unconditionally so the setup wizard works even before Mcp:Enabled is true
+    /// Initializes the MCP configuration database.
     /// </summary>
     public static async Task InitializeMcpConfigDatabaseAsync(this WebApplication app)
     {
@@ -31,24 +31,22 @@ public static class DatabaseStartupExtensions
         }
     }
 
-    /// Creates auth.db when needed and generates a default token if none exist. Not caught: a swallowed failure here leaves WebUiAuthState.Enabled false, which reads as "no accounts yet" and skips the console login check entirely instead of denying.
-    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, string adminApiKey)
+    /// <summary>
+    /// Initializes the auth database, seeds the initial admin account, and generates a default token if none exist.
+    /// </summary>
+    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey)
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
         var tokenService = scope.ServiceProvider.GetRequiredService<TokenService>();
         var users = scope.ServiceProvider.GetRequiredService<AdminUserService>();
 
-        // Set up database and migrate if required
         context.Database.EnsureCreated();
         context.EnsureTablesCreated();
 
-        // Console accounts replaced WebUi:AdminApiKey; move an existing key into the first account
         await users.SeedFirstAccountAsync(adminApiKey);
         PortwayApi.Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
 
-        // Bootstrap convenience, not a security control: a failure here leaves zero tokens, which the
-        // data plane already fails closed on, so it only needs to be logged, not fatal to the app.
         try
         {
             var activeTokens = await tokenService.GetActiveTokensAsync();
@@ -70,7 +68,7 @@ public static class DatabaseStartupExtensions
     }
 
     /// <summary>
-    /// Logs the configured cache provider and its connection state
+    /// Logs configured cache provider status and connection state.
     /// </summary>
     public static void LogCacheConfiguration(this WebApplication app)
     {
