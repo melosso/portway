@@ -17,7 +17,7 @@ public class RateLimiterTests
         int ipLimit = 10000,
         int tokenLimit = 10000,
         bool enabled = true,
-        string adminApiKey = "",
+        bool webUiEnabled = false,
         TimeProvider? timeProvider = null)
     {
         var settings = new RateLimitSettings
@@ -34,7 +34,7 @@ public class RateLimiterTests
         var logger = new Mock<ILogger<RateLimiter>>().Object;
 
         var telemetryOptions = new PortwayApi.Services.Telemetry.TelemetryOptions();
-        return new RateLimiter(next, settings, store, new RateLimiterState(), tp, logger, telemetryOptions, adminApiKey);
+        return new RateLimiter(next, settings, store, new RateLimiterState(), tp, logger, telemetryOptions, webUiEnabled);
     }
 
     // Mints a session cookie in the same format WebUiAuthHelper.ResolveSession expects
@@ -170,7 +170,7 @@ public class RateLimiterTests
     public async Task InvokeAsync_UiWithValidSessionCookie_IsExempt()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 2, adminApiKey: TestAdminKey);
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 2, webUiEnabled: true);
         var cookie = MintValidSessionCookie(TestAdminKey);
 
         for (var i = 0; i < 5; i++)
@@ -188,7 +188,7 @@ public class RateLimiterTests
     public async Task InvokeAsync_UiWithBogusCookie_IsRateLimited()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey, timeProvider: new FakeTimeProvider());
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, webUiEnabled: true, timeProvider: new FakeTimeProvider());
 
         for (var i = 0; i < 6; i++)
         {
@@ -205,7 +205,7 @@ public class RateLimiterTests
     public async Task InvokeAsync_AuthEndpoint_IsRateLimited_EvenWithValidCookie()
     {
         var passed = 0;
-        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, adminApiKey: TestAdminKey, timeProvider: new FakeTimeProvider());
+        var limiter = CreateRateLimiter(_ => { passed++; return Task.CompletedTask; }, ipLimit: 3, webUiEnabled: true, timeProvider: new FakeTimeProvider());
         var cookie = MintValidSessionCookie(TestAdminKey);
 
         for (var i = 0; i < 6; i++)

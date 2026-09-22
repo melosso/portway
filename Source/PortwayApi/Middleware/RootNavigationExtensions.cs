@@ -75,7 +75,7 @@ public static class RootNavigationExtensions
     /// </summary>
     public static WebApplication UsePortwayRootRedirects(
         this WebApplication app,
-        string adminApiKey,
+        bool webUiEnabled,
         string[] publicOrigins,
         bool enableLandingPage)
     {
@@ -109,7 +109,7 @@ public static class RootNavigationExtensions
                 var isPublicOrigin = publicOrigins.Length > 0 &&
                     WebUiEndpointExtensions.IsPublicOriginAllowed(context.Request, publicOrigins);
 
-                if (enableLandingPage && (isLocalClient || isPublicOrigin) && !string.IsNullOrEmpty(adminApiKey))
+                if (enableLandingPage && (isLocalClient || isPublicOrigin) && webUiEnabled)
                 {
                     var webRootPath = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                     var indexPath = Path.Combine(webRootPath, "index.html");

@@ -169,6 +169,65 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task ExplicitWebUiEnabled_KeepsUiReachableAfterAdminKeyIsCleared()
+    {
+        // The settings page clears WebUi:AdminApiKey once real accounts exist; WebUi:Enabled must keep the console open
+        using var onFactory = _factory.WithWebHostBuilder(b =>
+            b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "true" })));
+        var client = onFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var resp = await client.GetAsync("/ui/api/environments/500", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
+        Assert.Contains("/ui/login", resp.Headers.Location!.ToString());
+    }
+
+    [Fact]
+    public async Task UnopenableAuthDatabase_NeverServesUiApiUnauthenticated()
+    {
+        // auth.db unreadable (e.g. a bad bind mount) must not fall back to "no accounts yet, skip login"
+        var brokenPath = Path.Combine(Path.GetTempPath(), $"portway_broken_authdb_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(brokenPath);
+        try
+        {
+            using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+            {
+                b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Mcp:Enabled"] = "false",
+                    ["WebUi:AdminApiKey"] = AdminKey,
+                    ["WebUi:PublicOrigins:0"] = "http://localhost"
+                }));
+                b.ConfigureTestServices(services =>
+                {
+                    services.AddDbContext<PortwayApi.Auth.AuthDbContext>(opts =>
+                        opts.UseSqlite($"Data Source={brokenPath}"),
+                        ServiceLifetime.Scoped, ServiceLifetime.Scoped);
+                    services.AddLogging(logging => { logging.ClearProviders(); logging.SetMinimumLevel(LogLevel.Error); });
+                });
+            });
+
+            HttpResponseMessage? resp = null;
+            try
+            {
+                var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+                resp = await client.GetAsync("/ui/api/settings", TestContext.Current.CancellationToken);
+            }
+            catch
+            {
+                // Refusing to start at all is the desired outcome
+                return;
+            }
+
+            Assert.NotEqual(HttpStatusCode.OK, resp.StatusCode);
+        }
+        finally
+        {
+            Directory.Delete(brokenPath, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task MutationWithoutCsrfHeader_Returns403()
     {
         var client = CreateClient();

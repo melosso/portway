@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Builder;
 // Extension methods for adding RateLimiter middleware
 public static class RateLimiterExtensions
 {
-    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder, string adminApiKey)
+    public static IApplicationBuilder UseRateLimiter(this IApplicationBuilder builder, bool webUiEnabled)
     {
-        return builder.UseMiddleware<RateLimiter>(adminApiKey);
+        return builder.UseMiddleware<RateLimiter>(webUiEnabled);
     }
 }

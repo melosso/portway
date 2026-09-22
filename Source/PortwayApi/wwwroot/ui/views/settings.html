@@ -392,16 +392,17 @@ function cardFooter(bodyId) {
 }
 
 // Clears the seeding key. Only the empty value is accepted server side, so this cannot set a secret.
+// WebUi:Enabled is set alongside it so the console stays reachable once the key is gone, requires a restart to take effect.
 function clearAdminKey() {
   AlertDialog.show({
     title:       'Remove the seeding key?',
-    description: 'WebUi:AdminApiKey only ever created the first account. Accounts and active sessions are unaffected.',
+    description: 'WebUi:AdminApiKey only ever created the first account. Accounts and active sessions are unaffected. Restart to apply.',
     actionLabel: 'Remove',
     variant:     'destructive',
     onConfirm:   async () => {
       try {
         await api('/ui/api/settings', {
-          method: 'PUT', body: { 'WebUi:AdminApiKey': '' },
+          method: 'PUT', body: { 'WebUi:AdminApiKey': '', 'WebUi:Enabled': true },
           success: 'Seeding key removed', failure: 'Failed to remove the key'
         });
         await load();
@@ -509,7 +510,7 @@ async function load() {
         'https://portway.example.com'),
       ...(sec.legacy_admin_key ? [settingItemRaw('Seeding key',
         '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
-        'WebUi:AdminApiKey only ever seeded the first account. Remove it once you can sign in.')] : []),
+        'WebUi:AdminApiKey only ever seeded the first account. Remove it once you can sign in; the console stays reachable.')] : []),
     ].join('') + cardFooter('deploymentBody');
 
     document.getElementById('featuresBody').innerHTML = [

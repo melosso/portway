@@ -23,7 +23,6 @@ public class RateLimiter
     private readonly TimeProvider _timeProvider;
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
     private readonly bool _uiAuthEnabled;
-    private readonly string _adminApiKey;
     private readonly string? _metricsPath;
     private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
 
@@ -42,7 +41,7 @@ public class RateLimiter
         TimeProvider timeProvider,
         Microsoft.Extensions.Logging.ILogger<RateLimiter> logger,
         Services.Telemetry.TelemetryOptions telemetryOptions,
-        string adminApiKey)
+        bool webUiEnabled)
     {
         _next = next;
 
@@ -54,9 +53,8 @@ public class RateLimiter
         _timeProvider = timeProvider;
         _logger = logger;
 
-        // Use the resolved Web UI admin key so the exemption check agrees with UseWebUiAuth
-        _adminApiKey = adminApiKey ?? string.Empty;
-        _uiAuthEnabled = !string.IsNullOrEmpty(_adminApiKey);
+        // Agrees with UseWebUiAuth so the exemption check applies exactly when the UI middleware does
+        _uiAuthEnabled = webUiEnabled;
 
         if (_settings.Enabled)
         {

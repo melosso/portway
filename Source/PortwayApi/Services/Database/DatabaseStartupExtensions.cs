@@ -31,9 +31,7 @@ public static class DatabaseStartupExtensions
         }
     }
 
-    /// <summary>
-    /// Creates auth.db when needed and generates a default token if none exist
-    /// </summary>
+    /// Creates auth.db when needed and generates a default token if none exist. Not caught: a swallowed failure here leaves WebUiAuthState.Enabled false, which reads as "no accounts yet" and skips the console login check entirely instead of denying.
     public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, string adminApiKey)
     {
         using var scope = app.Services.CreateScope();
@@ -41,17 +39,18 @@ public static class DatabaseStartupExtensions
         var tokenService = scope.ServiceProvider.GetRequiredService<TokenService>();
         var users = scope.ServiceProvider.GetRequiredService<AdminUserService>();
 
+        // Set up database and migrate if required
+        context.Database.EnsureCreated();
+        context.EnsureTablesCreated();
+
+        // Console accounts replaced WebUi:AdminApiKey; move an existing key into the first account
+        await users.SeedFirstAccountAsync(adminApiKey);
+        PortwayApi.Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
+
+        // Bootstrap convenience, not a security control: a failure here leaves zero tokens, which the
+        // data plane already fails closed on, so it only needs to be logged, not fatal to the app.
         try
         {
-            // Set up database and migrate if required
-            context.Database.EnsureCreated();
-            context.EnsureTablesCreated();
-
-            // Console accounts replaced WebUi:AdminApiKey; move an existing key into the first account
-            await users.SeedFirstAccountAsync(adminApiKey);
-            PortwayApi.Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
-
-            // Create a default token if none exist
             var activeTokens = await tokenService.GetActiveTokensAsync();
             if (!activeTokens.Any())
             {
@@ -66,7 +65,7 @@ public static class DatabaseStartupExtensions
         }
         catch (Exception ex)
         {
-            Log.Error("Database initialization failed: {Message}", ex.Message);
+            Log.Error(ex, "Could not create the default token");
         }
     }
 

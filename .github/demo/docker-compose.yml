@@ -10,7 +10,11 @@ services:
       - ./tokens:/app/tokens
       - ./log:/app/log
       - ./data:/app/data
-      - ./data/auth.db:/app/auth.db
+      - type: bind
+        source: ./data/auth.db
+        target: /app/auth.db
+        bind:
+          create_host_path: false
       - ./keys:/app/.core
     environment:
       - PORTWAY_ENCRYPTION_KEY=demo-encryption-key-12345

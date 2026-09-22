@@ -90,6 +90,7 @@ public sealed class SettingsWriteService
 
             // Write-only in the safe direction: the seeding key can be cleared, never set
             ["WebUi:AdminApiKey"]                       = new("WebUi:AdminApiKey", "clear", true),
+            ["WebUi:Enabled"]                           = new("WebUi:Enabled", "bool", true),
         };
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);

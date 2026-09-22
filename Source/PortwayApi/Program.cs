@@ -140,8 +140,9 @@ try
     // Build the application
     var app = builder.Build();
 
-    // Web UI admin key; placeholder rejected in production, empty disables Web UI auth
+    // Web UI admin key; placeholder rejected in production, empty disables Web UI auth unless WebUi:Enabled overrides it
     var adminApiKey = AdminApiKeyValidator.Resolve(builder.Configuration, app.Environment);
+    var webUiEnabled = AdminApiKeyValidator.IsEnabled(builder.Configuration, adminApiKey);
 
     // Refuse to start outside Development without a proper encryption key
     SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
@@ -165,8 +166,8 @@ try
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
 
-    // Always registered; the middleware itself denies an empty admin key
-    app.UseWebUiAuth(adminApiKey);
+    // Always registered; the middleware itself denies when the UI is not enabled
+    app.UseWebUiAuth(webUiEnabled);
 
     // Record request metrics for all non-health paths (UI and API tracked separately)
     app.UsePortwayRequestMetrics();
@@ -179,11 +180,11 @@ try
     app.UseStaticFilesWithCaching();
 
     // Root path, legacy /swagger and docs redirects
-    app.UsePortwayRootRedirects(adminApiKey, publicOrigins, enableLandingPage);
+    app.UsePortwayRootRedirects(webUiEnabled, publicOrigins, enableLandingPage);
 
     app.UsePortwayCors();
 
-    PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app, adminApiKey);
+    PortwayApi.Middleware.RateLimiterExtensions.UseRateLimiter(app, webUiEnabled);
 
     app.UseTokenAuthentication();
     app.UseAuthorization();
@@ -239,7 +240,7 @@ try
         app.MapMcpChatEndpoints();
 
     // Web UI Routes
-    app.MapWebUiEndpoints(adminApiKey);
+    app.MapWebUiEndpoints();
 
     // Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
     app.MapPortwayFallback();
@@ -249,7 +250,7 @@ try
         return 1;
 
     // Log hosting URLs, Web UI auth status and configuration reload status
-    StartupLogHelper.LogHostingSummary(app, builder.Configuration, adminApiKey);
+    StartupLogHelper.LogHostingSummary(app, builder.Configuration, webUiEnabled);
 
     // Register application shutdown handler
     app.Lifetime.ApplicationStopping.Register(() =>

@@ -29,7 +29,7 @@ public static partial class WebUiEndpointExtensions
     /// <summary>
     /// Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
     /// </summary>
-    public static WebApplication UseWebUiAuth(this WebApplication app, string adminApiKey)
+    public static WebApplication UseWebUiAuth(this WebApplication app, bool webUiEnabled)
     {
         var publicOrigins = app.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
 
@@ -38,12 +38,13 @@ public static partial class WebUiEndpointExtensions
             var path = context.Request.Path;
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
 
-            // Deny every UI route when no admin key is configured
-            if (string.IsNullOrEmpty(adminApiKey))
+            // Deny every UI route when the UI is not enabled
+            if (!webUiEnabled)
             {
+                Log.Warning("Web UI request to {Path} rejected: neither WebUi:Enabled nor WebUi:AdminApiKey is configured", path);
                 context.Response.StatusCode = 503;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { error = "Web UI is disabled: WebUi:AdminApiKey is not configured" });
+                await context.Response.WriteAsJsonAsync(new { error = "Web UI is disabled" });
                 return;
             }
 
@@ -180,7 +181,7 @@ public static partial class WebUiEndpointExtensions
     /// <summary>
     /// Maps all /ui/* page routes and /ui/api/* data endpoints
     /// </summary>
-    public static WebApplication MapWebUiEndpoints(this WebApplication app, string adminApiKey)
+    public static WebApplication MapWebUiEndpoints(this WebApplication app)
     {
         var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ui");
         var appVersion = typeof(WebUiEndpointExtensions).Assembly
@@ -194,7 +195,7 @@ public static partial class WebUiEndpointExtensions
         var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
         
 
-        MapPageAndAuthRoutes(app, adminApiKey, wwwroot, appVersion, secureCookies);
+        MapPageAndAuthRoutes(app, wwwroot, appVersion, secureCookies);
         MapInfoRoutes(app, appVersion);
         MapEnvironmentRoutes(app, configAudit);
         MapSettingsRoutes(app, configAudit);

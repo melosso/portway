@@ -31,4 +31,8 @@ public static class AdminApiKeyValidator
 
         return adminApiKey;
     }
+
+    /// Whether the Web UI should be served: an explicit WebUi:Enabled wins; add legacy fallback
+    public static bool IsEnabled(IConfiguration configuration, string adminApiKey)
+        => configuration.GetValue<bool?>("WebUi:Enabled") ?? !string.IsNullOrEmpty(adminApiKey);
 }

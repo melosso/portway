@@ -8,6 +8,7 @@ public static class EnvAliases
     private static readonly (string NewName, string OldName, string? ConfigKey)[] Map =
     [
         ("PORTWAY_ADMIN_KEY", "WebUi__AdminApiKey", "WebUi:AdminApiKey"),
+        ("PORTWAY_WEBUI_ENABLED", "WebUi__Enabled", "WebUi:Enabled"),
         ("PORTWAY_ALLOWED_HOSTS", "AllowedHosts", "AllowedHosts"),
         ("PORTWAY_PATH_BASE", "PathBase", "PathBase"),
         ("PORTWAY_SECURE_COOKIES", "WebUi__SecureCookies", "WebUi:SecureCookies"),

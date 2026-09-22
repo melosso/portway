@@ -22,7 +22,7 @@ using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
 {
-    private static void MapPageAndAuthRoutes(WebApplication app, string adminApiKey, string wwwroot, string appVersion, bool secureCookies)
+    private static void MapPageAndAuthRoutes(WebApplication app, string wwwroot, string appVersion, bool secureCookies)
     {
         // Login
         app.MapGet("/ui/login", (HttpContext ctx) =>

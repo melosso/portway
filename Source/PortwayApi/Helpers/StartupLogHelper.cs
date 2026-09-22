@@ -70,7 +70,7 @@ public static class StartupLogHelper
     /// <summary>
     /// Logs hosting URLs, Web UI auth status and configuration reload status
     /// </summary>
-    public static void LogHostingSummary(WebApplication app, IConfiguration configuration, string adminApiKey)
+    public static void LogHostingSummary(WebApplication app, IConfiguration configuration, bool webUiEnabled)
     {
         var urls = app.Urls;
         if (urls != null && urls.Any())
@@ -97,7 +97,7 @@ public static class StartupLogHelper
             Log.Information("Application is hosted on: {Urls}", formattedUrls);
         }
 
-        var webUiAuthStatus = string.IsNullOrEmpty(adminApiKey) ? "Disabled" : "Enabled";
+        var webUiAuthStatus = webUiEnabled ? "Enabled" : "Disabled";
         Log.Information("Web UI: {Status}", webUiAuthStatus);
 
         var endpointReloadEnabled = configuration.GetValue<bool>("EndpointReloading:Enabled", true);
