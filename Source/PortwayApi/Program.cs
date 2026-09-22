@@ -144,6 +144,9 @@ try
     var adminApiKey = AdminApiKeyValidator.Resolve(builder.Configuration, app.Environment);
     var webUiEnabled = AdminApiKeyValidator.IsEnabled(builder.Configuration, adminApiKey);
 
+    // Fixed password for the seeded admin account; demo/non-production instances only, never required
+    var seedPassword = builder.Configuration.GetValue<string>("WebUi:SeedPassword");
+
     // Refuse to start outside Development without a proper encryption key
     SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
 
@@ -202,7 +205,7 @@ try
     await app.InitializeMcpConfigDatabaseAsync();
 
     // Initialise auth.db and create a default token if none exist
-    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey);
+    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, seedPassword);
 
     // Log cache configuration
     app.LogCacheConfiguration();

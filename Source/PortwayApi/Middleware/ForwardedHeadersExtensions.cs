@@ -43,7 +43,7 @@ public static class ForwardedHeadersExtensions
         // Skip middleware registration if no trusted proxies are configured
         if (forwardedHeadersOptions.KnownProxies.Count == 0 && forwardedHeadersOptions.KnownIPNetworks.Count == 0)
         {
-            Log.Warning("ForwardedHeaders: No trusted proxies configured. X-Forwarded-For is ignored, and RemoteIpAddress remains the TCP peer. Set ForwardedHeaders:KnownProxies to avoid rate limiting and authentication issues.");
+            Log.Warning("ForwardedHeaders: no trusted proxies configured, X-Forwarded-For ignored. Set ForwardedHeaders:KnownProxies.");
         }
         else
         {

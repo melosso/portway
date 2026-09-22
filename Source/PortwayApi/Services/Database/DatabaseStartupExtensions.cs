@@ -34,7 +34,7 @@ public static class DatabaseStartupExtensions
     /// <summary>
     /// Initializes the auth database, seeds the initial admin account, and generates a default token if none exist.
     /// </summary>
-    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey)
+    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey, string? seedPassword = null)
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -44,7 +44,7 @@ public static class DatabaseStartupExtensions
         context.Database.EnsureCreated();
         context.EnsureTablesCreated();
 
-        await users.SeedFirstAccountAsync(adminApiKey);
+        await users.SeedFirstAccountAsync(adminApiKey, seedPassword);
         PortwayApi.Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
 
         try

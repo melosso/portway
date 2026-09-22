@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
+using System.Linq;
 using Serilog;
 
 public class UrlValidator
@@ -42,7 +43,9 @@ public class UrlValidator
         // Only add discovered hosts if no hosts are specified in config
         if (_allowedHosts.Count <= 2) // default localhost hosts
         {
-            _allowedHosts.AddRange(DiscoverAllowedHosts());
+            _allowedHosts = _allowedHosts.Concat(DiscoverAllowedHosts())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         _blockedRanges = config.BlockedIpRanges?.Count > 0

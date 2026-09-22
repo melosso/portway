@@ -157,9 +157,9 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Provision the first console account with a one-time password, logged once; requires a reset on first sign-in
+    /// Provisions the first console account. Uses a one-time password requiring reset, unless WebUi:SeedPassword is set, in which case that fixed password is used with no reset required, for demo/non-production instances.
     /// </summary>
-    public async Task SeedFirstAccountAsync(PortwayApi.Helpers.AdminSeedKey adminApiKey)
+    public async Task SeedFirstAccountAsync(PortwayApi.Helpers.AdminSeedKey adminApiKey, string? seedPassword = null)
     {
         if (await _db.AdminUsers.AnyAsync())
         {
@@ -169,9 +169,10 @@ public class AdminUserService
         }
 
         var migrating = adminApiKey.IsConfigured;
+        var seeding = !string.IsNullOrEmpty(seedPassword);
 
-        var username = migrating ? "admin" : "admin-" + RandomNumberGenerator.GetString(ReadableAlphabet, 8);
-        var password = RandomNumberGenerator.GetString(ReadableAlphabet, 24);
+        var username = (migrating || seeding) ? "admin" : "admin-" + RandomNumberGenerator.GetString(ReadableAlphabet, 8);
+        var password = seeding ? seedPassword! : RandomNumberGenerator.GetString(ReadableAlphabet, 24);
 
         _db.AdminUsers.Add(new AdminUser
         {
@@ -179,13 +180,20 @@ public class AdminUserService
             PasswordHash = HashPassword(password),
             Role = AdminUserRoles.Administrator,
             Provider = AdminUserProviders.Local,
-            MustChangePassword = true,
+            MustChangePassword = !seeding,
         });
         await _db.SaveChangesAsync();
 
-        Log.Warning("Created console account {Username} with one-time password {Password}; sign in to set a permanent password", username, password);
-        if (migrating)
-            Log.Warning("WebUi:AdminApiKey was not used as the password; remove the setting once you have signed in");
+        if (seeding)
+        {
+            Log.Warning("Created console account {Username} with the fixed password from WebUi:SeedPassword; do not set this outside demo/non-production instances", username);
+        }
+        else
+        {
+            Log.Warning("Created console account {Username} with one-time password {Password}; sign in to set a permanent password", username, password);
+            if (migrating)
+                Log.Warning("WebUi:AdminApiKey was not used as the password; remove the setting once you have signed in");
+        }
     }
 
     /// <summary>

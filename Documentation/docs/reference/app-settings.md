@@ -374,6 +374,7 @@ The built-in admin interface settings.
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `AdminApiKey` | string | `""` | Seeds the first console account on a fresh install. Not used for sign-in afterwards |
+| `SeedPassword` | string | `""` | Fixed password for that seeded account, skipping the forced reset. Demo/non-production instances only |
 | `PublicOrigins` | array | `[]` | Origins allowed to reach `/ui` from outside the local network. Not a CORS setting: see `CorsOrigins` for that |
 | `SecureCookies` | boolean | `false` | Require HTTPS for auth cookies |
 | `Customization.EnableLandingPage` | boolean | `true` | Show the landing page at `/` for local/allowed clients. Set to `false` to redirect all root requests straight to `/docs` (useful for production systems where the UI should not be discoverable). |
@@ -384,6 +385,7 @@ The built-in admin interface settings.
 ### Security
 
 - Portway asks for a sign-in as soon as one console account exists. `AdminApiKey` only creates that first account, so you can clear it once you can sign in
+- `SeedPassword` gives that first account a fixed, known password instead of a random one-time one. Only use it on disposable demo instances, never on anything holding real data
 - Without `PublicOrigins`, only local network IPs can access the UI
 - `PublicOrigins` is matched against the request's `Origin` header, which any client can set. It widens who can reach the sign-in page; it does not authenticate anyone. Keep the console behind your proxy, VPN, or firewall when it should not be public
 - Cookie auth uses HMAC-SHA256 signing
@@ -497,6 +499,7 @@ Set any of these from **Settings → Security → Feature Toggles** in the conso
 | `PORTWAY_PATH_BASE` | Base path | `/api` | `PathBase` |
 | `Mcp__ChatEnabled` | Override `Mcp:ChatEnabled` at runtime | `true` | — |
 | `PORTWAY_ADMIN_KEY` | Seeds the first console account | `secret` | `WebUi__AdminApiKey` |
+| `WebUi__SeedPassword` | Fixed password for that seeded account, demo/non-production only | `secret` | — |
 | `WebUi__PublicOrigins__0` | Origin allowed to reach `/ui` (array) | `https://example.com` | — |
 | `Oidc__Enabled` | Turn single sign-on off | `false` | — |
 | `ForwardedHeaders__KnownProxies__0` | Trusted reverse proxy (array) | `127.0.0.1` | — |

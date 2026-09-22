@@ -11,8 +11,11 @@
   <script src="js/theme-toggle.js"></script>
   <script src="js/shared.js"></script>
   <script src="js/components/promobar.js"></script>
+  <script src="js/components/toast.js"></script>
 </head>
 <body>
+
+<div class="toast-container" id="toastContainer"></div>
 
 <div class="signin-theme">
   <button type="button" class="theme-toggle" id="themeToggle" onclick="cycleTheme()" data-tooltip="Toggle theme" aria-label="Toggle theme"></button>
@@ -60,18 +63,18 @@
   <form class="signin-panel" onsubmit="event.preventDefault();signIn()">
     <header class="signin-header">
       <h1>Sign in</h1>
-      <p>Please sign in to open the dashboard.</p>
+      <p>Please sign in to continue to your dashboard.</p>
     </header>
 
     <div class="field">
       <label class="field-label" for="usernameInput">Username</label>
-      <input type="text" id="usernameInput" class="input" autocomplete="username"
+      <input type="text" id="usernameInput" class="input" autocomplete="username" placeholder="e.g. admin"
              required autofocus aria-describedby="authError">
     </div>
 
     <div class="field">
       <label class="field-label" for="passwordInput">Password</label>
-      <input type="password" id="passwordInput" class="input" autocomplete="current-password"
+      <input type="password" id="passwordInput" class="input" autocomplete="current-password" placeholder="*********"
              required aria-describedby="authError">
     </div>
 
@@ -198,8 +201,7 @@
         initCsrf();
       }
     } catch(e) {
-      err.textContent = 'Connection error. Is the server running?';
-      err.style.display = 'block';
+      toast('Connection error. Is the server running?', 'error');
       btn.classList.remove('is-loading');
       btn.disabled = false;
     }

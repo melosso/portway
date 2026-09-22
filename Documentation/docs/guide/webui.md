@@ -19,7 +19,7 @@ environment:
 
 Access the UI at `http://localhost:8080/ui` and sign in with a username and password.
 
-The first account comes from `PORTWAY_ADMIN_KEY` (legacy: `WebUi__AdminApiKey`) if you already have one set: on the first start it becomes the account `admin`, with the key as its password. Once you can sign in, that setting is no longer read, and you can clear it from **Settings → Security → Deployment & Access**. Create the rest on the **Users** page, or from the shell:
+The first account comes from `PORTWAY_ADMIN_KEY` (legacy: `WebUi__AdminApiKey`) if you already have one set: on the first start it becomes the account `admin`, with a random one-time password logged once, which you must change on sign-in. The key itself is never used as the password. Once you can sign in, that setting is no longer read, and you can clear it from **Settings → Security → Deployment & Access**. For a disposable demo instance that needs a fixed, known login instead, set `WebUi__SeedPassword`. Create the rest on the **Users** page, or from the shell:
 
 ```bash
 portway accounts create <username> <password>
@@ -27,7 +27,7 @@ portway accounts password <username> <new-password>
 ```
 
 ::: warning Losing access
-If nobody can sign in, reset a password with `portway accounts password`, run from the directory Portway runs in. See [Security → Recovering an account](/guide/security#recovering-an-account).
+If nobody can sign in, reset a password from the shell. See [Security → Recovering an account](/guide/security#recovering-an-account) for the bare-metal and Docker commands.
 :::
 
 ## Pages

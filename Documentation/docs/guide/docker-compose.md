@@ -98,6 +98,7 @@ Only set `PORTWAY_USE_HTTPS=true` if Portway is directly internet-facing **and**
 | Variable | Description | Default Value | Legacy name |
 |----------|-------------|---------------|-------------|
 | `PORTWAY_ADMIN_KEY` | Admin API key for web UI access | (none) | `WebUi__AdminApiKey` |
+| `WebUi__SeedPassword` | Fixed password for the seeded account, demo/non-production only | (none) | — |
 | `WebUi__PublicOrigins` | Allowed origins for CORS (array) | (empty) | — |
 | `PORTWAY_SECURE_COOKIES` | Use secure cookies | `false` | `WebUi__SecureCookies` |
 | `WebUi__Customization__PromoText` | Banner text at the top | (none) | — |

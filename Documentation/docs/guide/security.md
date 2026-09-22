@@ -231,12 +231,20 @@ See [Monitoring](/guide/monitoring) for traffic logging configuration details.
 
 ### Recovering an account
 
-Accounts are managed from the shell when nobody can sign in. Run these from the directory Portway runs in, so `auth.db` is found:
+Accounts are managed from the shell when nobody can sign in. On a bare-metal install, run these from the directory Portway runs in, so `auth.db` is found:
 
 ```bash
 portway accounts list
 portway accounts password <username> <new-password>
 portway accounts create <username> <password> [administrator|viewer]
+```
+
+There is no `portway` binary in the Docker image; the container runs `dotnet /app/PortwayApi.dll` directly. Use `docker exec` with the same subcommands instead:
+
+```bash
+docker exec <container> dotnet /app/PortwayApi.dll accounts list
+docker exec <container> dotnet /app/PortwayApi.dll accounts password <username> <new-password>
+docker exec <container> dotnet /app/PortwayApi.dll accounts create <username> <password> [administrator|viewer]
 ```
 
 `promote`, `demote`, `enable`, `disable` and `delete` are available too. Portway refuses any of them that would leave no active administrator.
