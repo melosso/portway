@@ -62,7 +62,7 @@ try
         .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
         ?.InformationalVersion?.Split('+')[0] ?? "0.0.0";
 
-    StartupLogHelper.LogAsciiBanner(assemblyVersion);
+    StartupLogHelper.LogApplicationBanner(assemblyVersion);
 
     // Kestrel hardening, HTTPS opt-in detection and response compression
     builder.ConfigurePortwayWebHost();
@@ -139,6 +139,10 @@ try
 
     // Build the application
     var app = builder.Build();
+
+    // Pre-flight: fail on a taken port before database, cache and endpoint initialisation
+    if (!StartupLogHelper.TryReservePorts(app, builder.Configuration))
+        return 1;
 
     // Web UI admin key; placeholder rejected in production, empty disables Web UI auth unless WebUi:Enabled overrides it
     var adminApiKey = AdminApiKeyValidator.Resolve(builder.Configuration, app.Environment);
@@ -247,10 +251,6 @@ try
 
     // Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
     app.MapPortwayFallback();
-
-    // Pre-flight: verify configured ports are available before Kestrel tries to bind
-    if (!StartupLogHelper.TryReservePorts(app, builder.Configuration))
-        return 1;
 
     // Log hosting URLs, Web UI auth status and configuration reload status
     StartupLogHelper.LogHostingSummary(app, builder.Configuration, webUiEnabled);

@@ -582,7 +582,7 @@ async function load() {
         telActive
           ? `<span class="setting-on">${esc(tel.provider)}</span>`
           : '<span class="setting-off">Off</span>',
-        'Telemetry:Provider selects OTLP push or Prometheus scraping'),
+        'Telemetry:Provider is only set at startup'),
       settingItem('Service Name', tel.service_name ?? '—'),
       ...(tel.otlp_endpoint   ? [settingItem('OTLP Endpoint',   tel.otlp_endpoint)]   : []),
       ...(tel.prometheus_path ? [settingItem('Scrape Path',     tel.prometheus_path)] : []),

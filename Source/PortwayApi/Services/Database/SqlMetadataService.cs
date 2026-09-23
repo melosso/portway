@@ -106,6 +106,7 @@ public class SqlMetadataService
         Func<string, Task<string>> getConnectionStringAsync,
         CancellationToken cancellationToken = default)
     {
+        string? lastError = null;
         foreach (var environment in environments)
         {
             try
@@ -144,13 +145,14 @@ public class SqlMetadataService
             }
             catch (Exception ex)
             {
-                Log.Warning("Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorMessage}. Trying next environment...",
+                lastError = ex.Message;
+                Log.Debug("Failed to initialize metadata for endpoint {EndpointName} in environment {Environment}: {ErrorMessage}. Trying next environment...",
                     endpointName, environment, ex.Message);
             }
         }
 
-        Log.Error("Failed to initialize metadata for endpoint {EndpointName} after trying all allowed environments: {Environments}",
-            endpointName, string.Join(", ", environments));
+        Log.Error("Failed to initialize metadata for endpoint {EndpointName} after trying all allowed environments: {Environments}. Last error: {ErrorMessage}",
+            endpointName, string.Join(", ", environments), lastError ?? "none");
     }
 
     private bool HasModificationMethods(Classes.EndpointDefinition definition)

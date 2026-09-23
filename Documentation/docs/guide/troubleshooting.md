@@ -263,6 +263,8 @@ For ongoing space management, configure rotation so it does not recur:
 
 "One or more proxy services are not responding properly" means the gateway is fine but a backend it depends on is not.
 
+The log names the failing endpoints in one `Health check status: Unhealthy proxy endpoints detected` warning. The reason per endpoint logs at `Debug`.
+
 Request a detailed health report to see which services are failing:
 
 ```http

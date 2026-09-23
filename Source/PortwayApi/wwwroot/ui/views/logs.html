@@ -19,12 +19,12 @@
   </div>
 
   <div class="log-toolbar">
-    <div class="log-level-btns">
-      <button class="log-level-btn active" id="btn-ALL" onclick="setLevel('ALL')">ALL</button>
-      <button class="log-level-btn" id="btn-INF" onclick="setLevel('INF')">INF</button>
-      <button class="log-level-btn" id="btn-WRN" onclick="setLevel('WRN')">WRN</button>
-      <button class="log-level-btn" id="btn-ERR" onclick="setLevel('ERR')">ERR</button>
-      <button class="log-level-btn" id="btn-DBG" onclick="setLevel('DBG')">DBG</button>
+    <div class="filter-btns" role="group" aria-label="Log level">
+      <button class="filter-btn active" id="btn-ALL" aria-pressed="true" onclick="setLevel('ALL')">ALL</button>
+      <button class="filter-btn" id="btn-INF" aria-pressed="false" onclick="setLevel('INF')">INF</button>
+      <button class="filter-btn" id="btn-WRN" aria-pressed="false" onclick="setLevel('WRN')">WRN</button>
+      <button class="filter-btn" id="btn-ERR" aria-pressed="false" onclick="setLevel('ERR')">ERR</button>
+      <button class="filter-btn" id="btn-DBG" aria-pressed="false" onclick="setLevel('DBG')">DBG</button>
     </div>
     <div class="log-divider"></div>
     <select id="limitSelect" class="input input-sm" onchange="resetAndLoad()">
@@ -55,7 +55,8 @@ function setLevel(level) {
   const levels = ['ALL','INF','WRN','ERR','DBG'];
   levels.forEach(l => {
     const btn = document.getElementById(`btn-${l}`);
-    btn.className = 'log-level-btn' + (l === level ? ` active active-${l === 'ALL' ? '' : l}`.trimEnd() : '');
+    btn.className = 'filter-btn' + (l === level ? ` active active-${l === 'ALL' ? '' : l}`.trimEnd() : '');
+    btn.setAttribute('aria-pressed', l === level);
   });
   resetAndLoad();
 }

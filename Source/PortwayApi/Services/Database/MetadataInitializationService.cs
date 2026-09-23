@@ -53,7 +53,7 @@ public sealed class MetadataInitializationService : BackgroundService
                     {
                         var (connectionString, _, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(environment);
                         if (!string.IsNullOrEmpty(connectionString) && loggedEnvironments.TryAdd(environment, 0))
-                            Log.Information("Environment {Environment} uses SQL provider {Provider}",
+                            Log.Debug("Environment {Environment} uses SQL provider {Provider}",
                                 environment, Providers.SqlProviderDetector.Detect(connectionString));
                         return connectionString ?? string.Empty;
                     }

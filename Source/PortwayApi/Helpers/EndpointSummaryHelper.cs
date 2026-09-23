@@ -180,8 +180,12 @@ public static class EndpointSummaryHelper
         AddSection(sections, "File", fileEndpoints, e => $"{e.Key}{FormatBaseDir(e.Value)}", e => e.Value.Hidden);
         AddSection(sections, "Static", staticEndpoints, e => $"{e.Key} [{FormatContentType(e.Value)}]", e => e.Value.Hidden);
 
+        Log.Information("Endpoint configuration: {Total} endpoints ({Counts})", sections.Sum(s => s.Count),
+            string.Join(", ", sections.Select(s => $"{s.Title} {s.Count}")));
+
         // Rendered as one log event so sinks cannot interleave the tree with other startup lines
-        Log.Information("Endpoint configuration ({Total} endpoints){Tree}", sections.Sum(s => s.Count), RenderTree(sections));
+        if (Log.IsEnabled(Serilog.Events.LogEventLevel.Debug))
+            Log.Debug("Endpoint tree:{Tree}", RenderTree(sections));
     }
 
     private static void AddSection<T>(List<SummarySection> sections, string title,

@@ -120,10 +120,7 @@ public class HealthCheckService
         foreach (var entry in entries)
         {
             if (entry.Status == HealthStatus.Unhealthy)
-            {
-                Log.Warning("Health check failed: {Description}", entry.Description);
                 return HealthStatus.Unhealthy;
-            }
 
             if (entry.Status == HealthStatus.Degraded && status == HealthStatus.Healthy)
             {
@@ -158,6 +155,9 @@ public class HealthCheckService
                 HealthStatus.Degraded => $"Health check status: Low disk space: {percentFreeRounded:F0}% remaining",
                 _ => $"Health check status: Disk space: {percentFreeRounded:F0}% remaining"
             };
+
+            if (status != HealthStatus.Healthy)
+                Log.Warning("Health check status: Low disk space, {PercentFree:F0}% remaining", percentFreeRounded);
 
             return new HealthReportEntry(
                 status, 
@@ -320,7 +320,7 @@ public class HealthCheckService
         catch (Exception ex)
         {
             var errorMsg = ex.InnerException?.Message ?? ex.Message;
-            Log.Error("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
+            Log.Debug("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
                 endpoint.Key, ex.GetType().Name, errorMsg, endpoint.Value.Url);
             results[endpoint.Key] = new
             {
@@ -412,7 +412,7 @@ public class HealthCheckService
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 const string timeoutMsg = "Connection timed out after 5 seconds";
-                Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, timeoutMsg);
+                Log.Debug("SQL connectivity check failed for environment {Environment}: {Error}", env, timeoutMsg);
                 results[env] = new { Status = "Unhealthy", Error = timeoutMsg };
                 unhealthyEnvironments.Add(env);
             }
@@ -422,7 +422,7 @@ public class HealthCheckService
                 var errorMsg = ex is DbException dbEx
                     ? $"DB error: {dbEx.Message}"
                     : ex.InnerException?.Message ?? ex.Message;
-                Log.Error("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
+                Log.Debug("SQL connectivity check failed for environment {Environment}: {Error}", env, errorMsg);
                 results[env] = new { Status = "Unhealthy", Error = errorMsg };
                 unhealthyEnvironments.Add(env);
             }

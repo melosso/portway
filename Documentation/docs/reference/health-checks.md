@@ -374,7 +374,10 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health/details | jq
 ### Log analysis
 
 ```log
-[10:30:00 INF] Health check cache refreshed. Status: Healthy
-[10:30:01 WRN] Health check failed: Low disk space: 10% remaining
-[10:30:02 ERR] Proxy endpoint 'Products' failed: Connection timeout
+[2024-01-20 10:30:00 DBG] Health check cache refreshed. Status: Healthy
+[2024-01-20 10:30:01 WRN] Health check status: Low disk space, 10% remaining
+[2024-01-20 10:30:02 WRN] Health check status: Unhealthy proxy endpoints detected (Products)
+[2024-01-20 10:30:02 WRN] Health check status: Unhealthy SQL environments detected (prod)
 ```
+
+The reason each endpoint or environment failed logs at `Debug`. Use `/health/details` or raise the log level to see it.

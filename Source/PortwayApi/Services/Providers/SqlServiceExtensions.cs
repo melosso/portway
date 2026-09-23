@@ -23,7 +23,6 @@ public static class SqlServiceExtensions
         services.AddSingleton<ISqlProviderFactory, SqlProviderFactory>();
 
         // OData/SQL services
-        services.AddSingleton<IHostedService, PortwayApi.Services.StartupLogger>();
         services.AddSingleton<IODataToSqlConverter, ODataToSqlConverter>();
         services.AddSingleton<PortwayApi.Services.SqlMetadataService>();
         services.AddHostedService<PortwayApi.Services.MetadataInitializationService>();

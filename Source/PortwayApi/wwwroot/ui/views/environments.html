@@ -13,10 +13,6 @@
       </div>
     </div>
     <div class="page-actions">
-      <div class="search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="input" id="envSearchInput" placeholder="Search..." oninput="filterEnvList()">
-      </div>
       <button class="btn btn-outline" onclick="refreshAll()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
@@ -28,10 +24,14 @@
     </div>
   </div>
 
-  <!-- Tab strip -->
-  <div class="tabs" id="envTabs"></div>
-
   <div class="main-content-fill">
+    <div class="filter-bar">
+      <div class="filter-btns" id="envTabs" role="group" aria-label="Filter"></div>
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="input" id="envSearchInput" placeholder="Search..." oninput="filterEnvList()">
+      </div>
+    </div>
     <div class="ep-split">
 
       <!-- Left: list -->
@@ -165,9 +165,9 @@ function renderTabs(envs) {
     { key: 'missing', label: 'Missing Config',  count: missing },
   ];
   document.getElementById('envTabs').innerHTML = tabs.map(t => `
-    <button class="tab ${_activeTab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">
+    <button class="filter-btn ${_activeTab === t.key ? 'active' : ''}" aria-pressed="${_activeTab === t.key}" onclick="switchTab('${t.key}')">
       ${esc(t.label)}
-      <span class="tab-badge">${t.count}</span>
+      <span class="filter-count">${t.count}</span>
     </button>`).join('');
 }
 
@@ -316,7 +316,6 @@ function renderGlobalDetail() {
         <div class="pill-list">
           ${(d?.allowed_environments ?? []).map(e => `<span class="pill">${esc(e)}</span>`).join('')}
         </div>
-        <div class="field-help">Manage environments using the Add / Remove controls.</div>
       </div>
     </div>
     <div style="padding:0.75rem 1rem;border-top:1px solid hsl(var(--border));display:flex;gap:0.5rem;justify-content:flex-end;flex-shrink:0">

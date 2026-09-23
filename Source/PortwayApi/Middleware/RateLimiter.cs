@@ -24,7 +24,6 @@ public class RateLimiter
     private readonly Microsoft.Extensions.Logging.ILogger<RateLimiter> _logger;
     private readonly bool _uiAuthEnabled;
     private readonly string? _metricsPath;
-    private readonly string _instanceId = Guid.NewGuid().ToString()[..8];
 
     private readonly ITimer _cleanupTimer;
 
@@ -58,8 +57,8 @@ public class RateLimiter
 
         if (_settings.Enabled)
         {
-            _logger.LogInformation("Rate limiter {InstanceId} initialized. Enabled: {Enabled}, Store: {Store}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
-                _instanceId, _settings.Enabled, _store.GetType().Name, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
+            _logger.LogInformation("Rate limiting enabled. Store: {Store}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
+                _store.GetType().Name, _settings.IpLimit, _settings.IpWindow, _settings.TokenLimit, _settings.TokenWindow);
         }
 
         // Periodically remove expired entries to prevent unbounded dictionary growth

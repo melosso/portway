@@ -12,10 +12,6 @@
       </div>
     </div>
     <div class="page-actions">
-      <div class="search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="input" id="epSearch" placeholder="Search..." oninput="filterList()">
-      </div>
       <button class="btn btn-outline" onclick="refreshAll()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
         Refresh
@@ -27,11 +23,15 @@
     </div>
   </div>
 
-  <!-- Tab strip -->
-  <div class="tabs" id="epTabs"></div>
-
   <!-- Split panel -->
   <div class="main-content-fill">
+    <div class="filter-bar">
+      <div class="filter-btns" id="epTabs" role="group" aria-label="Filter"></div>
+      <div class="search-wrap">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="input" id="epSearch" placeholder="Search..." oninput="filterList()">
+      </div>
+    </div>
     <div class="ep-split">
       <!-- Left: list -->
       <div class="ep-list">
@@ -182,9 +182,9 @@ function renderTabs() {
   const total = Object.values(_allData).reduce((s, a) => s + a.length, 0);
   const tabs = [{ key: 'all', label: 'All', count: total }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label, count: (_allData[t.key] ?? []).length }))];
   document.getElementById('epTabs').innerHTML = tabs.map(t => `
-    <button class="tab ${_activeTab === t.key ? 'active' : ''}" onclick="switchTab('${t.key}')">
+    <button class="filter-btn ${_activeTab === t.key ? 'active' : ''}" aria-pressed="${_activeTab === t.key}" onclick="switchTab('${t.key}')">
       ${esc(t.label)}
-      <span class="tab-badge">${t.count}</span>
+      <span class="filter-count">${t.count}</span>
     </button>`).join('');
 }
 

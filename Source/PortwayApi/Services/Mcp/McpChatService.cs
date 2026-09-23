@@ -677,8 +677,7 @@ public sealed partial class McpChatService
             return safe.Count > 0 ? safe : null;
         }
 
-        Log.Warning("MCP tool {Key}: no SQL metadata found. This will limit the LLM's functionality to assist." +
-                    "Check that the endpoint DB connection succeeded during startup.", fullKey);
+        Log.Warning("MCP tool {Key}: no SQL metadata found. LLM functionality may be limited.", fullKey);
         return null;
     }
 

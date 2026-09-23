@@ -38,7 +38,7 @@ public class SqlConnectionPoolService : IHostedService, IAsyncDisposable
         Npgsql.NpgsqlConnection.ClearAllPools();
         MySqlConnector.MySqlConnection.ClearAllPools();
 
-        Log.Information("Database Connection Pool initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, CommandTimeout: {CommandTimeout}s, AppName: '{AppName}'",
+        Log.Debug("Database Connection Pool initialized with Min: {MinPoolSize}, Max: {MaxPoolSize}, Timeout: {Timeout}s, CommandTimeout: {CommandTimeout}s, AppName: '{AppName}'",
             _poolingOptions.MinPoolSize, _poolingOptions.MaxPoolSize, _poolingOptions.ConnectionTimeout, _poolingOptions.CommandTimeout, _poolingOptions.ApplicationName);
     }
 

@@ -66,9 +66,9 @@ log/
 
 ### Rate limiting
 ```
-[INF] Rate limiter initialized - IP: 100/60s, Token: 1000/60s
-[INF] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
-[DBG] Rate limit for IP 192.168.1.100 has expired, allowing traffic
+[INF] Rate limiting enabled. Store: InMemoryRateLimiterStore, IP: 100/60s, Token: 1000/60s
+[WRN] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
+[INF] Rate limit for IP 192.168.1.100 has expired, allowing traffic
 ```
 
 ## Structured logging

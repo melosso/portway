@@ -7,20 +7,12 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class StartupLogHelper
 {
-    // Single log event so sinks cannot interleave the banner with other startup lines
-    private const string Banner = @"
- ██████╗  ██████╗ ██████╗ ████████╗██╗    ██╗ █████╗ ██╗   ██╗
- ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██║    ██║██╔══██╗╚██╗ ██╔╝
- ██████╔╝██║   ██║██████╔╝   ██║   ██║ █╗ ██║███████║ ╚████╔╝
- ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██║███╗██║██╔══██║  ╚██╔╝
- ██║     ╚██████╔╝██║  ██║   ██║   ╚███╔███╔╝██║  ██║   ██║
- ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝";
-
-    public static void LogAsciiBanner(string version)
+    public static void LogApplicationBanner(string version)
     {
-        Log.Information("{Banner}", Banner);
-        Log.Information("Portway {Version} starting on {Host} ({OS}, .NET {DotNet})",
-            version, Environment.MachineName, Environment.OSVersion.Platform, Environment.Version);
+        Log.Information("");
+        Log.Information("Portway {Version} - Remote integration gateway built on .NET", version);
+        Log.Information("");
+        Log.Debug("Host {Host} ({OS}, .NET {DotNet})", Environment.MachineName, Environment.OSVersion.Platform, Environment.Version);
     }
 
     /// <summary>
@@ -28,8 +20,12 @@ public static class StartupLogHelper
     /// </summary>
     public static bool TryReservePorts(WebApplication app, IConfiguration configuration)
     {
-        // Same order the host itself resolves: --urls beats ASPNETCORE_URLS, and configuration
-        // holds both because the ASPNETCORE_ prefix is stripped into the "urls" key
+        // Only Kestrel binds sockets; if the server is not Kestrel, we can't probe the ports thus return true
+        var server = app.Services.GetRequiredService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+        if (server.GetType().Assembly != typeof(Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions).Assembly)
+            return true;
+
+        // If no URLs are configured, Kestrel will bind to http://localhost:5000 by default, so we check that too
         var urlsToCheck = app.Urls.Count > 0
             ? app.Urls
             : (configuration["urls"]
@@ -97,11 +93,14 @@ public static class StartupLogHelper
             Log.Information("Application is hosted on: {Urls}", formattedUrls);
         }
 
+        if (!app.Environment.IsProduction())
+            Log.Warning("Application Environment: {Environment}", app.Environment.EnvironmentName);
+
         var webUiAuthStatus = webUiEnabled ? "Enabled" : "Disabled";
         Log.Information("Web UI: {Status}", webUiAuthStatus);
 
         var endpointReloadEnabled = configuration.GetValue<bool>("EndpointReloading:Enabled", true);
         if (endpointReloadEnabled)
-            Log.Information("Configuration reload enabled: appsettings.json, /endpoints, /environments");
+            Log.Debug("Configuration reload enabled: appsettings.json, /endpoints, /environments");
     }
 }
