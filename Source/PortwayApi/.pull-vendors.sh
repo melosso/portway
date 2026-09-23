@@ -16,20 +16,37 @@ fetch() {
     curl -fsSL "$url" -o "$dest"
 }
 
-latest_npm_version() {
-    curl -fsSL "https://registry.npmjs.org/$1/latest" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])"
+SCALAR_VERSION="1.68.0"
+
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+# npm tarball, checked against registry sha512
+vendor_npm() {
+    local name="$1" version="$2" path="$3" dest="$4" tarball integrity
+    read -r tarball integrity < <(curl -fsSL "https://registry.npmjs.org/$name/$version" \
+        | python3 -c "import sys,json; d=json.load(sys.stdin)['dist']; print(d['tarball'], d.get('integrity', ''))")
+    fetch "$tarball" "$TMP_DIR/package.tgz"
+    python3 - "$TMP_DIR/package.tgz" "$integrity" <<'PY'
+import base64, hashlib, sys
+algorithm, _, expected = sys.argv[2].partition("-")
+if algorithm != "sha512":
+    sys.exit(f"no sha512 integrity published, refusing: {sys.argv[2]!r}")
+actual = base64.b64encode(hashlib.sha512(open(sys.argv[1], "rb").read()).digest()).decode()
+if actual != expected:
+    sys.exit("tarball does not match the registry integrity, refusing")
+PY
+    tar -xzf "$TMP_DIR/package.tgz" -C "$TMP_DIR" "package/$path"
+    mv "$TMP_DIR/package/$path" "$dest"
+    rm -rf "$TMP_DIR/package" "$TMP_DIR/package.tgz"
 }
 
 # Scalar API Reference
 echo ""
 echo "[Scalar API Reference]"
-SCALAR_VERSION="$(latest_npm_version "@scalar/api-reference")"
-echo "   Latest: $SCALAR_VERSION"
-fetch \
-    "https://cdn.jsdelivr.net/npm/@scalar/api-reference@${SCALAR_VERSION}" \
-    "$VENDOR_DIR/scalar-api-reference.js"
-echo "   Saved to: wwwroot/js/vendor/scalar-api-reference.js"
+echo "   Pinned: $SCALAR_VERSION"
+vendor_npm "@scalar/api-reference" "$SCALAR_VERSION" "dist/browser/standalone.js" "$VENDOR_DIR/scalar-api-reference.js"
+echo "   Verified and saved to: wwwroot/js/vendor/scalar-api-reference.js"
 
 # Onest font (Google Fonts / gstatic)
 echo ""
