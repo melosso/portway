@@ -235,6 +235,9 @@ public static class OpenApiConfiguration
             var securitySchemeName = JsonEncodedText.Encode(
                 string.IsNullOrWhiteSpace(openApiSettings.SecurityDefinition?.Name) ? "Bearer" : openApiSettings.SecurityDefinition.Name);
 
+            // scalar fonts stay off so the console onest files are served from this origin instead
+            var customCss = JsonEncodedText.Encode(DocsCss.Replace("{pathBase}", pathBase));
+
             // Debug logging
             Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
                 openApiSettings.ScalarTheme, openApiSettings.ScalarLayout);
@@ -247,7 +250,13 @@ public static class OpenApiConfiguration
                     ""hideModels"": {(openApiSettings.ScalarHideModels ? "true" : "false")},
                     ""hideClientButton"": {(openApiSettings.ScalarHideClientButton ? "true" : "false")},
                     ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")},
-                    ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }}
+                    ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }},
+                    ""withDefaultFonts"": false,
+                    ""customCss"": ""{customCss}"",
+                    ""telemetry"": false,
+                    ""showDeveloperTools"": ""never"",
+                    ""agent"": {{ ""disabled"": true }},
+                    ""mcp"": {{ ""disabled"": true }}
                 }}";
 
             string Base64Url(byte[] input)
@@ -457,25 +466,6 @@ var html = $@"
         }});
         observer.observe(document.body, {{ childList: true, subtree: true }});
     </script>
-    <script 
-        id=""_ISF0s93rsopi225SH""
-        >
-        (() => {{
-            const askAiObserver = new MutationObserver(() => {{
-                const askAiButton = Array.from(document.querySelectorAll('button'))
-                    .find(btn => btn.textContent && btn.textContent.includes('Ask AI'));
-                
-                if (askAiButton) {{
-                    askAiButton.remove();
-                }}
-            }});
-
-            askAiObserver.observe(document.body, {{
-                childList: true,
-                subtree: true
-            }});
-        }})();
-    </script>
 </body>
 </html>";
             return Results.Content(html, "text/html");
@@ -483,6 +473,15 @@ var html = $@"
 
         Log.Information("OpenAPI documentation is enabled and available at '/docs'.");
     }
+
+    // unicode ranges match the font face blocks that pull vendors writes into site css
+    // ponytail: scalar 1.72.1 context bar shows the first nested tag in every section so it stays hidden until upstream fixes it
+    private const string DocsCss = """
+        @font-face { font-family: "Onest"; font-weight: 400 700; font-display: swap; src: url("{pathBase}/fonts/onest-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+        @font-face { font-family: "Onest"; font-weight: 400 700; font-display: swap; src: url("{pathBase}/fonts/onest-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+        :root, .light-mode, .dark-mode { --scalar-font: "Onest", ui-sans-serif, system-ui, sans-serif; }
+        .scalar-app nav.context-bar { display: none; }
+        """;
 
     private static string GetScalarThemeName(string theme)
     {

@@ -154,8 +154,7 @@ public class SecurityHeadersMiddleware
 
     private static bool ShouldSkipSecurityHeaders(PathString path)
     {
-        return path.StartsWithSegments("/docs") ||
-               path.StartsWithSegments("/static") ||
+        return path.StartsWithSegments("/static") ||
                path.StartsWithSegments("/index.html") ||
                path.StartsWithSegments("/health/live");
     }

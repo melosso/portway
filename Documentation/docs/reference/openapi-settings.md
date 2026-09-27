@@ -180,7 +180,7 @@ Namespaces do double duty in the reference: each one becomes a tag, and your ope
 
 OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a namespace contains a `/`. Nest the directories to get it: an endpoint at `endpoints/SQL/WMS/Inbound/StagingBins` has the namespace `WMS/Inbound` and routes at `/api/{env}/WMS/Inbound/StagingBins`. The tag carries `parent`, `kind: nav`, and a `summary` holding just the leaf segment. Missing intermediate tags are created for you, so only the leaf needs a `TagDescription`.
 
-Scalar does not read `parent` yet, so today it lists `WMS` and `WMS/Inbound` as sibling groups rather than nesting one inside the other. The document is correct either way, and the sidebar will nest once Scalar implements the field. Progress is tracked in [scalar#6866](https://github.com/scalar/scalar/discussions/6866).
+The `/docs` sidebar tree is built from `parent`. Nested tag labels come from `summary` (`WMS/Inbound` is labelled `Inbound` under `WMS`).
 
 ## Schema discovery
 

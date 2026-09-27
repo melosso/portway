@@ -199,6 +199,28 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Contains("\"\"preferredSecurityScheme\"\": \"\"Bearer\"\"".Replace("\"\"", "\""), html);
     }
 
+    // the reference page must not reach scalar hosts so a pasted token never shares a page with third party calls
+    [Fact]
+    public async Task ScalarPage_MakesNoThirdPartyCalls()
+    {
+        var response = await _client.GetAsync("/docs", TestContext.Current.CancellationToken);
+        var csp = response.Headers.GetValues("Content-Security-Policy").Single();
+        Assert.Contains("connect-src 'self';", csp);
+        Assert.Contains("font-src 'self';", csp);
+
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var match = System.Text.RegularExpressions.Regex.Match(html, "data-configuration='([^']*)'");
+        Assert.True(match.Success);
+
+        using var config = JsonDocument.Parse(match.Groups[1].Value);
+        var root = config.RootElement;
+        Assert.False(root.GetProperty("withDefaultFonts").GetBoolean());
+        Assert.False(root.GetProperty("telemetry").GetBoolean());
+        Assert.Equal("never", root.GetProperty("showDeveloperTools").GetString());
+        Assert.True(root.GetProperty("agent").GetProperty("disabled").GetBoolean());
+        Assert.True(root.GetProperty("mcp").GetProperty("disabled").GetBoolean());
+    }
+
     // The document names its own URI so other descriptions can reference it
     [Fact]
     public async Task Document_DeclaresSelfUri()

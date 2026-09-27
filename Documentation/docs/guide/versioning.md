@@ -95,21 +95,20 @@ In the root folder of your IIS site, add the following files (e.g. `C:\path\to\y
         <remove name="Strict-Transport-Security" />
         <remove name="Referrer-Policy" />
         <remove name="Permissions-Policy" />
-        <remove name="Content-Security-Policy" />
 
         <add name="X-Content-Type-Options" value="nosniff" />
         <add name="X-Frame-Options" value="DENY" />
         <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
         <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
         <add name="Permissions-Policy" value="geolocation=(), camera=(), microphone=(), payment=()" />
-        <add name="Content-Security-Policy" 
-             value="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://proxy.scalar.com; font-src 'self' https://fonts.scalar.com; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'" />
       </customHeaders>
     </httpProtocol>
 
   </system.webServer>
 </configuration>
 ```
+
+The site-level `web.config` declares no `Content-Security-Policy`. Portway sets its own through `SecurityHeadersMiddleware`, `/docs` included.
 
 #### `index.html`
 

@@ -86,7 +86,7 @@ Directories may nest more than one level. Every folder above the endpoint become
 
 Each segment is validated on its own, so the naming rules below apply per segment rather than to the joined namespace. A working example ships as `WMS/Inbound/StagingBins` in the SQLite demo environment.
 
-In the OpenAPI document the nested namespace becomes a tag that names `WMS` as its parent. Scalar does not act on that relationship yet, so the `/docs` sidebar currently lists `WMS` and `WMS/Inbound` side by side. Routing, grouping and the document itself are unaffected.
+The nested namespace maps to a tag with `parent: WMS`. The `/docs` sidebar nests `Inbound` under `WMS`.
 
 Longer paths win when they match: with both `WMS/Bins` and `WMS/Inbound/StagingBins` configured, a request to `/api/{env}/WMS/Inbound/StagingBins` resolves the nested endpoint rather than treating `Inbound` as a record id.
 
