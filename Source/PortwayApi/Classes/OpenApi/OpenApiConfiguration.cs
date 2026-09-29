@@ -293,7 +293,7 @@ public static class OpenApiConfiguration
             var (openapiId, openapiAttr) = GenerateRandomElementIds();
             var (overlayId, overlayAttr) = GenerateRandomElementIds();
 
-var html = $@"
+            var html = $@"
 <!doctype html>
 <html>
 <head>

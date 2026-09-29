@@ -98,7 +98,7 @@ try
     // HTTP client and SQL/OData services
     builder.Services.AddPortwayProxyHttpClient(builder.Configuration);
     builder.Services.AddPortwaySqlServices(builder.Configuration);
-    
+
     // MCP services (conditionally enabled)
     builder.Services.AddMcpServices(builder.Configuration);
 
@@ -197,7 +197,7 @@ try
     app.UseAuthorization();
 
     // Removed UseResponseCaching() to prevent ASP.NET Core from intercepting requests before they reach CacheManager!
-    
+
     app.UseAuthenticatedCaching();
 
     // Strong ETags on GET /api responses; If-None-Match revalidation returns 304
@@ -236,7 +236,7 @@ try
 
     // Map Prometheus scrape endpoint (conditionally enabled)
     app.MapPortwayPrometheusScraping();
-    
+
     // Map MCP endpoints (conditionally enabled)
     var mcpEnabled = builder.Configuration.GetValue<bool>("Mcp:Enabled", false);
     if (mcpEnabled)

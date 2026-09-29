@@ -5,9 +5,9 @@ namespace PortwayApi.Services.Mcp;
 /// </summary>
 public sealed record ChatDelta
 {
-    public ChatDeltaType Type  { get; init; } = ChatDeltaType.Text;
-    public string? Delta       { get; init; } // text delta content
-    public string? ToolName    { get; init; } // tool_call: which tool
-    public string? ToolInput   { get; init; } // tool_call: raw JSON input
-    public string? ToolResult  { get; init; } // tool_call: result after execution
+    public ChatDeltaType Type { get; init; } = ChatDeltaType.Text;
+    public string? Delta { get; init; } // text delta content
+    public string? ToolName { get; init; } // tool_call: which tool
+    public string? ToolInput { get; init; } // tool_call: raw JSON input
+    public string? ToolResult { get; init; } // tool_call: result after execution
 }

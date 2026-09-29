@@ -28,9 +28,9 @@ public sealed class OpenAiCompatibleChatProvider(
     {
         var body = new JsonObject
         {
-            ["model"]    = model,
-            ["stream"]   = true,
-            ["tools"]    = ChatPayloadFactory.Functions(tools),
+            ["model"] = model,
+            ["stream"] = true,
+            ["tools"] = ChatPayloadFactory.Functions(tools),
             ["messages"] = ChatPayloadFactory.Messages(history)
         };
 

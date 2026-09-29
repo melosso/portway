@@ -21,8 +21,8 @@ public class EnvironmentFileWatcher : FileWatchPump
         : base(Path.Combine(Directory.GetCurrentDirectory(), "environments"), "Environment")
     {
         _environmentSettingsProvider = environmentSettingsProvider;
-        _reloadTracker               = reloadTracker;
-        _broadcaster                 = broadcaster;
+        _reloadTracker = reloadTracker;
+        _broadcaster = broadcaster;
     }
 
     protected override Task HandleFileChangeAsync(string filePath, WatcherChangeTypes changeType)

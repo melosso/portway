@@ -44,8 +44,8 @@ public static partial class WebUiEndpointExtensions
 
         app.MapGet("/ui/api/logs", async (HttpRequest request) =>
         {
-            var limit       = int.TryParse(request.Query["limit"], out var l) ? Math.Min(l, 2000) : 200;
-            var offset      = int.TryParse(request.Query["offset"], out var o) ? Math.Max(0, o) : 0;
+            var limit = int.TryParse(request.Query["limit"], out var l) ? Math.Min(l, 2000) : 200;
+            var offset = int.TryParse(request.Query["offset"], out var o) ? Math.Max(0, o) : 0;
             var filterLevel = (request.Query["level"].ToString() ?? "").ToUpperInvariant();
             try
             {
@@ -90,8 +90,8 @@ public static partial class WebUiEndpointExtensions
                             {
                                 if (ts != null)
                                     allEntries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
-                                ts       = m.Groups[1].Value;
-                                lvl      = m.Groups[2].Value.ToUpperInvariant();
+                                ts = m.Groups[1].Value;
+                                lvl = m.Groups[2].Value.ToUpperInvariant();
                                 msgParts = [m.Groups[3].Value];
                             }
                             else if (ts != null && !string.IsNullOrWhiteSpace(rawLine))
@@ -118,7 +118,7 @@ public static partial class WebUiEndpointExtensions
                         StringComparison.OrdinalIgnoreCase)).ToList();
 
                 var hasMore = offset + limit < filtered.Count;
-                var paged   = filtered.Skip(offset).Take(limit)
+                var paged = filtered.Skip(offset).Take(limit)
                     .Select(e => new { timestamp = e.Timestamp, level = e.Level, message = e.Message });
 
                 return Results.Json(new { file = latestFile != null ? Path.GetFileName(latestFile) : "", lines = paged, total = filtered.Count, has_more = hasMore });
@@ -127,9 +127,9 @@ public static partial class WebUiEndpointExtensions
             {
                 return Results.Json(new
                 {
-                    file     = "",
-                    lines    = new[] { new { timestamp = "", level = "ERR", message = ex.Message } },
-                    total    = 0,
+                    file = "",
+                    lines = new[] { new { timestamp = "", level = "ERR", message = ex.Message } },
+                    total = 0,
                     has_more = false
                 });
             }
@@ -137,28 +137,28 @@ public static partial class WebUiEndpointExtensions
 
         app.MapGet("/ui/api/metrics", (HttpRequest request) =>
         {
-            var period   = request.Query["period"].ToString();
+            var period = request.Query["period"].ToString();
             if (period != "7d" && period != "30d") period = "24h";
-            var metrics  = app.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
-            var snapshot   = metrics.GetSnapshot(period);
+            var metrics = app.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+            var snapshot = metrics.GetSnapshot(period);
             var cacheTotal = snapshot.CacheHits + snapshot.CacheMisses;
             static object BucketDto(TrafficBucket b) => new { label = b.Label, timestamp = b.Timestamp, count = b.Count };
             return Results.Json(new
             {
-                period              = snapshot.Period,
-                api_traffic         = snapshot.ApiTraffic.Select(BucketDto),
-                ui_traffic          = snapshot.UiTraffic.Select(BucketDto),
-                errors              = snapshot.Errors,
-                total               = snapshot.Total,
-                error_rate          = snapshot.ErrorRate,
+                period = snapshot.Period,
+                api_traffic = snapshot.ApiTraffic.Select(BucketDto),
+                ui_traffic = snapshot.UiTraffic.Select(BucketDto),
+                errors = snapshot.Errors,
+                total = snapshot.Total,
+                error_rate = snapshot.ErrorRate,
                 collecting_for_secs = snapshot.CollectingForSeconds,
-                api_requests        = snapshot.ApiRequests,
-                ui_requests         = snapshot.UiRequests,
-                top_endpoints       = snapshot.TopEndpoints.Select(e => new { name = e.Name, count = e.Count }),
+                api_requests = snapshot.ApiRequests,
+                ui_requests = snapshot.UiRequests,
+                top_endpoints = snapshot.TopEndpoints.Select(e => new { name = e.Name, count = e.Count }),
                 cache = new
                 {
-                    hits     = snapshot.CacheHits,
-                    misses   = snapshot.CacheMisses,
+                    hits = snapshot.CacheHits,
+                    misses = snapshot.CacheMisses,
                     hit_rate = cacheTotal > 0 ? Math.Round((double)snapshot.CacheHits / cacheTotal, 4) : (double?)null
                 }
             });

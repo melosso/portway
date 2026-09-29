@@ -15,7 +15,7 @@ public class SecurityHeadersMiddleware
     public SecurityHeadersMiddleware(RequestDelegate next)
     {
         _next = next;
-        
+
         // Headers to remove (prevent information disclosure)
         _unsafeResponseHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -25,7 +25,7 @@ public class SecurityHeadersMiddleware
             "X-SourceFiles",
             "X-AspNetMvc-Version"
         };
-        
+
         // Carefully configured security headers
         _securityHeaders = new Dictionary<string, string>
         {
@@ -36,7 +36,7 @@ public class SecurityHeadersMiddleware
             { "X-Frame-Options", "DENY" },
             
             // Restrictive Content Security Policy
-            { "Content-Security-Policy", 
+            { "Content-Security-Policy",
                 "default-src 'self'; " +
                 "script-src 'self' 'unsafe-inline'; " +
                 "style-src 'self' 'unsafe-inline'; " +
@@ -54,7 +54,7 @@ public class SecurityHeadersMiddleware
             
             // Minimal, restrictive permissions policy
             { "Permissions-Policy", "geolocation=(), camera=(), microphone=(), payment=()" },
-            
+
         };
     }
 

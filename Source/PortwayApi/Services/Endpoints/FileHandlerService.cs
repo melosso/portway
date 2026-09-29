@@ -60,7 +60,7 @@ public class FileHandlerService : IDisposable
 
         // Start the flush timer to periodically write memory-cached files to disk
         _flushTimer = new Timer(FlushMemoryCache, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
-        
+
         // Start a timer to refresh the file indices periodically
         _indexRefreshTimer = new Timer(RefreshIndices, null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
     }
@@ -150,7 +150,7 @@ public class FileHandlerService : IDisposable
             LastModified = DateTime.UtcNow,
             IsInMemoryOnly = _optionsMonitor.CurrentValue.UseMemoryCache
         });
-        
+
         return fileId;
     }
 
@@ -189,7 +189,7 @@ public class FileHandlerService : IDisposable
 
         // File not in memory, check on disk
         string storageRoot = Path.GetFullPath(_optionsMonitor.CurrentValue.StorageDirectory);
-        string filePath    = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
+        string filePath = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
 
         if (!filePath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
             filePath != storageRoot)
@@ -276,7 +276,7 @@ public class FileHandlerService : IDisposable
 
         // Delete from disk if it exists; verify path stays within storage root
         string storageRoot = Path.GetFullPath(_optionsMonitor.CurrentValue.StorageDirectory);
-        string filePath    = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
+        string filePath = Path.GetFullPath(Path.Combine(_optionsMonitor.CurrentValue.StorageDirectory, environment, filename));
 
         if (!filePath.StartsWith(storageRoot + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
             filePath != storageRoot)
@@ -287,7 +287,7 @@ public class FileHandlerService : IDisposable
             File.Delete(filePath);
             Log.Debug("File {Filename} deleted from disk at {FilePath}", filename, filePath);
         }
-        
+
         await _fileSystemIndex.UpdateIndexAsync(environment, filename, isDeleted: true);
     }
 
@@ -298,7 +298,7 @@ public class FileHandlerService : IDisposable
     {
         // Use the cached index instead of filesystem operations
         var files = await _fileSystemIndex.ListFilesAsync(environment, prefix ?? string.Empty);
-        
+
         // Convert to FileInfo objects if needed
         return files.Select(f => new FileInfo
         {
@@ -316,9 +316,9 @@ public class FileHandlerService : IDisposable
     /// Uploads a file to an absolute path location
     /// </summary>
     public async Task<string> UploadFileToAbsolutePathAsync(
-        string environment, 
-        string absoluteFilePath, 
-        Stream fileStream, 
+        string environment,
+        string absoluteFilePath,
+        Stream fileStream,
         string baseDirectory,
         bool overwrite = false)
     {
@@ -332,7 +332,7 @@ public class FileHandlerService : IDisposable
         // Sanitize the filename part only
         string fileName = Path.GetFileName(absoluteFilePath);
         string sanitizedFileName = SanitizeFileName(fileName);
-        
+
         // Reconstruct the full path with sanitized filename
         string directoryPath = Path.GetDirectoryName(absoluteFilePath) ?? baseDirectory;
         string fullPath = Path.GetFullPath(Path.Combine(directoryPath, sanitizedFileName));
@@ -468,7 +468,7 @@ public class FileHandlerService : IDisposable
         // Check if file is in memory cache
         if (!_memoryCache.TryGetValue(fileId, out var memoryStream))
         {
-            return; 
+            return;
         }
 
         // Check if file is dirty
@@ -714,19 +714,19 @@ public class FileHandlerService : IDisposable
             int colonIndex = combined.IndexOf(':');
             if (colonIndex > 0)
             {
-                string rawEnv  = combined[..colonIndex];
+                string rawEnv = combined[..colonIndex];
                 string rawFile = combined[(colonIndex + 1)..];
 
                 if (!ValidateFileIdComponents(rawEnv, rawFile))
                 {
                     Log.Warning("Rejected fileId with invalid components — possible path traversal attempt");
                     environment = string.Empty;
-                    filename    = string.Empty;
+                    filename = string.Empty;
                     return false;
                 }
 
                 environment = rawEnv;
-                filename    = rawFile;
+                filename = rawFile;
                 return true;
             }
         }
@@ -735,7 +735,7 @@ public class FileHandlerService : IDisposable
             Log.Debug(ex, "Failed to parse file ID");
         }
         environment = string.Empty;
-        filename    = string.Empty;
+        filename = string.Empty;
         return false;
     }
 

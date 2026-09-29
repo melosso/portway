@@ -29,27 +29,27 @@ public static partial class WebUiEndpointExtensions
 
         app.MapGet("/ui/api/environments", () =>
         {
-            var envSettings  = app.Services.GetRequiredService<EnvironmentSettings>();
-            var globalPath   = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
             var lastModified = File.Exists(globalPath)
                 ? new DateTimeOffset(File.GetLastWriteTimeUtc(globalPath), TimeSpan.Zero).ToUnixTimeSeconds()
                 : 0L;
             return Results.Json(new
             {
-                server_name          = envSettings.ServerName,
+                server_name = envSettings.ServerName,
                 allowed_environments = envSettings.AllowedEnvironments,
-                last_modified        = lastModified
+                last_modified = lastModified
             });
         }).ExcludeFromDescription();
 
         // Environment CRUD
         app.MapPut("/ui/api/environments/settings", async (HttpContext context) =>
         {
-            var body        = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
-            var globalPath  = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
 
-            var serverName  = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
+            var serverName = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
                 ? sn.GetString() ?? envSettings.ServerName : envSettings.ServerName;
             var allowedEnvs = body.TryGetProperty("allowed_environments", out var ae) && ae.ValueKind == JsonValueKind.Array
                 ? ae.EnumerateArray().Select(e => e.GetString() ?? "").Where(e => !string.IsNullOrEmpty(e)).ToList()
@@ -72,19 +72,23 @@ public static partial class WebUiEndpointExtensions
             if (!File.Exists(envPath))
                 return Results.Json(new
                 {
-                    name, exists = false, server_name = (string?)null,
-                    connection_string = (string?)null, connection_string_encrypted = false,
-                    headers = new Dictionary<string, string>(), last_modified = 0L
+                    name,
+                    exists = false,
+                    server_name = (string?)null,
+                    connection_string = (string?)null,
+                    connection_string_encrypted = false,
+                    headers = new Dictionary<string, string>(),
+                    last_modified = 0L
                 });
 
             try
             {
-                var json  = File.ReadAllText(envPath);
+                var json = File.ReadAllText(envPath);
                 using var doc = JsonDocument.Parse(json);
-                var root  = doc.RootElement;
-                var cs    = root.TryGetProperty("ConnectionString", out var csEl) ? csEl.GetString() : null;
-                var sn    = root.TryGetProperty("ServerName",       out var snEl) ? snEl.GetString() : null;
-                var hdrs  = new Dictionary<string, string>();
+                var root = doc.RootElement;
+                var cs = root.TryGetProperty("ConnectionString", out var csEl) ? csEl.GetString() : null;
+                var sn = root.TryGetProperty("ServerName", out var snEl) ? snEl.GetString() : null;
+                var hdrs = new Dictionary<string, string>();
                 if (root.TryGetProperty("Headers", out var hEl) && hEl.ValueKind == JsonValueKind.Object)
                     foreach (var h in hEl.EnumerateObject())
                         hdrs[h.Name] = h.Value.GetString() ?? "";
@@ -92,10 +96,13 @@ public static partial class WebUiEndpointExtensions
                 var isEncrypted = cs != null && cs.StartsWith("PWENC:");
                 return Results.Json(new
                 {
-                    name, exists = true, server_name = sn,
+                    name,
+                    exists = true,
+                    server_name = sn,
                     connection_string = isEncrypted ? null : cs,
                     connection_string_encrypted = isEncrypted,
-                    headers = hdrs, last_modified = lastMod
+                    headers = hdrs,
+                    last_modified = lastMod
                 });
             }
             catch (Exception ex)
@@ -115,7 +122,7 @@ public static partial class WebUiEndpointExtensions
 
             try
             {
-                var raw     = File.ReadAllText(envPath);
+                var raw = File.ReadAllText(envPath);
                 var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
                 return Results.Json(new { content = raw, last_modified = lastMod });
             }
@@ -201,7 +208,7 @@ public static partial class WebUiEndpointExtensions
                 await using var conn = sqlProvider.CreateConnection(connectionString);
                 await conn.OpenAsync(cts.Token);
                 await using var cmd = conn.CreateCommand();
-                cmd.CommandText  = sqlProvider.HealthCheckQuery;
+                cmd.CommandText = sqlProvider.HealthCheckQuery;
                 cmd.CommandTimeout = 4;
                 await cmd.ExecuteScalarAsync(cts.Token);
 
@@ -216,25 +223,25 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPost("/ui/api/environments", async (HttpContext context) =>
         {
-            var body        = await context.Request.ReadFromJsonAsync<JsonElement>();
-            var name        = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var name = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
-            var globalPath  = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
 
             if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name. Use only letters, numbers, hyphens, and underscores." }, statusCode: 400);
             if (envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
                 return Results.Json(new { error = "Environment already exists" }, statusCode: 409);
 
-            var envDir         = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
             var envSettingsPath = Path.Combine(envDir, "settings.json");
             Directory.CreateDirectory(envDir);
 
             var serverName = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
                 ? sn.GetString() ?? envSettings.ServerName : envSettings.ServerName;
-            var connStr    = body.TryGetProperty("connection_string", out var cs) && cs.ValueKind == JsonValueKind.String
+            var connStr = body.TryGetProperty("connection_string", out var cs) && cs.ValueKind == JsonValueKind.String
                 ? cs.GetString() ?? "" : "";
-            var headers    = new Dictionary<string, string>();
+            var headers = new Dictionary<string, string>();
             if (body.TryGetProperty("headers", out var hdrs) && hdrs.ValueKind == JsonValueKind.Object)
                 foreach (var h in hdrs.EnumerateObject())
                     headers[h.Name] = h.Value.GetString() ?? "";
@@ -260,14 +267,14 @@ public static partial class WebUiEndpointExtensions
             if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
-            var envDir          = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
             var envSettingsPath = Path.Combine(envDir, "settings.json");
-            var existingJson    = File.Exists(envSettingsPath) ? File.ReadAllText(envSettingsPath) : "{}";
+            var existingJson = File.Exists(envSettingsPath) ? File.ReadAllText(envSettingsPath) : "{}";
             JsonElement existing;
             try { existing = JsonDocument.Parse(existingJson).RootElement.Clone(); }
             catch { existing = JsonDocument.Parse("{}").RootElement.Clone(); }
 
-            var body       = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var serverName = body.TryGetProperty("server_name", out var sn) && sn.ValueKind == JsonValueKind.String
                 ? sn.GetString()
                 : (existing.TryGetProperty("ServerName", out var esn) ? esn.GetString() : null);
@@ -324,9 +331,9 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Invalid new name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
-            var globalPath  = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
-            var oldDir      = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
-            var newDir      = Path.Combine(Directory.GetCurrentDirectory(), "environments", newName);
+            var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var oldDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var newDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", newName);
 
             if (!envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
                 return Results.Json(new { error = "Environment not found" }, statusCode: 404);
@@ -335,7 +342,7 @@ public static partial class WebUiEndpointExtensions
 
             if (Directory.Exists(oldDir)) Directory.Move(oldDir, newDir);
 
-            var newAllowed  = envSettings.AllowedEnvironments
+            var newAllowed = envSettings.AllowedEnvironments
                 .Select(e => e.Equals(name, StringComparison.OrdinalIgnoreCase) ? newName : e).ToList();
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
             await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
@@ -350,14 +357,14 @@ public static partial class WebUiEndpointExtensions
             if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
-            var envSettings  = app.Services.GetRequiredService<EnvironmentSettings>();
-            var globalPath   = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
-            var envDir       = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
-            var deleteFiles  = request.Query["delete_files"] == "true";
-            var newAllowed   = envSettings.AllowedEnvironments
+            var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
+            var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+            var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+            var deleteFiles = request.Query["delete_files"] == "true";
+            var newAllowed = envSettings.AllowedEnvironments
                 .Where(e => !e.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
-            var backupPath   = PortwayApi.Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
-            var globalModel  = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
+            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
+            var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
             await File.WriteAllTextAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();

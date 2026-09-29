@@ -49,12 +49,12 @@ public class FileStorageOptions
     /// <summary>
     /// Blocked file extensions
     /// </summary>
-    public List<string> BlockedExtensions { get; set; } = new List<string> 
-        { 
+    public List<string> BlockedExtensions { get; set; } = new List<string>
+        {
             ".exe", ".dll", ".bat", ".sh", ".cmd", ".msi", ".vbs",
             ".ps1", ".scr", ".wsf", ".hta", ".cpl", ".msc", ".pif", ".reg", ".com", ".vbe", ".wsh",
-            ".php", ".php3", ".php4", ".php5", ".phtml", 
-            ".asp", ".aspx", ".ashx", ".asmx", 
+            ".php", ".php3", ".php4", ".php5", ".phtml",
+            ".asp", ".aspx", ".ashx", ".asmx",
             ".jsp", ".jspx", ".cgi", ".pl", ".py", ".rb",
             ".jar", ".bin", ".elf", ".app", ".dmg", ".run",
             ".docm", ".xlsm", ".pptm"

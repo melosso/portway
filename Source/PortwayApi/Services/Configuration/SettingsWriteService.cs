@@ -41,56 +41,56 @@ public sealed class SettingsWriteService
     private static readonly Dictionary<string, WritableSetting> Allowed =
         new(StringComparer.OrdinalIgnoreCase)
         {
-            ["RateLimiting:Enabled"]                    = new("RateLimiting:Enabled", "bool", true),
-            ["RateLimiting:IpLimit"]                    = new("RateLimiting:IpLimit", "int", true, 1, 1_000_000),
-            ["RateLimiting:IpWindow"]                   = new("RateLimiting:IpWindow", "int", true, 1, 86_400),
-            ["RateLimiting:TokenLimit"]                 = new("RateLimiting:TokenLimit", "int", true, 1, 1_000_000),
-            ["RateLimiting:TokenWindow"]                = new("RateLimiting:TokenWindow", "int", true, 1, 86_400),
+            ["RateLimiting:Enabled"] = new("RateLimiting:Enabled", "bool", true),
+            ["RateLimiting:IpLimit"] = new("RateLimiting:IpLimit", "int", true, 1, 1_000_000),
+            ["RateLimiting:IpWindow"] = new("RateLimiting:IpWindow", "int", true, 1, 86_400),
+            ["RateLimiting:TokenLimit"] = new("RateLimiting:TokenLimit", "int", true, 1, 1_000_000),
+            ["RateLimiting:TokenWindow"] = new("RateLimiting:TokenWindow", "int", true, 1, 86_400),
 
-            ["Caching:Enabled"]                         = new("Caching:Enabled", "bool", false),
-            ["Caching:DefaultCacheDurationSeconds"]     = new("Caching:DefaultCacheDurationSeconds", "int", false, 0, 86_400),
-            ["Caching:MemoryCacheSizeLimitMB"]          = new("Caching:MemoryCacheSizeLimitMB", "int", false, 1, 8_192),
+            ["Caching:Enabled"] = new("Caching:Enabled", "bool", false),
+            ["Caching:DefaultCacheDurationSeconds"] = new("Caching:DefaultCacheDurationSeconds", "int", false, 0, 86_400),
+            ["Caching:MemoryCacheSizeLimitMB"] = new("Caching:MemoryCacheSizeLimitMB", "int", false, 1, 8_192),
 
-            ["SqlConnectionPooling:Enabled"]            = new("SqlConnectionPooling:Enabled", "bool", true),
-            ["SqlConnectionPooling:MinPoolSize"]        = new("SqlConnectionPooling:MinPoolSize", "int", true, 0, 1_000),
-            ["SqlConnectionPooling:MaxPoolSize"]        = new("SqlConnectionPooling:MaxPoolSize", "int", true, 1, 5_000),
-            ["SqlConnectionPooling:ConnectionTimeout"]  = new("SqlConnectionPooling:ConnectionTimeout", "int", true, 1, 600),
-            ["SqlConnectionPooling:CommandTimeout"]     = new("SqlConnectionPooling:CommandTimeout", "int", true, 1, 3_600),
+            ["SqlConnectionPooling:Enabled"] = new("SqlConnectionPooling:Enabled", "bool", true),
+            ["SqlConnectionPooling:MinPoolSize"] = new("SqlConnectionPooling:MinPoolSize", "int", true, 0, 1_000),
+            ["SqlConnectionPooling:MaxPoolSize"] = new("SqlConnectionPooling:MaxPoolSize", "int", true, 1, 5_000),
+            ["SqlConnectionPooling:ConnectionTimeout"] = new("SqlConnectionPooling:ConnectionTimeout", "int", true, 1, 600),
+            ["SqlConnectionPooling:CommandTimeout"] = new("SqlConnectionPooling:CommandTimeout", "int", true, 1, 3_600),
 
-            ["EndpointReloading:Enabled"]               = new("EndpointReloading:Enabled", "bool", false),
-            ["EndpointReloading:DebounceMs"]            = new("EndpointReloading:DebounceMs", "int", false, 50, 60_000),
+            ["EndpointReloading:Enabled"] = new("EndpointReloading:Enabled", "bool", false),
+            ["EndpointReloading:DebounceMs"] = new("EndpointReloading:DebounceMs", "int", false, 50, 60_000),
 
-            ["Serilog:MinimumLevel:Default"]            = new("Serilog:MinimumLevel:Default", "choice", true, Choices: LogLevels),
+            ["Serilog:MinimumLevel:Default"] = new("Serilog:MinimumLevel:Default", "choice", true, Choices: LogLevels),
 
-            ["DatabaseMaintenance:Enabled"]             = new("DatabaseMaintenance:Enabled", "bool", true),
-            ["DatabaseMaintenance:Schedule"]            = new("DatabaseMaintenance:Schedule", "time", true),
+            ["DatabaseMaintenance:Enabled"] = new("DatabaseMaintenance:Enabled", "bool", true),
+            ["DatabaseMaintenance:Schedule"] = new("DatabaseMaintenance:Schedule", "time", true),
 
-            ["Mcp:Enabled"]                             = new("Mcp:Enabled", "bool", true),
-            ["Mcp:RequireAuthentication"]               = new("Mcp:RequireAuthentication", "bool", true),
-            ["Mcp:AppsEnabled"]                         = new("Mcp:AppsEnabled", "bool", true),
-            ["Mcp:ChatEnabled"]                         = new("Mcp:ChatEnabled", "bool", true),
+            ["Mcp:Enabled"] = new("Mcp:Enabled", "bool", true),
+            ["Mcp:RequireAuthentication"] = new("Mcp:RequireAuthentication", "bool", true),
+            ["Mcp:AppsEnabled"] = new("Mcp:AppsEnabled", "bool", true),
+            ["Mcp:ChatEnabled"] = new("Mcp:ChatEnabled", "bool", true),
 
-            ["WebUi:SecureCookies"]                     = new("WebUi:SecureCookies", "bool", true),
-            ["WebUi:Customization:EnableLandingPage"]   = new("WebUi:Customization:EnableLandingPage", "bool", true),
-            ["WebUi:Customization:PromoText"]           = new("WebUi:Customization:PromoText", "text", false, Max: 2_000),
-            ["WebUi:Customization:PromoLogin"]          = new("WebUi:Customization:PromoLogin", "bool", false),
-            ["WebUi:Customization:LoginFooter"]         = new("WebUi:Customization:LoginFooter", "text", false, Max: 2_000),
+            ["WebUi:SecureCookies"] = new("WebUi:SecureCookies", "bool", true),
+            ["WebUi:Customization:EnableLandingPage"] = new("WebUi:Customization:EnableLandingPage", "bool", true),
+            ["WebUi:Customization:PromoText"] = new("WebUi:Customization:PromoText", "text", false, Max: 2_000),
+            ["WebUi:Customization:PromoLogin"] = new("WebUi:Customization:PromoLogin", "bool", false),
+            ["WebUi:Customization:LoginFooter"] = new("WebUi:Customization:LoginFooter", "text", false, Max: 2_000),
 
-            ["Oidc:Enabled"]                            = new("Oidc:Enabled", "bool", false),
-            ["OpenApi:Enabled"]                         = new("OpenApi:Enabled", "bool", true),
-            ["RequestTrafficLogging:Enabled"]           = new("RequestTrafficLogging:Enabled", "bool", true),
+            ["Oidc:Enabled"] = new("Oidc:Enabled", "bool", false),
+            ["OpenApi:Enabled"] = new("OpenApi:Enabled", "bool", true),
+            ["RequestTrafficLogging:Enabled"] = new("RequestTrafficLogging:Enabled", "bool", true),
 
-            ["FileStorage:MaxFileSizeBytes"]            = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
+            ["FileStorage:MaxFileSizeBytes"] = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
 
             // Deployment shape. These decide who reaches the console and whose IP is believed, so the
             // endpoint additionally refuses a change that would lock the caller out of the console.
-            ["WebUi:PublicOrigins"]                     = new("WebUi:PublicOrigins", "originlist", true, Max: 50),
-            ["ForwardedHeaders:KnownProxies"]           = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
-            ["ForwardedHeaders:KnownNetworks"]          = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
+            ["WebUi:PublicOrigins"] = new("WebUi:PublicOrigins", "originlist", true, Max: 50),
+            ["ForwardedHeaders:KnownProxies"] = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
+            ["ForwardedHeaders:KnownNetworks"] = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
 
             // Write-only in the safe direction: the seeding key can be cleared, never set
-            ["WebUi:AdminApiKey"]                       = new("WebUi:AdminApiKey", "clear", true),
-            ["WebUi:Enabled"]                           = new("WebUi:Enabled", "bool", true),
+            ["WebUi:AdminApiKey"] = new("WebUi:AdminApiKey", "clear", true),
+            ["WebUi:Enabled"] = new("WebUi:Enabled", "bool", true),
         };
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);
@@ -179,8 +179,8 @@ public sealed class SettingsWriteService
         // Free text bounded by Max; null clears the override back to whatever appsettings.json declares
         "text" => ReadText(spec, raw),
 
-        "iplist"     => ReadList(spec, raw, ParseIp),
-        "cidrlist"   => ReadList(spec, raw, ParseNetwork),
+        "iplist" => ReadList(spec, raw, ParseIp),
+        "cidrlist" => ReadList(spec, raw, ParseNetwork),
         "originlist" => ReadList(spec, raw, ParseOrigin),
 
         // Only ever accepts the empty string: a credential may be removed here, never introduced

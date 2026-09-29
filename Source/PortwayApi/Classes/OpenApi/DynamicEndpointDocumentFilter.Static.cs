@@ -338,7 +338,7 @@ public partial class DynamicEndpointDocumentFilter
                 });
             }
 
-                StandardResponses.AddErrors(getOperation, ApiOperationKind.Static);
+            StandardResponses.AddErrors(getOperation, ApiOperationKind.Static);
 
             document.Paths[path].Operations![HttpMethod.Get] = getOperation;
 

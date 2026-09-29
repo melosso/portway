@@ -232,7 +232,7 @@ public partial class EndpointController
         {
             // Process the catchall to determine endpoint type
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
-            
+
             // Only support HEAD for static endpoints
             if (endpointType != EndpointType.Static)
             {
@@ -270,7 +270,7 @@ public partial class EndpointController
                 // For non-namespaced endpoints, use just the endpoint name
                 endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
             }
-            
+
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
             var contentFilePath = Path.Combine(endpointPath, contentFile);
 
@@ -281,14 +281,14 @@ public partial class EndpointController
 
             // Get content type and file info
             var contentType = endpoint.Properties["ContentType"].ToString();
-            
+
             // Auto-detect content type if not specified
             if (string.IsNullOrEmpty(contentType))
             {
                 contentType = StaticRequestHandler.GetContentTypeFromExtension(contentFile);
                 Log.Debug("Auto-detected content type: {ContentType} for file: {ContentFile}", contentType, contentFile);
             }
-            
+
             var fileInfo = new FileInfo(contentFilePath);
 
             // Set headers without returning body
@@ -297,7 +297,7 @@ public partial class EndpointController
             Response.Headers["Last-Modified"] = fileInfo.LastWriteTimeUtc.ToString("R");
 
             Log.Debug("HEAD response for static content: {Endpoint} ({ContentType})", endpointName, contentType);
-            
+
             return Ok();
         }
         catch (Exception ex)
@@ -346,7 +346,7 @@ public partial class EndpointController
             }
             // Reset position for further reading if needed
             Request.Body.Position = 0;
-            
+
             switch (endpointType)
             {
                 case EndpointType.SQL:
@@ -354,18 +354,18 @@ public partial class EndpointController
                     // For SQL endpoints, build the full key for lookup (same as GET)
                     var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleSqlPostRequest(env, sqlKey, data);
-                    
+
                 case EndpointType.Proxy:
                     // For proxy endpoints, build the full key for lookup
                     var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleProxyRequest(env, proxyKey, id, remainingPath, "POST");
-                    
+
                 case EndpointType.Composite:
                     // For composite endpoints, build the full key for lookup
                     var compositeKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     string actualCompositeName = compositeKey.Replace("composite/", "");
                     return await HandleCompositeRequest(env, actualCompositeName, requestBody);
-                    
+
                 case EndpointType.Webhook:
                     // For webhook endpoints, build the full key for lookup
                     var webhookKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
@@ -377,7 +377,7 @@ public partial class EndpointController
                     }
                     var webhookData = JsonSerializer.Deserialize<JsonElement>(requestBody);
                     return await HandleWebhookRequest(env, webhookKey, webhookId, webhookData);
-                    
+
                 default:
                     Log.Warning("Unknown endpoint type for {EndpointName}", endpointName);
                     return PortwayResults.NotFound($"Endpoint '{endpointName}' not found");
@@ -401,7 +401,7 @@ public partial class EndpointController
         {
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
-            
+
             Log.Debug("Processing {Type} endpoint: {Name} for PUT", endpointType, endpointName);
 
             // Check environment restrictions
@@ -450,7 +450,7 @@ public partial class EndpointController
         {
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, parsedId, remainingPath) = ParseEndpoint(catchall);
-            
+
             Log.Debug("Processing {Type} endpoint: {Name} for DELETE", endpointType, endpointName);
 
             // Check environment restrictions
@@ -468,16 +468,16 @@ public partial class EndpointController
                     {
                         return PortwayResults.BadRequest("ID parameter is required for delete operations");
                     }
-                    
+
                     // For SQL endpoints, build the full key for lookup (same as GET)
                     var sqlKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleSqlDeleteRequest(env, sqlKey, parsedId);
-                    
+
                 case EndpointType.Proxy:
                     // For proxy endpoints, build the full key for lookup
                     var proxyKey = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
                     return await HandleProxyRequest(env, proxyKey, parsedId, remainingPath, "DELETE");
-                    
+
                 case EndpointType.Composite:
                     Log.Warning("Composite endpoints don't support DELETE requests");
                     return PortwayResults.MethodNotAllowed();
@@ -509,7 +509,7 @@ public partial class EndpointController
         {
             // Process the catchall to determine what type of endpoint we're dealing with
             var (endpointType, namespaceName, endpointName, id, remainingPath) = ParseEndpoint(catchall);
-            
+
             Log.Debug("Processing {Type} endpoint: {Name} for PATCH", endpointType, endpointName);
 
             // Check environment restrictions

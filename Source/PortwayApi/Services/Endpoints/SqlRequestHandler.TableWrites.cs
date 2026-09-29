@@ -62,54 +62,54 @@ public sealed partial class SqlRequestHandler
         switch (kind)
         {
             case TableWriteKind.Insert:
-            {
-                var insert = SqlTableWriteBuilder.BuildInsert(provider, table, columns);
-                await connection.ExecuteAsync(insert.Sql, insert.Parameters);
-
-                // Return the created row when the payload named its own key
-                object? created = null;
-                if (pkValue != null)
                 {
-                    var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
-                    created = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
+                    var insert = SqlTableWriteBuilder.BuildInsert(provider, table, columns);
+                    await connection.ExecuteAsync(insert.Sql, insert.Parameters);
+
+                    // Return the created row when the payload named its own key
+                    object? created = null;
+                    if (pkValue != null)
+                    {
+                        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
+                        created = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
+                    }
+                    Log.Debug("Table INSERT on {Endpoint} succeeded", endpointName);
+                    return PortwayResults.Create($"/api/{endpointName}", "Record created successfully", created);
                 }
-                Log.Debug("Table INSERT on {Endpoint} succeeded", endpointName);
-                return PortwayResults.Create($"/api/{endpointName}", "Record created successfully", created);
-            }
 
             case TableWriteKind.Update:
-            {
-                if (pkValue == null)
-                    return PortwayResults.BadRequest($"Updates require the '{endpoint.PrimaryKey}' column");
+                {
+                    if (pkValue == null)
+                        return PortwayResults.BadRequest($"Updates require the '{endpoint.PrimaryKey}' column");
 
-                columns.Remove(pkColumn);
-                if (columns.Count == 0)
-                    return PortwayResults.BadRequest("Request contains no updatable columns");
+                    columns.Remove(pkColumn);
+                    if (columns.Count == 0)
+                        return PortwayResults.BadRequest("Request contains no updatable columns");
 
-                var update = SqlTableWriteBuilder.BuildUpdate(provider, table, pkColumn, pkValue, columns);
-                var affected = await connection.ExecuteAsync(update.Sql, update.Parameters);
-                if (affected == 0)
-                    return PortwayResults.NotFound("Record not found");
+                    var update = SqlTableWriteBuilder.BuildUpdate(provider, table, pkColumn, pkValue, columns);
+                    var affected = await connection.ExecuteAsync(update.Sql, update.Parameters);
+                    if (affected == 0)
+                        return PortwayResults.NotFound("Record not found");
 
-                var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
-                var updated = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
-                Log.Debug("Table UPDATE on {Endpoint} affected {Rows} row(s)", endpointName, affected);
-                return PortwayResults.Mutation("Record updated successfully", updated);
-            }
+                    var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
+                    var updated = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
+                    Log.Debug("Table UPDATE on {Endpoint} affected {Rows} row(s)", endpointName, affected);
+                    return PortwayResults.Mutation("Record updated successfully", updated);
+                }
 
             case TableWriteKind.Delete:
-            {
-                if (pkValue == null)
-                    return PortwayResults.BadRequest("ID parameter is required for delete operations");
+                {
+                    if (pkValue == null)
+                        return PortwayResults.BadRequest("ID parameter is required for delete operations");
 
-                var delete = SqlTableWriteBuilder.BuildDelete(provider, table, pkColumn, pkValue);
-                var affected = await connection.ExecuteAsync(delete.Sql, delete.Parameters);
-                if (affected == 0)
-                    return PortwayResults.NotFound("Record not found");
+                    var delete = SqlTableWriteBuilder.BuildDelete(provider, table, pkColumn, pkValue);
+                    var affected = await connection.ExecuteAsync(delete.Sql, delete.Parameters);
+                    if (affected == 0)
+                        return PortwayResults.NotFound("Record not found");
 
-                Log.Debug("Table DELETE on {Endpoint} affected {Rows} row(s)", endpointName, affected);
-                return PortwayResults.Mutation("Record deleted successfully", new { affected });
-            }
+                    Log.Debug("Table DELETE on {Endpoint} affected {Rows} row(s)", endpointName, affected);
+                    return PortwayResults.Mutation("Record deleted successfully", new { affected });
+                }
 
             default:
                 return PortwayResults.BadRequest("Unsupported table write operation");

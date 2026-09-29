@@ -19,7 +19,7 @@ public sealed class SseBroadcaster : IDisposable
     {
         var ch = Channel.CreateBounded<string>(new BoundedChannelOptions(32)
         {
-            FullMode    = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.DropOldest,
             SingleReader = true
         });
         _channels[ch] = 0;

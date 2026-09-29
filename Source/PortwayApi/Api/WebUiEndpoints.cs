@@ -193,7 +193,7 @@ public static partial class WebUiEndpointExtensions
 
         // Change-controls: audit every config mutation, back up files before UI writes
         var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
-        
+
 
         MapPageAndAuthRoutes(app, wwwroot, appVersion, secureCookies);
         MapInfoRoutes(app, appVersion);
@@ -250,13 +250,13 @@ public static partial class WebUiEndpointExtensions
         var baseDir = Directory.GetCurrentDirectory();
         var (typeDir, isFixed) = type.ToLowerInvariant() switch
         {
-            "sql"       => ("endpoints/SQL",      false),
-            "proxy"     => ("endpoints/Proxy",    false),
-            "composite" => ("endpoints/Proxy",    false),
-            "file"      => ("endpoints/Files",    false),
-            "static"    => ("endpoints/Static",   false),
-            "webhook"   => ("endpoints/Webhooks", false),
-            _           => ((string?)null,        false)
+            "sql" => ("endpoints/SQL", false),
+            "proxy" => ("endpoints/Proxy", false),
+            "composite" => ("endpoints/Proxy", false),
+            "file" => ("endpoints/Files", false),
+            "static" => ("endpoints/Static", false),
+            "webhook" => ("endpoints/Webhooks", false),
+            _ => ((string?)null, false)
         };
 
         if (typeDir == null) return (null, $"Unknown endpoint type: {type}");
@@ -275,7 +275,7 @@ public static partial class WebUiEndpointExtensions
         // and the explicit-namespace case (e.g. Catalog/Products → Products/)
         if (!isFixed && !File.Exists(filePath) && name.Contains('/'))
         {
-            var leafName     = name.Split('/')[^1];
+            var leafName = name.Split('/')[^1];
             var fallbackPath = Path.GetFullPath(Path.Combine(baseDir, typeDir, leafName, "entity.json"));
             if (fallbackPath.StartsWith(allowedBase + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
                 && File.Exists(fallbackPath))
@@ -287,13 +287,13 @@ public static partial class WebUiEndpointExtensions
 
     private static EndpointType? TypeStringToEndpointType(string type) => type.ToLowerInvariant() switch
     {
-        "sql"       => EndpointType.SQL,
-        "proxy"     => EndpointType.Proxy,
+        "sql" => EndpointType.SQL,
+        "proxy" => EndpointType.Proxy,
         "composite" => EndpointType.Composite,
-        "file"      => EndpointType.Files,
-        "static"    => EndpointType.Static,
-        "webhook"   => EndpointType.Webhook,
-        _           => null
+        "file" => EndpointType.Files,
+        "static" => EndpointType.Static,
+        "webhook" => EndpointType.Webhook,
+        _ => null
     };
 
     internal const string SignedInUserKey = "portway.user";
@@ -303,8 +303,8 @@ public static partial class WebUiEndpointExtensions
     /// </summary>
     private static IResult ServeComposedPage(string wwwroot, string page, string title, PathString pathBase, string version)
     {
-        var shellPath  = Path.Combine(wwwroot, "_shell.html");
-        var viewPath   = Path.Combine(wwwroot, "views", $"{page}.html");
+        var shellPath = Path.Combine(wwwroot, "_shell.html");
+        var viewPath = Path.Combine(wwwroot, "views", $"{page}.html");
         var footerPath = Path.Combine(wwwroot, "_footer.html");
         if (!File.Exists(shellPath) || !File.Exists(viewPath)) return Results.NotFound();
 
@@ -342,7 +342,7 @@ public static partial class WebUiEndpointExtensions
     private static IResult FinishHtml(string html, PathString pathBase, string version)
     {
         var pb = pathBase.Value ?? "";
-        var v  = Uri.EscapeDataString(version);
+        var v = Uri.EscapeDataString(version);
         html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
         html = System.Text.RegularExpressions.Regex.Replace(
             html,

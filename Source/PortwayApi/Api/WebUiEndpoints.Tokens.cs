@@ -19,17 +19,17 @@ public static partial class WebUiEndpointExtensions
                 : await tokenService.GetActiveTokensAsync();
             return Results.Json(tokens.Select(t => new
             {
-                id                   = t.Id,
-                username             = t.Username,
-                description          = t.Description,
-                created_at           = t.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
-                expires_at           = t.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
-                revoked_at           = t.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
-                allowed_scopes       = t.AllowedScopes,
+                id = t.Id,
+                username = t.Username,
+                description = t.Description,
+                created_at = t.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
+                expires_at = t.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                revoked_at = t.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                allowed_scopes = t.AllowedScopes,
                 allowed_environments = t.AllowedEnvironments,
-                rate_limit_requests  = t.RateLimitRequests,
+                rate_limit_requests = t.RateLimitRequests,
                 rate_limit_window_seconds = t.RateLimitWindowSeconds,
-                is_active            = t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow)
+                is_active = t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow)
             }));
         }).ExcludeFromDescription();
 
@@ -65,7 +65,7 @@ public static partial class WebUiEndpointExtensions
 
             if (body.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
                 await tokenService.UpdateTokenDescriptionAsync(id, desc.GetString() ?? "");
-            
+
             if (body.TryGetProperty("expires_at", out var expiresAt) &&
                 expiresAt.ValueKind == JsonValueKind.String &&
                 DateTime.TryParse(expiresAt.GetString(), out var dt))
@@ -90,12 +90,12 @@ public static partial class WebUiEndpointExtensions
         app.MapDelete("/ui/api/tokens/{id:int}", async (int id, TokenService tokenService) =>
         {
             var blockReason = await tokenService.GetRevokeBlockReasonAsync(id);
-            
+
             if (blockReason != null)
                 return Results.Json(new { error = blockReason }, statusCode: 409);
-            
+
             var ok = await tokenService.RevokeTokenAsync(id);
-            
+
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found" }, statusCode: 404);
         }).ExcludeFromDescription();
 
@@ -108,15 +108,15 @@ public static partial class WebUiEndpointExtensions
         app.MapPost("/ui/api/tokens/{id:int}/rotate", async (int id, TokenService tokenService) =>
         {
             var existing = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
-            
+
             if (existing == null)
                 return Results.Json(new { error = "Token not found" }, statusCode: 404);
-            
+
             if (existing.RevokedAt != null)
                 return Results.Json(new { error = "Cannot rotate an archived token" }, statusCode: 400);
 
             int? expiresInDays = null;
-            
+
             if (existing.ExpiresAt.HasValue)
             {
                 var remaining = (int)Math.Ceiling((existing.ExpiresAt.Value - DateTime.UtcNow).TotalDays);
@@ -137,12 +137,12 @@ public static partial class WebUiEndpointExtensions
 
             return Results.Json(new
             {
-                ok                   = true,
-                token                = newToken,
-                username             = existing.Username,
-                allowed_scopes       = existing.AllowedScopes,
+                ok = true,
+                token = newToken,
+                username = existing.Username,
+                allowed_scopes = existing.AllowedScopes,
                 allowed_environments = existing.AllowedEnvironments,
-                expires_in_days      = expiresInDays
+                expires_in_days = expiresInDays
             });
         }).ExcludeFromDescription();
 
@@ -151,9 +151,9 @@ public static partial class WebUiEndpointExtensions
             var entries = await tokenService.GetAuditLogAsync(tokenId: id, maxRecords: 50);
             return Results.Json(entries.Select(e => new
             {
-                operation  = e.Operation,
-                timestamp  = e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
-                details    = e.Details,
+                operation = e.Operation,
+                timestamp = e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                details = e.Details,
                 ip_address = e.IpAddress,
                 user_agent = e.UserAgent
             }));

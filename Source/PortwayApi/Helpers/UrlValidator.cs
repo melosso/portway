@@ -22,7 +22,7 @@ public class UrlValidator
         EnsureConfigFileExists(configPath);
 
         var config = JsonSerializer.Deserialize<HostConfig>(
-            File.ReadAllText(configPath), 
+            File.ReadAllText(configPath),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
         );
 
@@ -34,10 +34,10 @@ public class UrlValidator
         // Prioritize hosts from configuration
         _allowedHosts = config.AllowedHosts?.Count > 0
             ? config.AllowedHosts
-            : new List<string> 
-            { 
-                "localhost", 
-                "127.0.0.1" 
+            : new List<string>
+            {
+                "localhost",
+                "127.0.0.1"
             };
 
         // Only add discovered hosts if no hosts are specified in config
@@ -61,7 +61,7 @@ public class UrlValidator
                 "fe80::/10"
             };
 
-        Log.Information("Network traffic allowed for hosts: {Hosts}", 
+        Log.Information("Network traffic allowed for hosts: {Hosts}",
             string.Join(", ", _allowedHosts));
     }
 
@@ -154,10 +154,10 @@ public class UrlValidator
         {
             var uri = new Uri(url);
             string host = uri.Host.Split(':')[0];
-            
+
             Log.Debug("Validating URL: {Url}", url);
             Log.Debug("Host to validate: {Host}", host);
-            
+
             // Check allowedHosts first; explicit allowlist bypasses IP range checks
             bool isHostAllowed = _allowedHosts.Any(allowed =>
                 string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
@@ -198,7 +198,7 @@ public class UrlValidator
                     string.Join(", ", blockedIps));
                 return false;
             }
-            
+
             Log.Debug("URL {Url} validated successfully", url);
             return true;
         }
@@ -242,7 +242,7 @@ public class UrlValidator
         _hostCache[host] = isValid;
         return isValid;
     }
-    
+
     /// <summary>
     /// Creates a default configuration file if one is not already present at configPath
     /// </summary>
@@ -256,7 +256,7 @@ public class UrlValidator
             {
                 Directory.CreateDirectory(directory);
             }
-            
+
             File.WriteAllText(configPath, JsonSerializer.Serialize(new HostConfig()));
         }
     }
@@ -266,7 +266,7 @@ public class UrlValidator
     /// </summary>
     private bool ValidateHost(string host)
     {
-         // Resolve DNS and check IP ranges
+        // Resolve DNS and check IP ranges
         var addresses = ResolveDnsWithCache(host);
         return addresses.All(IsIpAllowed);
     }
@@ -276,7 +276,7 @@ public class UrlValidator
     /// </summary>
     private bool IsHostPatternAllowed(string host)
     {
-        return _allowedHosts.Any(pattern => 
+        return _allowedHosts.Any(pattern =>
             MatchHostPattern(host, pattern));
     }
 
@@ -296,9 +296,9 @@ public class UrlValidator
     /// </summary>
     private IPAddress[] ResolveDnsWithCache(string host)
     {
-        return _dnsCache.GetOrAdd(host, key => 
+        return _dnsCache.GetOrAdd(host, key =>
         {
-            try 
+            try
             {
                 return Dns.GetHostAddresses(key) ?? Array.Empty<IPAddress>();
             }
@@ -321,7 +321,7 @@ public class UrlValidator
 
         if (blockedBy.Any())
         {
-            Log.Warning("IP {IpAddress} is blocked by the following ranges: {BlockedRanges}", 
+            Log.Warning("IP {IpAddress} is blocked by the following ranges: {BlockedRanges}",
                 ip, string.Join(", ", blockedBy));
             return false;
         }

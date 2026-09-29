@@ -35,8 +35,8 @@ internal sealed class AnthropicStreamTranslator : IChatStreamTranslator
                 {
                     yield return new ChatDelta
                     {
-                        Type      = ChatDeltaType.ToolCall,
-                        ToolName  = _currentToolName,
+                        Type = ChatDeltaType.ToolCall,
+                        ToolName = _currentToolName,
                         ToolInput = _currentToolInput.ToString()
                     };
 

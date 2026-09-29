@@ -42,17 +42,17 @@ public static partial class WebUiEndpointExtensions
 
             var adminKey = config.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
             var accountCount = await users.CountAsync();
-            var corsOriginsCount   = config.GetSection("WebUi:CorsOrigins").Get<string[]>()?.Length ?? 0;
-            var publicOrigins      = config.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
-            var knownProxies       = config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
-            var knownNetworks      = config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
-            var trustedProxyCount  = knownProxies.Length + knownNetworks.Length;
+            var corsOriginsCount = config.GetSection("WebUi:CorsOrigins").Get<string[]>()?.Length ?? 0;
+            var publicOrigins = config.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
+            var knownProxies = config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+            var knownNetworks = config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
+            var trustedProxyCount = knownProxies.Length + knownNetworks.Length;
 
             // What the console gate actually compared for this request, so the page can say whether
             // the deployment is reporting real client addresses or the reverse proxy's own
-            var peerIp        = ctx.Connection.RemoteIpAddress;
-            var forwardedFor  = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
-            var behindProxy   = !string.IsNullOrEmpty(forwardedFor);
+            var peerIp = ctx.Connection.RemoteIpAddress;
+            var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
+            var behindProxy = !string.IsNullOrEmpty(forwardedFor);
             var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
             var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_USE_HTTPS");
             var httpsOn = inContainer
@@ -60,135 +60,137 @@ public static partial class WebUiEndpointExtensions
                 : !string.Equals(useHttpsEnv, "false", StringComparison.OrdinalIgnoreCase);
 
             return Results.Json(new
-        {
-            database_maintenance = new
             {
-                enabled      = config.GetValue<bool>("DatabaseMaintenance:Enabled", true),
-                schedule     = config.GetValue<string>("DatabaseMaintenance:Schedule") ?? "03:00",
-                last_run_utc = dbMaintenance?.LastRunUtc,
-                last_results = dbMaintenance?.LastRunResults.Select(r => new
+                database_maintenance = new
                 {
-                    database = r.Database, vacuumed = r.Vacuumed,
-                    reclaimed_bytes = r.BytesBefore - r.BytesAfter, skip_reason = r.SkipReason
-                })
-            },
-            security = new
-            {
-                webui_auth_enabled = PortwayApi.Helpers.WebUiAuthState.Enabled,
-                admin_accounts     = accountCount,
-                // The key only ever seeds the first account now; left in place it is a secret with no job
-                legacy_admin_key   = !string.IsNullOrEmpty(adminKey),
-                https_enabled       = httpsOn,
-                secure_cookies      = config.GetValue<bool>("WebUi:SecureCookies", false),
-                cors_origins_count  = corsOriginsCount,
-                public_origins_count = publicOrigins.Length,
-                trusted_proxies_configured = trustedProxyCount > 0,
-                csrf_protection     = true,
-                client_ip           = peerIp?.ToString() ?? "",
-                behind_proxy        = behindProxy,
-                // Forwarded headers arriving from an untrusted hop are ignored, so every client looks
-                // like the proxy: the console gate, per-IP rate limiting and the login lockout all blur together
-                forwarded_ignored   = behindProxy && trustedProxyCount == 0,
-                console_public      = publicOrigins.Length > 0
-            },
-            deployment = new
-            {
-                public_origins  = publicOrigins,
-                known_proxies   = knownProxies,
-                known_networks  = knownNetworks
-            },
-            // The disable group: one place to turn whole subsystems off
-            features = new
-            {
-                oidc            = config.GetValue("Oidc:Enabled", true),
-                openapi         = config.GetValue("OpenApi:Enabled", true),
-                traffic_logging = config.GetValue("RequestTrafficLogging:Enabled", false),
-                landing_page    = config.GetValue("WebUi:Customization:EnableLandingPage", true),
-                oidc_providers  = await db.OidcProviders.CountAsync(p => p.IsEnabled)
-            },
-            customization = new
-            {
-                promo_text   = config.GetValue<string>("WebUi:Customization:PromoText") ?? "",
-                promo_login  = config.GetValue("WebUi:Customization:PromoLogin", false),
-                login_footer = config.GetValue<string>("WebUi:Customization:LoginFooter") ?? ""
-            },
-            rate_limiting = new
-            {
-                enabled              = config.GetValue<bool>("RateLimiting:Enabled"),
-                store                = config.GetValue<string>("RateLimiting:Store") ?? "Memory",
-                ip_limit             = config.GetValue<int>("RateLimiting:IpLimit"),
-                ip_window_seconds    = config.GetValue<int>("RateLimiting:IpWindow"),
-                token_limit          = config.GetValue<int>("RateLimiting:TokenLimit"),
-                token_window_seconds = config.GetValue<int>("RateLimiting:TokenWindow")
-            },
-            caching = new
-            {
-                enabled                  = config.GetValue<bool>("Caching:Enabled"),
-                provider                 = config.GetValue<string>("Caching:ProviderType") ?? "Memory",
-                default_duration_seconds = config.GetValue<int>("Caching:DefaultCacheDurationSeconds"),
-                max_size_mb              = config.GetValue<int>("Caching:MemoryCacheSizeLimitMB")
-            },
-            sql_pooling = new
-            {
-                enabled            = config.GetValue<bool>("SqlConnectionPooling:Enabled"),
-                min_pool_size      = config.GetValue<int>("SqlConnectionPooling:MinPoolSize"),
-                max_pool_size      = config.GetValue<int>("SqlConnectionPooling:MaxPoolSize"),
-                connection_timeout = config.GetValue<int>("SqlConnectionPooling:ConnectionTimeout"),
-                command_timeout    = config.GetValue<int>("SqlConnectionPooling:CommandTimeout")
-            },
-            file_storage = new
-            {
-                directory        = config.GetValue<string>("FileStorage:StorageDirectory") ?? "",
-                max_file_size_mb    = config.GetValue<long>("FileStorage:MaxFileSizeBytes") / 1024 / 1024,
-                max_file_size_bytes = config.GetValue<long>("FileStorage:MaxFileSizeBytes")
-            },
-            logging = new
-            {
-                min_level = config.GetSection("Serilog:MinimumLevel:Default").Value ?? "Information",
-                sinks     = config.GetSection("Serilog:WriteTo").GetChildren()
+                    enabled = config.GetValue<bool>("DatabaseMaintenance:Enabled", true),
+                    schedule = config.GetValue<string>("DatabaseMaintenance:Schedule") ?? "03:00",
+                    last_run_utc = dbMaintenance?.LastRunUtc,
+                    last_results = dbMaintenance?.LastRunResults.Select(r => new
+                    {
+                        database = r.Database,
+                        vacuumed = r.Vacuumed,
+                        reclaimed_bytes = r.BytesBefore - r.BytesAfter,
+                        skip_reason = r.SkipReason
+                    })
+                },
+                security = new
+                {
+                    webui_auth_enabled = PortwayApi.Helpers.WebUiAuthState.Enabled,
+                    admin_accounts = accountCount,
+                    // The key only ever seeds the first account now; left in place it is a secret with no job
+                    legacy_admin_key = !string.IsNullOrEmpty(adminKey),
+                    https_enabled = httpsOn,
+                    secure_cookies = config.GetValue<bool>("WebUi:SecureCookies", false),
+                    cors_origins_count = corsOriginsCount,
+                    public_origins_count = publicOrigins.Length,
+                    trusted_proxies_configured = trustedProxyCount > 0,
+                    csrf_protection = true,
+                    client_ip = peerIp?.ToString() ?? "",
+                    behind_proxy = behindProxy,
+                    // Forwarded headers arriving from an untrusted hop are ignored, so every client looks
+                    // like the proxy: the console gate, per-IP rate limiting and the login lockout all blur together
+                    forwarded_ignored = behindProxy && trustedProxyCount == 0,
+                    console_public = publicOrigins.Length > 0
+                },
+                deployment = new
+                {
+                    public_origins = publicOrigins,
+                    known_proxies = knownProxies,
+                    known_networks = knownNetworks
+                },
+                // The disable group: one place to turn whole subsystems off
+                features = new
+                {
+                    oidc = config.GetValue("Oidc:Enabled", true),
+                    openapi = config.GetValue("OpenApi:Enabled", true),
+                    traffic_logging = config.GetValue("RequestTrafficLogging:Enabled", false),
+                    landing_page = config.GetValue("WebUi:Customization:EnableLandingPage", true),
+                    oidc_providers = await db.OidcProviders.CountAsync(p => p.IsEnabled)
+                },
+                customization = new
+                {
+                    promo_text = config.GetValue<string>("WebUi:Customization:PromoText") ?? "",
+                    promo_login = config.GetValue("WebUi:Customization:PromoLogin", false),
+                    login_footer = config.GetValue<string>("WebUi:Customization:LoginFooter") ?? ""
+                },
+                rate_limiting = new
+                {
+                    enabled = config.GetValue<bool>("RateLimiting:Enabled"),
+                    store = config.GetValue<string>("RateLimiting:Store") ?? "Memory",
+                    ip_limit = config.GetValue<int>("RateLimiting:IpLimit"),
+                    ip_window_seconds = config.GetValue<int>("RateLimiting:IpWindow"),
+                    token_limit = config.GetValue<int>("RateLimiting:TokenLimit"),
+                    token_window_seconds = config.GetValue<int>("RateLimiting:TokenWindow")
+                },
+                caching = new
+                {
+                    enabled = config.GetValue<bool>("Caching:Enabled"),
+                    provider = config.GetValue<string>("Caching:ProviderType") ?? "Memory",
+                    default_duration_seconds = config.GetValue<int>("Caching:DefaultCacheDurationSeconds"),
+                    max_size_mb = config.GetValue<int>("Caching:MemoryCacheSizeLimitMB")
+                },
+                sql_pooling = new
+                {
+                    enabled = config.GetValue<bool>("SqlConnectionPooling:Enabled"),
+                    min_pool_size = config.GetValue<int>("SqlConnectionPooling:MinPoolSize"),
+                    max_pool_size = config.GetValue<int>("SqlConnectionPooling:MaxPoolSize"),
+                    connection_timeout = config.GetValue<int>("SqlConnectionPooling:ConnectionTimeout"),
+                    command_timeout = config.GetValue<int>("SqlConnectionPooling:CommandTimeout")
+                },
+                file_storage = new
+                {
+                    directory = config.GetValue<string>("FileStorage:StorageDirectory") ?? "",
+                    max_file_size_mb = config.GetValue<long>("FileStorage:MaxFileSizeBytes") / 1024 / 1024,
+                    max_file_size_bytes = config.GetValue<long>("FileStorage:MaxFileSizeBytes")
+                },
+                logging = new
+                {
+                    min_level = config.GetSection("Serilog:MinimumLevel:Default").Value ?? "Information",
+                    sinks = config.GetSection("Serilog:WriteTo").GetChildren()
                                 .Select(s => s["Name"] ?? "")
                                 .Where(n => !string.IsNullOrEmpty(n))
                                 .ToList()
-            },
-            endpoint_reloading = new
-            {
-                enabled     = config.GetValue<bool>("EndpointReloading:Enabled"),
-                debounce_ms = config.GetValue<int>("EndpointReloading:DebounceMs")
-            },
-            telemetry = new
-            {
-                provider        = telemetry.EffectiveProvider.ToString(),
-                service_name    = telemetry.ServiceName ?? PortwayApi.Services.Telemetry.PortwayTelemetry.ServiceName,
-                otlp_endpoint   = telemetry.EffectiveProvider == PortwayApi.Services.Telemetry.TelemetryProvider.Otlp
+                },
+                endpoint_reloading = new
+                {
+                    enabled = config.GetValue<bool>("EndpointReloading:Enabled"),
+                    debounce_ms = config.GetValue<int>("EndpointReloading:DebounceMs")
+                },
+                telemetry = new
+                {
+                    provider = telemetry.EffectiveProvider.ToString(),
+                    service_name = telemetry.ServiceName ?? PortwayApi.Services.Telemetry.PortwayTelemetry.ServiceName,
+                    otlp_endpoint = telemetry.EffectiveProvider == PortwayApi.Services.Telemetry.TelemetryProvider.Otlp
                                     ? telemetry.EffectiveOtlpEndpoint : null,
-                prometheus_path = telemetry.ActiveMetricsPath
-            },
-            mcp = new
-            {
-                enabled               = config.GetValue<bool>("Mcp:Enabled"),
-                path                  = config.GetValue<string>("Mcp:Path") ?? "/mcp",
-                require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication"),
-                apps_enabled          = config.GetValue<bool>("Mcp:AppsEnabled", true),
-                apps_path             = "/mcp/apps"
-            },
-            chat = new
-            {
-                enabled    = config.GetValue<bool>("Mcp:ChatEnabled"),
-                configured = chatCfg?.IsConfigured ?? false,
-                provider   = chatCfg?.Provider ?? string.Empty,
-                model      = chatCfg?.Model ?? string.Empty
-            },
-            writable = PortwayApi.Services.Configuration.SettingsWriteService.Schema
+                    prometheus_path = telemetry.ActiveMetricsPath
+                },
+                mcp = new
+                {
+                    enabled = config.GetValue<bool>("Mcp:Enabled"),
+                    path = config.GetValue<string>("Mcp:Path") ?? "/mcp",
+                    require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication"),
+                    apps_enabled = config.GetValue<bool>("Mcp:AppsEnabled", true),
+                    apps_path = "/mcp/apps"
+                },
+                chat = new
+                {
+                    enabled = config.GetValue<bool>("Mcp:ChatEnabled"),
+                    configured = chatCfg?.IsConfigured ?? false,
+                    provider = chatCfg?.Provider ?? string.Empty,
+                    model = chatCfg?.Model ?? string.Empty
+                },
+                writable = PortwayApi.Services.Configuration.SettingsWriteService.Schema
                 .Select(w => new
                 {
-                    key              = w.Key,
-                    kind             = w.Kind,
+                    key = w.Key,
+                    kind = w.Kind,
                     requires_restart = w.RequiresRestart,
-                    min              = w.Min,
-                    max              = w.Max,
-                    choices          = w.Choices
+                    min = w.Min,
+                    max = w.Max,
+                    choices = w.Choices
                 })
-        });
+            });
         }).ExcludeFromDescription();
 
         // Applies a whitelisted subset of configuration; everything else is refused by name
@@ -251,9 +253,9 @@ public static partial class WebUiEndpointExtensions
             try { body = await System.Text.Json.Nodes.JsonNode.ParseAsync(request.Body); }
             catch { return Results.BadRequest(new { error = "Invalid JSON body" }); }
 
-            var provider         = body?["provider"]?.GetValue<string>();
-            var model            = body?["model"]?.GetValue<string>();
-            var apiKey           = body?["apiKey"]?.GetValue<string>();
+            var provider = body?["provider"]?.GetValue<string>();
+            var model = body?["model"]?.GetValue<string>();
+            var apiKey = body?["apiKey"]?.GetValue<string>();
             var internalApiToken = body?["internalApiToken"]?.GetValue<string>();
 
             if (provider is not null && string.IsNullOrWhiteSpace(provider))

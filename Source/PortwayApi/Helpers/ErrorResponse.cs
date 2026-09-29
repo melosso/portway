@@ -5,9 +5,9 @@ namespace PortwayApi.Helpers;
 // All non-validation errors
 public sealed record ErrorResponse(
     // Whether the request was successful
-    [property: JsonPropertyName("success")] bool   Success,
+    [property: JsonPropertyName("success")] bool Success,
     // The error message to return to the client
-    [property: JsonPropertyName("error")]   string Error,
+    [property: JsonPropertyName("error")] string Error,
     // Correlates a masked 500 with the server log; omitted from every other status
     [property: JsonPropertyName("traceId")]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -25,7 +25,7 @@ public class CompositeEndpoint
         string env,
         string endpointName)
     {
-        Log.Information("Received composite request: {Path} {Method}", 
+        Log.Information("Received composite request: {Path} {Method}",
             context.Request.Path, context.Request.Method);
 
         try
@@ -43,7 +43,7 @@ public class CompositeEndpoint
             {
                 requestBody = await reader.ReadToEndAsync();
             }
-            
+
             // Process the composite endpoint
             return await _compositeHandler.ProcessCompositeEndpointAsync(context, env, endpointName, requestBody);
         }

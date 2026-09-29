@@ -114,88 +114,88 @@ public partial class EndpointController
             string? id = null;
             string remainingPath = "";
 
-                // If the endpoint part itself included the id (e.g. Cancellations(123) ) extract it
-                if (potentialEndpointRaw != potentialEndpoint)
+            // If the endpoint part itself included the id (e.g. Cancellations(123) ) extract it
+            if (potentialEndpointRaw != potentialEndpoint)
+            {
+                // attempt to extract id from the parentheses in segment[1]
+                var segment = potentialEndpointRaw;
+                id = segment switch
                 {
-                    // attempt to extract id from the parentheses in segment[1]
-                    var segment = potentialEndpointRaw;
-                    id = segment switch
+                    // guid'...' form: Cancellations(guid'...') 
+                    var s when Regex.IsMatch(s, @"^\w+\(guid'([\w\-]+)'\)$") =>
+                        Regex.Match(s, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
+
+                    // quoted string form: Cancellations('value')
+                    var s when Regex.IsMatch(s, @"^\w+\('([^']+)'\)$") =>
+                        Regex.Match(s, @"^\w+\('([^']+)'\)$").Groups[1].Value,
+
+                    // plain GUID inside parentheses: Cancellations(744276de-4918-4b56-af75-16901371983b)
+                    var s when Regex.IsMatch(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$") =>
+                        Regex.Match(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
+
+                    // numeric key: Cancellations(123)
+                    var s when Regex.IsMatch(s, @"^\w+\((\d+)\)$") =>
+                        Regex.Match(s, @"^\w+\((\d+)\)$").Groups[1].Value,
+                    _ => null
+                };
+            }
+
+            // The segment after the endpoint may contain an ID or the remaining path
+            if (segments.Length > nameIndex + 1)
+            {
+                var thirdSegment = segments[nameIndex + 1];
+
+                // Extract ID if it matches expected patterns (only if we didn't already get id)
+                if (id == null)
+                {
+                    id = thirdSegment switch
                     {
-                        // guid'...' form: Cancellations(guid'...') 
-                        var s when Regex.IsMatch(s, @"^\w+\(guid'([\w\-]+)'\)$") =>
-                            Regex.Match(s, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
+                        // Parenthesized formats
+                        var seg when Regex.IsMatch(seg, @"^\(guid'([\w\-]+)'\)$") =>
+                            Regex.Match(seg, @"^\(guid'([\w\-]+)'\)$").Groups[1].Value,
+                        var seg when Regex.IsMatch(seg, @"^\('([^']+)'\)$") =>
+                            Regex.Match(seg, @"^\('([^']+)'\)$").Groups[1].Value,
+                        var seg when Regex.IsMatch(seg, @"^\(([0-9a-fA-F\-]{36})\)$") =>
+                            Regex.Match(seg, @"^\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
+                        var seg when Regex.IsMatch(seg, @"^\((\d+)\)$") =>
+                            Regex.Match(seg, @"^\((\d+)\)$").Groups[1].Value,
 
-                        // quoted string form: Cancellations('value')
-                        var s when Regex.IsMatch(s, @"^\w+\('([^']+)'\)$") =>
-                            Regex.Match(s, @"^\w+\('([^']+)'\)$").Groups[1].Value,
+                        // Non-parenthesized formats 
+                        var seg when Regex.IsMatch(seg, @"^guid'([\w\-]+)'$") =>
+                            Regex.Match(seg, @"^guid'([\w\-]+)'$").Groups[1].Value,
+                        var seg when Regex.IsMatch(seg, @"^'([^']+)'$") =>
+                            Regex.Match(seg, @"^'([^']+)'$").Groups[1].Value,
+                        var seg when Guid.TryParse(seg, out _) => seg,
+                        var seg when Regex.IsMatch(seg, @"^\d+$") => seg,
 
-                        // plain GUID inside parentheses: Cancellations(744276de-4918-4b56-af75-16901371983b)
-                        var s when Regex.IsMatch(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$") =>
-                            Regex.Match(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
-
-                        // numeric key: Cancellations(123)
-                        var s when Regex.IsMatch(s, @"^\w+\((\d+)\)$") =>
-                            Regex.Match(s, @"^\w+\((\d+)\)$").Groups[1].Value,
                         _ => null
                     };
-                }
 
-                // The segment after the endpoint may contain an ID or the remaining path
-                if (segments.Length > nameIndex + 1)
+                    // Set remaining path if there are segments after the ID
+                    if (id != null && segments.Length > nameIndex + 2)
+                    {
+                        remainingPath = string.Join('/', segments.Skip(nameIndex + 2));
+                    }
+                    else if (id == null)
+                    {
+                        // segment after the endpoint is not an ID -> treat as remaining path
+                        remainingPath = string.Join('/', segments.Skip(nameIndex + 1));
+                    }
+                }
+                else
                 {
-                    var thirdSegment = segments[nameIndex + 1];
-
-                    // Extract ID if it matches expected patterns (only if we didn't already get id)
-                    if (id == null)
+                    // we already have the id from the endpoint segment, so everything after is remaining path
+                    if (segments.Length > nameIndex + 1)
                     {
-                        id = thirdSegment switch
-                        {
-                            // Parenthesized formats
-                            var seg when Regex.IsMatch(seg, @"^\(guid'([\w\-]+)'\)$") =>
-                                Regex.Match(seg, @"^\(guid'([\w\-]+)'\)$").Groups[1].Value,
-                            var seg when Regex.IsMatch(seg, @"^\('([^']+)'\)$") =>
-                                Regex.Match(seg, @"^\('([^']+)'\)$").Groups[1].Value,
-                            var seg when Regex.IsMatch(seg, @"^\(([0-9a-fA-F\-]{36})\)$") =>
-                                Regex.Match(seg, @"^\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
-                            var seg when Regex.IsMatch(seg, @"^\((\d+)\)$") =>
-                                Regex.Match(seg, @"^\((\d+)\)$").Groups[1].Value,
-
-                            // Non-parenthesized formats 
-                            var seg when Regex.IsMatch(seg, @"^guid'([\w\-]+)'$") =>
-                                Regex.Match(seg, @"^guid'([\w\-]+)'$").Groups[1].Value,
-                            var seg when Regex.IsMatch(seg, @"^'([^']+)'$") =>
-                                Regex.Match(seg, @"^'([^']+)'$").Groups[1].Value,
-                            var seg when Guid.TryParse(seg, out _) => seg,
-                            var seg when Regex.IsMatch(seg, @"^\d+$") => seg,
-
-                            _ => null
-                        };
-
-                        // Set remaining path if there are segments after the ID
-                        if (id != null && segments.Length > nameIndex + 2)
-                        {
-                            remainingPath = string.Join('/', segments.Skip(nameIndex + 2));
-                        }
-                        else if (id == null)
-                        {
-                            // segment after the endpoint is not an ID -> treat as remaining path
-                            remainingPath = string.Join('/', segments.Skip(nameIndex + 1));
-                        }
-                    }
-                    else
-                    {
-                        // we already have the id from the endpoint segment, so everything after is remaining path
-                        if (segments.Length > nameIndex + 1)
-                        {
-                            remainingPath = string.Join('/', segments.Skip(nameIndex + 1));
-                        }
+                        remainingPath = string.Join('/', segments.Skip(nameIndex + 1));
                     }
                 }
+            }
 
-                Log.Debug("Namespaced endpoint found: {Namespace}/{Name}, Type={Type}, ID={Id}",
-                    potentialNamespace, potentialEndpoint, endpointType, id);
+            Log.Debug("Namespaced endpoint found: {Namespace}/{Name}, Type={Type}, ID={Id}",
+                potentialNamespace, potentialEndpoint, endpointType, id);
 
-                return (endpointType, potentialNamespace, potentialEndpoint, id, remainingPath);
+            return (endpointType, potentialNamespace, potentialEndpoint, id, remainingPath);
         }
 
         // Fallback to traditional parsing (backward compatibility)
@@ -294,15 +294,15 @@ public partial class EndpointController
     {
         if (string.IsNullOrEmpty(baseDirectory))
             return string.Empty;
-        
+
         // Replace {env} placeholder with actual environment
         var processedDirectory = baseDirectory.Replace("{env}", environment, StringComparison.OrdinalIgnoreCase);
-        
+
         // Add support for additional placeholders if needed
         processedDirectory = processedDirectory.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
         processedDirectory = processedDirectory.Replace("{year}", DateTime.UtcNow.Year.ToString());
         processedDirectory = processedDirectory.Replace("{month}", DateTime.UtcNow.Month.ToString("00"));
-        
+
         return processedDirectory;
     }
 

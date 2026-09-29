@@ -10,7 +10,7 @@ internal static class ChatPayloadFactory
     public static JsonArray Messages(IReadOnlyList<ChatMessage> history)
         => Build(history, m => new JsonObject
         {
-            ["role"]    = m.Role,
+            ["role"] = m.Role,
             ["content"] = m.Content
         });
 
@@ -18,7 +18,7 @@ internal static class ChatPayloadFactory
     public static JsonArray GeminiContents(IReadOnlyList<ChatMessage> history)
         => Build(history, m => new JsonObject
         {
-            ["role"]  = m.Role == "assistant" ? "model" : "user",
+            ["role"] = m.Role == "assistant" ? "model" : "user",
             ["parts"] = new JsonArray(new JsonObject { ["text"] = m.Content })
         });
 
@@ -26,8 +26,8 @@ internal static class ChatPayloadFactory
     public static JsonArray Declarations(IReadOnlyList<ToolDefinition> tools, string schemaProperty)
         => Build(tools, t => new JsonObject
         {
-            ["name"]         = t.Name,
-            ["description"]  = t.Description,
+            ["name"] = t.Name,
+            ["description"] = t.Description,
             [schemaProperty] = ParseSchema(t)
         });
 
@@ -35,12 +35,12 @@ internal static class ChatPayloadFactory
     public static JsonArray Functions(IReadOnlyList<ToolDefinition> tools)
         => Build(tools, t => new JsonObject
         {
-            ["type"]     = "function",
+            ["type"] = "function",
             ["function"] = new JsonObject
             {
-                ["name"]        = t.Name,
+                ["name"] = t.Name,
                 ["description"] = t.Description,
-                ["parameters"]  = ParseSchema(t)
+                ["parameters"] = ParseSchema(t)
             }
         });
 

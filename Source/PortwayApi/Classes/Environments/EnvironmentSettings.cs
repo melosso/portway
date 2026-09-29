@@ -29,7 +29,7 @@ public class EnvironmentSettings
             if (!string.IsNullOrEmpty(directoryName))
             {
                 Directory.CreateDirectory(directoryName);
-            }                
+            }
             if (File.Exists(_settingsPath))
             {
                 var json = File.ReadAllText(_settingsPath);
@@ -86,12 +86,12 @@ public class EnvironmentSettings
     {
         return [.. _snapshot.AllowedEnvironments];
     }
-    
+
     private class SettingsModel
     {
         public EnvironmentModel Environment { get; set; } = new EnvironmentModel();
     }
-    
+
     private class EnvironmentModel
     {
         public string ServerName { get; set; } = ".";

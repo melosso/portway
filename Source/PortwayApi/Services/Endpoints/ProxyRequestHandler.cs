@@ -221,27 +221,27 @@ public sealed class ProxyRequestHandler
 
                 // Try to get from cache first
                 var cacheEntry = await _cacheManager.GetAsync<Services.Caching.ProxyCacheEntry>(cacheKey);
-                
+
                 if (cacheEntry != null)
                 {
                     Log.Debug("Cache hit for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
-                    
+
                     // Apply cached headers and status code
                     foreach (var header in cacheEntry.Headers)
                     {
                         context.Response.Headers[header.Key] = header.Value;
                     }
-                    
+
                     context.Response.StatusCode = cacheEntry.StatusCode;
-                    
+
                     // Write cached content
                     await context.Response.WriteAsync(cacheEntry.Content);
-                    
+
                     return new EmptyResult(); // Response already written
                 }
-                
+
                 Log.Debug("Cache miss for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
-                
+
                 // Acquire a distributed lock to prevent duplicate requests
                 using var lockHandle = await _cacheManager.AcquireLockAsync(
                     cacheKey,
@@ -249,39 +249,39 @@ public sealed class ProxyRequestHandler
                     TimeSpan.FromSeconds(10),
                     TimeSpan.FromMilliseconds(200),
                     context.RequestAborted);
-                
+
                 if (lockHandle != null)
                 {
                     // Double-check cache after acquiring lock
                     cacheEntry = await _cacheManager.GetAsync<Services.Caching.ProxyCacheEntry>(cacheKey);
-                    
+
                     if (cacheEntry != null)
                     {
                         Log.Debug("Cache hit after lock for proxy request: {Endpoint}", endpointName);
-                        
+
                         // Apply cached headers and status code
                         foreach (var header in cacheEntry.Headers)
                         {
                             context.Response.Headers[header.Key] = header.Value;
                         }
-                        
+
                         context.Response.StatusCode = cacheEntry.StatusCode;
-                        
+
                         // Write cached content
                         await context.Response.WriteAsync(cacheEntry.Content);
-                        
+
                         return new EmptyResult(); // Response already written
                     }
-                    
+
                     // Continue with normal proxy process for cache miss
                     var responseDetails = await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
-                    
+
                     // For successful responses, store in cache
                     if (responseDetails.IsSuccessful && _cacheManager.ShouldCacheResponse(responseDetails.ContentType))
                     {
                         // Determine cache duration - default to endpoint-specific duration
                         TimeSpan cacheDuration = _cacheManager.GetCacheDurationForEndpoint(endpointName);
-                        
+
                         // Check for Cache-Control max-age directive
                         if (responseDetails.Headers.TryGetValue("Cache-Control", out var cacheControl))
                         {
@@ -291,16 +291,16 @@ public sealed class ProxyRequestHandler
                                 cacheDuration = TimeSpan.FromSeconds(maxAge);
                             }
                         }
-                        
+
                         // Store response in cache
                         var entry = Services.Caching.ProxyCacheEntry.Create(
                             responseDetails.Content,
                             responseDetails.Headers,
                             responseDetails.StatusCode);
-                        
+
                         await _cacheManager.SetAsync(cacheKey, entry, cacheDuration);
-                        
-                        Log.Debug("Cached proxy response for: {Endpoint} ({Duration} seconds)", 
+
+                        Log.Debug("Cached proxy response for: {Endpoint} ({Duration} seconds)",
                             endpointName, cacheDuration.TotalSeconds);
                     }
                 }
@@ -310,7 +310,7 @@ public sealed class ProxyRequestHandler
                     Log.Warning("Could not acquire lock for caching: {Endpoint}", endpointName);
                     await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
                 }
-                
+
                 return new EmptyResult(); // Response already written
             }
             else
@@ -467,7 +467,7 @@ public sealed class ProxyRequestHandler
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append($"proxy:{env}:{endpointName}:{path}:{queryString}");
-        
+
         // Include authorization to differentiate between users if needed
         if (headers.TryGetValue("Authorization", out var authValues))
         {
@@ -476,16 +476,16 @@ public sealed class ProxyRequestHandler
             var authBytes = Encoding.UTF8.GetBytes(authValues.ToString());
             var hashBytes = sha.ComputeHash(authBytes);
             var authHash = Convert.ToBase64String(hashBytes);
-            
+
             keyBuilder.Append($":auth:{authHash}");
         }
-        
+
         // Include other headers that might affect the response
         if (headers.TryGetValue("Accept-Language", out var langValues))
         {
             keyBuilder.Append($":lang:{langValues}");
         }
-        
+
         return keyBuilder.ToString();
     }
 
@@ -494,7 +494,7 @@ public sealed class ProxyRequestHandler
     /// </summary>
     private async Task<(bool IsSuccessful, string Content, Dictionary<string, string> Headers, int StatusCode, string? ContentType)> ExecuteProxyRequest(
         HttpContext context,
-        string method, string fullUrl, string env, 
+        string method, string fullUrl, string env,
         ProxyEndpointInfo endpointConfig,
         string endpointName,
         bool isSoapRequest = false,
@@ -687,7 +687,7 @@ public sealed class ProxyRequestHandler
                 }
             }
         }
-        
+
         // For GET requests, ensure Cache-Control header is set (except for SOAP)
         if (method.Equals("GET", StringComparison.OrdinalIgnoreCase) && !isSoapRequest && !responseHeaders.ContainsKey("Cache-Control"))
         {
@@ -716,7 +716,7 @@ public sealed class ProxyRequestHandler
         if (isSoapRequest)
         {
             rewrittenContent = originalContent;
-            
+
             // Ensure content type is correctly set for XML responses
             if (!context.Response.Headers.ContainsKey("Content-Type"))
             {
@@ -764,13 +764,13 @@ public sealed class ProxyRequestHandler
         // Write the content to the response
         await context.Response.WriteAsync(rewrittenContent);
 
-        Log.Debug("Proxy request completed: {Method} {Path} -> {StatusCode}", 
+        Log.Debug("Proxy request completed: {Method} {Path} -> {StatusCode}",
             method, context.Request.Path, response.StatusCode);
-            
+
         return (
-            response.IsSuccessStatusCode, 
-            rewrittenContent, 
-            responseHeaders, 
+            response.IsSuccessStatusCode,
+            rewrittenContent,
+            responseHeaders,
             (int)response.StatusCode,
             contentType
         );
@@ -783,16 +783,16 @@ public sealed class ProxyRequestHandler
     private DeletePattern GetDeletePatternForProxy(string endpointName)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
-        
-        if (proxyEndpoints.TryGetValue(endpointName, out var definition) 
+
+        if (proxyEndpoints.TryGetValue(endpointName, out var definition)
             && definition.DeletePatterns?.Any() == true)
         {
             return definition.DeletePatterns.First();
         }
-        
+
         // Default fallback
-        return new DeletePattern 
-        { 
+        return new DeletePattern
+        {
             Style = "PathParameter",
             Description = "Delete by ID in path (default)"
         };

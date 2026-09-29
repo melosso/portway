@@ -38,9 +38,10 @@ public static class TableValuedFunctionSqlHandler
             if (!SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
                 Log.Warning("Endpoint {Name} is not configured as a Table Valued Function", endpoint.DatabaseObjectName);
-                return (false, new BadRequestObjectResult(new { 
+                return (false, new BadRequestObjectResult(new
+                {
                     error = "This endpoint is not configured as a Table Valued Function",
-                    success = false 
+                    success = false
                 }), null);
             }
 
@@ -48,9 +49,10 @@ public static class TableValuedFunctionSqlHandler
             if (endpoint.FunctionParameters == null || endpoint.FunctionParameters.Count == 0)
             {
                 Log.Warning("TVF endpoint {Name} has no function parameters defined", endpoint.DatabaseObjectName);
-                return (false, new BadRequestObjectResult(new { 
+                return (false, new BadRequestObjectResult(new
+                {
                     error = "Table Valued Function parameters are not configured",
-                    success = false 
+                    success = false
                 }), null);
             }
 
@@ -62,20 +64,21 @@ public static class TableValuedFunctionSqlHandler
 
             if (extractionErrors.Any())
             {
-                Log.Warning("Parameter extraction errors for TVF {Name}: {Errors}", 
+                Log.Warning("Parameter extraction errors for TVF {Name}: {Errors}",
                     endpoint.DatabaseObjectName, string.Join(", ", extractionErrors));
-                
-                return (false, new BadRequestObjectResult(new { 
+
+                return (false, new BadRequestObjectResult(new
+                {
                     error = "Parameter validation failed",
                     details = extractionErrors,
-                    success = false 
+                    success = false
                 }), null);
             }
 
             // Build the function call SQL
             var schema = endpoint.DatabaseSchema ?? "dbo";
             var functionName = endpoint.DatabaseObjectName!;
-            
+
             var (functionCall, sqlParameters) = SqlTableValuedFunctionHelper.BuildFunctionCall(
                 schema,
                 functionName,
@@ -94,7 +97,8 @@ public static class TableValuedFunctionSqlHandler
             {
                 Log.Warning("TVF endpoint {Name} requested against {Provider}, which does not support table valued functions",
                     endpoint.DatabaseObjectName, sqlProvider.ProviderType);
-                return (false, new BadRequestObjectResult(new {
+                return (false, new BadRequestObjectResult(new
+                {
                     error = $"Table valued functions are not supported by the {sqlProvider.ProviderType} database backing this environment",
                     success = false
                 }), null);
@@ -169,7 +173,7 @@ public static class TableValuedFunctionSqlHandler
             foreach (var kvp in odataSqlParams)
                 mergedParams[kvp.Key] = kvp.Value;
 
-            Log.Debug("Executing TVF query: {Query} with parameters: {Parameters}", 
+            Log.Debug("Executing TVF query: {Query} with parameters: {Parameters}",
                 finalQuery, string.Join(", ", mergedParams.Select(p => $"{p.Key}={p.Value}")));
 
             var results = await connection.QueryAsync(finalQuery, mergedParams);
@@ -205,19 +209,23 @@ public static class TableValuedFunctionSqlHandler
                 }
                 : "Error executing table valued function";
 
-            return (false, new ObjectResult(new { 
+            return (false, new ObjectResult(new
+            {
                 error = errorMessage,
-                success = false 
-            }) { StatusCode = 500 }, null);
+                success = false
+            })
+            { StatusCode = 500 }, null);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Unexpected error executing TVF {FunctionName}", endpoint.DatabaseObjectName);
-            
-            return (false, new ObjectResult(new { 
+
+            return (false, new ObjectResult(new
+            {
                 error = "An unexpected error occurred while executing the table valued function",
-                success = false 
-            }) { StatusCode = 500 }, null);
+                success = false
+            })
+            { StatusCode = 500 }, null);
         }
     }
 
@@ -305,7 +313,7 @@ public static class TableValuedFunctionSqlHandler
         }
 
         var validSources = new[] { "path", "query", "header" };
-        if (string.IsNullOrEmpty(parameter.Source) || 
+        if (string.IsNullOrEmpty(parameter.Source) ||
             !validSources.Contains(parameter.Source, StringComparer.OrdinalIgnoreCase))
         {
             errors.Add($"Parameter {parameter.Name}: Source must be one of: {string.Join(", ", validSources)}");
@@ -374,7 +382,7 @@ public static class TableValuedFunctionSqlHandler
         if (queryParams.Any())
         {
             urlBuilder.Append("?");
-            var queryParts = queryParams.Select(p => 
+            var queryParts = queryParams.Select(p =>
                 $"{p.QueryParameterName ?? p.Name}={{{p.Name}}}");
             urlBuilder.Append(string.Join("&", queryParts));
         }
@@ -393,7 +401,7 @@ public static class TableValuedFunctionSqlHandler
             if (queryParams.Any())
             {
                 exampleUrl += "?";
-                var exampleQueryParts = queryParams.Select(p => 
+                var exampleQueryParts = queryParams.Select(p =>
                     $"{p.QueryParameterName ?? p.Name}={GetExampleValue(p)}");
                 exampleUrl += string.Join("&", exampleQueryParts);
             }

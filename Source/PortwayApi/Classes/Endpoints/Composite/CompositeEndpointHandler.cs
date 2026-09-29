@@ -29,24 +29,24 @@ public class CompositeEndpointHandler
         _serverName = serverName;
         _urlValidator = urlValidator;
     }
-    
+
     /// <summary>
     /// Process a composite endpoint request
     /// </summary>
     public async Task<IResult> ProcessCompositeEndpointAsync(
-        HttpContext context, 
-        string env, 
-        string endpointName, 
+        HttpContext context,
+        string env,
+        string endpointName,
         string requestBody)
     {
         try
         {
-            Log.Debug("Processing composite endpoint: {Endpoint} for environment: {Environment}", 
+            Log.Debug("Processing composite endpoint: {Endpoint} for environment: {Environment}",
                 endpointName, env);
-                
+
             // Load composite definitions based on the endpoint map
             var compositeDefinitions = EndpointHandler.GetCompositeDefinitions(_endpointMap);
-            
+
             // Check if composite endpoint exists
             if (!compositeDefinitions.TryGetValue(endpointName, out var compositeDefinition))
             {
@@ -87,20 +87,20 @@ public class CompositeEndpointHandler
                 Log.Warning(ex, "Invalid JSON in request body for composite endpoint: {Endpoint}", endpointName);
                 return Results.BadRequest(ErrorResponse.Of("Invalid request format"));
             }
-            
+
             // Create execution context and result container
             var executionContext = new ExecutionContext();
             var result = new CompositeResult { Success = true };
-            
+
             // Create a step tracker to track completed steps
             var completedSteps = new List<string>();
-            
+
             // Execute each step in the composite definition
             foreach (var step in compositeDefinition.Steps)
             {
-                Log.Debug("Executing step: {StepName} for composite endpoint: {Endpoint}", 
+                Log.Debug("Executing step: {StepName} for composite endpoint: {Endpoint}",
                     step.Name, endpointName);
-                    
+
                 try
                 {
                     var stepResult = await ExecuteStepAsync(step, requestData, result.StepResults, executionContext, env, context.RequestAborted);
@@ -115,14 +115,14 @@ public class CompositeEndpointHandler
                     result.ErrorMessage = ex.Message;
                     result.ErrorDetail = ex.ErrorDetail;
                     result.StatusCode = ex.StatusCode;
-                    
-                    Log.Error("Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}", 
+
+                    Log.Error("Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}",
                         ex.StepName, endpointName, ex.Message);
-                    Log.Error("Step {StepName} failed with status code {StatusCode}: {ErrorDetail}", 
+                    Log.Error("Step {StepName} failed with status code {StatusCode}: {ErrorDetail}",
                         ex.StepName, ex.StatusCode, ex.ErrorDetail);
-                        
+
                     int statusCode = ex.StatusCode >= 400 && ex.StatusCode < 600 ? ex.StatusCode : 500;
-                    
+
                     var errorResponse = new
                     {
                         success = false,
@@ -132,7 +132,7 @@ public class CompositeEndpointHandler
                         statusCode = ex.StatusCode,
                         completedSteps
                     };
-                    
+
                     return Results.Json(errorResponse, statusCode: statusCode);
                 }
                 catch (Exception ex)
@@ -141,10 +141,10 @@ public class CompositeEndpointHandler
                     result.Success = false;
                     result.ErrorStep = step.Name;
                     result.ErrorMessage = ex.Message;
-                    
-                    Log.Error(ex, "Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}", 
+
+                    Log.Error(ex, "Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}",
                         step.Name, endpointName, ex.Message);
-                        
+
                     // Detail stays masked; the trace id correlates the response with the logged exception
                     return Results.Json(new
                     {
@@ -156,21 +156,21 @@ public class CompositeEndpointHandler
                     }, statusCode: StatusCodes.Status500InternalServerError);
                 }
             }
-            
+
             // Process the result to rewrite URLs before returning
             RewriteUrlsInResult(result, context, env, endpointName);
 
             // Shape the final payload with each step's endpoint transforms; step-to-step data stayed untouched
             ApplyResponseTransformsToResult(result, compositeDefinition);
-            
+
             Log.Information("Successfully executed composite endpoint: {Endpoint}", endpointName);
             return Results.Ok(result);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Unhandled error processing composite endpoint {Endpoint}: {ErrorMessage}", 
+            Log.Error(ex, "Unhandled error processing composite endpoint {Endpoint}: {ErrorMessage}",
                 endpointName, ex.Message);
-                
+
             return PortwayResults.MinimalServerError(context, "Error processing composite endpoint");
         }
     }
@@ -196,9 +196,9 @@ public class CompositeEndpointHandler
                 $"Endpoint '{step.Endpoint}' not found",
                 string.Empty);
         }
-        
+
         // Check if the environment is allowed for this step's endpoint
-        if (endpoint.AllowedEnvironments != null && 
+        if (endpoint.AllowedEnvironments != null &&
             endpoint.AllowedEnvironments.Count > 0 &&
             !endpoint.AllowedEnvironments.Contains(env, StringComparer.OrdinalIgnoreCase))
         {
@@ -216,22 +216,22 @@ public class CompositeEndpointHandler
             throw new Exception(
                 $"Method '{step.Method}' not supported by endpoint '{step.Endpoint}' for step '{step.Name}'");
         }
-        
+
         // Handle array processing if needed
         if (step.IsArray && !string.IsNullOrEmpty(step.ArrayProperty))
         {
             JsonNode? arrayNode = null;
-            
+
             // Try to get the array from the request data
             if (requestData is JsonObject requestObj)
             {
                 arrayNode = requestObj[step.ArrayProperty];
             }
-            
+
             if (arrayNode is JsonArray array)
             {
                 var results = new List<object>();
-                
+
                 // Process each item in the array
                 foreach (var item in array)
                 {
@@ -243,7 +243,7 @@ public class CompositeEndpointHandler
                         results.Add(itemResult);
                     }
                 }
-                
+
                 return results;
             }
             else
@@ -256,7 +256,7 @@ public class CompositeEndpointHandler
         {
             // Process a single item (non-array step)
             JsonNode nodeToProcess;
-            
+
             // If this step explicitly requires an empty body (e.g. Binary create)
             if (step.EmptyBody)
             {
@@ -278,11 +278,11 @@ public class CompositeEndpointHandler
                 // Use the full request data for this step
                 nodeToProcess = requestData.DeepClone();
             }
-            
+
             return await ProcessSingleItemAsync(step, nodeToProcess, endpoint, context, env, previousResults, ct);
         }
     }
-    
+
     /// <summary>
     /// Process a single item for a step (either a direct item or an item within an array)
     /// </summary>
@@ -330,19 +330,19 @@ public class CompositeEndpointHandler
 
         // Read the response content now to include in error messages if needed
         var responseContent = await response.Content.ReadAsStringAsync(ct);
-        
+
         // Ensure success
         if (!response.IsSuccessStatusCode)
         {
             string errorDetail;
             object? parsedError = null;
-            
+
             try
             {
                 // Try to parse the response as JSON
-                parsedError = JsonSerializer.Deserialize<object>(responseContent, 
+                parsedError = JsonSerializer.Deserialize<object>(responseContent,
                     CaseInsensitiveOptions);
-                    
+
                 // Already-JSON responses are kept out of the string field so the error response serializes them structured, not escaped
                 errorDetail = "See structured error details";
             }
@@ -350,13 +350,13 @@ public class CompositeEndpointHandler
             {
                 // If we can't parse as JSON, use the raw response content
                 parsedError = null;
-                
+
                 // If it's too long, truncate it
-                errorDetail = responseContent.Length > 200 
-                    ? responseContent.Substring(0, 200) + "..." 
+                errorDetail = responseContent.Length > 200
+                    ? responseContent.Substring(0, 200) + "..."
                     : responseContent;
             }
-            
+
             // Throw a detailed exception that will halt the composite process
             throw new CompositeStepException(
                 $"Error executing step '{step.Name}': HTTP {(int)response.StatusCode} {response.StatusCode}",
@@ -367,13 +367,13 @@ public class CompositeEndpointHandler
                 parsedError  // Pass the parsed error object if available
             );
         }
-        
+
         try
         {
             // Try to parse as JSON object
-            var jsonResponse = JsonSerializer.Deserialize<object>(responseContent, 
+            var jsonResponse = JsonSerializer.Deserialize<object>(responseContent,
                 CaseInsensitiveOptions);
-                
+
             return jsonResponse!;
         }
         catch
@@ -382,13 +382,13 @@ public class CompositeEndpointHandler
             return responseContent;
         }
     }
-    
+
     /// <summary>
     /// Apply template transformations to the request data
     /// </summary>
     private void ApplyTemplateTransformations(
-        CompositeStep step, 
-        JsonNode data, 
+        CompositeStep step,
+        JsonNode data,
         ExecutionContext context,
         Dictionary<string, object> previousResults)
     {
@@ -396,22 +396,22 @@ public class CompositeEndpointHandler
         {
             return;
         }
-        
+
         foreach (var transform in step.TemplateTransformations)
         {
             var key = transform.Key;
             var valueTemplate = transform.Value;
-            
+
             switch (valueTemplate.ToLowerInvariant())
             {
                 case "$guid":
                     jsonObj[key] = GetOrCreateSharedValue(context, valueTemplate);
                     break;
-                    
+
                 case "$requestid":
                     jsonObj[key] = context.RequestId;
                     break;
-                        
+
                 default:
                     // Handle variables and previous results references
                     if (valueTemplate.StartsWith("$context."))
@@ -431,7 +431,7 @@ public class CompositeEndpointHandler
                         {
                             var stepName = parts[0];
                             var propPath = string.Join('.', parts.Skip(1));
-                            
+
                             if (previousResults.TryGetValue(stepName, out var prevResult))
                             {
                                 var prevJson = JsonSerializer.SerializeToNode(prevResult);
@@ -460,7 +460,7 @@ public class CompositeEndpointHandler
             }
         }
     }
-    
+
     /// <summary>  
     /// Get or create a shared value based on the template     
     /// </summary>
@@ -468,14 +468,14 @@ public class CompositeEndpointHandler
     {
         // Create a context key based on the template
         var contextKey = $"shared:{valueTemplate}";
-        
+
         // Check if we already have a value for this template
         var existingValue = context.GetVariable<string>(contextKey);
         if (!string.IsNullOrEmpty(existingValue))
         {
             return existingValue;
         }
-        
+
         // Generate a new value based on the template
         string newValue;
         switch (valueTemplate.ToLowerInvariant())
@@ -488,7 +488,7 @@ public class CompositeEndpointHandler
                 newValue = Guid.NewGuid().ToString(); // Default to GUID
                 break;
         }
-        
+
         // Store the value in the context for reuse
         context.SetVariable(contextKey, newValue);
         return newValue;
@@ -528,10 +528,10 @@ public class CompositeEndpointHandler
             foreach (var stepKey in result.StepResults.Keys.ToList())
             {
                 object stepResult = result.StepResults[stepKey];
-                
+
                 // Convert to JSON string for processing
                 string jsonString = JsonSerializer.Serialize(stepResult);
-                
+
                 // Find all the endpoints used in this composite process
                 foreach (var endpoint in _endpointMap)
                 {
@@ -557,7 +557,7 @@ public class CompositeEndpointHandler
                     jsonString = UrlRewriter.RewriteUrl(
                         jsonString, originalHost, originalPath, proxyHost, proxyPath);
                 }
-                
+
                 // Convert back to object
                 try
                 {
@@ -586,25 +586,25 @@ public class CompositeEndpointHandler
     {
         if (jsonValue.TryGetValue<string>(out var stringValue))
             return stringValue;
-            
+
         if (jsonValue.TryGetValue<int>(out var intValue))
             return intValue;
-            
+
         if (jsonValue.TryGetValue<long>(out var longValue))
             return longValue;
-            
+
         if (jsonValue.TryGetValue<double>(out var doubleValue))
             return doubleValue;
-            
+
         if (jsonValue.TryGetValue<bool>(out var boolValue))
             return boolValue;
-            
+
         if (jsonValue.TryGetValue<DateTime>(out var dateValue))
             return dateValue;
-            
+
         return null;
     }
-    
+
     /// <summary>
     /// Get a nested value from a JSON node using a property path (e.g., "prop1.prop2.prop3")
     /// </summary>
@@ -614,10 +614,10 @@ public class CompositeEndpointHandler
         {
             return null;
         }
-        
+
         var parts = propertyPath.Split('.');
         var current = node;
-        
+
         foreach (var part in parts)
         {
             if (current is JsonObject obj && obj.TryGetPropertyValue(part, out var value))
@@ -634,7 +634,7 @@ public class CompositeEndpointHandler
                 return null;
             }
         }
-        
+
         return current;
     }
 }

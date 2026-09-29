@@ -164,7 +164,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             var first = group.First();
             mockElement.Add(CreateMockFromXElement(first));
-            
+
             if (group.Count() > 1)
             {
                 // Add one more to represent a collection with unique data
@@ -233,8 +233,8 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         foreach (var attr in element.Attributes())
         {
             // Attributes in OpenAPI XML need to be marked as such
-            schema.Properties[$"@{attr.Name.LocalName}"] = new OpenApiSchema 
-            { 
+            schema.Properties[$"@{attr.Name.LocalName}"] = new OpenApiSchema
+            {
                 Type = JsonSchemaType.String,
                 Xml = new OpenApiXml { NodeType = Microsoft.OpenApi.OpenApiXmlNodeType.Attribute, Name = attr.Name.LocalName }
             };
@@ -245,7 +245,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             var first = group.First();
             var itemSchema = CreateSchemaFromXElement(first);
-            
+
             if (group.Count() > 1)
             {
                 schema.Properties[group.Key] = new OpenApiSchema
@@ -313,7 +313,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
             // Clear existing content to ensure we replace placeholders
             // Note: Content is a read-only dictionary, so we use Clear()
             response.Content?.Clear();
-            
+
             var mediaType = new OpenApiMediaType
             {
                 Schema = schema

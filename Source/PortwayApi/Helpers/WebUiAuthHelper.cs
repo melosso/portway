@@ -11,20 +11,20 @@ public static class WebUiAuthHelper
 {
     // Rate limiting: max attempts per window
     private const int MaxAttemptsPerWindow = 10;
-    
+
     // Account lockout: lock after max failures, duration
     private const int MaxFailuresBeforeLockout = 10;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(30);
 
     // Track failed attempts: IP -> (failures, lockedUntil)
     private static readonly ConcurrentDictionary<string, (int Failures, DateTime? LockedUntil)> _failedAttempts = new();
-    
+
     // Track CSRF tokens: token -> expiresAt
     private static readonly ConcurrentDictionary<string, DateTime> _csrfTokens = new();
-    
+
     // Cleanup old entries periodically
     private static readonly Timer _cleanupTimer;
-    
+
     static WebUiAuthHelper()
     {
         // Cleanup expired entries every 5 minutes
@@ -45,14 +45,14 @@ public static class WebUiAuthHelper
                 var remaining = attempt.LockedUntil.Value - DateTime.UtcNow;
                 return $"Too many failed attempts. Try again in {(int)remaining.TotalMinutes} minutes.";
             }
-            
+
             // Check if over rate limit
             if (attempt.Failures >= MaxAttemptsPerWindow)
             {
                 return "Too many attempts. Please wait before trying again.";
             }
         }
-        
+
         return null; // Allowed
     }
 
@@ -62,7 +62,7 @@ public static class WebUiAuthHelper
     public static void RecordFailedAttempt(string clientIp)
     {
         var now = DateTime.UtcNow;
-        
+
         _failedAttempts.AddOrUpdate(
             clientIp,
             // New entry
@@ -73,12 +73,12 @@ public static class WebUiAuthHelper
                 var failures = existing.LockedUntil.HasValue && existing.LockedUntil.Value < now
                     ? 1 // Reset after lockout expired
                     : existing.Failures + 1;
-                
+
                 // Lock out if too many failures
                 DateTime? lockedUntil = failures >= MaxFailuresBeforeLockout
                     ? now.Add(LockoutDuration)
                     : null;
-                
+
                 return (failures, lockedUntil);
             });
     }
@@ -146,7 +146,7 @@ public static class WebUiAuthHelper
     {
         if (string.IsNullOrEmpty(token))
             return false;
-            
+
         if (_csrfTokens.TryGetValue(token, out var expiresAt))
         {
             if (expiresAt > DateTime.UtcNow)
@@ -156,7 +156,7 @@ public static class WebUiAuthHelper
             // Remove expired token
             _csrfTokens.TryRemove(token, out _);
         }
-        
+
         return false;
     }
 
@@ -171,16 +171,16 @@ public static class WebUiAuthHelper
     private static void CleanupExpiredEntries()
     {
         var now = DateTime.UtcNow;
-        
+
         // Clean up CSRF tokens
         var expiredCsrf = _csrfTokens.Where(kvp => kvp.Value < now).Select(kvp => kvp.Key).ToList();
         foreach (var token in expiredCsrf)
         {
             _csrfTokens.TryRemove(token, out _);
         }
-        
+
         // Clean up old failed attempts
-        var expiredAttempts = _failedAttempts.Where(kvp => 
+        var expiredAttempts = _failedAttempts.Where(kvp =>
             kvp.Value.LockedUntil.HasValue && kvp.Value.LockedUntil.Value < now).Select(kvp => kvp.Key).ToList();
         foreach (var ip in expiredAttempts)
         {

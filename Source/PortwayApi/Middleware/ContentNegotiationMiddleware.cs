@@ -9,7 +9,7 @@ using Serilog;
 public class ContentNegotiationMiddleware
 {
     private readonly RequestDelegate _next;
-    
+
     // Paths that should skip JSON content-type validation (e.g., file uploads, proxy passthrough)
     private static readonly HashSet<string> _skipContentTypeValidationPaths = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -17,7 +17,7 @@ public class ContentNegotiationMiddleware
         "/health",
         "/docs"
     };
-    
+
     // Maximum request body size (50MB)
     private const long MaxRequestBodySize = 52_428_800;
 
@@ -29,14 +29,14 @@ public class ContentNegotiationMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path.Value ?? string.Empty;
-        
+
         // Skip validation for certain paths
         if (ShouldSkipValidation(path))
         {
             await _next(context);
             return;
         }
-        
+
         // Validate Content-Type for requests with body
         if (IsRequestWithBody(context.Request.Method))
         {
@@ -47,7 +47,7 @@ public class ContentNegotiationMiddleware
                 return;
             }
         }
-        
+
         // Set default response Content-Type if Accept header handling is needed
         context.Response.OnStarting(() =>
         {
@@ -69,7 +69,7 @@ public class ContentNegotiationMiddleware
             if (path.Contains(skipPath, StringComparison.OrdinalIgnoreCase))
                 return true;
         }
-        
+
         // Skip for proxy-family endpoints (they pass bodies through and negotiate upstream)
         return IsProxyFamilyPath(path);
     }
@@ -104,8 +104,8 @@ public class ContentNegotiationMiddleware
     /// </summary>
     private static bool IsRequestWithBody(string method)
     {
-        return HttpMethods.IsPost(method) || 
-               HttpMethods.IsPut(method) || 
+        return HttpMethods.IsPost(method) ||
+               HttpMethods.IsPut(method) ||
                HttpMethods.IsPatch(method);
     }
 
@@ -116,35 +116,35 @@ public class ContentNegotiationMiddleware
     {
         var contentType = context.Request.ContentType;
         var contentLength = context.Request.ContentLength;
-        
+
         // Check content length first
         if (contentLength > MaxRequestBodySize)
         {
-            Log.Warning("Request body too large: {ContentLength} bytes from {RemoteIp}", 
+            Log.Warning("Request body too large: {ContentLength} bytes from {RemoteIp}",
                 contentLength, context.Connection.RemoteIpAddress);
-            
-            return (false, StatusCodes.Status413PayloadTooLarge, 
-                "Payload Too Large", 
+
+            return (false, StatusCodes.Status413PayloadTooLarge,
+                "Payload Too Large",
                 $"Request body exceeds maximum size of {MaxRequestBodySize / 1024 / 1024}MB");
         }
-        
+
         // Allow empty body without content-type (some clients don't send it)
         if (contentLength == 0 || contentLength == null)
         {
             return (true, 0, string.Empty, string.Empty);
         }
-        
+
         // Validate content type for requests with body
         if (string.IsNullOrEmpty(contentType))
         {
-            Log.Warning("Missing Content-Type header for {Method} request from {RemoteIp}", 
+            Log.Warning("Missing Content-Type header for {Method} request from {RemoteIp}",
                 context.Request.Method, context.Connection.RemoteIpAddress);
-            
+
             return (false, StatusCodes.Status415UnsupportedMediaType,
                 "Unsupported Media Type",
                 "Content-Type header is required for requests with body. Use application/json.");
         }
-        
+
         // Non-proxy endpoints (SQL, webhooks, UI) are JSON APIs; proxy-family paths
         // skip this gate entirely via IsProxyFamilyPath
         if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
@@ -156,7 +156,7 @@ public class ContentNegotiationMiddleware
                 "Unsupported Media Type",
                 $"Content-Type '{contentType}' is not supported. Use application/json.");
         }
-        
+
         return (true, 0, string.Empty, string.Empty);
     }
 
@@ -166,8 +166,8 @@ public class ContentNegotiationMiddleware
     private static void EnsureResponseContentType(HttpContext context)
     {
         // Only set if not already set and response is successful
-        if (string.IsNullOrEmpty(context.Response.ContentType) && 
-            context.Response.StatusCode >= 200 && 
+        if (string.IsNullOrEmpty(context.Response.ContentType) &&
+            context.Response.StatusCode >= 200 &&
             context.Response.StatusCode < 300)
         {
             // Default to JSON for API responses
@@ -186,7 +186,7 @@ public class ContentNegotiationMiddleware
     {
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json; charset=utf-8";
-        
+
         await context.Response.WriteAsJsonAsync(new
         {
             error,

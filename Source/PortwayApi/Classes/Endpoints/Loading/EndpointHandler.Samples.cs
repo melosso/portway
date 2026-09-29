@@ -196,7 +196,7 @@ public static partial class EndpointHandler
             Log.Information($"Created sample webhook endpoint definition: {samplePath}");
         }
     }
-    
+
     private static void CreateSampleFileEndpoint(string filesEndpointsDir)
     {
         var sampleDir = Path.Combine(filesEndpointsDir, "SampleFiles");

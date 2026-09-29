@@ -24,7 +24,7 @@ public static class HttpMethodTranslator
         try
         {
             var translationConfig = customProperties["HttpMethodTranslation"];
-            
+
             // Handle both string and JsonElement types
             string translationString;
             if (translationConfig is JsonElement jsonElement)
@@ -48,7 +48,7 @@ public static class HttpMethodTranslator
 
             // Parse translation mappings in format "FROM;TO,FROM2;TO2"
             var translations = ParseTranslationMappings(translationString);
-            
+
             if (translations.TryGetValue(originalMethod, out var translatedMethod))
             {
                 Log.Debug("Translating HTTP method: {OriginalMethod} -> {TranslatedMethod}", originalMethod, translatedMethod);
@@ -84,18 +84,18 @@ public static class HttpMethodTranslator
         {
             // Try colon first (preferred format), then semicolon (legacy format)
             var parts = mapping.Split(':', StringSplitOptions.RemoveEmptyEntries);
-            
+
             if (parts.Length != 2)
             {
                 // Fall back to semicolon for backward compatibility
                 parts = mapping.Split(';', StringSplitOptions.RemoveEmptyEntries);
             }
-            
+
             if (parts.Length == 2)
             {
                 var fromMethod = parts[0].Trim();
                 var toMethod = parts[1].Trim().ToUpper();
-                
+
                 if (!string.IsNullOrWhiteSpace(fromMethod) && !string.IsNullOrWhiteSpace(toMethod))
                 {
                     translations[fromMethod] = toMethod;

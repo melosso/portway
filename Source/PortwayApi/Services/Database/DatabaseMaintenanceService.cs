@@ -111,8 +111,8 @@ public class DatabaseMaintenanceService : BackgroundService
                 analyzed = true;
 
                 var freelist = await ScalarAsync(conn, "PRAGMA freelist_count", ct);
-                var pages    = await ScalarAsync(conn, "PRAGMA page_count", ct);
-                var ratio    = pages > 0 ? (double)freelist / pages : 0;
+                var pages = await ScalarAsync(conn, "PRAGMA page_count", ct);
+                var ratio = pages > 0 ? (double)freelist / pages : 0;
 
                 if (ratio < _options.CurrentValue.FreePageRatioThreshold)
                 {
@@ -142,7 +142,7 @@ public class DatabaseMaintenanceService : BackgroundService
             }
 
             var sizeAfter = File.Exists(dbPath) ? new FileInfo(dbPath).Length : sizeBefore;
-            var duration  = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var duration = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             results.Add(new DatabaseMaintenanceResult(name, analyzed, vacuumed, skipReason, sizeBefore, sizeAfter, duration));
 
             if (vacuumed)

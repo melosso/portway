@@ -183,7 +183,7 @@ public static class SqlTableValuedFunctionHelper
     private static object? ExtractQueryParameter(TVFParameter param, IQueryCollection query)
     {
         var queryKey = param.QueryParameterName ?? param.Name;
-        
+
         if (query.TryGetValue(queryKey, out var values) && values.Count > 0)
         {
             var value = values.First();
@@ -199,7 +199,7 @@ public static class SqlTableValuedFunctionHelper
     private static object? ExtractHeaderParameter(TVFParameter param, IHeaderDictionary headers)
     {
         var headerKey = param.HeaderName ?? param.Name;
-        
+
         if (headers.TryGetValue(headerKey, out var values) && values.Count > 0)
         {
             var value = values.First();
@@ -227,7 +227,7 @@ public static class SqlTableValuedFunctionHelper
             }
             catch (Exception ex)
             {
-                Log.Warning("Invalid regex pattern for parameter '{Parameter}': {Pattern}. Error: {Error}", 
+                Log.Warning("Invalid regex pattern for parameter '{Parameter}': {Pattern}. Error: {Error}",
                     param.Name, param.ValidationPattern, ex.Message);
             }
         }
@@ -334,7 +334,7 @@ public static class SqlTableValuedFunctionHelper
         }
         catch (Exception ex)
         {
-            Log.Warning("Failed to convert '{Value}' to SQL type '{SqlType}': {Error}. Using string value.", 
+            Log.Warning("Failed to convert '{Value}' to SQL type '{SqlType}': {Error}. Using string value.",
                 stringValue, sqlType, ex.Message);
             return stringValue;
         }

@@ -7,8 +7,8 @@ namespace PortwayApi.Helpers;
 public sealed record CreatedResponse(
     [property: JsonPropertyName("success")] bool Success,
     [property: JsonPropertyName("message")] string Message,
-    [property: JsonPropertyName("result")]  object? Result = null,
-    [property: JsonPropertyName("id")]      object? Id = null)
+    [property: JsonPropertyName("result")] object? Result = null,
+    [property: JsonPropertyName("id")] object? Id = null)
 {
     public static CreatedResponse Of(string message, object? result = null, object? id = null)
         => new(true, message, result, id);

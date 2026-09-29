@@ -58,8 +58,8 @@ public class CacheManager : ICacheProvider
             return null;
 
         var result = await _provider.GetAsync<T>(key);
-        if (result is not null) { _metricsService.RecordCacheHit();  _portwayMetrics.CacheHit(); }
-        else                    { _metricsService.RecordCacheMiss(); _portwayMetrics.CacheMiss(); }
+        if (result is not null) { _metricsService.RecordCacheHit(); _portwayMetrics.CacheHit(); }
+        else { _metricsService.RecordCacheMiss(); _portwayMetrics.CacheMiss(); }
         return result;
     }
 

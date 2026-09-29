@@ -27,11 +27,11 @@ public static partial class WebUiEndpointExtensions
         app.MapGet("/ui/api/events", async (HttpContext context) =>
         {
             var response = context.Response;
-            response.Headers.ContentType  = "text/event-stream";
+            response.Headers.ContentType = "text/event-stream";
             response.Headers.CacheControl = "no-cache";
             response.Headers.Append("X-Accel-Buffering", "no"); // disable nginx buffering
 
-            var broadcaster  = app.Services.GetRequiredService<PortwayApi.Services.SseBroadcaster>();
+            var broadcaster = app.Services.GetRequiredService<PortwayApi.Services.SseBroadcaster>();
             var healthService = app.Services.GetRequiredService<PortwayApi.Services.HealthCheckService>();
             var ct = context.RequestAborted;
 

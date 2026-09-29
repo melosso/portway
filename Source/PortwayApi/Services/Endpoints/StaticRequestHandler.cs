@@ -152,11 +152,11 @@ public sealed class StaticRequestHandler
         {
             var json = Encoding.UTF8.GetString(jsonBytes);
             var jsonDoc = JsonDocument.Parse(json);
-            
+
             // Start with the root data
             JsonElement data = jsonDoc.RootElement;
             List<JsonElement> items = new List<JsonElement>();
-            
+
             // Handle different JSON structures
             if (data.ValueKind == JsonValueKind.Array)
             {
@@ -176,7 +176,7 @@ public sealed class StaticRequestHandler
                         break;
                     }
                 }
-                
+
                 // If no array found, treat the object as a single item
                 if (items.Count == 0)
                 {
@@ -184,47 +184,47 @@ public sealed class StaticRequestHandler
                     items.Add(data);
                 }
             }
-            
+
             Log.Debug("Applying OData filtering to {Count} items", items.Count);
-            
+
             // Apply filtering
             if (!string.IsNullOrEmpty(filter))
             {
                 items = ApplyFilter(items, filter);
                 Log.Debug("After filter: {Count} items", items.Count);
             }
-            
+
             // Apply ordering
             if (!string.IsNullOrEmpty(orderby))
             {
                 items = ApplyOrderBy(items, orderby);
                 Log.Debug("After orderby: {Count} items", items.Count);
             }
-            
+
             // Apply pagination (skip and top)
             var totalCount = items.Count;
             items = items.Skip(skip).Take(top).ToList();
             Log.Debug("After pagination (skip:{Skip}, top:{Top}): {Count} items", skip, top, items.Count);
-            
+
             // Apply field selection
             if (!string.IsNullOrEmpty(select))
             {
                 items = ApplySelect(items, select);
                 Log.Debug("After select: field selection applied", items.Count);
             }
-            
+
             // Build result in the correct API format
             var result = CollectionResponse<object>.Of(items.Select(SerializeJsonElement).ToList()!);
-            
+
             var resultJson = JsonSerializer.Serialize(result, IndentedJsonOptions);
             var resultBytes = Encoding.UTF8.GetBytes(resultJson);
-            
+
             Log.Debug("JSON filtering applied successfully: {Count} items returned", items.Count);
 
             context.Response.Headers["X-Filtering-Status"] = "Applied";
             context.Response.Headers["X-Total-Count"] = totalCount.ToString();
             context.Response.Headers["X-Returned-Count"] = items.Count.ToString();
-            
+
             return Task.FromResult<IActionResult>(new FileContentResult(resultBytes, contentType));
         }
         catch (Exception ex)
@@ -234,7 +234,7 @@ public sealed class StaticRequestHandler
             return Task.FromResult<IActionResult>(PortwayResults.ServerError(context, "Internal server error during filtering"));
         }
     }
-    
+
     /// <summary>
     /// Applies OData-style filtering to JSON items
     /// </summary>
@@ -243,7 +243,7 @@ public sealed class StaticRequestHandler
         try
         {
             Log.Debug("Parsing filter: {Filter}", filter);
-            
+
             // OData function call syntax: contains(Field, 'value'), startswith(Field, 'value'), endswith(Field, 'value')
             var fnMatch = System.Text.RegularExpressions.Regex.Match(
                 filter.Trim(),
@@ -252,18 +252,18 @@ public sealed class StaticRequestHandler
             if (fnMatch.Success)
             {
                 var operation = fnMatch.Groups[1].Value.ToLower();
-                var field     = fnMatch.Groups[2].Value;
-                var value     = fnMatch.Groups[3].Value;
+                var field = fnMatch.Groups[2].Value;
+                var value = fnMatch.Groups[3].Value;
                 return items.Where(item =>
                 {
                     if (!TryGetPropertyCI(item, field, out var fieldValue)) return false;
                     var s = fieldValue.GetString() ?? string.Empty;
                     return operation switch
                     {
-                        "contains"    => s.Contains(value, StringComparison.OrdinalIgnoreCase),
-                        "startswith"  => s.StartsWith(value, StringComparison.OrdinalIgnoreCase),
-                        "endswith"    => s.EndsWith(value, StringComparison.OrdinalIgnoreCase),
-                        _             => false
+                        "contains" => s.Contains(value, StringComparison.OrdinalIgnoreCase),
+                        "startswith" => s.StartsWith(value, StringComparison.OrdinalIgnoreCase),
+                        "endswith" => s.EndsWith(value, StringComparison.OrdinalIgnoreCase),
+                        _ => false
                     };
                 }).ToList();
             }
@@ -275,12 +275,12 @@ public sealed class StaticRequestHandler
                 var field = filterParts[0];
                 var operation = filterParts[1].ToLower();
                 var value = string.Join(" ", filterParts.Skip(2));
-                
+
                 // Remove quotes from string values
                 value = value.Trim('\'', '"');
-                
+
                 Log.Debug("Filter components - Field: {Field}, Operation: {Operation}, Value: {Value}", field, operation, value);
-                
+
                 var filteredItems = items.Where(item =>
                 {
                     if (!TryGetPropertyCI(item, field, out var fieldValue))
@@ -288,10 +288,10 @@ public sealed class StaticRequestHandler
                         Log.Debug("Field '{Field}' not found in item", field);
                         return false;
                     }
-                    
-                    Log.Debug("Comparing field '{Field}' value '{FieldValue}' with '{TargetValue}' using operation '{Operation}'", 
+
+                    Log.Debug("Comparing field '{Field}' value '{FieldValue}' with '{TargetValue}' using operation '{Operation}'",
                         field, fieldValue, value, operation);
-                        
+
                     var result = operation switch
                     {
                         "eq" => JsonValueComparer.Compare(fieldValue, value, "eq"),
@@ -305,15 +305,15 @@ public sealed class StaticRequestHandler
                         "endswith" => fieldValue.GetString()?.EndsWith(value, StringComparison.OrdinalIgnoreCase) == true,
                         _ => false
                     };
-                    
+
                     Log.Debug("Filter result for item: {Result}", result);
                     return result;
                 }).ToList();
-                
+
                 Log.Debug("Filter matched {Count} items out of {TotalCount}", filteredItems.Count, items.Count);
                 return filteredItems;
             }
-            
+
             Log.Warning("Filter expression could not be parsed: {Filter}", filter);
             return items; // Return original if filter couldn't be parsed
         }
@@ -334,7 +334,7 @@ public sealed class StaticRequestHandler
             var orderParts = orderby.Split(' ');
             var field = orderParts[0];
             var direction = orderParts.Length > 1 && orderParts[1].ToLower() == "desc" ? "desc" : "asc";
-            
+
             return direction == "desc"
                 ? items.OrderByDescending(item => GetSortableValue(item, field)).ToList()
                 : items.OrderBy(item => GetSortableValue(item, field)).ToList();
@@ -345,7 +345,7 @@ public sealed class StaticRequestHandler
             return items;
         }
     }
-    
+
     /// <summary>
     /// Case-insensitive property lookup: tries exact name first, then falls back to a linear scan
     /// </summary>
@@ -372,7 +372,7 @@ public sealed class StaticRequestHandler
     {
         if (!TryGetPropertyCI(item, field, out var fieldValue))
             return "";
-            
+
         return fieldValue.ValueKind switch
         {
             JsonValueKind.String => fieldValue.GetString() ?? "",
@@ -382,7 +382,7 @@ public sealed class StaticRequestHandler
             _ => ""
         };
     }
-    
+
     /// <summary>
     /// Applies field selection to JSON items
     /// </summary>
@@ -392,11 +392,11 @@ public sealed class StaticRequestHandler
         {
             var fields = select.Split(',').Select(f => f.Trim()).ToArray();
             var selectedItems = new List<JsonElement>();
-            
+
             foreach (var item in items)
             {
                 var selectedObject = new Dictionary<string, object?>();
-                
+
                 foreach (var field in fields)
                 {
                     if (TryGetPropertyCI(item, field, out var fieldValue))
@@ -404,12 +404,12 @@ public sealed class StaticRequestHandler
                         selectedObject[field] = SerializeJsonElement(fieldValue);
                     }
                 }
-                
+
                 var json = JsonSerializer.Serialize(selectedObject);
                 var element = JsonDocument.Parse(json).RootElement;
                 selectedItems.Add(element);
             }
-            
+
             return selectedItems;
         }
         catch (Exception ex)
@@ -436,7 +436,7 @@ public sealed class StaticRequestHandler
         {
             var xmlString = Encoding.UTF8.GetString(xmlBytes);
             var doc = XDocument.Parse(xmlString);
-            
+
             // Find repeating elements (likely the data items to filter)
             var rootElement = doc.Root;
             if (rootElement == null)
@@ -447,7 +447,7 @@ public sealed class StaticRequestHandler
             // Find the main data items - prioritize direct children of root
             var directChildren = rootElement.Elements().ToList();
             List<XElement> items;
-            
+
             if (directChildren.Count > 1)
             {
                 // Multiple direct children - these are likely our main data items
@@ -522,13 +522,13 @@ public sealed class StaticRequestHandler
                 // Create new document with same structure but filtered items
                 resultDoc = new XDocument(doc.Declaration);
                 var newRoot = new XElement(rootElement.Name, rootElement.Attributes());
-                
+
                 // Add filtered items back to the root
                 foreach (var item in items)
                 {
                     newRoot.Add(new XElement(item));
                 }
-                
+
                 resultDoc.Add(newRoot);
             }
             else
@@ -542,19 +542,19 @@ public sealed class StaticRequestHandler
 
             var resultXml = resultDoc.ToString();
             var resultBytes = Encoding.UTF8.GetBytes(resultXml);
-            
+
             Log.Debug("XML filtering applied successfully: {Count} items returned out of {Total}", items.Count, totalCount);
 
             context.Response.Headers["X-Filtering-Status"] = "Applied";
             context.Response.Headers["X-Total-Count"] = totalCount.ToString();
             context.Response.Headers["X-Returned-Count"] = items.Count.ToString();
-            
+
             return Task.FromResult<IActionResult>(new FileContentResult(resultBytes, contentType));
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Error applying XML filtering: {Message}", ex.Message);
-            
+
             // Fallback to original content
             context.Response.Headers["X-Filtering-Status"] = "Error";
             return Task.FromResult<IActionResult>(new FileContentResult(xmlBytes, contentType));
@@ -598,7 +598,7 @@ public sealed class StaticRequestHandler
         try
         {
             Log.Debug("Parsing XML filter: {Filter}", filter);
-            
+
             // Simple filter implementations for common patterns
             if (filter.Contains(" eq "))
             {
@@ -608,8 +608,8 @@ public sealed class StaticRequestHandler
                 {
                     var fieldName = parts[0].Trim();
                     var fieldValue = parts[1].Trim().Trim('\'').Trim('"');
-                    
-                    return items.Where(item => 
+
+                    return items.Where(item =>
                     {
                         var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
                         return element?.Value?.Equals(fieldValue, StringComparison.OrdinalIgnoreCase) == true;
@@ -624,29 +624,29 @@ public sealed class StaticRequestHandler
                 {
                     var fieldName = containsMatch.Groups[1].Value;
                     var fieldValue = containsMatch.Groups[2].Value;
-                    
-                    return items.Where(item => 
+
+                    return items.Where(item =>
                     {
                         var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
                         return element?.Value?.Contains(fieldValue, StringComparison.OrdinalIgnoreCase) == true;
                     }).ToList();
                 }
-                
+
                 // Handle simple contains: field contains 'value'
                 var simpleParts = filter.Split(" contains ");
                 if (simpleParts.Length == 2)
                 {
                     var fieldName = simpleParts[0].Trim();
                     var fieldValue = simpleParts[1].Trim().Trim('\'').Trim('"');
-                    
-                    return items.Where(item => 
+
+                    return items.Where(item =>
                     {
                         var element = item.Descendants().FirstOrDefault(e => e.Name.LocalName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
                         return element?.Value?.Contains(fieldValue, StringComparison.OrdinalIgnoreCase) == true;
                     }).ToList();
                 }
             }
-            
+
             Log.Warning("Unsupported XML filter pattern: {Filter}", filter);
             return items;
         }
@@ -665,11 +665,11 @@ public sealed class StaticRequestHandler
         try
         {
             Log.Debug("Parsing XML orderby: {OrderBy}", orderby);
-            
+
             var parts = orderby.Split(' ');
             var fieldName = parts[0].Trim();
             var direction = parts.Length > 1 && parts[1].Trim().Equals("desc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-            
+
             if (direction == "desc")
             {
                 return items.OrderByDescending(item =>
@@ -702,20 +702,20 @@ public sealed class StaticRequestHandler
         try
         {
             Log.Debug("Parsing XML select: {Select}", select);
-            
+
             var fields = select.Split(',').Select(f => f.Trim()).ToList();
             var selectedItems = new List<XElement>();
-            
+
             foreach (var item in items)
             {
                 var newItem = new XElement(item.Name);
-                
+
                 // Copy attributes
                 foreach (var attr in item.Attributes())
                 {
                     newItem.Add(new XAttribute(attr));
                 }
-                
+
                 // Add only selected fields
                 foreach (var field in fields)
                 {
@@ -729,10 +729,10 @@ public sealed class StaticRequestHandler
                         }
                     }
                 }
-                
+
                 selectedItems.Add(newItem);
             }
-            
+
             return selectedItems;
         }
         catch (Exception ex)

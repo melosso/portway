@@ -26,9 +26,9 @@ public class HealthRefreshService : BackgroundService
         IHostApplicationLifetime? lifetime = null)
     {
         _healthService = healthService;
-        _interval      = interval;
-        _broadcaster   = broadcaster;
-        _lifetime      = lifetime;
+        _interval = interval;
+        _broadcaster = broadcaster;
+        _lifetime = lifetime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

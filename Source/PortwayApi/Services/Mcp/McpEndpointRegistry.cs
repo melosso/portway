@@ -40,7 +40,7 @@ public class McpEndpointRegistry
 
     public void RegisterEndpoints(IEnumerable<EndpointMcpInfo> endpoints)
     {
-        var builder    = ImmutableList.CreateBuilder<McpToolDescriptor>();
+        var builder = ImmutableList.CreateBuilder<McpToolDescriptor>();
         var dictBuilder = ImmutableDictionary.CreateBuilder<string, McpToolDescriptor>(
             StringComparer.OrdinalIgnoreCase);
 
@@ -62,19 +62,19 @@ public class McpEndpointRegistry
 
                 var descriptor = new McpToolDescriptor
                 {
-                    Name                = $"{ep.Namespace}_{ep.Name}_{method}".Trim('_'),
-                    Description         = llmDescription,
-                    DisplayDescription  = humanSummary,
-                    EndpointName        = ep.Name,
-                    Namespace           = ep.Namespace,
-                    Method              = method,
+                    Name = $"{ep.Namespace}_{ep.Name}_{method}".Trim('_'),
+                    Description = llmDescription,
+                    DisplayDescription = humanSummary,
+                    EndpointName = ep.Name,
+                    Namespace = ep.Namespace,
+                    Method = method,
                     AllowedEnvironments = ep.AllowedEnvironments,
-                    AvailableFields     = ep.AvailableFields,
-                    Url                 = ep.Url,
-                    UiResourceUri       = ep.UiEnabled ? $"ui://endpoints/{ep.Name}" : null,
-                    ContentType         = ep.ContentType,
-                    EndpointKind        = ep.EndpointKind,
-                    Instruction         = ep.Instruction
+                    AvailableFields = ep.AvailableFields,
+                    Url = ep.Url,
+                    UiResourceUri = ep.UiEnabled ? $"ui://endpoints/{ep.Name}" : null,
+                    ContentType = ep.ContentType,
+                    EndpointKind = ep.EndpointKind,
+                    Instruction = ep.Instruction
                 };
 
                 builder.Add(descriptor);
@@ -88,15 +88,15 @@ public class McpEndpointRegistry
         }
 
         // Atomic swap; readers see either the old or new snapshot, never a partial state
-        _tools              = builder.ToImmutable();
-        _toolByName         = dictBuilder.ToImmutable();
+        _tools = builder.ToImmutable();
+        _toolByName = dictBuilder.ToImmutable();
         CachedToolDefinitions = null; // invalidate cached ToolDefinition list
     }
 
     public void Clear()
     {
-        _tools                = ImmutableList<McpToolDescriptor>.Empty;
-        _toolByName           = ImmutableDictionary<string, McpToolDescriptor>.Empty;
+        _tools = ImmutableList<McpToolDescriptor>.Empty;
+        _toolByName = ImmutableDictionary<string, McpToolDescriptor>.Empty;
         CachedToolDefinitions = null;
     }
 

@@ -5,8 +5,8 @@ namespace PortwayApi.Helpers;
 
 // 422 Validation error
 public sealed record ValidationErrorResponse(
-    [property: JsonPropertyName("success")] bool   Success,
-    [property: JsonPropertyName("error")]   string Error,
+    [property: JsonPropertyName("success")] bool Success,
+    [property: JsonPropertyName("error")] string Error,
     [property: JsonPropertyName("details")] IReadOnlyList<ValidationDetail> Details)
 {
     public static ValidationErrorResponse Of(

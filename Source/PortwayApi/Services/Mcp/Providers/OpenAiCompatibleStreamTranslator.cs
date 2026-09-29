@@ -16,7 +16,7 @@ internal sealed class OpenAiCompatibleStreamTranslator : IChatStreamTranslator
     public IEnumerable<ChatDelta> Translate(JsonNode chunk)
     {
         var choice = chunk["choices"]?[0];
-        var delta  = choice?["delta"];
+        var delta = choice?["delta"];
         if (delta is null) yield break;
 
         var text = delta["content"]?.GetValue<string>();
@@ -37,8 +37,8 @@ internal sealed class OpenAiCompatibleStreamTranslator : IChatStreamTranslator
 
         yield return new ChatDelta
         {
-            Type      = ChatDeltaType.ToolCall,
-            ToolName  = _pendingToolName,
+            Type = ChatDeltaType.ToolCall,
+            ToolName = _pendingToolName,
             ToolInput = _pendingToolArgs.ToString()
         };
 

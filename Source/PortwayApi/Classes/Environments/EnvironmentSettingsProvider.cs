@@ -4,7 +4,7 @@ using Azure.Security.KeyVault.Secrets;
 using Serilog;
 using PortwayApi.Interfaces;
 using System.Security;
-using System.Security.Cryptography; 
+using System.Security.Cryptography;
 using PortwayApi.Helpers;
 using System.Text;
 
@@ -24,15 +24,15 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         _basePath = Path.Combine(baseDir, "environments");
         _keyVaultUri = EnvAliases.GetDirect("PORTWAY_KEYVAULT_URI");
         _certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
-        
+
         try
         {
             // Ensure .core directory exists and generate keys if needed
             EnsureEncryptionKeysExist();
-            
+
             // Load private key from file
             var privateKeyPath = Path.Combine(_certsPath, "recovery.binlz4");
-            
+
             if (File.Exists(privateKeyPath))
             {
                 try
@@ -53,7 +53,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             Log.Debug("  Local environments path: {BasePath}", _basePath);
             Log.Debug("  Azure Key Vault: {Status}", !string.IsNullOrWhiteSpace(_keyVaultUri) ? _keyVaultUri : "Not configured");
             Log.Debug("  Settings decryption: {Status}", !string.IsNullOrWhiteSpace(_privateKeyPem) ? "Available" : "Not configured");
-            
+
             // Encrypt all environments on startup 
             AutoEncryptAllEnvironmentsOnStartup();
         }
@@ -89,8 +89,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             return;
         }
 
-        Log.Debug("Found {Count} environment(s): {Environments}", 
-            environmentDirs.Count, 
+        Log.Debug("Found {Count} environment(s): {Environments}",
+            environmentDirs.Count,
             string.Join(", ", environmentDirs));
 
         int encryptedCount = 0;
@@ -100,7 +100,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         foreach (var env in environmentDirs)
         {
             var settingsPath = Path.Combine(_basePath, env, "settings.json");
-            
+
             if (!File.Exists(settingsPath))
             {
                 Log.Debug("Skipping {Env}: settings.json not found", env);
@@ -120,7 +120,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 }
 
                 var result = AutoEncryptIfNeeded(settingsPath, config, env);
-                
+
                 if (result == EncryptionResult.Encrypted)
                     encryptedCount++;
                 else if (result == EncryptionResult.AlreadyEncrypted)
@@ -214,7 +214,8 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             var encryptedSettings = Directory.GetDirectories(_basePath)
                 .Select(d => Path.Combine(d, "settings.json"))
                 .Where(File.Exists)
-                .Where(p => {
+                .Where(p =>
+                {
                     try { return SettingsEncryptionHelper.IsEncrypted(File.ReadAllText(p)); }
                     catch { return false; }
                 })
@@ -239,7 +240,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             HiddenDirectoryHelper.Ensure(_certsPath);
 
             using var rsa = RSA.Create(2048);
-            
+
             var privateKeyPem = rsa.ExportPkcs8PrivateKeyPem();
             var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
 
@@ -264,7 +265,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     public async Task<(string ConnectionString, string ServerName, Dictionary<string, string> Headers)> LoadEnvironmentOrThrowAsync(string env)
     {
         Log.Debug("Loading environment settings for: {Environment}", env);
-        
+
         if (!string.IsNullOrWhiteSpace(_keyVaultUri))
         {
             Log.Debug("Attempting to load from Azure Key Vault...");
@@ -286,7 +287,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             throw new InvalidOperationException($"Failed to load environment settings for {env}");
         }
         Log.Debug("Successfully loaded environment {Env} from local settings.json", env);
-        
+
         var securedLocalConnectionString = string.IsNullOrWhiteSpace(local.ConnectionString)
             ? string.Empty
             : SecureConnectionString(local.ConnectionString!);
@@ -317,7 +318,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         try
         {
             Log.Information("Azure Key Vault: Attempting connection to {KeyVaultUri}", _keyVaultUri);
-            
+
             var credentialOptions = new DefaultAzureCredentialOptions
             {
                 ExcludeEnvironmentCredential = false,
@@ -326,13 +327,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 ExcludeAzureCliCredential = false,
                 ExcludeInteractiveBrowserCredential = true
             };
-            
+
             var credential = new DefaultAzureCredential(credentialOptions);
             var client = new SecretClient(new Uri(_keyVaultUri), credential);
-            
+
             var connectionStringKey = $"{env}-ConnectionString";
             var connectionString = await TryGetSecretValue(client, connectionStringKey);
-            
+
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 Log.Warning("Required secret {SecretName} not found in Azure Key Vault", connectionStringKey);
@@ -344,9 +345,9 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
 
             var headersKey = $"{env}-Headers";
             var headersJson = await TryGetSecretValue(client, headersKey);
-            
+
             var headers = new Dictionary<string, string>();
-            
+
             if (!string.IsNullOrWhiteSpace(headersJson))
             {
                 try
@@ -358,23 +359,23 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                     Log.Warning(ex, "Error parsing headers from Azure Key Vault");
                 }
             }
-            
+
             if (!headers.ContainsKey("DatabaseName"))
                 headers["DatabaseName"] = env;
-                
+
             if (!headers.ContainsKey("ServerName"))
                 headers["ServerName"] = serverName;
-            
-            return new EnvironmentConfig 
-            { 
-                ConnectionString = connectionString, 
+
+            return new EnvironmentConfig
+            {
+                ConnectionString = connectionString,
                 ServerName = serverName,
                 Headers = headers
             };
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Azure Key Vault access failed: {ErrorType} - {ErrorMessage}", 
+            Log.Error(ex, "Azure Key Vault access failed: {ErrorType} - {ErrorMessage}",
                 ex.GetType().Name, ex.Message);
             return null;
         }
@@ -397,7 +398,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         }
         catch (Exception ex)
         {
-            Log.Debug("Exception retrieving secret {SecretName}: {ErrorType} - {ErrorMessage}", 
+            Log.Debug("Exception retrieving secret {SecretName}: {ErrorType} - {ErrorMessage}",
                 secretName, ex.GetType().Name, ex.Message);
             return null;
         }
@@ -418,7 +419,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         {
             var json = File.ReadAllText(settingsPath);
             var config = JsonSerializer.Deserialize<EnvironmentConfig>(json);
-                     
+
             if (config == null)
             {
                 Log.Error("Failed to deserialize JSON from {FilePath}", settingsPath);
@@ -433,13 +434,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             DecryptConfig(config, env);
 
             config.Headers ??= new Dictionary<string, string>();
-            
+
             if (!config.Headers.ContainsKey("DatabaseName"))
                 config.Headers["DatabaseName"] = env;
-                
+
             if (!config.Headers.ContainsKey("ServerName"))
                 config.Headers["ServerName"] = config.ServerName ?? Environment.MachineName;
-                
+
             return config;
         }
         catch (Exception ex) when (ex is not FileNotFoundException && ex is not InvalidOperationException)
@@ -476,7 +477,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                         Log.Error("Header '{HeaderKey}' is encrypted but no private key available for environment: {Environment}", header.Key, env);
                         throw new InvalidOperationException($"Application configuration could not be decrypted for the current environment.");
                     }
-                    
+
                     decryptedHeaders[header.Key] = SettingsEncryptionHelper.Decrypt(header.Value, _privateKeyPem);
                 }
                 else
@@ -518,20 +519,20 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         try
         {
             var builder = new System.Data.Common.DbConnectionStringBuilder { ConnectionString = connectionString };
-            
+
             bool hasPassword = builder.ContainsKey("Password") || builder.ContainsKey("Pwd");
             bool hasUserID = builder.ContainsKey("User ID") || builder.ContainsKey("Uid") || builder.ContainsKey("User");
-            
+
             if (hasUserID || hasPassword)
             {
                 Log.Debug("Connection string contains hardcoded credentials, this will later be encrypted.");
-                
+
                 var masked = MaskConnectionString(connectionString);
                 Log.Debug("Using connection string: {ConnectionString}", masked);
-                
+
                 return connectionString;
             }
-            
+
             return connectionString;
         }
         catch (Exception ex)
@@ -547,30 +548,31 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         {
             var parts = connectionString.Split(';')
                 .Where(p => !string.IsNullOrWhiteSpace(p))
-                .Select(part => {
+                .Select(part =>
+                {
                     var keyValue = part.Split('=', 2);
                     if (keyValue.Length != 2) return part;
-                    
+
                     var key = keyValue[0].Trim();
                     var value = keyValue[1].Trim();
-                    
-                    if (key.Contains("password", StringComparison.OrdinalIgnoreCase) || 
+
+                    if (key.Contains("password", StringComparison.OrdinalIgnoreCase) ||
                         key.Contains("pwd", StringComparison.OrdinalIgnoreCase))
                     {
                         return $"{key}=***MASKED***";
                     }
-                    
-                    if (key.Contains("server", StringComparison.OrdinalIgnoreCase) || 
+
+                    if (key.Contains("server", StringComparison.OrdinalIgnoreCase) ||
                         key.Contains("data source", StringComparison.OrdinalIgnoreCase) ||
                         key.Contains("database", StringComparison.OrdinalIgnoreCase) ||
                         key.Contains("initial catalog", StringComparison.OrdinalIgnoreCase))
                     {
                         return $"{key}={value}";
                     }
-                    
+
                     return $"{key}=***";
                 });
-                
+
             return string.Join("; ", parts);
         }
         catch
@@ -605,7 +607,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             Log.Debug("Encryption complete for environment: {Env}", envName);
             return EncryptionResult.Encrypted;
         }
-        
+
         return alreadyEncrypted ? EncryptionResult.AlreadyEncrypted : EncryptionResult.Error;
     }
 
@@ -691,12 +693,12 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     }
     private bool IsSensitiveField(string fieldName)
     {
-        string[] sensitivePatterns = 
+        string[] sensitivePatterns =
         {
-            "password", "secret", "token", "key", "auth", 
+            "password", "secret", "token", "key", "auth",
             "credential", "signature", "hmac", "bearer", "value", "clientsecret"
         };
-        
+
         var lowerName = fieldName.ToLowerInvariant();
         return sensitivePatterns.Any(pattern => lowerName.Contains(pattern));
     }
@@ -725,13 +727,13 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
                 }
             }
 
-            var jsonOptions = new JsonSerializerOptions 
-            { 
+            var jsonOptions = new JsonSerializerOptions
+            {
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
             };
-            
+
             var json = JsonSerializer.Serialize(config, jsonOptions);
             File.WriteAllText(settingsPath, json);
             Log.Debug("Successfully saved encrypted configuration to {Path}", settingsPath);

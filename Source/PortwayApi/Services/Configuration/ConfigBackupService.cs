@@ -88,7 +88,7 @@ public static class ConfigBackupService
     private static string UniqueBackupPath(string backupDir, string fileName)
     {
         var stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff");
-        var path  = Path.Combine(backupDir, $"{stamp}-{fileName}");
+        var path = Path.Combine(backupDir, $"{stamp}-{fileName}");
 
         for (var attempt = 1; File.Exists(path); attempt++)
             path = Path.Combine(backupDir, $"{stamp}_{attempt:D3}-{fileName}");

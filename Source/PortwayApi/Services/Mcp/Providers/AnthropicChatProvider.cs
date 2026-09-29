@@ -10,19 +10,19 @@ using System.Text.Json.Nodes;
 public sealed class AnthropicChatProvider(string apiKey, string model, IHttpClientFactory httpFactory)
     : SseChatProvider("Anthropic", httpFactory)
 {
-    private const string BaseUrl          = "https://api.anthropic.com/v1/messages";
+    private const string BaseUrl = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
-    private const int    MaxTokens        = 4096;
+    private const int MaxTokens = 4096;
 
     protected override HttpRequestMessage CreateRequest(IReadOnlyList<ChatMessage> history, IReadOnlyList<ToolDefinition> tools)
     {
         var body = new JsonObject
         {
-            ["model"]      = model,
+            ["model"] = model,
             ["max_tokens"] = MaxTokens,
-            ["stream"]     = true,
-            ["tools"]      = ChatPayloadFactory.Declarations(tools, "input_schema"),
-            ["messages"]   = ChatPayloadFactory.Messages(history)
+            ["stream"] = true,
+            ["tools"] = ChatPayloadFactory.Declarations(tools, "input_schema"),
+            ["messages"] = ChatPayloadFactory.Messages(history)
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl)

@@ -9,7 +9,7 @@ using System.Text.Json;
 [McpServerToolType]
 public static class PortwayMcpTools
 {
-    private static McpEndpointRegistry?    _registry;
+    private static McpEndpointRegistry? _registry;
 
     public static void Initialize(McpEndpointRegistry registry)
     {
@@ -48,7 +48,7 @@ public static class PortwayMcpTools
             .ToList();
         if (byInvokeName.Count == 0) return "No endpoints registered";
 
-        var sb      = new System.Text.StringBuilder();
+        var sb = new System.Text.StringBuilder();
         var grouped = byInvokeName.GroupBy(kv => kv.Value.Namespace ?? "default");
 
         sb.AppendLine("# Portway Endpoints\n");
@@ -132,9 +132,9 @@ public static class PortwayMcpTools
         if (httpContext is null) return "No active HTTP request context to resolve the base URL and credentials from.";
 
         // avoid host header injection
-        var req        = httpContext.Request;
+        var req = httpContext.Request;
         var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
-        var baseUrl    = $"{req.Scheme}://localhost:{serverPort}";
+        var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
 
         // forward caller bearer token
         var authHeader = req.Headers.Authorization.FirstOrDefault();

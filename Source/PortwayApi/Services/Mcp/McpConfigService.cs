@@ -30,8 +30,8 @@ public sealed class McpConfigService
     /// Immutable snapshot of the current MCP chat configuration
     /// </summary>
     public sealed record ConfigSnapshot(
-        string  Provider,
-        string  Model,
+        string Provider,
+        string Model,
         string? ApiKey,
         string? InternalApiToken
     )
@@ -50,9 +50,9 @@ public sealed class McpConfigService
     {
         if (_cache is { } cached) return cached;
 
-        await using var db  = await _dbFactory.CreateDbContextAsync(ct);
-        var entries         = await db.Config.ToListAsync(ct);
-        var dict            = entries.ToDictionary(
+        await using var db = await _dbFactory.CreateDbContextAsync(ct);
+        var entries = await db.Config.ToListAsync(ct);
+        var dict = entries.ToDictionary(
             e => e.Key,
             e => (e.Value, e.IsEncrypted),
             StringComparer.OrdinalIgnoreCase);
@@ -74,9 +74,9 @@ public sealed class McpConfigService
             Log.Debug("McpConfig: using API key from environment variable {Var}", ApiKeyEnvVar);
 
         var snapshot = new ConfigSnapshot(
-            Provider:         Resolve("Provider"),
-            Model:            Resolve("Model"),
-            ApiKey:           apiKey,
+            Provider: Resolve("Provider"),
+            Model: Resolve("Model"),
+            ApiKey: apiKey,
             InternalApiToken: Resolve("InternalApiToken").NullIfEmpty()
         );
 
@@ -138,12 +138,12 @@ public sealed class McpConfigService
         var cfg = await GetConfigAsync(ct);
         return new
         {
-            configured       = cfg.IsConfigured,
-            provider         = cfg.Provider,
-            model            = cfg.Model,
-            has_api_key      = !string.IsNullOrWhiteSpace(cfg.ApiKey),
+            configured = cfg.IsConfigured,
+            provider = cfg.Provider,
+            model = cfg.Model,
+            has_api_key = !string.IsNullOrWhiteSpace(cfg.ApiKey),
             has_internal_token = !string.IsNullOrWhiteSpace(cfg.InternalApiToken),
-            api_key_source   = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ApiKeyEnvVar))
+            api_key_source = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ApiKeyEnvVar))
                                ? "environment"
                                : (string.IsNullOrWhiteSpace(cfg.ApiKey) ? "none" : "database")
         };
@@ -161,17 +161,17 @@ public sealed class McpConfigService
         {
             db.Config.Add(new McpConfigEntry
             {
-                Key         = key,
-                Value       = value,
+                Key = key,
+                Value = value,
                 IsEncrypted = encrypt,
-                UpdatedAt   = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow
             });
         }
         else
         {
-            entry.Value       = value;
+            entry.Value = value;
             entry.IsEncrypted = encrypt;
-            entry.UpdatedAt   = DateTime.UtcNow;
+            entry.UpdatedAt = DateTime.UtcNow;
         }
         await db.SaveChangesAsync(ct);
     }

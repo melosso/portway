@@ -23,7 +23,7 @@ public static class MockDataGenerator
         {
             return JsonValue.Create(Random.Shared.Next(1000, 9999));
         }
-        
+
         if (name.Contains("email"))
         {
             var users = new[] { "john.doe", "jane.smith", "admin", "support", "test.user", "developer", "marketing", "sales" };
@@ -47,21 +47,21 @@ public static class MockDataGenerator
 
         if (name.Contains("name") || name.Contains("title") || name.Contains("label") || name.Contains("subject") || name.Contains("display"))
         {
-            var prefixes = new[] { 
-                "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Sigma", "Omega", "Prime", "Core", "Global", "Apex", "Elite", "Sky", "Ocean", "Green", "Solar", "Nova", "Stellar" 
+            var prefixes = new[] {
+                "Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Sigma", "Omega", "Prime", "Core", "Global", "Apex", "Elite", "Sky", "Ocean", "Green", "Solar", "Nova", "Stellar"
             };
-            var middle = new[] { 
+            var middle = new[] {
                 "Dynamic", "Cloud", "Secure", "Smart", "Future", "Digital", "Logic", "Vision", "Nexus", "Quantum", "Cyber", "Flow"
             };
-            var suffixes = new[] { 
+            var suffixes = new[] {
                 "Corporation", "Inc", "GmbH", "Ltd", "Systems", "Solutions", "Group", "Logistics", "Services", "Ventures", "Networks", "Technologies", "Hub", "Lab"
             };
-            
+
             bool useMiddle = Random.Shared.Next(0, 2) == 1;
-            string result = useMiddle 
+            string result = useMiddle
                 ? $"{prefixes[Random.Shared.Next(prefixes.Length)]} {middle[Random.Shared.Next(middle.Length)]} {suffixes[Random.Shared.Next(suffixes.Length)]}"
                 : $"{prefixes[Random.Shared.Next(prefixes.Length)]} {suffixes[Random.Shared.Next(suffixes.Length)]}";
-                
+
             return JsonValue.Create(result);
         }
 
@@ -74,7 +74,7 @@ public static class MockDataGenerator
         if (name.Contains("desc") || name.Contains("comment") || name.Contains("note") || name.Contains("text") || name.Contains("message") || name.Contains("remark") || name.Contains("summary") || name.Contains("details") || name.Contains("info") || name.Contains("information") || name.Contains("log"))
         {
             var phrases = new[] {
-                "Automated system update.", "Customer requested follow-up.", "Internal reference only.", "Requires manager approval.", 
+                "Automated system update.", "Customer requested follow-up.", "Internal reference only.", "Requires manager approval.",
                 "Legacy data migrated from old system.", "Priority support requested.", "Standard operational procedure.",
                 "Validated by quality assurance team.", "Batch processing completed successfully."
             };
@@ -131,7 +131,7 @@ public static class MockDataGenerator
         return kind switch
         {
             JsonValueKind.String => JsonValue.Create("example_string"),
-            JsonValueKind.Number => decimalSeparator == "," 
+            JsonValueKind.Number => decimalSeparator == ","
                 ? JsonValue.Create(Random.Shared.Next(1, 500).ToString()) // If using comma decimals, return as string to preserve format
                 : JsonValue.Create(Random.Shared.Next(1, 500)),
             JsonValueKind.True => JsonValue.Create(true),
@@ -146,12 +146,12 @@ public static class MockDataGenerator
         // If delimiter is semicolon, use comma as decimal separator (common regional pattern)
         string decimalSeparator = delimiter == ';' ? "," : ".";
 
-        var values = columns.Select(col => 
+        var values = columns.Select(col =>
         {
             var val = GenerateValue(col, JsonValueKind.String, decimalSeparator);
             // Ensure CSV values don't contain delimiters, quotes or newlines
             string s = val?.ToString() ?? "";
-            
+
             // Check if we need string encapsulation
             if (s.Contains(delimiter) || s.Contains("\"") || s.Contains("\n") || s.Contains(decimalSeparator) && delimiter == ',')
                 s = $"\"{s.Replace("\"", "\"\"")}\"";

@@ -44,9 +44,9 @@ public static partial class WebUiEndpointExtensions
             if (File.Exists(newFilePath!))
                 return Results.Json(new { error = "An endpoint with that name already exists" }, statusCode: 409);
 
-            var oldDir        = Path.GetDirectoryName(filePath!)!;
+            var oldDir = Path.GetDirectoryName(filePath!)!;
             var oldFolderName = Path.GetFileName(oldDir);
-            var newDir        = Path.GetDirectoryName(newFilePath!)!;
+            var newDir = Path.GetDirectoryName(newFilePath!)!;
             Directory.CreateDirectory(Path.GetDirectoryName(newDir)!);
             Directory.Move(oldDir, newDir);
 
@@ -87,7 +87,7 @@ public static partial class WebUiEndpointExtensions
 
             try
             {
-                var raw     = File.ReadAllText(filePath!);
+                var raw = File.ReadAllText(filePath!);
                 var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
                 if (request.Query["raw"] == "true")

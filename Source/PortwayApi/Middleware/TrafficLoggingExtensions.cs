@@ -33,15 +33,15 @@ public static class TrafficLoggingExtensions
         // Bind options from configuration
         var optionsSection = configuration.GetSection("RequestTrafficLogging");
         services.Configure<ProxyTrafficLoggerOptions>(optionsSection);
-        
+
         // Get options for setup
         var options = optionsSection.Get<ProxyTrafficLoggerOptions>() ?? new ProxyTrafficLoggerOptions();
-        
+
         // Only register services if enabled
         if (options.Enabled)
         {
             Log.Debug("Traffic logging will be initialized, using {StorageType} storage", options.StorageType);
-            
+
             // Create bounded channel with specified capacity
             services.AddSingleton(_ => Channel.CreateBounded<ProxyTrafficLogEntry>(
                 new BoundedChannelOptions(options.QueueCapacity)
@@ -50,7 +50,7 @@ public static class TrafficLoggingExtensions
                     SingleReader = true,
                     SingleWriter = false
                 }));
-            
+
             // Register the appropriate storage implementation
             if (string.Equals(options.StorageType, "sqlite", StringComparison.OrdinalIgnoreCase))
             {
@@ -60,11 +60,11 @@ public static class TrafficLoggingExtensions
             {
                 services.AddSingleton<ITrafficLogStorage, FileTrafficLogStorage>();
             }
-            
+
             // Register the background service
             services.AddHostedService<ProxyTrafficLoggerService>();
         }
-        
+
         return services;
     }
 
@@ -74,7 +74,7 @@ public static class TrafficLoggingExtensions
     public static IApplicationBuilder UseRequestTrafficLogging(this IApplicationBuilder app)
     {
         var options = app.ApplicationServices.GetService<IOptions<ProxyTrafficLoggerOptions>>();
-        
+
         // Only use middleware if enabled
         if (options?.Value.Enabled == true)
         {
@@ -90,7 +90,7 @@ public static class TrafficLoggingExtensions
                 Log.Debug("Proxy traffic logging middleware not enabled because required services are not registered");
             }
         }
-        
+
         return app;
     }
 }

@@ -49,7 +49,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
-            
+
             // CSRF validation
             var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
             if (!WebUiAuthHelper.ValidateCsrfToken(csrfToken))
@@ -57,7 +57,7 @@ public static partial class WebUiEndpointExtensions
                 WebUiAuthHelper.RecordFailedAttempt(clientIp);
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
-            
+
             var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
             var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
 
@@ -102,8 +102,8 @@ public static partial class WebUiEndpointExtensions
             }
 
             var username = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
-            var current  = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
-            var next     = body.TryGetProperty("newPassword", out var n) ? n.GetString() ?? "" : "";
+            var current = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
+            var next = body.TryGetProperty("newPassword", out var n) ? n.GetString() ?? "" : "";
 
             if (AdminUserService.ValidatePassword(next) is { } problem)
                 return Results.Json(new { error = problem, field = "newPassword" }, statusCode: 400);
@@ -134,16 +134,16 @@ public static partial class WebUiEndpointExtensions
                 HttpOnly = true,
                 Secure = secureCookies,
                 SameSite = SameSiteMode.Lax,
-                Path     = "/",
-                Expires  = DateTimeOffset.UnixEpoch
+                Path = "/",
+                Expires = DateTimeOffset.UnixEpoch
             });
             context.Response.Cookies.Append(CsrfCookieName, "", new CookieOptions
             {
                 HttpOnly = false,
                 Secure = secureCookies,
                 SameSite = SameSiteMode.Lax,
-                Path     = "/",
-                Expires  = DateTimeOffset.UnixEpoch
+                Path = "/",
+                Expires = DateTimeOffset.UnixEpoch
             });
             return Results.Ok();
         }).ExcludeFromDescription();
@@ -155,19 +155,19 @@ public static partial class WebUiEndpointExtensions
         // Pages render Beacon-style: _shell.html + views/{page}.html + _footer.html streamed as one document
         var pageTitles = new Dictionary<string, string>
         {
-            ["dashboard"]    = "Dashboard",
-            ["endpoints"]    = "Endpoints",
+            ["dashboard"] = "Dashboard",
+            ["endpoints"] = "Endpoints",
             ["environments"] = "Environments",
-            ["tokens"]       = "Access Tokens",
-            ["users"]        = "Users",
-            ["settings"]     = "Settings",
-            ["logs"]         = "Logs"
+            ["tokens"] = "Access Tokens",
+            ["users"] = "Users",
+            ["settings"] = "Settings",
+            ["logs"] = "Logs"
         };
         foreach (var (page, title) in pageTitles)
         {
             var p = page;
             var t = title;
-            app.MapGet($"/ui/{p}",      (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
+            app.MapGet($"/ui/{p}", (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
             app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
         }
 

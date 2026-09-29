@@ -177,26 +177,26 @@ public static class ContentTypeHelper
     public static TimeSpan GetCacheDuration(string extension)
     {
         var ext = extension.ToLowerInvariant();
-        
+
         // HTML - 5 minutes (may change frequently)
         if (ext == ".html" || ext == ".htm")
             return TimeSpan.FromMinutes(5);
-        
+
         // JS/CSS - 1 hour (versioned typically)
         if (ext == ".js" || ext == ".mjs" || ext == ".css")
             return TimeSpan.FromHours(1);
-        
+
         // Images - 24 hours (typically immutable)
-        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || 
+        if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" ||
             ext == ".ico" || ext == ".svg" || ext == ".webp" || ext == ".avif" ||
             ext == ".heic" || ext == ".heif" || ext == ".tiff" || ext == ".tif" ||
             ext == ".bmp")
             return TimeSpan.FromDays(1);
-        
+
         // Fonts - 7 days (rarely change)
         if (ext == ".woff" || ext == ".woff2" || ext == ".ttf" || ext == ".otf")
             return TimeSpan.FromDays(7);
-        
+
         // Default - 30 minutes
         return TimeSpan.FromMinutes(30);
     }

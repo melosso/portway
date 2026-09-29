@@ -155,11 +155,11 @@ public sealed class MetricsPersistenceService : BackgroundService
                 "INSERT INTO RequestMetrics (Timestamp, StatusCode, Method, Source, Endpoint) VALUES (@ts, @sc, @m, @src, @ep)",
                 batch.Select(e => new
                 {
-                    ts  = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-                    sc  = e.StatusCode,
-                    m   = e.Method,
+                    ts = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    sc = e.StatusCode,
+                    m = e.Method,
                     src = e.Source,
-                    ep  = e.Endpoint
+                    ep = e.Endpoint
                 }),
                 transaction: tx, cancellationToken: ct));
 

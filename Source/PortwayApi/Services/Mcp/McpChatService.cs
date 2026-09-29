@@ -21,13 +21,13 @@ public sealed partial class McpChatService
     private static readonly JsonSerializerOptions _jsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters           = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
     };
 
     private readonly McpEndpointRegistry _registry;
-    private readonly McpOptions          _mcpOptions;
-    private readonly McpConfigService    _configService;
-    private readonly IHttpClientFactory  _httpFactory;
+    private readonly McpOptions _mcpOptions;
+    private readonly McpConfigService _configService;
+    private readonly IHttpClientFactory _httpFactory;
     private readonly SqlMetadataService? _sqlMetadata;
 
     // Source-generated zero-overhead regexes
@@ -142,11 +142,11 @@ public sealed partial class McpChatService
         IHttpClientFactory httpFactory,
         SqlMetadataService? sqlMetadata = null)
     {
-        _registry      = registry;
-        _mcpOptions    = mcpOptions.Value;
+        _registry = registry;
+        _mcpOptions = mcpOptions.Value;
         _configService = configService;
-        _httpFactory   = httpFactory;
-        _sqlMetadata   = sqlMetadata;
+        _httpFactory = httpFactory;
+        _sqlMetadata = sqlMetadata;
     }
 
     public bool IsEnabled => _mcpOptions.ChatEnabled;
@@ -180,7 +180,7 @@ public sealed partial class McpChatService
             .Select(g =>
             {
                 var methods = string.Join(", ", g.Select(t => t.Method));
-                var first   = g.First();
+                var first = g.First();
                 var envInfo = first.AllowedEnvironments is { Count: > 0 }
                     ? $" [environment: {string.Join(" or ", first.AllowedEnvironments)}]"
                     : string.Empty;
@@ -205,8 +205,8 @@ public sealed partial class McpChatService
                     : first.EndpointName; // fallback: bare endpoint name
 
                 // Derive tool annotations from registered HTTP methods
-                var allMethods   = g.Select(t => t.Method.ToUpperInvariant()).ToHashSet();
-                var isReadOnly   = allMethods.All(m => m == "GET");
+                var allMethods = g.Select(t => t.Method.ToUpperInvariant()).ToHashSet();
+                var isReadOnly = allMethods.All(m => m == "GET");
                 var isDestructive = allMethods.Any(m => m is "DELETE" or "POST" or "PUT" or "PATCH");
 
                 return new ToolDefinition(
@@ -327,9 +327,9 @@ public sealed partial class McpChatService
             if (pendingToolCalls.Count == 0) break;
 
             // Execute tool calls and feed results back into history, truncated to avoid blowing the model's context window
-            var maxChars        = _mcpOptions.MaxToolResultChars;
+            var maxChars = _mcpOptions.MaxToolResultChars;
             var toolResultParts = new StringBuilder();
-            var assistantParts  = new StringBuilder("I called the following tools:\n");
+            var assistantParts = new StringBuilder("I called the following tools:\n");
 
             foreach (var (name, inputJson) in pendingToolCalls)
             {
@@ -354,9 +354,9 @@ public sealed partial class McpChatService
                 // Stream full (untruncated) result to the client for display
                 await WriteSseAsync(writer, new ChatDelta
                 {
-                    Type       = ChatDeltaType.ToolCall,
-                    ToolName   = name,
-                    ToolInput  = inputJson,
+                    Type = ChatDeltaType.ToolCall,
+                    ToolName = name,
+                    ToolInput = inputJson,
                     ToolResult = result
                 }, ct);
             }
@@ -422,8 +422,8 @@ public sealed partial class McpChatService
             environment = tool.AllowedEnvironments[0];
         }
 
-        var query  = input?["query"]?.GetValue<string>();
-        var body   = input?["body"]?.GetValue<string>();
+        var query = input?["query"]?.GetValue<string>();
+        var body = input?["body"]?.GetValue<string>();
         var method = new HttpMethod(tool.Method.ToUpperInvariant());
 
         // Server-side $top enforcement: inject the default when the LLM's query omits it, clamp to MaxPageSize to prevent unbounded table scans
@@ -453,7 +453,7 @@ public sealed partial class McpChatService
         try
         {
             using var http = _httpFactory.CreateClient("internal");
-            using var req  = new HttpRequestMessage(method, url);
+            using var req = new HttpRequestMessage(method, url);
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
 
             if (body is not null && method != HttpMethod.Get)
@@ -477,7 +477,7 @@ public sealed partial class McpChatService
 
                 // Size-capped read: stream only up to MaxToolResultChars plus a small buffer, then discard the rest, so huge responses never load fully into memory
                 var maxChars = _mcpOptions.MaxToolResultChars;
-                var content  = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
+                var content = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
 
                 // Prefix non-JSON text responses so the LLM knows the format
                 if (!string.IsNullOrEmpty(mediaType) && !mediaType.Contains("json"))
@@ -521,14 +521,14 @@ public sealed partial class McpChatService
                 429 => "The request was rate-limited. Try again in a moment.",
                 431 => "The request header fields are too large to process. Clear unnecessary headers or cookies.",
                 451 => "Access to this resource is unavailable due to legal or compliance restrictions.",
-                
+
                 500 => "The endpoint returned an internal server error. Check the Portway logs for details.",
                 502 => "The server received an invalid response from an upstream server or gateway.",
                 503 => "The endpoint is unavailable. The upstream service may be down or under maintenance.",
                 504 => "The server acting as a gateway timed out waiting for an upstream response. Try again shortly.",
 
                 // Fallback
-                _   => $"The request failed with HTTP {(int)resp.StatusCode}."
+                _ => $"The request failed with HTTP {(int)resp.StatusCode}."
             };
 
             Log.Warning("Tool call {Tool} → {Status} in {Elapsed}ms: {Hint}",
@@ -557,15 +557,15 @@ public sealed partial class McpChatService
     private static async Task<string> ReadCappedAsync(HttpContent content, int maxChars, CancellationToken ct)
     {
         await using var stream = await content.ReadAsStreamAsync(ct);
-        using var reader       = new StreamReader(stream, Encoding.UTF8);
-        var buffer             = new char[4096];
-        var sb                 = new StringBuilder(Math.Min(maxChars, 65536));
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var buffer = new char[4096];
+        var sb = new StringBuilder(Math.Min(maxChars, 65536));
 
         while (sb.Length < maxChars)
         {
             var remaining = maxChars - sb.Length;
-            var toRead    = Math.Min(buffer.Length, remaining);
-            var read      = await reader.ReadAsync(buffer.AsMemory(0, toRead), ct);
+            var toRead = Math.Min(buffer.Length, remaining);
+            var read = await reader.ReadAsync(buffer.AsMemory(0, toRead), ct);
             if (read == 0) break;
             sb.Append(buffer, 0, read);
         }
@@ -602,7 +602,7 @@ public sealed partial class McpChatService
             try
             {
                 var culture = System.Globalization.CultureInfo.GetCultureInfo(locale);
-                var nf      = culture.NumberFormat;
+                var nf = culture.NumberFormat;
                 localeHint = $"\nNumber formatting (locale '{locale}'): " +
                              $"thousands separator '{nf.NumberGroupSeparator}', decimal separator '{nf.NumberDecimalSeparator}'. " +
                              $"Apply this to all numbers in your responses.";
@@ -628,16 +628,16 @@ public sealed partial class McpChatService
             return null;
         }
 
-        var apiKey   = cfg.ApiKey!;
-        var model    = string.IsNullOrWhiteSpace(cfg.Model) ? "claude-sonnet-4-6" : cfg.Model;
+        var apiKey = cfg.ApiKey!;
+        var model = string.IsNullOrWhiteSpace(cfg.Model) ? "claude-sonnet-4-6" : cfg.Model;
         var provider = cfg.Provider;
 
         return provider.ToLowerInvariant() switch
         {
-            "openai"  => new OpenAiCompatibleChatProvider("OpenAI", apiKey, model, OpenAiCompatibleChatProvider.OpenAiUrl, _httpFactory),
-            "gemini"  => new GeminiChatProvider(apiKey, model, _httpFactory),
+            "openai" => new OpenAiCompatibleChatProvider("OpenAI", apiKey, model, OpenAiCompatibleChatProvider.OpenAiUrl, _httpFactory),
+            "gemini" => new GeminiChatProvider(apiKey, model, _httpFactory),
             "mistral" => new OpenAiCompatibleChatProvider("Mistral", apiKey, model, OpenAiCompatibleChatProvider.MistralUrlFor(model), _httpFactory),
-            _         => new AnthropicChatProvider(apiKey, model, _httpFactory)
+            _ => new AnthropicChatProvider(apiKey, model, _httpFactory)
         };
     }
 

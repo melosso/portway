@@ -105,7 +105,7 @@ public class EnvironmentAuthService
         {
             var parameter = authHeader["Basic ".Length..].Trim();
             var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(parameter)).Split(':', 2);
-            
+
             if (credentials.Length != 2) return false;
 
             string username = credentials[0];
@@ -165,7 +165,7 @@ public class EnvironmentAuthService
                     .Replace("\n", "")
                     .Replace("\r", "")
                     .Trim();
-                
+
                 var rsa = RSA.Create();
                 rsa.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKey), out _);
                 validationParameters.IssuerSigningKey = new RsaSecurityKey(rsa);
@@ -178,7 +178,7 @@ public class EnvironmentAuthService
             }
 
             var result = await handler.ValidateTokenAsync(token, validationParameters);
-            
+
             if (result.IsValid)
             {
                 // Optionally inject claims into the current user
@@ -198,7 +198,7 @@ public class EnvironmentAuthService
     {
         // Simple HMAC implementation: Expects 'X-Signature' and 'X-Timestamp' headers
         // Signature = HMAC(Secret, Method + Path + Timestamp + Body)
-        
+
         string? signature = context.Request.Headers[method.Name.Split('|')[0]]; // Default "X-Signature"
         string? timestamp = context.Request.Headers.TryGetValue("X-Timestamp", out var ts) ? ts.ToString() : null;
 

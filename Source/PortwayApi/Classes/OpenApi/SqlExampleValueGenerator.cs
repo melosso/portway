@@ -19,14 +19,14 @@ public static class SqlExampleValueGenerator
 
         return column.ClrType switch
         {
-            "System.String"                      => JsonValue.Create(column.IsPrimaryKey ? "ABC123" : "example"),
-            "System.Int32"                       => JsonValue.Create(column.IsPrimaryKey ? 1 : 42),
-            "System.Int64"                       => JsonValue.Create(column.IsPrimaryKey ? 1L : 42L),
-            "System.Boolean"                     => JsonValue.Create(true),
-            "System.Decimal" or "System.Double"  => JsonValue.Create(99.99),
-            "System.DateTime"                    => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid"                        => JsonValue.Create(Guid.NewGuid().ToString()),
-            _                                    => JsonValue.Create("value")
+            "System.String" => JsonValue.Create(column.IsPrimaryKey ? "ABC123" : "example"),
+            "System.Int32" => JsonValue.Create(column.IsPrimaryKey ? 1 : 42),
+            "System.Int64" => JsonValue.Create(column.IsPrimaryKey ? 1L : 42L),
+            "System.Boolean" => JsonValue.Create(true),
+            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
+            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
+            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
+            _ => JsonValue.Create("value")
         };
     }
 
@@ -64,14 +64,14 @@ public static class SqlExampleValueGenerator
         // Fallback to type-based examples
         return parameter.ClrType switch
         {
-            "System.String"                      => JsonValue.Create($"example {propertyName}"),
-            "System.Int32"                       => JsonValue.Create(42),
-            "System.Int64"                       => JsonValue.Create(42L),
-            "System.Boolean"                     => JsonValue.Create(true),
-            "System.Decimal" or "System.Double"  => JsonValue.Create(99.99),
-            "System.DateTime"                    => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
-            "System.Guid"                        => JsonValue.Create(Guid.NewGuid().ToString()),
-            _                                    => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
+            "System.String" => JsonValue.Create($"example {propertyName}"),
+            "System.Int32" => JsonValue.Create(42),
+            "System.Int64" => JsonValue.Create(42L),
+            "System.Boolean" => JsonValue.Create(true),
+            "System.Decimal" or "System.Double" => JsonValue.Create(99.99),
+            "System.DateTime" => JsonValue.Create(DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss")),
+            "System.Guid" => JsonValue.Create(Guid.NewGuid().ToString()),
+            _ => parameter.IsNullable || parameter.HasDefaultValue ? null : JsonValue.Create("value")
         };
     }
 }

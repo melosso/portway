@@ -92,7 +92,8 @@ public partial class DynamicEndpointDocumentFilter
                     .Where(p => p.Name != "id")
                     .ToList();
 
-                deleteOperation.Parameters.Add(new OpenApiParameter {
+                deleteOperation.Parameters.Add(new OpenApiParameter
+                {
                     Name = "id",
                     In = ParameterLocation.Path,
                     Required = true,
@@ -255,11 +256,11 @@ public partial class DynamicEndpointDocumentFilter
                             Type = JsonSchemaType.Object,
                             Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["select"]  = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Comma-separated fields to return" },
-                                ["filter"]  = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $filter expression" },
+                                ["select"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "Comma-separated fields to return" },
+                                ["filter"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $filter expression" },
                                 ["orderby"] = new OpenApiSchema { Type = JsonSchemaType.String, Description = "OData $orderby expression" },
-                                ["top"]     = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(10) },
-                                ["skip"]    = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(0) }
+                                ["top"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(10) },
+                                ["skip"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Default = JsonValue.Create(0) }
                             }
                         }
                     }
@@ -420,7 +421,8 @@ public partial class DynamicEndpointDocumentFilter
                     }
                 }
             };
-        };
+        }
+        ;
 
         StandardResponses.AddErrors(operation, StandardErrorCodes.SqlKindFor(method));
 

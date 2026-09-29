@@ -24,7 +24,7 @@ public class AuthDbContext : DbContext
             else EnsureAdminUserColumns();
             if (!CheckTableExists("OidcProviders")) CreateOidcProvidersTable();
             else EnsureOidcProviderColumns();
-            
+
             if (tokensTableExists && auditsTableExists)
             {
                 // Check if AllowedEnvironments column exists in Tokens table
@@ -71,13 +71,13 @@ public class AuthDbContext : DbContext
                 Log.Debug("All tables verified with correct schema");
                 return;
             }
-            
+
             // Create missing tables
             if (!tokensTableExists)
             {
                 CreateTokensTable();
             }
-            
+
             if (!auditsTableExists)
             {
                 CreateTokenAuditsTable();
@@ -305,7 +305,7 @@ public class AuthDbContext : DbContext
                     IpAddress TEXT NULL,
                     UserAgent TEXT NULL
                 )");
-            
+
             Log.Debug("Migration completed: Created new TokenAudits table");
         }
         catch (Exception ex)
@@ -318,7 +318,7 @@ public class AuthDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         // Configure the Tokens table
         modelBuilder.Entity<AuthToken>(entity =>
         {
@@ -335,7 +335,7 @@ public class AuthDbContext : DbContext
             entity.Property(e => e.Description).HasDefaultValue("").HasMaxLength(500);
             entity.Property(e => e.RateLimitRequests).IsRequired(false);
             entity.Property(e => e.RateLimitWindowSeconds).IsRequired(false);
-            
+
             // Add indexes for performance
             entity.HasIndex(e => e.Username).IsUnique(false);
             entity.HasIndex(e => e.CreatedAt);
@@ -343,7 +343,7 @@ public class AuthDbContext : DbContext
             entity.HasIndex(e => new { e.RevokedAt, e.ExpiresAt })
                   .HasDatabaseName("IX_AuthTokens_ActiveFilter");
         });
-        
+
         // Configure the TokenAudits table
         modelBuilder.Entity<AuthTokenAudit>(entity =>
         {
@@ -359,7 +359,7 @@ public class AuthDbContext : DbContext
             entity.Property(e => e.Source).HasDefaultValue("PortwayApi").HasMaxLength(100);
             entity.Property(e => e.IpAddress).IsRequired(false).HasMaxLength(45);
             entity.Property(e => e.UserAgent).IsRequired(false).HasMaxLength(500);
-            
+
             // Add indexes for performance
             entity.HasIndex(e => e.TokenId);
             entity.HasIndex(e => e.Username);

@@ -77,11 +77,11 @@ public class McpConfigDbContext : DbContext
 /// </summary>
 public class McpConfigEntry
 {
-    public string   Key         { get; set; } = string.Empty;
-    public string   Value       { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
     /// <summary>
     /// True when the value is PWENC-encrypted. Never expose the raw Value to clients.
     /// </summary>
-    public bool     IsEncrypted { get; set; } = false;
-    public DateTime UpdatedAt   { get; set; } = DateTime.UtcNow;
+    public bool IsEncrypted { get; set; } = false;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

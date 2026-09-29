@@ -19,7 +19,8 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
     {
         _logger.LogDebug("DynamicEndpointDocumentFilter called");
 
-        try {
+        try
+        {
             // Remove any controller-discovered paths that we'll be replacing
             RemoveConflictingPaths(document);
 
@@ -60,7 +61,8 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 
             return Task.CompletedTask;
         }
-        catch (Exception ex) {
+        catch (Exception ex)
+        {
             _logger.LogError(ex, "Error applying document filter");
             return Task.CompletedTask;
         }

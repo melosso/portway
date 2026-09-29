@@ -20,10 +20,10 @@ public class FileSystemIndex
     private readonly ConcurrentDictionary<string, Dictionary<string, FileMetadata>> _environmentIndices = new();
     private readonly Func<string, string, string> _fileIdGenerator;
     private readonly Func<string, string> _contentTypeResolver;
-    
+
     public FileSystemIndex(
-        string baseDirectory, 
-        ICacheProvider cacheProvider, 
+        string baseDirectory,
+        ICacheProvider cacheProvider,
         Serilog.ILogger logger,
         Func<string, string, string> fileIdGenerator,
         Func<string, string> contentTypeResolver)
@@ -34,7 +34,7 @@ public class FileSystemIndex
         _fileIdGenerator = fileIdGenerator;
         _contentTypeResolver = contentTypeResolver;
     }
-    
+
     // File metadata stored in cache
     public class FileMetadata
     {
@@ -45,7 +45,7 @@ public class FileSystemIndex
         public DateTime LastModified { get; set; }
         public bool IsInMemoryOnly { get; set; }
     }
-    
+
     public async Task<Dictionary<string, FileMetadata>> GetDirectoryIndexAsync(string environment, bool forceRefresh = false)
     {
         string cacheKey = $"file:index:{environment}";
@@ -58,7 +58,7 @@ public class FileSystemIndex
                 return cachedIndex;
             }
         }
-        
+
         // Cache miss or force refresh - rebuild index from filesystem
         await _indexLock.WaitAsync();
         try
@@ -74,7 +74,7 @@ public class FileSystemIndex
     private async Task<Dictionary<string, FileMetadata>> GetDirectoryIndexInternalAsync(string environment, bool forceRefresh = false)
     {
         string cacheKey = $"file:index:{environment}";
-        
+
         // Double-check after acquiring lock
         if (!forceRefresh)
         {
@@ -84,7 +84,7 @@ public class FileSystemIndex
                 return cachedIndex;
             }
         }
-        
+
         string environmentDir = Path.Combine(_baseDirectory, environment);
         Dictionary<string, FileMetadata> index = new();
         if (Directory.Exists(environmentDir))
@@ -108,7 +108,7 @@ public class FileSystemIndex
                 };
             }
         }
-        
+
         // Cache the index with expiration
         await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
         // Also store in memory for very fast access
@@ -116,12 +116,12 @@ public class FileSystemIndex
         _logger.Debug("📂 Built file index for environment {Environment}: {Count} files", environment, index.Count);
         return index;
     }
-    
+
     // Update index when files are added/modified/deleted
     public async Task UpdateIndexAsync(string environment, string fileName, FileMetadata? metadata = null, bool isDeleted = false)
     {
         string cacheKey = $"file:index:{environment}";
-        
+
         await _indexLock.WaitAsync();
         try
         {
@@ -136,7 +136,7 @@ public class FileSystemIndex
                 // Load from cache or rebuild (using internal method to avoid deadlock)
                 index = await GetDirectoryIndexInternalAsync(environment);
             }
-            
+
             if (isDeleted)
             {
                 index.Remove(fileName);
@@ -147,10 +147,10 @@ public class FileSystemIndex
                 index[fileName] = metadata;
                 _logger.Debug("📝 Updated index for {FileName} in {Environment}", fileName, environment);
             }
-            
+
             // Update cache
             await _cacheProvider.SetAsync(cacheKey, index, TimeSpan.FromMinutes(30));
-            
+
             // Update in-memory index
             _environmentIndices[environment] = index;
         }
@@ -159,7 +159,7 @@ public class FileSystemIndex
             _indexLock.Release();
         }
     }
-    
+
     // List files with efficient filtering using the index
     public async Task<IEnumerable<FileMetadata>> ListFilesAsync(string environment, string? prefix = null)
     {
@@ -176,7 +176,7 @@ public class FileSystemIndex
             Path.GetFileName(f.FileName).StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase)
         );
     }
-    
+
     // Periodic refresh to catch files added outside the API
     public async Task RefreshAllIndicesAsync()
     {
@@ -184,7 +184,7 @@ public class FileSystemIndex
         {
             await GetDirectoryIndexAsync(environment, forceRefresh: true);
         }
-        
+
         _logger.Information("Refreshed all file indices");
     }
 }

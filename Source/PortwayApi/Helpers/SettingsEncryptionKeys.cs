@@ -11,12 +11,12 @@ namespace PortwayApi.Helpers
             {
                 var rootPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "..", ".."));
                 var publicKeyPath = Path.Combine(rootPath, ".core", "snapshot_blob.bin");
-                                
+
                 if (!File.Exists(publicKeyPath))
                 {
                     throw new FileNotFoundException($"Public key not found at {publicKeyPath}. Run the encryption tool first to generate keys.");
                 }
-                
+
                 return File.ReadAllText(publicKeyPath);
             }
         }

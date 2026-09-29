@@ -41,13 +41,13 @@ public partial class EndpointController
             string endpointName;
             string? namespaceName = null;
             string? subpath = null;
-            
+
             var segments = catchall.Split('/', StringSplitOptions.RemoveEmptyEntries);
             if (segments.Length == 0)
             {
                 return PortwayResults.BadRequest("Missing endpoint name in the URL path");
             }
-            
+
             // Check if we have namespace/endpoint format (2+ segments)
             if (segments.Length >= 2)
             {
@@ -55,7 +55,7 @@ public partial class EndpointController
                 var potentialNamespace = segments[0];
                 var potentialEndpoint = segments[1];
                 var allFileEndpoints = EndpointHandler.GetFileEndpoints();
-                
+
                 // Check if namespace/endpoint key exists
                 if (allFileEndpoints.ContainsKey($"{potentialNamespace}/{potentialEndpoint}"))
                 {
@@ -80,7 +80,7 @@ public partial class EndpointController
             {
                 endpointName = segments[0];
             }
-            
+
             // Check if this endpoint exists
             if (TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint) is { } resolveError)
             {
@@ -99,49 +99,49 @@ public partial class EndpointController
             {
                 return PortwayResults.BadRequest("No file was uploaded");
             }
-            
+
             // Get storage options from endpoint definition
-            var baseDirectory = endpoint?.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj) 
+            var baseDirectory = endpoint?.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj)
                 ? baseDirObj?.ToString() ?? string.Empty
                 : string.Empty;
 
             // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
             baseDirectory = ProcessBaseDirectory(baseDirectory, env);
-                
-            var allowedExtensions = endpoint?.Properties != null && endpoint.Properties.TryGetValue("AllowedExtensions", out var extensionsObj) 
+
+            var allowedExtensions = endpoint?.Properties != null && endpoint.Properties.TryGetValue("AllowedExtensions", out var extensionsObj)
                 && extensionsObj is List<string> extensions
                 ? extensions
                 : new List<string>();
-            
+
             // Construct the target filename
             string filename = file.FileName;
-            
+
             // Add subpath if provided
             if (!string.IsNullOrEmpty(subpath))
             {
                 filename = Path.Combine(subpath, filename);
             }
-            
+
             // Add base directory if configured
             if (!string.IsNullOrEmpty(baseDirectory))
             {
                 filename = Path.Combine(baseDirectory, filename);
             }
-            
+
             // Normalize path separators
             filename = filename.Replace('\\', '/');
-            
+
             // Validate file extension
             string extension = Path.GetExtension(filename).ToLowerInvariant();
             if (allowedExtensions.Count > 0 && !allowedExtensions.Contains(extension))
             {
                 return PortwayResults.UnsupportedMediaType($"Files with extension {extension} are not allowed for this endpoint");
             }
-            
+
             // Upload the file
             using var stream = file.OpenReadStream();
             string fileId;
-            
+
             // Check if we should use absolute path handling
             if (!string.IsNullOrEmpty(baseDirectory) && Path.IsPathRooted(baseDirectory))
             {
@@ -152,7 +152,7 @@ public partial class EndpointController
                     absoluteFilePath = Path.Combine(subpath, file.FileName);
                 }
                 absoluteFilePath = Path.Combine(baseDirectory, absoluteFilePath);
-                
+
                 // Use the absolute path upload method
                 fileId = await _fileHandlerService.UploadFileToAbsolutePathAsync(env, absoluteFilePath, stream, baseDirectory, overwrite);
             }
@@ -161,7 +161,7 @@ public partial class EndpointController
                 // Use the standard relative path upload method
                 fileId = await _fileHandlerService.UploadFileAsync(env, filename, stream, overwrite);
             }
-            
+
             // Return success with file info; preserve namespace in the download URL so it round-trips
             var fileEndpointPath = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
             var fileUrl = $"/api/{env}/files/{fileEndpointPath}/{fileId}";

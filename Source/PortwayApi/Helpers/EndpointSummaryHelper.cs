@@ -20,7 +20,7 @@ public static class EndpointSummaryHelper
     {
         // Use a registry that tracks endpoint identities to avoid dual-key false positives
         var endpointRegistry = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        
+
         // Only add primary endpoint keys to avoid dual-key conflicts
         AddUniqueEndpoints(endpointRegistry, sqlEndpoints, "SQL");
         AddUniqueEndpoints(endpointRegistry, proxyEndpointMap.ToDictionary(x => x.Key, x => x.Value), "Proxy", excludeComposite: true);
@@ -28,29 +28,29 @@ public static class EndpointSummaryHelper
         AddUniqueEndpoints(endpointRegistry, webhookEndpoints, "Webhook");
         AddUniqueEndpoints(endpointRegistry, fileEndpoints, "File");
         AddUniqueEndpoints(endpointRegistry, staticEndpoints, "Static");
-        
+
         var conflicts = endpointRegistry.Where(e => e.Value.Count > 1).ToList();
-        
+
         if (conflicts.Any())
         {
             Log.Warning("Configuration conflict: multiple endpoints share the same path. Please assign unique paths to guarantee consistent routing:");
-            
+
             foreach (var conflict in conflicts.OrderBy(c => c.Key))
             {
                 var activeType = GetActiveEndpointType(conflict.Value);
                 var shadowedTypes = conflict.Value.Where(t => t != activeType);
-                
-                Log.Warning("🚧 Endpoint path '{Path}' defined in [{Types}] - {Active} active, {Shadowed} unreachable.", 
-                    conflict.Key, 
+
+                Log.Warning("🚧 Endpoint path '{Path}' defined in [{Types}] - {Active} active, {Shadowed} unreachable.",
+                    conflict.Key,
                     string.Join(", ", conflict.Value),
                     activeType,
                     string.Join(", ", shadowedTypes));
             }
-            
+
             Log.Information(" Note: Endpoints in different namespaces (e.g., 'CRM/Accounts' vs 'Finance/Accounts') do not conflict.");
         }
     }
-    
+
     /// <summary>
     /// Logs a config ERROR when a declared $expand Target is not a registered SQL endpoint; the expand is refused at runtime too
     /// </summary>
@@ -82,7 +82,7 @@ public static class EndpointSummaryHelper
         foreach (var kvp in endpoints)
         {
             var key = kvp.Key;
-            
+
             // Skip if this looks like a backward-compatibility duplicate
             // (non-namespaced key when a namespaced version exists)
             if (!key.Contains('/'))
@@ -94,13 +94,13 @@ public static class EndpointSummaryHelper
                     continue;
                 }
             }
-            
+
             if (!registry.ContainsKey(key))
                 registry[key] = new List<string>();
             registry[key].Add(type);
         }
     }
-    
+
     /// <summary>
     /// Adds proxy endpoints to registry with composite filtering
     /// </summary>
@@ -110,11 +110,11 @@ public static class EndpointSummaryHelper
         {
             var key = kvp.Key;
             var endpoint = kvp.Value;
-            
+
             // Apply composite filtering
             if (excludeComposite && endpoint.Type == "Composite") continue;
             if (onlyComposite && endpoint.Type != "Composite") continue;
-            
+
             // Skip if this looks like a backward-compatibility duplicate
             if (!key.Contains('/'))
             {
@@ -124,13 +124,13 @@ public static class EndpointSummaryHelper
                     continue;
                 }
             }
-            
+
             if (!registry.ContainsKey(key))
                 registry[key] = new List<string>();
             registry[key].Add(type);
         }
     }
-    
+
     private static string GetActiveEndpointType(List<string> types)
     {
         // Matches routing precedence in EndpointController.ParseEndpoint

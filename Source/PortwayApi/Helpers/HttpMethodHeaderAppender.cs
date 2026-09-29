@@ -12,12 +12,12 @@ public enum HeaderConflictResolution
     /// Skip adding the custom header if it already exists
     /// </summary>
     Skip,
-    
+
     /// <summary>
     /// Overwrite the existing header with the custom value
     /// </summary>
     Overwrite,
-    
+
     /// <summary>
     /// Log the conflict but still add the header (may create duplicates)
     /// </summary>
@@ -39,8 +39,8 @@ public static class HttpMethodHeaderAppender
     /// <param name="conflictResolution">How to handle header conflicts (Skip, Overwrite, or Log)</param>
     /// <returns>Dictionary of headers to append to the request</returns>
     public static Dictionary<string, string> GetAppendHeaders(
-        string originalMethod, 
-        string translatedMethod, 
+        string originalMethod,
+        string translatedMethod,
         Dictionary<string, object>? customProperties,
         IEnumerable<string>? existingHeaders = null,
         HeaderConflictResolution conflictResolution = HeaderConflictResolution.Skip)
@@ -58,7 +58,7 @@ public static class HttpMethodHeaderAppender
         try
         {
             var appendHeadersConfig = customProperties["HttpMethodAppendHeaders"];
-            
+
             // Handle both string and JsonElement types
             string appendHeadersString;
             if (appendHeadersConfig is JsonElement jsonElement)
@@ -82,7 +82,7 @@ public static class HttpMethodHeaderAppender
 
             // Parse header append mappings
             var headerMappings = ParseHeaderAppendMappings(appendHeadersString);
-            
+
             // Check if we have mappings for the original method
             if (headerMappings.TryGetValue(originalMethod, out var methodHeaders))
             {
@@ -92,7 +92,7 @@ public static class HttpMethodHeaderAppender
                     var headerValue = header.Value
                         .Replace("{ORIGINAL_METHOD}", originalMethod.ToUpper())
                         .Replace("{TRANSLATED_METHOD}", translatedMethod.ToUpper());
-                    
+
                     // Check for conflicts with existing headers
                     if (existingHeaderSet.Contains(header.Key))
                     {
@@ -101,19 +101,19 @@ public static class HttpMethodHeaderAppender
                             case HeaderConflictResolution.Skip:
                                 Log.Debug("Skipping custom header {HeaderKey} because it already exists (user-provided)", header.Key);
                                 continue;
-                                
+
                             case HeaderConflictResolution.Overwrite:
                                 Log.Debug("Overwriting existing header {HeaderKey} with custom value: {HeaderValue}", header.Key, headerValue);
                                 break;
-                                
+
                             case HeaderConflictResolution.LogAndAdd:
                                 Log.Warning("Header conflict detected: {HeaderKey} already exists but adding custom value anyway: {HeaderValue}", header.Key, headerValue);
                                 break;
                         }
                     }
-                    
+
                     headers[header.Key] = headerValue;
-                    Log.Debug("Appending header for method {OriginalMethod}: {HeaderKey}={HeaderValue}", 
+                    Log.Debug("Appending header for method {OriginalMethod}: {HeaderKey}={HeaderValue}",
                         originalMethod, header.Key, headerValue);
                 }
             }
@@ -147,19 +147,19 @@ public static class HttpMethodHeaderAppender
         {
             // Split by colon to get method:headers mapping
             var parts = methodMapping.Split(':', 2, StringSplitOptions.RemoveEmptyEntries);
-            
+
             if (parts.Length == 2)
             {
                 var method = parts[0].Trim();
                 var headersString = parts[1].Trim();
-                
+
                 if (!string.IsNullOrWhiteSpace(method) && !string.IsNullOrWhiteSpace(headersString))
                 {
                     var methodHeaders = ParseMethodHeaders(headersString);
                     if (methodHeaders.Count > 0)
                     {
                         mappings[method] = methodHeaders;
-                        Log.Debug("Parsed HTTP method header mappings for {Method}: {Headers}", 
+                        Log.Debug("Parsed HTTP method header mappings for {Method}: {Headers}",
                             method, string.Join(", ", methodHeaders.Select(h => $"{h.Key}={h.Value}")));
                     }
                 }
@@ -194,12 +194,12 @@ public static class HttpMethodHeaderAppender
         {
             // Split by equals to get header name and value
             var parts = headerPair.Split('=', 2, StringSplitOptions.RemoveEmptyEntries);
-            
+
             if (parts.Length == 2)
             {
                 var headerName = parts[0].Trim();
                 var headerValue = parts[1].Trim();
-                
+
                 if (!string.IsNullOrWhiteSpace(headerName) && !string.IsNullOrWhiteSpace(headerValue))
                 {
                     headers[headerName] = headerValue;

@@ -13,12 +13,12 @@ public static class McpChatEndpoints
         // to surface a health warning without additional server-side log flooding
         app.MapGet("/ui/api/mcp/tools", (McpChatService chat) =>
         {
-            var tools   = chat.GetToolDefinitions();
+            var tools = chat.GetToolDefinitions();
             var missing = chat.GetMissingMetadataEndpoints();
             return Results.Json(new
             {
-                count           = tools.Count,
-                tools           = tools.Select(t => new { t.Name, t.Description, t.DisplayDescription }),
+                count = tools.Count,
+                tools = tools.Select(t => new { t.Name, t.Description, t.DisplayDescription }),
                 missingMetadata = missing
             });
         }).ExcludeFromDescription();
@@ -35,10 +35,10 @@ public static class McpChatEndpoints
                 return;
             }
 
-            var message     = body?["message"]?.GetValue<string>() ?? string.Empty;
+            var message = body?["message"]?.GetValue<string>() ?? string.Empty;
             var environment = body?["environment"]?.GetValue<string>() ?? string.Empty;
-            var locale      = body?["locale"]?.GetValue<string>();
-            var historyArr  = body?["history"]?.AsArray();
+            var locale = body?["locale"]?.GetValue<string>();
+            var historyArr = body?["history"]?.AsArray();
 
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -51,7 +51,7 @@ public static class McpChatEndpoints
             {
                 foreach (var item in historyArr)
                 {
-                    var role    = item?["role"]?.GetValue<string>();
+                    var role = item?["role"]?.GetValue<string>();
                     var content = item?["content"]?.GetValue<string>();
                     if (role is not null && content is not null)
                         history.Add(new Services.Mcp.ChatMessage(role, content));
@@ -75,10 +75,10 @@ public static class McpChatEndpoints
             // Disable buffering so SSE chunks are flushed to the client immediately
             context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseBodyFeature>()?.DisableBuffering();
 
-            context.Response.ContentType                    = "text/event-stream; charset=utf-8";
-            context.Response.Headers.CacheControl           = "no-cache";
-            context.Response.Headers.Connection             = "keep-alive";
-            context.Response.Headers["X-Accel-Buffering"]  = "no"; // prevent nginx from buffering
+            context.Response.ContentType = "text/event-stream; charset=utf-8";
+            context.Response.Headers.CacheControl = "no-cache";
+            context.Response.Headers.Connection = "keep-alive";
+            context.Response.Headers["X-Accel-Buffering"] = "no"; // prevent nginx from buffering
 
             await using var writer = new StreamWriter(context.Response.Body, leaveOpen: true);
 
@@ -89,15 +89,15 @@ public static class McpChatEndpoints
         // Used by ops dashboards and monitoring tools to verify MCP is healthy
         app.MapGet("/ui/api/mcp/health", (McpChatService chat) =>
         {
-            var tools   = chat.GetToolDefinitions();
+            var tools = chat.GetToolDefinitions();
             var missing = chat.GetMissingMetadataEndpoints();
             return Results.Json(new
             {
-                enabled             = chat.IsEnabled,
-                toolCount           = tools.Count,
-                missingMetadata     = missing.Count,
+                enabled = chat.IsEnabled,
+                toolCount = tools.Count,
+                missingMetadata = missing.Count,
                 missingMetadataKeys = missing,
-                providerConfigured  = chat.IsEnabled
+                providerConfigured = chat.IsEnabled
             });
         }).ExcludeFromDescription();
 

@@ -204,7 +204,8 @@ public partial class DynamicEndpointDocumentFilter
                         Name = "$top",
                         In = ParameterLocation.Query,
                         Required = false,
-                        Schema = new OpenApiSchema {
+                        Schema = new OpenApiSchema
+                        {
                             Type = JsonSchemaType.Integer,
                             Default = JsonValue.Create(10),
                             Minimum = "1",
@@ -276,7 +277,7 @@ public partial class DynamicEndpointDocumentFilter
                     }
                 };
 
-                        StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
+                StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
 
                 // Add the operation to the path with the appropriate HTTP method
                 AddOperationToPath(document.Paths[path], method, operation);

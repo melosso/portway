@@ -28,9 +28,9 @@ public class EndpointFileWatcher : FileWatchPump
     {
         _sqlMetadataService = sqlMetadataService;
         _optionsMonitor = optionsMonitor;
-        _reloadTracker  = reloadTracker;
-        _broadcaster    = broadcaster;
-        _mcpRegistry    = mcpRegistry;
+        _reloadTracker = reloadTracker;
+        _broadcaster = broadcaster;
+        _mcpRegistry = mcpRegistry;
     }
 
     protected override TimeSpan DebounceTime => TimeSpan.FromMilliseconds(_optionsMonitor.CurrentValue.DebounceMs);
@@ -126,7 +126,7 @@ public class EndpointFileWatcher : FileWatchPump
                 return null;
 
             // .../endpoints/{Type}/{Namespace?}/{EndpointName}/entity.json
-            var endpointDir  = Path.GetDirectoryName(filePath);          // EndpointName dir
+            var endpointDir = Path.GetDirectoryName(filePath);          // EndpointName dir
             var namespaceDir = Path.GetDirectoryName(endpointDir);       // Namespace or Type dir
             var namespaceName = Path.GetFileName(namespaceDir);
 

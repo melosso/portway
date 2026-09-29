@@ -44,7 +44,7 @@ public sealed class MetricsService
         }
     }
 
-    public void RecordCacheHit()  => Interlocked.Increment(ref _cacheHits);
+    public void RecordCacheHit() => Interlocked.Increment(ref _cacheHits);
     public void RecordCacheMiss() => Interlocked.Increment(ref _cacheMisses);
 
     internal void Hydrate(IEnumerable<RequestEntry> entries)
@@ -60,17 +60,17 @@ public sealed class MetricsService
     {
         var (bucketCount, bucketSize, labelFormat, periodSpan) = period switch
         {
-            "7d"  => (7,  TimeSpan.FromDays(1),  "ddd",   TimeSpan.FromDays(7)),
-            "30d" => (30, TimeSpan.FromDays(1),  "MMM d", TimeSpan.FromDays(30)),
-            _     => (24, TimeSpan.FromHours(1), "HH:mm", TimeSpan.FromHours(24)),
+            "7d" => (7, TimeSpan.FromDays(1), "ddd", TimeSpan.FromDays(7)),
+            "30d" => (30, TimeSpan.FromDays(1), "MMM d", TimeSpan.FromDays(30)),
+            _ => (24, TimeSpan.FromHours(1), "HH:mm", TimeSpan.FromHours(24)),
         };
 
-        var now    = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
         var cutoff = now - periodSpan;
 
         var apiBuckets = new long[bucketCount];
-        var uiBuckets  = new long[bucketCount];
-        var errorMap   = new Dictionary<string, long>();
+        var uiBuckets = new long[bucketCount];
+        var errorMap = new Dictionary<string, long>();
         long total = 0, errors = 0, apiReqs = 0, uiReqs = 0;
         var endpointCounts = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
@@ -110,12 +110,12 @@ public sealed class MetricsService
         }
 
         var apiTraffic = new List<TrafficBucket>(bucketCount);
-        var uiTraffic  = new List<TrafficBucket>(bucketCount);
+        var uiTraffic = new List<TrafficBucket>(bucketCount);
         for (var i = 0; i < bucketCount; i++)
         {
             var bucketStart = now - periodSpan + TimeSpan.FromTicks(bucketSize.Ticks * i);
             var label = bucketStart.ToString(labelFormat);
-            var ts    = bucketStart.ToString("yyyy-MM-ddTHH:mm:ssZ");
+            var ts = bucketStart.ToString("yyyy-MM-ddTHH:mm:ssZ");
             apiTraffic.Add(new TrafficBucket(label, ts, apiBuckets[i]));
             uiTraffic.Add(new TrafficBucket(label, ts, uiBuckets[i]));
         }
@@ -126,10 +126,10 @@ public sealed class MetricsService
             .Select(kv => new EndpointStat(kv.Key, kv.Value))
             .ToList();
 
-        var errorRate  = total > 0 ? Math.Round((double)errors / total, 4) : 0.0;
+        var errorRate = total > 0 ? Math.Round((double)errors / total, 4) : 0.0;
         var startedAgo = (long)(now - _startTime).TotalSeconds;
-        var hits       = Interlocked.Read(ref _cacheHits);
-        var misses     = Interlocked.Read(ref _cacheMisses);
+        var hits = Interlocked.Read(ref _cacheHits);
+        var misses = Interlocked.Read(ref _cacheMisses);
 
         return new MetricsSnapshot(period, apiTraffic, uiTraffic, errorMap, total, errorRate,
             startedAgo, apiReqs, uiReqs, topEndpoints, hits, misses);

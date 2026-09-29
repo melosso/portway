@@ -17,7 +17,7 @@ public sealed class GeminiChatProvider(string apiKey, string model, IHttpClientF
         var body = new JsonObject
         {
             ["contents"] = ChatPayloadFactory.GeminiContents(history),
-            ["tools"]    = new JsonArray(new JsonObject
+            ["tools"] = new JsonArray(new JsonObject
             {
                 ["functionDeclarations"] = ChatPayloadFactory.Declarations(tools, "parameters")
             })

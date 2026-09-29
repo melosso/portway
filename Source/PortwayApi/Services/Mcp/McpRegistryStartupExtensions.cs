@@ -10,7 +10,7 @@ public static class McpRegistryStartupExtensions
 {
     public static WebApplication MapMcpRegistry(this WebApplication app)
     {
-        var mcpRegistry     = app.Services.GetRequiredService<McpEndpointRegistry>();
+        var mcpRegistry = app.Services.GetRequiredService<McpEndpointRegistry>();
         var mcpAppsProvider = app.Services.GetRequiredService<McpAppsResourceProvider>();
 
         var mcpEndpoints = new List<EndpointMcpInfo>();
@@ -67,8 +67,8 @@ public static class McpRegistryStartupExtensions
             var endpointKind = kvp.Value.Type switch
             {
                 EndpointType.Static => "static",
-                EndpointType.Files  => "file",
-                _                   => "api"
+                EndpointType.Files => "file",
+                _ => "api"
             };
 
             yield return new EndpointMcpInfo

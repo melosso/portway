@@ -17,47 +17,47 @@ public partial class DynamicEndpointDocumentFilter
         // Emit one namespaced POST path per webhook endpoint: /api/{env}/{namespace}/{name}/{webhookId}
         foreach (var webhook in webhookEndpoints)
         {
-        var definition = webhook.Value;
+            var definition = webhook.Value;
 
-        if (!OpenApiEndpointCatalog.IsDocumented(definition))
-            continue;
+            if (!OpenApiEndpointCatalog.IsDocumented(definition))
+                continue;
 
-        string path = $"{OpenApiEndpointCatalog.BasePath(definition)}/{{webhookId}}";
+            string path = $"{OpenApiEndpointCatalog.BasePath(definition)}/{{webhookId}}";
 
-        // Effective environments and documentation are resolved per endpoint
-        var effectiveEnvironments = GetEffectiveEnvironments(definition);
-        var webhookDocumentation = definition.Documentation ?? LoadWebhookDocumentation();
-        var webhookTag = definition.DocumentationTag;
+            // Effective environments and documentation are resolved per endpoint
+            var effectiveEnvironments = GetEffectiveEnvironments(definition);
+            var webhookDocumentation = definition.Documentation ?? LoadWebhookDocumentation();
+            var webhookTag = definition.DocumentationTag;
 
-        // Register this webhook's tag description; namespaced webhooks carry it in their own Documentation block
-        if (!string.IsNullOrWhiteSpace(webhookDocumentation?.TagDescription))
-        {
-            document.Tags ??= new HashSet<OpenApiTag>();
-            var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, webhookTag, StringComparison.OrdinalIgnoreCase));
-            if (existingTag == null)
+            // Register this webhook's tag description; namespaced webhooks carry it in their own Documentation block
+            if (!string.IsNullOrWhiteSpace(webhookDocumentation?.TagDescription))
             {
-                document.Tags.Add(new OpenApiTag { Name = webhookTag, Description = webhookDocumentation.TagDescription });
+                document.Tags ??= new HashSet<OpenApiTag>();
+                var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, webhookTag, StringComparison.OrdinalIgnoreCase));
+                if (existingTag == null)
+                {
+                    document.Tags.Add(new OpenApiTag { Name = webhookTag, Description = webhookDocumentation.TagDescription });
+                }
+                else if (string.IsNullOrWhiteSpace(existingTag.Description))
+                {
+                    existingTag.Description = webhookDocumentation.TagDescription;
+                }
             }
-            else if (string.IsNullOrWhiteSpace(existingTag.Description))
+
+            // Create path item if it doesn't exist
+            if (!document.Paths.ContainsKey(path))
             {
-                existingTag.Description = webhookDocumentation.TagDescription;
+                document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
-        }
 
-        // Create path item if it doesn't exist
-        if (!document.Paths.ContainsKey(path))
-        {
-            document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
-        }
-
-        // Create webhook POST operation
-        var webhookOperation = new OpenApiOperation
-        {
-            Tags = new HashSet<OpenApiTagReference> { new(webhookTag) },
-            Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
-            Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
-            OperationId = $"op_{operationIdCounter++}",
-            Parameters = new List<IOpenApiParameter>
+            // Create webhook POST operation
+            var webhookOperation = new OpenApiOperation
+            {
+                Tags = new HashSet<OpenApiTagReference> { new(webhookTag) },
+                Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
+                Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
+                OperationId = $"op_{operationIdCounter++}",
+                Parameters = new List<IOpenApiParameter>
             {
                 new OpenApiParameter()
                 {
@@ -80,187 +80,187 @@ public partial class DynamicEndpointDocumentFilter
                     Description = "Webhook identifier"
                 }
             },
-            RequestBody = new OpenApiRequestBody
-            {
-                Description = "Webhook payload (any valid JSON)",
-                Required = true,
-                Content = new Dictionary<string, IOpenApiMediaType>
+                RequestBody = new OpenApiRequestBody
                 {
-                    ["application/json"] = new OpenApiMediaType
+                    Description = "Webhook payload (any valid JSON)",
+                    Required = true,
+                    Content = new Dictionary<string, IOpenApiMediaType>
                     {
-                        Schema = new OpenApiSchema
+                        ["application/json"] = new OpenApiMediaType
                         {
-                            Type = JsonSchemaType.Object
+                            Schema = new OpenApiSchema
+                            {
+                                Type = JsonSchemaType.Object
+                            }
                         }
                     }
-                }
-            },
-            Responses = new OpenApiResponses
-            {
-                ["201"] = new OpenApiResponse
+                },
+                Responses = new OpenApiResponses
                 {
-                    Description = "Created - Resource successfully created",
-                    Headers = new Dictionary<string, IOpenApiHeader>
+                    ["201"] = new OpenApiResponse
                     {
-                        ["Location"] = new OpenApiHeader
+                        Description = "Created - Resource successfully created",
+                        Headers = new Dictionary<string, IOpenApiHeader>
                         {
-                            Description = "URL of the newly created resource",
-                            Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+                            ["Location"] = new OpenApiHeader
+                            {
+                                Description = "URL of the newly created resource",
+                                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+                            }
+                        },
+                        Content = new Dictionary<string, IOpenApiMediaType>
+                        {
+                            ["application/json"] = new OpenApiMediaType
+                            {
+                                Schema = new OpenApiSchema
+                                {
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
+                                    {
+                                        ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Request processed successfully.")] },
+                                        ["result"] = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null },
+                                        ["id"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Examples = [JsonValue.Create(12345)] }
+                                    }
+                                },
+                                Example = new JsonObject
+                                {
+                                    ["success"] = JsonValue.Create(true),
+                                    ["message"] = JsonValue.Create("Webhook processed successfully."),
+                                    ["result"] = null,
+                                    ["id"] = JsonValue.Create(12345)
+                                }
+                            }
                         }
                     },
-                    Content = new Dictionary<string, IOpenApiMediaType>
+                    ["400"] = new OpenApiResponse
                     {
-                        ["application/json"] = new OpenApiMediaType
+                        Description = "Bad Request - Invalid request",
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
-                            Schema = new OpenApiSchema
+                            ["application/json"] = new OpenApiMediaType
                             {
-                                Type = JsonSchemaType.Object,
-                                Properties = new Dictionary<string, IOpenApiSchema>
+                                Schema = new OpenApiSchema
                                 {
-                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                    ["message"] = new OpenApiSchema { Type = JsonSchemaType.String, Examples = [JsonValue.Create("Request processed successfully.")] },
-                                    ["result"]  = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null },
-                                    ["id"]      = new OpenApiSchema { Type = JsonSchemaType.Integer, Examples = [JsonValue.Create(12345)] }
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Examples = [JsonValue.Create(false)] }
+                                    }
+                                },
+                                Example = new JsonObject
+                                {
+                                    ["error"] = JsonValue.Create("Environment is not configured properly."),
+                                    ["success"] = JsonValue.Create(false)
                                 }
-                            },
-                            Example = new JsonObject
-                            {
-                                ["success"] = JsonValue.Create(true),
-                                ["message"] = JsonValue.Create("Webhook processed successfully."),
-                                ["result"]  = null,
-                                ["id"]      = JsonValue.Create(12345)
                             }
                         }
-                    }
-                },
-                ["400"] = new OpenApiResponse
-                {
-                    Description = "Bad Request - Invalid request",
-                    Content = new Dictionary<string, IOpenApiMediaType>
+                    },
+                    ["401"] = new OpenApiResponse
                     {
-                        ["application/json"] = new OpenApiMediaType
+                        Description = "Unauthorized - Missing or invalid authentication token",
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
-                            Schema = new OpenApiSchema
+                            ["application/json"] = new OpenApiMediaType
                             {
-                                Type = JsonSchemaType.Object,
-                                Properties = new Dictionary<string, IOpenApiSchema>
+                                Schema = new OpenApiSchema
                                 {
-                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Examples = [JsonValue.Create(false)] }
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    }
+                                },
+                                Example = new JsonObject
+                                {
+                                    ["error"] = JsonValue.Create("Unauthorized access. Valid authentication token required."),
+                                    ["success"] = JsonValue.Create(false)
                                 }
-                            },
-                            Example = new JsonObject
-                            {
-                                ["error"] = JsonValue.Create("Environment is not configured properly."),
-                                ["success"] = JsonValue.Create(false)
                             }
                         }
-                    }
-                },
-                ["401"] = new OpenApiResponse
-                {
-                    Description = "Unauthorized - Missing or invalid authentication token",
-                    Content = new Dictionary<string, IOpenApiMediaType>
+                    },
+                    ["403"] = new OpenApiResponse
                     {
-                        ["application/json"] = new OpenApiMediaType
+                        Description = "Forbidden - Token valid but insufficient permissions",
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
-                            Schema = new OpenApiSchema
+                            ["application/json"] = new OpenApiMediaType
                             {
-                                Type = JsonSchemaType.Object,
-                                Properties = new Dictionary<string, IOpenApiSchema>
+                                Schema = new OpenApiSchema
                                 {
-                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    }
+                                },
+                                Example = new JsonObject
+                                {
+                                    ["error"] = JsonValue.Create("Environment 'production' is not allowed."),
+                                    ["success"] = JsonValue.Create(false)
                                 }
-                            },
-                            Example = new JsonObject
-                            {
-                                ["error"] = JsonValue.Create("Unauthorized access. Valid authentication token required."),
-                                ["success"] = JsonValue.Create(false)
                             }
                         }
-                    }
-                },
-                ["403"] = new OpenApiResponse
-                {
-                    Description = "Forbidden - Token valid but insufficient permissions",
-                    Content = new Dictionary<string, IOpenApiMediaType>
+                    },
+                    ["404"] = new OpenApiResponse
                     {
-                        ["application/json"] = new OpenApiMediaType
+                        Description = "Not Found - Resource not found or not configured",
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
-                            Schema = new OpenApiSchema
+                            ["application/json"] = new OpenApiMediaType
                             {
-                                Type = JsonSchemaType.Object,
-                                Properties = new Dictionary<string, IOpenApiSchema>
+                                Schema = new OpenApiSchema
                                 {
-                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
+                                    {
+                                        ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Examples = [JsonValue.Create(false)] }
+                                    }
+                                },
+                                Example = new JsonObject
+                                {
+                                    ["error"] = JsonValue.Create("Webhook ID 'unknown_webhook' is not configured."),
+                                    ["success"] = JsonValue.Create(false)
                                 }
-                            },
-                            Example = new JsonObject
-                            {
-                                ["error"] = JsonValue.Create("Environment 'production' is not allowed."),
-                                ["success"] = JsonValue.Create(false)
                             }
                         }
-                    }
-                },
-                ["404"] = new OpenApiResponse
-                {
-                    Description = "Not Found - Resource not found or not configured",
-                    Content = new Dictionary<string, IOpenApiMediaType>
+                    },
+                    ["500"] = new OpenApiResponse
                     {
-                        ["application/json"] = new OpenApiMediaType
+                        Description = "Internal Server Error",
+                        Content = new Dictionary<string, IOpenApiMediaType>
                         {
-                            Schema = new OpenApiSchema
+                            ["application/json"] = new OpenApiMediaType
                             {
-                                Type = JsonSchemaType.Object,
-                                Properties = new Dictionary<string, IOpenApiSchema>
+                                Schema = new OpenApiSchema
                                 {
-                                    ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                    ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean, Examples = [JsonValue.Create(false)] }
-                                }
-                            },
-                            Example = new JsonObject
-                            {
-                                ["error"] = JsonValue.Create("Webhook ID 'unknown_webhook' is not configured."),
-                                ["success"] = JsonValue.Create(false)
-                            }
-                        }
-                    }
-                },
-                ["500"] = new OpenApiResponse
-                {
-                    Description = "Internal Server Error",
-                    Content = new Dictionary<string, IOpenApiMediaType>
-                    {
-                        ["application/json"] = new OpenApiMediaType
-                        {
-                            Schema = new OpenApiSchema
-                            {
-                                Type = JsonSchemaType.Object,
-                                Properties = new Dictionary<string, IOpenApiSchema>
+                                    Type = JsonSchemaType.Object,
+                                    Properties = new Dictionary<string, IOpenApiSchema>
+                                    {
+                                        ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                        ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                        ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    }
+                                },
+                                Example = new JsonObject
                                 {
-                                    ["type"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                    ["title"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                    ["status"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                    ["detail"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
+                                    ["title"] = JsonValue.Create("Error"),
+                                    ["status"] = JsonValue.Create(500),
+                                    ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
                                 }
-                            },
-                            Example = new JsonObject
-                            {
-                                ["type"] = JsonValue.Create("https://tools.ietf.org/html/rfc7231#section-6.6.1"),
-                                ["title"] = JsonValue.Create("Error"),
-                                ["status"] = JsonValue.Create(500),
-                                ["detail"] = JsonValue.Create("Error processing. Please check the logs for more details.")
                             }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        StandardResponses.AddErrors(webhookOperation, ApiOperationKind.Webhook);
+            StandardResponses.AddErrors(webhookOperation, ApiOperationKind.Webhook);
 
-        document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
+            document.Paths[path].Operations![HttpMethod.Post] = webhookOperation;
         }
     }
 

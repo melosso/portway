@@ -93,10 +93,10 @@ public sealed partial class SqlRequestHandler
                     return PortwayResults.BadRequest("$expand is not supported on table-valued function endpoints");
 
                 Log.Debug("Detected Table Valued Function endpoint: {FunctionName}", endpoint.DatabaseObjectName);
-                
+
                 // Extract path segments for parameter values
-                var pathSegments = string.IsNullOrEmpty(remainingPath) 
-                    ? new string[0] 
+                var pathSegments = string.IsNullOrEmpty(remainingPath)
+                    ? new string[0]
                     : remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
                 // Prepare OData parameters for TVF handling
@@ -106,11 +106,11 @@ public sealed partial class SqlRequestHandler
                     { "skip", skip.ToString() }
                 };
 
-                if (!string.IsNullOrEmpty(select)) 
+                if (!string.IsNullOrEmpty(select))
                     tvfODataParams["select"] = select;
-                if (!string.IsNullOrEmpty(filter)) 
+                if (!string.IsNullOrEmpty(filter))
                     tvfODataParams["filter"] = filter;
-                if (!string.IsNullOrEmpty(orderby)) 
+                if (!string.IsNullOrEmpty(orderby))
                     tvfODataParams["orderby"] = orderby;
 
                 // Handle TVF request using the dedicated handler
@@ -160,14 +160,14 @@ public sealed partial class SqlRequestHandler
 
                 // Return collection response with pagination headers
                 HttpResponseHeaderHelper.SetPaginationHeaders(context, null, tvfResultList.Count, !tvfIsLastPage);
-                
+
                 // Only set Cache-Control header if caching is enabled for this endpoint
                 if (IsCacheEnabled(endpoint))
                 {
                     var tvfCacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
                     HttpResponseHeaderHelper.SetCacheControlHeader(context, tvfCacheDurationSeconds);
                 }
-                
+
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return PortwayResults.Collection(tvfResultList,
                     tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip));
@@ -191,7 +191,7 @@ public sealed partial class SqlRequestHandler
             {
                 // primaryKey may be an alias; resolve it to the real database column name
                 string actualPrimaryKey = primaryKey;
-                
+
                 if (allowedColumns.Count > 0)
                 {
                     var aliasToDatabase = endpoint.AliasToDatabase;
@@ -201,7 +201,7 @@ public sealed partial class SqlRequestHandler
                         Log.Debug("Converted primary key alias '{Alias}' to database column '{DatabaseColumn}'", primaryKey, actualPrimaryKey);
                     }
                 }
-                
+
                 // Build the primary-key filter, quoting the value as a GUID literal when it parses as one
                 if (Guid.TryParse(id, out _))
                 {
@@ -211,14 +211,14 @@ public sealed partial class SqlRequestHandler
                 {
                     // Handle numeric or string IDs
                     bool isNumeric = long.TryParse(id, out _);
-                    filter = isNumeric 
-                        ? $"{actualPrimaryKey} eq {id}" 
+                    filter = isNumeric
+                        ? $"{actualPrimaryKey} eq {id}"
                         : $"{actualPrimaryKey} eq '{id}'";
                 }
 
                 // Set top to 1 to return only one record when requesting by ID
                 top = 1;
-                
+
                 Log.Debug("Created filter for ID-based query: {Filter}", filter);
             }
 
@@ -226,13 +226,13 @@ public sealed partial class SqlRequestHandler
             string? selectForQuery = select; // This will contain database column names for the SQL query
             string? filterForQuery = filter; // This will contain database column names for the SQL query
             string? orderbyForQuery = orderby; // This will contain database column names for the SQL query
-            
+
             if (allowedColumns.Count > 0)
             {
                 // Get column mappings for alias support
                 var aliasToDatabase = endpoint.AliasToDatabase;
                 var databaseToAlias = endpoint.DatabaseToAlias;
-                
+
                 // Validate select columns (using aliases)
                 if (!string.IsNullOrEmpty(select))
                 {
@@ -242,7 +242,7 @@ public sealed partial class SqlRequestHandler
                     {
                         return PortwayResults.BadRequest($"Selected columns not allowed: {string.Join(", ", invalidAliases)}");
                     }
-                    
+
                     // Convert aliases to database column names for the SQL query
                     selectForQuery = PortwayApi.Helpers.ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
                     Log.Debug("Converted aliases '{Aliases}' to database columns '{DatabaseColumns}'", select, selectForQuery);
@@ -254,7 +254,7 @@ public sealed partial class SqlRequestHandler
                     selectForQuery = string.Join(",", allDatabaseColumns);
                     Log.Debug("No select specified, using all allowed database columns: {DatabaseColumns}", selectForQuery);
                 }
-                
+
                 // Convert filter column references from aliases to database columns
                 if (!string.IsNullOrEmpty(filter))
                 {
@@ -264,7 +264,7 @@ public sealed partial class SqlRequestHandler
                         Log.Debug("Converted filter aliases: '{OriginalFilter}' -> '{ConvertedFilter}'", filter, filterForQuery);
                     }
                 }
-                
+
                 // Convert orderby column references from aliases to database columns
                 if (!string.IsNullOrEmpty(orderby))
                 {
@@ -355,13 +355,13 @@ public sealed partial class SqlRequestHandler
             object? cachedResponse = null;
             string? cacheKey = null;
             bool cacheEnabled = IsCacheEnabled(endpoint);
-            
+
             if (cacheEnabled)
             {
                 // Create cache key based on query parameters
                 cacheKey = $"sql:{env}:{endpointName}:{query.GetHashCode()}:{string.Join(",", parameters?.Select(p => $"{p.Key}={p.Value}") ?? new string[0])}:count={countRequested}";
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
-                
+
                 if (cachedResponse != null)
                 {
                     Log.Debug("Cache hit for SQL query: {Endpoint}", endpointName);
@@ -420,10 +420,10 @@ public sealed partial class SqlRequestHandler
                 {
                     return PortwayResults.NotFound($"No record found with {primaryKey} = {id}");
                 }
-                
+
                 // Return the single item directly (OData convention - no wrapper)
                 var singleItemResponse = transformedResults.FirstOrDefault();
-                
+
                 // Cache the single item response if caching is enabled
                 if (cacheEnabled && !string.IsNullOrEmpty(cacheKey))
                 {
@@ -431,20 +431,20 @@ public sealed partial class SqlRequestHandler
                     await _cacheManager.SetAsync(cacheKey, singleItemResponse, TimeSpan.FromMinutes(cacheDuration));
                     Log.Debug("Cached SQL single item response for {Endpoint}, duration: {Duration} minutes", endpointName, cacheDuration);
                 }
-                
+
                 return new OkObjectResult(singleItemResponse);
             }
 
             // Step 10: Prepare response for collection requests with pagination headers
             HttpResponseHeaderHelper.SetPaginationHeaders(context, null, transformedResults.Count, !isLastPage);
-            
+
             // Only set Cache-Control header if caching is enabled for this endpoint
             if (cacheEnabled)
             {
                 var cacheDurationSeconds = GetCacheDurationMinutes(endpoint) * 60;
                 HttpResponseHeaderHelper.SetCacheControlHeader(context, cacheDurationSeconds);
             }
-            
+
             // Run the COUNT query only when the caller asked for it
             long? totalCount = null;
             if (countRequested)
@@ -491,9 +491,9 @@ public sealed partial class SqlRequestHandler
             $"A data error occurred. Please contact support with reference: T{errorId}");
     }
 
-	/// <summary>
-	/// Handles SQL POST requests (Create)
-	/// </summary>
+    /// <summary>
+    /// Handles SQL POST requests (Create)
+    /// </summary>
     public async Task<IActionResult> HandleSqlPostRequest(
         HttpContext context,
         EndpointDefinition endpoint,
@@ -550,7 +550,7 @@ public sealed partial class SqlRequestHandler
             // Prepare stored procedure parameters
             var dynamicParams = new DynamicParameters();
             dynamicParams.Add("@Method", "INSERT");
-            
+
             if (context.User.Identity?.Name != null)
             {
                 dynamicParams.Add("@UserName", context.User.Identity.Name);
@@ -565,16 +565,16 @@ public sealed partial class SqlRequestHandler
             // Execute stored procedure
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
-            
+
             // Intentional user errors (RAISERROR and friends) are caught below
             try
             {
                 var result = await ExecuteProcedureAsync(connection, connectionString, procedure, dynamicParams);
 
                 var resultList = result.ToList();
-                
+
                 Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
-                
+
                 return PortwayResults.Create($"/api/{env}/{endpointName}", "Record created successfully", resultList.FirstOrDefault());
             }
             catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
@@ -960,22 +960,22 @@ public sealed partial class SqlRequestHandler
     /// Builds the OData $skip/$top next-page link
     /// </summary>
     private string BuildNextLink(
-        string env, 
-        string endpointPath, 
-        string? select, 
-        string? filter, 
-        string? orderby, 
-        int top, 
+        string env,
+        string endpointPath,
+        string? select,
+        string? filter,
+        string? orderby,
+        int top,
         int skip)
     {
         var nextLink = $"/api/{env}/{endpointPath}?$top={top}&$skip={skip + top}";
 
         if (!string.IsNullOrWhiteSpace(select))
             nextLink += $"&$select={Uri.EscapeDataString(select)}";
-        
+
         if (!string.IsNullOrWhiteSpace(filter))
             nextLink += $"&$filter={Uri.EscapeDataString(filter)}";
-        
+
         if (!string.IsNullOrWhiteSpace(orderby))
             nextLink += $"&$orderby={Uri.EscapeDataString(orderby)}";
 
@@ -1032,7 +1032,7 @@ public sealed partial class SqlRequestHandler
                 return Math.Min(requestedTop, parsedMaxPageSize);
             }
         }
-        
+
         return requestedTop; // No limit defined, use original value
     }
 
@@ -1100,7 +1100,7 @@ public sealed partial class SqlRequestHandler
                 return parsedDuration;
             }
         }
-        
+
         return 5; // Default: 5 minutes
     }
 
@@ -1113,13 +1113,13 @@ public sealed partial class SqlRequestHandler
         if (operation is "UPDATE" or "DELETE")
         {
             bool hasId = IdFieldNames.Any(fieldName => data.TryGetProperty(fieldName, out _));
-                        
+
             if (!hasId)
             {
                 return (false, "ID field is required for this operation");
             }
         }
-        
+
         return (true, null);
     }
 

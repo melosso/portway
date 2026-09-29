@@ -6,8 +6,8 @@ namespace PortwayApi.Services.Telemetry;
 public sealed class PortwayMetrics : IDisposable
 {
     private readonly Meter _meter;
-    private readonly Counter<long>     _cacheHitCounter;
-    private readonly Counter<long>     _cacheMissCounter;
+    private readonly Counter<long> _cacheHitCounter;
+    private readonly Counter<long> _cacheMissCounter;
     private readonly Histogram<double> _requestDuration;
 
     public PortwayMetrics()
@@ -30,7 +30,7 @@ public sealed class PortwayMetrics : IDisposable
             description: "Duration of API requests");
     }
 
-    public void CacheHit()  => _cacheHitCounter.Add(1);
+    public void CacheHit() => _cacheHitCounter.Add(1);
     public void CacheMiss() => _cacheMissCounter.Add(1);
 
     public void RequestCompleted(string method, int statusCode, string source, string endpoint, TimeSpan duration)

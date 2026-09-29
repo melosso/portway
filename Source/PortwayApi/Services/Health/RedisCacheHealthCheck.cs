@@ -65,11 +65,11 @@ public class RedisCacheHealthCheck : IHealthCheck
 
             // Test basic operations
             var testValue = $"health-check-{DateTime.UtcNow:yyyy-MM-dd-HH-mm-ss}";
-            
+
             // Set a value
             if (!await db.StringSetAsync(
-                $"{_options.Redis.InstanceName}{HealthCheckKey}", 
-                testValue, 
+                $"{_options.Redis.InstanceName}{HealthCheckKey}",
+                testValue,
                 TimeSpan.FromSeconds(30)))
             {
                 return HealthCheckResult.Degraded("Failed to set a value in Redis");
@@ -77,7 +77,7 @@ public class RedisCacheHealthCheck : IHealthCheck
 
             // Get the value back
             var retrievedValue = await db.StringGetAsync($"{_options.Redis.InstanceName}{HealthCheckKey}");
-            
+
             if (!retrievedValue.HasValue || retrievedValue.ToString() != testValue)
             {
                 return HealthCheckResult.Degraded("Redis set/get operations not working correctly");
@@ -86,7 +86,7 @@ public class RedisCacheHealthCheck : IHealthCheck
             // Get Redis info for reporting
             var endPoints = _redis.GetEndPoints();
             var serverInfo = new Dictionary<string, object>();
-            
+
             foreach (var endpoint in endPoints)
             {
                 var server = _redis.GetServer(endpoint);
@@ -96,10 +96,10 @@ public class RedisCacheHealthCheck : IHealthCheck
                     var info = await server.InfoAsync("server");
                     var memory = await server.InfoAsync("memory");
                     var clients = await server.InfoAsync("clients");
-                    
+
                     // Extract key metrics
                     var serverData = new Dictionary<string, string>();
-                    
+
                     // Flatten groupings and add key-value pairs
                     foreach (var grouping in info)
                     {
@@ -122,7 +122,7 @@ public class RedisCacheHealthCheck : IHealthCheck
                             serverData[pair.Key] = pair.Value;
                         }
                     }
-                    
+
                     serverInfo[endpoint?.ToString() ?? "unknown"] = serverData;
                 }
                 else

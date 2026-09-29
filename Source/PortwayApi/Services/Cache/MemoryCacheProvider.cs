@@ -114,7 +114,7 @@ public class MemoryCacheProvider : ICacheProvider
     {
         _cache.Remove(key);
         Log.Debug("Removed item from memory cache: {Key}", key);
-        
+
         return Task.CompletedTask;
     }
 
@@ -141,12 +141,12 @@ public class MemoryCacheProvider : ICacheProvider
             };
 
             _cache.Set(key, value!, entryOptions);
-            Log.Debug("Refreshed expiration for memory cache item: {Key}, new duration: {Duration}s", 
+            Log.Debug("Refreshed expiration for memory cache item: {Key}, new duration: {Duration}s",
                 key, expiration.TotalSeconds);
-            
+
             return Task.FromResult(true);
         }
-        
+
         return Task.FromResult(false);
     }
 
@@ -236,9 +236,9 @@ public class MemoryCacheProvider : ICacheProvider
         }
 
         public string Key => _lockKey;
-        
+
         public DateTime ExpiresAt { get; private set; }
-        
+
         public bool IsValid => !_isDisposed && !_isReleased && DateTime.UtcNow < ExpiresAt;
 
         public Task<bool> ExtendAsync(TimeSpan expiryTime)
@@ -272,10 +272,10 @@ public class MemoryCacheProvider : ICacheProvider
                     Release();
                     _isReleased = true;
                 }
-                
+
                 _isDisposed = true;
             }
-            
+
             GC.SuppressFinalize(this);
         }
     }

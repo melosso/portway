@@ -29,7 +29,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     private readonly TimeSpan _reconnectInterval = TimeSpan.FromSeconds(30);
 
     public RedisCacheProvider(
-        IOptions<CacheOptions> options, 
+        IOptions<CacheOptions> options,
         MemoryCacheProvider fallbackProvider)
     {
         _options = options.Value;
@@ -54,15 +54,15 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             // Subscribe to connection events
             _redis.ConnectionFailed += OnConnectionFailed;
             _redis.ConnectionRestored += OnConnectionRestored;
-            
-            Log.Information("Successfully connected to Redis at {ConnectionString}, database: {Database}", 
+
+            Log.Information("Successfully connected to Redis at {ConnectionString}, database: {Database}",
                 _redisOptions.ConnectionString, _redisOptions.Database);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to connect to Redis at {ConnectionString}", _redisOptions.ConnectionString);
             _isConnected = false;
-            
+
             if (!_redisOptions.FallbackToMemoryCache)
             {
                 throw;
@@ -86,13 +86,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public async Task<T?> GetAsync<T>(string key) where T : class
     {
         string redisKey = GetFormattedKey(key);
-        
+
         try
         {
             if (!IsConnected)
             {
                 await TryReconnectAsync();
-                
+
                 // If still not connected and fallback enabled, use memory cache
                 if (!IsConnected && _redisOptions.FallbackToMemoryCache)
                 {
@@ -109,11 +109,11 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             return await ExecuteWithRetryAsync(async () =>
             {
                 RedisValue value = await _db!.StringGetAsync(redisKey);
-                
+
                 if (value.HasValue)
                 {
                     Log.Debug("Redis cache hit for key: {Key}", redisKey);
-                    
+
                     try
                     {
                         return JsonSerializer.Deserialize<T>(value.ToString());
@@ -124,7 +124,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                         return null;
                     }
                 }
-                
+
                 Log.Debug("Redis cache miss for key: {Key}", redisKey);
                 return null;
             });
@@ -132,7 +132,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         catch (Exception ex) when (ex is not RedisConnectionException)
         {
             Log.Error(ex, "Error retrieving value from Redis for key: {Key}", redisKey);
-            
+
             // If fallback is enabled, try memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
@@ -140,7 +140,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 return await _fallbackProvider.GetAsync<T>(key);
             }
         }
-        
+
         return null;
     }
 
@@ -150,13 +150,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public async Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class
     {
         string redisKey = GetFormattedKey(key);
-        
+
         try
         {
             if (!IsConnected)
             {
                 await TryReconnectAsync();
-                
+
                 // If still not connected and fallback enabled, use memory cache
                 if (!IsConnected && _redisOptions.FallbackToMemoryCache)
                 {
@@ -172,7 +172,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
 
             // Serialize the value
             string serializedValue = JsonSerializer.Serialize(value);
-            
+
             // Use retry policy for Redis operations
             await ExecuteWithRetryAsync(async () =>
             {
@@ -180,10 +180,10 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                     redisKey,
                     serializedValue,
                     expiration);
-                    
+
                 if (success)
                 {
-                    Log.Debug("Added item to Redis cache: {Key}, expires in {Duration}s", 
+                    Log.Debug("Added item to Redis cache: {Key}, expires in {Duration}s",
                         redisKey, expiration.TotalSeconds);
                 }
                 else
@@ -195,7 +195,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         catch (Exception ex) when (ex is not RedisConnectionException)
         {
             Log.Error(ex, "Error adding value to Redis for key: {Key}", redisKey);
-            
+
             // If fallback is enabled, use memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
@@ -211,13 +211,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public async Task RemoveAsync(string key)
     {
         string redisKey = GetFormattedKey(key);
-        
+
         try
         {
             if (!IsConnected)
             {
                 await TryReconnectAsync();
-                
+
                 // If still not connected and fallback enabled, use memory cache
                 if (!IsConnected && _redisOptions.FallbackToMemoryCache)
                 {
@@ -235,13 +235,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             await ExecuteWithRetryAsync(async () =>
             {
                 bool success = await _db!.KeyDeleteAsync(redisKey);
-                
+
                 if (success)
                 {
                     Log.Debug("Removed item from Redis cache: {Key}", redisKey);
                 }
             });
-            
+
             // Always attempt to remove from fallback cache if enabled
             if (_redisOptions.FallbackToMemoryCache)
             {
@@ -251,7 +251,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         catch (Exception ex) when (ex is not RedisConnectionException)
         {
             Log.Error(ex, "Error removing value from Redis for key: {Key}", redisKey);
-            
+
             // If fallback is enabled, use memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
@@ -266,13 +266,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public async Task<bool> ExistsAsync(string key)
     {
         string redisKey = GetFormattedKey(key);
-        
+
         try
         {
             if (!IsConnected)
             {
                 await TryReconnectAsync();
-                
+
                 // If still not connected and fallback enabled, use memory cache
                 if (!IsConnected && _redisOptions.FallbackToMemoryCache)
                 {
@@ -294,14 +294,14 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         catch (Exception ex) when (ex is not RedisConnectionException)
         {
             Log.Error(ex, "Error checking existence in Redis for key: {Key}", redisKey);
-            
+
             // If fallback is enabled, use memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
                 return await _fallbackProvider.ExistsAsync(key);
             }
         }
-        
+
         return false;
     }
 
@@ -311,13 +311,13 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public async Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration)
     {
         string redisKey = GetFormattedKey(key);
-        
+
         try
         {
             if (!IsConnected)
             {
                 await TryReconnectAsync();
-                
+
                 // If still not connected and fallback enabled, use memory cache
                 if (!IsConnected && _redisOptions.FallbackToMemoryCache)
                 {
@@ -338,30 +338,30 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 {
                     // Extend expiration
                     bool success = await _db.KeyExpireAsync(redisKey, expiration);
-                    
+
                     if (success)
                     {
-                        Log.Debug("Refreshed expiration for Redis cache item: {Key}, new duration: {Duration}s", 
+                        Log.Debug("Refreshed expiration for Redis cache item: {Key}, new duration: {Duration}s",
                             redisKey, expiration.TotalSeconds);
                     }
-                    
+
                     return success;
                 }
-                
+
                 return false;
             });
         }
         catch (Exception ex) when (ex is not RedisConnectionException)
         {
             Log.Error(ex, "Error refreshing expiration in Redis for key: {Key}", redisKey);
-            
+
             // If fallback is enabled, use memory cache
             if (_redisOptions.FallbackToMemoryCache)
             {
                 return await _fallbackProvider.RefreshExpirationAsync(key, expiration);
             }
         }
-        
+
         return false;
     }
 
@@ -491,7 +491,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     private void OnConnectionFailed(object? sender, ConnectionFailedEventArgs args)
     {
         _isConnected = false;
-        Log.Error("Redis connection failed: {FailureType} - {Exception}", 
+        Log.Error("Redis connection failed: {FailureType} - {Exception}",
             args.FailureType, args.Exception?.Message);
     }
 
@@ -525,11 +525,11 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         try
         {
             Interlocked.Exchange(ref _lastConnectionAttemptTicks, DateTime.UtcNow.Ticks);
-            
+
             if (_redis != null && !_redis.IsConnected)
             {
                 Log.Information("Attempting to reconnect to Redis...");
-                
+
                 try
                 {
                     await _redis.GetDatabase().PingAsync();
@@ -576,17 +576,17 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
 
             // Execute the script
             RedisResult result = await _db!.ScriptEvaluateAsync(
-                script, 
-                new RedisKey[] { lockKey }, 
+                script,
+                new RedisKey[] { lockKey },
                 new RedisValue[] { lockValue });
-            
+
             bool success = (long)result > 0;
-            
+
             if (success)
             {
                 Log.Debug("Released Redis lock for key: {LockKey}", lockKey);
             }
-            
+
             return success;
         }
         catch (Exception ex)
@@ -623,17 +623,17 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
 
             // Execute the script
             RedisResult result = await _db!.ScriptEvaluateAsync(
-                script, 
-                new RedisKey[] { lockKey }, 
+                script,
+                new RedisKey[] { lockKey },
                 new RedisValue[] { lockValue, (int)expiryTime.TotalSeconds });
-            
+
             bool success = (long)result > 0;
-            
+
             if (success)
             {
                 Log.Debug("Extended Redis lock for key: {LockKey}", lockKey);
             }
-            
+
             return success;
         }
         catch (Exception ex)
@@ -649,7 +649,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public void Dispose()
     {
         _connectionLock.Dispose();
-        
+
         if (_redis != null)
         {
             try
@@ -664,7 +664,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 Log.Error(ex, "Error disposing Redis connection");
             }
         }
-        
+
         GC.SuppressFinalize(this);
     }
 
@@ -680,9 +680,9 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         private bool _isReleased;
 
         public RedisLockHandle(
-            RedisCacheProvider provider, 
-            string lockKey, 
-            string lockValue, 
+            RedisCacheProvider provider,
+            string lockKey,
+            string lockValue,
             TimeSpan expiryTime)
         {
             _provider = provider;
@@ -692,9 +692,9 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         }
 
         public string Key => _lockKey;
-        
+
         public DateTime ExpiresAt { get; private set; }
-        
+
         public bool IsValid => !_isDisposed && !_isReleased && DateTime.UtcNow < ExpiresAt;
 
         public async Task<bool> ExtendAsync(TimeSpan expiryTime)
@@ -705,12 +705,12 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             }
 
             bool extended = await _provider.ExtendLockAsync(_lockKey, _lockValue, expiryTime);
-            
+
             if (extended)
             {
                 ExpiresAt = DateTime.UtcNow.Add(expiryTime);
             }
-            
+
             return extended;
         }
 
@@ -745,10 +745,10 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                         Log.Warning(ex, "Failed to release lock {Key} synchronously, will expire naturally", _lockKey);
                     }
                 }
-                
+
                 _isDisposed = true;
             }
-            
+
             GC.SuppressFinalize(this);
         }
     }

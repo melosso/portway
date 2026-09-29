@@ -30,7 +30,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
     private readonly ITrafficLogStorage _logStorage;
 
     public ProxyTrafficLoggerService(
-        System.Threading.Channels.Channel<ProxyTrafficLogEntry> logChannel, 
+        System.Threading.Channels.Channel<ProxyTrafficLogEntry> logChannel,
         IOptions<ProxyTrafficLoggerOptions> options,
         ITrafficLogStorage logStorage)
     {
@@ -55,7 +55,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
             while (!stoppingToken.IsCancellationRequested)
             {
                 bool itemsProcessed = false;
-                
+
                 // Read up to BatchSize items without blocking
                 while (batch.Count < _options.BatchSize)
                 {
@@ -86,7 +86,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                     batch.Clear();
                     itemsProcessed = true;
                 }
-                
+
                 // If no items were processed, wait for more data or the flush interval
                 if (!itemsProcessed)
                 {
@@ -95,7 +95,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                         // Use a cancellation token source with timeout
                         using var timeoutCts = new CancellationTokenSource(flushInterval);
                         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, stoppingToken);
-                        
+
                         // Wait for an item or timeout
                         await _logChannel.Reader.WaitToReadAsync(linkedCts.Token).ConfigureAwait(false);
                     }
@@ -117,7 +117,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
         finally
         {
             Serilog.Log.Information("Proxy Traffic Logger Service stopping...");
-            
+
             // Flush any remaining logs before shutdown
             try
             {
@@ -126,7 +126,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                 {
                     remainingLogs.Add(log);
                 }
-                
+
                 if (remainingLogs.Count > 0)
                 {
                     await _logStorage.SaveLogsAsync(remainingLogs);

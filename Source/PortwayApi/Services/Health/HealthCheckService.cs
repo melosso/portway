@@ -160,10 +160,10 @@ public class HealthCheckService
                 Log.Warning("Health check status: Low disk space, {PercentFree:F0}% remaining", percentFreeRounded);
 
             return new HealthReportEntry(
-                status, 
-                description, 
-                DateTime.UtcNow - startTime, 
-                null, 
+                status,
+                description,
+                DateTime.UtcNow - startTime,
+                null,
                 new Dictionary<string, object> { ["PercentFree"] = $"{percentFreeRounded:F0}%" },
                 new[] { "storage", "system" }
             );
@@ -171,11 +171,11 @@ public class HealthCheckService
         catch (Exception ex)
         {
             return new HealthReportEntry(
-                HealthStatus.Unhealthy, 
-                $"Error checking disk space: {ex.Message}", 
-                TimeSpan.Zero, 
-                ex, 
-                null, 
+                HealthStatus.Unhealthy,
+                $"Error checking disk space: {ex.Message}",
+                TimeSpan.Zero,
+                ex,
+                null,
                 new[] { "storage", "system" }
             );
         }
@@ -228,13 +228,13 @@ public class HealthCheckService
                 CheckEndpointAsync(client, endpoint, results, unhealthyEndpoints, cancellationToken)));
 
             status = unhealthyEndpoints.Any() ? HealthStatus.Unhealthy : HealthStatus.Healthy;
-            var description = status == HealthStatus.Healthy 
-                ? "Health check status: All proxy services are responding" 
+            var description = status == HealthStatus.Healthy
+                ? "Health check status: All proxy services are responding"
                 : "Health check status: One or more proxy services are not responding properly";
 
             if (unhealthyEndpoints.Any())
             {
-                Log.Warning("Health check status: Unhealthy proxy endpoints detected ({UnhealthyEndpoints})", 
+                Log.Warning("Health check status: Unhealthy proxy endpoints detected ({UnhealthyEndpoints})",
                     string.Join(", ", unhealthyEndpoints));
             }
 
@@ -244,20 +244,20 @@ public class HealthCheckService
         {
             Log.Error(ex, "Error checking proxy endpoints");
             return CreateHealthReportEntry(
-                HealthStatus.Unhealthy, 
-                $"Error checking proxy endpoints: {ex.Message}", 
-                startTime, 
-                results, 
+                HealthStatus.Unhealthy,
+                $"Error checking proxy endpoints: {ex.Message}",
+                startTime,
+                results,
                 ex
             );
         }
     }
 
     private async Task CheckEndpointAsync(
-        HttpClient client, 
-        KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)> endpoint, 
-        ConcurrentDictionary<string, object> results, 
-        ConcurrentBag<string> unhealthyEndpoints, 
+        HttpClient client,
+        KeyValuePair<string, (string Url, HashSet<string> Methods, bool Hidden, string Type)> endpoint,
+        ConcurrentDictionary<string, object> results,
+        ConcurrentBag<string> unhealthyEndpoints,
         CancellationToken cancellationToken)
     {
         try
@@ -276,7 +276,7 @@ public class HealthCheckService
             // Send the request and capture the first response
             var response = await client.SendAsync(request, linkedCts.Token);
 
-            Log.Debug("Received response from endpoint {Endpoint}. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}", 
+            Log.Debug("Received response from endpoint {Endpoint}. StatusCode: {StatusCode}, ReasonPhrase: {ReasonPhrase}",
                 endpoint.Key, (int)response.StatusCode, response.ReasonPhrase);
 
             // If the first response is 401, treat it as healthy and stop further processing
@@ -293,7 +293,7 @@ public class HealthCheckService
 
             // Process subsequent responses if the first response is not 401
             var content = await response.Content.ReadAsStringAsync();
-            var isHealthy = (int)response.StatusCode >= 200 && (int)response.StatusCode <= 299 
+            var isHealthy = (int)response.StatusCode >= 200 && (int)response.StatusCode <= 299
                             || content.Contains("Failed to login to Globe");
 
             if (!isHealthy)

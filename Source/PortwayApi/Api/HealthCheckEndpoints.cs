@@ -51,22 +51,22 @@ public static class HealthCheckEndpointExtensions
         {
             context.Response.Headers.CacheControl = "public, max-age=5";
             context.Response.Headers.Append("Expires", DateTime.UtcNow.AddSeconds(5).ToString("R"));
-            
+
             context.Response.ContentType = "text/plain";
             await context.Response.WriteAsync("Alive");
         })
         .ExcludeFromDescription();
 
-        app.MapGet("/health/details", async (HttpContext context, 
+        app.MapGet("/health/details", async (HttpContext context,
                                           HealthCheckService healthService) =>
         {
             // Get cached health report
             var report = await healthService.CheckHealthAsync();
-            
+
             // Add cache headers
             context.Response.Headers.CacheControl = "public, max-age=60";
             context.Response.Headers.Append("Expires", DateTime.UtcNow.AddSeconds(60).ToString("R"));
-            
+
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = report.Status switch
             {
@@ -75,7 +75,7 @@ public static class HealthCheckEndpointExtensions
                 Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy => StatusCodes.Status503ServiceUnavailable,
                 _ => StatusCodes.Status500InternalServerError
             };
-            
+
             var result = new
             {
                 status = report.Status.ToString(),
@@ -93,7 +93,7 @@ public static class HealthCheckEndpointExtensions
                 totalDuration = $"{report.TotalDuration.TotalMilliseconds:F2}ms",
                 version = typeof(HealthCheckEndpointExtensions).Assembly.GetName().Version?.ToString() ?? "Unknown"
             };
-            
+
             await context.Response.WriteAsJsonAsync(result);
         })
         .ExcludeFromDescription();

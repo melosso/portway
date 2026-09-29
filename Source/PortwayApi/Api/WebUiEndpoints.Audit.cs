@@ -32,9 +32,14 @@ public static partial class WebUiEndpointExtensions
             var limit = int.TryParse(request.Query["limit"], out var l) ? l : 50;
             var entries = configAudit.GetRecent(limit).Select(e => new
             {
-                id = e.Id, timestamp = e.Timestamp, client_ip = e.ClientIp,
-                action = e.Action, target_type = e.TargetType, target = e.Target,
-                details = e.Details, restorable = e.BackupPath != null && File.Exists(e.BackupPath)
+                id = e.Id,
+                timestamp = e.Timestamp,
+                client_ip = e.ClientIp,
+                action = e.Action,
+                target_type = e.TargetType,
+                target = e.Target,
+                details = e.Details,
+                restorable = e.BackupPath != null && File.Exists(e.BackupPath)
             });
             return Results.Json(new { entries });
         }).ExcludeFromDescription();

@@ -13,7 +13,7 @@ public static class ColumnMappingHelper
     /// </summary>
     /// <param name="allowedColumns">List of column definitions with optional semicolon aliases</param>
     /// <returns>Tuple with (AliasToDatabase, DatabaseToAlias) dictionaries</returns>
-    public static (Dictionary<string, string> AliasToDatabase, Dictionary<string, string> DatabaseToAlias) 
+    public static (Dictionary<string, string> AliasToDatabase, Dictionary<string, string> DatabaseToAlias)
         ParseColumnMappings(List<string>? allowedColumns)
     {
         var aliasToDatabase = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -34,7 +34,7 @@ public static class ColumnMappingHelper
             }
 
             var parts = columnDef.Split(';', StringSplitOptions.RemoveEmptyEntries);
-            
+
             if (parts.Length == 0)
             {
                 // Handle the case where columnDef is just ";" or only contains separators
@@ -57,7 +57,7 @@ public static class ColumnMappingHelper
                 // Semicolon found - map database column to alias
                 var databaseColumn = parts[0].Trim();
                 var alias = parts[1].Trim();
-                
+
                 if (!string.IsNullOrWhiteSpace(databaseColumn) && !string.IsNullOrWhiteSpace(alias))
                 {
                     aliasToDatabase[alias] = databaseColumn;
@@ -72,7 +72,7 @@ public static class ColumnMappingHelper
                     {
                         aliasToDatabase[columnName] = columnName;
                         databaseToAlias[columnName] = columnName;
-                        Log.Warning("Malformed column mapping '{ColumnDef}', falling back to: {ColumnName} -> {ColumnName}", 
+                        Log.Warning("Malformed column mapping '{ColumnDef}', falling back to: {ColumnName} -> {ColumnName}",
                             columnDef, columnName, columnName);
                     }
                 }
@@ -85,7 +85,7 @@ public static class ColumnMappingHelper
                 {
                     aliasToDatabase[columnName] = columnName;
                     databaseToAlias[columnName] = columnName;
-                    Log.Warning("Malformed column mapping '{ColumnDef}' (multiple semicolons), falling back to: {ColumnName} -> {ColumnName}", 
+                    Log.Warning("Malformed column mapping '{ColumnDef}' (multiple semicolons), falling back to: {ColumnName} -> {ColumnName}",
                         columnDef, columnName, columnName);
                 }
             }
@@ -113,7 +113,7 @@ public static class ColumnMappingHelper
             .Where(alias => !string.IsNullOrWhiteSpace(alias));
 
         var databaseColumns = new List<string>();
-        
+
         foreach (var alias in aliases)
         {
             if (aliasToDatabase.TryGetValue(alias, out var databaseColumn))
@@ -139,7 +139,7 @@ public static class ColumnMappingHelper
     /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
     /// <returns>Tuple with (IsValid, InvalidAliases)</returns>
     public static (bool IsValid, List<string> InvalidAliases) ValidateAliasColumns(
-        string? requestedAliases, 
+        string? requestedAliases,
         Dictionary<string, string> aliasToDatabase)
     {
         if (string.IsNullOrWhiteSpace(requestedAliases))
@@ -163,7 +163,7 @@ public static class ColumnMappingHelper
         }
 
         bool isValid = invalidAliases.Count == 0;
-        
+
         if (!isValid)
         {
             Log.Warning("Invalid alias columns requested: {InvalidAliases}", string.Join(", ", invalidAliases));
@@ -196,10 +196,10 @@ public static class ColumnMappingHelper
         }
 
         var convertedFilter = filterExpression;
-        
+
         // Sort aliases by length (descending) to avoid partial replacements
         var sortedAliases = aliasToDatabase.Keys.OrderByDescending(alias => alias.Length);
-        
+
         foreach (var alias in sortedAliases)
         {
             if (aliasToDatabase.TryGetValue(alias, out var databaseColumn))
@@ -210,7 +210,7 @@ public static class ColumnMappingHelper
                 convertedFilter = Regex.Replace(convertedFilter, pattern, databaseColumn, RegexOptions.IgnoreCase);
             }
         }
-        
+
         return convertedFilter;
     }
 
@@ -228,10 +228,10 @@ public static class ColumnMappingHelper
         }
 
         var convertedOrderBy = orderByExpression;
-        
+
         // Sort aliases by length (descending) to avoid partial replacements
         var sortedAliases = aliasToDatabase.Keys.OrderByDescending(alias => alias.Length);
-        
+
         foreach (var alias in sortedAliases)
         {
             if (aliasToDatabase.TryGetValue(alias, out var databaseColumn))
@@ -242,7 +242,7 @@ public static class ColumnMappingHelper
                 convertedOrderBy = Regex.Replace(convertedOrderBy, pattern, databaseColumn, RegexOptions.IgnoreCase);
             }
         }
-        
+
         return convertedOrderBy;
     }
 
@@ -253,7 +253,7 @@ public static class ColumnMappingHelper
     /// <param name="databaseToAlias">Mapping from database to alias column names</param>
     /// <returns>Transformed results with alias column names</returns>
     public static List<Dictionary<string, object>> TransformQueryResultsToAliases(
-        IEnumerable<object> results, 
+        IEnumerable<object> results,
         Dictionary<string, string> databaseToAlias)
     {
         if (results == null || databaseToAlias.Count == 0)

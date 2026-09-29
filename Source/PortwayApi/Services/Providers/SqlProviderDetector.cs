@@ -84,10 +84,10 @@ public static class SqlProviderDetector
         }
 
         // 2. SQL Server OLE DB providers: SQLOLEDB, MSOLEDBSQL, SQLNCLI/SQLNCLI10/SQLNCLI11, SQLXMLOLEDB
-        if (connectionString.Contains("provider=sqloledb",   StringComparison.OrdinalIgnoreCase)
+        if (connectionString.Contains("provider=sqloledb", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("provider=msoledbsql", StringComparison.OrdinalIgnoreCase)
-         || connectionString.Contains("provider=sqlncli",    StringComparison.OrdinalIgnoreCase)
-         || connectionString.Contains("provider=sqlxmloledb",StringComparison.OrdinalIgnoreCase))
+         || connectionString.Contains("provider=sqlncli", StringComparison.OrdinalIgnoreCase)
+         || connectionString.Contains("provider=sqlxmloledb", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.SqlServer;
 
         // 3. SQL Server ODBC drivers
@@ -97,11 +97,11 @@ public static class SqlProviderDetector
             return SqlProviderType.SqlServer;
 
         if (connectionString.Contains("driver={odbc driver", StringComparison.OrdinalIgnoreCase)
-         && connectionString.Contains("sql server",          StringComparison.OrdinalIgnoreCase))
+         && connectionString.Contains("sql server", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.SqlServer;
 
         // 4. PostgreSQL URI
-        if (connectionString.StartsWith("postgres://",   StringComparison.OrdinalIgnoreCase)
+        if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
          || connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.PostgreSql;
 
@@ -111,24 +111,24 @@ public static class SqlProviderDetector
 
         // 6. Npgsql key-value: Host=
         // SQL Server uses Server= or Data Source=, never Host= for the server address
-        if (connectionString.Contains("Host=",        StringComparison.OrdinalIgnoreCase)
-         && !connectionString.Contains("Server=",     StringComparison.OrdinalIgnoreCase)
-         && !connectionString.Contains("Data Source=",StringComparison.OrdinalIgnoreCase))
+        if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
+         && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
+         && !connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.PostgreSql;
 
         // 7. MySQL-unambiguous keywords
         // AllowUserVariables and AllowPublicKeyRetrieval are MySqlConnector-only
         // SslMode= is used by MySqlConnector (not Npgsql, which uses SSL*= keywords)
-        if (connectionString.Contains("AllowUserVariables=",    StringComparison.OrdinalIgnoreCase)
-         || connectionString.Contains("AllowPublicKeyRetrieval=",StringComparison.OrdinalIgnoreCase)
-         || connectionString.Contains("SslMode=",               StringComparison.OrdinalIgnoreCase))
+        if (connectionString.Contains("AllowUserVariables=", StringComparison.OrdinalIgnoreCase)
+         || connectionString.Contains("AllowPublicKeyRetrieval=", StringComparison.OrdinalIgnoreCase)
+         || connectionString.Contains("SslMode=", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.MySql;
 
         // 8. SQLite
         // Parse "Data Source=<value>" without allocating; check file extension or :memory:.
         if (IsSqliteDataSource(connectionString.AsSpan())
          || connectionString.Contains("Mode=Memory", StringComparison.OrdinalIgnoreCase)
-         || connectionString.Contains(":memory:",   StringComparison.OrdinalIgnoreCase))
+         || connectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.Sqlite;
 
         // 9. Default
@@ -150,15 +150,15 @@ public static class SqlProviderDetector
             var segment = (semi >= 0 ? remaining[..semi] : remaining).Trim();
 
             if (segment.StartsWith("Data Source", StringComparison.OrdinalIgnoreCase)
-             || segment.StartsWith("DataSource",  StringComparison.OrdinalIgnoreCase))
+             || segment.StartsWith("DataSource", StringComparison.OrdinalIgnoreCase))
             {
                 int eq = segment.IndexOf('=');
                 if (eq >= 0)
                 {
                     var value = segment[(eq + 1)..].Trim();
                     if (value.Equals(":memory:", StringComparison.OrdinalIgnoreCase)
-                     || value.EndsWith(".db",      StringComparison.OrdinalIgnoreCase)
-                     || value.EndsWith(".sqlite",  StringComparison.OrdinalIgnoreCase)
+                     || value.EndsWith(".db", StringComparison.OrdinalIgnoreCase)
+                     || value.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".sqlite3", StringComparison.OrdinalIgnoreCase))
                         return true;
                 }

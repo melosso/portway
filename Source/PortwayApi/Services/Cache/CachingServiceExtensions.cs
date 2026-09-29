@@ -31,17 +31,17 @@ public static class CachingServiceExtensions
         // Add Redis if configured
         if (cacheOptions.ProviderType == CacheProviderType.Redis)
         {
-            Log.Information("Configuring Redis cache provider with connection to {ConnectionString}", 
+            Log.Information("Configuring Redis cache provider with connection to {ConnectionString}",
                 cacheOptions.Redis.ConnectionString);
-            
+
             // Add StackExchange.Redis ConnectionMultiplexer
             services.AddSingleton<RedisCacheProvider>();
 
             // Add Redis health check
             services.AddHealthChecks()
                 .AddCheck<RedisCacheHealthCheck>(
-                    "redis_cache", 
-                    HealthStatus.Degraded, 
+                    "redis_cache",
+                    HealthStatus.Degraded,
                     new[] { "redis", "cache", "readiness" });
         }
         else

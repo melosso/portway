@@ -6,13 +6,13 @@ using PortwayApi.Services.Telemetry.Prometheus;
 public sealed record TelemetryOptions
 {
     public TelemetryProvider Provider { get; init; } = TelemetryProvider.None;
-    public string? ServiceName        { get; init; }
+    public string? ServiceName { get; init; }
     /// <summary>
     /// Additional resource attributes, e.g. "deployment.environment=production,host.name=gw01".
     /// </summary>
     public string? ResourceAttributes { get; init; }
 
-    public OtlpOptions       Otlp       { get; init; } = new();
+    public OtlpOptions Otlp { get; init; } = new();
     public PrometheusOptions Prometheus { get; init; } = new();
 
     /// <summary>

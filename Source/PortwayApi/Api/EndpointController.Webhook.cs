@@ -82,7 +82,7 @@ public partial class EndpointController
                 ReceivedAt = DateTime.UtcNow
             });
 
-            Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})", 
+            Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})",
                 webhookId, insertedId);
 
             // Return 201 Created with location header for consistency

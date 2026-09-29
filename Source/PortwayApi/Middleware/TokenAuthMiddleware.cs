@@ -24,15 +24,15 @@ public class TokenAuthMiddleware
     }
 
     public async Task InvokeAsync(
-        HttpContext context, 
-        AuthDbContext dbContext, 
+        HttpContext context,
+        AuthDbContext dbContext,
         TokenService tokenService,
         IEnvironmentSettingsProvider environmentProvider,
         EnvironmentAuthService environmentAuthService)
     {
         var pathBase = context.Request.PathBase.Value ?? "";
         string env = ExtractEnvironmentFromPath(context.Request.Path);
-        
+
         // Skip token validation for specific routes
         if (context.Request.Path.StartsWithSegments("/docs") ||
             context.Request.Path.StartsWithSegments("/health/live") ||
@@ -52,7 +52,7 @@ public class TokenAuthMiddleware
         }
 
         // --- Environment-Specific Authentication ---
-        bool isApiOrWebhook = context.Request.Path.StartsWithSegments("/api") || 
+        bool isApiOrWebhook = context.Request.Path.StartsWithSegments("/api") ||
                              context.Request.Path.StartsWithSegments("/webhook");
 
         if (isApiOrWebhook && !string.IsNullOrEmpty(env))
@@ -61,7 +61,7 @@ public class TokenAuthMiddleware
             if (config?.Authentication != null && config.Authentication.Enabled)
             {
                 bool isEnvAuthenticated = await environmentAuthService.ValidateAsync(context, config.Authentication);
-                
+
                 if (isEnvAuthenticated)
                 {
                     Log.Debug("Authorized for environment '{Env}' via custom authentication", env);
@@ -77,12 +77,12 @@ public class TokenAuthMiddleware
                     await context.Response.WriteAsJsonAsync(new { error = "Environment authentication failed", success = false });
                     return;
                 }
-                
+
                 Log.Debug("Custom environment authentication failed for '{Env}', falling back to global token", env);
             }
         }
         // -------------------------------------------
-        
+
         // Continue with global authentication logic
         if (!context.Request.Headers.TryGetValue("Authorization", out var providedToken))
         {
@@ -100,7 +100,7 @@ public class TokenAuthMiddleware
         }
 
         string tokenString = providedToken.ToString();
-        
+
         // Extract the token from "Bearer token"
         if (tokenString.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
@@ -109,7 +109,7 @@ public class TokenAuthMiddleware
 
         // Extract endpoint name from request path
         string? endpointName = ExtractEndpointName(context.Request.Path);
-        
+
         // Verify token and retrieve details in a single cache-backed call
         var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
         if (tokenDetails is null)
@@ -131,54 +131,56 @@ public class TokenAuthMiddleware
         if (!string.IsNullOrEmpty(env))
         {
             bool hasEnvironmentAccess = tokenDetails.HasAccessToEnvironment(env);
-            
+
             if (!hasEnvironmentAccess)
             {
-                Log.Warning("Token lacks permission for environment {Environment}. Available environments: {Environments}", 
+                Log.Warning("Token lacks permission for environment {Environment}. Available environments: {Environments}",
                     env, tokenDetails.AllowedEnvironments);
-                
+
                 // Log authorization failure in audit trail
                 await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Environment", env);
-                
+
                 context.Response.StatusCode = 403;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { 
-                    error = $"Access denied to environment '{env}'", 
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = $"Access denied to environment '{env}'",
                     availableEnvironments = tokenDetails.AllowedEnvironments,
                     requestedEnvironment = env,
-                    success = false 
+                    success = false
                 });
                 return;
             }
         }
-        
+
         // Check endpoint permissions if endpoint name was successfully extracted
         if (!string.IsNullOrEmpty(endpointName))
         {
             bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName);
-            
+
             if (!hasEndpointAccess)
             {
-                Log.Warning("Token lacks permission for endpoint {Endpoint}. Available scopes: {Scopes}", 
+                Log.Warning("Token lacks permission for endpoint {Endpoint}. Available scopes: {Scopes}",
                     endpointName, tokenDetails.AllowedScopes);
-                
+
                 // Log authorization failure in audit trail
                 await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Endpoint", endpointName);
-                
+
                 context.Response.StatusCode = 403;
                 context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { 
-                    error = $"Access denied to endpoint '{endpointName}'", 
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    error = $"Access denied to endpoint '{endpointName}'",
                     availableScopes = tokenDetails.AllowedScopes,
                     requestedEndpoint = endpointName,
-                    success = false 
+                    success = false
                 });
                 return;
             }
         }
 
         // Token is valid, has proper scopes, and access to the environment - proceed
-        Log.Debug("Authorized {User} (Token ID: {TokenId}) for {Method} {Path}", 
+        Log.Debug("Authorized {User} (Token ID: {TokenId}) for {Method} {Path}",
             tokenDetails.Username, tokenDetails.Id, context.Request.Method, context.Request.Path);
         await _next(context);
     }
@@ -195,7 +197,7 @@ public class TokenAuthMiddleware
         // /api/{env}/{namespace}/{endpointName}/{id}
         // /api/{env}/composite/{endpointName}
         // /webhook/{env}/{webhookId}
-        
+
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments == null || segments.Length < 3)
             return null;
@@ -228,7 +230,7 @@ public class TokenAuthMiddleware
                 return $"webhook/{segments[2]}";
             }
         }
-        
+
         return null;
     }
 
@@ -240,18 +242,18 @@ public class TokenAuthMiddleware
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments == null || segments.Length < 2)
             return string.Empty;
-            
+
         // For paths like /api/{env}/...
         if (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase) && segments.Length >= 2)
             return segments[1];
-            
+
         // For paths like /webhook/{env}/...
         if (segments[0].Equals("webhook", StringComparison.OrdinalIgnoreCase) && segments.Length >= 2)
             return segments[1];
-            
+
         return string.Empty;
     }
-    
+
     /// <summary>
     /// Log failed authentication attempts for security auditing
     /// </summary>
@@ -267,8 +269,8 @@ public class TokenAuthMiddleware
                 OldTokenHash = null,
                 NewTokenHash = null,
                 Timestamp = DateTime.UtcNow,
-                Details = JsonSerializer.Serialize(new 
-                { 
+                Details = JsonSerializer.Serialize(new
+                {
                     RequestPath = context.Request.Path.Value,
                     Method = context.Request.Method,
                     TokenPrefix = tokenString.Length > 10 ? tokenString[..10] : tokenString,
@@ -279,7 +281,7 @@ public class TokenAuthMiddleware
                 IpAddress = context.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = context.Request.Headers.UserAgent.ToString()
             };
-            
+
             await dbContext.TokenAudits.AddAsync(auditEntry, context.RequestAborted);
             await dbContext.SaveChangesAsync(context.RequestAborted);
         }
@@ -289,11 +291,11 @@ public class TokenAuthMiddleware
             Log.Error(ex, "Failed to log authentication attempt");
         }
     }
-    
+
     /// <summary>
     /// Log authorization failures for security auditing
     /// </summary>
-    private static async Task LogAuthorizationFailureAsync(AuthDbContext dbContext, AuthToken tokenDetails, 
+    private static async Task LogAuthorizationFailureAsync(AuthDbContext dbContext, AuthToken tokenDetails,
         HttpContext context, string resourceType, string resourceName)
     {
         try
@@ -306,8 +308,8 @@ public class TokenAuthMiddleware
                 OldTokenHash = null,
                 NewTokenHash = null,
                 Timestamp = DateTime.UtcNow,
-                Details = JsonSerializer.Serialize(new 
-                { 
+                Details = JsonSerializer.Serialize(new
+                {
                     ResourceType = resourceType, // "Environment" or "Endpoint"
                     ResourceName = resourceName,
                     RequestPath = context.Request.Path.Value,
@@ -320,7 +322,7 @@ public class TokenAuthMiddleware
                 IpAddress = context.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = context.Request.Headers.UserAgent.ToString()
             };
-            
+
             await dbContext.TokenAudits.AddAsync(auditEntry, context.RequestAborted);
             await dbContext.SaveChangesAsync(context.RequestAborted);
         }

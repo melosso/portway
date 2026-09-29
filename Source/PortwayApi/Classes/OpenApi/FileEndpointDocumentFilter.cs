@@ -191,9 +191,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             Type = JsonSchemaType.Object,
             Properties = new Dictionary<string, IOpenApiSchema>
             {
-                ["success"]  = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                ["count"]    = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                ["value"]    = new OpenApiSchema
+                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                ["count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                ["value"] = new OpenApiSchema
                 {
                     Type = JsonSchemaType.Array,
                     Items = new OpenApiSchemaReference("FileInfo")
@@ -511,7 +511,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                             {
                                 ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
                                 ["message"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["result"]  = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null }
+                                ["result"] = new OpenApiSchema { Type = JsonSchemaType.Object | JsonSchemaType.Null }
                             }
                         }
                     }
@@ -606,9 +606,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                             Type = JsonSchemaType.Object,
                             Properties = new Dictionary<string, IOpenApiSchema>
                             {
-                                ["success"]  = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["count"]    = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                ["value"]    = new OpenApiSchema
+                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                                ["count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
+                                ["value"] = new OpenApiSchema
                                 {
                                     Type = JsonSchemaType.Array,
                                     Items = new OpenApiSchema
@@ -616,12 +616,12 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                                         Type = JsonSchemaType.Object,
                                         Properties = new Dictionary<string, IOpenApiSchema>
                                         {
-                                            ["fileId"]         = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["fileName"]       = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["contentType"]    = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["size"]           = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
-                                            ["lastModified"]   = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" },
-                                            ["url"]            = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["fileId"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["fileName"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["contentType"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                            ["size"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
+                                            ["lastModified"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" },
+                                            ["url"] = new OpenApiSchema { Type = JsonSchemaType.String },
                                             ["isInMemoryOnly"] = new OpenApiSchema { Type = JsonSchemaType.Boolean }
                                         }
                                     }
@@ -667,7 +667,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         {
                             ["success"] = JsonValue.Create(true),
                             ["message"] = "File deleted successfully",
-                            ["result"]  = null
+                            ["result"] = null
                         },
                         Summary = "Successful deletion"
                     }
@@ -684,9 +684,9 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                     {
                         Value = new JsonObject
                         {
-                            ["success"]  = JsonValue.Create(true),
-                            ["count"]    = JsonValue.Create(2),
-                            ["value"]    = new JsonArray
+                            ["success"] = JsonValue.Create(true),
+                            ["count"] = JsonValue.Create(2),
+                            ["value"] = new JsonArray
                             {
                                 new JsonObject
                                 {

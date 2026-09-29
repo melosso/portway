@@ -7,12 +7,12 @@ public class ExecutionContext
 {
     public string RequestId { get; set; } = Guid.NewGuid().ToString();
     public Dictionary<string, object> Variables { get; set; } = new();
-    
+
     public void SetVariable(string name, object value)
     {
         Variables[name] = value;
     }
-    
+
     public T? GetVariable<T>(string name)
     {
         if (Variables.TryGetValue(name, out var value))
@@ -21,7 +21,7 @@ public class ExecutionContext
             {
                 return typedValue;
             }
-            
+
             try
             {
                 // Try to convert if direct cast fails
@@ -32,7 +32,7 @@ public class ExecutionContext
                 return default;
             }
         }
-        
+
         return default;
     }
 }

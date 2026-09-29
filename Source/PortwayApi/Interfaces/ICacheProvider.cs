@@ -79,24 +79,24 @@ namespace PortwayApi.Services.Caching
         /// The key being locked
         /// </summary>
         string Key { get; }
-        
+
         /// <summary>
         /// When the lock expires
         /// </summary>
         DateTime ExpiresAt { get; }
-        
+
         /// <summary>
         /// Whether the lock is still valid
         /// </summary>
         bool IsValid { get; }
-        
+
         /// <summary>
         /// Extends the lock's expiration time
         /// </summary>
         /// <param name="expiryTime">New lock expiry time</param>
         /// <returns>True if the lock was extended successfully</returns>
         Task<bool> ExtendAsync(TimeSpan expiryTime);
-        
+
         /// <summary>
         /// Releases the lock explicitly (also happens on Dispose)
         /// </summary>

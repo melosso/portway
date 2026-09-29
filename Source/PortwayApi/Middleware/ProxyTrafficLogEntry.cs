@@ -49,8 +49,8 @@ public class ProxyTrafficLogEntry
     /// </summary>
     public bool IsValid()
     {
-        return !string.IsNullOrWhiteSpace(Method) 
-                && !string.IsNullOrWhiteSpace(Path) 
+        return !string.IsNullOrWhiteSpace(Method)
+                && !string.IsNullOrWhiteSpace(Path)
                 && !string.IsNullOrWhiteSpace(TraceId);
     }
 

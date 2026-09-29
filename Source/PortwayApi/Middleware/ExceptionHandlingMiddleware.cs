@@ -39,8 +39,8 @@ public class ExceptionHandlingMiddleware
                 activity.SetStatus(ActivityStatusCode.Error, ex.Message);
                 activity.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection
                 {
-                    ["exception.type"]       = ex.GetType().FullName,
-                    ["exception.message"]    = ex.Message,
+                    ["exception.type"] = ex.GetType().FullName,
+                    ["exception.message"] = ex.Message,
                     ["exception.stacktrace"] = ex.ToString()
                 }));
             }

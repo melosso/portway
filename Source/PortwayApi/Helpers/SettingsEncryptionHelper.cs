@@ -7,7 +7,7 @@ using Serilog;
 
 namespace PortwayApi.Helpers
 {
-public static class SettingsEncryptionHelper
+    public static class SettingsEncryptionHelper
     {
         private const string EncryptedHeader = "PWENC:";
         private static string? _currentPublicKeyPem = null;
@@ -48,7 +48,7 @@ public static class SettingsEncryptionHelper
             // Try to read public key directly from file first
             var certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
             var publicKeyPath = Path.Combine(certsPath, PublicKeyFileName);
-            
+
             if (File.Exists(publicKeyPath))
             {
                 try
@@ -64,7 +64,7 @@ public static class SettingsEncryptionHelper
 
             // Try to derive public key from encrypted private key in certs directory
             var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
-            
+
             if (File.Exists(privateKeyPath))
             {
                 try
@@ -72,17 +72,17 @@ public static class SettingsEncryptionHelper
                     var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
                     var encryptionKey = LoadEncryptionKey();
                     var privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
-                    
+
                     using var rsa = RSA.Create();
 
                     rsa.ImportFromPem(privateKeyPem);
                     var publicKeyPem = rsa.ExportSubjectPublicKeyInfoPem();
-                    
+
                     _currentPublicKeyPem = publicKeyPem;
-                    
+
                     // Save the derived public key for next time
                     File.WriteAllText(publicKeyPath, publicKeyPem);
-                    
+
                     return publicKeyPem;
                 }
                 catch (Exception ex)
@@ -90,16 +90,16 @@ public static class SettingsEncryptionHelper
                     Log.Warning(ex, "Failed to derive public key from encrypted private key, falling back to hardcoded key");
                 }
             }
-            
+
             // Fallback to hardcoded public key
             _currentPublicKeyPem = SettingsEncryptionKeys.PublicKeyPem;
             return _currentPublicKeyPem;
         }
 
-    /// <summary>
-    /// Shared with EnvironmentSettingsProvider; resolves PORTWAY_ENCRYPTION_KEY from env, .env, then fallback
-    /// </summary>
-    internal static string LoadEncryptionKey()
+        /// <summary>
+        /// Shared with EnvironmentSettingsProvider; resolves PORTWAY_ENCRYPTION_KEY from env, .env, then fallback
+        /// </summary>
+        internal static string LoadEncryptionKey()
         {
             // Priority 1: Check Windows environment variable
             var envKey = Environment.GetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", EnvironmentVariableTarget.Machine);
@@ -118,7 +118,7 @@ public static class SettingsEncryptionHelper
             // Priority 3: Check .env file (for Docker)
             var projectRoot = Directory.GetCurrentDirectory();
             var envFilePath = Path.Combine(projectRoot, ".env");
-            
+
             if (File.Exists(envFilePath))
             {
                 try
@@ -231,7 +231,7 @@ public static class SettingsEncryptionHelper
 
             try
             {
-                var certsPath      = Path.Combine(Directory.GetCurrentDirectory(), ".core");
+                var certsPath = Path.Combine(Directory.GetCurrentDirectory(), ".core");
                 var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
                 if (!File.Exists(privateKeyPath))
                 {
@@ -240,8 +240,8 @@ public static class SettingsEncryptionHelper
                 }
 
                 var encryptedPrivateKey = File.ReadAllText(privateKeyPath);
-                var encryptionKey       = LoadEncryptionKey();
-                var privateKeyPem       = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
+                var encryptionKey = LoadEncryptionKey();
+                var privateKeyPem = DecryptPrivateKey(encryptedPrivateKey, encryptionKey);
                 plainText = Decrypt(encryptedContent, privateKeyPem);
                 return true;
             }

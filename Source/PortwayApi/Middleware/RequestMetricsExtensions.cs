@@ -12,7 +12,7 @@ public static class RequestMetricsExtensions
     {
         var metricsService = app.Services.GetRequiredService<MetricsService>();
         var portwayMetrics = app.Services.GetRequiredService<PortwayMetrics>();
-        var scrapePath     = app.Services.GetRequiredService<TelemetryOptions>().ActiveMetricsPath;
+        var scrapePath = app.Services.GetRequiredService<TelemetryOptions>().ActiveMetricsPath;
 
         app.Use(async (context, next) =>
         {
@@ -30,7 +30,7 @@ public static class RequestMetricsExtensions
             }
             else
             {
-                source   = "api";
+                source = "api";
                 endpoint = ParseEndpointName(path.Value);
             }
             metricsService.Record(context.Response.StatusCode, context.Request.Method, source, endpoint);

@@ -188,7 +188,7 @@ public static partial class EndpointHandler
             for (int i = 0; i < entity.AllowedColumns.Count; i++)
             {
                 var column = entity.AllowedColumns[i];
-                
+
                 if (string.IsNullOrWhiteSpace(column))
                 {
                     errors.Add($"AllowedColumns[{i}] is empty or whitespace");
@@ -215,7 +215,7 @@ public static partial class EndpointHandler
         }
 
         // Validate Table Valued Function specific configuration
-        if (!string.IsNullOrEmpty(entity.DatabaseObjectType) && 
+        if (!string.IsNullOrEmpty(entity.DatabaseObjectType) &&
             entity.DatabaseObjectType.Equals("TableValuedFunction", StringComparison.OrdinalIgnoreCase))
         {
             // Create a temporary endpoint definition for TVF validation

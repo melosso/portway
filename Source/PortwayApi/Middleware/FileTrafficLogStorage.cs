@@ -72,7 +72,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
         try
         {
             var linesToWrite = new List<string>();
-            
+
             foreach (var log in logs)
             {
                 // Use JSON format for all details
@@ -80,7 +80,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
                 {
                     WriteIndented = false
                 });
-                
+
                 linesToWrite.Add(logJson);
             }
 
@@ -89,10 +89,10 @@ public class FileTrafficLogStorage : ITrafficLogStorage
             {
                 // Check if we need to roll over to a new file
                 CheckRolloverNeeded(linesToWrite);
-                
+
                 // Append to the current log file
                 File.AppendAllLines(_currentLogFile, linesToWrite);
-                
+
                 // Update current file size
                 _currentFileSize += linesToWrite.Sum(l => Encoding.UTF8.GetByteCount(l) + Environment.NewLine.Length);
             }
@@ -110,14 +110,14 @@ public class FileTrafficLogStorage : ITrafficLogStorage
     {
         // Calculate the size of the lines we're about to write
         long batchSize = linesToWrite.Sum(l => Encoding.UTF8.GetByteCount(l) + Environment.NewLine.Length);
-        
+
         // Check if adding these lines would exceed the max file size
         if (_currentFileSize + batchSize > _options.MaxFileSizeMB * 1024 * 1024)
         {
             // Roll over to a new file
             _currentLogFile = GenerateLogFileName();
             _currentFileSize = 0;
-            
+
             // Clean up old files
             CleanupOldLogFiles();
         }
@@ -138,7 +138,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
             var logFiles = Directory.GetFiles(_options.LogDirectory, $"{_options.FilePrefix}*.json")
                 .OrderByDescending(f => f)
                 .ToList();
-            
+
             // Keep only the most recent MaxFileCount files
             if (logFiles.Count > _options.MaxFileCount)
             {

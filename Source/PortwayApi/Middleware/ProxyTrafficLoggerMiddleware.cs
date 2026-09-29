@@ -30,17 +30,17 @@ public class ProxyTrafficLoggerMiddleware
     private readonly ProxyTrafficLoggerOptions _options;
     private readonly System.Threading.Channels.Channel<ProxyTrafficLogEntry> _logChannel;
     private readonly IServiceProvider _serviceProvider;
-    
+
     // Pre-define list of sensitive headers - using static readonly for better performance
     private static readonly string[] _sensitiveHeaders = new[]
     {
         "Authorization", "Cookie", "X-API-Key", "API-Key", "Password",
-        "X-Auth-Token", "Token", "Secret", "Credential", "Access-Token", 
+        "X-Auth-Token", "Token", "Secret", "Credential", "Access-Token",
         "X-Access-Token"
     };
 
     public ProxyTrafficLoggerMiddleware(
-        RequestDelegate next, 
+        RequestDelegate next,
         IOptions<ProxyTrafficLoggerOptions> options,
         System.Threading.Channels.Channel<ProxyTrafficLogEntry> logChannel,
         IServiceProvider serviceProvider)
@@ -103,7 +103,7 @@ public class ProxyTrafficLoggerMiddleware
         // Setup for response capture - only do this if needed
         Stream? originalResponseBodyStream = null;
         MemoryStream? responseBodyStream = null;
-        
+
         if (_options.IncludeResponseBodies)
         {
             originalResponseBodyStream = context.Response.Body;
@@ -120,25 +120,25 @@ public class ProxyTrafficLoggerMiddleware
             {
                 // Create a new MemoryStream to capture the request body
                 requestBodyStream = new MemoryStream();
-                
+
                 // Enable buffering to allow multiple reads
                 context.Request.EnableBuffering();
-                
+
                 // Copy the original request body to our memory stream
                 await context.Request.Body.CopyToAsync(requestBodyStream);
-                
+
                 // Reset the memory stream position to the beginning
                 requestBodyStream.Position = 0;
-                
+
                 // Read the request body for logging
                 using (var reader = new StreamReader(
-                    requestBodyStream, 
-                    Encoding.UTF8, 
-                    detectEncodingFromByteOrderMarks: false, 
+                    requestBodyStream,
+                    Encoding.UTF8,
+                    detectEncodingFromByteOrderMarks: false,
                     leaveOpen: true))
                 {
                     var requestBody = await reader.ReadToEndAsync();
-                    
+
                     // Truncate the body if it's too large
                     if (requestBody.Length > _options.MaxBodyCaptureSizeBytes)
                     {
@@ -149,13 +149,13 @@ public class ProxyTrafficLoggerMiddleware
                         logEntry.RequestBody = requestBody;
                     }
                 }
-                
+
                 // Record the size
                 logEntry.RequestSize = requestBodyStream.Length;
-                
+
                 // Reset the position for the next middleware
                 requestBodyStream.Position = 0;
-                
+
                 // Reset the original request body position
                 context.Request.Body.Position = 0;
             }
@@ -174,29 +174,29 @@ public class ProxyTrafficLoggerMiddleware
             // Record duration
             stopwatch.Stop();
             logEntry.DurationMs = (int)stopwatch.ElapsedMilliseconds;
-            
+
             // Capture response details
             logEntry.StatusCode = context.Response.StatusCode;
-            
+
             // Capture response body if enabled
             if (_options.IncludeResponseBodies && responseBodyStream != null && originalResponseBodyStream != null)
             {
                 responseBodyStream.Position = 0;
                 logEntry.ResponseSize = responseBodyStream.Length;
-                
+
                 // Only capture for specific content types
                 var contentType = context.Response.ContentType?.ToLowerInvariant() ?? string.Empty;
                 if ((contentType.Contains("json") || contentType.Contains("xml")) && responseBodyStream.Length > 0)
                 {
                     // Read the response body for logging
                     using (var reader = new StreamReader(
-                        responseBodyStream, 
-                        Encoding.UTF8, 
-                        detectEncodingFromByteOrderMarks: false, 
+                        responseBodyStream,
+                        Encoding.UTF8,
+                        detectEncodingFromByteOrderMarks: false,
                         leaveOpen: true))
                     {
                         var responseBody = await reader.ReadToEndAsync();
-                        
+
                         // Truncate the body if it's too large
                         if (responseBody.Length > _options.MaxBodyCaptureSizeBytes)
                         {
@@ -207,11 +207,11 @@ public class ProxyTrafficLoggerMiddleware
                             logEntry.ResponseBody = responseBody;
                         }
                     }
-                    
+
                     // Reset the position for copying to the original stream
                     responseBodyStream.Position = 0;
                 }
-                
+
                 // Copy the captured response to the original stream
                 await responseBodyStream.CopyToAsync(originalResponseBodyStream);
             }
@@ -219,12 +219,12 @@ public class ProxyTrafficLoggerMiddleware
             {
                 // Just record the size
                 logEntry.ResponseSize = responseBodyStream.Length;
-                
+
                 // Copy the captured response to the original stream
                 responseBodyStream.Position = 0;
                 await responseBodyStream.CopyToAsync(originalResponseBodyStream);
             }
-            
+
             // Log with Serilog for immediate visibility
             if (_options.EnableInfoLogging)
             {
@@ -236,9 +236,9 @@ public class ProxyTrafficLoggerMiddleware
             stopwatch.Stop();
             logEntry.DurationMs = (int)stopwatch.ElapsedMilliseconds;
             logEntry.StatusCode = 500;  // Internal Server Error
-            
+
             Serilog.Log.Error(ex, $"[Trace: {traceId}] Error during proxy request processing");
-            
+
             // Re-throw the exception
             throw;
         }
@@ -250,14 +250,14 @@ public class ProxyTrafficLoggerMiddleware
                 context.Request.Body = originalRequestBody;
                 await requestBodyStream.DisposeAsync();
             }
-            
+
             // Restore the original response body stream if we changed it
             if (originalResponseBodyStream != null && responseBodyStream != null)
             {
                 context.Response.Body = originalResponseBodyStream;
                 await responseBodyStream.DisposeAsync();
             }
-            
+
             // Try to add the log entry to the channel
             if (!_logChannel.Writer.TryWrite(logEntry))
             {
@@ -269,36 +269,36 @@ public class ProxyTrafficLoggerMiddleware
     private bool IsApiRequest(HttpContext context)
     {
         var path = context.Request.Path.Value;
-        return path != null && 
+        return path != null &&
                 (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("/webhook/", StringComparison.OrdinalIgnoreCase)) && 
+                path.StartsWith("/webhook/", StringComparison.OrdinalIgnoreCase)) &&
                 !path.Contains("/docs", StringComparison.OrdinalIgnoreCase) &&
                 !path.Contains("index.html", StringComparison.OrdinalIgnoreCase);
     }
-    
+
     private void ParseApiPath(string? path, out string? env, out string? endpoint)
     {
         env = null;
         endpoint = null;
-        
+
         if (string.IsNullOrEmpty(path))
             return;
-        
+
         // Extract segments
         var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        
-        if (segments.Length >= 2 && 
-            (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase) || 
+
+        if (segments.Length >= 2 &&
+            (segments[0].Equals("api", StringComparison.OrdinalIgnoreCase) ||
             segments[0].Equals("webhook", StringComparison.OrdinalIgnoreCase)))
         {
             // Set environment
             env = segments[1];
-            
+
             // Set endpoint if available
             if (segments.Length >= 3)
             {
                 endpoint = segments[2];
-                
+
                 // Handle composite endpoints
                 if (endpoint.Equals("composite", StringComparison.OrdinalIgnoreCase) && segments.Length >= 4)
                 {
@@ -307,16 +307,16 @@ public class ProxyTrafficLoggerMiddleware
             }
         }
     }
-    
+
     private async Task ExtractUsernameFromTokenAsync(HttpContext context, ProxyTrafficLogEntry logEntry)
     {
         try
         {
             // Try to get from User Identity first
             logEntry.Username = context.User?.Identity?.Name;
-            
+
             // If not available, check Authorization header
-            if (string.IsNullOrEmpty(logEntry.Username) && 
+            if (string.IsNullOrEmpty(logEntry.Username) &&
                 context.Request.Headers.TryGetValue("Authorization", out var authHeader))
             {
                 string token = authHeader.ToString();
@@ -324,16 +324,16 @@ public class ProxyTrafficLoggerMiddleware
                 {
                     // Extract the actual token value
                     token = token["Bearer ".Length..].Trim();
-                    
+
                     // Use the token service to get the username for this token
                     using var scope = _serviceProvider.CreateScope();
                     var tokenService = scope.ServiceProvider.GetService<Auth.TokenService>();
-                    
+
                     if (tokenService != null)
                     {
                         // Get active tokens
                         var tokens = await tokenService.GetActiveTokensAsync();
-                        
+
                         // Check each token - we need to use VerifyTokenAsync because the token is hashed
                         foreach (var activeToken in tokens)
                         {
@@ -345,7 +345,7 @@ public class ProxyTrafficLoggerMiddleware
                                 break;
                             }
                         }
-                        
+
                         // If we couldn't find a username but the token is valid, use a generic name
                         if (string.IsNullOrEmpty(logEntry.Username) && await tokenService.VerifyTokenAsync(token))
                         {
@@ -405,7 +405,7 @@ public class ProxyTrafficLoggerMiddleware
     /// </summary>
     private async Task<(HashSet<string> HeaderNames, HashSet<string> QueryParamNames)> GetEnvironmentAuthNamesAsync(string? env)
     {
-        var headerNames     = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var headerNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var queryParamNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         if (string.IsNullOrEmpty(env))
@@ -462,7 +462,7 @@ public class ProxyTrafficLoggerMiddleware
     {
         // Try to get the forwarded IP first
         string? ip = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        
+
         // If not available, use the connection remote IP
         if (string.IsNullOrEmpty(ip))
         {
@@ -472,7 +472,7 @@ public class ProxyTrafficLoggerMiddleware
         {
             ip = ip.Split(',').FirstOrDefault()?.Trim() ?? "unknown";
         }
-        
+
         return ip ?? "unknown";
     }
 }
