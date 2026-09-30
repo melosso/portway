@@ -1,4 +1,8 @@
 using System.Net;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using Moq;
 using PortwayApi.Tests.Base;
@@ -12,8 +16,7 @@ namespace PortwayApi.Tests.Endpoints;
 /// </summary>
 internal sealed class UpstreamCapture : IDisposable
 {
-    private readonly HttpListener _listener = new();
-    private readonly CancellationTokenSource _cts = new();
+    private readonly WebApplication _app;
 
     public string? Method { get; private set; }
     public string? PathAndQuery { get; private set; }
@@ -28,50 +31,34 @@ internal sealed class UpstreamCapture : IDisposable
 
     public UpstreamCapture(int port)
     {
-        _listener.Prefixes.Add($"http://localhost:{port}/");
-        _listener.Start();
-        _ = Task.Run(ListenLoop);
+        var builder = WebApplication.CreateSlimBuilder();
+        builder.Logging.ClearProviders();
+        builder.WebHost.UseKestrel(k => k.ListenLocalhost(port));
+        _app = builder.Build();
+        _app.Run(Capture);
+        _app.StartAsync().GetAwaiter().GetResult();
     }
 
-    private async Task ListenLoop()
+    private async Task Capture(HttpContext ctx)
     {
-        while (!_cts.IsCancellationRequested)
-        {
-            HttpListenerContext ctx;
-            try { ctx = await _listener.GetContextAsync(); }
-            catch (Exception) { return; } // listener stopped
+        Method       = ctx.Request.Method;
+        PathAndQuery = ctx.Request.Path + ctx.Request.QueryString;
+        ContentType  = ctx.Request.ContentType;
+        Headers.Clear();
+        foreach (var (key, value) in ctx.Request.Headers)
+            Headers[key] = value.ToString();
 
-            Method       = ctx.Request.HttpMethod;
-            PathAndQuery = ctx.Request.Url?.PathAndQuery;
-            ContentType  = ctx.Request.ContentType;
-            Headers.Clear();
-            foreach (var key in ctx.Request.Headers.AllKeys)
-                if (key != null)
-                    Headers[key] = ctx.Request.Headers[key] ?? "";
+        using (var reader = new StreamReader(ctx.Request.Body, Encoding.UTF8))
+            Body = await reader.ReadToEndAsync();
 
-            using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
-                Body = await reader.ReadToEndAsync();
+        foreach (var (k, v) in ResponseHeaders)
+            ctx.Response.Headers.Append(k, v);
 
-            foreach (var (k, v) in ResponseHeaders)
-                ctx.Response.Headers.Add(k, v);
-
-            var payload = Encoding.UTF8.GetBytes("""{"ok":true}""");
-            ctx.Response.StatusCode = 200;
-            ctx.Response.ContentType = "application/json";
-            await ctx.Response.OutputStream.WriteAsync(payload);
-            ctx.Response.Close();
-        }
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync("""{"ok":true}""");
     }
 
-    public void Dispose()
-    {
-        _cts.Cancel();
-
-        if (_listener.IsListening)
-            _listener.Stop();
-
-        _listener.Close();
-    }
+    public void Dispose() => _app.DisposeAsync().AsTask().GetAwaiter().GetResult();
 }
 
 /// <summary>
