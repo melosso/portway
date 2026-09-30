@@ -27,7 +27,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         path: portway
 
@@ -42,7 +42,7 @@ jobs:
         echo "Building docs with Bark $tag"
 
     - name: Checkout Bark
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         repository: hawkinslabdev/bark
         ref: ${{ steps.bark.outputs.tag }}
