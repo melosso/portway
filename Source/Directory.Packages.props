@@ -47,7 +47,7 @@
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="MySqlConnector" Version="2.6.2" />
-    <PackageVersion Include="Dapper" Version="2.1.79" />
+    <PackageVersion Include="Dapper" Version="2.1.89" />
     <PackageVersion Include="SqlKata" Version="4.0.1" />
     <PackageVersion Include="SqlKata.Execution" Version="4.0.1" />
     <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.1" />
