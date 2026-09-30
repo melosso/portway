@@ -1,6 +1,7 @@
 namespace PortwayApi.Tests.Parity;
 
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Xunit;
 
 /// <summary>
@@ -8,7 +9,8 @@ using Xunit;
 /// </summary>
 public sealed class DockerFactAttribute : FactAttribute
 {
-    public DockerFactAttribute()
+    public DockerFactAttribute([CallerFilePath] string? sourceFilePath = null, [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
     {
         if (!DockerProbe.IsAvailable)
             Skip = "Container runtime (docker) is not available on this machine";
