@@ -3,7 +3,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <AspNetCoreVersion>11.0.0-preview.7.26381.103</AspNetCoreVersion>
+    <AspNetCoreVersion>11.0.0-rc.1.26425.128</AspNetCoreVersion>
     <EntityFrameworkVersion>11.0.0-preview.7.26381.103</EntityFrameworkVersion>
     <MicrosoftExtensionsVersion>11.0.0-preview.7.26381.103</MicrosoftExtensionsVersion>
     <SerilogVersion>4.2.0</SerilogVersion>
