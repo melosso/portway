@@ -163,7 +163,7 @@ service:
 If you prefer the pull model instead, set `Telemetry__Provider: Prometheus` on the gateway and drop the collector service entirely. Prometheus then scrapes the `portway` container directly.
 
 :::tip
-If you use Grafana Alloy or the Grafana Agent, point `Telemetry__Otlp__Endpoint` at its OTLP receiver and route from there. Both traces (Tempo) and metrics (Mimir/Prometheus) land in a single pipeline.
+If you use Grafana Alloy or the Grafana Agent, point `Telemetry__Otlp__Endpoint` at its OTLP receiver and route from there. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through a single pipeline.
 :::
 
 ## Windows Server and IIS

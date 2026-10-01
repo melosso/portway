@@ -41,6 +41,39 @@ CREATE INDEX IX_WebhookData_WebhookId
 ON [dbo].[WebhookData] ([WebhookId], [ReceivedAt] DESC);
 ```
 
+Equivalent tables for the other providers. PostgreSQL column names are quoted because they are case-sensitive:
+
+::: code-group
+```sql [PostgreSQL]
+CREATE TABLE public."WebhookData" (
+    "Id"         SERIAL PRIMARY KEY,
+    "WebhookId"  VARCHAR(255) NOT NULL,
+    "Payload"    TEXT         NOT NULL,
+    "ReceivedAt" TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+```
+
+```sql [MySQL / MariaDB]
+CREATE TABLE WebhookData (
+    Id         INT AUTO_INCREMENT PRIMARY KEY,
+    WebhookId  VARCHAR(255) NOT NULL,
+    Payload    LONGTEXT     NOT NULL,
+    ReceivedAt DATETIME     NOT NULL
+);
+```
+
+```sql [SQLite]
+CREATE TABLE WebhookData (
+    Id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    WebhookId  TEXT NOT NULL,
+    Payload    TEXT NOT NULL,
+    ReceivedAt TEXT NOT NULL
+);
+```
+:::
+
+`ReceivedAt` is stored in UTC.
+
 If your processing job needs to track status, extend the table accordingly:
 
 ```sql

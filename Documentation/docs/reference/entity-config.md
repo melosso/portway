@@ -578,7 +578,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 | `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Environments that can access this endpoint |
-| `Tenancy` | object | No | Tenant headers with empty values; `BaseDirectory` holds a `{Header}` placeholder for each. See [Tenant headers](/guide/security#tenant-headers) |
+| `Tenancy` | object | No | Tenant headers with empty values; `BaseDirectory` requires a `{Header}` placeholder for each. See [Tenant headers](/guide/security#tenant-headers) |
 | `Documentation` | object | No | OpenAPI documentation metadata |
 
 ## Troubleshooting

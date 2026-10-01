@@ -45,7 +45,7 @@ Two things happen in the environment file. The Teable token goes into the outbou
 With `OverrideGlobalToken` set to `true`, clients authenticate with the `X-API-Key` header only. They send no `Authorization` header of their own. The environment's Teable token is then the only value that reaches Teable. The [Environment Authentication reference](/reference/environment-auth) covers the available methods in more detail.
 
 ::: Note 
-A header set in the environment always replaces the client's header of the same name, so the Teable token is the only `Authorization` value that reaches Teable. The `X-API-Key` setup keeps the Portway token and the Teable token in separate headers. `OverrideGlobalToken` applies to the whole environment, so give Teable a dedicated environment.
+Environment headers replace client headers of the same name; Teable receives only the environment's `Authorization` value. The `X-API-Key` setup keeps the Portway and Teable tokens in separate headers. `OverrideGlobalToken` applies to the whole environment; use a dedicated environment for Teable.
 :::
 
 You can generate a personal access token in Teable under your account's token settings. Tokens carry the `teable_` prefix.

@@ -41,15 +41,17 @@ Every property this endpoint type accepts, with its type and default, is listed 
 { "BaseDirectory": "backups/{env}/{year}/{month}" }
 ```
 
-Files land at paths like `files/prod/2025/01/database-backup.sql`.
+Files are saved to paths like `files/prod/2025/01/database-backup.sql`. An absolute `BaseDirectory` (e.g. `/srv/exports/{env}`) saves files outside the storage directory. Downloads, deletes and listings are restricted to that directory.
 
-A `{Header}` placeholder takes the request's [tenant header](/guide/security#tenant-headers) value and must come before any date placeholder:
+Uploads are saved to disk before the response is sent. `FileStorage:UseMemoryCache` caches downloaded files in memory. The `isInMemoryOnly` listing field is always `false`.
+
+A `{Header}` placeholder is replaced with the request's [tenant header](/guide/security#tenant-headers) value. Tenant placeholders precede date placeholders:
 
 ```json
 { "BaseDirectory": "invoices/{X-Company-Id}/{year}", "Tenancy": { "X-Company-Id": "" } }
 ```
 
-Downloads, deletes and listings are confined to the part of `BaseDirectory` before the first date placeholder (`invoices/ACME` above). File ids are encrypted with `PORTWAY_ENCRYPTION_KEY`; a forged or edited id answers `400`, and an id outside the endpoint's folder answers `404`. Changing the key invalidates issued ids.
+Downloads, deletes and listings are restricted to the `BaseDirectory` segments before the first date placeholder (`invoices/ACME` in the example). File ids are encrypted with `PORTWAY_ENCRYPTION_KEY`. A modified id returns `400`; an id outside the endpoint's directory returns `404`. Rotating the key invalidates issued ids.
 
 ## Namespaces
 

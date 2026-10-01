@@ -57,7 +57,7 @@ Restrict a token to specific environments using `AllowedEnvironments`:
 
 ### Tenant headers
 
-Tenant headers confine a token to the rows, upstream records or files of the customers it serves. The endpoint names the headers in `Tenancy`; the token lists the values it holds per header in `AllowedTenants`. A request header selects one of those values and never grants a value the token does not hold.
+Tenant headers restrict a token to the rows, upstream records and files of specific customers. `Tenancy` on the endpoint maps each header to its target; `AllowedTenants` on the token lists the permitted values per header. The request header selects one permitted value and cannot add a value.
 
 ```json [endpoints/SQL/Sales/Orders/entity.json]
 {
@@ -71,7 +71,7 @@ Tenant headers confine a token to the rows, upstream records or files of the cus
 { "X-Company-Id": ["ACME", "GLOBEX"] }
 ```
 
-Header names are free to choose (`X-Company-Id`, `X-Client-Id`, `Administratie`). Names Portway owns are refused: `Authorization`, `Cookie`, `Host`, `Origin`, `Content-*`, `X-Forwarded-*` and hop-by-hop headers. Values match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`; `*` in `AllowedTenants` accepts any value of that form.
+Header names are configurable (e.g. `X-Company-Id`, `X-Client-Id`, `Administratie`). Reserved names are rejected: `Authorization`, `Cookie`, `Host`, `Origin`, `Content-*`, `X-Forwarded-*` and hop-by-hop headers. Values match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`; `*` in `AllowedTenants` accepts any value of that form.
 
 | Request | Result |
 |---|---|
@@ -84,17 +84,17 @@ Header names are free to choose (`X-Company-Id`, `X-Client-Id`, `Administratie`)
 | Header holds another value | `403` |
 | Header repeated or malformed | `400` |
 
-The `Tenancy` value names what the header controls:
+The `Tenancy` value depends on the endpoint type:
 
 | Endpoint type | `Tenancy` value | Behavior |
 |---|---|---|
-| SQL table or view | Column | Reads and `$count` are ANDed with `Column = value`; client `$filter` cannot widen them. Inserts store the value, updates and deletes match it, a row cannot move to another tenant. Rows of another tenant answer `404`. |
-| SQL table-valued function | Function parameter | The parameter receives the value; the client's own value is ignored. |
-| SQL stored procedure | Procedure parameter | `@{value}` is passed with the tenant value after the payload; the procedure enforces it. |
-| Proxy | Upstream header | Sent with the tenant value; the client's copy of both headers is removed. |
-| File | Ignored | `BaseDirectory` holds a `{Header}` placeholder per tenant header; uploads, downloads, deletes and listings stay inside that folder. |
+| SQL table or view | Column | Reads and `$count` include `Column = value`, combined with `AND` outside the client `$filter`. Inserts set the column; updates and deletes require a match; the column cannot be changed. Rows of other tenants return `404`. |
+| SQL table-valued function | Function parameter | Receives the tenant value; client values are ignored. |
+| SQL stored procedure | Procedure parameter | `@{value}` receives the tenant value after the payload parameters. The procedure enforces it. |
+| Proxy | Upstream header | Set to the tenant value. Client copies of the inbound and upstream headers are removed. |
+| File | Ignored | `BaseDirectory` contains a `{Header}` placeholder per tenant header. Uploads, downloads, deletes and listings are restricted to the resolved directory. |
 
-`Tenancy` is refused on static, webhook and composite endpoints, a composite step cannot target a tenant endpoint, and `$expand` cannot target one. An endpoint whose `Tenancy` fails validation is not loaded and the console refuses to save it. The OpenAPI document lists each tenant header as an optional header parameter, and MCP tools accept them in the `tenants` argument.
+`Tenancy` is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document lists tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.
 
 ### Endpoint-level restrictions
 

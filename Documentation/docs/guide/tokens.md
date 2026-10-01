@@ -61,7 +61,7 @@ Narrow a token's access to reduce exposure. A token can only access endpoints an
 
 ### Tenant scopes
 
-`AllowedTenants` maps each tenant header to the values the token may select, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The console token drawer edits it as one row per header with comma-separated values. A token with one value per header needs no request header; a token with several values sends the header to pick one. [Tenant headers](/guide/security#tenant-headers) covers the endpoint side.
+`AllowedTenants` maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The console token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/security#tenant-headers).
 
 ### Common configurations
 

@@ -58,7 +58,7 @@ Fronting Data Hub with Portway does useful work at every layer:
 - **Credential isolation**: the Data Hub key never leaves the server; Portway tokens are scoped per endpoint and environment
 - **Network isolation**: Pimcore stays internal; only Portway is exposed
 - **Rate limiting**: per-IP and per-token limits protect the PIM from runaway clients
-- **Traffic logging and metrics**: every query lands in the [traffic log](/reference/audit) and the `portway.endpoint` metrics dimension
+- **Traffic logging and metrics**: every query is recorded in the [traffic log](/reference/audit) and the `portway.endpoint` metrics dimension
 
 ## Things to keep in mind
 

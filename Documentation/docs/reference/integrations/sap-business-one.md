@@ -71,7 +71,7 @@ Even with sessions handled client-side, the gateway does real work:
 - **Network isolation**: the Service Layer stays internal; only Portway is exposed
 - **Access control**: Portway tokens decide who may reach the Service Layer at all
 - **Rate limiting**: per-IP and per-token limits protect SAP from misbehaving clients
-- **Traffic logging and metrics**: every call lands in the [traffic log](/reference/audit) and the `portway.endpoint` metrics dimension
+- **Traffic logging and metrics**: every call is recorded in the [traffic log](/reference/audit) and the `portway.endpoint` metrics dimension
 
 ## Things to keep in mind
 

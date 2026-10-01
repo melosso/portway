@@ -85,7 +85,7 @@ The gateway earns its place even without credential injection:
 - **Network isolation**: Odoo stays on the internal network; only Portway is reachable from outside
 - **Access control**: Portway tokens and environment scoping decide who may reach the RPC endpoint at all
 - **Rate limiting**: per-IP and per-token limits protect Odoo from runaway integrations
-- **Traffic logging**: every RPC call lands in the [traffic log](/reference/audit) with timing and caller identity
+- **Traffic logging**: every RPC call is recorded in the [traffic log](/reference/audit) with timing and caller identity
 
 ## Things to keep in mind
 
