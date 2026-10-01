@@ -37,7 +37,7 @@ public class MySqlProvider : SqlProviderBase
         "smallint" => "System.Int16",
         "tinyint" => "System.Byte",
         "tinyint(1)" or "bit(1)" or "boolean" or "bool" => "System.Boolean",
-        // information_schema reports plain DATA_TYPE, but COLUMN_TYPE strings may carry unsigned
+        // information_schema reports plain DATA_TYPE, but COLUMN_TYPE strings may include unsigned
         "tinyint unsigned" => "System.Byte",
         "smallint unsigned" => "System.UInt16",
         "mediumint unsigned" or "int unsigned" => "System.UInt32",

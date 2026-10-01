@@ -490,7 +490,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        // TestServer connections carry no remote IP, so this session reaches /ui only through PublicOrigins.
+        // TestServer connections have no remote IP, so this session reaches /ui only through PublicOrigins.
         // Replacing the entry that admits it must be refused rather than applied and discovered on restart.
         var evict = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
@@ -564,7 +564,7 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
-    public async Task ConsoleResponses_CarryTheHardenedSecurityHeaders()
+    public async Task ConsoleResponses_IncludeTheHardenedSecurityHeaders()
     {
         var client = CreateClient();
         var resp = await client.GetAsync("/ui/login", TestContext.Current.CancellationToken);

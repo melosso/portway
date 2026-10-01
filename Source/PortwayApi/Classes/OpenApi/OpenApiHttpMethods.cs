@@ -11,7 +11,7 @@ public static class OpenApiHttpMethods
     public static readonly HttpMethod Merge = HttpMethod.Parse("MERGE");
 
     /// <summary>
-    /// RFC 10008 body-carried read; OpenAPI 3.2 has a native query field for it
+    /// RFC 10008 read with the query in the body; OpenAPI 3.2 has a native query field for it
     /// </summary>
     public static readonly HttpMethod Query = HttpMethod.Parse("QUERY");
 }

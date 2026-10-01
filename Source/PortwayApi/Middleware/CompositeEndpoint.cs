@@ -49,7 +49,7 @@ public class CompositeEndpoint
         }
         catch (Exception ex)
         {
-            // Mask the detail; exceptions can carry connection strings, schema and file paths
+            // Mask the detail; exceptions can contain connection strings, schema and file paths
             Log.Error(ex, "Error processing composite endpoint: {EndpointName}", endpointName);
             return PortwayResults.MinimalServerError(context);
         }

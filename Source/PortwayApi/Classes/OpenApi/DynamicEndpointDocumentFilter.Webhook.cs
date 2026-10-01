@@ -29,7 +29,7 @@ public partial class DynamicEndpointDocumentFilter
             var webhookDocumentation = definition.Documentation ?? LoadWebhookDocumentation();
             var webhookTag = definition.DocumentationTag;
 
-            // Register this webhook's tag description; namespaced webhooks carry it in their own Documentation block
+            // Register this webhook's tag description; namespaced webhooks define it in their own Documentation block
             if (!string.IsNullOrWhiteSpace(webhookDocumentation?.TagDescription))
             {
                 document.Tags ??= new HashSet<OpenApiTag>();

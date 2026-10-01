@@ -58,7 +58,7 @@ public class PostgreSqlProvider : SqlProviderBase
         "boolean" or "bool" => "System.Boolean",
         "uuid" => "System.Guid",
         "timestamp" or "timestamp without time zone" => "System.DateTime",
-        // Timezone-aware types carry an offset, surface them as DateTimeOffset
+        // Timezone-aware types include an offset, surface them as DateTimeOffset
         "timestamp with time zone" or "timestamptz" => "System.DateTimeOffset",
         "time with time zone" or "timetz" => "System.DateTimeOffset",
         "date" => "System.DateTime",

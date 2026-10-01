@@ -45,7 +45,7 @@ public static class PortwayResults
         => new ObjectResult(ErrorResponse.Of(detail)) { StatusCode = StatusCodes.Status500InternalServerError };
 
     /// <summary>
-    /// 500 in the shared envelope, carrying the trace id that correlates it with the server log
+    /// 500 in the shared envelope with the trace id of the matching server log entry
     /// </summary>
     public static IActionResult ServerError(HttpContext context, string detail)
         => new ObjectResult(ErrorResponse.Traced(detail, TraceIdOf(context)))

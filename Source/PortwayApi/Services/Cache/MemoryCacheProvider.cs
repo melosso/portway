@@ -17,7 +17,7 @@ public class MemoryCacheProvider : ICacheProvider
     private readonly CacheOptions _options;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new ConcurrentDictionary<string, SemaphoreSlim>();
 
-    // Lock keys carry the full request URL, so the table is pruned of unheld entries above this size
+    // Lock keys contain the full request URL, so the table is pruned of unheld entries above this size
     private const int MaxTrackedLocks = 1024;
     private readonly object _lockTableGate = new();
 

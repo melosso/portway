@@ -145,7 +145,7 @@ public static partial class WebUiEndpointExtensions
             var (account, problem) = await ResolveAccountAsync(db, provider, identity);
             if (account is null)
             {
-                // Log the provider only, never the subject or token, so the entry shows which door was tried without carrying the credential
+                // Log the provider only, never the subject or token, so the entry names the provider without the credential
                 Log.Warning("Refused console sign-in through {Provider} ({Problem})", provider.Name, problem);
                 return Results.Redirect(Back(ctx, problem));
             }
@@ -446,13 +446,13 @@ public static partial class WebUiEndpointExtensions
     {
         if (identity.Email.Length == 0)
             return $"No address to match on: {provider.Name} sent nothing in its {provider.EmailClaim} claim. " +
-                   $"The token carried: {string.Join(", ", identity.ClaimNames.OrderBy(n => n))}";
+                   $"The token contained: {string.Join(", ", identity.ClaimNames.OrderBy(n => n))}";
 
         if (!identity.EmailVerified)
             return $"{provider.Name} sent {identity.Email} but did not mark it verified, so it was not matched. " +
                    "An unverified address is a claim to somebody else's account.";
 
-        return $"No active account carries the address {identity.Email}, and none is bound to this provider's subject.";
+        return $"No active account has the address {identity.Email}, and none is bound to this provider's subject.";
     }
 
     private static AdminUser Provision(AuthDbContext db, OidcProvider provider, OidcIdentity identity)

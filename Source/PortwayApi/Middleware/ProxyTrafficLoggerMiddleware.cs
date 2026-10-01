@@ -422,7 +422,7 @@ public class ProxyTrafficLoggerMiddleware
                 if (string.IsNullOrWhiteSpace(method.Name))
                     continue;
 
-                // Cookie-carried credentials are already covered: the whole Cookie header is always redacted
+                // cookie credentials are already covered since the whole Cookie header is always redacted
                 if (string.Equals(method.In, "Query", StringComparison.OrdinalIgnoreCase))
                     queryParamNames.Add(method.Name);
                 else if (!string.Equals(method.In, "Cookie", StringComparison.OrdinalIgnoreCase))

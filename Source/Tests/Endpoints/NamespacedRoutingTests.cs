@@ -48,7 +48,7 @@ public class NamespacedRoutingTests : ApiTestBase
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
-    // A proxy endpoint carrying a composite config resolves as Composite, not as Proxy
+    // A proxy endpoint with a composite config resolves as Composite, not as Proxy
     [Fact]
     public async Task NamespacedComposite_ResolvesToCompositeHandler()
     {

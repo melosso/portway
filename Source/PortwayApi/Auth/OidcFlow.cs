@@ -184,7 +184,7 @@ public static class OidcFlow
         // Binds the token to the redirect this process started; without it a token minted for another session would pass
         if (Text(result.Claims, "nonce") != flow.Nonce)
         {
-            Log.Warning("The id_token from {Provider} carried the wrong nonce.", provider.Slug);
+            Log.Warning("The id_token from {Provider} has the wrong nonce.", provider.Slug);
             return null;
         }
 

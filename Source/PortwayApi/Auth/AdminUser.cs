@@ -25,7 +25,7 @@ public class AdminUser
     public string? ExternalId { get; set; }
 
     /// <summary>
-    /// Optional. When set, a provider identity carrying this address binds to this account.
+    /// Optional. When set, a provider identity with this address binds to this account.
     /// </summary>
     public string Email { get; set; } = string.Empty;
 

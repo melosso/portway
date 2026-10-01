@@ -155,7 +155,7 @@ public partial class EndpointController
     }
 
     /// <summary>
-    /// OData-style parameters carried in a QUERY request body; accepts both bare and $-prefixed keys
+    /// OData-style parameters in a QUERY request body; accepts both bare and $-prefixed keys
     /// </summary>
     private sealed class QueryBody
     {

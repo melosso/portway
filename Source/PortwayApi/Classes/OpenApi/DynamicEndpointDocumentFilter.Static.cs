@@ -342,7 +342,7 @@ public partial class DynamicEndpointDocumentFilter
 
             document.Paths[path].Operations![HttpMethod.Get] = getOperation;
 
-            // Static endpoints serve QUERY through the same read path, so a filterable one documents the body-carried form too
+            // Static endpoints serve QUERY through the same read path, so a filterable one also documents the body form
             if (enableFiltering && (contentType.Contains("json") || contentType.Contains("xml")))
             {
                 document.Paths[path].Operations![OpenApiHttpMethods.Query] = BuildStaticQueryOperation(getOperation);
@@ -363,7 +363,7 @@ public partial class DynamicEndpointDocumentFilter
             OperationId = $"{getOperation.OperationId}_query",
             Deprecated = getOperation.Deprecated,
             Responses = getOperation.Responses,
-            // OData criteria move into the body, so only the path parameters carry over
+            // OData criteria move into the body, so only the path parameters are copied
             Parameters = getOperation.Parameters?
                 .Where(p => p.In == ParameterLocation.Path)
                 .ToList(),

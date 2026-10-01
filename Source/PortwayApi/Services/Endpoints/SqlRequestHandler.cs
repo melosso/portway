@@ -94,7 +94,7 @@ public sealed partial class SqlRequestHandler
             // Check if this is a Table Valued Function endpoint
             if (SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
-                // Fail closed: the TVF hybrid splice cannot carry a JOIN, so $expand would be silently dropped
+                // Fail closed: the TVF hybrid splice cannot include a JOIN, so $expand would be silently dropped
                 if (!string.IsNullOrWhiteSpace(context.Request.Query["$expand"].FirstOrDefault()))
                     return PortwayResults.BadRequest("$expand is not supported on table-valued function endpoints");
 
