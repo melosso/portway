@@ -72,7 +72,7 @@ public sealed class ProxyRequestHandler
             // Translate HTTP method if configured
             var originalMethod = method;
             var incomingMethod = context.Request.Method ?? originalMethod;
-            var translatedMethod = PortwayApi.Helpers.HttpMethodTranslator.TranslateMethod(incomingMethod, endpointDefinition.CustomProperties);
+            var translatedMethod = HttpMethodTranslator.TranslateMethod(incomingMethod, endpointDefinition.CustomProperties);
             originalMethod = incomingMethod;
 
             if (!incomingMethod.Equals(translatedMethod, StringComparison.OrdinalIgnoreCase))
@@ -89,7 +89,7 @@ public sealed class ProxyRequestHandler
             }
 
             // Validate translated method
-            if (!PortwayApi.Helpers.HttpMethodTranslator.IsValidHttpMethod(translatedMethod))
+            if (!HttpMethodTranslator.IsValidHttpMethod(translatedMethod))
             {
                 Log.Warning("Translated method {TranslatedMethod} is not valid for endpoint {EndpointName}",
                     translatedMethod, endpointName);
@@ -298,7 +298,7 @@ public sealed class ProxyRequestHandler
                         }
 
                         // Store response in cache
-                        var entry = Services.Caching.ProxyCacheEntry.Create(
+                        var entry = Caching.ProxyCacheEntry.Create(
                             responseDetails.Content,
                             responseDetails.Headers,
                             responseDetails.StatusCode);
@@ -532,7 +532,7 @@ public sealed class ProxyRequestHandler
         }
 
         // Strip client-supplied headers that enable IP spoofing or HTTP desync: X-Forwarded-* is rebuilt from the verified connection IP, Transfer-Encoding/Content-Length are recomputed by HttpClient after body buffering
-        var headersToStrip = PortwayApi.Helpers.HeaderPolicy.StrippedFromClient;
+        var headersToStrip = HeaderPolicy.StrippedFromClient;
 
         // Load environment settings
         var (_, _, envHeaders) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
@@ -543,12 +543,12 @@ public sealed class ProxyRequestHandler
             configuredHeaders[header.Key] = header.Value;
         if (endpointDefinition != null && !string.IsNullOrEmpty(originalMethod))
         {
-            var appendHeaders = PortwayApi.Helpers.HttpMethodHeaderAppender.GetAppendHeaders(
+            var appendHeaders = HttpMethodHeaderAppender.GetAppendHeaders(
                 originalMethod, method, endpointDefinition.CustomProperties,
-                envHeaders.Keys, PortwayApi.Helpers.HeaderConflictResolution.Skip);
+                envHeaders.Keys, HeaderConflictResolution.Skip);
             foreach (var header in appendHeaders)
             {
-                if (PortwayApi.Helpers.HttpMethodHeaderAppender.IsValidHeaderName(header.Key))
+                if (HttpMethodHeaderAppender.IsValidHeaderName(header.Key))
                     configuredHeaders[header.Key] = header.Value;
                 else
                     Log.Warning("Invalid custom header name: {HeaderKey}", header.Key);
@@ -635,7 +635,7 @@ public sealed class ProxyRequestHandler
             return requestMessage;
         }
 
-        var response = await PortwayApi.Helpers.ProxyFailoverHelper.SendWithRetryAsync(
+        var response = await ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpointConfig.Url, endpointDefinition?.FallbackUrls,
             endpointDefinition?.Retry, $"endpoint '{endpointName}'", _urlValidator.IsUrlSafe, context.RequestAborted);
 

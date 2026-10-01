@@ -34,7 +34,7 @@ public class WebUiSecurityTests : IDisposable
 
         var id = Guid.NewGuid().ToString("N");
         _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_uisec_{id}_auth.db");
-        _mcpDbPath  = Path.Combine(Path.GetTempPath(), $"portway_uisec_{id}_mcp.db");
+        _mcpDbPath = Path.Combine(Path.GetTempPath(), $"portway_uisec_{id}_mcp.db");
 
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -71,7 +71,7 @@ public class WebUiSecurityTests : IDisposable
     {
         _factory.Dispose();
         if (File.Exists(_authDbPath)) File.Delete(_authDbPath);
-        if (File.Exists(_mcpDbPath))  File.Delete(_mcpDbPath);
+        if (File.Exists(_mcpDbPath)) File.Delete(_mcpDbPath);
 
         if (_overridesBefore is not null) File.WriteAllText(_overridesPath, _overridesBefore);
         else if (File.Exists(_overridesPath)) File.Delete(_overridesPath);
@@ -425,8 +425,11 @@ public class WebUiSecurityTests : IDisposable
         {
             db.OidcProviders.Add(new PortwayApi.Auth.OidcProvider
             {
-                Slug = "acme", Name = "Acme SSO", Authority = "https://sso.invalid",
-                ClientId = "portway", IsEnabled = true
+                Slug = "acme",
+                Name = "Acme SSO",
+                Authority = "https://sso.invalid",
+                ClientId = "portway",
+                IsEnabled = true
             });
             await db.SaveChangesAsync();
         }
@@ -551,8 +554,8 @@ public class WebUiSecurityTests : IDisposable
         var security = json.GetProperty("security");
 
         var behindProxy = security.GetProperty("behind_proxy").GetBoolean();
-        var trusted     = security.GetProperty("trusted_proxies_configured").GetBoolean();
-        var ignored     = security.GetProperty("forwarded_ignored").GetBoolean();
+        var trusted = security.GetProperty("trusted_proxies_configured").GetBoolean();
+        var ignored = security.GetProperty("forwarded_ignored").GetBoolean();
 
         Assert.True(behindProxy);   // the header was sent, so the deployment looks proxied
         // The warning fires exactly when a forwarded address arrives with no proxy trusted to send it.

@@ -86,6 +86,12 @@ public static partial class SqlTableWriteBuilder
     public static TableWriteCommand BuildInsert(ISqlProvider provider, string table, Dictionary<string, object?> columns)
         => Compile(provider, new Query(table).AsInsert(columns));
 
+    /// <summary>
+    /// Insert that returns the generated identity in the provider's own dialect
+    /// </summary>
+    public static TableWriteCommand BuildInsertReturningId(ISqlProvider provider, string table, Dictionary<string, object?> columns)
+        => Compile(provider, new Query(table).AsInsert(columns, returnId: true));
+
     public static TableWriteCommand BuildUpdate(ISqlProvider provider, string table, string pkColumn, object pkValue, Dictionary<string, object?> columns, IReadOnlyList<TenantPredicate>? tenants = null)
         => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsUpdate(columns));
 

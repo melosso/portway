@@ -45,7 +45,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
             if (!Directory.Exists(_options.LogDirectory))
             {
                 Directory.CreateDirectory(_options.LogDirectory);
-                Serilog.Log.Information("Created traffic log directory: {Directory}", _options.LogDirectory);
+                Log.Information("Created traffic log directory: {Directory}", _options.LogDirectory);
             }
 
             // Check if the current log file exists and get its size
@@ -62,7 +62,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Error initializing file storage for traffic logs");
+            Log.Error(ex, "Error initializing file storage for traffic logs");
             throw;
         }
     }
@@ -101,7 +101,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Error saving traffic logs to file");
+            Log.Error(ex, "Error saving traffic logs to file");
             throw;
         }
     }
@@ -145,13 +145,13 @@ public class FileTrafficLogStorage : ITrafficLogStorage
                 foreach (var file in logFiles.Skip(_options.MaxFileCount))
                 {
                     File.Delete(file);
-                    Serilog.Log.Debug("Deleted old traffic log file: {File}", file);
+                    Log.Debug("Deleted old traffic log file: {File}", file);
                 }
             }
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Error cleaning up old traffic log files");
+            Log.Error(ex, "Error cleaning up old traffic log files");
         }
     }
 }

@@ -139,7 +139,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
 
         var mediaTypes = extensions
             .Where(e => !string.IsNullOrWhiteSpace(e))
-            .Select(e => PortwayApi.Helpers.ContentTypeHelper.GetContentType(e.StartsWith('.') ? $"file{e}" : $"file.{e}"))
+            .Select(e => Helpers.ContentTypeHelper.GetContentType(e.StartsWith('.') ? $"file{e}" : $"file.{e}"))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 

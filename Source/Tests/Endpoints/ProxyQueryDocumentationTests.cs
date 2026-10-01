@@ -76,19 +76,19 @@ public class ProxyQueryDocumentationTests : ApiTestBase
 
         var offenders = new List<string>();
         foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())
-        foreach (var op in path.Value.EnumerateObject())
-        {
-            if (!op.Value.TryGetProperty("parameters", out var parameters)) continue;
-
-            var locations = parameters.EnumerateArray()
-                .Select(p => p.GetProperty("in").GetString())
-                .ToArray();
-
-            if (locations.Contains("querystring") && locations.Contains("query"))
+            foreach (var op in path.Value.EnumerateObject())
             {
-                offenders.Add($"{path.Name} {op.Name}");
+                if (!op.Value.TryGetProperty("parameters", out var parameters)) continue;
+
+                var locations = parameters.EnumerateArray()
+                    .Select(p => p.GetProperty("in").GetString())
+                    .ToArray();
+
+                if (locations.Contains("querystring") && locations.Contains("query"))
+                {
+                    offenders.Add($"{path.Name} {op.Name}");
+                }
             }
-        }
 
         Assert.True(offenders.Count == 0, "Operations mixing querystring with query parameters:\n" + string.Join("\n", offenders));
     }

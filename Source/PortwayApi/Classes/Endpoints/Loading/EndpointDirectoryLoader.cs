@@ -35,7 +35,7 @@ internal static class EndpointDirectoryLoader
                         continue;
                     }
 
-                    var tenancyErrors = PortwayApi.Helpers.TenancyRules.Validate(definition);
+                    var tenancyErrors = TenancyRules.Validate(definition);
                     if (tenancyErrors.Count > 0)
                     {
                         Log.Warning($"Failed to load {spec.FailPrefix}endpoint from {{File}}: {{Errors}}", file, string.Join("; ", tenancyErrors));

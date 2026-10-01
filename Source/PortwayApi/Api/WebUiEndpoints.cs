@@ -244,7 +244,7 @@ public static partial class WebUiEndpointExtensions
     private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
     {
         // Allow namespace/name paths
-        if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
+        if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
             return (null, "Invalid endpoint name");
 
         var baseDir = Directory.GetCurrentDirectory();
@@ -344,7 +344,7 @@ public static partial class WebUiEndpointExtensions
         var pb = pathBase.Value ?? "";
         var v = Uri.EscapeDataString(version);
         html = html.Replace("<head>", $"<head>\n  <base href=\"{pb}/\">\n  <script>window.PortwayBase=\"{pb}\";</script>");
-        html = System.Text.RegularExpressions.Regex.Replace(
+        html = Regex.Replace(
             html,
             @"(href|src)=""(?!https?://)([^""]+\.(css|js))""",
             m => $"{m.Groups[1]}=\"{m.Groups[2]}?v={v}\"");
@@ -352,5 +352,5 @@ public static partial class WebUiEndpointExtensions
     }
 
     private static string ParseMarkdownToHtml(string md) =>
-        PortwayApi.Helpers.MarkdownParser.ParseMarkdownToHtml(md);
+        MarkdownParser.ParseMarkdownToHtml(md);
 }

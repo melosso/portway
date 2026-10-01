@@ -24,7 +24,7 @@ public class ODataToSqlConverterTests
 
         _converter = new ODataToSqlConverter(providers);
     }
-    
+
     [Fact]
     public void ConvertToSQL_BasicSelect_GeneratesCorrectSql()
     {
@@ -34,10 +34,10 @@ public class ODataToSqlConverterTests
         {
             { "select", "ItemCode,Description" }
         };
-        
+
         // Act
         var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
-        
+
         // Assert
         Assert.NotNull(sqlQuery);
         Assert.Contains("SELECT", sqlQuery);
@@ -46,7 +46,7 @@ public class ODataToSqlConverterTests
         Assert.Contains("FROM", sqlQuery);
         Assert.Contains("[dbo].[Items]", sqlQuery); // Check for Items, not Products
     }
-    
+
     [Fact]
     public void ConvertToSQL_WithFilter_GeneratesWhereClause()
     {
@@ -56,16 +56,16 @@ public class ODataToSqlConverterTests
         {
             { "filter", "ItemCode eq 'TEST001'" }
         };
-        
+
         // Act
         var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
-        
+
         // Assert
         Assert.NotNull(sqlQuery);
         Assert.Contains("WHERE", sqlQuery);
         Assert.True(parameters.Count > 0);
     }
-    
+
     [Fact]
     public void ConvertToSQL_WithOrderBy_GeneratesOrderByClause()
     {
@@ -75,10 +75,10 @@ public class ODataToSqlConverterTests
         {
             { "orderby", "Description desc" }
         };
-        
+
         // Act
         var (sqlQuery, parameters) = _converter.ConvertToSQL(entityName, odataParams, SqlProviderType.SqlServer);
-        
+
         // Assert
         Assert.NotNull(sqlQuery);
         Assert.Contains("ORDER BY", sqlQuery);

@@ -92,7 +92,9 @@ public class FileSystemIndex
             // Use recursive enumeration to scan ALL subdirectories
             foreach (var file in Directory.EnumerateFiles(environmentDir, "*", SearchOption.AllDirectories))
             {
-                var fileInfo = new System.IO.FileInfo(file);
+                if (file.EndsWith(FileHandlerService.PartialSuffix, StringComparison.Ordinal))
+                    continue;
+                var fileInfo = new FileInfo(file);
                 // Calculate relative path from environment directory
                 string relativePath = Path.GetRelativePath(environmentDir, file);
                 // Normalize path separators to forward slashes for consistency
@@ -164,17 +166,22 @@ public class FileSystemIndex
     public async Task<IEnumerable<FileMetadata>> ListFilesAsync(string environment, string? prefix = null)
     {
         var index = await GetDirectoryIndexAsync(environment);
-        // Efficiently filter in memory - handle both filename and path prefixes
-        if (string.IsNullOrEmpty(prefix))
+        string normalizedPrefix = (prefix ?? string.Empty).Replace('\\', '/');
+
+        // the cached index is the same instance UpdateIndexAsync mutates under the lock
+        await _indexLock.WaitAsync();
+        try
         {
-            return index.Values;
+            return normalizedPrefix.Length == 0
+                ? index.Values.ToList()
+                : index.Values.Where(f =>
+                    f.FileName.StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) ||
+                    Path.GetFileName(f.FileName).StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase)).ToList();
         }
-        // Normalize prefix to use forward slashes
-        string normalizedPrefix = prefix.Replace('\\', '/');
-        return index.Values.Where(f =>
-            f.FileName.StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase) ||
-            Path.GetFileName(f.FileName).StartsWith(normalizedPrefix, StringComparison.OrdinalIgnoreCase)
-        );
+        finally
+        {
+            _indexLock.Release();
+        }
     }
 
     // Periodic refresh to catch files added outside the API

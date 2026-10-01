@@ -18,21 +18,21 @@ public class SqlEndpointTests : ApiTestBase
         // Arrange
         string testEnv = "500";
         string endpointName = "Product/Products";
-        
+
         // Ensure the environment is allowed
         SetAllowedEnvironments("500", "700");
-        
+
         // Endpoint name "Products" maps to table dbo.Items
-        var mockQueryResult = ("SELECT * FROM [dbo].[Items] WHERE [ItemCode] = @p0", 
+        var mockQueryResult = ("SELECT * FROM [dbo].[Items] WHERE [ItemCode] = @p0",
             new Dictionary<string, object> { { "p0", "TEST001" } });
-            
+
         _mockODataToSqlConverter
             .Setup(c => c.ConvertToSQL(It.Is<string>(s => s.Contains("Items")), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>(), It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
             .Returns(mockQueryResult);
-        
+
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}?$filter=ItemCode eq 'TEST001'", TestContext.Current.CancellationToken);
-        
+
         // The converter runs before any database access, so this holds even when SQL is unreachable
         _mockODataToSqlConverter.Verify(
             c => c.ConvertToSQL(
@@ -51,37 +51,37 @@ public class SqlEndpointTests : ApiTestBase
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
-    
+
     [Fact]
     public async Task GetSqlEndpoint_InvalidEnvironment_ReturnsBadRequest()
     {
         // Arrange
         string testEnv = "invalid";
         string endpointName = "Product/Products";
-        
+
         // Configure allowed environments to not include the test environment
         SetAllowedEnvironments("500", "700");
-        
+
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}", TestContext.Current.CancellationToken);
-        
+
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
-    
+
     [Fact]
     public async Task GetSqlEndpoint_Unauthorized_Returns401()
     {
         // Arrange
         string testEnv = "500";
         string endpointName = "Product/Products";
-        
+
         // Remove authorization header
         _client.DefaultRequestHeaders.Authorization = null;
-        
+
         // Act
         var response = await _client.GetAsync($"/api/{testEnv}/{endpointName}", TestContext.Current.CancellationToken);
-        
+
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -92,9 +92,9 @@ public class SqlEndpointTests : ApiTestBase
         // Arrange
         string testEnv = "500";
         string endpointName = "Product/Products";
-        
+
         SetAllowedEnvironments("500", "700");
-        
+
         // Remove standard token authorization
         _client.DefaultRequestHeaders.Authorization = null;
 
@@ -102,8 +102,8 @@ public class SqlEndpointTests : ApiTestBase
 
         // Override environment settings provider to return HMAC auth
         _mockEnvironmentSettingsProvider.Setup(p => p.GetEnvironmentConfigAsync(It.IsAny<string>()))
-            .ReturnsAsync((string env) => new PortwayApi.Classes.EnvironmentConfig 
-            { 
+            .ReturnsAsync((string env) => new PortwayApi.Classes.EnvironmentConfig
+            {
                 ConnectionString = "Server=localhost;Database=test;Trusted_Connection=True",
                 ServerName = "localhost",
                 Authentication = new PortwayApi.Classes.AuthenticationSettings
@@ -129,20 +129,20 @@ public class SqlEndpointTests : ApiTestBase
 
         // Prepare request with HMAC headers
         var request = new HttpRequestMessage(HttpMethod.Get, $"/api/{testEnv}/{endpointName}");
-        
+
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         request.Headers.Add("X-Timestamp", timestamp);
-        
+
         // Calculate HMAC: Method + Path + Timestamp + Body(empty)
         var rawData = $"GET/api/{testEnv}/{endpointName}{timestamp}";
         using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(hmacSecret));
         var signature = Convert.ToHexString(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawData))).ToLowerInvariant();
-        
+
         request.Headers.Add("X-Signature", signature);
 
         // Act
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
-        
+
         // Assert: OK or InternalServerError (SQL unavailable) is acceptable, but never Unauthorized
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
     }

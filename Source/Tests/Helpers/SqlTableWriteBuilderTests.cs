@@ -92,4 +92,17 @@ public class SqlTableWriteBuilderTests
         Assert.Equal(1, await connection.ExecuteAsync(delete.Sql, delete.Parameters));
         Assert.Equal(0, await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Bins"));
     }
+
+    [Fact]
+    public async Task InsertReturningIdOnSqlite()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await connection.ExecuteAsync("CREATE TABLE WebhookData (Id INTEGER PRIMARY KEY AUTOINCREMENT, WebhookId TEXT, Payload TEXT, ReceivedAt TEXT)");
+
+        var insert = SqlTableWriteBuilder.BuildInsertReturningId(new SqliteProvider(), "WebhookData",
+            new Dictionary<string, object?> { ["WebhookId"] = "orders", ["Payload"] = "{}", ["ReceivedAt"] = DateTime.UtcNow });
+
+        Assert.Equal(1L, Convert.ToInt64(await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters)));
+    }
 }

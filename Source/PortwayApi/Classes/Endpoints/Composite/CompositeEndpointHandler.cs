@@ -59,7 +59,7 @@ public class CompositeEndpointHandler
             if (endpointDefinitions.TryGetValue(endpointName, out var definition) && !definition.Enabled)
             {
                 Log.Debug("Composite endpoint disabled: {Endpoint}", endpointName);
-                return PortwayApi.Helpers.DisabledEndpoint.MinimalResult(context);
+                return DisabledEndpoint.MinimalResult(context);
             }
 
             // Check if the environment is allowed for this endpoint
@@ -334,7 +334,7 @@ public class CompositeEndpointHandler
             return request;
         }
 
-        var response = await Helpers.ProxyFailoverHelper.SendWithRetryAsync(
+        var response = await ProxyFailoverHelper.SendWithRetryAsync(
             client, BuildRequest, fullUrl, endpoint.Url, endpoint.FallbackUrls,
             endpoint.Retry, $"step '{step.Name}'", _urlValidator.IsUrlSafe, ct);
 

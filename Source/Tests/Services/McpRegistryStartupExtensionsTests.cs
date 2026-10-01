@@ -9,25 +9,25 @@ public class McpRegistryStartupExtensionsTests
     private static EndpointDefinition ProxyEndpoint(
         bool enabled = true,
         McpSettings? mcp = null) => new()
-    {
-        FolderName = "Accounts",
-        Namespace = "Account",
-        Url = "http://localhost:8020/services/Account",
-        Methods = new List<string> { "GET", "POST" },
-        Type = EndpointType.Proxy,
-        Enabled = enabled,
-        AllowedEnvironments = new List<string> { "500", "700" },
-        Mcp = mcp,
-        Documentation = new Documentation
         {
-            TagDescription = "Account Management",
-            MethodDescriptions = new Dictionary<string, string>
+            FolderName = "Accounts",
+            Namespace = "Account",
+            Url = "http://localhost:8020/services/Account",
+            Methods = new List<string> { "GET", "POST" },
+            Type = EndpointType.Proxy,
+            Enabled = enabled,
+            AllowedEnvironments = new List<string> { "500", "700" },
+            Mcp = mcp,
+            Documentation = new Documentation
             {
-                ["GET"] = "Retrieve accounts",
-                ["POST"] = "Create an account"
+                TagDescription = "Account Management",
+                MethodDescriptions = new Dictionary<string, string>
+                {
+                    ["GET"] = "Retrieve accounts",
+                    ["POST"] = "Create an account"
+                }
             }
-        }
-    };
+        };
 
     [Fact]
     public void BuildEndpointMcpInfos_ExposedProxyEndpoint_CarriesFullMetadata()

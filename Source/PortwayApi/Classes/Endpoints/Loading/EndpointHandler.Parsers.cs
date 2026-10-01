@@ -227,12 +227,12 @@ public static partial class EndpointHandler
                 Methods = entity.AllowedMethods ?? new List<string> { "GET" }
             };
 
-            var tvfErrors = PortwayApi.Classes.Handlers.TableValuedFunctionSqlHandler.ValidateTVFConfiguration(tempEndpoint);
+            var tvfErrors = Handlers.TableValuedFunctionSqlHandler.ValidateTVFConfiguration(tempEndpoint);
             errors.AddRange(tvfErrors);
         }
 
         // Validate $expand relationship shape (identifiers, to-one only, not on a TVF)
-        errors.AddRange(PortwayApi.Helpers.OdataExpandRelationshipValidator.ValidateShape(entity));
+        errors.AddRange(Helpers.OdataExpandRelationshipValidator.ValidateShape(entity));
 
         // Validate allowed methods
         if (entity.AllowedMethods != null)

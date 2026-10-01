@@ -9,10 +9,11 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
 
     public override SqlProviderType ProviderType => SqlProviderType.PostgreSql;
     public override string QualifiedProductsTable => "public.Products";
+    public override string QualifiedWebhookTable => "public.WebhookData";
     public override string QualifiedCategoriesTable => "public.Categories";
     public override string ProcedureSchema => "public";
     public override string ProcedureName => "get_products_by_price";
-    // SETOF composite return, the RETURNS TABLE shape gets its own test below
+    // Tests SETOF composite types. See below for RETURNS TABLE test.
     public override string TvfName => "get_products_by_price";
     public override int TvfColumnCount => 5;
     public override string WriteProcedureName => "manage_product";
@@ -31,6 +32,7 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
     // Quoted identifiers keep the casing the OData compiler emits
     protected override IEnumerable<string> SchemaStatements =>
     [
+        """CREATE TABLE public."WebhookData" ("Id" SERIAL PRIMARY KEY, "WebhookId" VARCHAR(100) NOT NULL, "Payload" TEXT NOT NULL, "ReceivedAt" TIMESTAMPTZ NOT NULL)""",
         """CREATE TABLE public."Products" ("Id" INT PRIMARY KEY, "Name" VARCHAR(100) NOT NULL, "Price" DECIMAL(10,2) NOT NULL, "ReleasedAt" DATE NULL, "CategoryId" INT NULL)""",
         $"""INSERT INTO public."Products" ("Id", "Name", "Price", "ReleasedAt") VALUES {SeedValues}""",
         """CREATE TABLE public."Categories" ("CategoryId" INT PRIMARY KEY, "CategoryName" VARCHAR(100) NOT NULL)""",

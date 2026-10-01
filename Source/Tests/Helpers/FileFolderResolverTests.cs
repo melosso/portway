@@ -37,12 +37,12 @@ public sealed class FileFolderResolverTests
     [Fact]
     public void AbsoluteKeepsRoot()
     {
-        var root = Path.Combine(Path.GetTempPath(), "{env}");
+        var root = Path.Combine(Path.GetTempPath(), "{env}", "{year}");
         var folders = FileFolderResolver.Resolve(root, "prod", NoTenants, Now);
 
         Assert.True(folders.IsAbsolute);
-        Assert.Equal(Path.Combine(Path.GetTempPath(), "prod"), folders.Upload);
-        Assert.Equal("", folders.Scope);
+        Assert.Equal(Path.Combine(Path.GetTempPath(), "prod", "2026"), folders.Upload);
+        Assert.Equal(Path.GetFullPath(Path.Combine(Path.GetTempPath(), "prod")), folders.Scope);
     }
 
     [Fact]

@@ -54,11 +54,6 @@ public partial class EndpointController
                 return resolveError;
             }
 
-            // Get table name and schema from the configuration
-            var tableName = endpointConfig.DatabaseObjectName ?? "WebhookData";
-            var schema = endpointConfig.DatabaseSchema ?? "dbo";
-
-            // Validate webhook ID against allowed columns
             var allowedColumns = endpointConfig.AllowedColumns ?? new List<string>();
             if (allowedColumns.Any() &&
                 !allowedColumns.Contains(webhookId, StringComparer.OrdinalIgnoreCase))
@@ -66,21 +61,20 @@ public partial class EndpointController
                 return PortwayResults.NotFound($"Webhook ID '{webhookId}' is not configured.");
             }
 
-            // Insert webhook data
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
-            var insertQuery = $@"
-                INSERT INTO [{schema}].[{tableName}] (WebhookId, Payload, ReceivedAt)
-                OUTPUT INSERTED.Id
-                VALUES (@WebhookId, @Payload, @ReceivedAt)";
-
-            var insertedId = await connection.ExecuteScalarAsync<int>(insertQuery, new
-            {
-                WebhookId = webhookId,
-                Payload = payload.ToString(),
-                ReceivedAt = DateTime.UtcNow
-            });
+            var provider = _providerFactory.GetProvider(connectionString);
+            var schema = SqlSchemaResolver.Resolve(endpointConfig.DatabaseSchema ?? "dbo", provider, connection.Database);
+            var tableName = endpointConfig.DatabaseObjectName ?? "WebhookData";
+            var insert = SqlTableWriteBuilder.BuildInsertReturningId(provider, schema.Length > 0 ? $"{schema}.{tableName}" : tableName,
+                new Dictionary<string, object?>
+                {
+                    ["WebhookId"] = webhookId,
+                    ["Payload"] = payload.ToString(),
+                    ["ReceivedAt"] = DateTime.UtcNow
+                });
+            var insertedId = Convert.ToInt64(await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters));
 
             Log.Debug("Webhook processed successfully: {WebhookId} (ID: {InsertedId})",
                 webhookId, insertedId);

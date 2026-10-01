@@ -58,7 +58,7 @@ public sealed class StaticRequestHandler
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
             var contentFilePath = Path.Combine(endpointPath, contentFile);
 
-            if (!System.IO.File.Exists(contentFilePath))
+            if (!File.Exists(contentFilePath))
             {
                 Log.Warning("Content file not found: {FilePath}", contentFilePath);
                 return PortwayResults.NotFound($"Content file not found: {contentFile}");
@@ -107,12 +107,12 @@ public sealed class StaticRequestHandler
                     Log.Debug("Cache hit for static content: {Endpoint}", endpointName);
                     return new FileContentResult(cached, contentType!);
                 }
-                contentBytes = await System.IO.File.ReadAllBytesAsync(contentFilePath);
+                contentBytes = await File.ReadAllBytesAsync(contentFilePath);
                 await _cacheManager.SetAsync(staticCacheKey, contentBytes, endpointName);
             }
             else
             {
-                contentBytes = await System.IO.File.ReadAllBytesAsync(contentFilePath);
+                contentBytes = await File.ReadAllBytesAsync(contentFilePath);
             }
 
             if (hasODataParams && enableFiltering)
@@ -245,10 +245,10 @@ public sealed class StaticRequestHandler
             Log.Debug("Parsing filter: {Filter}", filter);
 
             // OData function call syntax: contains(Field, 'value'), startswith(Field, 'value'), endswith(Field, 'value')
-            var fnMatch = System.Text.RegularExpressions.Regex.Match(
+            var fnMatch = Regex.Match(
                 filter.Trim(),
                 @"^(contains|startswith|endswith)\((\w+),\s*'([^']*)'\)$",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                RegexOptions.IgnoreCase);
             if (fnMatch.Success)
             {
                 var operation = fnMatch.Groups[1].Value.ToLower();

@@ -272,6 +272,28 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
         }
     }
 
+    [DockerFact]
+    public async Task Webhook_InsertReturnsId()
+    {
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+
+        var ids = new List<long>();
+        foreach (var hook in new[] { "orders", "invoices" })
+        {
+            var insert = SqlTableWriteBuilder.BuildInsertReturningId(provider, _fixture.QualifiedWebhookTable,
+                new Dictionary<string, object?> { ["WebhookId"] = hook, ["Payload"] = """{"a":1}""", ["ReceivedAt"] = DateTime.UtcNow });
+            ids.Add(Convert.ToInt64(await connection.ExecuteScalarAsync(insert.Sql, insert.Parameters)));
+        }
+
+        Assert.True(ids[0] > 0);
+        Assert.Equal(ids[0] + 1, ids[1]);
+        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, _fixture.QualifiedWebhookTable, "Id", (int)ids[1]);
+        var row = (await connection.QueryAsync(select.Sql, select.Parameters)).Cast<IDictionary<string, object>>().Single();
+        Assert.Equal("invoices", row["WebhookId"]);
+    }
+
     private RelationalExpandSpec CategorySpec() => new(
         "Category", _fixture.QualifiedCategoriesTable, "CategoryId", "CategoryId",
         new[] { "CategoryId", "CategoryName" });

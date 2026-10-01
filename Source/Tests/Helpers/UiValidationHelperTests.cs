@@ -16,7 +16,9 @@ public class UiValidationHelperTests
         tokenService.Setup(s => s.GetActiveTokensAsync())
             .ReturnsAsync(existingUsernames.Select(u => new AuthToken
             {
-                Username = u, TokenHash = "hash", TokenSalt = "salt"
+                Username = u,
+                TokenHash = "hash",
+                TokenSalt = "salt"
             }).ToList());
 
         return new ServiceCollection()

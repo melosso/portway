@@ -34,30 +34,30 @@ public sealed class TokenTenantTests : IAsyncLifetime
     [Fact]
     public async Task GrantsStoredCanonical()
     {
-        var token = await _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedTenants: """{"X-Company-Id":["GLOBEX","ACME"]}""");
+        var token = await _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedTenants: """{"X-Company-Id":["GLOBEX","ACME"]}""", ct: TestContext.Current.CancellationToken);
 
         var details = await _tokens.GetTokenDetailsByTokenAsync(token);
 
         Assert.Equal("""{"X-Company-Id":["ACME","GLOBEX"]}""", details!.AllowedTenants);
-        Assert.True(details.Tenants["x-company-id"].Contains("GLOBEX"));
+        Assert.Contains("GLOBEX", (IReadOnlySet<string>)details.Tenants["x-company-id"]);
     }
 
     [Fact]
     public async Task InvalidGrantsRejected() =>
-        await Assert.ThrowsAsync<ArgumentException>(() => _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedTenants: """{"Authorization":["x"]}"""));
+        await Assert.ThrowsAsync<ArgumentException>(() => _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedTenants: """{"Authorization":["x"]}""", ct: TestContext.Current.CancellationToken));
 
     [Fact]
     public async Task UpdateReplacesGrants()
     {
-        var token = await _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedTenants: """{"X-Company-Id":["ACME"]}""");
+        var token = await _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedTenants: """{"X-Company-Id":["ACME"]}""", ct: TestContext.Current.CancellationToken);
         var id = (await _tokens.GetTokenDetailsByTokenAsync(token))!.Id;
         Assert.True(TenantGrants.TryParse("""{"X-Client-Id":["7"]}""", out var grants, out _));
 
-        await _tokens.UpdateTokenTenantsAsync(id, grants);
+        await _tokens.UpdateTokenTenantsAsync(id, grants, TestContext.Current.CancellationToken);
 
         var details = await _tokens.GetTokenDetailsByTokenAsync(token);
         Assert.False(details!.Tenants.ContainsKey("X-Company-Id"));
-        Assert.True(details.Tenants["X-Client-Id"].Contains("7"));
+        Assert.Contains("7", (IReadOnlySet<string>)details.Tenants["X-Client-Id"]);
     }
 
     [Fact]

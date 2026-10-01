@@ -164,24 +164,24 @@ public class OpenApiDocumentTests : ApiTestBase
         var offenders = new List<string>();
 
         foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())
-        foreach (var op in path.Value.EnumerateObject())
-        {
-            // Non-standard verbs sit under additionalOperations rather than directly on the path item
-            var operations = op.Name == "additionalOperations"
-                ? op.Value.EnumerateObject().Select(o => o.Value)
-                : [op.Value];
-
-            foreach (var operation in operations)
+            foreach (var op in path.Value.EnumerateObject())
             {
-                if (!operation.TryGetProperty("summary", out var summary)) continue;
+                // Non-standard verbs sit under additionalOperations rather than directly on the path item
+                var operations = op.Name == "additionalOperations"
+                    ? op.Value.EnumerateObject().Select(o => o.Value)
+                    : [op.Value];
 
-                var text = summary.GetString() ?? "";
-                if (verbs.Any(v => text.StartsWith(v + " ", StringComparison.Ordinal)))
+                foreach (var operation in operations)
                 {
-                    offenders.Add($"{path.Name} {op.Name}: {text}");
+                    if (!operation.TryGetProperty("summary", out var summary)) continue;
+
+                    var text = summary.GetString() ?? "";
+                    if (verbs.Any(v => text.StartsWith(v + " ", StringComparison.Ordinal)))
+                    {
+                        offenders.Add($"{path.Name} {op.Name}: {text}");
+                    }
                 }
             }
-        }
 
         Assert.True(offenders.Count == 0,
             "Operations falling back to a generated summary; give their endpoint a Documentation.MethodDescriptions entry:\n"
@@ -246,26 +246,26 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var offenders = new List<string>();
         foreach (var path in paths.EnumerateObject())
-        foreach (var op in path.Value.EnumerateObject())
-        {
-            if (!op.Value.TryGetProperty("responses", out var responses) || responses.ValueKind != JsonValueKind.Object) continue;
-            foreach (var r in responses.EnumerateObject())
+            foreach (var op in path.Value.EnumerateObject())
             {
-                if (!int.TryParse(r.Name, out var code) || code < 400) continue;
-
-                var reference = r.Value.TryGetProperty("content", out var content) &&
-                                content.TryGetProperty("application/json", out var media) &&
-                                media.TryGetProperty("$ref", out var refValue)
-                    ? refValue.GetString()
-                    : null;
-
-                if (reference != "#/components/mediaTypes/ErrorJson" &&
-                    reference != "#/components/mediaTypes/ValidationErrorJson")
+                if (!op.Value.TryGetProperty("responses", out var responses) || responses.ValueKind != JsonValueKind.Object) continue;
+                foreach (var r in responses.EnumerateObject())
                 {
-                    offenders.Add($"{path.Name} {op.Name} {r.Name}: {reference ?? "no $ref"}");
+                    if (!int.TryParse(r.Name, out var code) || code < 400) continue;
+
+                    var reference = r.Value.TryGetProperty("content", out var content) &&
+                                    content.TryGetProperty("application/json", out var media) &&
+                                    media.TryGetProperty("$ref", out var refValue)
+                        ? refValue.GetString()
+                        : null;
+
+                    if (reference != "#/components/mediaTypes/ErrorJson" &&
+                        reference != "#/components/mediaTypes/ValidationErrorJson")
+                    {
+                        offenders.Add($"{path.Name} {op.Name} {r.Name}: {reference ?? "no $ref"}");
+                    }
                 }
             }
-        }
 
         Assert.True(offenders.Count == 0, "Error responses not using the shared envelope:\n" + string.Join("\n", offenders));
     }
@@ -337,20 +337,20 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var offenders = new List<string>();
         foreach (var path in paths.EnumerateObject())
-        foreach (var op in path.Value.EnumerateObject())
-        {
-            if (!op.Value.TryGetProperty("responses", out var resp) || resp.ValueKind != JsonValueKind.Object) continue;
-            foreach (var r in resp.EnumerateObject())
+            foreach (var op in path.Value.EnumerateObject())
             {
-                if (!int.TryParse(r.Name, out var code)) continue;
-                var expected = PortwayApi.Classes.OpenApi.StandardResponses.DescriptionFor(code);
-                if (expected == null) continue;
-                if (!r.Value.TryGetProperty("description", out var d) || d.GetString() != expected)
+                if (!op.Value.TryGetProperty("responses", out var resp) || resp.ValueKind != JsonValueKind.Object) continue;
+                foreach (var r in resp.EnumerateObject())
                 {
-                    offenders.Add($"{path.Name} {op.Name} {r.Name}: '{d.GetString()}' (expected '{expected}')");
+                    if (!int.TryParse(r.Name, out var code)) continue;
+                    var expected = PortwayApi.Classes.OpenApi.StandardResponses.DescriptionFor(code);
+                    if (expected == null) continue;
+                    if (!r.Value.TryGetProperty("description", out var d) || d.GetString() != expected)
+                    {
+                        offenders.Add($"{path.Name} {op.Name} {r.Name}: '{d.GetString()}' (expected '{expected}')");
+                    }
                 }
             }
-        }
 
         Assert.True(offenders.Count == 0, "Non-standardized response descriptions:\n" + string.Join("\n", offenders));
     }

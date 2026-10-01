@@ -92,7 +92,7 @@ public sealed partial class SqlRequestHandler
             orderby = ApplyDefaultSorting(orderby, endpoint);
 
             // Check if this is a Table Valued Function endpoint
-            if (PortwayApi.Helpers.SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
+            if (SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint))
             {
                 // Fail closed: the TVF hybrid splice cannot carry a JOIN, so $expand would be silently dropped
                 if (!string.IsNullOrWhiteSpace(context.Request.Query["$expand"].FirstOrDefault()))
@@ -120,7 +120,7 @@ public sealed partial class SqlRequestHandler
                     tvfODataParams["orderby"] = orderby;
 
                 // Handle TVF request using the dedicated handler
-                var tvfResult = await PortwayApi.Classes.Handlers.TableValuedFunctionSqlHandler.HandleTVFGetRequest(
+                var tvfResult = await Classes.Handlers.TableValuedFunctionSqlHandler.HandleTVFGetRequest(
                     endpoint,
                     context.Request,
                     pathSegments,
@@ -243,7 +243,7 @@ public sealed partial class SqlRequestHandler
                 // Validate select columns (using aliases)
                 if (!string.IsNullOrEmpty(select))
                 {
-                    var (isValid, invalidAliases) = PortwayApi.Helpers.ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
+                    var (isValid, invalidAliases) = ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
 
                     if (!isValid)
                     {
@@ -251,13 +251,13 @@ public sealed partial class SqlRequestHandler
                     }
 
                     // Convert aliases to database column names for the SQL query
-                    selectForQuery = PortwayApi.Helpers.ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
+                    selectForQuery = ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
                     Log.Debug("Converted aliases '{Aliases}' to database columns '{DatabaseColumns}'", select, selectForQuery);
                 }
                 else
                 {
                     // If no select and columns are restricted, use all allowed database columns
-                    var allDatabaseColumns = PortwayApi.Helpers.ColumnMappingHelper.GetDatabaseColumns(databaseToAlias);
+                    var allDatabaseColumns = ColumnMappingHelper.GetDatabaseColumns(databaseToAlias);
                     selectForQuery = string.Join(",", allDatabaseColumns);
                     Log.Debug("No select specified, using all allowed database columns: {DatabaseColumns}", selectForQuery);
                 }
@@ -265,7 +265,7 @@ public sealed partial class SqlRequestHandler
                 // Convert filter column references from aliases to database columns
                 if (!string.IsNullOrEmpty(filter))
                 {
-                    filterForQuery = PortwayApi.Helpers.ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
+                    filterForQuery = ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
                     if (filterForQuery != filter)
                     {
                         Log.Debug("Converted filter aliases: '{OriginalFilter}' -> '{ConvertedFilter}'", filter, filterForQuery);
@@ -275,7 +275,7 @@ public sealed partial class SqlRequestHandler
                 // Convert orderby column references from aliases to database columns
                 if (!string.IsNullOrEmpty(orderby))
                 {
-                    orderbyForQuery = PortwayApi.Helpers.ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
+                    orderbyForQuery = ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
                     if (orderbyForQuery != orderby)
                     {
                         Log.Debug("Converted orderby aliases: '{OriginalOrderBy}' -> '{ConvertedOrderBy}'", orderby, orderbyForQuery);
@@ -390,7 +390,7 @@ public sealed partial class SqlRequestHandler
                 var databaseToAlias = endpoint.DatabaseToAlias;
                 if (databaseToAlias.Count > 0)
                 {
-                    var aliasResults = PortwayApi.Helpers.ColumnMappingHelper.TransformQueryResultsToAliases(resultList, databaseToAlias);
+                    var aliasResults = ColumnMappingHelper.TransformQueryResultsToAliases(resultList, databaseToAlias);
                     transformedResults = aliasResults.Cast<object>().ToList();
                     Log.Debug("Transformed {Count} results from database columns to aliases", transformedResults.Count);
                 }
@@ -399,7 +399,7 @@ public sealed partial class SqlRequestHandler
             // Nest expanded navigation columns (Nav.Column) into a Nav object, aliased to the target's columns
             if (expandNavMaps is { Count: > 0 })
             {
-                transformedResults = PortwayApi.Helpers.OdataExpandResponseShaper
+                transformedResults = OdataExpandResponseShaper
                     .Nest(transformedResults, expandNavMaps)
                     .Cast<object>()
                     .ToList();

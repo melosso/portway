@@ -462,7 +462,7 @@ public sealed partial class McpChatService
             {
                 foreach (var header in tool.TenantHeaders)
                 {
-                    if (tenants[header] is JsonValue value && value.TryGetValue<string>(out var tenant) && PortwayApi.Auth.TenantGrants.IsValidValue(tenant))
+                    if (tenants[header] is JsonValue value && value.TryGetValue<string>(out var tenant) && Auth.TenantGrants.IsValidValue(tenant))
                         req.Headers.TryAddWithoutValidation(header, tenant);
                 }
             }

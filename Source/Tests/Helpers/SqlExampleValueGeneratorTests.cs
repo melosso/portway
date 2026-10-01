@@ -17,8 +17,8 @@ public class SqlExampleValueGeneratorTests
     }
 
     [Theory]
-    [InlineData("System.String",  false, false, "example")]
-    [InlineData("System.String",  false, true,  "ABC123")]   // primary key string
+    [InlineData("System.String", false, false, "example")]
+    [InlineData("System.String", false, true, "ABC123")]   // primary key string
     [InlineData("System.Boolean", false, false, "true")]
     public void FromColumn_NonNullable_ReturnsValue(string clrType, bool isNullable, bool isPk, string expectedContains)
     {

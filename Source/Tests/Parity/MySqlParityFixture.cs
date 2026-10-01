@@ -10,6 +10,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
     public override SqlProviderType ProviderType => SqlProviderType.MySql;
     // MySQL schemas are databases; the container's default database plays that role
     public override string QualifiedProductsTable => "test.Products";
+    public override string QualifiedWebhookTable => "test.WebhookData";
     public override string QualifiedCategoriesTable => "test.Categories";
     public override string ProcedureSchema => "test";
     public override string ProcedureName => "GetProductsByPrice";
@@ -28,6 +29,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
 
     protected override IEnumerable<string> SchemaStatements =>
     [
+        "CREATE TABLE test.WebhookData (Id INT AUTO_INCREMENT PRIMARY KEY, WebhookId VARCHAR(100) NOT NULL, Payload TEXT NOT NULL, ReceivedAt DATETIME NOT NULL)",
         "CREATE TABLE test.Products (Id INT PRIMARY KEY, Name VARCHAR(100) NOT NULL, Price DECIMAL(10,2) NOT NULL, ReleasedAt DATE NULL, CategoryId INT NULL)",
         $"INSERT INTO test.Products (Id, Name, Price, ReleasedAt) VALUES {SeedValues}",
         "CREATE TABLE test.Categories (CategoryId INT PRIMARY KEY, CategoryName VARCHAR(100) NOT NULL)",

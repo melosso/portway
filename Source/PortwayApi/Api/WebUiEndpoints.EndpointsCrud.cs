@@ -36,7 +36,7 @@ public static partial class WebUiEndpointExtensions
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
-            if (!System.Text.RegularExpressions.Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
+            if (!Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
                 return Results.Json(new { error = "Invalid name" }, statusCode: 400);
 
             var (newFilePath, newErr) = ResolveEndpointPath(type, newName);
@@ -136,7 +136,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = putTenancyError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
-            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(filePath!);
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
             await File.WriteAllTextAsync(filePath!, rawContent);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
@@ -153,7 +153,7 @@ public static partial class WebUiEndpointExtensions
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var name = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
 
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
                 return Results.Json(new { error = "Invalid endpoint name. Use letters, numbers, hyphens, underscores, and forward slashes as separators." }, statusCode: 400);
 
             var (filePath, err) = ResolveEndpointPath(type, name);
@@ -195,7 +195,7 @@ public static partial class WebUiEndpointExtensions
             if (!File.Exists(filePath!))
                 return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
 
-            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(filePath!);
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
             var dir = Path.GetDirectoryName(filePath!);
             if (dir != null && Directory.Exists(dir))
                 Directory.Delete(dir, true);
@@ -267,7 +267,7 @@ public static partial class WebUiEndpointExtensions
             if (root.ValueKind == JsonValueKind.Object &&
                 root.TryGetProperty("Namespace", out var ns) && ns.ValueKind == JsonValueKind.String)
             {
-                errors.AddRange(PortwayApi.Helpers.DirectoryHelper.ValidateNamespaceName(ns.GetString() ?? ""));
+                errors.AddRange(DirectoryHelper.ValidateNamespaceName(ns.GetString() ?? ""));
             }
 
             return Results.Json(new { valid = errors.Count == 0, errors });

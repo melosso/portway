@@ -40,6 +40,7 @@ public partial class EndpointController : ControllerBase
     private readonly StaticRequestHandler _staticRequestHandler;
     private readonly SqlRequestHandler _sqlRequestHandler;
     private readonly ProxyRequestHandler _proxyRequestHandler;
+    private readonly ISqlProviderFactory _providerFactory;
 
     /// <summary>
     /// Validates if the environment is allowed both globally and for the specific endpoint
@@ -82,7 +83,8 @@ public partial class EndpointController : ControllerBase
         CompositeRequestHandler compositeRequestHandler,
         StaticRequestHandler staticRequestHandler,
         SqlRequestHandler sqlRequestHandler,
-        ProxyRequestHandler proxyRequestHandler)
+        ProxyRequestHandler proxyRequestHandler,
+        ISqlProviderFactory providerFactory)
     {
         _environmentSettings = environmentSettings;
         _environmentSettingsProvider = environmentSettingsProvider;
@@ -93,6 +95,7 @@ public partial class EndpointController : ControllerBase
         _staticRequestHandler = staticRequestHandler;
         _sqlRequestHandler = sqlRequestHandler;
         _proxyRequestHandler = proxyRequestHandler;
+        _providerFactory = providerFactory;
     }
 
     /// <summary>

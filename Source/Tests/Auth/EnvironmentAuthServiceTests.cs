@@ -26,7 +26,7 @@ public class EnvironmentAuthServiceTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Headers["X-API-Key"] = "secret-key";
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -55,7 +55,7 @@ public class EnvironmentAuthServiceTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.QueryString = new QueryString("?key=secret-key");
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -85,7 +85,7 @@ public class EnvironmentAuthServiceTests
         var context = new DefaultHttpContext();
         var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes("admin:password"));
         context.Request.Headers.Authorization = $"Basic {credentials}";
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -113,7 +113,7 @@ public class EnvironmentAuthServiceTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Headers.Authorization = "Bearer static-token";
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -141,7 +141,7 @@ public class EnvironmentAuthServiceTests
         var context = new DefaultHttpContext();
         context.Request.Headers["X-API-Key"] = "wrong-key";
         context.Request.Headers.Authorization = "Bearer correct-token";
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -174,7 +174,7 @@ public class EnvironmentAuthServiceTests
         // Arrange
         var context = new DefaultHttpContext();
         context.Request.Headers["X-API-Key"] = "wrong-key";
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -203,20 +203,20 @@ public class EnvironmentAuthServiceTests
         var context = new DefaultHttpContext();
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         var bodyStr = "{\"test\":true}";
-        
+
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(bodyStr));
         context.Request.Body = stream;
         context.Request.Method = "POST";
         context.Request.Path = "/api/test";
-        
+
         var secret = "super-secret-key";
         var rawData = $"{context.Request.Method}{context.Request.Path}{timestamp}{bodyStr}";
         using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(secret));
         var signature = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData))).ToLowerInvariant();
-        
+
         context.Request.Headers["X-Signature"] = signature;
         context.Request.Headers["X-Timestamp"] = timestamp;
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,
@@ -245,20 +245,20 @@ public class EnvironmentAuthServiceTests
         var context = new DefaultHttpContext();
         var timestamp = DateTimeOffset.UtcNow.AddMinutes(-10).ToUnixTimeSeconds().ToString();
         var bodyStr = "{\"test\":true}";
-        
+
         var stream = new MemoryStream(Encoding.UTF8.GetBytes(bodyStr));
         context.Request.Body = stream;
         context.Request.Method = "POST";
         context.Request.Path = "/api/test";
-        
+
         var secret = "super-secret-key";
         var rawData = $"{context.Request.Method}{context.Request.Path}{timestamp}{bodyStr}";
         using var hmac = new System.Security.Cryptography.HMACSHA256(Encoding.UTF8.GetBytes(secret));
         var signature = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes(rawData))).ToLowerInvariant();
-        
+
         context.Request.Headers["X-Signature"] = signature;
         context.Request.Headers["X-Timestamp"] = timestamp;
-        
+
         var settings = new AuthenticationSettings
         {
             Enabled = true,

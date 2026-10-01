@@ -35,7 +35,7 @@ public class ConfigBackupServiceTests : IDisposable
     {
         WriteConfig("""{"a":1}""");
 
-        var first  = ConfigBackupService.Backup(_configPath);
+        var first = ConfigBackupService.Backup(_configPath);
         var second = ConfigBackupService.Backup(_configPath);
 
         Assert.NotNull(first);

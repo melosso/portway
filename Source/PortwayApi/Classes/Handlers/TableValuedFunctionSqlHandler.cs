@@ -88,7 +88,7 @@ public static class TableValuedFunctionSqlHandler
                 endpoint.FunctionParameters);
 
             // Get column mappings from AllowedColumns (using existing system)
-            var (aliasToDb, dbToAlias) = PortwayApi.Helpers.ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
+            var (aliasToDb, dbToAlias) = ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
 
             // Resolve provider factory once (used for both OData dialect and connection creation)
             var providerFactory = request.HttpContext.RequestServices.GetRequiredService<ISqlProviderFactory>();
@@ -182,10 +182,10 @@ public static class TableValuedFunctionSqlHandler
             var resultList = results.Cast<object>().ToList();
 
             // Apply column alias transformations (database column names -> aliases)
-            var (_, resultDbToAlias) = PortwayApi.Helpers.ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
+            var (_, resultDbToAlias) = ColumnMappingHelper.ParseColumnMappings(endpoint.AllowedColumns);
             if (resultDbToAlias.Count > 0)
             {
-                var aliasedResults = PortwayApi.Helpers.ColumnMappingHelper.TransformQueryResultsToAliases(resultList, resultDbToAlias);
+                var aliasedResults = ColumnMappingHelper.TransformQueryResultsToAliases(resultList, resultDbToAlias);
                 resultList = aliasedResults.Cast<object>().ToList();
                 Log.Debug("Applied column alias transformations to {Count} TVF results", resultList.Count);
             }

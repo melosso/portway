@@ -82,7 +82,7 @@ public class ProxyTrafficLoggerMiddleware
         logEntry.QueryString = RedactQueryString(context, queryParamNames);
 
         // Log at debug level only
-        Serilog.Log.Debug($"[Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
+        Log.Debug($"[Trace: {traceId}] Processing {context.Request.Method} request to {context.Request.Path}");
 
         // Extract target URL if available in Items
         if (context.Items.TryGetValue("TargetUrl", out var targetUrl) && targetUrl != null)
@@ -228,7 +228,7 @@ public class ProxyTrafficLoggerMiddleware
             // Log with Serilog for immediate visibility
             if (_options.EnableInfoLogging)
             {
-                Serilog.Log.Information($"[Trace: {traceId}] {logEntry.Method} {logEntry.Path} -> {logEntry.StatusCode} ({logEntry.DurationMs}ms)");
+                Log.Information($"[Trace: {traceId}] {logEntry.Method} {logEntry.Path} -> {logEntry.StatusCode} ({logEntry.DurationMs}ms)");
             }
         }
         catch (Exception ex)
@@ -237,7 +237,7 @@ public class ProxyTrafficLoggerMiddleware
             logEntry.DurationMs = (int)stopwatch.ElapsedMilliseconds;
             logEntry.StatusCode = 500;  // Internal Server Error
 
-            Serilog.Log.Error(ex, $"[Trace: {traceId}] Error during proxy request processing");
+            Log.Error(ex, $"[Trace: {traceId}] Error during proxy request processing");
 
             // Re-throw the exception
             throw;
@@ -261,7 +261,7 @@ public class ProxyTrafficLoggerMiddleware
             // Try to add the log entry to the channel
             if (!_logChannel.Writer.TryWrite(logEntry))
             {
-                Serilog.Log.Warning($"[Trace: {traceId}] Failed to write traffic log entry to channel - queue might be full");
+                Log.Warning($"[Trace: {traceId}] Failed to write traffic log entry to channel - queue might be full");
             }
         }
     }
@@ -357,7 +357,7 @@ public class ProxyTrafficLoggerMiddleware
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error extracting username from token");
+            Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error extracting username from token");
             logEntry.Username = "error-extracting-user";
         }
     }
@@ -396,7 +396,7 @@ public class ProxyTrafficLoggerMiddleware
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error capturing request headers");
+            Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error capturing request headers");
         }
     }
 
@@ -431,7 +431,7 @@ public class ProxyTrafficLoggerMiddleware
         }
         catch (Exception ex)
         {
-            Serilog.Log.Debug(ex, "Could not resolve environment auth config for traffic-log redaction of {Environment}", env);
+            Log.Debug(ex, "Could not resolve environment auth config for traffic-log redaction of {Environment}", env);
         }
 
         return (headerNames, queryParamNames);
@@ -450,7 +450,7 @@ public class ProxyTrafficLoggerMiddleware
         if (!query.Keys.Any(queryParamNamesToRedact.Contains))
             return raw;
 
-        var rebuilt = Microsoft.AspNetCore.Http.QueryString.Create(
+        var rebuilt = QueryString.Create(
             query.Select(kv => new KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>(
                 kv.Key,
                 queryParamNamesToRedact.Contains(kv.Key) ? "[REDACTED]" : kv.Value)));

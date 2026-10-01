@@ -41,9 +41,9 @@ internal sealed class UpstreamCapture : IDisposable
 
     private async Task Capture(HttpContext ctx)
     {
-        Method       = ctx.Request.Method;
+        Method = ctx.Request.Method;
         PathAndQuery = ctx.Request.Path + ctx.Request.QueryString;
-        ContentType  = ctx.Request.ContentType;
+        ContentType = ctx.Request.ContentType;
         Headers.Clear();
         foreach (var (key, value) in ctx.Request.Headers)
             Headers[key] = value.ToString();

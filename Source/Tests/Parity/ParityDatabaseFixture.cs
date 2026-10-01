@@ -22,6 +22,11 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
     public abstract string QualifiedCategoriesTable { get; }
 
     /// <summary>
+    /// Schema-qualified webhook table (Id identity, WebhookId, Payload, ReceivedAt)
+    /// </summary>
+    public abstract string QualifiedWebhookTable { get; }
+
+    /// <summary>
     /// Schema passed to GetProcedureParametersAsync
     /// </summary>
     public abstract string ProcedureSchema { get; }

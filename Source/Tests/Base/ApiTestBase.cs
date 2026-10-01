@@ -58,7 +58,7 @@ public class ApiTestBase : IDisposable
     {
         var id = Guid.NewGuid().ToString("N");
         _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_auth.db");
-        _mcpDbPath  = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_mcp.db");
+        _mcpDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_mcp.db");
 
         _mockEnvironmentSettingsProvider = new Mock<IEnvironmentSettingsProvider>();
         _mockUrlValidator = new Mock<UrlValidator>(MockBehavior.Loose, "path");
@@ -74,21 +74,21 @@ public class ApiTestBase : IDisposable
         _mockConnectionPoolService = new Mock<SqlConnectionPoolService>(poolingOptions, providerFactory);
         _mockSqlMetadataService = new Mock<SqlMetadataService>(_mockConnectionPoolService.Object, providerFactory);
         _mockTokenService = new Mock<TokenService>((AuthDbContext)null!, (ITokenVerificationCache)null!);
-        
+
         // Setup token service mock
         _mockTokenService.Setup(s => s.VerifyTokenAsync("test-token"))
             .ReturnsAsync(true);
-        
+
         _mockTokenService.Setup(s => s.GetActiveTokensAsync())
             .ReturnsAsync(new List<AuthToken>());
-        
+
         _mockTokenService.Setup(s => s.GetTokenDetailsByTokenAsync("test-token"))
-            .ReturnsAsync(new AuthToken 
-            { 
-                Username = "test-user", 
-                TokenHash = "hash", 
+            .ReturnsAsync(new AuthToken
+            {
+                Username = "test-user",
+                TokenHash = "hash",
                 TokenSalt = "salt",
-                AllowedEnvironments = "*", 
+                AllowedEnvironments = "*",
                 AllowedScopes = "*"
             });
 
@@ -140,13 +140,13 @@ public class ApiTestBase : IDisposable
                     services.AddSingleton(_mockConnectionPoolService.Object);
                     services.AddSingleton(_mockSqlMetadataService.Object);
                     services.AddSingleton(_mockTokenService.Object);
-                    
+
                     // Disable rate limiting for tests
                     services.Configure<PortwayApi.Middleware.RateLimitSettings>(options =>
                     {
                         options.Enabled = false;
                     });
-                    
+
                     // Configure minimal logging for tests
                     services.AddLogging(logging =>
                     {
@@ -158,7 +158,7 @@ public class ApiTestBase : IDisposable
             });
 
         _client = _factory.CreateClient();
-        
+
         // Add default authorization header with test token
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test-token");
     }
@@ -168,7 +168,7 @@ public class ApiTestBase : IDisposable
         _client.Dispose();
         _factory.Dispose();
         if (File.Exists(_authDbPath)) File.Delete(_authDbPath);
-        if (File.Exists(_mcpDbPath))  File.Delete(_mcpDbPath);
+        if (File.Exists(_mcpDbPath)) File.Delete(_mcpDbPath);
     }
 
     // Helper method to add authorization header
@@ -176,7 +176,7 @@ public class ApiTestBase : IDisposable
     {
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
-    
+
     // Helper method to set allowed environments for a test
     protected void SetAllowedEnvironments(params string[] environments)
     {
@@ -204,12 +204,12 @@ public class ApiTestBase : IDisposable
 public class TestEnvironmentSettings : EnvironmentSettings
 {
     private List<string> _allowedEnvironments = new List<string> { "500", "700" };
-    
+
     public void SetAllowedEnvironments(List<string> environments)
     {
         _allowedEnvironments = environments.ToList();
     }
-    
+
     public override bool IsEnvironmentAllowed(string environment)
     {
         return _allowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase);

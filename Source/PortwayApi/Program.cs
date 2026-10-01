@@ -255,12 +255,10 @@ try
     // Log hosting URLs, Web UI auth status and configuration reload status
     StartupLogHelper.LogHostingSummary(app, builder.Configuration, webUiEnabled);
 
-    // Register application shutdown handler
     app.Lifetime.ApplicationStopping.Register(() =>
     {
         Log.Information("");
         Log.Information("Application shutting down...");
-        Log.CloseAndFlush();
     });
 
     // Run the application

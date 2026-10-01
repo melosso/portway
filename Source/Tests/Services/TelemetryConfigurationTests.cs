@@ -32,7 +32,7 @@ public class TelemetryConfigurationTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Provider"]      = "Otlp",
+            ["Telemetry:Provider"] = "Otlp",
             ["Telemetry:Otlp:Endpoint"] = "http://otel-collector.internal:4317"
         });
 
@@ -51,7 +51,7 @@ public class TelemetryConfigurationTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Enabled"]      = "true",
+            ["Telemetry:Enabled"] = "true",
             ["Telemetry:OtlpEndpoint"] = "http://otel-collector.internal:4317"
         });
 
@@ -67,7 +67,7 @@ public class TelemetryConfigurationTests
         var config = BuildConfig(new()
         {
             ["Telemetry:Provider"] = "Prometheus",
-            ["Telemetry:Enabled"]  = "true"
+            ["Telemetry:Enabled"] = "true"
         });
 
         var options = config.GetSection("Telemetry").Get<TelemetryOptions>()!;
@@ -80,8 +80,8 @@ public class TelemetryConfigurationTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Provider"]      = "Otlp",
-            ["Telemetry:OtlpEndpoint"]  = "http://legacy:4317",
+            ["Telemetry:Provider"] = "Otlp",
+            ["Telemetry:OtlpEndpoint"] = "http://legacy:4317",
             ["Telemetry:Otlp:Endpoint"] = "http://nested:4317"
         });
 
@@ -96,7 +96,7 @@ public class TelemetryConfigurationTests
         // Demo uses service name override to distinguish environments
         var config = BuildConfig(new()
         {
-            ["Telemetry:Enabled"]     = "true",
+            ["Telemetry:Enabled"] = "true",
             ["Telemetry:ServiceName"] = "portway-wms-demo"
         });
 
@@ -110,7 +110,7 @@ public class TelemetryConfigurationTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Enabled"]            = "true",
+            ["Telemetry:Enabled"] = "true",
             ["Telemetry:ResourceAttributes"] = "deployment.environment=production,host.name=gw01"
         });
 
@@ -151,7 +151,7 @@ public class TelemetryConfigurationTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Enabled"]      = "true",
+            ["Telemetry:Enabled"] = "true",
             ["Telemetry:OtlpEndpoint"] = "http://localhost:4317"
         });
 
@@ -170,7 +170,7 @@ public class TelemetryConfigurationTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Enabled"]      = "true",
+            ["Telemetry:Enabled"] = "true",
             ["Telemetry:OtlpEndpoint"] = "http://localhost:4317"
         });
 

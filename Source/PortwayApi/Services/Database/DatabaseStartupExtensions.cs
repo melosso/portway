@@ -45,7 +45,7 @@ public static class DatabaseStartupExtensions
         context.EnsureTablesCreated();
 
         await users.SeedFirstAccountAsync(adminApiKey, seedPassword);
-        PortwayApi.Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
+        Helpers.WebUiAuthState.Enabled = await users.CountAsync() > 0;
 
         try
         {

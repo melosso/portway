@@ -25,7 +25,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
 
     private EnvironmentSettingsProvider CreateProvider()
     {
-        var provider = new EnvironmentSettingsProvider(); 
+        var provider = new EnvironmentSettingsProvider();
         var fieldBasePath = typeof(EnvironmentSettingsProvider).GetField("_basePath", BindingFlags.NonPublic | BindingFlags.Instance);
         fieldBasePath!.SetValue(provider, _environmentsDir);
         return provider;
@@ -35,11 +35,11 @@ public class EnvironmentSettingsProviderTests : IDisposable
     public void EncryptEnvironmentIfNeeded_EncryptsConnectionStringAndHeaders()
     {
         var provider = CreateProvider();
-        
+
         var envDir = Path.Combine(_environmentsDir, _envName);
         Directory.CreateDirectory(envDir);
         var settingsPath = Path.Combine(envDir, "settings.json");
-        
+
         var config = new EnvironmentConfig
         {
             ConnectionString = "Server=myServerAddress;Database=myDataBase;User Id=myUsername;Password=myPassword;",
@@ -58,7 +58,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
                 }
             }
         };
-        
+
         var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(config, jsonOptions));
 
@@ -70,7 +70,7 @@ public class EnvironmentSettingsProviderTests : IDisposable
         Assert.True(SettingsEncryptionHelper.IsEncrypted(resultConfig.ConnectionString!));
         Assert.True(SettingsEncryptionHelper.IsEncrypted(resultConfig.Headers!["Authorization"]));
         Assert.False(SettingsEncryptionHelper.IsEncrypted(resultConfig.Headers["Custom-Header"]));
-        
+
         var method = resultConfig.Authentication!.Methods![0];
         Assert.True(SettingsEncryptionHelper.IsEncrypted(method.Secret!));
         Assert.True(SettingsEncryptionHelper.IsEncrypted(method.Value!));
@@ -81,11 +81,11 @@ public class EnvironmentSettingsProviderTests : IDisposable
     public async Task LoadEnvironmentOrThrowAsync_DecryptsSuccessfully()
     {
         var provider = CreateProvider();
-        
+
         var envDir = Path.Combine(_environmentsDir, _envName);
         Directory.CreateDirectory(envDir);
         var settingsPath = Path.Combine(envDir, "settings.json");
-        
+
         var config = new EnvironmentConfig
         {
             ConnectionString = "Server=myServer;Database=myDb;User Id=user;Password=pass;",
@@ -103,17 +103,17 @@ public class EnvironmentSettingsProviderTests : IDisposable
                 }
             }
         };
-        
+
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(config));
-        
+
         provider.EncryptEnvironmentIfNeeded(_envName);
-        
+
         var result = await provider.LoadEnvironmentOrThrowAsync(_envName);
-        
+
         Assert.NotNull(result.ConnectionString);
         Assert.Contains("myServer", result.ConnectionString);
         Assert.Equal("TestServer", result.ServerName);
-        
+
         var fullConfig = await provider.GetEnvironmentConfigAsync(_envName);
         Assert.Equal("secret-token", fullConfig!.Headers!["Authorization"]);
         Assert.Equal("hmac-secret-123", fullConfig.Authentication!.Methods![0].Secret);
@@ -123,16 +123,16 @@ public class EnvironmentSettingsProviderTests : IDisposable
     public void EncryptEnvironmentIfNeeded_SkipsIfInvalidConnectionString()
     {
         var provider = CreateProvider();
-        
+
         var envDir = Path.Combine(_environmentsDir, _envName);
         Directory.CreateDirectory(envDir);
         var settingsPath = Path.Combine(envDir, "settings.json");
-        
+
         var config = new EnvironmentConfig
         {
             ConnectionString = "Invalid Connection String format",
         };
-        
+
         File.WriteAllText(settingsPath, JsonSerializer.Serialize(config));
 
         provider.EncryptEnvironmentIfNeeded(_envName);

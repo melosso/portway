@@ -108,7 +108,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             throw new InvalidOperationException($"No SQL compiler registered for provider '{providerType}'. Check the provider registration in AddPortwaySqlServices.");
 
         // Empty resolved schema means unqualified (SQLite, or MySQL scoping by connection database)
-        var resolvedSchema = PortwayApi.Helpers.SqlSchemaResolver.Resolve(schema, provider);
+        var resolvedSchema = SqlSchemaResolver.Resolve(schema, provider);
         string fullTableName = resolvedSchema.Length > 0 ? $"{resolvedSchema}.{tableName}" : tableName;
 
         var dynamicEdmModelBuilder = new DynamicODataToSQL.EdmModelBuilder();
@@ -147,7 +147,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
                 var kata = dynamicConverter.ConvertToSQLKataQuery(fullTableName, forkParams, count, true);
                 kata = TenantSql.Apply(kata, fullTableName, tenants);
                 if (expandSpecs is { Count: > 0 })
-                    kata = PortwayApi.Helpers.OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
+                    kata = OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
                 var compiled = compiler.Compile(kata);
                 (sqlQuery, rawParams) = (compiled.Sql, compiled.NamedBindings);
             }
@@ -198,7 +198,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
             if (!TryResolveTarget(rel.Target, sqlEndpoints, out var target) || target == null)
                 throw new InvalidOperationException($"Relationship '{rel.Name}' targets unregistered endpoint '{rel.Target}'");
 
-            var targetSchema = PortwayApi.Helpers.SqlSchemaResolver.Resolve(target.DatabaseSchema ?? "dbo", provider);
+            var targetSchema = SqlSchemaResolver.Resolve(target.DatabaseSchema ?? "dbo", provider);
             var targetTable = targetSchema.Length > 0
                 ? $"{targetSchema}.{target.DatabaseObjectName}"
                 : target.DatabaseObjectName ?? rel.Target;

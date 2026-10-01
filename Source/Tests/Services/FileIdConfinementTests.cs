@@ -180,6 +180,42 @@ public sealed class FileIdConfinementTests : IDisposable
         Assert.False(FileIdProtector.TryUnprotect(id, FileIdProtector.DeriveKeys("k2"), out _, out _));
     }
 
+    [Fact]
+    public async Task AbsoluteUploadDownloads()
+    {
+        var root = Path.Combine(_storageDir, "abs-root");
+        var fileId = await _handler.UploadFileToAbsolutePathAsync("prod", Path.Combine(root, "in", "march.pdf"), Body("abs"), root);
+
+        var (stream, _, _) = await _handler.DownloadFileAsync(fileId, "prod", root);
+        Assert.Equal("abs", new StreamReader(stream).ReadToEnd());
+
+        var listed = Assert.Single(await _handler.ListFilesAsync("prod", root, null));
+        Assert.Equal(fileId, listed.FileId);
+
+        await _handler.DeleteFileAsync(fileId, "prod", root);
+        Assert.False(File.Exists(Path.Combine(root, "in", "march.pdf")));
+    }
+
+    [Fact]
+    public async Task AbsoluteFileStaysInItsRoot()
+    {
+        var root = Path.Combine(_storageDir, "abs-a");
+        var fileId = await _handler.UploadFileToAbsolutePathAsync("prod", Path.Combine(root, "x.pdf"), Body("abs"), root);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _handler.DownloadFileAsync(fileId, "prod", Path.Combine(_storageDir, "abs-b")));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _handler.DownloadFileAsync(fileId, "prod", root + "x"));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _handler.DownloadFileAsync(fileId, "prod", "relative"));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _handler.DownloadFileAsync(fileId, "prod"));
+    }
+
+    [Fact]
+    public async Task RelativeFileRefusedOnAbsoluteEndpoint()
+    {
+        var fileId = await _handler.UploadFileAsync("prod", "x.pdf", Body("rel"));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => _handler.DownloadFileAsync(fileId, "prod", Path.Combine(_storageDir, "abs-root")));
+    }
+
     private static string Pad(string base64Url)
     {
         var s = base64Url.Replace('-', '+').Replace('_', '/');

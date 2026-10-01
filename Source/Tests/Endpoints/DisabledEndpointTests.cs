@@ -73,19 +73,19 @@ public class DisabledEndpointTests : ApiTestBase
 
         var offenders = new List<string>();
         foreach (var path in doc.RootElement.GetProperty("paths").EnumerateObject())
-        foreach (var op in path.Value.EnumerateObject())
-        {
-            if (!op.Value.TryGetProperty("responses", out var responses)) continue;
-            if (!responses.TryGetProperty("503", out var unavailable))
+            foreach (var op in path.Value.EnumerateObject())
             {
-                offenders.Add($"{path.Name} {op.Name}");
-                continue;
-            }
+                if (!op.Value.TryGetProperty("responses", out var responses)) continue;
+                if (!responses.TryGetProperty("503", out var unavailable))
+                {
+                    offenders.Add($"{path.Name} {op.Name}");
+                    continue;
+                }
 
-            var reference = unavailable.GetProperty("content").GetProperty("application/json")
-                .GetProperty("$ref").GetString();
-            Assert.Equal("#/components/mediaTypes/ErrorJson", reference);
-        }
+                var reference = unavailable.GetProperty("content").GetProperty("application/json")
+                    .GetProperty("$ref").GetString();
+                Assert.Equal("#/components/mediaTypes/ErrorJson", reference);
+            }
 
         Assert.True(offenders.Count == 0, "Operations missing a 503 response:\n" + string.Join("\n", offenders));
     }

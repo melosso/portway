@@ -62,9 +62,9 @@ public class ExceptionHandlingMiddleware
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
         // In production, don't expose detailed exception information
-        var response = PortwayApi.Helpers.ErrorResponse.Traced(
+        var response = Helpers.ErrorResponse.Traced(
             "An unexpected error occurred.",
-            PortwayApi.Helpers.PortwayResults.TraceIdOf(context));
+            Helpers.PortwayResults.TraceIdOf(context));
 
         // Log detailed information for debugging
         Log.Error("Error details: {Message}", exception.Message);

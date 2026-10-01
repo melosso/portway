@@ -55,7 +55,7 @@ public static partial class WebUiEndpointExtensions
                 ? ae.EnumerateArray().Select(e => e.GetString() ?? "").Where(e => !string.IsNullOrEmpty(e)).ToList()
                 : envSettings.AllowedEnvironments;
 
-            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(globalPath);
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(globalPath);
             var model = new { Environment = new { ServerName = serverName, AllowedEnvironments = allowedEnvs } };
             await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
@@ -65,7 +65,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapGet("/ui/api/environments/{name}", (string name) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -113,7 +113,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapGet("/ui/api/environments/{name}/raw", (string name) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -134,7 +134,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPut("/ui/api/environments/{name}/raw", async (string name, HttpContext context) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
@@ -166,7 +166,7 @@ public static partial class WebUiEndpointExtensions
                 var cs = csEl.GetString() ?? "";
                 if (!string.IsNullOrEmpty(cs) && !cs.StartsWith("PWENC:"))
                 {
-                    var encrypted = PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(cs);
+                    var encrypted = SettingsEncryptionHelper.Encrypt(cs);
                     // Rebuild JSON with encrypted value
                     var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(raw)!;
                     var rebuilt = new Dictionary<string, object?>();
@@ -180,7 +180,7 @@ public static partial class WebUiEndpointExtensions
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
-            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(envPath);
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(envPath);
             await File.WriteAllTextAsync(envPath, raw);
             Audit(context, "update-raw", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
@@ -189,7 +189,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPost("/ui/api/environments/{name}/test", async (string name) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { ok = false, error = "Invalid environment name" }, statusCode: 400);
 
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
@@ -228,7 +228,7 @@ public static partial class WebUiEndpointExtensions
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
 
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name. Use only letters, numbers, hyphens, and underscores." }, statusCode: 400);
             if (envSettings.AllowedEnvironments.Contains(name, StringComparer.OrdinalIgnoreCase))
                 return Results.Json(new { error = "Environment already exists" }, statusCode: 409);
@@ -247,7 +247,7 @@ public static partial class WebUiEndpointExtensions
                     headers[h.Name] = h.Value.GetString() ?? "";
 
             var encryptedCs = !string.IsNullOrEmpty(connStr)
-                ? PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(connStr) : "";
+                ? SettingsEncryptionHelper.Encrypt(connStr) : "";
             var envModel = new { ConnectionString = encryptedCs, ServerName = serverName, Headers = headers };
             await File.WriteAllTextAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
@@ -264,7 +264,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapPut("/ui/api/environments/{name}", async (string name, HttpContext context) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envDir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
@@ -286,7 +286,7 @@ public static partial class WebUiEndpointExtensions
             string newCs;
             if (body.TryGetProperty("connection_string", out var cs) && cs.ValueKind == JsonValueKind.String &&
                 !string.IsNullOrEmpty(cs.GetString()))
-                newCs = encryptOptOut ? cs.GetString()! : PortwayApi.Helpers.SettingsEncryptionHelper.Encrypt(cs.GetString()!);
+                newCs = encryptOptOut ? cs.GetString()! : SettingsEncryptionHelper.Encrypt(cs.GetString()!);
             else
                 newCs = existingCs;
 
@@ -299,7 +299,7 @@ public static partial class WebUiEndpointExtensions
                     headers[h.Name] = h.Value.GetString() ?? "";
 
             Directory.CreateDirectory(envDir);
-            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(envSettingsPath);
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(envSettingsPath);
 
             // Preserve fields the edit form does not manage
             var envModel = new Dictionary<string, object?>
@@ -322,12 +322,12 @@ public static partial class WebUiEndpointExtensions
 
         app.MapMethods("/ui/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var newName = body.TryGetProperty("new_name", out var nn) ? nn.GetString()?.Trim() ?? "" : "";
-            if (!System.Text.RegularExpressions.Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(newName, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid new name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -354,7 +354,7 @@ public static partial class WebUiEndpointExtensions
 
         app.MapDelete("/ui/api/environments/{name}", async (string name, HttpRequest request) =>
         {
-            if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
+            if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -363,7 +363,7 @@ public static partial class WebUiEndpointExtensions
             var deleteFiles = request.Query["delete_files"] == "true";
             var newAllowed = envSettings.AllowedEnvironments
                 .Where(e => !e.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
-            var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
+            var backupPath = Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
             await File.WriteAllTextAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));

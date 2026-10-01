@@ -75,7 +75,7 @@ public static partial class EndpointHandler
 
         try
         {
-            return spec.Parse(json) is { } definition ? PortwayApi.Helpers.TenancyRules.Validate(definition) : [];
+            return spec.Parse(json) is { } definition ? Helpers.TenancyRules.Validate(definition) : [];
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
         {

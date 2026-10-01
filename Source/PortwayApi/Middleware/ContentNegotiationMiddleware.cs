@@ -88,7 +88,7 @@ public class ContentNegotiationMiddleware
             return true;
 
         // Endpoint names may span multiple segments (namespaces); match longest candidate first
-        var proxyEndpoints = PortwayApi.Classes.EndpointHandler.GetProxyEndpoints();
+        var proxyEndpoints = Classes.EndpointHandler.GetProxyEndpoints();
         for (var take = segments.Length - 2; take >= 1; take--)
         {
             var candidate = string.Join('/', segments.Skip(2).Take(take));

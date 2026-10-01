@@ -105,7 +105,7 @@ public class SqlTableValuedFunctionHelperTests
 
         var mockRequest = new Mock<HttpRequest>();
         var mockQuery = new Mock<IQueryCollection>();
-        
+
         mockQuery.Setup(q => q.TryGetValue("StartDate", out It.Ref<StringValues>.IsAny))
             .Returns((string key, out StringValues values) =>
             {
@@ -134,7 +134,7 @@ public class SqlTableValuedFunctionHelperTests
         {
             new TVFParameter
             {
-                Name = "ReportType", 
+                Name = "ReportType",
                 SqlType = "nvarchar",
                 Source = "Header",
                 Required = true
@@ -143,7 +143,7 @@ public class SqlTableValuedFunctionHelperTests
 
         var mockRequest = new Mock<HttpRequest>();
         var mockHeaders = new Mock<IHeaderDictionary>();
-        
+
         mockHeaders.Setup(h => h.TryGetValue("ReportType", out It.Ref<StringValues>.IsAny))
             .Returns((string key, out StringValues values) =>
             {
@@ -173,7 +173,7 @@ public class SqlTableValuedFunctionHelperTests
             new TVFParameter
             {
                 Name = "CustomerId",
-                SqlType = "int", 
+                SqlType = "int",
                 Source = "Path",
                 Position = 1,
                 Required = true
@@ -201,7 +201,7 @@ public class SqlTableValuedFunctionHelperTests
             {
                 Name = "StartDate",
                 SqlType = "datetime",
-                Source = "Query", 
+                Source = "Query",
                 Required = false,
                 DefaultValue = "2024-01-01"
             }
@@ -209,7 +209,7 @@ public class SqlTableValuedFunctionHelperTests
 
         var mockRequest = new Mock<HttpRequest>();
         var mockQuery = new Mock<IQueryCollection>();
-        
+
         mockQuery.Setup(q => q.TryGetValue("StartDate", out It.Ref<StringValues>.IsAny))
             .Returns(false);
         mockRequest.Setup(r => r.Query).Returns(mockQuery.Object);

@@ -41,11 +41,11 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        Serilog.Log.Debug("Proxy Traffic Logger Service started");
+        Log.Debug("Proxy Traffic Logger Service started");
 
         try
         {
-            Serilog.Log.Warning($"Traffic tracing enabled with storage type: {_options.StorageType}. This comes with a significant performance overhead.");
+            Log.Warning($"Traffic tracing enabled with storage type: {_options.StorageType}. This comes with a significant performance overhead.");
 
             await _logStorage.InitializeAsync();
 
@@ -76,11 +76,11 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                     try
                     {
                         await _logStorage.SaveLogsAsync(batch);
-                        Serilog.Log.Debug($"Processed {batch.Count} traffic log entries");
+                        Log.Debug($"Processed {batch.Count} traffic log entries");
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        Serilog.Log.Error(ex, "Failed to persist {Count} traffic log entries; dropping the batch", batch.Count);
+                        Log.Error(ex, "Failed to persist {Count} traffic log entries; dropping the batch", batch.Count);
                     }
 
                     batch.Clear();
@@ -112,11 +112,11 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
         }
         catch (Exception ex)
         {
-            Serilog.Log.Error(ex, "Error in Proxy Traffic Logger Service");
+            Log.Error(ex, "Error in Proxy Traffic Logger Service");
         }
         finally
         {
-            Serilog.Log.Information("Proxy Traffic Logger Service stopping...");
+            Log.Information("Proxy Traffic Logger Service stopping...");
 
             // Flush any remaining logs before shutdown
             try
@@ -130,12 +130,12 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
                 if (remainingLogs.Count > 0)
                 {
                     await _logStorage.SaveLogsAsync(remainingLogs);
-                    Serilog.Log.Information($"Flushed {remainingLogs.Count} remaining traffic log entries on shutdown");
+                    Log.Information($"Flushed {remainingLogs.Count} remaining traffic log entries on shutdown");
                 }
             }
             catch (Exception ex)
             {
-                Serilog.Log.Error(ex, "Error flushing traffic logs on shutdown");
+                Log.Error(ex, "Error flushing traffic logs on shutdown");
             }
         }
     }

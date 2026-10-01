@@ -76,7 +76,7 @@ public static partial class WebUiEndpointExtensions
                 },
                 security = new
                 {
-                    webui_auth_enabled = PortwayApi.Helpers.WebUiAuthState.Enabled,
+                    webui_auth_enabled = WebUiAuthState.Enabled,
                     admin_accounts = accountCount,
                     // The key only ever seeds the first account now; left in place it is a secret with no job
                     legacy_admin_key = !string.IsNullOrEmpty(adminKey),
@@ -160,8 +160,8 @@ public static partial class WebUiEndpointExtensions
                 telemetry = new
                 {
                     provider = telemetry.EffectiveProvider.ToString(),
-                    service_name = telemetry.ServiceName ?? PortwayApi.Services.Telemetry.PortwayTelemetry.ServiceName,
-                    otlp_endpoint = telemetry.EffectiveProvider == PortwayApi.Services.Telemetry.TelemetryProvider.Otlp
+                    service_name = telemetry.ServiceName ?? Services.Telemetry.PortwayTelemetry.ServiceName,
+                    otlp_endpoint = telemetry.EffectiveProvider == Services.Telemetry.TelemetryProvider.Otlp
                                     ? telemetry.EffectiveOtlpEndpoint : null,
                     prometheus_path = telemetry.ActiveMetricsPath
                 },
@@ -180,7 +180,7 @@ public static partial class WebUiEndpointExtensions
                     provider = chatCfg?.Provider ?? string.Empty,
                     model = chatCfg?.Model ?? string.Empty
                 },
-                writable = PortwayApi.Services.Configuration.SettingsWriteService.Schema
+                writable = Services.Configuration.SettingsWriteService.Schema
                 .Select(w => new
                 {
                     key = w.Key,
@@ -346,7 +346,7 @@ public static partial class WebUiEndpointExtensions
         var trusted = Strings("ForwardedHeaders:KnownProxies")
             .Any(p => IPAddress.TryParse(p, out var ip) && ip.Equals(peer))
             || Strings("ForwardedHeaders:KnownNetworks")
-                .Any(n => System.Net.IPNetwork.TryParse(n, out var net) && net.Contains(peer));
+                .Any(n => IPNetwork.TryParse(n, out var net) && net.Contains(peer));
 
         if (!trusted) return peer;
 

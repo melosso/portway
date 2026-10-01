@@ -63,7 +63,7 @@ public static partial class WebUiEndpointExtensions
             if (targetPath is null)
                 return Results.Json(new { error = "This change type cannot be restored" }, statusCode: 400);
 
-            if (!PortwayApi.Services.Configuration.ConfigBackupService.Restore(entry.BackupPath, targetPath))
+            if (!Services.Configuration.ConfigBackupService.Restore(entry.BackupPath, targetPath))
                 return Results.Json(new { error = "Restore failed" }, statusCode: 500);
 
             // Reload affected config

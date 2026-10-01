@@ -13,7 +13,7 @@ public class ColumnMappingHelperTests
         var allowedColumns = new List<string>
         {
             "ItemCode;ProductNumber",
-            "Description;Description", 
+            "Description;Description",
             "Assortment;AssortmentID",
             "sysguid;InternalID"
         };
@@ -24,12 +24,12 @@ public class ColumnMappingHelperTests
         // Assert
         Assert.Equal(4, aliasToDatabase.Count);
         Assert.Equal(4, databaseToAlias.Count);
-        
+
         Assert.Equal("ItemCode", aliasToDatabase["ProductNumber"]);
         Assert.Equal("Description", aliasToDatabase["Description"]);
         Assert.Equal("Assortment", aliasToDatabase["AssortmentID"]);
         Assert.Equal("sysguid", aliasToDatabase["InternalID"]);
-        
+
         Assert.Equal("ProductNumber", databaseToAlias["ItemCode"]);
         Assert.Equal("Description", databaseToAlias["Description"]);
         Assert.Equal("AssortmentID", databaseToAlias["Assortment"]);
@@ -75,10 +75,10 @@ public class ColumnMappingHelperTests
 
         // Assert
         Assert.Equal(5, aliasToDatabase.Count); // Should have 5 valid mappings
-        
+
         // Valid mapping
         Assert.Equal("ItemCode", aliasToDatabase["ProductNumber"]);
-        
+
         // Fallback cases
         Assert.Equal("Description", aliasToDatabase["Description"]);
         Assert.Equal("Assortment", aliasToDatabase["Assortment"]);
@@ -102,7 +102,7 @@ public class ColumnMappingHelperTests
 
         // Act & Assert - Should not throw any exceptions
         var (aliasToDatabase, databaseToAlias) = ColumnMappingHelper.ParseColumnMappings(allowedColumns);
-        
+
         // Should only have the valid entries
         Assert.Equal(2, aliasToDatabase.Count);
         Assert.Equal("ValidColumn", aliasToDatabase["ValidColumn"]);

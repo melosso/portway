@@ -33,7 +33,7 @@ public class PrometheusOptionsTests
     {
         var config = BuildConfig(new()
         {
-            ["Telemetry:Provider"]        = "Prometheus",
+            ["Telemetry:Provider"] = "Prometheus",
             ["Telemetry:Prometheus:Path"] = "/internal/metrics"
         });
 
@@ -112,7 +112,7 @@ public class PrometheusScrapeEndpointTests : IDisposable
     {
         var id = Guid.NewGuid().ToString("N");
         _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_auth.db");
-        _mcpDbPath  = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_mcp.db");
+        _mcpDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_mcp.db");
 
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
@@ -180,7 +180,7 @@ public class PrometheusScrapeEndpointTests : IDisposable
         await _client.GetAsync("/api/600/nonexistent", TestContext.Current.CancellationToken);
 
         var response = await _client.GetAsync("/metrics", TestContext.Current.CancellationToken);
-        var content  = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        var content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         Assert.Contains("portway_request_duration", content);
     }
@@ -190,7 +190,7 @@ public class PrometheusScrapeEndpointTests : IDisposable
         _client.Dispose();
         _factory.Dispose();
         if (File.Exists(_authDbPath)) File.Delete(_authDbPath);
-        if (File.Exists(_mcpDbPath))  File.Delete(_mcpDbPath);
+        if (File.Exists(_mcpDbPath)) File.Delete(_mcpDbPath);
         GC.SuppressFinalize(this);
     }
 }

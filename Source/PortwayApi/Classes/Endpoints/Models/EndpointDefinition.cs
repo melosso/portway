@@ -67,7 +67,7 @@ public class EndpointDefinition
         var mappings = _columnMappings;
         if (mappings == null)
         {
-            var (aliasToDb, dbToAlias) = PortwayApi.Helpers.ColumnMappingHelper.ParseColumnMappings(AllowedColumns);
+            var (aliasToDb, dbToAlias) = Helpers.ColumnMappingHelper.ParseColumnMappings(AllowedColumns);
             mappings = new ColumnMappingSet(aliasToDb, dbToAlias);
             _columnMappings = mappings;
         }

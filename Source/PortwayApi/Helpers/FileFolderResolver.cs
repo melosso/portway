@@ -11,14 +11,21 @@ public static partial class FileFolderResolver
     private static readonly string[] BuiltInPlaceholders = ["env", "date", "year", "month"];
 
     /// <summary>
-    /// Upload is the expanded path; Scope ends before the first date placeholder segment and is empty for an absolute path
+    /// Upload is the expanded path; Scope ends before the first date placeholder segment and is a full path when BaseDirectory is absolute
     /// </summary>
     public static FileFolders Resolve(string? baseDirectory, string environment, IReadOnlyDictionary<string, string> tenants, DateTime utcNow)
     {
         if (string.IsNullOrWhiteSpace(baseDirectory))
             return new FileFolders(string.Empty, string.Empty, IsAbsolute: false);
         if (Path.IsPathRooted(baseDirectory))
-            return new FileFolders(Expand(baseDirectory, environment, tenants, utcNow), string.Empty, IsAbsolute: true);
+        {
+            var timeAt = TimePlaceholders.Select(p => baseDirectory.IndexOf(p, StringComparison.OrdinalIgnoreCase)).Where(i => i >= 0).DefaultIfEmpty(-1).Min();
+            var scopeRaw = timeAt < 0 ? baseDirectory : baseDirectory[..(baseDirectory.LastIndexOfAny(['/', '\\'], timeAt) + 1)];
+            return new FileFolders(
+                Path.GetFullPath(Expand(baseDirectory, environment, tenants, utcNow)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(Expand(scopeRaw, environment, tenants, utcNow))),
+                IsAbsolute: true);
+        }
 
         var upload = new List<string>();
         var scope = new List<string>();

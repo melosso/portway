@@ -158,7 +158,7 @@ public class ChatStreamTranslatorTests
         var tools = new[] { new ToolDefinition("GetAccounts", "Reads accounts", """{"type":"object"}""") };
 
         var anthropic = ChatPayloadFactory.Declarations(tools, "input_schema");
-        var openAi    = ChatPayloadFactory.Functions(tools);
+        var openAi = ChatPayloadFactory.Functions(tools);
 
         Assert.Equal("object", anthropic[0]!["input_schema"]!["type"]!.GetValue<string>());
         Assert.Equal("function", openAi[0]!["type"]!.GetValue<string>());

@@ -212,7 +212,7 @@ public class TokenAuthMiddleware
             }
 
             // Same longest match resolver as the controller; keeps scope checks and dispatch aligned.
-            if (PortwayApi.Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { } resolved)
+            if (Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { } resolved)
             {
                 return $"{resolved.Namespace}/{resolved.Name}";
             }
