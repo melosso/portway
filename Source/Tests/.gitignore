@@ -87,5 +87,3 @@ environments/*/*.private.json
 .Trashes
 ehthumbs.db
 Thumbs.db
-# upgrade fixtures from released versions
-!Fixtures/**/auth.db

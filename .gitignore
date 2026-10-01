@@ -32,7 +32,3 @@ Documentation/package-lock.json
 !.github/
 appsettings.overrides.json
 portway.key
-
-# upgrade fixtures from released versions
-!Source/Tests/Fixtures/**/auth.db
-Source/Tests/Fixtures/*
