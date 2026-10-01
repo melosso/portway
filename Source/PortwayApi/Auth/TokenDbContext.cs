@@ -77,6 +77,10 @@ public class AuthDbContext : DbContext
             {
                 CreateTokensTable();
             }
+            else
+            {
+                EnsureRateLimitColumns();
+            }
 
             if (!auditsTableExists)
             {
@@ -89,13 +93,14 @@ public class AuthDbContext : DbContext
         }
     }
 
-    // Adds the nullable per-token rate limit columns to pre-existing databases
+    // adds later token columns to existing databases
     private void EnsureRateLimitColumns()
     {
         var migrations = new (string Column, string AlterSql)[]
         {
             ("RateLimitRequests", "ALTER TABLE Tokens ADD COLUMN RateLimitRequests INTEGER NULL"),
             ("RateLimitWindowSeconds", "ALTER TABLE Tokens ADD COLUMN RateLimitWindowSeconds INTEGER NULL"),
+            ("AllowedTenants", "ALTER TABLE Tokens ADD COLUMN AllowedTenants TEXT NOT NULL DEFAULT '{}'"),
         };
 
         foreach (var (column, alterSql) in migrations)
@@ -158,7 +163,8 @@ public class AuthDbContext : DbContext
                     AllowedEnvironments TEXT NOT NULL DEFAULT '*',
                     Description TEXT NOT NULL DEFAULT '',
                     RateLimitRequests INTEGER NULL,
-                    RateLimitWindowSeconds INTEGER NULL
+                    RateLimitWindowSeconds INTEGER NULL,
+                    AllowedTenants TEXT NOT NULL DEFAULT '{}'
                 )");
 
             OpenConnection().Execute(@"
@@ -335,6 +341,7 @@ public class AuthDbContext : DbContext
             entity.Property(e => e.Description).HasDefaultValue("").HasMaxLength(500);
             entity.Property(e => e.RateLimitRequests).IsRequired(false);
             entity.Property(e => e.RateLimitWindowSeconds).IsRequired(false);
+            entity.Property(e => e.AllowedTenants).HasDefaultValue(TenantGrants.Empty).HasMaxLength(4000);
 
             // Add indexes for performance
             entity.HasIndex(e => e.Username).IsUnique(false);

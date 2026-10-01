@@ -426,18 +426,47 @@ function readDocumentation(c) {
   };
 }
 
-function kvRow(k = '', v = '') {
+function kvRow(k = '', v = '', keyLabel = 'Key', valueLabel = 'Value') {
   return `<div class="ep-kv-row">
-    <input type="text" class="input" placeholder="Key" value="${esc(k)}" oninput="markDirty()">
-    <input type="text" class="input" placeholder="Value" value="${esc(v)}" oninput="markDirty()">
+    <input type="text" class="input" placeholder="${esc(keyLabel)}" aria-label="${esc(keyLabel)}" value="${esc(k)}" oninput="markDirty()">
+    <input type="text" class="input" placeholder="${esc(valueLabel)}" aria-label="${esc(valueLabel)}" value="${esc(v)}" oninput="markDirty()">
     <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove(); markDirty()" title="Remove">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>`;
 }
 
-function addKvRow(id) {
-  document.getElementById(id)?.insertAdjacentHTML('beforeend', kvRow());
+function addKvRow(id, keyLabel, valueLabel) {
+  document.getElementById(id)?.insertAdjacentHTML('beforeend', kvRow('', '', keyLabel, valueLabel));
+}
+
+function fieldTenancy(tenancy, valueLabel) {
+  const rows = Object.entries(tenancy ?? {}).map(([k, v]) => kvRow(k, v, 'Header', valueLabel)).join('');
+  return `<div class="field">
+    <label class="field-label" id="tenancyLabel">Tenant headers</label>
+    <div class="ep-col-list" id="tenancy" role="group" aria-labelledby="tenancyLabel">${rows}</div>
+    <button type="button" class="ep-add-row" onclick="addKvRow('tenancy', 'Header', '${esc(valueLabel)}'); markDirty()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add tenant header
+    </button>
+    <div class="field-help">Requests are limited to the values the token holds for each header.</div>
+  </div>`;
+}
+
+function fieldFileTenancy(tenancy) {
+  return `<div class="field">
+    <label class="field-label" for="tenancyHeaders">Tenant headers</label>
+    <input type="text" class="input" id="tenancyHeaders" placeholder="X-Company-Id" value="${esc(Object.keys(tenancy ?? {}).join(', '))}" oninput="markDirty()">
+    <div class="field-help">Comma separated. Each header needs a placeholder in Base Directory, e.g. <code>invoices/{X-Company-Id}</code>.</div>
+  </div>`;
+}
+
+function readTenancy() {
+  const fileHeaders = document.getElementById('tenancyHeaders');
+  const tenancy = fileHeaders
+    ? Object.fromEntries(fileHeaders.value.split(',').map(h => h.trim()).filter(Boolean).map(h => [h, '']))
+    : readKV('tenancy');
+  return Object.keys(tenancy).length ? tenancy : undefined;
 }
 
 function readKV(id) {
@@ -569,6 +598,7 @@ function renderSqlForm(c) {
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
       ${fieldMethods(c.AllowedMethods)}
+      ${fieldTenancy(c.Tenancy, (c.DatabaseObjectType ?? 'Table') === 'TableValuedFunction' ? 'Parameter' : 'Column')}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
@@ -608,6 +638,7 @@ function renderProxyForm(c) {
       <div class="card-header"><h2 class="card-title">Access</h2></div>
       ${fieldMethods(c.Methods ?? c.AllowedMethods)}
       ${fieldAllowedEnvs(c.AllowedEnvironments)}
+      ${fieldTenancy(c.Tenancy, 'Upstream header')}
       ${fieldToggle('enabled', 'Enabled', c.Enabled ?? true)}
       ${fieldToggle('hidden', 'Hidden', c.Hidden ?? false)}
       <div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;padding:0.25rem 0;" onclick="document.getElementById('isMcpExposed').click()">
@@ -676,6 +707,7 @@ function renderFileForm(c) {
       <div class="card-header"><h2 class="card-title">Storage</h2></div>
       ${fieldSelect('storageType', 'Storage Type', c.StorageType ?? 'Local', ['Local','AzureBlob','S3'])}
       ${fieldText('baseDirectory', 'Base Directory', c.BaseDirectory ?? '')}
+      ${fieldFileTenancy(c.Tenancy)}
       ${fieldText('allowedExtensions', 'Allowed Extensions', (c.AllowedExtensions ?? []).join(', '))}
     </div>
     <div class="card">
@@ -854,6 +886,7 @@ function collectFormConfig(type, existingContent) {
         RequiredColumns:      reqCols.length ? reqCols : undefined,
         ColumnValidation:     readJsonField('columnValidation'),
         FunctionParameters:   readJsonField('functionParameters'),
+        Tenancy:              readTenancy(),
         Documentation:        doc ?? undefined,
       };
     }
@@ -880,6 +913,7 @@ function collectFormConfig(type, existingContent) {
         IsMcpExposed:         document.getElementById('isMcpExposed')?.checked || undefined,
         DeletePatterns:       readJsonField('deletePatterns'),
         CustomProperties:     customProps,
+        Tenancy:              readTenancy(),
         Documentation:        doc ?? undefined,
       };
     }
@@ -914,6 +948,7 @@ function collectFormConfig(type, existingContent) {
         StorageType:          document.getElementById('storageType')?.value ?? 'Local',
         BaseDirectory:        document.getElementById('baseDirectory')?.value?.trim() ?? '',
         AllowedExtensions:    exts,
+        Tenancy:              readTenancy(),
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,

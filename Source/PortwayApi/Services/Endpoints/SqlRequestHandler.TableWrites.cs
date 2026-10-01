@@ -35,7 +35,8 @@ public sealed partial class SqlRequestHandler
         string endpointName,
         TableWriteKind kind,
         JsonElement? data,
-        string? routeId)
+        string? routeId,
+        IReadOnlyList<TenantPredicate> tenants)
     {
         var provider = _providerFactory.GetProvider(connectionString);
         var schema = SqlSchemaResolver.Resolve(endpoint.DatabaseSchema, provider, connection.Database);
@@ -54,6 +55,14 @@ public sealed partial class SqlRequestHandler
                 return PortwayResults.BadRequest(columnError!);
         }
 
+        // tenant columns come from the resolved tenant never from the payload
+        foreach (var tenant in tenants)
+        {
+            columns.Remove(tenant.Column);
+            if (kind == TableWriteKind.Insert)
+                columns[tenant.Column] = TenantSql.Literal(tenant.Value);
+        }
+
         // Primary key value comes from the route (DELETE) or the payload (PUT/PATCH)
         object? pkValue = routeId;
         if (pkValue == null && columns.TryGetValue(pkColumn, out var fromPayload))
@@ -70,7 +79,7 @@ public sealed partial class SqlRequestHandler
                     object? created = null;
                     if (pkValue != null)
                     {
-                        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
+                        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue, tenants);
                         created = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
                     }
                     Log.Debug("Table INSERT on {Endpoint} succeeded", endpointName);
@@ -86,12 +95,12 @@ public sealed partial class SqlRequestHandler
                     if (columns.Count == 0)
                         return PortwayResults.BadRequest("Request contains no updatable columns");
 
-                    var update = SqlTableWriteBuilder.BuildUpdate(provider, table, pkColumn, pkValue, columns);
+                    var update = SqlTableWriteBuilder.BuildUpdate(provider, table, pkColumn, pkValue, columns, tenants);
                     var affected = await connection.ExecuteAsync(update.Sql, update.Parameters);
                     if (affected == 0)
                         return PortwayResults.NotFound("Record not found");
 
-                    var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue);
+                    var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, pkColumn, pkValue, tenants);
                     var updated = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
                     Log.Debug("Table UPDATE on {Endpoint} affected {Rows} row(s)", endpointName, affected);
                     return PortwayResults.Mutation("Record updated successfully", updated);
@@ -102,7 +111,7 @@ public sealed partial class SqlRequestHandler
                     if (pkValue == null)
                         return PortwayResults.BadRequest("ID parameter is required for delete operations");
 
-                    var delete = SqlTableWriteBuilder.BuildDelete(provider, table, pkColumn, pkValue);
+                    var delete = SqlTableWriteBuilder.BuildDelete(provider, table, pkColumn, pkValue, tenants);
                     var affected = await connection.ExecuteAsync(delete.Sql, delete.Parameters);
                     if (affected == 0)
                         return PortwayResults.NotFound("Record not found");

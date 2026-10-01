@@ -2,8 +2,8 @@
 # Enable BuildKit features for better performance
 
 # Stage 1: Build the application
-# .NET 11 is currently a preview; switch these tags to 11.0 / 11.0-noble once it reaches GA
-FROM mcr.microsoft.com/dotnet/sdk:11.0-preview AS build
+# pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.1 AS build
 WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies
@@ -28,8 +28,8 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
     dotnet publish "Source/PortwayApi/PortwayApi.csproj" -c Release -o /app/publish /p:UseAppHost=false 
 
 # Stage 2: Runtime image
-# The 11.0 preview does not publish a -noble variant yet; use the default tag (pin -noble again at GA if desired)
-FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview AS final
+# pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.1 AS final
 WORKDIR /app
 
 # Install SQLite and curl for healthchecks

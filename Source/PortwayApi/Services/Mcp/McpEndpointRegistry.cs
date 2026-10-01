@@ -69,6 +69,7 @@ public class McpEndpointRegistry
                     Namespace = ep.Namespace,
                     Method = method,
                     AllowedEnvironments = ep.AllowedEnvironments,
+                    TenantHeaders = ep.TenantHeaders,
                     AvailableFields = ep.AvailableFields,
                     Url = ep.Url,
                     UiResourceUri = ep.UiEnabled ? $"ui://endpoints/{ep.Name}" : null,

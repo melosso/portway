@@ -23,7 +23,11 @@ public partial class EndpointController
             return resolveError;
         }
 
-        return await _sqlRequestHandler.HandleSqlGetRequest(HttpContext, endpoint, env, endpointName, id, remainingPath, select, filter, orderby, top, skip, httpMethod);
+        var tenants = ResolveTenants(endpoint, out var refusal);
+        if (refusal is not null)
+            return refusal;
+
+        return await _sqlRequestHandler.HandleSqlGetRequest(HttpContext, endpoint, env, endpointName, id, remainingPath, select, filter, orderby, top, skip, httpMethod, tenants.Values);
     }
 
     private async Task<IActionResult> HandleSqlPostRequest(
@@ -36,7 +40,11 @@ public partial class EndpointController
             return resolveError;
         }
 
-        return await _sqlRequestHandler.HandleSqlPostRequest(HttpContext, endpoint, env, endpointName, data);
+        var tenants = ResolveTenants(endpoint, out var refusal);
+        if (refusal is not null)
+            return refusal;
+
+        return await _sqlRequestHandler.HandleSqlPostRequest(HttpContext, endpoint, env, endpointName, data, tenants.Values);
     }
 
     private async Task<IActionResult> HandleSqlPutRequest(
@@ -49,7 +57,11 @@ public partial class EndpointController
             return resolveError;
         }
 
-        return await _sqlRequestHandler.HandleSqlPutRequest(HttpContext, endpoint, env, endpointName, data);
+        var tenants = ResolveTenants(endpoint, out var refusal);
+        if (refusal is not null)
+            return refusal;
+
+        return await _sqlRequestHandler.HandleSqlPutRequest(HttpContext, endpoint, env, endpointName, data, tenants.Values);
     }
 
     private async Task<IActionResult> HandleSqlPatchRequest(
@@ -63,7 +75,11 @@ public partial class EndpointController
             return resolveError;
         }
 
-        return await _sqlRequestHandler.HandleSqlPatchRequest(HttpContext, endpoint, env, endpointName, requestBody, method);
+        var tenants = ResolveTenants(endpoint, out var refusal);
+        if (refusal is not null)
+            return refusal;
+
+        return await _sqlRequestHandler.HandleSqlPatchRequest(HttpContext, endpoint, env, endpointName, requestBody, method, tenants.Values);
     }
 
     private async Task<IActionResult> HandleSqlDeleteRequest(
@@ -76,6 +92,10 @@ public partial class EndpointController
             return resolveError;
         }
 
-        return await _sqlRequestHandler.HandleSqlDeleteRequest(HttpContext, endpoint, env, endpointName, id);
+        var tenants = ResolveTenants(endpoint, out var refusal);
+        if (refusal is not null)
+            return refusal;
+
+        return await _sqlRequestHandler.HandleSqlDeleteRequest(HttpContext, endpoint, env, endpointName, id, tenants.Values);
     }
 }

@@ -197,6 +197,16 @@ public class CompositeEndpointHandler
                 string.Empty);
         }
 
+        if (endpoint.HasTenancy)
+        {
+            throw new CompositeStepException(
+                $"Endpoint '{step.Endpoint}' uses tenant headers and cannot be a composite step",
+                step.Name,
+                403,
+                "Tenant endpoints cannot be composite steps",
+                string.Empty);
+        }
+
         // Check if the environment is allowed for this step's endpoint
         if (endpoint.AllowedEnvironments != null &&
             endpoint.AllowedEnvironments.Count > 0 &&

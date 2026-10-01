@@ -137,6 +137,15 @@
       <div class="tag-dropdown" id="createEnvsDropdown"></div>
       <div class="field-help">Enter environment names or <code>*</code> for all.</div>
     </div>
+    <div class="field">
+      <label class="field-label" id="createTenantsLabel">Tenants</label>
+      <div class="ep-col-list" id="createTenants" role="group" aria-labelledby="createTenantsLabel"></div>
+      <button type="button" class="ep-add-row" onclick="addTenantRow('createTenants')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add tenant header
+      </button>
+      <div class="field-help">Values per header, comma separated. <code>*</code> allows any value.</div>
+    </div>
   </div>
   <div class="drawer-footer">
     <button class="btn btn-primary" style="flex:1; justify-content:center" onclick="createToken()" id="createBtn">
@@ -148,6 +157,8 @@
     </button>
   </div>
 </div>
+
+<datalist id="tenantHeaderOptions"></datalist>
 
 <!-- Edit Drawer -->
 <div class="drawer-backdrop" id="editBackdrop" data-drawer-backdrop="editDrawer"></div>
@@ -183,6 +194,15 @@
         <input type="text" id="editEnvsInput" class="tag-input" placeholder="Type to search or * for all">
       </div>
       <div class="tag-dropdown" id="editEnvsDropdown"></div>
+    </div>
+    <div class="field">
+      <label class="field-label" id="editTenantsLabel">Tenants</label>
+      <div class="ep-col-list" id="editTenants" role="group" aria-labelledby="editTenantsLabel"></div>
+      <button type="button" class="ep-add-row" onclick="addTenantRow('editTenants')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add tenant header
+      </button>
+      <div class="field-help">Values per header, comma separated. <code>*</code> allows any value.</div>
     </div>
     <div class="field">
       <label class="field-label">Rate limit</label>
@@ -431,6 +451,7 @@ async function refreshAll() {
       ...(eps.webhook   || []).map(e => e.name)
     ];
     endpointSuggestions = [...new Set(names)].sort();
+    setTenantHeaderOptions(eps);
     createScopesTI.setSuggestions(endpointSuggestions);
     editScopesTI.setSuggestions(endpointSuggestions);
   }
@@ -542,7 +563,7 @@ function renderTable() {
       <td><strong>${esc(t.username)}</strong></td>
       <td class="muted" style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.description) || '—'}</td>
       <td>${formatPills(t.allowed_scopes)}</td>
-      <td>${formatPills(t.allowed_environments)}</td>
+      <td>${formatPills(t.allowed_environments)}${formatTenants(t.allowed_tenants)}</td>
       <td>${t.rate_limit_requests
         ? `<span class="col-mono" style="font-size:0.72rem">${t.rate_limit_requests}/${t.rate_limit_window_seconds || 60}s</span>`
         : `<span class="muted">Default</span>`}</td>
@@ -593,6 +614,7 @@ function toggleSelectAll(checked) {
 function openCreateDrawer() {
   createScopesTI.clear();
   createEnvsTI.clear();
+  renderTenantRows('createTenants', {});
   document.getElementById('createName').value   = '';
   document.getElementById('createDesc').value   = '';
   document.getElementById('createExpiry').value = '';
@@ -632,7 +654,8 @@ async function createToken() {
       username:             name,
       description:          document.getElementById('createDesc').value.trim(),
       allowed_scopes:       createScopesTI.getValue(),
-      allowed_environments: createEnvsTI.getValue()
+      allowed_environments: createEnvsTI.getValue(),
+      allowed_tenants:      readTenantRows('createTenants')
     };
     if (expiryStr) body.expires_in_days = parseInt(expiryStr, 10);
     if (rateLimit) {
@@ -682,6 +705,7 @@ function openEditDrawer(id) {
   document.getElementById('editDesc').value = token.description || '';
   editScopesTI.setValue(token.allowed_scopes);
   editEnvsTI.setValue(token.allowed_environments);
+  renderTenantRows('editTenants', token.allowed_tenants);
   document.getElementById('editRateLimit').value  = token.rate_limit_requests ?? '';
   document.getElementById('editRateWindow').value = token.rate_limit_requests ? (token.rate_limit_window_seconds ?? '') : '';
 
@@ -726,6 +750,7 @@ async function saveToken() {
       description:          document.getElementById('editDesc').value.trim(),
       allowed_scopes:       editScopesTI.getValue(),
       allowed_environments: editEnvsTI.getValue(),
+      allowed_tenants:      readTenantRows('editTenants'),
       rate_limit_requests:       rateLimit ? rateLimit.requests : null,
       rate_limit_window_seconds: rateLimit ? rateLimit.window : null
     };
@@ -903,6 +928,7 @@ async function init() {
       ...(eps.webhook   || []).map(e => e.name)
     ];
     endpointSuggestions = [...new Set(names)].sort();
+    setTenantHeaderOptions(eps);
   }
 
   if (envResult.status === 'fulfilled') {
@@ -919,6 +945,47 @@ async function init() {
   editEnvsTI.setSuggestions(environmentSuggestions);
 
   await loadTokens();
+}
+
+function setTenantHeaderOptions(eps) {
+  const headers = [...(eps.sql || []), ...(eps.proxy || []), ...(eps.file || [])].flatMap(e => e.tenancy || []);
+  document.getElementById('tenantHeaderOptions').innerHTML = [...new Set(headers)].sort()
+    .map(h => `<option value="${esc(h)}"></option>`).join('');
+}
+
+function tenantRow(header = '', values = '') {
+  return `<div class="ep-kv-row">
+    <input type="text" class="input" list="tenantHeaderOptions" placeholder="Header" aria-label="Tenant header" value="${esc(header)}">
+    <input type="text" class="input" placeholder="Values" aria-label="Allowed values" value="${esc(values)}">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove()" aria-label="Remove tenant header">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>`;
+}
+
+function renderTenantRows(id, tenants) {
+  document.getElementById(id).innerHTML = Object.entries(tenants || {}).map(([h, v]) => tenantRow(h, v.join(', '))).join('');
+}
+
+function addTenantRow(id) {
+  const list = document.getElementById(id);
+  list.insertAdjacentHTML('beforeend', tenantRow());
+  list.lastElementChild.querySelector('input').focus();
+}
+
+function readTenantRows(id) {
+  const tenants = {};
+  document.querySelectorAll(`#${id} .ep-kv-row`).forEach(row => {
+    const [header, values] = row.querySelectorAll('input');
+    if (header.value.trim()) tenants[header.value.trim()] = values.value.split(',').map(v => v.trim()).filter(Boolean);
+  });
+  return tenants;
+}
+
+function formatTenants(tenants) {
+  const entries = Object.entries(tenants || {});
+  if (!entries.length) return '';
+  return `<div class="muted" style="font-size:0.72rem; margin-top:0.25rem">${entries.map(([h, v]) => `${esc(h)}: ${esc(v.join(', '))}`).join('<br>')}</div>`;
 }
 
 init();

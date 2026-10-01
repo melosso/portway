@@ -182,6 +182,7 @@ public class TokenAuthMiddleware
         // Token is valid, has proper scopes, and access to the environment - proceed
         Log.Debug("Authorized {User} (Token ID: {TokenId}) for {Method} {Path}",
             tokenDetails.Username, tokenDetails.Id, context.Request.Method, context.Request.Path);
+        context.Features.Set(tokenDetails);
         await _next(context);
     }
 

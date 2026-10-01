@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 namespace PortwayApi.Auth;
 
 using System.Security.Cryptography;
@@ -48,8 +49,13 @@ public class TokenService
         int? expiresInDays = null,
         int? rateLimitRequests = null,
         int? rateLimitWindowSeconds = null,
+        string allowedTenants = TenantGrants.Empty,
         CancellationToken ct = default)
     {
+        if (!TenantGrants.TryParse(allowedTenants, out var grants, out var tenantError))
+            throw new ArgumentException(tenantError, nameof(allowedTenants));
+        allowedTenants = TenantGrants.Serialize(grants);
+
         // Generate a random token
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         string token = RandomNumberGenerator.GetString(chars, 128);
@@ -76,6 +82,7 @@ public class TokenService
             ExpiresAt = expiresAt,
             AllowedScopes = allowedScopes,
             AllowedEnvironments = allowedEnvironments,
+            AllowedTenants = allowedTenants,
             Description = description,
             RateLimitRequests = rateLimitRequests,
             RateLimitWindowSeconds = rateLimitWindowSeconds
@@ -91,6 +98,7 @@ public class TokenService
             {
                 AllowedScopes = allowedScopes,
                 AllowedEnvironments = allowedEnvironments,
+                AllowedTenants = allowedTenants,
                 Description = description,
                 ExpiresAt = expiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
                 RateLimit = rateLimitRequests.HasValue ? $"{rateLimitRequests}/{rateLimitWindowSeconds ?? 60}s" : "default",
@@ -98,7 +106,7 @@ public class TokenService
             }));
 
         // Save token to file
-        await SaveTokenToFileAsync(username, token, allowedScopes, allowedEnvironments, expiresAt, description);
+        await SaveTokenToFileAsync(username, token, allowedScopes, allowedEnvironments, expiresAt, description, allowedTenants);
 
         Log.Information("Created new token (ID: {TokenId}) for user: {Username}", tokenEntry.Id, username);
 
@@ -246,7 +254,8 @@ public class TokenService
         string allowedScopes = "*",
         string allowedEnvironments = "*",
         DateTime? expiresAt = null,
-        string description = "")
+        string description = "",
+        string allowedTenants = TenantGrants.Empty)
     {
         try
         {
@@ -259,6 +268,7 @@ public class TokenService
                 Token = token,
                 AllowedScopes = allowedScopes,
                 AllowedEnvironments = allowedEnvironments,
+                AllowedTenants = JsonSerializer.Deserialize<JsonElement>(allowedTenants),
                 ExpiresAt = expiresAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never",
                 CreatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
                 Usage = "Use this token in the Authorization header as: Bearer <token>"
@@ -416,6 +426,27 @@ public class TokenService
         var scopes = newScopes ?? fullAccess[0].AllowedScopes;
         var environments = newEnvironments ?? fullAccess[0].AllowedEnvironments;
         return scopes != "*" || environments != "*";
+    }
+
+    /// <summary>
+    /// Replaces a token's tenant grants and stores them in canonical form
+    /// </summary>
+    public async Task<bool> UpdateTokenTenantsAsync(int tokenId, FrozenDictionary<string, FrozenSet<string>> grants, CancellationToken ct = default)
+    {
+        var token = await _dbContext.Tokens.FindAsync([tokenId], ct);
+        if (token == null) return false;
+        string old = token.AllowedTenants;
+        token.AllowedTenants = TenantGrants.Serialize(grants);
+        await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(token.Id);
+        await LogAuditAsync(token.Id, token.Username, "TenantsUpdated", null, null,
+            JsonSerializer.Serialize(new
+            {
+                OldTenants = old,
+                NewTenants = token.AllowedTenants,
+                UpdatedAt = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+            }));
+        return true;
     }
 
     public async Task<bool> UpdateTokenEnvironmentsAsync(int tokenId, string environments, CancellationToken ct = default)

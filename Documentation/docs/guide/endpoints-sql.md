@@ -251,7 +251,7 @@ TVFs support parameterized queries, useful for reporting, generated datasets, or
 }
 ```
 
-Parameters can be sourced from `Path`, `Query`, or `Header`. Example calls:
+Parameters can be sourced from `Path`, `Query`, or `Header`. A `Header` parameter takes whatever the client sends; to restrict a parameter to the token's own customers, name it in `Tenancy` instead (see [Tenant headers](/guide/security#tenant-headers)). Example calls:
 
 ```http
 GET /api/dev/Departments/5?UserCount=25

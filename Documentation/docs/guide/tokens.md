@@ -59,6 +59,10 @@ Narrow a token's access to reduce exposure. A token can only access endpoints an
 | `dev,test` | Two named environments |
 | `dev*` | All environments with a `dev` prefix |
 
+### Tenant scopes
+
+`AllowedTenants` maps each tenant header to the values the token may select, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The console token drawer edits it as one row per header with comma-separated values. A token with one value per header needs no request header; a token with several values sends the header to pick one. [Tenant headers](/guide/security#tenant-headers) covers the endpoint side.
+
 ### Common configurations
 
 | Scenario | Scopes | Environments |

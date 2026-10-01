@@ -17,6 +17,7 @@ All types of contributions are encouraged and valued. See the [Table of Contents
   - [I Want To Contribute](#i-want-to-contribute)
   - [Reporting Bugs](#reporting-bugs)
   - [Suggesting Enhancements](#suggesting-enhancements)
+  - [Code Checks](#code-checks)
 
 ## I Have a Question
 
@@ -96,3 +97,15 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/meloss
 - **Describe the current behavior** and **explain which behavior you expected to see instead** and why. At this point you can also tell which alternatives do not work for you.
 - You may want to **include screenshots or screen recordings** which help you demonstrate the steps or point out the part which the suggestion is related to. You can use [LICEcap](https://www.cockos.com/licecap/) to record GIFs on macOS and Windows, and the built-in [screen recorder in GNOME](https://help.gnome.org/users/gnome-help/stable/screen-shot-record.html.en) or [SimpleScreenRecorder](https://github.com/MaartenBaert/ssr) on Linux. <!-- this should only be included if the project has a GUI -->
 - **Explain why this enhancement would be useful** to most Portway users. You may also want to point out the other projects that solved it better and which could serve as inspiration.
+
+### Code Checks
+
+Run these from the repository root before opening a pull request:
+
+```bash
+dotnet build portwayapi.slnx
+cd Source && dotnet test --solution ../portwayapi.slnx && cd ..
+npx prettier@3 --check "Source/PortwayApi/wwwroot/**/*.js"
+```
+
+Prettier reads `.prettierrc.json` and `.prettierignore` at the repository root; `--write` in place of `--check` applies the formatting. `Tests/Parity` needs Docker.

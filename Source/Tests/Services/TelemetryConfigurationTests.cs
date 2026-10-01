@@ -142,8 +142,6 @@ public class TelemetryConfigurationTests
         services.AddPortwayTelemetry(config, "1.0.0");
         var provider = services.BuildServiceProvider();
 
-        // PortwayMetrics is always registered so that services like CacheManager can depend
-        // on it unconditionally. When telemetry is disabled the meter counters are no-ops
         using var metrics = provider.GetService<PortwayMetrics>();
         Assert.NotNull(metrics);
     }

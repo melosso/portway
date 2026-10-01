@@ -1,5 +1,6 @@
 namespace PortwayApi.Services;
 
+using System.Collections.Frozen;
 using System.Data;
 using System.Data.Common;
 using System.Text.Json;
@@ -65,8 +66,13 @@ public sealed partial class SqlRequestHandler
         string? orderby,
         int top,
         int skip,
-        string httpMethod = "GET")
+        string httpMethod = "GET",
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
+        var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
+        if (endpoint.HasTenancy && tenantPredicates.Count == 0)
+            return PortwayResults.Forbidden("This endpoint requires tenant access");
+
         var url = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
         Log.Debug("SQL Query Request: {Url}", url);
 
@@ -119,7 +125,8 @@ public sealed partial class SqlRequestHandler
                     context.Request,
                     pathSegments,
                     _connectionPoolService.OptimizeConnectionString(connectionString),
-                    tvfODataParams);
+                    tvfODataParams,
+                    tenantPredicates);
 
                 bool tvfSuccess = tvfResult.Item1;
                 IActionResult? tvfActionResult = tvfResult.Item2;
@@ -324,6 +331,8 @@ public sealed partial class SqlRequestHandler
                         || kv.Key.EndsWith($"/{rel.Target}", StringComparison.OrdinalIgnoreCase)).Value;
                     if (target == null)
                         return PortwayResults.BadRequest($"$expand navigation '{rel.Name}' targets unregistered endpoint '{rel.Target}'");
+                    if (target.HasTenancy)
+                        return PortwayResults.BadRequest($"$expand navigation '{rel.Name}' targets a tenant endpoint, which cannot be expanded");
                     expandNavMaps.Add((rel.Name, target.DatabaseToAlias));
                 }
 
@@ -336,11 +345,9 @@ public sealed partial class SqlRequestHandler
             Dictionary<string, object> parameters;
             try
             {
-                (query, parameters) = _oDataToSqlConverter.ConvertToSQL(
-                    $"{schema}.{objectName}",
-                    odataParams,
-                    detectedProviderType,
-                    endpoint.Relationships);
+                (query, parameters) = tenantPredicates.Count > 0
+                    ? _oDataToSqlConverter.ConvertToSQL($"{schema}.{objectName}", odataParams, detectedProviderType, endpoint.Relationships, tenantPredicates)
+                    : _oDataToSqlConverter.ConvertToSQL($"{schema}.{objectName}", odataParams, detectedProviderType, endpoint.Relationships);
             }
             catch (Exception odataEx) when (odataEx is not DbException)
             {
@@ -449,8 +456,9 @@ public sealed partial class SqlRequestHandler
             long? totalCount = null;
             if (countRequested)
             {
-                var (countQuery, countParameters) = _oDataToSqlConverter.ConvertToCountSQL(
-                    $"{schema}.{objectName}", odataParams, detectedProviderType);
+                var (countQuery, countParameters) = tenantPredicates.Count > 0
+                    ? _oDataToSqlConverter.ConvertToCountSQL($"{schema}.{objectName}", odataParams, detectedProviderType, tenantPredicates)
+                    : _oDataToSqlConverter.ConvertToCountSQL($"{schema}.{objectName}", odataParams, detectedProviderType);
                 totalCount = await connection.ExecuteScalarAsync<long>(countQuery, countParameters);
             }
 
@@ -499,8 +507,13 @@ public sealed partial class SqlRequestHandler
         EndpointDefinition endpoint,
         string env,
         string endpointName,
-        JsonElement data)
+        JsonElement data,
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
+        var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
+        if (endpoint.HasTenancy && tenantPredicates.Count == 0)
+            return PortwayResults.Forbidden("This endpoint requires tenant access");
+
         try
         {
             // Check if this is a SQL endpoint
@@ -539,7 +552,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Insert, data, null);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Insert, data, null, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -561,6 +574,9 @@ public sealed partial class SqlRequestHandler
             {
                 dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
             }
+
+            foreach (var tenant in tenantPredicates)
+                dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Execute stored procedure
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
@@ -609,8 +625,13 @@ public sealed partial class SqlRequestHandler
         EndpointDefinition endpoint,
         string env,
         string endpointName,
-        JsonElement data)
+        JsonElement data,
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
+        var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
+        if (endpoint.HasTenancy && tenantPredicates.Count == 0)
+            return PortwayResults.Forbidden("This endpoint requires tenant access");
+
         try
         {
             // Check if this is a SQL endpoint - if not, return 404
@@ -656,7 +677,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -681,6 +702,9 @@ public sealed partial class SqlRequestHandler
             {
                 dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
             }
+
+            foreach (var tenant in tenantPredicates)
+                dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Step 8: Execute stored procedure
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
@@ -727,8 +751,13 @@ public sealed partial class SqlRequestHandler
         string env,
         string endpointName,
         JsonDocument requestBody,
-        string method = "PATCH")
+        string method = "PATCH",
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
+        var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
+        if (endpoint.HasTenancy && tenantPredicates.Count == 0)
+            return PortwayResults.Forbidden("This endpoint requires tenant access");
+
         try
         {
             // Step 1: Check if this is a SQL endpoint
@@ -776,7 +805,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -801,6 +830,9 @@ public sealed partial class SqlRequestHandler
             {
                 dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
             }
+
+            foreach (var tenant in tenantPredicates)
+                dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Step 8: Execute stored procedure
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
@@ -846,8 +878,13 @@ public sealed partial class SqlRequestHandler
         EndpointDefinition endpoint,
         string env,
         string endpointName,
-        string id)
+        string id,
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
+        var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
+        if (endpoint.HasTenancy && tenantPredicates.Count == 0)
+            return PortwayResults.Forbidden("This endpoint requires tenant access");
+
         try
         {
             // Check if this is a SQL endpoint - if not, return 404
@@ -881,7 +918,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Delete, null, id);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Delete, null, id, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -910,6 +947,9 @@ public sealed partial class SqlRequestHandler
             {
                 dynamicParams.Add("@UserName", context.User.Identity.Name);
             }
+
+            foreach (var tenant in tenantPredicates)
+                dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Execute stored procedure
             await using var connection = _connectionPoolService.CreateConnection(connectionString);

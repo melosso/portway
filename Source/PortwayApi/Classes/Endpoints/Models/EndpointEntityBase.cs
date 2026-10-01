@@ -1,5 +1,6 @@
 namespace PortwayApi.Classes;
 
+using System.Collections.Frozen;
 using System.Text.Json.Serialization;
 
 /// <summary>
@@ -53,6 +54,11 @@ public abstract class EndpointEntityBase
     public Documentation? Documentation { get; set; }
 
     /// <summary>
+    /// Inbound tenant header to its target column, parameter or upstream header
+    /// </summary>
+    public Dictionary<string, string>? Tenancy { get; set; }
+
+    /// <summary>
     /// Copies the settings shared by every endpoint type onto a parsed definition
     /// </summary>
     public void ApplyTo(EndpointDefinition definition)
@@ -66,5 +72,8 @@ public abstract class EndpointEntityBase
         definition.Namespace = Namespace;
         definition.DisplayName = DisplayName;
         definition.NamespaceDisplayName = NamespaceDisplayName;
+        definition.Tenancy = Tenancy is { Count: > 0 }
+            ? new Dictionary<string, string>(Tenancy, StringComparer.OrdinalIgnoreCase).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase)
+            : null;
     }
 }

@@ -288,22 +288,16 @@ public partial class EndpointController
     }
 
     /// <summary>
-    /// Replaces placeholders in the base directory with actual values
+    /// Resolves tenant values for the endpoint; refusal is set when the request is rejected
     /// </summary>
-    private string ProcessBaseDirectory(string baseDirectory, string environment)
+    private TenantResolution ResolveTenants(EndpointDefinition endpoint, out IActionResult? refusal)
     {
-        if (string.IsNullOrEmpty(baseDirectory))
-            return string.Empty;
-
-        // Replace {env} placeholder with actual environment
-        var processedDirectory = baseDirectory.Replace("{env}", environment, StringComparison.OrdinalIgnoreCase);
-
-        // Add support for additional placeholders if needed
-        processedDirectory = processedDirectory.Replace("{date}", DateTime.UtcNow.ToString("yyyy-MM-dd"));
-        processedDirectory = processedDirectory.Replace("{year}", DateTime.UtcNow.Year.ToString());
-        processedDirectory = processedDirectory.Replace("{month}", DateTime.UtcNow.Month.ToString("00"));
-
-        return processedDirectory;
+        var resolution = TenantResolver.Resolve(HttpContext.Features.Get<PortwayApi.Auth.AuthToken>(), endpoint, Request.Headers);
+        refusal = resolution.Succeeded
+            ? null
+            : resolution.Status == StatusCodes.Status403Forbidden
+                ? PortwayResults.Forbidden(resolution.Error!)
+                : PortwayResults.BadRequest(resolution.Error!);
+        return resolution;
     }
-
 }

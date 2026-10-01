@@ -129,7 +129,8 @@ public sealed partial class McpChatService
           "properties": {
             "environment": { "type": "string", "description": "The Portway environment to query (e.g. '500')" },
             "query":       { "type": "string", "description": "OData query string for GET requests (optional). Always use $top to limit results (e.g. '$top=20'). Combine with $filter, $select, $orderby as needed." },
-            "body":        { "type": "string", "description": "JSON body for POST/PATCH/PUT requests (optional)" }
+            "body":        { "type": "string", "description": "JSON body for POST/PATCH/PUT requests (optional)" },
+            "tenants":     { "type": "object", "additionalProperties": { "type": "string" }, "description": "Tenant header values for tools that list [tenant headers: ...] (optional when the token holds one value)" }
           },
           "required": ["environment"]
         }
@@ -184,6 +185,8 @@ public sealed partial class McpChatService
                 var envInfo = first.AllowedEnvironments is { Count: > 0 }
                     ? $" [environment: {string.Join(" or ", first.AllowedEnvironments)}]"
                     : string.Empty;
+                if (first.TenantHeaders.Count > 0)
+                    envInfo += $" [tenant headers: {string.Join(", ", first.TenantHeaders)}]";
                 // Prefer explicitly-configured AllowedColumns; fall back to SQL auto-discovered metadata
                 var resolvedFields = first.AvailableFields is { Count: > 0 }
                     ? first.AvailableFields
@@ -455,6 +458,14 @@ public sealed partial class McpChatService
             using var http = _httpFactory.CreateClient("internal");
             using var req = new HttpRequestMessage(method, url);
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", authToken);
+            if (input?["tenants"] is JsonObject tenants)
+            {
+                foreach (var header in tool.TenantHeaders)
+                {
+                    if (tenants[header] is JsonValue value && value.TryGetValue<string>(out var tenant) && PortwayApi.Auth.TenantGrants.IsValidValue(tenant))
+                        req.Headers.TryAddWithoutValidation(header, tenant);
+                }
+            }
 
             if (body is not null && method != HttpMethod.Get)
                 req.Content = new StringContent(body, Encoding.UTF8, new MediaTypeHeaderValue("application/json"));

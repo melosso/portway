@@ -58,7 +58,7 @@ Because forwarding is all Portway does here, the documentation cannot infer whic
 
 With the flag set, the endpoint's GET operation lists `$select`, `$top` and `$filter` so callers can discover them. Without it, the operation says instead that any query parameters are passed through untouched, which keeps the reference transparent about services that never implemented OData.
 
-Environment headers defined in `environments/{env}/settings.json` are appended to every forwarded request:
+Environment headers defined in `environments/{env}/settings.json` are set on every forwarded request. They replace a client header of the same name, as do the endpoint's `HttpMethodAppendHeaders`, so a client cannot override or duplicate a configured header:
 
 ```http
 # Added by Portway from environment settings

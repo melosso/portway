@@ -158,17 +158,27 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     }
 
     [Fact]
-    public async Task EnvironmentAuthorizationHeader_CollidesWithClientBearer()
+    public async Task EnvironmentAuthorizationReplacesClientBearer()
     {
-        // Pins the documented collision: client bearer and environment value both reach upstream as a multi-valued header
         SetEnvironmentHeaders(new() { ["Authorization"] = "Bearer upstream_token" });
 
         var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var auth = _upstream.Headers["Authorization"];
-        Assert.Contains("test-token", auth);
-        Assert.Contains("upstream_token", auth);
+        Assert.Equal("Bearer upstream_token", _upstream.Headers["Authorization"]);
+    }
+
+    [Fact]
+    public async Task ClientCannotReplaceEnvironmentHeader()
+    {
+        SetEnvironmentHeaders(new() { ["DatabaseName"] = "500" });
+        using var request = new HttpRequestMessage(HttpMethod.Get, ApiPath);
+        request.Headers.Add("databasename", "999");
+
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("500", _upstream.Headers["DatabaseName"]);
     }
 
     // Cookie passthrough (basis of the SAP B1 session pattern)

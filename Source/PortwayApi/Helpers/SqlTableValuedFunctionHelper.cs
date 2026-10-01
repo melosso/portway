@@ -32,7 +32,8 @@ public static class SqlTableValuedFunctionHelper
     public static (Dictionary<string, object> Parameters, List<string> Errors) ExtractParameterValues(
         List<TVFParameter> functionParameters,
         HttpRequest request,
-        string[] pathSegments)
+        string[] pathSegments,
+        IReadOnlyList<TenantPredicate>? tenantValues = null)
     {
         var parameters = new Dictionary<string, object>();
         var errors = new List<string>();
@@ -44,27 +45,33 @@ public static class SqlTableValuedFunctionHelper
 
             try
             {
-                switch (param.Source.ToLower())
+                var tenant = tenantValues?.FirstOrDefault(t => string.Equals(t.Column, param.Name, StringComparison.OrdinalIgnoreCase));
+                if (tenant is { Value: not null } tenantValue)
                 {
-                    case "path":
-                        value = ExtractPathParameter(param, pathSegments);
-                        found = value != null;
-                        break;
-
-                    case "query":
-                        value = ExtractQueryParameter(param, request.Query);
-                        found = value != null;
-                        break;
-
-                    case "header":
-                        value = ExtractHeaderParameter(param, request.Headers);
-                        found = value != null;
-                        break;
-
-                    default:
-                        errors.Add($"Invalid parameter source '{param.Source}' for parameter '{param.Name}'");
-                        continue;
+                    value = tenantValue.Value;
+                    found = true;
                 }
+                else switch (param.Source.ToLower())
+                    {
+                        case "path":
+                            value = ExtractPathParameter(param, pathSegments);
+                            found = value != null;
+                            break;
+
+                        case "query":
+                            value = ExtractQueryParameter(param, request.Query);
+                            found = value != null;
+                            break;
+
+                        case "header":
+                            value = ExtractHeaderParameter(param, request.Headers);
+                            found = value != null;
+                            break;
+
+                        default:
+                            errors.Add($"Invalid parameter source '{param.Source}' for parameter '{param.Name}'");
+                            continue;
+                    }
 
                 // Handle required parameters
                 if (!found && param.Required && string.IsNullOrEmpty(param.DefaultValue))

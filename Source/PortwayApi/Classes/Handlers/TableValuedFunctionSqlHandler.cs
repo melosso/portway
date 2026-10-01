@@ -28,7 +28,8 @@ public static class TableValuedFunctionSqlHandler
         HttpRequest request,
         string[] pathSegments,
         string connectionString,
-        Dictionary<string, string> odataParams)
+        Dictionary<string, string> odataParams,
+        IReadOnlyList<TenantPredicate>? tenantValues = null)
     {
         try
         {
@@ -60,7 +61,8 @@ public static class TableValuedFunctionSqlHandler
             var (parameterValues, extractionErrors) = SqlTableValuedFunctionHelper.ExtractParameterValues(
                 endpoint.FunctionParameters,
                 request,
-                pathSegments);
+                pathSegments,
+                tenantValues);
 
             if (extractionErrors.Any())
             {

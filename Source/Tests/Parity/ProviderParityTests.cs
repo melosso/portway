@@ -209,6 +209,69 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
         }
     }
 
+    private async Task<List<int>> TenantIds(string column, string value, string? filter = null)
+    {
+        var odata = new Dictionary<string, string> { ["select"] = "Id" };
+        if (filter is not null)
+            odata["filter"] = filter;
+        var (sql, parameters) = CreateConverter().ConvertToSQL(_fixture.QualifiedProductsTable, odata, _fixture.ProviderType, null, [new TenantPredicate(column, value)]);
+
+        await using var connection = _fixture.Provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+        return (await connection.QueryAsync<int>(sql, new DynamicParameters(parameters))).Order().ToList();
+    }
+
+    [DockerFact]
+    public async Task Tenant_IntegerColumnConfinesRead() =>
+        Assert.Equal([1, 2], await TenantIds("CategoryId", "10", "Id eq 4 or Price gt 0"));
+
+    [DockerFact]
+    public async Task Tenant_TextColumnConfinesRead() =>
+        Assert.Equal([1], await TenantIds("Name", "Anvil", "Name ne 'Anvil' or Id gt 0"));
+
+    [DockerFact]
+    public async Task Tenant_CountConfined()
+    {
+        var (sql, parameters) = CreateConverter().ConvertToCountSQL(_fixture.QualifiedProductsTable,
+            new Dictionary<string, string> { ["filter"] = "Price gt 0 or Id gt 0" }, _fixture.ProviderType, [new TenantPredicate("CategoryId", "10")]);
+
+        await using var connection = _fixture.Provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+        Assert.Equal(2L, Convert.ToInt64(await connection.ExecuteScalarAsync(sql, new DynamicParameters(parameters))));
+    }
+
+    [DockerFact]
+    public async Task Tenant_TableWritesConfined()
+    {
+        var provider = _fixture.Provider;
+        var table = _fixture.QualifiedProductsTable;
+        TenantPredicate[] tools = [new("CategoryId", "10")];
+        TenantPredicate[] toys = [new("CategoryId", "20")];
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+        try
+        {
+            var insert = SqlTableWriteBuilder.BuildInsert(provider, table,
+                new Dictionary<string, object?> { ["Id"] = 90, ["Name"] = "Catapult", ["Price"] = 9.00m, ["CategoryId"] = TenantSql.Literal("20") });
+            await connection.ExecuteAsync(insert.Sql, insert.Parameters);
+
+            var otherUpdate = SqlTableWriteBuilder.BuildUpdate(provider, table, "Id", 90, new Dictionary<string, object?> { ["Price"] = 1m }, tools);
+            Assert.Equal(0, await connection.ExecuteAsync(otherUpdate.Sql, otherUpdate.Parameters));
+            var otherDelete = SqlTableWriteBuilder.BuildDelete(provider, table, "Id", 90, tools);
+            Assert.Equal(0, await connection.ExecuteAsync(otherDelete.Sql, otherDelete.Parameters));
+            Assert.Empty(await connection.QueryAsync(SqlTableWriteBuilder.BuildSelectByKey(provider, table, "Id", 90, tools).Sql,
+                SqlTableWriteBuilder.BuildSelectByKey(provider, table, "Id", 90, tools).Parameters));
+
+            var ownUpdate = SqlTableWriteBuilder.BuildUpdate(provider, table, "Id", 90, new Dictionary<string, object?> { ["Price"] = 2m }, toys);
+            Assert.Equal(1, await connection.ExecuteAsync(ownUpdate.Sql, ownUpdate.Parameters));
+        }
+        finally
+        {
+            var delete = SqlTableWriteBuilder.BuildDelete(provider, table, "Id", 90);
+            await connection.ExecuteAsync(delete.Sql, delete.Parameters);
+        }
+    }
+
     private RelationalExpandSpec CategorySpec() => new(
         "Category", _fixture.QualifiedCategoriesTable, "CategoryId", "CategoryId",
         new[] { "CategoryId", "CategoryName" });

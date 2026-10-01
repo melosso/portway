@@ -21,6 +21,10 @@ public partial class EndpointController
             return resolveError;
         }
 
-        return await _proxyRequestHandler.HandleProxyRequest(HttpContext, endpointDefinition, env, endpointName, id, remainingPath, method);
+        var tenants = ResolveTenants(endpointDefinition, out var refusal);
+        if (refusal is not null)
+            return refusal;
+
+        return await _proxyRequestHandler.HandleProxyRequest(HttpContext, endpointDefinition, env, endpointName, id, remainingPath, method, tenants.Values);
     }
 }

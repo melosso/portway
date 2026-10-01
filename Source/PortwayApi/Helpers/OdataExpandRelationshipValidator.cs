@@ -10,7 +10,7 @@ using PortwayApi.Classes;
 public static partial class OdataExpandRelationshipValidator
 {
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]
-    private static partial Regex Identifier();
+    internal static partial Regex Identifier();
 
     // Target may be a namespaced endpoint key (e.g. "Product/Assortments"); one optional segment
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*(/[A-Za-z_][A-Za-z0-9_]*)?$")]
@@ -25,7 +25,7 @@ public static partial class OdataExpandRelationshipValidator
         if (entity.Relationships is not { Count: > 0 })
             return errors;
 
-        // BLOCKER #2: a TVF cannot JOIN, so a relationship on one would silently drop the expand
+        // table valued functions cannot join so relationships are rejected
         if (!string.IsNullOrEmpty(entity.DatabaseObjectType) &&
             entity.DatabaseObjectType.Equals("TableValuedFunction", StringComparison.OrdinalIgnoreCase))
         {
@@ -52,7 +52,7 @@ public static partial class OdataExpandRelationshipValidator
             if (string.IsNullOrWhiteSpace(rel.TargetColumn) || !Identifier().IsMatch(rel.TargetColumn))
                 errors.Add($"Relationships[{i}] TargetColumn '{rel.TargetColumn}' is not a plain identifier");
 
-            // BLOCKER #3: fork is to-one only; reject to-many at parse rather than emit wrong SQL
+            // expand supports to-one only
             if (!string.IsNullOrEmpty(rel.Multiplicity) &&
                 !rel.Multiplicity.Equals("ToOne", StringComparison.OrdinalIgnoreCase))
                 errors.Add($"Relationships[{i}] Multiplicity '{rel.Multiplicity}' is unsupported; only ToOne is allowed");

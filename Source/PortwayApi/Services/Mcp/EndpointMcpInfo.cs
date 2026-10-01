@@ -8,6 +8,7 @@ public sealed record EndpointMcpInfo
     public IReadOnlyList<string> Methods { get; init; } = [];
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }
+    public IReadOnlyList<string> TenantHeaders { get; init; } = [];
     /// <summary>
     /// Human-readable per-method summaries from Documentation.MethodDescriptions
     /// </summary>

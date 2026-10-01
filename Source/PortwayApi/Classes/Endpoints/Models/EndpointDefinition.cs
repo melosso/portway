@@ -81,6 +81,13 @@ public class EndpointDefinition
     // Environment restrictions
     public List<string>? AllowedEnvironments { get; set; }
 
+    /// <summary>
+    /// Inbound tenant header to its target column, parameter or upstream header; null when unset
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Tenancy { get; set; }
+
+    public bool HasTenancy => Tenancy is { Count: > 0 };
+
     // File endpoint properties (optional, only for file endpoints)
     public Dictionary<string, object>? Properties { get; set; }
 
@@ -248,7 +255,8 @@ public class EndpointDefinition
             AllowedEnvironments,
             FallbackUrls,
             Retry,
-            ResponseTransforms
+            ResponseTransforms,
+            HasTenancy
         );
     }
 }

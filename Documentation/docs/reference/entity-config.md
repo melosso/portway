@@ -144,6 +144,7 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 | `Deprecated`          | boolean | No       | Shows the endpoint's operations as deprecated in the OpenAPI documentation                    |
 | `Enabled`             | boolean | No       | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`)     |
 | `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
+| `Tenancy`             | object  | No       | Tenant header to column (table, view, procedure) or function parameter (TVF). See [Tenant headers](/guide/security#tenant-headers) |
 
 \* Only required for Table-Valued Function (TVF) endpoints.
 
@@ -262,6 +263,7 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 | `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
 | `CustomProperties` | object | No | Extended functionality settings |
+| `Tenancy` | object | No | Tenant header to the upstream header that carries the value. See [Tenant headers](/guide/security#tenant-headers) |
 
 #### CustomProperties options
 
@@ -576,6 +578,7 @@ File entities enable storage and retrieval of files through dedicated endpoints.
 | `Enabled` | boolean | No | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`) |
 | `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Environments that can access this endpoint |
+| `Tenancy` | object | No | Tenant headers with empty values; `BaseDirectory` holds a `{Header}` placeholder for each. See [Tenant headers](/guide/security#tenant-headers) |
 | `Documentation` | object | No | OpenAPI documentation metadata |
 
 ## Troubleshooting

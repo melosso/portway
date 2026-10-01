@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Xml.Linq;
 using PortwayApi.Classes;
@@ -87,6 +88,10 @@ public partial class EndpointController
                 return resolveError;
             }
 
+            var tenants = ResolveTenants(endpoint!, out var refusal);
+            if (refusal is not null)
+                return refusal;
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
@@ -100,13 +105,8 @@ public partial class EndpointController
                 return PortwayResults.BadRequest("No file was uploaded");
             }
 
-            // Get storage options from endpoint definition
-            var baseDirectory = endpoint?.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj)
-                ? baseDirObj?.ToString() ?? string.Empty
-                : string.Empty;
-
-            // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
-            baseDirectory = ProcessBaseDirectory(baseDirectory, env);
+            var folders = ResolveFileFolders(endpoint!, env, tenants);
+            var baseDirectory = folders.Upload;
 
             var allowedExtensions = endpoint?.Properties != null && endpoint.Properties.TryGetValue("AllowedExtensions", out var extensionsObj)
                 && extensionsObj is List<string> extensions
@@ -143,7 +143,7 @@ public partial class EndpointController
             string fileId;
 
             // Check if we should use absolute path handling
-            if (!string.IsNullOrEmpty(baseDirectory) && Path.IsPathRooted(baseDirectory))
+            if (folders.IsAbsolute)
             {
                 // For absolute paths, construct the full path
                 string absoluteFilePath = filename;
@@ -158,8 +158,8 @@ public partial class EndpointController
             }
             else
             {
-                // Use the standard relative path upload method
-                fileId = await _fileHandlerService.UploadFileAsync(env, filename, stream, overwrite);
+                var folder = string.Join('/', new[] { folders.Upload, subpath?.Replace('\\', '/').Trim('/') }.Where(f => !string.IsNullOrEmpty(f)));
+                fileId = await _fileHandlerService.UploadFileAsync(env, folder, file.FileName, stream, overwrite);
             }
 
             // Return success with file info; preserve namespace in the download URL so it round-trips
@@ -210,6 +210,10 @@ public partial class EndpointController
                 return resolveError;
             }
 
+            var tenants = ResolveTenants(endpoint!, out var refusal);
+            if (refusal is not null)
+                return refusal;
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
@@ -217,8 +221,7 @@ public partial class EndpointController
                 return errorResponse!;
             }
 
-            // Download the file
-            var (fileStream, filename, contentType) = await _fileHandlerService.DownloadFileAsync(fileId, env);
+            var (fileStream, filename, contentType) = await _fileHandlerService.DownloadFileAsync(fileId, env, ResolveFileFolders(endpoint!, env, tenants).Scope);
 
             // Return the file
             return File(fileStream, contentType, filename);
@@ -265,6 +268,10 @@ public partial class EndpointController
                 return resolveError;
             }
 
+            var tenants = ResolveTenants(endpoint!, out var refusal);
+            if (refusal is not null)
+                return refusal;
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
@@ -272,8 +279,7 @@ public partial class EndpointController
                 return errorResponse!;
             }
 
-            // Delete the file
-            await _fileHandlerService.DeleteFileAsync(fileId, env);
+            await _fileHandlerService.DeleteFileAsync(fileId, env, ResolveFileFolders(endpoint!, env, tenants).Scope);
 
             return PortwayResults.Mutation("File deleted successfully");
         }
@@ -314,6 +320,10 @@ public partial class EndpointController
                 return resolveError;
             }
 
+            var tenants = ResolveTenants(endpoint!, out var refusal);
+            if (refusal is not null)
+                return refusal;
+
             // Check environment restrictions
             var (isAllowed, errorResponse) = ValidateEnvironmentRestrictions(env, namespaceName, endpointName, EndpointType.Files);
             if (!isAllowed)
@@ -321,24 +331,7 @@ public partial class EndpointController
                 return errorResponse!;
             }
 
-            // Get base directory for this endpoint
-            var baseDirectory = (endpoint!.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj))
-                ? baseDirObj?.ToString() ?? string.Empty
-                : string.Empty;
-
-            // PROCESS THE BASE DIRECTORY TO REPLACE PLACEHOLDERS
-            baseDirectory = ProcessBaseDirectory(baseDirectory, env);
-
-            // Prepare the prefix by combining base directory and provided prefix
-            if (!string.IsNullOrEmpty(baseDirectory))
-            {
-                prefix = string.IsNullOrEmpty(prefix)
-                    ? baseDirectory
-                    : Path.Combine(baseDirectory, prefix).Replace('\\', '/');
-            }
-
-            // List the files
-            var files = await _fileHandlerService.ListFilesAsync(env, prefix);
+            var files = await _fileHandlerService.ListFilesAsync(env, ResolveFileFolders(endpoint!, env, tenants).Scope, prefix);
 
             // Add download URLs; preserve namespace so the links round-trip
             var endpointPath = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
@@ -358,10 +351,27 @@ public partial class EndpointController
 
             return PortwayResults.Collection(filesWithUrls);
         }
+        catch (ArgumentException ex)
+        {
+            return PortwayResults.BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             return HandleUnexpectedError(ex, "file listing", Request.Path, "An error occurred while listing files");
         }
+    }
+
+    private static string GetBaseDirectory(EndpointDefinition endpoint) =>
+        endpoint.Properties != null && endpoint.Properties.TryGetValue("BaseDirectory", out var baseDirObj)
+            ? baseDirObj?.ToString() ?? string.Empty
+            : string.Empty;
+
+    private static FileFolders ResolveFileFolders(EndpointDefinition endpoint, string env, TenantResolution tenants)
+    {
+        var folders = FileFolderResolver.Resolve(GetBaseDirectory(endpoint), env, tenants.Values, DateTime.UtcNow);
+        if (endpoint.HasTenancy && (folders.IsAbsolute || folders.Scope.Length == 0 || tenants.Values.Count != endpoint.Tenancy!.Count))
+            throw new UnauthorizedAccessException("Tenant file endpoint has no tenant folder");
+        return folders;
     }
 
 }

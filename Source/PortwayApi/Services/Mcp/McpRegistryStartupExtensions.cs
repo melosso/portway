@@ -81,6 +81,7 @@ public static class McpRegistryStartupExtensions
                     ? kvp.Value.Methods.Where(m => m.Equals("GET", StringComparison.OrdinalIgnoreCase)).ToList()
                     : kvp.Value.Methods,
                 AllowedEnvironments = kvp.Value.AllowedEnvironments,
+                TenantHeaders = kvp.Value.Tenancy?.Keys.ToList() ?? [],
                 MethodDescriptions = kvp.Value.Documentation?.MethodDescriptions,
                 Description = kvp.Value.Documentation?.TagDescription ?? kvp.Value.Documentation?.Description,
                 AvailableFields = kvp.Value.AllowedColumns is { Count: > 0 }

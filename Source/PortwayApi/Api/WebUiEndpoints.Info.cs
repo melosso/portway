@@ -75,6 +75,7 @@ public static partial class WebUiEndpointExtensions
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
+                    tenancy = e.Value.Tenancy?.Keys,
                     @namespace = e.Value.Namespace,
                     schema = e.Value.DatabaseSchema,
                     object_name = e.Value.DatabaseObjectName,
@@ -89,6 +90,7 @@ public static partial class WebUiEndpointExtensions
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
+                    tenancy = e.Value.Tenancy?.Keys,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 composite = proxyEps.Where(e => e.Value.Type.ToString() == "Composite").Select(e => new
@@ -110,6 +112,7 @@ public static partial class WebUiEndpointExtensions
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
                     is_mcp_exposed = e.Value.IsMcpExposed,
+                    tenancy = e.Value.Tenancy?.Keys,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 @static = staticEps.Select(e => new

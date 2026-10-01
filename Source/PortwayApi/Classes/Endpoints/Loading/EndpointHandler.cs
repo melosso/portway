@@ -56,6 +56,33 @@ public static partial class EndpointHandler
         (key, d) => Log.Debug("Webhook Endpoint: {Name}; Object: {Schema}.{Object}; Namespace: {Namespace}",
             key, d.DatabaseSchema, d.DatabaseObjectName, d.EffectiveNamespace ?? "None"));
 
+    /// <summary>
+    /// Tenancy errors for an endpoint file, using the loader's parser and rules
+    /// </summary>
+    public static IReadOnlyList<string> ValidateTenancy(EndpointType type, string json)
+    {
+        var spec = type switch
+        {
+            EndpointType.SQL => SqlLoaderSpec,
+            EndpointType.Proxy or EndpointType.Composite or EndpointType.Standard => ProxyLoaderSpec,
+            EndpointType.Files => FileLoaderSpec,
+            EndpointType.Static => StaticLoaderSpec,
+            EndpointType.Webhook => WebhookLoaderSpec,
+            _ => null
+        };
+        if (spec is null)
+            return [];
+
+        try
+        {
+            return spec.Parse(json) is { } definition ? PortwayApi.Helpers.TenancyRules.Validate(definition) : [];
+        }
+        catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
+        {
+            return [ex is ArgumentException ? "Tenancy lists the same header twice" : ex.Message];
+        }
+    }
+
     // Resolved once; accessors read it per lookup and GetCurrentDirectory is a syscall
     private static readonly string EndpointsBasePath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints");
 

@@ -1,5 +1,6 @@
 namespace PortwayApi.Services;
 
+using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -58,9 +59,13 @@ public sealed class ProxyRequestHandler
         string endpointName,
         string? id,
         string remainingPath,
-        string method)
+        string method,
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
         Log.Debug("Handling proxy request: {Endpoint} {Method}", endpointName, method);
+        tenants ??= FrozenDictionary<string, string>.Empty;
+        if (endpointDefinition.HasTenancy && tenants.Count != endpointDefinition.Tenancy!.Count)
+            return PortwayResults.Forbidden("This endpoint requires tenant access");
 
         try
         {
@@ -201,7 +206,7 @@ public sealed class ProxyRequestHandler
             {
                 Log.Debug("Detected SOAP request for endpoint: {Endpoint}", endpointName);
                 // SOAP requests generally shouldn't be cached, so bypass cache and execute directly
-                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
+                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, isSoapRequest: true, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
                 return new EmptyResult(); // Response already written
             }
 
@@ -211,7 +216,7 @@ public sealed class ProxyRequestHandler
             {
                 // Create a cache key based on the request details
                 var headers = context.Request.Headers ?? new Microsoft.AspNetCore.Http.HeaderDictionary();
-                string cacheKey = CreateCacheKey(env, endpointName, remainingPath ?? string.Empty, queryString, headers);
+                string cacheKey = CreateCacheKey(env, endpointName, remainingPath ?? string.Empty, queryString, headers, tenants);
 
                 // RFC 10008: the cache key for a QUERY request MUST incorporate the request content
                 if (originalMethod.Equals("QUERY", StringComparison.OrdinalIgnoreCase))
@@ -274,7 +279,7 @@ public sealed class ProxyRequestHandler
                     }
 
                     // Continue with normal proxy process for cache miss
-                    var responseDetails = await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
+                    var responseDetails = await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
 
                     // For successful responses, store in cache
                     if (responseDetails.IsSuccessful && _cacheManager.ShouldCacheResponse(responseDetails.ContentType))
@@ -308,7 +313,7 @@ public sealed class ProxyRequestHandler
                 {
                     // If we couldn't acquire a lock, just execute the request without caching
                     Log.Warning("Could not acquire lock for caching: {Endpoint}", endpointName);
-                    await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
+                    await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
                 }
 
                 return new EmptyResult(); // Response already written
@@ -316,7 +321,7 @@ public sealed class ProxyRequestHandler
             else
             {
                 // For non-GET requests, just execute the proxy request without caching
-                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition);
+                await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
                 return new EmptyResult(); // Response already written
             }
         }
@@ -463,7 +468,7 @@ public sealed class ProxyRequestHandler
     /// <summary>
     /// Creates a cache key based on request details
     /// </summary>
-    private string CreateCacheKey(string env, string endpointName, string path, string queryString, IHeaderDictionary headers)
+    private string CreateCacheKey(string env, string endpointName, string path, string queryString, IHeaderDictionary headers, IReadOnlyDictionary<string, string> tenants)
     {
         var keyBuilder = new StringBuilder();
         keyBuilder.Append($"proxy:{env}:{endpointName}:{path}:{queryString}");
@@ -479,6 +484,9 @@ public sealed class ProxyRequestHandler
 
             keyBuilder.Append($":auth:{authHash}");
         }
+
+        foreach (var tenant in tenants.OrderBy(t => t.Key, StringComparer.OrdinalIgnoreCase))
+            keyBuilder.Append($":t:{tenant.Key}={tenant.Value}");
 
         // Include other headers that might affect the response
         if (headers.TryGetValue("Accept-Language", out var langValues))
@@ -499,7 +507,8 @@ public sealed class ProxyRequestHandler
         string endpointName,
         bool isSoapRequest = false,
         string? originalMethod = null,
-        EndpointDefinition? endpointDefinition = null)
+        EndpointDefinition? endpointDefinition = null,
+        IReadOnlyDictionary<string, string>? tenants = null)
     {
         // Create HttpClient
         var client = _httpClientFactory.CreateClient("ProxyClient");
@@ -523,22 +532,41 @@ public sealed class ProxyRequestHandler
         }
 
         // Strip client-supplied headers that enable IP spoofing or HTTP desync: X-Forwarded-* is rebuilt from the verified connection IP, Transfer-Encoding/Content-Length are recomputed by HttpClient after body buffering
-        var headersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            // Hop-by-hop headers (RFC 2616)
-            "Host", "Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy-Authorization",
-            "TE", "Trailers", "Transfer-Encoding", "Upgrade",
-
-            // Client-supplied forwarding headers (IP spoofing risk)
-            "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Forwarded-Port",
-            "X-Real-IP", "X-Original-For", "Forwarded",
-
-            // Content-Length - we buffer and recalculate to prevent desync
-            "Content-Length"
-        };
+        var headersToStrip = PortwayApi.Helpers.HeaderPolicy.StrippedFromClient;
 
         // Load environment settings
         var (_, _, envHeaders) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
+
+        // environment and endpoint headers replace client headers of the same name
+        var configuredHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in envHeaders)
+            configuredHeaders[header.Key] = header.Value;
+        if (endpointDefinition != null && !string.IsNullOrEmpty(originalMethod))
+        {
+            var appendHeaders = PortwayApi.Helpers.HttpMethodHeaderAppender.GetAppendHeaders(
+                originalMethod, method, endpointDefinition.CustomProperties,
+                envHeaders.Keys, PortwayApi.Helpers.HeaderConflictResolution.Skip);
+            foreach (var header in appendHeaders)
+            {
+                if (PortwayApi.Helpers.HttpMethodHeaderAppender.IsValidHeaderName(header.Key))
+                    configuredHeaders[header.Key] = header.Value;
+                else
+                    Log.Warning("Invalid custom header name: {HeaderKey}", header.Key);
+            }
+        }
+
+        // tenant headers are configured headers and the inbound selector is not forwarded
+        var tenantSelectors = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (endpointDefinition is { HasTenancy: true })
+        {
+            foreach (var (inbound, upstream) in endpointDefinition.Tenancy!)
+            {
+                if (configuredHeaders.ContainsKey(upstream))
+                    throw new InvalidOperationException($"Tenancy header '{upstream}' on endpoint '{endpointName}' is also set by the environment or endpoint configuration");
+                configuredHeaders[upstream] = tenants![inbound];
+                tenantSelectors.Add(inbound);
+            }
+        }
 
         HttpRequestMessage BuildRequest(string targetUrl)
         {
@@ -558,7 +586,7 @@ public sealed class ProxyRequestHandler
 
             foreach (var header in context.Request.Headers)
             {
-                if (headersToStrip.Contains(header.Key))
+                if (headersToStrip.Contains(header.Key) || configuredHeaders.ContainsKey(header.Key) || tenantSelectors.Contains(header.Key))
                     continue;
 
                 try
@@ -591,61 +619,16 @@ public sealed class ProxyRequestHandler
             if (!string.IsNullOrEmpty(clientIp))
                 requestMessage.Headers.TryAddWithoutValidation("X-Forwarded-For", clientIp);
 
-            foreach (var header in envHeaders)
+            foreach (var header in configuredHeaders)
             {
-                try
+                if (requestMessage.Content?.Headers.Contains(header.Key) == true)
                 {
-                    requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                    Log.Debug("Added environment header: {HeaderKey}={HeaderValue}", header.Key, header.Value);
+                    requestMessage.Content.Headers.Remove(header.Key);
+                    requestMessage.Content.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
-                catch (Exception ex)
+                else if (!requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value))
                 {
-                    Log.Warning(ex, "Could not add environment header {HeaderKey}", header.Key);
-                }
-            }
-
-            // Custom headers from HttpMethodAppendHeaders custom property
-            if (endpointDefinition != null && !string.IsNullOrEmpty(originalMethod))
-            {
-                var existingHeaders = new List<string>();
-                foreach (var header in context.Request.Headers)
-                    existingHeaders.Add(header.Key);
-                foreach (var header in envHeaders)
-                    existingHeaders.Add(header.Key);
-
-                var customHeaders = PortwayApi.Helpers.HttpMethodHeaderAppender.GetAppendHeaders(
-                    originalMethod, method, endpointDefinition.CustomProperties,
-                    existingHeaders, PortwayApi.Helpers.HeaderConflictResolution.Skip);
-
-                foreach (var header in customHeaders)
-                {
-                    try
-                    {
-                        if (PortwayApi.Helpers.HttpMethodHeaderAppender.IsValidHeaderName(header.Key))
-                        {
-                            var headerExists = requestMessage.Headers.Contains(header.Key) ||
-                                             (requestMessage.Content?.Headers.Contains(header.Key) == true);
-
-                            if (!headerExists)
-                            {
-                                requestMessage.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                                Log.Debug("Added custom header for method {OriginalMethod}: {HeaderKey}={HeaderValue}",
-                                    originalMethod, header.Key, header.Value);
-                            }
-                            else
-                            {
-                                Log.Debug("Custom header {HeaderKey} already exists in request, skipping to avoid conflicts", header.Key);
-                            }
-                        }
-                        else
-                        {
-                            Log.Warning("Invalid custom header name: {HeaderKey}", header.Key);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Warning(ex, "Could not add custom header {HeaderKey}", header.Key);
-                    }
+                    Log.Warning("Could not add configured header {HeaderKey}", header.Key);
                 }
             }
 

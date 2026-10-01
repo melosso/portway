@@ -86,14 +86,21 @@ public static partial class SqlTableWriteBuilder
     public static TableWriteCommand BuildInsert(ISqlProvider provider, string table, Dictionary<string, object?> columns)
         => Compile(provider, new Query(table).AsInsert(columns));
 
-    public static TableWriteCommand BuildUpdate(ISqlProvider provider, string table, string pkColumn, object pkValue, Dictionary<string, object?> columns)
-        => Compile(provider, new Query(table).Where(pkColumn, pkValue).AsUpdate(columns));
+    public static TableWriteCommand BuildUpdate(ISqlProvider provider, string table, string pkColumn, object pkValue, Dictionary<string, object?> columns, IReadOnlyList<TenantPredicate>? tenants = null)
+        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsUpdate(columns));
 
-    public static TableWriteCommand BuildDelete(ISqlProvider provider, string table, string pkColumn, object pkValue)
-        => Compile(provider, new Query(table).Where(pkColumn, pkValue).AsDelete());
+    public static TableWriteCommand BuildDelete(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
+        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsDelete());
 
-    public static TableWriteCommand BuildSelectByKey(ISqlProvider provider, string table, string pkColumn, object pkValue)
-        => Compile(provider, new Query(table).Where(pkColumn, pkValue));
+    public static TableWriteCommand BuildSelectByKey(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
+        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants));
+
+    private static Query Confine(Query query, IReadOnlyList<TenantPredicate>? tenants)
+    {
+        foreach (var tenant in tenants ?? [])
+            query.Where(tenant.Column, TenantSql.Literal(tenant.Value));
+        return query;
+    }
 
     private static TableWriteCommand Compile(ISqlProvider provider, Query query)
     {

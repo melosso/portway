@@ -14,4 +14,5 @@ public sealed record ProxyEndpointInfo(
     List<string>? AllowedEnvironments,
     List<string>? FallbackUrls = null,
     ProxyRetryOptions? Retry = null,
-    ProxyResponseTransforms? ResponseTransforms = null);
+    ProxyResponseTransforms? ResponseTransforms = null,
+    bool HasTenancy = false);

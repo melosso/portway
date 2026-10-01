@@ -23,6 +23,9 @@ public static class PortwayResults
     public static IActionResult BadRequest(string error)
         => new BadRequestObjectResult(ErrorResponse.Of(error));
 
+    public static IActionResult Forbidden(string error)
+        => new ObjectResult(ErrorResponse.Of(error)) { StatusCode = 403 };
+
     public static IActionResult NotFound(string error)
         => new NotFoundObjectResult(ErrorResponse.Of(error));
 

@@ -167,6 +167,8 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<ResponseDescriptionDocumentFilter>();
                 options.AddDocumentTransformer(EndpointStateDocumentFilter.Deprecated());
                 options.AddDocumentTransformer(EndpointStateDocumentFilter.Disabled());
+                options.AddDocumentTransformer<TenancyDocumentFilter>();
+                options.AddDocumentTransformer<TableValuedFunctionDocumentFilter>();
                 options.AddDocumentTransformer<ConfigExampleDocumentFilter>();
                 options.AddDocumentTransformer<HierarchicalTagDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();

@@ -27,6 +27,7 @@ public static partial class WebUiEndpointExtensions
                 revoked_at = t.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
                 allowed_scopes = t.AllowedScopes,
                 allowed_environments = t.AllowedEnvironments,
+                allowed_tenants = t.Tenants.ToDictionary(g => g.Key, g => g.Value.Order(StringComparer.Ordinal).ToArray()),
                 rate_limit_requests = t.RateLimitRequests,
                 rate_limit_window_seconds = t.RateLimitWindowSeconds,
                 is_active = t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow)
@@ -43,7 +44,8 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error }, statusCode: error.EndsWith("already exists") ? 409 : 400);
             var token = await tokenService.GenerateTokenAsync(
                 request.Username.Trim(), request.AllowedScopes, request.AllowedEnvironments, request.Description,
-                request.ExpiresInDays, request.RateLimitRequests, request.RateLimitWindowSeconds);
+                request.ExpiresInDays, request.RateLimitRequests, request.RateLimitWindowSeconds,
+                TenantGrants.TryCreate(request.AllowedTenants, out var grants, out _) ? TenantGrants.Serialize(grants) : TenantGrants.Empty);
             return Results.Json(new { ok = true, token });
         }).ExcludeFromDescription();
 
@@ -61,6 +63,17 @@ public static partial class WebUiEndpointExtensions
             {
                 if (!await tokenService.UpdateTokenEnvironmentsAsync(id, envs.GetString() ?? "*"))
                     return Results.Json(new { error = "Cannot narrow the last full-access token" }, statusCode: 409);
+            }
+
+            if (body.TryGetProperty("allowed_tenants", out var tenants))
+            {
+                Dictionary<string, List<string>>? raw;
+                try { raw = tenants.ValueKind == JsonValueKind.Null ? null : tenants.Deserialize<Dictionary<string, List<string>>>(); }
+                catch (JsonException) { return Results.Json(new { error = "allowed_tenants must be an object of header names to lists of values" }, statusCode: 400); }
+                if (!TenantGrants.TryCreate(raw, out var grants, out var tenantError))
+                    return Results.Json(new { error = tenantError }, statusCode: 400);
+                if (!await tokenService.UpdateTokenTenantsAsync(id, grants))
+                    return Results.Json(new { error = "Token not found" }, statusCode: 404);
             }
 
             if (body.TryGetProperty("description", out var desc) && desc.ValueKind == JsonValueKind.String)
@@ -131,7 +144,8 @@ public static partial class WebUiEndpointExtensions
                 existing.Description,
                 expiresInDays,
                 existing.RateLimitRequests,
-                existing.RateLimitWindowSeconds);
+                existing.RateLimitWindowSeconds,
+                existing.AllowedTenants);
 
             await tokenService.RevokeTokenAsync(id);
 
@@ -142,6 +156,7 @@ public static partial class WebUiEndpointExtensions
                 username = existing.Username,
                 allowed_scopes = existing.AllowedScopes,
                 allowed_environments = existing.AllowedEnvironments,
+                allowed_tenants = existing.Tenants.ToDictionary(g => g.Key, g => g.Value.Order(StringComparer.Ordinal).ToArray()),
                 expires_in_days = expiresInDays
             });
         }).ExcludeFromDescription();

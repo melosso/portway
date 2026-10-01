@@ -16,6 +16,7 @@ public sealed record McpToolDescriptor
     public string Method { get; init; } = string.Empty;
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }
+    public IReadOnlyList<string> TenantHeaders { get; init; } = [];
     public string Url { get; init; } = string.Empty;
     public string? UiResourceUri { get; init; }
     /// <summary>

@@ -91,6 +91,7 @@ public static class PortwayMcpTools
             Method = tool.Method,
             Url = tool.Url,
             AllowedEnvironments = tool.AllowedEnvironments ?? [],
+            TenantHeaders = tool.TenantHeaders,
             HasUi = !string.IsNullOrEmpty(tool.UiResourceUri),
             UiUri = tool.UiResourceUri
         };
@@ -124,6 +125,7 @@ public static class PortwayMcpTools
         [Description("The Portway environment to call, e.g. '500'")] string environment,
         [Description("OData query string for GET requests (optional), e.g. '$top=20&$filter=...'")] string? query = null,
         [Description("JSON body for POST/PUT/PATCH requests (optional)")] string? body = null,
+        [Description("Tenant header values for endpoints with TenantHeaders in GetEndpointInfo, e.g. {\"X-Company-Id\":\"ACME\"} (optional when the token holds one value)")] Dictionary<string, string>? tenants = null,
         CancellationToken ct = default)
     {
         if (_registry is null) return "MCP not initialized";
@@ -142,7 +144,7 @@ public static class PortwayMcpTools
             ? authHeader["Bearer ".Length..].Trim()
             : null;
 
-        var inputJson = JsonSerializer.Serialize(new { environment, query, body });
+        var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants });
         return await chat.ExecuteToolAsync(endpointName, inputJson, environment, baseUrl, bearerToken, ct);
     }
 }

@@ -68,8 +68,17 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Uploads a file to storage
     /// </summary>
-    public async Task<string> UploadFileAsync(string environment, string filename, Stream fileStream, bool overwrite = false)
+    public Task<string> UploadFileAsync(string environment, string filename, Stream fileStream, bool overwrite = false)
+        => UploadFileAsync(environment, string.Empty, filename, fileStream, overwrite);
+
+    /// <summary>
+    /// Uploads a file into a validated relative folder below the environment
+    /// </summary>
+    public async Task<string> UploadFileAsync(string environment, string folder, string filename, Stream fileStream, bool overwrite = false)
     {
+        if (folder.Length > 0 && !IsSafeRelativePath(folder))
+            throw new ArgumentException("Invalid folder", nameof(folder));
+
         // Validate file
         if (fileStream == null || fileStream.Length == 0)
         {
@@ -85,7 +94,7 @@ public class FileHandlerService : IDisposable
         ValidateExtension(filename);
 
         // Sanitize filename to prevent path traversal attacks
-        string safeFilename = SanitizeFileName(filename);
+        string safeFilename = folder.Length > 0 ? $"{folder}/{SanitizeFileName(filename)}" : SanitizeFileName(filename);
 
         // Create a unique file ID
         string fileId = GenerateFileId(environment, safeFilename);
@@ -96,6 +105,7 @@ public class FileHandlerService : IDisposable
 
         // Determine the file path
         string filePath = Path.Combine(environmentDir, safeFilename);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
         // Check if file exists and handle overwrite
         if (File.Exists(filePath) && !overwrite)
@@ -157,18 +167,16 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Downloads a file from storage. The caller's authorized route environment must match the one encoded in the file ID
     /// </summary>
-    public async Task<(Stream FileStream, string Filename, string ContentType)> DownloadFileAsync(string fileId, string expectedEnvironment)
-    {
-        // Parse the file ID to get environment and filename
-        if (!ParseFileId(fileId, out string environment, out string filename))
-        {
-            throw new ArgumentException("Invalid file ID", nameof(fileId));
-        }
+    public Task<(Stream FileStream, string Filename, string ContentType)> DownloadFileAsync(string fileId, string expectedEnvironment)
+        => DownloadFileAsync(fileId, expectedEnvironment, string.Empty);
 
-        if (!string.Equals(environment, expectedEnvironment, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new UnauthorizedAccessException("File ID does not belong to the requested environment");
-        }
+    /// <summary>
+    /// Downloads a file inside the given folder; throws UnauthorizedAccessException otherwise
+    /// </summary>
+    public async Task<(Stream FileStream, string Filename, string ContentType)> DownloadFileAsync(string fileId, string expectedEnvironment, string folder)
+    {
+        var (environment, filename) = ResolveFileId(fileId, expectedEnvironment, folder);
+        fileId = GenerateFileId(environment, filename);
 
         // Check if file exists in memory cache
         if (_memoryCache.TryGetValue(fileId, out var cachedStream))
@@ -247,18 +255,16 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Deletes a file from storage. The caller's authorized route environment must match the one encoded in the file ID
     /// </summary>
-    public async Task DeleteFileAsync(string fileId, string expectedEnvironment)
-    {
-        // Parse the file ID to get environment and filename
-        if (!ParseFileId(fileId, out string environment, out string filename))
-        {
-            throw new ArgumentException("Invalid file ID", nameof(fileId));
-        }
+    public Task DeleteFileAsync(string fileId, string expectedEnvironment)
+        => DeleteFileAsync(fileId, expectedEnvironment, string.Empty);
 
-        if (!string.Equals(environment, expectedEnvironment, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new UnauthorizedAccessException("File ID does not belong to the requested environment");
-        }
+    /// <summary>
+    /// Deletes a file inside the given folder; throws UnauthorizedAccessException otherwise
+    /// </summary>
+    public async Task DeleteFileAsync(string fileId, string expectedEnvironment, string folder)
+    {
+        var (environment, filename) = ResolveFileId(fileId, expectedEnvironment, folder);
+        fileId = GenerateFileId(environment, filename);
 
         // Remove from memory cache if present
         if (_memoryCache.TryRemove(fileId, out var cachedStream))
@@ -294,10 +300,24 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Lists files in an environment
     /// </summary>
-    public async Task<IEnumerable<FileInfo>> ListFilesAsync(string environment, string? prefix = null)
+    public Task<IEnumerable<FileInfo>> ListFilesAsync(string environment, string? prefix = null)
+        => ListFilesAsync(environment, string.Empty, prefix);
+
+    /// <summary>
+    /// Lists files inside the given folder; prefix is relative to the folder
+    /// </summary>
+    public async Task<IEnumerable<FileInfo>> ListFilesAsync(string environment, string folder, string? prefix)
     {
-        // Use the cached index instead of filesystem operations
-        var files = await _fileSystemIndex.ListFilesAsync(environment, prefix ?? string.Empty);
+        if (folder.Length > 0 && !IsSafeRelativePath(folder))
+            throw new ArgumentException("Invalid folder", nameof(folder));
+        if (!string.IsNullOrEmpty(prefix) && (Path.IsPathRooted(prefix) || prefix.Contains('\\') || prefix.Split('/').Any(s => s is "." or "..")))
+            throw new ArgumentException("Invalid prefix", nameof(prefix));
+
+        var files = folder.Length == 0
+            ? await _fileSystemIndex.ListFilesAsync(environment, prefix ?? string.Empty)
+            : (await _fileSystemIndex.ListFilesAsync(environment, $"{folder}/"))
+                .Where(f => f.FileName.StartsWith($"{folder}/", StringComparison.Ordinal)
+                    && (string.IsNullOrEmpty(prefix) || f.FileName[(folder.Length + 1)..].StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
 
         // Convert to FileInfo objects if needed
         return files.Select(f => new FileInfo
@@ -439,6 +459,7 @@ public class FileHandlerService : IDisposable
 
         // Determine the file path
         string filePath = Path.Combine(environmentDir, filename);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
         try
         {
@@ -490,6 +511,7 @@ public class FileHandlerService : IDisposable
 
         // Determine the file path
         string filePath = Path.Combine(environmentDir, filename);
+        Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
         try
         {
@@ -654,16 +676,40 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Generates a file ID from environment and filename
     /// </summary>
-    private string GenerateFileId(string environment, string filename)
+    private static string GenerateFileId(string environment, string filename) => FileIdProtector.Protect(environment, filename);
+
+    /// <summary>
+    /// Parses a file id and checks environment and folder; legacy ids resolve only when folder is empty
+    /// </summary>
+    private (string Environment, string Filename) ResolveFileId(string fileId, string expectedEnvironment, string folder)
     {
-        // Ensure fileName can contain subdirectory paths
-        string combined = $"{environment}:{filename}";
-        byte[] bytes = Encoding.UTF8.GetBytes(combined);
-        return Convert.ToBase64String(bytes)
-            .Replace('+', '-')
-            .Replace('/', '_')
-            .TrimEnd('=');
+        if (folder.Length > 0 && !IsSafeRelativePath(folder))
+            throw new ArgumentException("Invalid folder", nameof(folder));
+
+        if (!ParseFileId(fileId, out string environment, out string filename))
+            throw new ArgumentException("Invalid file ID", nameof(fileId));
+
+        if (!string.Equals(environment, expectedEnvironment, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("File ID does not belong to the requested environment");
+
+        bool inside = folder.Length == 0
+            ? FileIdProtector.IsProtected(fileId) || !filename.Contains('/')
+            : FileIdProtector.IsProtected(fileId) && filename.StartsWith($"{folder}/", StringComparison.Ordinal);
+        if (!inside)
+            throw new UnauthorizedAccessException("File ID does not belong to this endpoint");
+
+        return (environment, filename);
     }
+
+    private static readonly char[] UnsafePathChars = [.. Path.GetInvalidFileNameChars(), ':', '\\'];
+
+    /// <summary>
+    /// True for a relative path without root, empty, dot or dot-dot segments and without invalid characters
+    /// </summary>
+    internal static bool IsSafeRelativePath(string? path) =>
+        !string.IsNullOrEmpty(path)
+        && !Path.IsPathRooted(path)
+        && path.Split('/').All(segment => segment.Length > 0 && segment is not "." and not ".." && segment.IndexOfAny(UnsafePathChars) < 0);
 
     /// <summary>
     /// Validates the environment and filename components decoded from a fileId. Both components must be non-empty single-segment values with no path separators or traversal sequences
@@ -700,6 +746,18 @@ public class FileHandlerService : IDisposable
     /// </summary>
     private bool ParseFileId(string fileId, out string environment, out string filename)
     {
+        if (FileIdProtector.IsProtected(fileId))
+        {
+            if (FileIdProtector.TryUnprotect(fileId, out environment, out filename)
+                && !environment.Contains('/') && !environment.Contains('\\') && !environment.Contains("..")
+                && IsSafeRelativePath(filename))
+                return true;
+
+            environment = string.Empty;
+            filename = string.Empty;
+            return false;
+        }
+
         try
         {
             string decoded = fileId

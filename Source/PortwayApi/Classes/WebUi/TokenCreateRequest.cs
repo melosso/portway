@@ -23,6 +23,9 @@ public sealed class TokenCreateRequest : IAsyncValidatableObject
     [JsonPropertyName("allowed_environments")]
     public string AllowedEnvironments { get; set; } = "*";
 
+    [JsonPropertyName("allowed_tenants")]
+    public Dictionary<string, List<string>>? AllowedTenants { get; set; }
+
     [JsonPropertyName("expires_in_days")]
     public int? ExpiresInDays { get; set; }
 
@@ -45,6 +48,12 @@ public sealed class TokenCreateRequest : IAsyncValidatableObject
         if (username.Length == 0)
         {
             yield return new ValidationResult("username is required", [nameof(Username)]);
+            yield break;
+        }
+
+        if (!TenantGrants.TryCreate(AllowedTenants, out _, out var tenantError))
+        {
+            yield return new ValidationResult(tenantError, [nameof(AllowedTenants)]);
             yield break;
         }
 

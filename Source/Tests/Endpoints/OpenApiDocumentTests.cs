@@ -385,4 +385,15 @@ public class OpenApiDocumentTests : ApiTestBase
         var getResponse = await _client.GetAsync("/api/500/Inventory/StockLevels", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.MethodNotAllowed, getResponse.StatusCode);
     }
+
+    [Fact]
+    public async Task TvfQueryParameterDocumented()
+    {
+        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        var parameters = json.RootElement.GetProperty("paths").GetProperty("/api/{env}/Company/Departments").GetProperty("get").GetProperty("parameters").EnumerateArray().ToList();
+
+        Assert.Single(parameters, p => p.GetProperty("name").GetString() == "BaseDate" && p.GetProperty("in").GetString() == "query");
+    }
 }

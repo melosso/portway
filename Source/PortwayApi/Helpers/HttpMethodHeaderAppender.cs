@@ -220,12 +220,5 @@ public static class HttpMethodHeaderAppender
     /// </summary>
     /// <param name="headerName">The header name to validate</param>
     /// <returns>True if the header name is valid, false otherwise</returns>
-    public static bool IsValidHeaderName(string headerName)
-    {
-        if (string.IsNullOrWhiteSpace(headerName))
-            return false;
-
-        // Reject anything but alphanumerics, hyphens and underscores; excludes spaces and control characters HTTP header names must not contain
-        return headerName.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
-    }
+    public static bool IsValidHeaderName(string headerName) => HeaderPolicy.IsValidName(headerName);
 }

@@ -132,6 +132,9 @@ public static partial class WebUiEndpointExtensions
             }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
+            if (TenancyError(type, rawContent) is { } putTenancyError)
+                return Results.Json(new { error = putTenancyError }, statusCode: 400);
+
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             var backupPath = PortwayApi.Services.Configuration.ConfigBackupService.Backup(filePath!);
             await File.WriteAllTextAsync(filePath!, rawContent);
@@ -169,6 +172,9 @@ public static partial class WebUiEndpointExtensions
 
             try { using var _ = JsonDocument.Parse(rawContent); }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
+
+            if (TenancyError(type, rawContent) is { } postTenancyError)
+                return Results.Json(new { error = postTenancyError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             await File.WriteAllTextAsync(filePath!, rawContent);
@@ -254,6 +260,9 @@ public static partial class WebUiEndpointExtensions
                     return Results.Json(new { error = $"Unknown endpoint type: {type}" }, statusCode: 400);
             }
 
+            if (TypeStringToEndpointType(type) is { } validateType)
+                errors.AddRange(EndpointHandler.ValidateTenancy(validateType, rawContent));
+
             // Same namespace rules the loader enforces at startup (charset, length, reserved names)
             if (root.ValueKind == JsonValueKind.Object &&
                 root.TryGetProperty("Namespace", out var ns) && ns.ValueKind == JsonValueKind.String)
@@ -267,4 +276,9 @@ public static partial class WebUiEndpointExtensions
         // Receive and log client-side JS errors for production visibility
         // Exempt from auth (sendBeacon fires from any page state); rate-limited by the IP limiter
     }
+
+    private static string? TenancyError(string type, string json) =>
+        TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateTenancy(endpointType, json) is { Count: > 0 } errors
+            ? string.Join("; ", errors)
+            : null;
 }

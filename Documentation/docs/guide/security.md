@@ -55,6 +55,47 @@ Restrict a token to specific environments using `AllowedEnvironments`:
 | `dev,test` | Named environments |
 | `dev*` | All environments matching the prefix |
 
+### Tenant headers
+
+Tenant headers confine a token to the rows, upstream records or files of the customers it serves. The endpoint names the headers in `Tenancy`; the token lists the values it holds per header in `AllowedTenants`. A request header selects one of those values and never grants a value the token does not hold.
+
+```json [endpoints/SQL/Sales/Orders/entity.json]
+{
+  "DatabaseObjectName": "Orders",
+  "AllowedColumns": ["Id", "Total"],
+  "Tenancy": { "X-Company-Id": "CompanyId" }
+}
+```
+
+```json [token AllowedTenants]
+{ "X-Company-Id": ["ACME", "GLOBEX"] }
+```
+
+Header names are free to choose (`X-Company-Id`, `X-Client-Id`, `Administratie`). Names Portway owns are refused: `Authorization`, `Cookie`, `Host`, `Origin`, `Content-*`, `X-Forwarded-*` and hop-by-hop headers. Values match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`; `*` in `AllowedTenants` accepts any value of that form.
+
+| Request | Result |
+|---|---|
+| Endpoint has no `Tenancy` | Request unchanged |
+| No bearer token (environment authentication) | `403` |
+| Token holds no value for the header | `403` |
+| Header absent, token holds one value | That value |
+| Header absent, token holds several values or `*` | `400` |
+| Header holds a value the token holds | That value |
+| Header holds another value | `403` |
+| Header repeated or malformed | `400` |
+
+The `Tenancy` value names what the header controls:
+
+| Endpoint type | `Tenancy` value | Behavior |
+|---|---|---|
+| SQL table or view | Column | Reads and `$count` are ANDed with `Column = value`; client `$filter` cannot widen them. Inserts store the value, updates and deletes match it, a row cannot move to another tenant. Rows of another tenant answer `404`. |
+| SQL table-valued function | Function parameter | The parameter receives the value; the client's own value is ignored. |
+| SQL stored procedure | Procedure parameter | `@{value}` is passed with the tenant value after the payload; the procedure enforces it. |
+| Proxy | Upstream header | Sent with the tenant value; the client's copy of both headers is removed. |
+| File | Ignored | `BaseDirectory` holds a `{Header}` placeholder per tenant header; uploads, downloads, deletes and listings stay inside that folder. |
+
+`Tenancy` is refused on static, webhook and composite endpoints, a composite step cannot target a tenant endpoint, and `$expand` cannot target one. An endpoint whose `Tenancy` fails validation is not loaded and the console refuses to save it. The OpenAPI document lists each tenant header as an optional header parameter, and MCP tools accept them in the `tenants` argument.
+
 ### Endpoint-level restrictions
 
 Individual endpoints enforce their own environment and visibility constraints:

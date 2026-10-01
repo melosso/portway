@@ -278,4 +278,16 @@ public class PortwayMcpToolsTests : IAsyncLifetime
 
         Assert.Equal(1, result.Count);
     }
+
+    [Fact]
+    public async Task GetEndpointInfo_ListsTenantHeaders()
+    {
+        var registry = new McpEndpointRegistry();
+        PortwayMcpTools.Initialize(registry);
+        registry.RegisterEndpoints([new EndpointMcpInfo { Name = "Orders", Url = "/api/500/Orders", Methods = ["GET"], TenantHeaders = ["X-Company-Id"] }]);
+
+        var info = await PortwayMcpTools.GetEndpointInfo(CallerWith(_fullAccessToken), _tokenService, "Orders");
+
+        Assert.Equal(["X-Company-Id"], info.TenantHeaders);
+    }
 }

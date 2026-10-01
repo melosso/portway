@@ -3,6 +3,7 @@ using PortwayApi.Interfaces;
 using SqlKata;
 using SqlKata.Compilers;
 using Serilog;
+using PortwayApi.Helpers;
 
 namespace PortwayApi.Classes;
 
@@ -24,25 +25,43 @@ public class ODataToSqlConverter : IODataToSqlConverter
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType)
-        => Convert(entityName, odataParams, providerType, count: false, relationships: null);
+        => Convert(entityName, odataParams, providerType, count: false, relationships: null, tenants: []);
 
     public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType,
         IReadOnlyList<EndpointRelationship>? relationships)
-        => Convert(entityName, odataParams, providerType, count: false, relationships);
+        => Convert(entityName, odataParams, providerType, count: false, relationships, tenants: []);
+
+    public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType,
+        IReadOnlyList<EndpointRelationship>? relationships,
+        IReadOnlyList<TenantPredicate> tenants)
+        => Convert(entityName, odataParams, providerType, count: false, relationships, tenants);
+
+    public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToCountSQL(
+        string entityName,
+        Dictionary<string, string> odataParams,
+        SqlProviderType providerType,
+        IReadOnlyList<TenantPredicate> tenants)
+        => Convert(entityName, CountParams(odataParams), providerType, count: true, relationships: null, tenants);
 
     public (string SqlQuery, Dictionary<string, object> Parameters) ConvertToCountSQL(
         string entityName,
         Dictionary<string, string> odataParams,
         SqlProviderType providerType)
+        => Convert(entityName, CountParams(odataParams), providerType, count: true, relationships: null, tenants: []);
+
+    // count queries use only the filter
+    private static Dictionary<string, string> CountParams(Dictionary<string, string> odataParams)
     {
-        // Count ignores paging, projection and ordering; only the filter shapes the result
         var countParams = new Dictionary<string, string>();
         if (odataParams.TryGetValue("filter", out var filter) && !string.IsNullOrWhiteSpace(filter))
             countParams["filter"] = filter;
-        return Convert(entityName, countParams, providerType, count: true, relationships: null);
+        return countParams;
     }
 
     private (string SqlQuery, Dictionary<string, object> Parameters) Convert(
@@ -50,7 +69,8 @@ public class ODataToSqlConverter : IODataToSqlConverter
         Dictionary<string, string> odataParams,
         SqlProviderType providerType,
         bool count,
-        IReadOnlyList<EndpointRelationship>? relationships)
+        IReadOnlyList<EndpointRelationship>? relationships,
+        IReadOnlyList<TenantPredicate> tenants)
     {
         Log.Debug("Converting OData to SQL for entity: {EntityName} (provider: {Provider})", entityName, providerType);
 
@@ -122,10 +142,12 @@ public class ODataToSqlConverter : IODataToSqlConverter
             string sqlQuery;
             IDictionary<string, object> rawParams;
 
-            if (expandSpecs is { Count: > 0 })
+            if (expandSpecs is { Count: > 0 } || tenants.Count > 0)
             {
                 var kata = dynamicConverter.ConvertToSQLKataQuery(fullTableName, forkParams, count, true);
-                kata = PortwayApi.Helpers.OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
+                kata = TenantSql.Apply(kata, fullTableName, tenants);
+                if (expandSpecs is { Count: > 0 })
+                    kata = PortwayApi.Helpers.OdataExpandJoinBuilder.Apply(kata, fullTableName, expandSpecs);
                 var compiled = compiler.Compile(kata);
                 (sqlQuery, rawParams) = (compiled.Sql, compiled.NamedBindings);
             }

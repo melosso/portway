@@ -29,7 +29,7 @@ Create an app connector in AFAS under the app connector settings and copy its to
 The token lives in the environment, not the endpoint. A separate environment can point the same endpoint definitions at your AFAS test member with its own token.
 
 ::: Note About authorization
-AFAS puts its token in the `Authorization` header, the same header Portway's bearer tokens use. Portway forwards the client's `Authorization` header upstream, so the two collide. Use the same solution as the [Teable integration](/reference/integrations/teable): give the environment a custom `X-API-Key` authentication method with `OverrideGlobalToken` set to `true`. Clients then send no `Authorization` header of their own.
+AFAS puts its token in the `Authorization` header, the same header Portway's bearer tokens use. A header set in the environment replaces the client's header of the same name, so AFAS receives only the environment's token. To keep the two tokens in separate headers, use the same setup as the [Teable integration](/reference/integrations/teable): a custom `X-API-Key` authentication method with `OverrideGlobalToken` set to `true`.
 ::: 
 
 ### Proxy endpoints

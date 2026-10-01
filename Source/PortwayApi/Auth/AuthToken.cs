@@ -1,3 +1,6 @@
+using System.Collections.Frozen;
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace PortwayApi.Auth;
 
 /// <summary>
@@ -22,6 +25,32 @@ public class AuthToken
     /// Comma-separated list of allowed environments (e.g., "Production,Staging") Use "*" for full access to all environments
     /// </summary>
     public string AllowedEnvironments { get; set; } = "*"; // "*" means all environments
+
+    /// <summary>
+    /// Tenant grants as JSON, header name to allowed values; "{}" grants none
+    /// </summary>
+    public string AllowedTenants { get; set; } = TenantGrants.Empty;
+
+    private sealed record ParsedTenants(string Raw, FrozenDictionary<string, FrozenSet<string>> Grants);
+    private ParsedTenants? _tenants;
+
+    /// <summary>
+    /// Parsed AllowedTenants, cached per value; invalid JSON yields no grants
+    /// </summary>
+    [NotMapped]
+    public FrozenDictionary<string, FrozenSet<string>> Tenants
+    {
+        get
+        {
+            var parsed = _tenants;
+            if (parsed is null || !ReferenceEquals(parsed.Raw, AllowedTenants))
+            {
+                parsed = new ParsedTenants(AllowedTenants, TenantGrants.TryParse(AllowedTenants, out var grants, out _) ? grants : TenantGrants.None);
+                _tenants = parsed;
+            }
+            return parsed.Grants;
+        }
+    }
 
     /// <summary>
     /// Token description for administrative purposes

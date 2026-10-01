@@ -43,6 +43,14 @@ Every property this endpoint type accepts, with its type and default, is listed 
 
 Files land at paths like `files/prod/2025/01/database-backup.sql`.
 
+A `{Header}` placeholder takes the request's [tenant header](/guide/security#tenant-headers) value and must come before any date placeholder:
+
+```json
+{ "BaseDirectory": "invoices/{X-Company-Id}/{year}", "Tenancy": { "X-Company-Id": "" } }
+```
+
+Downloads, deletes and listings are confined to the part of `BaseDirectory` before the first date placeholder (`invoices/ACME` above). File ids are encrypted with `PORTWAY_ENCRYPTION_KEY`; a forged or edited id answers `400`, and an id outside the endpoint's folder answers `404`. Changing the key invalidates issued ids.
+
 ## Namespaces
 
 File endpoints support namespaces. Place the endpoint under `endpoints/Files/{Namespace}/{Name}/entity.json` (or set `Namespace` in `entity.json`) and it is served at `/api/{env}/files/{Namespace}/{Name}/...`. All operations (upload, download, delete, list) resolve the namespace, and returned download URLs include it so they round-trip. Non-namespaced endpoints keep their existing `/api/{env}/files/{Name}` URLs. A few names are reserved and cannot be used, which [Namespaces](/reference/namespaces) covers along with the rest of the naming rules.
