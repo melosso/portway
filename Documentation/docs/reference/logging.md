@@ -1,122 +1,104 @@
 ---
 title: Logging
-description: "Serilog configuration reference for log levels, file rotation, and structured output"
+description: "Serilog configuration for log levels, file rotation and log output"
 ---
 
 # Logging
 
-When something behaves unexpectedly, logs are usually your first stop. Portway logs through Serilog, which gives you structured output, sensible file rotation, and per-namespace level control. Here is how the pieces fit together.
+Portway logs through Serilog, configured in the `Serilog` section of `appsettings.json`. Request traffic logging is separate: [Auditing](/reference/audit).
 
-## Log outputs
+## Default configuration
 
-### Console logging
-- Displays real-time logs with timestamp formatting
-- Information level and above shown by default
-- Color-coded by severity level
-- Useful for development and debugging
-
-### File logging
-- Stored in the `/log` directory
-- Daily rotation with pattern: `portwayapi-YYYYMMDD.log`
-- 10MB file size limit with automatic rollover
-- Retains 10 days of log files
-- Buffered writing for performance
-
-## Log levels
-
-| Level | Description | Examples |
-|-------|-------------|----------|
-| Debug | Detailed diagnostic information | Database queries, method execution |
-| Information | Normal operational events | API requests, successful operations |
-| Warning | Unexpected but handled situations | Missing configuration, fallback behavior |
-| Error | Failures and exceptions | Database errors, API failures |
-| Fatal | Critical failures | Application startup failures |
-
-## Configuration
-
-Logging is configured in `appsettings.json` under the `Serilog` section. See [Application Settings](/reference/app-settings) for the full configuration schema.
-
-## Log file management
-
-### Rotation policy
-- Daily rotation at midnight
-- Size-based rotation at 10MB
-- Automatic file naming with date suffix
-
-### Retention policy
-- Keeps last 10 log files
-- Older files automatically deleted
-- Configurable retention period
-
-### File naming convention
-```
-log/
-├── portwayapi-20240120.log
-├── portwayapi-20240119.log
-└── portwayapi-20240118.log
+```json
+{
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "Microsoft.EntityFrameworkCore.Database.Command": "Warning",
+        "System": "Warning",
+        "Microsoft.AspNetCore": "Warning"
+      }
+    },
+    "WriteTo": [
+      {
+        "Name": "Console",
+        "Args": {
+          "outputTemplate": "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"
+        }
+      },
+      {
+        "Name": "File",
+        "Args": {
+          "path": "log/portwayapi-.log",
+          "rollingInterval": "Day",
+          "fileSizeLimitBytes": 10485760,
+          "rollOnFileSizeLimit": true,
+          "retainedFileCountLimit": 10,
+          "buffered": true,
+          "flushToDiskInterval": "00:00:30"
+        }
+      }
+    ]
+  }
+}
 ```
 
-## Performance logging
+## Outputs
 
-### Request timing
+| Output | Behavior |
+|---|---|
+| Console | `[time level] message`, with exception details |
+| File | `log/portwayapi-YYYYMMDD.log`; daily rotation and at 10MB; 10 files retained; buffered, flushed every 30 seconds |
+
+## Levels
+
+| Level | Content |
+|---|---|
+| `Debug` | Queries, endpoint trees, pool and provider details, per-endpoint health failures |
+| `Information` | Startup summary and operational events |
+| `Warning` | Handled problems: rate limit blocks, configuration fallbacks, unhealthy upstreams |
+| `Error` | Failures and exceptions |
+| `Fatal` | Startup failures |
+
+The `Default` level applies to Portway's events, which have no source context; `Override` entries apply to framework namespaces.
+
+## Examples
+
 ```
 [DBG] Incoming request: POST /api/500/Orders
 [DBG] Outgoing response: 200 for /api/500/Orders - Took 125ms
-```
-
-### Rate limiting
-```
 [INF] Rate limiting enabled. Store: InMemoryRateLimiterStore, IP: 100/60s, Token: 1000/60s
 [WRN] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
-[INF] Rate limit for IP 192.168.1.100 has expired, allowing traffic
 ```
 
-## Structured logging
+Secrets, tokens and environment authentication values are not written to logs; rate limit keys are hashed.
 
-### Event properties
-The logging system captures structured data for better analysis:
-- Request method and path
-- User identity and token information
-- Environment and endpoint names
-- Duration and status codes
-- Error details and stack traces
-
-### Context enrichment
-Logs are automatically enriched with:
-- Machine name
-- Application version
-- Request correlation IDs
-- User context
-- Environment information
-
-## Troubleshooting
-
-### Diagnostic tools
-
-Handy commands for log analysis:
+## Log queries
 
 ::: code-group
 
 ```powershell [PowerShell]
-# Find errors in today's log
+# Errors in today's log
 Get-Content "log/portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | Select-String "ERR"
 
-# Count requests by endpoint
-Get-Content "log/portwayapi-*.log" | Select-String "Processing.*endpoint:" | Group-Object
-
-# Monitor log growth
+# Log files by date
 Get-ChildItem "log" -Filter "*.log" | Sort-Object LastWriteTime -Descending | Select-Object Name, Length
 ```
 
 ```bash [Bash]
-# Find errors in today's log
+# Errors in today's log
 grep "ERR" "log/portwayapi-$(date +%Y%m%d).log"
 
-# Count requests by endpoint
-grep -hoE "Processing.*endpoint: [^ ]+" log/portwayapi-*.log | sort | uniq -c | sort -rn
-
-# Monitor log growth
+# Log files by size
 ls -lhtS log/*.log
 ```
 
 :::
+
+## Related topics
+
+- [Monitoring](/guide/monitoring)
+- [Auditing](/reference/audit)
+- [Application Settings](/reference/app-settings)

@@ -153,7 +153,7 @@ public class ChatStreamTranslatorTests
     }
 
     [Fact]
-    public void ToolPayloads_CarryTheSchemaUnderTheVendorProperty()
+    public void ToolPayloads_PutTheSchemaUnderTheVendorProperty()
     {
         var tools = new[] { new ToolDefinition("GetAccounts", "Reads accounts", """{"type":"object"}""") };
 

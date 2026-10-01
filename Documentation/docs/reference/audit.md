@@ -1,11 +1,11 @@
 ---
 title: Auditing
-description: "Sooner or later you'll want to know exactly what passed through your gateway and when"
+description: "Request traffic logging to file or SQLite: configuration, storage, entry format, redaction and queries"
 ---
 
 # Auditing
 
-Sooner or later you'll want to know exactly what passed through your gateway and when. Request traffic logging is built for that moment: it captures per-request detail (timing, payloads, headers, and response data) and writes it to file or SQLite storage so you can query it later at your own pace.
+Request traffic logging records per-request metadata (timing, status, user, client address, headers and optionally bodies) to file or SQLite storage.
 
 ## Configuration
 
@@ -57,7 +57,7 @@ Sooner or later you'll want to know exactly what passed through your gateway and
 
 ### File storage
 
-When `StorageType` is set to `"file"`, logs are stored as JSON files with automatic rotation:
+With `StorageType: "file"`, entries are written to rotating JSON files:
 
 ```
 log/traffic/
@@ -66,17 +66,14 @@ log/traffic/
 └── proxy_traffic_20240119_154530.json
 ```
 
-**File Format:**
-- Each line contains a JSON object representing one request
-- Files are rotated based on size (`MaxFileSizeMB`)
-- Old files are deleted when count exceeds `MaxFileCount`
-- Filenames include timestamp for easy identification
+- One JSON object per line
+- Rotation at `MaxFileSizeMB`
+- The oldest files beyond `MaxFileCount` are deleted
+- File names contain the creation time
 
 ### SQLite storage
 
-When `StorageType` is set to `"sqlite"`, logs are stored in a SQLite database:
-
-**Database Schema:**
+With `StorageType: "sqlite"`, entries are written to this table:
 ```sql
 CREATE TABLE TrafficLogs (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,7 +101,7 @@ CREATE INDEX idx_timestamp ON TrafficLogs (Timestamp);
 
 ## Log entry format
 
-Each traffic log entry contains:
+Example entry:
 
 ```json
 {
@@ -160,44 +157,27 @@ Each traffic log entry contains:
 
 ### Header sanitization
 
-Sensitive headers are automatically redacted:
-- Authorization
-- Cookie
-- X-API-Key
-- API-Key
-- Password
-- X-Auth-Token
-- Token
-- Secret
-- Credential
-- Access-Token
-- X-Access-Token
+Redacted header values: `Authorization`, `Cookie`, `X-API-Key`, `API-Key`, `Password`, `X-Auth-Token`, `Token`, `Secret`, `Credential`, `Access-Token`, `X-Access-Token`, and every header and query parameter name declared in an environment's `Authentication.Methods`.
 
 ### Body capture controls
 
-Request and response bodies are:
-- Disabled by default
-- Limited by `MaxBodyCaptureSizeBytes`
-- Truncated with "..." suffix if exceeding limit
-- Only captured for JSON/XML content types
+Body capture is disabled by default, limited to `MaxBodyCaptureSizeBytes` (longer bodies end with `...`) and applies to JSON and XML content only.
 
-### Access control
+### Storage access
 
-- Log files/database should be protected from web access
-- Consider using separate storage with restricted permissions
-- Implement log rotation to manage sensitive data retention
+Store traffic logs outside web-served directories, with file permissions limited to the Portway process.
 
 ## Performance considerations
 
-Traffic logging adds I/O overhead. The queue-based design minimises impact on request latency, writes happen in background batches, but high-volume deployments should tune the settings below.
+Entries are queued and written in background batches. Tuning for high volume:
 
 | Setting | Recommendation |
 |---------|---------------|
-| `IncludeRequestBodies` / `IncludeResponseBodies` | Keep disabled unless actively debugging |
-| `BatchSize` | Increase (e.g. 500) on high-traffic APIs to reduce write frequency |
-| `FlushIntervalMs` | Increase (e.g. 5000) if I/O is a bottleneck |
-| `QueueCapacity` | Increase if log entries are being dropped (watch for queue-full warnings in application logs) |
-| `StorageType` | Prefer `file` over `sqlite` for raw throughput |
+| `IncludeRequestBodies` / `IncludeResponseBodies` | Disabled outside debugging |
+| `BatchSize` | Higher (e.g. 500) for fewer writes |
+| `FlushIntervalMs` | Higher (e.g. 5000) when I/O is the bottleneck |
+| `QueueCapacity` | Higher when the application log reports a full queue |
+| `StorageType` | `file` has higher throughput than `sqlite` |
 
 ## Querying traffic logs
 

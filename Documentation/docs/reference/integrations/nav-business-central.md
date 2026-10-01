@@ -13,7 +13,7 @@ On-premise NAV/BC uses Windows/NTLM authentication. When you deploy in IIS, sett
 
 ## Overview
 
-The integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request carries its environment configuration. That is how data ends up coming from the correct company database and server instance.
+The integration uses Portway's proxy endpoints to forward requests to the internal NAV/BC OData web services. Each request uses its environment configuration, which selects the company database and server instance.
 
 ## Configuration requirements
 

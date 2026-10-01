@@ -5,21 +5,17 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 # Deploying with Docker
 
-This guide takes you from a first container through to the settings worth having in place before you put Portway in front of real traffic, whether that is a laptop, a Home Lab, or a production host. Before you begin, make sure [Docker](https://www.docker.com/get-started) is installed and running.
-
-If you would rather host on Windows Server behind IIS, [Deploying on Windows Server](/guide/deployment-windows) covers that path.
+Portway with Docker Compose, from a first container to production settings. Requires [Docker](https://www.docker.com/get-started). Windows Server: [Deploying on Windows Server](/guide/deployment-windows).
 
 ## Quick start
 
-If you have not started a container yet, [Getting Started](/guide/getting-started) has a minimal `docker-compose.yml` you can copy and run in a couple of minutes. Once it is up, the API is available at `http://localhost:8080`.
-
-The rest of this page picks up from there, covering the settings you are most likely to reach for next.
+A minimal `docker-compose.yml` is in [Getting Started](/guide/getting-started). The API listens on `http://localhost:8080`.
 
 ## Configuration
 
 ### Environment variables
 
-The Docker Compose configuration can be extended with additional environment variables for advanced functionality:
+Compose file with the common environment variables:
 
 ```yaml
 services:
@@ -35,13 +31,12 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
-      # Set your environment variables here
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
       - PORTWAY_ALLOWED_HOSTS=*
       - PORTWAY_PATH_BASE=
 
       # Web UI settings
-      - PORTWAY_ADMIN_KEY=INSECURE-CHANGE-ME-admin-api-key
+      - WebUi__Enabled=true
       - WebUi__PublicOrigins__0=https://example.com
       - WebUi__PublicOrigins__1=https://api.example.com
       - PORTWAY_SECURE_COOKIES=false
@@ -74,37 +69,30 @@ volumes:
 
 | Variable | Description | Default Value | Legacy name |
 |----------|-------------|---------------|-------------|
-| `PORTWAY_ENCRYPTION_KEY` | Encryption secret | (Hardcoded) | — |
-| `PORTWAY_USE_HTTPS` | Whether Kestrel serves HTTPS directly. See note below. | `false` | `Use_HTTPS` |
+| `PORTWAY_ENCRYPTION_KEY` | Encryption key for secrets at rest; required outside Development | (none) | — |
+| `PORTWAY_USE_HTTPS` | Kestrel serves HTTPS directly | `false` | `Use_HTTPS` |
 | `PORTWAY_ALLOWED_HOSTS` | Allowed host names | `*` | `AllowedHosts` |
 | `PORTWAY_PATH_BASE` | Base path for the application | (empty) | `PathBase` |
 
-Legacy names still work but log a startup deprecation warning; the `PORTWAY_*` name wins if both are set.
+Legacy names remain supported with a deprecation warning at startup; the `PORTWAY_*` name takes precedence.
 
 :::warning
-The flag `PORTWAY_USE_HTTPS` **requires a TLS certificate to be available to Kestrel.** If you set this to `true` without mounting a valid certificate, the container will fail to start immediately with `BackgroundService failed / Hosting failed to start`.
-
-<br>
-
-In most Docker deployments, SSL termination is handled by an external reverse proxy (nginx, Caddy, Cloudflare Tunnel, etc.) and Portway runs plain HTTP internally, keep `PORTWAY_USE_HTTPS=false` in that case. 
-
-<br>
-
-Only set `PORTWAY_USE_HTTPS=true` if Portway is directly internet-facing **and** you have configured a certificate (e.g. via `Kestrel__Certificates__Default__Path`).
+The setting `PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one the container fails to start with `BackgroundService failed / Hosting failed to start`. Behind a TLS-terminating reverse proxy (nginx, Caddy, Cloudflare Tunnel), keep `false`.
 :::
 
 ### Web UI settings
 
 | Variable | Description | Default Value | Legacy name |
 |----------|-------------|---------------|-------------|
-| `PORTWAY_ADMIN_KEY` | Admin API key for web UI access | (none) | `WebUi__AdminApiKey` |
-| `WebUi__SeedPassword` | Fixed password for the seeded account, demo/non-production only | (none) | — |
-| `WebUi__PublicOrigins` | Allowed origins for CORS (array) | (empty) | — |
-| `PORTWAY_SECURE_COOKIES` | Use secure cookies | `false` | `WebUi__SecureCookies` |
-| `WebUi__Customization__PromoText` | Banner text at the top | (none) | — |
-| `WebUi__Customization__LoginFooter` | Footer text below login area | (none) | — |
+| `WebUi__Enabled` | Enables the console | (none) | — |
+| `PORTWAY_ADMIN_KEY` | Legacy; enables the console when `WebUi__Enabled` is unset, not used for sign-in | (none) | `WebUi__AdminApiKey` |
+| `WebUi__SeedPassword` | Fixed password for the first account; demo instances only | (none) | — |
+| `WebUi__PublicOrigins` | Origins allowed to reach the console from outside the local network (array) | (empty) | — |
+| `PORTWAY_SECURE_COOKIES` | HTTPS-only console cookies | `true` | `WebUi__SecureCookies` |
+| `WebUi__Customization__PromoText` | Banner text | (none) | — |
+| `WebUi__Customization__LoginFooter` | Text below the sign-in form | (none) | — |
 
-For `WebUi__PublicOrigins`, use index notation for multiple origins:
+Multiple origins use index notation:
 ```yaml
 - WebUi__PublicOrigins__0=https://example.com
 - WebUi__PublicOrigins__1=https://api.example.com
@@ -112,7 +100,7 @@ For `WebUi__PublicOrigins`, use index notation for multiple origins:
 
 ### Proxy configuration
 
-Configure these settings if your environment requires proxy authentication. Portway supports NTLM authentication for corporate proxy environments:
+Credentials for outbound requests through an authenticating (NTLM) corporate proxy:
 
 | Variable | Description | Example | Legacy name |
 |----------|-------------|---------|-------------|
@@ -121,12 +109,12 @@ Configure these settings if your environment requires proxy authentication. Port
 | `PORTWAY_PROXY_DOMAIN` | Domain for proxy authentication (NTLM) | `YOURDOMAIN` | `PROXY_DOMAIN` |
 
 :::note
-When using NTLM authentication, ensure all three proxy variables are configured. `PORTWAY_PROXY_DOMAIN` is required for proper NTLM handshake with corporate proxy servers.
+NTLM requires all three variables, including `PORTWAY_PROXY_DOMAIN`.
 :::
 
 ### Azure Key Vault (optional)
 
-For production environments, you can integrate with Azure Key Vault by uncommenting and configuring:
+Azure Key Vault variables:
 
 | Variable | Description | Legacy name |
 |----------|-------------|-------------|
@@ -135,11 +123,11 @@ For production environments, you can integrate with Azure Key Vault by uncomment
 | `AZURE_TENANT_ID` | Azure tenant ID | — |
 | `AZURE_CLIENT_SECRET` | Azure client secret | — |
 
-`AZURE_*` vars are read directly by the Azure SDK's `DefaultAzureCredential`, not portway-prefixed.
+The `AZURE_*` variables are read by the Azure SDK's `DefaultAzureCredential`.
 
 ## Data persistence
 
-The Docker Compose setup includes volume mounts for data persistence:
+Volume mounts:
 
 ```yaml
 volumes:
@@ -150,40 +138,29 @@ volumes:
   - ./data:/app/data
 ```
 
-- **Configuration files**: `environments/`, `endpoints/`, and `tokens/` are bind-mounted so you can edit them from the host
-- **Logs**: written to `./log`, including the traffic log database at `log/traffic_logs.db`
-- **Databases**: `auth.db`, `metrics.db`, and `mcp.db` are created at the application root, so they live in the `portway_app` named volume rather than a bind mount
+| Data | Location |
+|---|---|
+| `environments/`, `endpoints/`, `tokens/` | Bind mounts, editable on the host |
+| Application and traffic logs (`log/traffic_logs.db`) | `./log` |
+| `auth.db`, `metrics.db`, `mcp.db`, `portway.key` | Application root, in the `portway_app` volume |
 
 ## Customizing the setup
 
-### Custom configuration
+Endpoint and environment files in the mounted directories are reloaded on change. Other configuration changes apply after a restart:
 
-1. Create your configuration files in the mounted directories:
-   - `./endpoints/` - API endpoint definitions
-   - `./environments/` - Environment configurations
-   - `./tokens/` - Authentication tokens
-
-2. Restart the container to apply changes:
-   ```bash
-   docker compose restart
-   ```
+```bash
+docker compose restart
+```
 
 ## Managing tokens
 
-Token management is handled through the [Web UI](/guide/webui). Set `PORTWAY_ADMIN_KEY` in your environment configuration to enable it, then navigate to `http://localhost:8080/ui` and open **Tokens** to create, revoke, rotate, and audit tokens.
-
-```yaml
-environment:
-  - PORTWAY_ADMIN_KEY=your-secure-password
-```
+Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` under **Access Tokens**, with `WebUi__Enabled=true`.
 
 ## Going to production
 
-The compose file above is deliberately minimal. A few additions are worth making before real traffic arrives.
-
 ### Set the encryption key
 
-`PORTWAY_ENCRYPTION_KEY` protects the connection strings in your environment settings. Generate one and keep it out of the compose file itself, for example in a `.env` file or your secrets manager:
+The `PORTWAY_ENCRYPTION_KEY` value encrypts secrets in environment settings. Keep it out of the compose file, e.g. in a `.env` file or a secrets manager:
 
 ```bash
 openssl rand -base64 48
@@ -191,23 +168,19 @@ openssl rand -base64 48
 
 ### Terminate TLS in front of the container
 
-Portway serves plain HTTP inside the container. Put a reverse proxy (nginx, Traefik, Caddy) in front of it to terminate TLS, or publish it behind an ingress that does.
+The container serves plain HTTP. TLS terminates at a reverse proxy (nginx, Traefik, Caddy) or ingress.
 
 ### Back up your state
 
-Your configuration lives in the bind mounts, and the databases live in the `portway_app` volume. [Data Persistence](#data-persistence) above lists exactly what sits where, and a backup wants both.
+Back up the bind mounts and the `portway_app` volume ([Data persistence](#data-persistence)).
 
 ### Watch it
 
-Health endpoints and Prometheus metrics are described in [Monitoring](/guide/monitoring), and [Security](/guide/security) covers token scoping, rate limiting, and network restrictions.
-
-For upgrades, see [Upgrading Portway](/guide/upgrading).
+Health endpoints and metrics: [Monitoring](/guide/monitoring). Upgrades: [Upgrading Portway](/guide/upgrading).
 
 ## Next steps
 
-After successful installation:
-
-1. Review the [Getting Started Guide](/guide/getting-started) for basic usage
-2. Configure your [Endpoints](/guide/endpoints-static) 
-3. Set up [Security](/guide/security) and authentication
-4. Monitor your deployment with [Health Checks](/guide/monitoring)
+- [Getting Started](/guide/getting-started)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Security](/guide/security)
+- [Monitoring](/guide/monitoring)

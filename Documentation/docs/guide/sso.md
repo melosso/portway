@@ -5,57 +5,57 @@ description: "Sign in to the Portway console through an OpenID Connect provider 
 
 # Single sign-on
 
-Console accounts can sign in through any OpenID Connect provider that publishes a discovery document, such as Authelia, Authentik, Pocket ID, or Keycloak. Password sign-in keeps working alongside it.
+Console accounts can sign in through an OpenID Connect provider with a discovery document (e.g. Authelia, Authentik, Pocket ID, Keycloak), in addition to password sign-in.
 
 ## Adding a provider
 
-Open the **Users** page and choose **Add provider** under **Sign-in providers**.
+Providers are added under **Users → Sign-in providers → Add provider**.
 
 | Field | Notes |
 |---|---|
-| Key | Lowercase letters, numbers and hyphens, up to 32 characters. It appears in the redirect URI. The name below can change without breaking the registration at your provider |
-| Name | The label on the sign-in button |
-| Issuer URL | An absolute `https` URL. Discovery is read from `{issuer}/.well-known/openid-configuration`. Plain `http` is accepted only for a provider on loopback |
-| Client ID and secret | The secret is stored write-only: the console reports only whether one is set. Leave it empty to register a public client |
-| Scopes | `openid profile email` by default |
-| Username claim | `preferred_username` by default. Authelia, Authentik and Pocket ID all send it |
-| Email claim | `email` by default |
-| Enabled | Off keeps the provider configured but hides its button and refuses its callback |
-| Create accounts | Whether an identity with no matching account gets one, and which role it receives |
+| Key | Lowercase letters, numbers and hyphens, up to 32 characters; part of the redirect URI |
+| Name | Sign-in button label; can change without affecting the redirect URI |
+| Issuer URL | Absolute `https` URL; discovery is read from `{issuer}/.well-known/openid-configuration`. `http` only on loopback |
+| Client ID and secret | The secret is write-only; empty for a public client |
+| Scopes | Default `openid profile email` |
+| Username claim | Default `preferred_username` |
+| Email claim | Default `email` |
+| Enabled | Off hides the button and refuses the callback |
+| Create accounts | Creates an account for an unmatched identity, with the configured role |
 
 ## Redirect URI
 
-Register this address at your provider:
+Redirect URI to register at the provider:
 
 ```
 https://your-host/ui/api/auth/oidc/{key}/callback
 ```
 
-The provider list in the console shows the exact value for each key, including any path base you configured.
+The console provider list shows the exact URI per key, including the path base.
 
 ## How an identity finds its account
 
-On each sign-in Portway looks for a match in this order:
+Account matching order at sign-in:
 
 1. An account already bound to this provider by subject.
 2. An account whose username equals the username claim.
-3. An account whose email equals the email claim, and only when the provider marked that address verified. An unverified address is skipped, because anyone who can set the claim could otherwise take over the account it names.
+3. An account whose email equals the email claim, only when the provider marks the address verified.
 
-Steps 2 and 3 only consider accounts that use password sign-in, or that already belong to this provider. An account bound to a different provider is never a candidate. The first match is bound to the subject, and later sign-ins match at step 1.
+Steps 2 and 3 consider only password accounts and accounts of this provider. The first match is bound to the subject.
 
-When nothing matches and **Create accounts** is off, Portway refuses the sign-in and logs the subject that tried, with the reason the username or address did not match. Link that subject from the **Users** page, or turn account creation on for the provider.
+Without a match and with **Create accounts** off, the sign-in is refused and the subject is logged with the reason. The subject can be linked under **Users**.
 
-A created account holds the role set on the provider. Pick `viewer` when everyone in your directory can reach that provider. See [Account roles](/guide/security#account-roles).
+Created accounts receive the provider's role; use `viewer` when the whole directory can reach the provider. Roles: [Account roles](/guide/security#account-roles).
 
 ## Linking your own account
 
-If you already sign in with a password, open the **Users** page and bind a provider identity to your own account. A viewer can do this for its own account.
+Password accounts, viewers included, can bind a provider identity to their own account under **Users**.
 
 ::: warning Removing a provider
-Deleting a provider unbinds every account that used it, so any account with no password loses its only way in. The console counts those accounts and tells you after the deletion, so set a password on them first.
+Deleting a provider unbinds its accounts; accounts without a password can no longer sign in. Set passwords first; the console reports the affected count.
 :::
 
 ## Turning it off
 
-`Oidc:Enabled` turns off every provider at once, under **Settings → Security → Feature Toggles**. With it off, the sign-in page shows no providers, the start route returns `404`, and a callback redirects back to the sign-in page with an error. This applies to every provider, including one whose own **Enabled** flag is set. Portway reads it on each request, so a change applies without a restart, and the provider records stay as they are.
+Setting `Oidc:Enabled: false` (**Settings → Security → Feature Toggles**) disables all providers: no provider buttons, `404` on the start route, and callbacks redirect to the sign-in page with an error. The setting is read per request; provider records are kept.
 

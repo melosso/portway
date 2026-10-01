@@ -11,7 +11,7 @@ namespace PortwayApi.Tests.Helpers;
 /// </summary>
 public class PortwayResultsTests
 {
-    // An unhandled error must never carry exception text back to the caller
+    // An unhandled error must never return exception text to the caller
     [Fact]
     public async Task MinimalServerError_MasksDetail_AndUsesSharedEnvelope()
     {

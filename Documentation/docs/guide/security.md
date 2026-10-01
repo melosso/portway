@@ -5,55 +5,35 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 # Security
 
-Security in Portway is layered: tokens decide who gets in, scopes and environments decide what they can reach, and network rules decide where requests may go.
+Tokens authenticate callers; scopes, environments and tenant headers restrict what a token reaches; the network access policy restricts upstream targets.
 
 ::: Note
-Treat this page as a starting point rather than a policy. Align it with your organisation's security policies before exposing Portway to production traffic.
+Align this configuration with your organisation's security policies before production use.
 :::
 
 ## Authentication
 
-All API requests require a Bearer token:
+API requests require a Bearer token:
 
 ```http
 Authorization: Bearer your-token-here
 ```
 
-Tokens are generated using cryptographically secure random values and stored encrypted on disk. Each token is bound to a username for audit trail purposes.
+Tokens are cryptographically random values, stored hashed in `auth.db`, and bound to a username for auditing.
 
 ### First-run token
 
-On first run, Portway generates an initial token and writes it to `tokens/YOUR_SERVER_NAME.txt`. The [token generator reference](/reference/token-generator) shows the file format and the fields it carries.
+The first start generates a token and writes it to `tokens/YOUR_SERVER_NAME.txt`. File format: [Token generator](/reference/token-generator).
 
 ::: Caution
-This file is highly sensitive: it carries a token with full scope and environment access. Remove it from disk immediately after recording the token somewhere secure. Use the Web UI to manage all subsequent tokens.
+This file contains a token with full scope and environment access. Delete it after recording the token.
 :::
 
 ## Authorization
 
-### Scope control
+### Scopes and environments
 
-Restrict a token to specific endpoints using the `AllowedScopes` field:
-
-| Pattern | Access |
-|---|---|
-| `*` | All endpoints |
-| `Products,Orders` | Named endpoints only |
-| `Product*` | All endpoints matching the prefix |
-| `Company/Employees` | Specific namespaced endpoint |
-| `Company/*` | All endpoints in a namespace |
-| `GET:Products` | Single endpoint, single method |
-
-### Environment control
-
-Restrict a token to specific environments using `AllowedEnvironments`:
-
-| Pattern | Access |
-|---|---|
-| `*` | All environments |
-| `prod` | Single environment |
-| `dev,test` | Named environments |
-| `dev*` | All environments matching the prefix |
+Token fields `AllowedScopes` and `AllowedEnvironments` restrict a token to endpoints and environments. Patterns: [Access Tokens](/guide/tokens#scoping-tokens).
 
 ### Tenant headers
 
@@ -94,11 +74,11 @@ The `Tenancy` value depends on the endpoint type:
 | Proxy | Upstream header | Set to the tenant value. Client copies of the inbound and upstream headers are removed. |
 | File | Ignored | `BaseDirectory` contains a `{Header}` placeholder per tenant header. Uploads, downloads, deletes and listings are restricted to the resolved directory. |
 
-`Tenancy` is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document lists tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.
+Tenancy is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document lists tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.
 
 ### Endpoint-level restrictions
 
-Individual endpoints enforce their own environment and visibility constraints:
+Endpoints define their own environments, visibility and methods:
 
 ```json
 {
@@ -109,13 +89,13 @@ Individual endpoints enforce their own environment and visibility constraints:
 }
 ```
 
-Both token-level and endpoint-level restrictions must pass for a request to succeed. See [Environments, access control](/guide/environments#access-control) for the full matrix.
+A request must pass both the token and the endpoint restrictions. Matrix: [Environments, access control](/guide/environments#access-control).
 
 ## Network security
 
 ### IP restrictions
 
-Configure allowed hosts and blocked IP ranges in `environments/network-access-policy.json`:
+Allowed upstream hosts and blocked IP ranges are set in `environments/network-access-policy.json`:
 
 ```json
 {
@@ -134,7 +114,7 @@ Configure allowed hosts and blocked IP ranges in `environments/network-access-po
 
 ### Security headers
 
-Portway adds these headers to all responses automatically:
+Headers added to every response:
 
 | Header | Value |
 |---|---|
@@ -144,84 +124,27 @@ Portway adds these headers to all responses automatically:
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Content-Security-Policy` | `default-src 'self'; object-src 'none'; frame-ancestors 'none'; ...` |
 
-Console pages at `/ui` add `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy`, both `same-origin`. See [Headers](/reference/headers) for the full set.
+Console pages at `/ui` also send `Cross-Origin-Opener-Policy` and `Cross-Origin-Resource-Policy` (`same-origin`). Full list: [Headers](/reference/headers).
 
 ## Secrets management
 
 ### Automatic encryption
 
-Portway encrypts plaintext secrets in `settings.json` files on next startup. Connection strings and authentication values written in plaintext become `PWENC:...` format.
+Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The MCP configuration store (`mcp.db`) is encrypted too. `appsettings.json` is not rewritten; values there (e.g. `WebUi:AdminApiKey`) remain plaintext.
 
-Automatic encryption applies only to per-environment `settings.json` files and the MCP configuration store (`mcp.db`). It does **not** rewrite `appsettings.json`, so values placed there (such as `WebUi:AdminApiKey`) stay in plaintext.
+### Console accounts
 
-### Web UI accounts
+Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `WebUi:SeedPassword` or the legacy `WebUi:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `WebUi:SeedPassword` sets a fixed password without a forced change, for demo instances only.
 
-Web UI accounts live in `auth.db`, with passwords hashed using PBKDF2-SHA256.
-
-On the first start with no accounts, an existing `PORTWAY_ADMIN_KEY` becomes the account `admin`, with the key as its password. After that the setting is no longer read for sign-in and can be removed.
-
-Never store a real admin key in `appsettings.json`. The shipped file intentionally contains the placeholder `INSECURE-CHANGE-ME-admin-api-key`, which Portway rejects in production: no account is seeded from it and an error is logged.
-
-Supply the key through the environment instead:
-
-::: code-group
-
-```yaml [Docker]
-# docker-compose.yml
-environment:
-  - PORTWAY_ADMIN_KEY=<your-key>
-```
-
-```powershell [Windows Server]
-[Environment]::SetEnvironmentVariable("PORTWAY_ADMIN_KEY", "<your-key>", "Machine")
-```
-
-:::
-
-Generate a strong key (32+ characters; shorter keys log a warning at startup):
-
-::: code-group
-
-```bash [Bash]
-openssl rand -base64 48
-```
-
-```powershell [PowerShell]
-[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))
-```
-
-:::
-
-With Azure Key Vault configured (`PORTWAY_KEYVAULT_URI`), the key can also be served from the vault through the standard ASP.NET Core configuration pipeline. Environment variables and Key Vault values override anything in `appsettings.json`.
-
-The Settings page in the Web UI shows the current key strength (not set / placeholder / weak / strong) under **Security Posture**.
+The legacy `WebUi:AdminApiKey` is not used for sign-in. It enables the console like `WebUi:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
 
 ### Azure Key Vault
 
-Store connection strings and server names in Azure Key Vault instead of `settings.json`:
-
-::: code-group
-
-```powershell [PowerShell]
-$env:PORTWAY_KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
-```
-
-```bash [Bash]
-export PORTWAY_KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
-```
-
-:::
-
-Create secrets named by environment:
-- `{environment}-ConnectionString`
-- `{environment}-ServerName`
-- `{environment}-Headers` (JSON string)
-
-Portway fetches these at startup and uses them identically to file-based configuration.
+Connection strings, server names and headers can be read from Azure Key Vault: [Environments, Azure Key Vault](/guide/environments#azure-key-vault).
 
 ## SQL Server permissions
 
-When using Windows Authentication (NTLM) via IIS, configure the database account with minimum required permissions:
+Minimum permissions for a Windows Authentication (NTLM) database account under IIS:
 
 ```sql
 USE [master];
@@ -245,18 +168,18 @@ GRANT VIEW DEFINITION TO [DOMAIN\USER_NAME];               -- Schema metadata
 GO
 ```
 
-Grant only the roles your endpoints require. A read-only deployment needs only `db_datareader`.
+Grant only the roles the endpoints use; read-only deployments need only `db_datareader`.
 
 ## Logging and auditing
 
-Security events are logged at Warning or Debug level:
+Security events are logged at `Warning` or `Debug`:
 
 ```
 [DBG] Invalid token: {masked}
 [WRN] IP {IP} has exceeded rate limit, blocking for {period}
 ```
 
-Enable request traffic logging to capture headers and bodies for security analysis:
+Traffic logging with headers and bodies:
 
 ```json
 {
@@ -268,11 +191,11 @@ Enable request traffic logging to capture headers and bodies for security analys
 }
 ```
 
-See [Monitoring](/guide/monitoring) for traffic logging configuration details.
+Configuration: [Monitoring](/guide/monitoring).
 
 ### Recovering an account
 
-Accounts are managed from the shell when nobody can sign in. On a bare-metal install, run these from the directory Portway runs in, so `auth.db` is found:
+Account recovery runs from the shell, in the directory that contains `auth.db`:
 
 ```bash
 portway accounts list
@@ -280,7 +203,7 @@ portway accounts password <username> <new-password>
 portway accounts create <username> <password> [administrator|viewer]
 ```
 
-There is no `portway` binary in the Docker image; the container runs `dotnet /app/PortwayApi.dll` directly. Use `docker exec` with the same subcommands instead:
+Docker (the image has no `portway` binary):
 
 ```bash
 docker exec <container> dotnet /app/PortwayApi.dll accounts list
@@ -288,30 +211,31 @@ docker exec <container> dotnet /app/PortwayApi.dll accounts password <username> 
 docker exec <container> dotnet /app/PortwayApi.dll accounts create <username> <password> [administrator|viewer]
 ```
 
-`promote`, `demote`, `enable`, `disable` and `delete` are available too. Portway refuses any of them that would leave no active administrator.
+Further subcommands: `promote`, `demote`, `enable`, `disable`, `delete`. A command that would leave no active administrator is refused.
 
 ### Account roles
 
-Accounts are either `administrator` or `viewer`.
+| Role | Access |
+|---|---|
+| `administrator` | All console settings, endpoints, environments, tokens and accounts |
+| `viewer` | Read access; own password and own [single sign-on](/guide/sso) link. Other writes return `403` |
 
-An administrator can change anything the console exposes: settings, endpoints, environments, tokens, and other accounts. A viewer can read all of those pages, change its own password, and link or unlink its own [single sign-on](/guide/sso) identity. Every other write returns `403`, including creating accounts, so a viewer cannot promote itself.
+The role is read from `auth.db` on every request, not from the session cookie; a demotion applies to the next request.
 
-Portway reads the role from the database on each write rather than from the session cookie. A demoted account loses write access on its next request, without waiting for its session to expire.
-
-::: warning Accounts created before this behavior existed
-Earlier builds stored the role but did not enforce it, so anything marked `viewer` still had full write access. After upgrading, open the Users page and check the accounts listed there.
+::: warning Upgrades
+Earlier builds did not enforce the `viewer` role. Review the accounts under **Users** after upgrading.
 :::
 
-Sessions are signed with `portway.key`, written next to `auth.db` on first use. Deleting that file signs everyone out.
+Sessions are signed with `portway.key`, created next to `auth.db`. Deleting it ends all sessions.
 
 ## Pre-deployment checklist
 
 - [ ] HTTPS binding configured in IIS
 - [ ] IIS Application Pool using minimum-privilege identity
-- [ ] Web UI account created with a strong password, and `PORTWAY_ADMIN_KEY` removed once it has been migrated
-- [ ] `ForwardedHeaders__KnownProxies` set to your reverse proxy, so per-IP rate limiting, the sign-in lockout, and the Web UI network gate see real client addresses
-- [ ] Account roles reviewed, so anyone who only needs to read the console holds `viewer`
-- [ ] `portway.key` kept with the deployment and excluded from backups that others can read
+- [ ] Console account with a strong password; legacy `PORTWAY_ADMIN_KEY` removed
+- [ ] `ForwardedHeaders__KnownProxies` set to the reverse proxy (client addresses for rate limiting, sign-in lockout and the console network gate)
+- [ ] Read-only console users hold `viewer`
+- [ ] `portway.key` kept with the deployment and out of shared backups
 - [ ] Azure Key Vault configured (if applicable)
 - [ ] Initial token file removed from disk
 - [ ] Tokens created with specific scopes and environments
@@ -321,24 +245,15 @@ Sessions are signed with `portway.key`, written next to `auth.db` on first use. 
 
 ## Incident response: compromised token
 
-1. Open the Web UI and navigate to **Access Tokens**
-2. Click **Rotate Token** on the affected entry to invalidate it and generate a replacement
-3. Update all applications using the compromised token with the new value
-4. Enable traffic logging if not already active to monitor for continued unauthorized activity:
+1. Under **Access Tokens**, rotate the affected token; rotation revokes the old value and issues a replacement.
+2. Update the applications that use the token.
+3. Enable traffic logging to monitor further use:
    ```json
    {
      "RequestTrafficLogging": { "Enabled": true, "CaptureHeaders": true }
    }
    ```
-5. Document the incident for your security audit trail
-
-:::info
-Manage all tokens in the [Web UI](/guide/webui) under **Tokens**. The **Tokens** page lists all active (non-revoked, non-expired) tokens with their scope and environment restrictions.
-:::
-
-:::warning
-Token revocation is permanent. A revoked token cannot be reactivated. Create a new token for any affected user or system.
-:::
+4. Record the incident.
 
 ## Next steps
 

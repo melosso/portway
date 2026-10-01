@@ -144,7 +144,7 @@ In-memory (data is lost when the process restarts):
 ```
 
 :::info
-SQLite connection strings carry no credentials. Portway skips the credential-masking step for SQLite environments entirely.
+SQLite connection strings contain no credentials. Portway skips the credential-masking step for SQLite environments entirely.
 :::
 
 ---

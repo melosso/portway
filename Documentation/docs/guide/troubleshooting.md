@@ -1,72 +1,53 @@
 ---
 title: Troubleshooting
-description: "A practical guide for diagnosing and resolving issues with Portway gateway deployments, from authentication failures to performance degradation"
+description: "Diagnose and resolve authentication, rate limiting, connectivity, health and performance issues in a Portway deployment"
 ---
 
 # Troubleshooting
 
-The issues you are most likely to hit in production, and how to resolve them.
+## Status codes
 
-## Common issues
+| Status | Message | Cause | Resolution |
+|---|---|---|---|
+| `400` | "Environment '{env}' is not allowed" | The environment is not routable for the endpoint | Add it to `AllowedEnvironments` in `environments/settings.json` and the endpoint's `entity.json` |
+| `400` | "Header {name} is required" | Tenant endpoint, token with several tenant values, header missing | Send the [tenant header](/guide/security#tenant-headers) |
+| `401` | "Invalid or expired token" | Missing, malformed, expired or archived token | Check the `Authorization` header and the token under **Access Tokens** |
+| `403` | "Access denied to endpoint" / "to environment" | Token scopes or environments exclude the request | Edit the token under **Access Tokens** |
+| `403` | Tenant access refused | Token has no value for the tenant header, or the header names another value | Add the value to the token's tenants |
+| `404` | "Endpoint '{name}' not found" | No loaded endpoint configuration for the path | Check the file path and the startup log for load errors |
+| `429` | "Too many requests" | IP or token rate limit exceeded | Wait for `Retry-After`, or adjust the limits |
+| `500` | "A data error occurred" | Database unreachable or query failure | Check the connection string and database access; the log entry has the reference id |
+| none | Blank page | TLS certificate problem | Bind a certificate in IIS or check TLS termination in front of the container |
 
-### Authentication failures
+## Authentication
 
-Authentication issues come in two forms: requests that cannot be verified at all, and requests with credentials that lack the right permissions.
-
-#### Missing or invalid tokens
-
-A `401 Unauthorized`, or "Authentication required" and "Invalid or expired token" in your logs, means the request arrived without a token the gateway can verify: a missing Authorization header, an expired or revoked token, or a malformed Bearer header.
-
-Check what the client is actually sending. The header should look like this:
+A `401` means the token could not be verified. The header format:
 
 ```http
 Authorization: Bearer YOUR_TOKEN
 ```
 
-If the header looks right, open the [Web UI](/guide/webui) and go to **Tokens** to confirm the token exists and has not been revoked or expired. If it is stale, create a replacement there and revoke the old one.
+Check under **Access Tokens** that the token exists and is neither expired nor archived. Failures from one integration point to an outdated token in that deployment; failures across many clients point to a gateway change.
 
-When several clients fail at once, the pattern tells you where to look. A cluster of failures from one integration usually points to a deployment shipped with an outdated token, while failures spread across many clients suggest a change on the gateway side.
-
-::: tip Security Best Practice
-Tokens are API keys. Storing them in environment variables or a dedicated secret manager, and keeping them out of version control, is recommended.
-:::
-
-#### Insufficient token permissions
-
-A `403 Forbidden` means the token is valid but not allowed to do what the request asks. The logs show "Access denied to endpoint" or "Access denied to environment". Either the token lacks the scope for that endpoint, or it does not cover the environment being reached.
-
-You can inspect what a token is allowed to do directly from its file:
+A `403` means the token is valid but its scopes, environments or tenants exclude the request. The token file (present until the token is archived) lists its scopes and environments:
 
 ::: code-group
 
 ```powershell [PowerShell]
-# View token file content
 Get-Content ".\tokens\username.txt" | ConvertFrom-Json | Format-List
 ```
 
 ```bash [Bash]
-# View token file content
 cat ./tokens/username.txt | jq .
 ```
 
 :::
 
-Then compare that against what the endpoint configuration expects:
+Compare them with the endpoint's `AllowedEnvironments` and the token scope patterns in [Access Tokens](/guide/tokens#scoping-tokens).
 
-```json
-{
-  "AllowedEnvironments": ["prod", "dev"],
-  "AllowedScopes": "Products,Orders"
-}
-```
+## Rate limiting
 
-If the access is legitimate, edit the token in the [Web UI](/guide/webui) under **Tokens** to add the missing scopes or environments.
-
-### Rate limiting issues
-
-`429 Too Many Requests`, or "Rate limit exceeded" and "IP blocked" in the logs, means someone is sending more requests than the configured thresholds allow. That can be genuine high-volume usage, integration testing, or a retry loop without backoff.
-
-Start by checking what the current limits actually are:
+Current limits:
 
 ```json
 {
@@ -80,27 +61,21 @@ Start by checking what the current limits actually are:
 }
 ```
 
-Then look at who is hitting them:
+Rate limit events in the log:
 
 ::: code-group
 
 ```powershell [PowerShell]
-# Search for rate limit events
-Select-String -Path ".\log\*.log" -Pattern "Rate limit" |
-    Sort-Object -Property LastWriteTime -Descending |
-    Select-Object -First 20
+Select-String -Path ".\log\*.log" -Pattern "Rate limit" | Select-Object -Last 20
 ```
 
 ```bash [Bash]
-# Search for rate limit events
 grep -h "Rate limit" ./log/*.log | tail -n 20
 ```
 
 :::
 
-If the pattern is isolated to one client or IP, exponential backoff in their retry logic fixes it at the source. If legitimate usage has outgrown the thresholds, raising the limits is the better answer.
-
-For immediate relief during an incident, restarting Portway resets all counters:
+A single client or IP address hitting the limit needs backoff in its retry logic or its own token limit; general growth needs higher limits. A restart resets all counters of the `Memory` store:
 
 ::: code-group
 
@@ -114,17 +89,9 @@ Restart-WebAppPool -Name "PortwayAppPool"
 
 :::
 
-::: warning A note on restarts
-Rate limiting uses in-memory token buckets, so restarting resets every counter to zero. That helps in an emergency, but it is not a fix if clients consistently hit limits. Follow up on the request pattern or the configuration.
-:::
+## Database connections
 
-### Connection issues
-
-#### When your database won't connect
-
-Database connection failures show up as `500 Internal Server Error` on SQL endpoints, when the gateway cannot reach your database or the connection drops.
-
-First verify the connection string is correct and complete:
+SQL endpoints return `500` when the database is unreachable. Connection string example:
 
 ```json
 {
@@ -132,12 +99,11 @@ First verify the connection string is correct and complete:
 }
 ```
 
-Then test whether the gateway server can reach the database at all:
+Connectivity test from the gateway host:
 
 ::: code-group
 
 ```powershell [PowerShell]
-# Test SQL connection
 $conn = New-Object System.Data.SqlClient.SqlConnection
 $conn.ConnectionString = "Server=YOUR_SERVER;Database=500;Trusted_Connection=True;"
 try {
@@ -151,104 +117,56 @@ try {
 ```
 
 ```bash [Bash]
-# Test SQL connection (requires sqlcmd)
 sqlcmd -S YOUR_SERVER -d 500 -Q "SELECT 1" && echo "Connection successful"
 ```
 
 :::
 
-If basic connectivity works but failures persist, a pool that is too small for your traffic shows up as intermittent errors. The `SqlConnectionPooling` properties and their defaults are in [Application Settings](/reference/app-settings#sql-connection-pooling).
+Intermittent failures under load indicate an undersized pool (`MaxPoolSize`). Queries that stop at exactly `CommandTimeout` need a higher timeout or a faster query. Settings: [`SqlConnectionPooling`](/reference/app-settings#sql-connection-pooling).
 
-#### When proxy endpoints stop responding
+## Proxy endpoints
 
-Failing proxy endpoints surface as timeout errors, "Error processing endpoint" messages, or `503 Service Unavailable`. This is common with legacy backends where availability is not guaranteed.
-
-Test whether the target service is reachable directly:
+Unreachable upstreams return timeouts, "Error processing endpoint" or `503`. Direct test from the gateway host:
 
 ::: code-group
 
 ```powershell [PowerShell]
-# Test endpoint connectivity
 Invoke-WebRequest -Uri "http://localhost:8020/services/Exact.Entity.REST.EG/Account" -UseDefaultCredentials
 ```
 
 ```bash [Bash]
-# Test endpoint connectivity
 curl -I http://localhost:8020/services/Exact.Entity.REST.EG/Account
 ```
 
 :::
 
-If the direct connection works, check the proxy configuration for the URL and settings:
+When the direct request succeeds, compare the endpoint's `Url` and the environment's `settings.json` headers with what the upstream expects. Blocked hosts: [Network access policy](/guide/environments#network-access-policy).
 
-```json
-{
-  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
-  "Methods": ["GET", "POST"],
-  "AllowedEnvironments": ["prod", "dev"]
-}
-```
+## Health checks
 
-Environment settings are worth a look too, since they carry what the backend expects:
+The detailed health check (`GET /health/details`, with a token) names the failing check. The startup log lists unhealthy proxy endpoints in one `Health check status: Unhealthy proxy endpoints detected` warning; the reason per endpoint is logged at `Debug`.
+
+### Disk space
+
+Low disk space reports `Unhealthy` and eventually stops log writes:
 
 ::: code-group
 
 ```powershell [PowerShell]
-# Check current environment settings
-Get-Content ".\environments\500\settings.json" | ConvertFrom-Json
-```
-
-```bash [Bash]
-# Check current environment settings
-cat ./environments/500/settings.json | jq .
-```
-
-:::
-
-### Health check failures
-
-#### When you're running out of disk space
-
-Low storage shows as `"Unhealthy"` status with warnings about remaining disk space. Left alone it causes log write failures and eventually stops the application.
-
-Check how much space is available:
-
-::: code-group
-
-```powershell [PowerShell]
-# Check available disk space
-Get-PSDrive -PSProvider FileSystem |
-    Select-Object Name, @{Name="FreeGB";Expression={[math]::Round($_.Free/1GB,2)}},
-                  @{Name="UsedGB";Expression={[math]::Round($_.Used/1GB,2)}},
-                  @{Name="TotalGB";Expression={[math]::Round(($_.Free + $_.Used)/1GB,2)}}
-```
-
-```bash [Bash]
-# Check available disk space
-df -h
-```
-
-:::
-
-Old log files are usually the quickest win, especially with traffic logging enabled:
-
-::: code-group
-
-```powershell [PowerShell]
-# Remove logs older than 30 days
+Get-PSDrive -PSProvider FileSystem
 Get-ChildItem ".\log" -Recurse -File |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item -Force
 ```
 
 ```bash [Bash]
-# Remove logs older than 30 days
+df -h
 find ./log -type f -mtime +30 -delete
 ```
 
 :::
 
-For ongoing space management, configure rotation so it does not recur:
+Traffic log rotation:
 
 ```json
 {
@@ -259,74 +177,11 @@ For ongoing space management, configure rotation so it does not recur:
 }
 ```
 
-#### When your backend services aren't responding
+## Performance
 
-"One or more proxy services are not responding properly" means the gateway is fine but a backend it depends on is not.
-
-The log names the failing endpoints in one `Health check status: Unhealthy proxy endpoints detected` warning. The reason per endpoint logs at `Debug`.
-
-Request a detailed health report to see which services are failing:
-
-```http
-GET /health/details
-Authorization: Bearer YOUR_TOKEN
-```
-
-Then test the problematic endpoints individually:
-
-::: code-group
-
-```powershell [PowerShell]
-# Test specific endpoint
-$headers = @{
-    "Authorization" = "Bearer YOUR_TOKEN"
-}
-Invoke-RestMethod -Uri "https://your-gateway/api/500/Products" -Headers $headers
-```
-
-```bash [Bash]
-# Test specific endpoint
-curl -H "Authorization: Bearer YOUR_TOKEN" https://your-gateway/api/500/Products
-```
-
-:::
-
-For endpoints that keep failing, check their error logs:
-
-::: code-group
-
-```powershell [PowerShell]
-# Find endpoint-specific errors
-Select-String -Path ".\log\*.log" -Pattern "endpoint: Products" |
-    Where-Object { $_ -match "ERROR" }
-```
-
-```bash [Bash]
-# Find endpoint-specific errors
-grep "endpoint: Products" ./log/*.log | grep "ERROR"
-```
-
-:::
-
-### Performance issues
-
-High latency, timeouts, or durations over `1000ms` in the logs point to database bottlenecks, network issues, or resource constraints.
-
-Enable detailed traffic logging to see where time is spent:
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Enabled": true,
-    "EnableInfoLogging": true
-  }
-}
-```
-
-With SQLite traffic logging you can query the slowest requests directly:
+Durations above `1000ms` point to the database, the network or the host. With SQLite traffic logging:
 
 ```sql
--- Find slow requests (using SQLite logging)
 SELECT Path, QueryString, DurationMs, StatusCode
 FROM TrafficLogs
 WHERE DurationMs > 1000
@@ -334,104 +189,13 @@ ORDER BY DurationMs DESC
 LIMIT 20;
 ```
 
-Database connection management is a frequent cause. If the pool is too small, requests wait for a free connection, and raising `MaxPoolSize` in [`SqlConnectionPooling`](/reference/app-settings#sql-connection-pooling) is where to start. Queries cut off mid-run are a different problem: `CommandTimeout` bounds how long a single statement may run, so a query dying at exactly that mark needs either a higher timeout or a faster query.
-
-## Diagnostic tools
-
-### Understanding your log files
-
-#### Where to find your logs
-
-| Log Type | Default Location | What You'll Find Here |
-|----------|-----------------|-------------|
-| Application Logs | `./log/portwayapi-*.log` | General application events, errors, and startup information |
-| Traffic Logs (File) | `./log/traffic/proxy_traffic_*.json` | Detailed request/response information in JSON format |
-| Traffic Logs (SQLite) | `./log/traffic_logs.db` | Queryable database of all traffic for analysis |
-| Auth Database | `./auth.db` | Token authentication data and user information |
-
-#### Handy commands for log analysis
-
-To find recent errors across all log files:
-
-::: code-group
-
-```powershell [PowerShell]
-# Find all errors in last hour
-$oneHourAgo = (Get-Date).AddHours(-1)
-Get-ChildItem ".\log\*.log" |
-    Where-Object { $_.LastWriteTime -gt $oneHourAgo } |
-    Select-String -Pattern "ERROR|EXCEPTION" |
-    Format-Table -AutoSize
-```
-
-```bash [Bash]
-# Find all errors in log files modified in the last hour
-find ./log -name "*.log" -mmin -60 -exec grep -HnE "ERROR|EXCEPTION" {} +
-```
-
-:::
-
-To see which errors are most common:
-
-::: code-group
-
-```powershell [PowerShell]
-# Count errors by type
-Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" |
-    Select-String -Pattern "ERROR.*?:" |
-    Group-Object -Property Line |
-    Sort-Object Count -Descending |
-    Select-Object Count, Name -First 10
-```
-
-```bash [Bash]
-# Count errors by type
-grep -oE "ERROR[^:]*:" "./log/portwayapi-$(date +%Y%m%d).log" |
-    sort | uniq -c | sort -rn | head -n 10
-```
-
-:::
-
-For real-time monitoring during active troubleshooting:
-
-::: code-group
-
-```powershell [PowerShell]
-# Monitor log file in real-time
-Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" -Wait -Tail 50
-```
-
-```bash [Bash]
-# Monitor log file in real-time
-tail -n 50 -f "./log/portwayapi-$(date +%Y%m%d).log"
-```
-
-:::
-
-### Database diagnostics
-
-#### Checking authentication status
-
-When a client reports authentication problems, verify their token status:
+Error rate per endpoint:
 
 ```sql
--- Using SQLite browser or command line
-SELECT Id, Username, CreatedAt, ExpiresAt, AllowedScopes, AllowedEnvironments
-FROM Tokens
-WHERE RevokedAt IS NULL
-ORDER BY CreatedAt DESC;
-```
-
-#### Understanding traffic patterns and errors
-
-The traffic logs database shows which endpoints carry the highest error rates:
-
-```sql
--- Error distribution by endpoint
 SELECT EndpointName,
-       COUNT(CASE WHEN StatusCode >= 400 THEN 1 END) as Errors,
-       COUNT(*) as TotalRequests,
-       ROUND(CAST(COUNT(CASE WHEN StatusCode >= 400 THEN 1 END) AS FLOAT) / COUNT(*) * 100, 2) as ErrorRate
+       COUNT(CASE WHEN StatusCode >= 400 THEN 1 END) AS Errors,
+       COUNT(*) AS TotalRequests,
+       ROUND(CAST(COUNT(CASE WHEN StatusCode >= 400 THEN 1 END) AS FLOAT) / COUNT(*) * 100, 2) AS ErrorRate
 FROM TrafficLogs
 WHERE Timestamp > datetime('now', '-24 hours')
 GROUP BY EndpointName
@@ -439,88 +203,106 @@ HAVING Errors > 0
 ORDER BY ErrorRate DESC;
 ```
 
-### Network and connectivity diagnostics
+## Logs
 
-These tell you quickly whether the problem is basic connectivity or something inside the application:
+| Log | Location | Contents |
+|---|---|---|
+| Application | `./log/portwayapi-*.log` | Startup, errors and events |
+| Traffic (file) | `./log/traffic/proxy_traffic_*.json` | Per-request metadata |
+| Traffic (SQLite) | `./log/traffic_logs.db` | Queryable per-request metadata |
+| Authentication | `./auth.db` | Tokens, accounts and audits |
+
+Recent errors, most frequent errors and a live tail:
 
 ::: code-group
 
 ```powershell [PowerShell]
-# Test connectivity to SQL Server (adjust host/port for other providers)
+Get-ChildItem ".\log\*.log" |
+    Where-Object { $_.LastWriteTime -gt (Get-Date).AddHours(-1) } |
+    Select-String -Pattern "ERROR|EXCEPTION"
+
+Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" |
+    Select-String -Pattern "ERROR.*?:" |
+    Group-Object -Property Line |
+    Sort-Object Count -Descending |
+    Select-Object Count, Name -First 10
+
+Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" -Wait -Tail 50
+```
+
+```bash [Bash]
+find ./log -name "*.log" -mmin -60 -exec grep -HnE "ERROR|EXCEPTION" {} +
+
+grep -oE "ERROR[^:]*:" "./log/portwayapi-$(date +%Y%m%d).log" |
+    sort | uniq -c | sort -rn | head -n 10
+
+tail -n 50 -f "./log/portwayapi-$(date +%Y%m%d).log"
+```
+
+:::
+
+Active tokens in `auth.db`:
+
+```sql
+SELECT Id, Username, CreatedAt, ExpiresAt, AllowedScopes, AllowedEnvironments, AllowedTenants
+FROM Tokens
+WHERE RevokedAt IS NULL
+ORDER BY CreatedAt DESC;
+```
+
+Log message patterns:
+
+```text
+[INF] Rate limit enforced for {Identifier}
+[WRN] Tokens detected in the tokens directory. Relocate them to a secure location
+[ERR] Error processing endpoint {EndpointName}
+[DBG] SQL Query Request: {Url}
+```
+
+## Network checks
+
+::: code-group
+
+```powershell [PowerShell]
 Test-NetConnection -ComputerName "YOUR_SERVER" -Port 1433
 
-# Test proxy endpoint
 Invoke-WebRequest -Uri "http://localhost:8020/services/Exact.Entity.REST.EG/Account" `
     -UseDefaultCredentials -Method Head
 
-# Check listening ports
 Get-NetTCPConnection -State Listen |
     Where-Object { $_.LocalPort -in @(80, 443, 8080) }
 ```
 
 ```bash [Bash]
-# Test connectivity to SQL Server (adjust host/port for other providers)
 nc -zv YOUR_SERVER 1433
 
-# Test proxy endpoint
 curl -I http://localhost:8020/services/Exact.Entity.REST.EG/Account
 
-# Check listening ports
 ss -tlnp | grep -E ':(80|443|8080)\b'
 ```
 
 :::
 
-## Understanding error messages
+## Application not starting
 
-### Error codes
-
-| Status | Message | Cause | Fix |
-|---|---|---|---|
-| `400` | "Environment '{env}' is not allowed" | The environment specified in your URL path isn't configured as valid for this endpoint | Check the allowed environments list in your endpoint's `settings.json` file |
-| `403` | "Access denied to endpoint" | Your token is valid but doesn't have permission to access this specific endpoint | Update the token's scopes in the Web UI under **Tokens** |
-| `404` | "Endpoint '{name}' not found" | The gateway can't find a configuration file for the endpoint you're trying to access | Verify that the endpoint configuration file exists and is properly named |
-| `429` | "Too many requests" | You've exceeded the rate limits set for your IP address or token | Wait for the rate limit window to reset, or increase the limits in configuration |
-| `500` | "Database operation failed" | The gateway can't connect to or query the SQL Server database | Check your connection string and verify SQL Server is accessible |
-| Blank | No content/blank page | Usually indicates TLS/SSL certificate issues | Bind a certificate in IIS, or check the TLS termination in front of the container |
-
-### Recognizing log message patterns
-
-```text
-[INF] Rate limit enforced for {Identifier} - Someone hit the rate limits
-[WRN] Tokens detected in the tokens directory. Relocate them to a secure location - Warning, take action
-[ERR] Error processing endpoint {EndpointName} - Backend service issue
-[DBG] SQL Query Request: {Url} - Database query being executed
-```
-
-## Emergency procedures
-
-### Application not starting
-
-When the gateway will not start, the cause is usually at the infrastructure level rather than in the application. Start by asking the host what it saw:
+Host state and startup output:
 
 ::: code-group
 
 ```bash [Docker]
-# Container state and exit code
 docker compose ps
-
-# Startup output, including anything written before logging began
 docker compose logs --tail=100 portway
 ```
 
 ```powershell [IIS]
-# Critical startup errors from the Windows Event Viewer
 Get-EventLog -LogName Application -Source "IIS*" -Newest 20
-
-# Application pool state
 Get-WebAppPoolState -Name "PortwayAppPool"
 Restart-WebAppPool -Name "PortwayAppPool"
 ```
 
 :::
 
-If the host looks healthy but the application still won't start, check the application log for startup errors:
+Startup errors in the application log:
 
 ::: code-group
 
@@ -536,13 +318,13 @@ Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" |
 
 :::
 
-### Complete system reset (use with extreme caution)
+## Resetting application state
 
-::: danger Emergency Only
-Only perform these steps when you've exhausted other options and after creating proper backups. This procedure will reset your gateway to a clean state, which may resolve persistent issues but will also clear all temporary data.
+::: danger
+Back up first. A reset clears all logs.
 :::
 
-Before doing anything drastic, create a complete backup of your critical configuration:
+Backup:
 
 ::: code-group
 
@@ -565,7 +347,7 @@ Copy-Item ".\endpoints\*" "$backupDir\endpoints\" -Recurse
 
 :::
 
-Once you have a backup, you can reset the application state:
+Reset:
 
 ::: code-group
 
@@ -583,17 +365,9 @@ iisreset /start
 
 :::
 
-After a reset, watch the application logs as it starts and test a few endpoints to confirm it came back cleanly.
-
-## Keeping it healthy
-
-- **Disk space.** Alert below 20% free and clear old logs on a schedule. Traffic logging generates substantial volume.
-- **Health endpoints.** Automate checks against `/health` plus a few real endpoints. The [Telemetry](/guide/opentelemetry) guide covers feeding gateway metrics into an existing monitoring stack.
-- **Backend connectivity.** Verify SQL and proxy targets after network changes or server maintenance.
-
 ## Related topics
 
-- [Monitoring Guide](/guide/monitoring)
-- [Security Guide](/guide/security)
-- [Deployment Guide](/guide/deployment)
-- [API Endpoints Guide](/guide/endpoints-sql)
+- [Monitoring](/guide/monitoring)
+- [Security](/guide/security)
+- [Deployment](/guide/deployment)
+- [SQL Endpoints](/guide/endpoints-sql)

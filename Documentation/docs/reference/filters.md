@@ -1,405 +1,95 @@
 ---
 title: Filter Operations
-description: "Filtering is where OData starts to feel powerful: you describe the rows you want, and Portway translates that into SQL for you"
+description: "OData $filter operators, functions and literal formats supported by SQL and static endpoints"
 ---
 
 # Filter Operations
 
-Filtering is where OData starts to feel powerful: you describe the rows you want, and Portway translates that into SQL for you. This reference covers every supported filter operation, with examples you can adapt and a few practices that keep queries fast.
+The `$filter` query option selects rows on SQL and filterable static endpoints. Filters are translated to parameterized SQL.
 
-## Filter syntax
-
-Basic filter structure:
 ```
 $filter=expression
 ```
 
 ## Comparison operators
 
-### Equality operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `eq` | Equal to | `$filter=Status eq 'Active'` |
-| `ne` | Not equal to | `$filter=Status ne 'Closed'` |
-
-#### Examples
-```http
-# String equality
-GET /api/500/Products?$filter=ItemCode eq 'PROD001'
-
-# Numeric equality
-GET /api/500/Products?$filter=Price eq 99.99
-
-# Boolean equality
-GET /api/500/Products?$filter=IsActive eq true
-
-# Date equality
-GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
-```
-
-### Relational operators
-
-| Operator | Description | Example |
-|----------|-------------|---------|
+| Operator | Meaning | Example |
+|---|---|---|
+| `eq` | Equal | `$filter=Status eq 'Active'` |
+| `ne` | Not equal | `$filter=Status ne 'Closed'` |
 | `gt` | Greater than | `$filter=Price gt 100` |
-| `ge` | Greater than or equal to | `$filter=Price ge 100` |
+| `ge` | Greater than or equal | `$filter=Price ge 100` |
 | `lt` | Less than | `$filter=Price lt 100` |
-| `le` | Less than or equal to | `$filter=Price le 100` |
+| `le` | Less than or equal | `$filter=Price le 100` |
 
-#### Examples
 ```http
-# Numeric comparison
+GET /api/500/Products?$filter=ItemCode eq 'PROD001'
 GET /api/500/Products?$filter=Price gt 50.00
-
-# Date comparison
 GET /api/500/Orders?$filter=OrderDate gt 2024-01-01
-
-# String comparison (alphabetical)
 GET /api/500/Customers?$filter=Name gt 'M'
 ```
 
 ## Logical operators
 
-### Combining conditions
+| Operator | Meaning | Example |
+|---|---|---|
+| `and` | Both conditions | `$filter=Price gt 100 and Status eq 'Active'` |
+| `or` | Either condition | `$filter=Status eq 'New' or Status eq 'Pending'` |
+| `not` | Negation | `$filter=not contains(Description,'test')` |
 
-| Operator | Description | Example |
-|----------|-------------|---------|
-| `and` | Logical AND | `$filter=Price gt 100 and Status eq 'Active'` |
-| `or` | Logical OR | `$filter=Status eq 'New' or Status eq 'Pending'` |
-| `not` | Logical NOT | `$filter=not contains(Description,'test')` |
-
-#### Examples
-```http
-# AND condition
-GET /api/500/Products?$filter=Price gt 100 and Category eq 'Electronics'
-
-# OR condition
-GET /api/500/Orders?$filter=Status eq 'Pending' or Status eq 'Processing'
-
-# NOT condition
-GET /api/500/Products?$filter=not IsDeleted
-
-# Complex combination
-GET /api/500/Products?$filter=(Price gt 100 and Price lt 500) or Category eq 'Special'
-```
-
-### Grouping with parentheses
-
-Use parentheses to control operator precedence:
+`and` binds stronger than `or`; parentheses override the order:
 
 ```http
-# Without parentheses (AND has precedence over OR)
+# (Price gt 100 and Category eq 'A') or Category eq 'B'
 GET /api/500/Products?$filter=Price gt 100 and Category eq 'A' or Category eq 'B'
-# Evaluates as: (Price gt 100 AND Category eq 'A') OR Category eq 'B'
 
-# With parentheses
+# Price gt 100 and (Category eq 'A' or Category eq 'B')
 GET /api/500/Products?$filter=Price gt 100 and (Category eq 'A' or Category eq 'B')
-# Evaluates as: Price gt 100 AND (Category eq 'A' OR Category eq 'B')
 ```
 
 ## String functions
 
-### Text search functions
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `contains(field,value)` | Contains substring | `$filter=contains(Description,'widget')` |
-| `startswith(field,value)` | Starts with string | `$filter=startswith(Name,'A')` |
-| `endswith(field,value)` | Ends with string | `$filter=endswith(Email,'.com')` |
-
-#### Examples
-```http
-# Contains search (case-sensitive)
-GET /api/500/Products?$filter=contains(Description,'book')
-
-# Starts with
-GET /api/500/Customers?$filter=startswith(Name,'John')
-
-# Ends with
-GET /api/500/Documents?$filter=endswith(FileName,'.pdf')
-
-# Combining string functions
-GET /api/500/Products?$filter=contains(Description,'premium') and startswith(ItemCode,'P')
-```
-
-All string comparisons are case-sensitive. `startswith` is typically faster than `contains` because it can use index range scans. There is no wildcard syntax, use `contains`, `startswith`, or `endswith` instead.
-
-## Working with data types
-
-### String values
-
-Strings are enclosed in single quotes:
+| Function | Meaning | Example |
+|---|---|---|
+| `contains(field,value)` | Contains | `$filter=contains(Description,'widget')` |
+| `startswith(field,value)` | Starts with | `$filter=startswith(Name,'A')` |
+| `endswith(field,value)` | Ends with | `$filter=endswith(Email,'.com')` |
 
 ```http
-# Correct
-$filter=Name eq 'John Smith'
-
-# Escape single quotes with another single quote
-$filter=Description eq 'It''s a product'
-
-# Multiple words
-$filter=Category eq 'Home & Garden'
-```
-
-### Numeric values
-
-Numbers don't require quotes:
-
-```http
-# Integer
-$filter=Quantity eq 10
-
-# Decimal
-$filter=Price eq 99.99
-
-# Negative numbers
-$filter=Balance gt -100.50
-
-# Scientific notation
-$filter=Value lt 1.5e6
-```
-
-### Date and dateTime values
-
-Use ISO 8601 format:
-
-```http
-# Date only
-$filter=OrderDate eq 2024-01-15
-
-# DateTime
-$filter=CreatedAt gt 2024-01-15T14:30:00Z
-
-# Date range
-$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
-```
-
-### Boolean values
-
-Use lowercase `true` or `false`:
-
-```http
-# Boolean true
-$filter=IsActive eq true
-
-# Boolean false
-$filter=IsDeleted eq false
-
-# Negation
-$filter=not IsActive
-```
-
-### Null values
-
-Use `null` keyword:
-
-```http
-# Check for null
-$filter=AssignedTo eq null
-
-# Check for not null
-$filter=CompletedDate ne null
-
-# Combine with other conditions
-$filter=Status eq 'Open' and AssignedTo eq null
-```
-
-## Advanced filter patterns
-
-### Range queries
-
-```http
-# Numeric range
-GET /api/500/Products?$filter=Price ge 100 and Price le 500
-
-# Date range
-GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
-
-# Excluding boundaries
-GET /api/500/Products?$filter=Price gt 100 and Price lt 500
-```
-
-### Multiple value matching
-
-```http
-# Using OR for multiple values
-GET /api/500/Orders?$filter=Status eq 'New' or Status eq 'Pending' or Status eq 'Processing'
-
-# Alternative approach with grouping
-GET /api/500/Products?$filter=(Category eq 'A' or Category eq 'B' or Category eq 'C') and Price gt 50
-```
-
-### Complex text searches
-
-```http
-# Multiple text conditions
 GET /api/500/Products?$filter=contains(Description,'premium') and not contains(Description,'refurbished')
-
-# Search in multiple fields
 GET /api/500/Products?$filter=contains(Name,'widget') or contains(Description,'widget')
 ```
 
-### Nested conditions
+Case sensitivity follows the database collation. There is no wildcard or regular expression syntax. `startswith` can use an index; `contains` and `endswith` scan.
 
-```http
-# Complex nested logic
-GET /api/500/Orders?$filter=(Status eq 'Open' and Priority eq 1) or (Status eq 'Pending' and DueDate lt 2024-02-01)
+## Literals
 
-# Multiple grouping levels
-GET /api/500/Products?$filter=((Price gt 100 and Price lt 500) or Category eq 'Special') and IsActive eq true
-```
+| Type | Format | Example |
+|---|---|---|
+| String | Single quotes; `''` escapes a quote | `Name eq 'It''s here'` |
+| Number | Unquoted, decimal or scientific | `Price eq 99.99`, `Balance gt -100.50`, `Value lt 1.5e6` |
+| Date | ISO 8601 date | `OrderDate eq 2024-01-15` |
+| Date and time | ISO 8601 with offset | `CreatedAt gt 2024-01-15T14:30:00Z` |
+| Boolean | `true`, `false` | `IsActive eq true` |
+| Null | `null` | `AssignedTo eq null`, `CompletedDate ne null` |
 
-## Filter performance tips
+## Column names
 
-### 1. Use indexed fields
+Filters use the public names from `AllowedColumns` (aliases included). Tenant restrictions are applied outside the filter and cannot be widened by it ([Tenant headers](/guide/security#tenant-headers)).
 
-Always filter on indexed fields when possible:
+## Errors
 
-```http
-# Good - filtering on primary key
-GET /api/500/Products?$filter=ItemCode eq 'PROD001'
+| Response | Cause |
+|---|---|
+| `400` "Invalid OData query. Check $filter, $select, $orderby and $expand syntax." | Malformed expression, unknown function or type mismatch |
+| `400` "Selected columns not allowed: …" | `$select` names a column outside `AllowedColumns` |
 
-# Less efficient - filtering on non-indexed field
-GET /api/500/Products?$filter=contains(Description,'long text search')
-```
+## Unsupported
 
-### 2. Avoid complex string operations
-
-```http
-# Efficient - exact match
-GET /api/500/Products?$filter=Category eq 'Electronics'
-
-# Less efficient - contains operation
-GET /api/500/Products?$filter=contains(Category,'Elec')
-
-# Most efficient for prefix search
-GET /api/500/Products?$filter=startswith(ItemCode,'PROD')
-```
-
-### 3. Limit result sets early
-
-```http
-# Good - filter reduces dataset before sorting
-GET /api/500/Orders?$filter=Status eq 'Open'&$orderby=OrderDate desc&$top=10
-
-# Less efficient - sorting entire dataset
-GET /api/500/Orders?$orderby=OrderDate desc&$top=10
-```
-
-### 4. Use specific conditions
-
-```http
-# Specific date
-GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
-
-# Date range (less specific)
-GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
-
-# Very broad (avoid)
-GET /api/500/Orders?$filter=OrderDate ne null
-```
-
-## Common filter patterns
-
-### Active records
-
-```http
-# Active items
-GET /api/500/Products?$filter=IsActive eq true and IsDeleted eq false
-
-# Non-deleted items
-GET /api/500/Customers?$filter=DeletedDate eq null
-```
-
-### Date-Based filters
-
-```http
-# Today's records
-GET /api/500/Orders?$filter=OrderDate eq 2024-01-15
-
-# This month's records
-GET /api/500/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
-
-# Last 30 days
-GET /api/500/Orders?$filter=OrderDate gt 2023-12-16
-```
-
-### Status filters
-
-```http
-# Single status
-GET /api/500/Tasks?$filter=Status eq 'Open'
-
-# Multiple statuses
-GET /api/500/Tasks?$filter=Status eq 'Open' or Status eq 'InProgress'
-
-# Exclude status
-GET /api/500/Tasks?$filter=Status ne 'Closed'
-```
-
-### Search patterns
-
-```http
-# Partial match
-GET /api/500/Products?$filter=contains(Name,'widget')
-
-# Prefix search
-GET /api/500/Customers?$filter=startswith(LastName,'Sm')
-
-# Multiple field search
-GET /api/500/Products?$filter=contains(Name,'phone') or contains(Description,'phone')
-```
-
-## Error handling
-
-### Common filter errors
-
-1. **Invalid Field Name**
-```json
-{
-  "error": "Invalid field name",
-  "details": "Field 'InvalidField' is not allowed",
-  "success": false
-}
-```
-
-2. **Syntax Error**
-```json
-{
-  "error": "Invalid filter syntax",
-  "details": "Expected operator at position 15",
-  "success": false
-}
-```
-
-3. **Type Mismatch**
-```json
-{
-  "error": "Type mismatch",
-  "details": "Cannot compare string field with numeric value",
-  "success": false
-}
-```
-
-4. **Invalid Date Format**
-```json
-{
-  "error": "Invalid date format",
-  "details": "Date must be in ISO 8601 format",
-  "success": false
-}
-```
-
-## Filter limitations
-
-| Limitation | Description | Workaround |
-|------------|-------------|------------|
-| Query length | Maximum 2048 characters | Split into multiple queries |
-| Filter complexity | Maximum 10 conditions | Simplify or split filters |
-| String functions | Case-sensitive only | Handle case in application |
-| No regex support | No pattern matching | Use contains/startswith |
-| No arithmetic | No calculations in filters | Pre-calculate values |
+| Feature | Alternative |
+|---|---|
+| Arithmetic (`add`, `mul`, …) | Precomputed columns or a view |
+| Regular expressions | `contains`, `startswith`, `endswith` |
 
 ## Related topics
 

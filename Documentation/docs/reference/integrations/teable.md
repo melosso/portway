@@ -48,7 +48,7 @@ With `OverrideGlobalToken` set to `true`, clients authenticate with the `X-API-K
 Environment headers replace client headers of the same name; Teable receives only the environment's `Authorization` value. The `X-API-Key` setup keeps the Portway and Teable tokens in separate headers. `OverrideGlobalToken` applies to the whole environment; use a dedicated environment for Teable.
 :::
 
-You can generate a personal access token in Teable under your account's token settings. Tokens carry the `teable_` prefix.
+You can generate a personal access token in Teable under your account's token settings. Tokens have the `teable_` prefix.
 
 ### Proxy endpoint
 

@@ -5,9 +5,7 @@ description: "Deploy Portway as an IIS website on Windows Server with HTTPS and 
 
 # Deploying on Windows Server
 
-Deploying Portway on Windows Server behind IIS. If containers suit you better, [Deploying with Docker](/guide/docker-compose) covers that path instead.
-
-The steps assume working knowledge of IIS and your network and data sources; the essentials are all here, though some details will depend on your existing environment.
+Portway on Windows Server behind IIS. Container deployment: [Deploying with Docker](/guide/docker-compose).
 
 ## Prerequisites
 
@@ -17,14 +15,14 @@ The steps assume working knowledge of IIS and your network and data sources; the
 - A TLS/SSL certificate (self-signed is acceptable for internal deployments)
 
 :::warning
-Download the **Hosting Bundle**, not the x64 runtime installer. The Hosting Bundle includes the IIS integration module the runtime package omits. Restart IIS after installation (`iisreset`).
+Install the Hosting Bundle, not the x64 runtime; only the Hosting Bundle includes the IIS integration module. Run `iisreset` after installation.
 :::
 
 ## Installation
 
 ### 1. Generate the encryption key
 
-Set the encryption key as a Machine-level environment variable before deploying the application files:
+Machine-level environment variable, set before the first start:
 
 ```powershell
 $bytes = New-Object byte[] 48
@@ -34,7 +32,7 @@ $bytes = New-Object byte[] 48
 
 ### 2. Deploy application files
 
-Extract the Portway release to your target directory (e.g. `C:\Apps\Portway`).
+Extract the release to the target directory (e.g. `C:\Apps\Portway`).
 
 ### 3. Configure IIS
 
@@ -55,22 +53,19 @@ Extract the Portway release to your target directory (e.g. `C:\Apps\Portway`).
    ```
 
 :::info
-If any proxy endpoint needs NTLM pass-through (e.g. for Exact Globe+ or AFAS Profit), bind the Application Pool identity to a domain user with the required network access instead of using ApplicationPoolIdentity.
+For NTLM pass-through on proxy endpoints (e.g. Exact Globe+, AFAS Profit), run the Application Pool as a domain user with the required network access instead of ApplicationPoolIdentity.
 :::
 
 ### 4. Start and verify
 
-Start the website. On first run, Portway creates `tokens/`, `log/`, and `auth.db` automatically.
+The first start creates `tokens/`, `log/` and `auth.db`. Checks:
 
-Verify the application is running:
-- `https://localhost/health/live`, returns `Alive`
-- `https://localhost/docs`, OpenAPI documentation interface
+- `https://localhost/health/live` returns `Alive`
+- `https://localhost/docs` serves the API reference
 
 ## Initial configuration
 
-From here the setup is the same whichever way you host Portway. [Getting Started](/guide/getting-started) walks you through retrieving your access token and configuring your environments.
-
-One detail is worth keeping in mind on IIS. The `tokens/` and `environments/` directories are created on first run under the site root, so the Application Pool identity needs read access to both.
+Access token and environments: [Getting Started](/guide/getting-started). The Application Pool identity needs read access to `tokens/` and `environments/` under the site root.
 
 ## Troubleshooting
 
@@ -82,36 +77,30 @@ One detail is worth keeping in mind on IIS. The `tokens/` and `environments/` di
 | Blank screen | No HTTPS binding or missing certificate | Bind a certificate to the site in IIS Manager |
 | Database errors | Invalid connection string | Verify the connection string and SQL Server network access |
 
-Enable stdout logging in `web.config` for startup errors that do not reach the application log:
+Startup errors outside the application log are captured with stdout logging in `web.config`:
 
 ```xml
 <aspNetCore stdoutLogEnabled="true" stdoutLogFile=".\log\stdout" />
 ```
 
-**Log locations:**
-- Application log: `log/portwayapi-*.log`
-- IIS log: `C:\inetpub\logs\LogFiles\W3SVC[ID]\`
-- Startup errors: Windows Event Viewer → Application
+| Log | Location |
+|---|---|
+| Application | `log/portwayapi-*.log` |
+| IIS | `C:\inetpub\logs\LogFiles\W3SVC[ID]\` |
+| Startup errors | Windows Event Viewer → Application |
 
 ## Security configuration
 
 - Enforce HTTPS using URL Rewrite rules ([IIS Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite))
-- Restrict `tokens/` directory read access to the application pool identity only
-- Configure IP whitelisting in IIS Manager (IP Address and Domain Restrictions)
-- Use a dedicated domain service account with minimum SQL permissions for proxy endpoints
+- Restrict `tokens/` read access to the Application Pool identity
+- Restrict client addresses in IIS Manager (IP Address and Domain Restrictions)
+- Use a dedicated domain service account with minimum SQL permissions
 
-See [Security](/guide/security) for the full security configuration reference.
+Security configuration: [Security](/guide/security).
 
 ## Backup
 
-Include these in your backup plan:
-
-- `auth.db` for authentication database
-- `tokens/` for token files
-- `environments/` for connection strings and settings
-- `endpoints/` for endpoint definitions
-
-For upgrades, see [Upgrading Portway](/guide/upgrading).
+Back up `auth.db`, `mcp.db`, `portway.key`, `.core/`, `appsettings.overrides.json`, `environments/`, `endpoints/` and the file storage directory. Upgrades: [Upgrading Portway](/guide/upgrading).
 
 ## Next steps
 

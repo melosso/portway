@@ -237,7 +237,7 @@ public class RateLimiterTests
     }
 
     [Fact]
-    public async Task InvokeAsync_BlockedToken429_CarriesRateLimitHeaders()
+    public async Task InvokeAsync_BlockedToken429_IncludesRateLimitHeaders()
     {
         var limiter = CreateRateLimiter(_ => Task.CompletedTask, ipLimit: 10000, tokenLimit: 1, timeProvider: new FakeTimeProvider());
 

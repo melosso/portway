@@ -5,18 +5,18 @@ description: "Health check endpoints, response format, component checks, and loa
 
 # Health Checks
 
-Whether it's a load balancer deciding where to send traffic or you checking in on a quiet Sunday evening, something will regularly ask Portway how it's doing. These endpoints provide the answer at three levels of detail.
+Three health endpoints report the gateway status at increasing detail. All `/health*` paths are exempt from rate limiting.
 
 ## Available endpoints
 
 ### Basic health check
 
+Unauthenticated, cached for 15 seconds.
+
 ```http
 GET /health
-Authorization: Bearer {token}
 ```
 
-Returns basic health status:
 
 ```json
 {
@@ -26,10 +26,11 @@ Returns basic health status:
 }
 ```
 
-**Status Values:**
-- `Healthy` - All checks passing
-- `Degraded` - Some issues detected
-- `Unhealthy` - Critical issues found
+| Status | Meaning |
+|---|---|
+| `Healthy` | All checks pass |
+| `Degraded` | At least one check degraded |
+| `Unhealthy` | At least one check failed |
 
 ### Liveness check
 
@@ -37,17 +38,11 @@ Returns basic health status:
 GET /health/live
 ```
 
-Simple endpoint for container orchestration:
+Unauthenticated, cached for 5 seconds, without downstream checks. Intended for liveness probes and load balancers.
 
 ```
 Alive
 ```
-
-**Features:**
-- No authentication required
-- Minimal overhead
-- 5-second cache
-- Used by load balancers and Kubernetes
 
 ### Detailed health check
 
@@ -56,7 +51,7 @@ GET /health/details
 Authorization: Bearer {token}
 ```
 
-Comprehensive health information:
+Each component check, cached for 60 seconds. Requires a token.
 
 ```json
 {
@@ -114,7 +109,7 @@ Comprehensive health information:
 
 ### Database check
 
-Verifies SQL database connectivity:
+SQL connectivity per environment:
 
 ```json
 {
@@ -129,14 +124,11 @@ Verifies SQL database connectivity:
 }
 ```
 
-**Checks:**
-- Connection availability
-- Response time
-- Authentication status
+Reports connection availability, response time and authentication result.
 
 ### Disk space check
 
-Monitors available storage:
+Free disk space:
 
 ```json
 {
@@ -150,14 +142,15 @@ Monitors available storage:
 }
 ```
 
-**Thresholds:**
-- Healthy: > 15% free
-- Degraded: 5-15% free
-- Unhealthy: < 5% free
+| Free space | Status |
+|---|---|
+| Above 15% | `Healthy` |
+| 5% to 15% | `Degraded` |
+| Below 5% | `Unhealthy` |
 
 ### Proxy endpoints check
 
-Tests external service connectivity:
+Upstream reachability of proxy endpoints:
 
 ```json
 {
@@ -178,16 +171,13 @@ Tests external service connectivity:
 }
 ```
 
-**Features:**
-- All public proxy endpoints that allow GET are checked in parallel
-- Timeout handling (10 seconds per endpoint)
-- Authentication status checking (a 401 from the upstream counts as reachable)
+All public proxy endpoints with GET are checked in parallel, with a 10-second timeout per endpoint. An upstream `401` counts as reachable.
 
 ## Implementation details
 
 ### Caching strategy
 
-Health checks use intelligent caching to prevent overload:
+Cache durations:
 
 | Endpoint | Cache duration |
 |----------|---------------|
@@ -202,40 +192,40 @@ Cache-Control: public, max-age=15
 Expires: Sun, 20 Jan 2024 10:30:15 GMT
 ```
 
-### Error handling
+### Failure examples
 
-Health checks handle failures gracefully:
+Database failure:
 
-1. **Database Errors**
-   ```json
-   {
-     "name": "Database",
-     "status": "Unhealthy",
-     "description": "Connection failed: Timeout",
-     "duration": "5000ms",
-     "data": {
-       "error": "SqlException: Connection timeout"
-     }
-   }
-   ```
+```json
+{
+  "name": "Database",
+  "status": "Unhealthy",
+  "description": "Connection failed: Timeout",
+  "duration": "5000ms",
+  "data": {
+    "error": "SqlException: Connection timeout"
+  }
+}
+```
 
-2. **Proxy Failures**
-   ```json
-   {
-     "name": "ProxyEndpoints",
-     "status": "Degraded",
-     "description": "Some services unavailable",
-     "data": {
-       "Account": {
-         "Status": "Healthy"
-       },
-       "Products": {
-         "Status": "Unhealthy",
-         "Error": "HTTP 503 Service Unavailable"
-       }
-     }
-   }
-   ```
+Proxy failure:
+
+```json
+{
+  "name": "ProxyEndpoints",
+  "status": "Degraded",
+  "description": "Some services unavailable",
+  "data": {
+    "Account": {
+      "Status": "Healthy"
+    },
+    "Products": {
+      "Status": "Unhealthy",
+      "Error": "HTTP 503 Service Unavailable"
+    }
+  }
+}
+```
 
 ## Load balancer configuration
 
@@ -319,9 +309,6 @@ readinessProbe:
   httpGet:
     path: /health
     port: 5000
-    httpHeaders:
-    - name: Authorization
-      value: Bearer ${HEALTH_CHECK_TOKEN}
   initialDelaySeconds: 15
   periodSeconds: 20
   timeoutSeconds: 10
@@ -346,8 +333,7 @@ startupProbe:
 
 ```powershell [PowerShell]
 # Test basic health
-Invoke-WebRequest -Uri "http://localhost:5000/health" `
-  -Headers @{"Authorization"="Bearer $token"}
+Invoke-WebRequest -Uri "http://localhost:5000/health"
 
 # Check liveness
 Invoke-WebRequest -Uri "http://localhost:5000/health/live"
@@ -360,7 +346,7 @@ $response.Content | ConvertFrom-Json | Format-List
 
 ```bash [Bash]
 # Test basic health
-curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health
+curl http://localhost:5000/health
 
 # Check liveness
 curl http://localhost:5000/health/live
@@ -380,4 +366,4 @@ curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health/details | jq
 [2024-01-20 10:30:02 WRN] Health check status: Unhealthy SQL environments detected (prod)
 ```
 
-The reason each endpoint or environment failed logs at `Debug`. Use `/health/details` or raise the log level to see it.
+Per-endpoint and per-environment failure reasons are logged at `Debug` and returned by `/health/details`.

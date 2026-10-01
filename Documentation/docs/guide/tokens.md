@@ -1,111 +1,85 @@
 ---
 title: Access Tokens
-description: "Create, scope, rotate, and revoke the Bearer tokens that control API access"
+description: "Create, scope, rotate, and archive the Bearer tokens that control API access"
 ---
 
 # Access Tokens
 
-Portway is our API gateway that uses Bearer tokens for authentication, implementing the standard defined in [RFC 6750](https://datatracker.ietf.org/doc/html/rfc6750).
-
-Every request to the server must carry a Bearer token, so token management is a place you'll visit regularly. Tokens live in the Web UI under **Access Tokens**.
+API requests authenticate with a Bearer token ([RFC 6750](https://datatracker.ietf.org/doc/html/rfc6750)). Tokens are managed in the console under **Access Tokens**.
 
 :::warning
-On first startup, Portway writes an initial token to `tokens/{SERVER_NAME}.txt`. This token has full access (`*` scopes, `*` environments). Delete the file from disk immediately after recording the value, then use the Web UI for all subsequent token management.
+The first start writes a full-access token (`*` scopes, `*` environments) to `tokens/{SERVER_NAME}.txt`. Delete the file after recording the value.
 :::
 
 ## Creating a token
 
-1. Open the Web UI and navigate to **Access Tokens**
-2. Click **New Token**
-3. Fill in the fields:
+The create drawer opens from **Access Tokens → New Token**:
 
 | Field | Required | Description |
-|-------|----------|-------------|
-| `Username` | Yes | Identifies the service or user this token belongs to. Used for audit trail and logging. |
-| `Description` | No | Human-readable purpose note (e.g., "ERP sync service") |
-| `Allowed Scopes` | No | Endpoint access restriction. Default `*` = all endpoints. |
-| `Allowed Environments` | No | Environment access restriction. Default `*` = all environments. |
-| `Expires In (days)` | No | Leave blank for a non-expiring token. |
+|---|---|---|
+| Name | Yes | Service or user the token belongs to; recorded in audit and traffic logs |
+| Description | No | Purpose, e.g. "ERP sync service" |
+| Expiration (days) | No | Empty for no expiry |
+| Rate limit | No | Requests per window for this token; empty uses the global limit |
+| Scopes | No | Endpoint restriction (default `*`) |
+| Environments | No | Environment restriction (default `*`) |
+| Tenants | No | Allowed values per [tenant header](/guide/security#tenant-headers) |
 
-4. Click **Create** and copy the token value immediately.
-
-:::warning
-Save the token value shown when you first launch Portway or when creating a new token. It is only displayed once and cannot be retrieved later.
-:::
-
+The token value is displayed once, after **Create**.
 
 ## Scoping tokens
 
-Narrow a token's access to reduce exposure. A token can only access endpoints and environments that match both its scope and the endpoint's own `AllowedEnvironments` / `Hidden` settings.
+A token reaches an endpoint when the endpoint matches its scopes and the environment matches both its environments and the endpoint's `AllowedEnvironments`.
 
 ### Endpoint scopes
 
-| Pattern | Grants access to |
-|---------|-----------------|
+| Pattern | Access |
+|---|---|
 | `*` | All endpoints |
-| `Products` | Single endpoint named `Products` |
-| `Products,Orders` | Two named endpoints |
-| `Product*` | All endpoints with a `Product` prefix |
-| `Company/Employees` | Specific namespaced endpoint |
-| `Company/*` | All endpoints under the `Company` namespace |
-| `GET:Products` | `Products` endpoint, GET method only |
+| `Products` | Endpoint `Products` |
+| `Products,Orders` | Both endpoints |
+| `Product*` | Endpoints starting with `Product` |
+| `Company/Employees` | Namespaced endpoint |
+| `Company/*` | All endpoints in the `Company` namespace |
+| `GET:Products` | `Products`, GET only |
 
 ### Environment scopes
 
-| Pattern | Grants access to |
-|---------|-----------------|
+| Pattern | Access |
+|---|---|
 | `*` | All environments |
-| `prod` | Single environment |
-| `dev,test` | Two named environments |
-| `dev*` | All environments with a `dev` prefix |
+| `prod` | Environment `prod` |
+| `dev,test` | Both environments |
+| `dev*` | Environments starting with `dev` |
 
 ### Tenant scopes
 
-`AllowedTenants` maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The console token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/security#tenant-headers).
+The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/security#tenant-headers).
 
 ### Common configurations
 
 | Scenario | Scopes | Environments |
-|----------|--------|--------------|
-| Full-access admin token | `*` | `*` |
-| Read-only reporting service | `GET:*` | `prod` |
+|---|---|---|
+| Full access | `*` | `*` |
+| Read-only reporting | `GET:*` | `prod` |
 | Single integration (Globe+) | `Company/*` | `500,700` |
-| Development testing | `*` | `dev,test` |
-| Webhook ingestion only | `webhooks/*` | `*` |
+| Development | `*` | `dev,test` |
+| Webhook ingestion | `webhooks/*` | `*` |
 
 ## Rotating a token
 
-Rotation replaces an existing token with a new one while keeping the username, scopes, and environments intact. The old token is revoked immediately.
+Rotation issues a new token value with the same name, scopes, environments, tenants and rate limit, and revokes the old value. Expiration keeps the remaining days. Rotate on a schedule and after any exposure.
 
-1. Open **Access Tokens** and find the token to rotate
-2. Click **Rotate**
-3. Copy the new token value
-4. Update every application or service using the old token
+## Archiving a token
 
-Use rotation on a schedule (e.g., quarterly) or immediately when a token may have been exposed.
-
-## Revoking a token
-
-Revocation permanently invalidates a token. Any request using it will immediately receive `401 Unauthorized`.
-
-1. Open **Access Tokens** and find the token
-2. Click **Revoke**
-3. Confirm the action
-
-Revocation is irreversible. Create a new token for any user or service that was using the revoked one.
+Archiving revokes a token; requests with it return `401`, and its plaintext token file is deleted. Archived tokens are listed with **Show archived** and can be restored. The last token with full access cannot be archived or narrowed.
 
 ## Token audit log
 
-Every token records a history of operations (created, used, rotated, revoked), accessible from the **Access Tokens** page by clicking **Audit** on a token row. This log is also queryable directly:
-
-```http
-GET /ui/api/tokens/{id}/audit
-```
-
-See [Token Audit Log](/reference/token-generator) for the schema.
+Each token records its operations (created, scopes, environments and tenants changed, rotated, archived). The log opens from the token's edit drawer under **Audit Log**. API: `GET /ui/api/tokens/{id}/audit` ([Web UI API Reference](/reference/webui)).
 
 ## Related
 
-- [Authentication reference](/reference/api-auth): validation flow, error responses, scope syntax
-- [Security guide](/guide/security): incident response, network restrictions, encryption
-- [Web UI](/guide/webui): enabling and configuring the management interface
+- [Authentication reference](/reference/api-auth)
+- [Security](/guide/security)
+- [Web UI](/guide/webui)

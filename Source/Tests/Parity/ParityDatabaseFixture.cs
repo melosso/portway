@@ -63,7 +63,7 @@ public abstract class ParityDatabaseFixture : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         if (!DockerProbe.IsAvailable)
-            return; // Tests carry [DockerFact] and skip; the fixture must not fail the collection
+            return; // Tests use [DockerFact] and skip; the fixture must not fail the collection
 
         Provider = CreateProvider();
         ConnectionString = await StartContainerAsync();

@@ -5,15 +5,15 @@ description: "Forward requests to internal HTTP/HTTPS services through a consist
 
 # Proxy Endpoints
 
-Proxy endpoints put Portway in front of an internal service: requests route through the gateway and responses come back to your caller unchanged. Along the way Portway adds token authentication, environment headers, and URL rewriting, while the internal service receives the request transparently without ever knowing about the gateway.
+Proxy endpoints forward requests to an internal service and return its responses. Portway adds token authentication, environment headers and URL rewriting.
 
 :::details Note on pass-through authentication
-If your backend requires NTLM authentication (Exact Globe+ or Exact Synergy, for example), binding the IIS Application Pool identity to a domain user with the necessary permissions gives Portway the access it needs.
+For backends that require NTLM authentication (e.g. Exact Globe+, Exact Synergy), run the IIS Application Pool under a domain user with the required permissions.
 :::
 
 ## Configuration
 
-Create `endpoints/Proxy/{EndpointName}/entity.json`:
+Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
 
 ```json
 {
@@ -27,36 +27,24 @@ Create `endpoints/Proxy/{EndpointName}/entity.json`:
 
 | Property | Required | Type | Description |
 |---|---|---|---|
-| `Url` | Yes | string | Target URL to forward requests to |
-| `Methods` | Yes | array | HTTP methods to allow: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
-| `Hidden` | No | boolean | Exclude from OpenAPI documentation. Defaults to `false` |
-| `AllowedEnvironments` | No | array | Environments where this endpoint responds |
+| `Url` | Yes | string | Target URL |
+| `Methods` | Yes | array | Allowed HTTP methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
+| `Hidden` | No | boolean | Excludes the endpoint from the OpenAPI document (default `false`) |
+| `AllowedEnvironments` | No | array | Environments the endpoint serves |
+| `Tenancy` | No | object | Tenant header to upstream header; see [Tenant headers](/guide/security#tenant-headers) |
 
-Only configure the HTTP methods your internal service actually exposes. Omit methods that the target does not support.
+All properties: [Entity configuration](/reference/entity-config#endpoint-proxy).
 
 ## Request forwarding
 
-Portway forwards the original request to the target URL, preserving:
+Forwarded unchanged:
+
 - HTTP method
-- Query parameters
-- Request headers (except `Host`)
+- Query string, including OData options
 - Request body and content type
+- Request headers, except hop-by-hop headers, `Host`, `Content-Length` and `X-Forwarded-*`
 
-The `Authorization` header is forwarded unchanged, enabling pass-through authentication to internal services that validate Bearer tokens.
-
-The query string is forwarded verbatim, including the provided OData options in your (HTTP) request. In particular `$expand` is never parsed, validated or rejected on a proxy endpoint: it reaches the upstream exactly as written, so a service that implements `$expand` natively keeps working. That's a long way of saying: Portway only handles `$expand` itself on [SQL Table and View endpoints](/reference/expand).
-
-Because forwarding is all Portway does here, the documentation cannot infer which query parameters a proxied service accepts. Set `SupportsOData` when the service behind the endpoint understands them:
-
-```json
-{
-  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
-  "Methods": ["GET"],
-  "SupportsOData": true
-}
-```
-
-With the flag set, the endpoint's GET operation lists `$select`, `$top` and `$filter` so callers can discover them. Without it, the operation says instead that any query parameters are passed through untouched, which keeps the reference transparent about services that never implemented OData.
+The `X-Forwarded-For` header is set from the verified client connection. The client's `Authorization` header is forwarded unless the environment sets its own.
 
 Environment headers from `environments/{env}/settings.json` and the endpoint's `HttpMethodAppendHeaders` are added to every forwarded request and replace client headers of the same name:
 
@@ -67,11 +55,26 @@ DatabaseName: production
 Origin: Portway
 ```
 
+### OData on proxy endpoints
+
+OData options, `$expand` included, are forwarded as written and never parsed. Portway processes `$expand` only on [SQL Table and View endpoints](/reference/expand).
+
+The `SupportsOData` flag documents `$select`, `$top` and `$filter` on the endpoint's GET operation. Without it, the operation documents that query parameters are forwarded unchanged.
+
+```json
+{
+  "Url": "http://localhost:8020/services/Exact.Entity.REST.EG/Account",
+  "Methods": ["GET"],
+  "SupportsOData": true
+}
+```
+
 ## URL rewriting
 
-Portway rewrites internal URLs in responses so callers always see gateway-relative paths:
+Internal URLs in responses are rewritten to gateway paths.
 
-**Internal service response:**
+Internal service response:
+
 ```json
 {
   "_links": {
@@ -81,7 +84,8 @@ Portway rewrites internal URLs in responses so callers always see gateway-relati
 }
 ```
 
-**Rewritten response returned to caller:**
+Response returned to the caller:
+
 ```json
 {
   "_links": {
@@ -91,15 +95,13 @@ Portway rewrites internal URLs in responses so callers always see gateway-relati
 }
 ```
 
-This ensures internal hostnames and ports are never exposed to API consumers.
-
 ## Caching
 
-GET responses are cached for 5 minutes by default. The cache key includes the URL, query parameters, and Authorization header. POST, PUT, DELETE, and PATCH requests bypass the cache and invalidate any cached GET response for that endpoint.
+GET responses are cached for 5 minutes by default. The cache key includes the URL, query string, `Authorization` header and selected tenant values. POST, PUT, DELETE and PATCH bypass the cache and invalidate cached GET responses for the endpoint.
 
 ## Hidden endpoints
 
-Setting `Hidden: true` keeps an endpoint out of the OpenAPI documentation at `/docs`. It carries on serving requests exactly as before, it is simply not listed for browsers of your reference.
+With `Hidden: true`, the endpoint is excluded from the OpenAPI document at `/docs`; the endpoint continues to serve requests.
 
 ```json
 {
@@ -111,7 +113,8 @@ Setting `Hidden: true` keeps an endpoint out of the OpenAPI documentation at `/d
 
 ## Examples
 
-**Internal API:**
+Internal API:
+
 ```json
 {
   "Url": "http://internal-api-gateway:8080/services",
@@ -120,7 +123,8 @@ Setting `Hidden: true` keeps an endpoint out of the OpenAPI documentation at `/d
 }
 ```
 
-**Legacy SOAP service (write-only, unlisted):**
+Legacy SOAP service, write-only and unlisted:
+
 ```json
 {
   "Url": "http://legacy-service/soap/endpoint",
@@ -132,13 +136,12 @@ Setting `Hidden: true` keeps an endpoint out of the OpenAPI documentation at `/d
 
 ## Troubleshooting
 
-**"Connection refused"**: Verify the target service is running and reachable from the Portway host. Check port numbers and firewall rules.
-
-**"Method not allowed"**: Verify the HTTP method is listed in `Methods`.
-
-**URL rewriting issues**: If clients receive internal hostnames in responses, check whether the internal service generates absolute URLs in its response body.
-
-**Slow responses**: Enable request traffic logging to measure where latency is occurring:
+| Symptom | Resolution |
+|---|---|
+| "Connection refused" | Check that the target service is reachable from the Portway host (port, firewall). |
+| "Method not allowed" | Add the method to `Methods`. |
+| Internal hostnames in responses | The internal service returns absolute URLs outside the rewritten link format. |
+| Slow responses | Enable request traffic logging (below) and compare durations. |
 
 ```json
 {
@@ -152,6 +155,6 @@ Setting `Hidden: true` keeps an endpoint out of the OpenAPI documentation at `/d
 
 ## Next steps
 
-- [Composite Endpoints](/guide/endpoints-composite): orchestrate multiple proxy steps
-- [Environments](/guide/environments): configure per-environment headers and auth
+- [Composite Endpoints](/guide/endpoints-composite)
+- [Environments](/guide/environments)
 - [Security](/guide/security)

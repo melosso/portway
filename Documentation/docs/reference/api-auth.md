@@ -5,54 +5,58 @@ description: "Token properties, scope patterns, and the authentication flow for 
 
 # Authentication
 
-Every request you send to Portway carries a bearer token, and everything else in the authentication story builds on that. This page covers how tokens are structured, what their scopes and environment restrictions mean, and how a request makes its way through the authentication flow.
-
-A token travels in the standard Authorization header:
+API requests authenticate with a Bearer token:
 
 ```http
 Authorization: Bearer your_token_here
 ```
 
-Requests without a valid token receive `401 Unauthorized`. The only unauthenticated endpoint is `/health/live`.
+Requests without a valid token return `401`. Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path.
 
 ## Token properties
 
 | Property | Description | Default |
-|----------|-------------|---------|
-| `username` | Unique identifier for the token | Required |
-| `tokenHash` | PBKDF2-SHA256 hash, 10,000 iterations, 256-bit output | Auto-generated |
-| `tokenSalt` | 128-bit random salt | Auto-generated |
-| `createdAt` | Creation timestamp | Current time |
-| `expiresAt` | Expiration date | `null` (never expires) |
-| `revokedAt` | Revocation timestamp | `null` (active) |
-| `allowedScopes` | Endpoint access restrictions | `*` (all endpoints) |
-| `allowedEnvironments` | Environment access restrictions | `*` (all environments) |
-| `description` | Purpose note | Empty |
+|---|---|---|
+| `username` | Token name | Required |
+| `tokenHash` | PBKDF2-SHA256 hash, 10,000 iterations, 256-bit output | Generated |
+| `tokenSalt` | 128-bit random salt | Generated |
+| `createdAt` | Creation time | Current time |
+| `expiresAt` | Expiration time | `null` (no expiry) |
+| `revokedAt` | Revocation (archive) time | `null` (active) |
+| `allowedScopes` | Endpoint restriction | `*` |
+| `allowedEnvironments` | Environment restriction | `*` |
+| `allowedTenants` | Tenant values per header, as JSON | `{}` (none) |
+| `rateLimitRequests`, `rateLimitWindowSeconds` | Token rate limit | `null` (global limit) |
+| `description` | Purpose | Empty |
 
-Tokens are created and managed in the [Web UI](/guide/webui) under **Tokens**.
+Tokens are managed in the console under **Access Tokens** ([Access Tokens](/guide/tokens)).
 
 ## Scope patterns
 
 ### Endpoint scopes (`allowedScopes`)
 
 | Pattern | Access |
-|---------|--------|
+|---|---|
 | `*` | All endpoints |
-| `Products` | Single endpoint |
-| `Products,Orders` | Named endpoints only (comma-separated) |
-| `Product*` | All endpoints matching the prefix |
-| `Company/Employees` | Specific namespaced endpoint |
+| `Products` | One endpoint |
+| `Products,Orders` | Listed endpoints |
+| `Product*` | Endpoints starting with the prefix |
+| `Company/Employees` | Namespaced endpoint |
 | `Company/*` | All endpoints in a namespace |
-| `GET:Products` | Single endpoint, single HTTP method |
+| `GET:Products` | One endpoint, one method |
 
 ### Environment scopes (`allowedEnvironments`)
 
 | Pattern | Access |
-|---------|--------|
+|---|---|
 | `*` | All environments |
-| `prod` | Single environment |
-| `dev,test` | Named environments (comma-separated) |
-| `dev*` | All environments matching the prefix |
+| `prod` | One environment |
+| `dev,test` | Listed environments |
+| `dev*` | Environments starting with the prefix |
+
+### Tenant values (`allowedTenants`)
+
+A JSON object of tenant header to permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`; `*` permits any valid value. Resolution rules: [Tenant headers](/guide/security#tenant-headers).
 
 ## Authentication flow
 
@@ -77,49 +81,48 @@ sequenceDiagram
     end
 ```
 
-## Validation process
+## Validation order
 
-When a request arrives, Portway:
-
-1. Extracts the token from the `Authorization: Bearer` header
-2. Verifies the token against its stored hash
-3. Checks token expiration
-4. Checks the token has not been revoked
-5. Validates endpoint scope against `allowedScopes`
-6. Validates environment scope against `allowedEnvironments`
+1. Token read from `Authorization: Bearer`
+2. Hash verified
+3. Expiration checked
+4. Revocation checked
+5. Environment checked against `allowedEnvironments`
+6. Endpoint checked against `allowedScopes`
+7. Tenant header resolved against `allowedTenants` (endpoints with `Tenancy`)
 
 ## Error responses
 
 | Status | Error | Cause |
-|--------|-------|-------|
-| 401 | `Authentication required` | Missing `Authorization` header |
-| 401 | `Invalid or expired token` | Token invalid, expired, or revoked |
-| 403 | `Access denied to endpoint` | Token lacks endpoint permission |
-| 403 | `Access denied to environment` | Token lacks environment permission |
+|---|---|---|
+| 401 | `Authentication required` | No `Authorization` header |
+| 401 | `Invalid or expired token` | Unknown, expired or archived token |
+| 403 | `Access denied to endpoint` | Endpoint outside `allowedScopes` |
+| 403 | `Access denied to environment` | Environment outside `allowedEnvironments` |
+| 400, 403 | Tenant errors | Missing, malformed or unpermitted tenant header |
 
-### Correct header format
+The `Bearer` prefix is required:
 
 ```http
-# Correct
+# Valid
 Authorization: Bearer your_token_here
 
-# Incorrect: missing "Bearer" prefix
+# Invalid
 Authorization: your_token_here
 ```
 
 ## Token lifecycle
 
-1. **Create**: generate a token with defined scopes and environment restrictions in the Web UI
-2. **Distribute**: share the token value securely with the service or user
-3. **Use**: include in `Authorization: Bearer` header on every request
-4. **Rotate**: generate a replacement before the old token expires; the old token is invalidated
-5. **Revoke**: immediately invalidate a compromised or unused token
-
-Revocation is permanent. A revoked token cannot be reactivated.
+| Stage | Action |
+|---|---|
+| Create | Console, with scopes, environments, tenants and optional expiry |
+| Use | `Authorization: Bearer` on every request |
+| Rotate | New value with the same settings; the old value is revoked |
+| Archive | Revokes the token and deletes its token file; restorable from the archived list |
 
 ## Related topics
 
-- [Web UI guide](/guide/webui): create, revoke, rotate, and audit tokens
-- [Security guide](/guide/security): incident response for compromised tokens
-- [HTTP Headers](/reference/headers): full header reference
-- [Token audit log](/reference/token-generator): audit trail schema
+- [Access Tokens](/guide/tokens)
+- [Security](/guide/security)
+- [HTTP Headers](/reference/headers)
+- [Token generator](/reference/token-generator)

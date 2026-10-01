@@ -257,7 +257,7 @@ public class ContentNegotiationByEndpointTypeTests : ApiTestBase
 }
 
 /// <summary>
-/// Pins URL construction for endpoint Urls carrying a baked query: paths join the path, queries merge with '&'
+/// Pins URL construction for endpoint Urls with a baked query: paths join the path, queries merge with '&'
 /// </summary>
 public class QueryBearingUrlEndpointTests : ApiTestBase, IDisposable
 {

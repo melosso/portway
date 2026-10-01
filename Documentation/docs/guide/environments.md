@@ -5,7 +5,7 @@ description: "Route API requests to different servers, databases, and configurat
 
 # Environments
 
-Each request URL includes an environment segment, `/api/{environment}/{endpoint}`. Portway maps that name to a folder under `environments/`, which defines the connection string, server name, custom headers, and access rules for that target. Development, testing, and production configurations are completely separate.
+The environment segment in `/api/{environment}/{endpoint}` selects a folder under `environments/` with the connection string, server name, headers and authentication for that target.
 
 ## Directory structure
 
@@ -22,12 +22,12 @@ environments/
 ```
 
 :::info
-Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any identifier meaningful to your organisation e.g. `WMS`, `ERP`, `500`. The folder name becomes the URL segment.
+Environment names are free-form (e.g. `dev`, `prod`, `WMS`, `500`). The folder name is the URL segment.
 :::
 
 ### Global settings
 
-`environments/settings.json` controls which environments are accessible through the API:
+The global file `environments/settings.json` lists the routable environments:
 
 ```json
 {
@@ -38,15 +38,15 @@ Environment names are arbitrary. You can use `dev`, `test`, `prod`, or any ident
 }
 ```
 
-`ServerName` sets the default server name included in forwarded headers, and `AllowedEnvironments` lists the environment names the API will route. See [Environment settings](/reference/environment-settings#global-settings) for the full property reference.
+The global `ServerName` is the default server name in forwarded headers; `AllowedEnvironments` lists the routable environment names. Property reference: [Environment settings](/reference/environment-settings#global-settings).
 
 :::warning
-Adding a folder under `environments/` is not enough, the name also needs to appear in `AllowedEnvironments` before Portway will route requests to it.
+An environment folder is routed only when its name is listed in `AllowedEnvironments`.
 :::
 
 ### Environment settings
 
-Each environment's `settings.json` defines its connection and forwarding configuration:
+Per-environment `settings.json`:
 
 ```json
 {
@@ -63,11 +63,11 @@ Each environment's `settings.json` defines its connection and forwarding configu
 |---|---|---|
 | `ServerName` | No | Overrides the global server name for this environment |
 | `ConnectionString` | No | Database connection string. Required for SQL and Webhook endpoints |
-| `Headers` | No | Key-value pairs added to all forwarded requests. Primarily used by Proxy endpoints |
+| `Headers` | No | Headers added to forwarded proxy requests; they replace client headers of the same name |
 
 ## SQL provider detection
 
-Portway selects the SQL driver automatically from the connection string, no additional configuration needed. Switching databases for an environment is as simple as updating `ConnectionString`.
+The SQL provider is detected from the connection string:
 
 | Provider | Detection signal |
 |---|---|
@@ -77,17 +77,18 @@ Portway selects the SQL driver automatically from the connection string, no addi
 | SQLite | `Data Source=...db` file path |
 
 :::tip
-Point an SQLite environment at a local `.db` file to run a self-contained demo with no database server:
+An SQLite environment needs no database server:
 ```json
 { "ConnectionString": "Data Source=environments/demo/demo.db;" }
 ```
 :::
 
-For full detection priority rules and per-provider capability differences, see the [SQL Providers reference](/reference/sql-providers).
+Detection priority and provider differences: [SQL Providers](/reference/sql-providers).
 
 ## Configuration examples
 
-**SQL Server, production (Windows Authentication):**
+SQL Server with Windows Authentication:
+
 ```json
 {
   "ServerName": "PROD-SQL-CLUSTER",
@@ -95,7 +96,8 @@ For full detection priority rules and per-provider capability differences, see t
 }
 ```
 
-**SQL Server, development (SQL auth):**
+SQL Server with SQL authentication:
+
 ```json
 {
   "ServerName": "DEV-SQL-01",
@@ -103,7 +105,8 @@ For full detection priority rules and per-provider capability differences, see t
 }
 ```
 
-**PostgreSQL:**
+PostgreSQL:
+
 ```json
 {
   "ServerName": "pg-host",
@@ -111,7 +114,8 @@ For full detection priority rules and per-provider capability differences, see t
 }
 ```
 
-**MySQL:**
+MySQL:
+
 ```json
 {
   "ServerName": "mysql-host",
@@ -119,7 +123,8 @@ For full detection priority rules and per-provider capability differences, see t
 }
 ```
 
-**SQLite:**
+SQLite:
+
 ```json
 {
   "ServerName": "localhost",
@@ -129,13 +134,11 @@ For full detection priority rules and per-provider capability differences, see t
 
 ## Access control
 
-Environment access is enforced at two independent layers. A request must pass both to succeed.
+A request must pass both the token and the endpoint environment restrictions.
 
 ### Token-level restrictions
 
-When creating a token, specify which environments it can access. Use `*` for all environments, a comma-separated list for specific ones, or a prefix pattern like `pro*`.
-
-Example token with restricted access:
+A token lists its environments: `*` for all, a comma-separated list, or a prefix pattern such as `pro*`:
 ```json
 {
   "Username": "api-user",
@@ -146,7 +149,7 @@ Example token with restricted access:
 
 ### Endpoint-level restrictions
 
-Individual endpoints can also limit which environments they respond to:
+An endpoint lists the environments it serves:
 
 ```json
 {
@@ -154,8 +157,6 @@ Individual endpoints can also limit which environments they respond to:
   "AllowedEnvironments": ["prod"]
 }
 ```
-
-Both restrictions apply. The token must permit the environment **and** the endpoint must list it.
 
 | Token environments | Endpoint `AllowedEnvironments` | Request environment | Result |
 |---|---|---|---|
@@ -169,9 +170,7 @@ Both restrictions apply. The token must permit the environment **and** the endpo
 
 ## Per-environment authentication
 
-Portway supports environment-specific authentication methods for backends that require their own credentials, API keys, Basic Auth, Bearer tokens, JWT, or HMAC.
-
-Add an `Authentication` block to the environment's `settings.json`:
+An `Authentication` block in the environment's `settings.json` adds API key, Basic, Bearer, JWT or HMAC authentication for that environment:
 
 ```json
 {
@@ -193,9 +192,9 @@ Add an `Authentication` block to the environment's `settings.json`:
 
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `Enabled` | Yes | boolean | Activates environment-specific authentication. When `false`, the block is ignored. |
-| `OverrideGlobalToken` | No | boolean | When `true`, the global Portway bearer token is rejected. Only the methods defined here are accepted. Defaults to `false`. |
-| `Methods` | Yes (when enabled) | array | One or more authentication method definitions. |
+| `Enabled` | Yes | boolean | Enables the methods; `false` ignores the block |
+| `OverrideGlobalToken` | No | boolean | `true` rejects Portway bearer tokens and accepts only these methods (default `false`) |
+| `Methods` | Yes (when enabled) | array | Authentication method definitions |
 
 | Method `Type` | Key fields |
 |---|---|
@@ -206,16 +205,16 @@ Add an `Authentication` block to the environment's `settings.json`:
 | `HMAC` | `Name`, `Secret` |
 
 :::tip
-Portway automatically encrypts plaintext secrets in `settings.json` on next startup. Values become `PWENC:...` format. The original plaintext is no longer stored on disk. Encryption keys are stored in a `.core/` directory alongside your Portway installation. Back this up and do not delete it while you have active environments with encrypted secrets.
+Plaintext secrets in `settings.json` are encrypted at the next start (`PWENC:...`). The keys are stored in `.core/` next to the installation; back it up and keep it while encrypted environments exist.
 :::
 
-If you would rather keep an environment plaintext, such as a development checkout, add `"Encrypt": false` to its `settings.json`. Best reserved for non-production credentials.
+With `"Encrypt": false` in its `settings.json`, an environment stays plaintext; use it for non-production credentials only.
 
-For JWT and HMAC configuration, see the [Environment Authentication reference](/reference/environment-auth).
+Requests authenticated by these methods have no Portway token and are refused on endpoints with `Tenancy`. JWT and HMAC configuration: [Environment Authentication](/reference/environment-auth).
 
 ## Azure Key Vault
 
-Store connection strings and other secrets in Azure Key Vault instead of `settings.json`:
+Connection strings and other secrets can be read from Azure Key Vault instead of `settings.json`:
 
 1. Set the Key Vault URI:
 
@@ -231,16 +230,16 @@ Store connection strings and other secrets in Azure Key Vault instead of `settin
 
    :::
 
-2. Create secrets named by environment:
+2. Create secrets per environment:
    - `{environment}-ConnectionString`
    - `{environment}-ServerName`
    - `{environment}-Headers` (JSON string)
 
-Portway fetches these values at startup and treats them identically to file-based configuration.
+The secrets are read at startup and used like file-based values.
 
 ## Environment headers
 
-Headers defined in `settings.json` are added to all forwarded requests for that environment. This is primarily used by Proxy endpoints to pass context to internal services.
+Headers in `settings.json` are added to every proxy request in that environment and replace client headers of the same name.
 
 ```json
 {
@@ -254,9 +253,7 @@ Headers defined in `settings.json` are added to all forwarded requests for that 
 
 ## Network access policy
 
-`environments/network-access-policy.json` controls which upstream hosts Proxy endpoints are allowed to call. This is Portway's SSRF (Server-Side Request Forgery) protection layer; it prevents endpoints from being used to reach internal infrastructure that callers shouldn't have access to.
-
-The file is **created automatically** on first startup with safe defaults. Edit it to match your deployment.
+The file `environments/network-access-policy.json` lists the upstream hosts proxy endpoints may call (SSRF protection). It is created at first start with restrictive defaults.
 
 ```json
 {
@@ -277,40 +274,38 @@ The file is **created automatically** on first startup with safe defaults. Edit 
 
 | Field | Description |
 |---|---|
-| `allowedHosts` | Hosts that Proxy endpoints may forward requests to. Supports `*` wildcards within a segment (e.g. `*.corp`). |
-| `blockedIpRanges` | CIDR ranges whose IPs are rejected, even for allowed hostnames. Applied after DNS resolution. |
+| `allowedHosts` | Hosts proxy endpoints may call; `*` matches one label (e.g. `*.corp`) |
+| `blockedIpRanges` | CIDR ranges refused after DNS resolution, also for allowed hosts |
 
-**How it works:** a proxy request is allowed only when (1) the target hostname matches an entry in `allowedHosts` **and** (2) none of the resolved IP addresses fall in `blockedIpRanges`. Both checks must pass.
+A proxy request is allowed when the target host matches `allowedHosts` and no resolved address is in `blockedIpRanges`.
 
-**Auto-discovery:** if `allowedHosts` contains only the two default localhost entries, Portway automatically discovers and adds the local machine's hostname and network interface addresses at startup. Add explicit entries to override this behaviour.
+With only the two default localhost entries in `allowedHosts`, the machine's host name and interface addresses are added at startup. Explicit entries disable this.
 
-**Wildcard patterns:** use `*` to match any single label, not across dots.
-- `*.corp`: matches `api.corp`, `db.corp`
-- `api.*.corp`: matches `api.v1.corp`, `api.v2.corp`
+Wildcard examples (`*` does not cross dots):
+
+- `*.corp` matches `api.corp` and `db.corp`
+- `api.*.corp` matches `api.v1.corp` and `api.v2.corp`
 
 :::warning
-Set `allowedHosts` explicitly in production. The auto-discovery fallback is intended for development only; it adds all local IP addresses, which may be broader than desired.
+Set `allowedHosts` explicitly in production. Auto-discovery adds every local address.
 :::
 
 :::tip
-The `ASPNETCORE_DOMAIN` environment variable adds an additional hostname to the allowed list at runtime, useful for dynamic or containerised deployments where the hostname isn't known at configuration time.
+The `ASPNETCORE_DOMAIN` environment variable adds a host name to the allowed list at runtime.
 :::
 
 ## Troubleshooting
 
-**"Environment not in the allowed list"**: Add the environment name to `AllowedEnvironments` in `environments/settings.json`.
+| Symptom | Resolution |
+|---|---|
+| "Environment not in the allowed list" | Add the name to `AllowedEnvironments` in `environments/settings.json`. |
+| "Settings.json not found for environment" | Create `environments/{name}/settings.json`. |
+| "Access denied to environment" | Grant the environment to the token in the [console](/guide/webui) under **Access Tokens**. |
+| Proxy blocked, host not allowed | Add the host to `allowedHosts` in `network-access-policy.json` and restart. |
+| Proxy blocked, IP in blocked range | The host resolves to an address in `blockedIpRanges`; change the range only for a trusted target. |
+| Unexpected SQL syntax errors | The connection string does not identify the provider; required keywords: [SQL Providers](/reference/sql-providers). |
 
-**"Settings.json not found for environment"**: Create `environments/{name}/settings.json`. The folder needs to exist and contain the file.
-
-**"Access denied to environment"**: The token does not have permission for this environment. Update token permissions in the [Web UI](/guide/webui) under **Tokens**.
-
-**Proxy request blocked (host not in allowed list)**: The target host is not listed in `environments/network-access-policy.json`. Add it to `allowedHosts` and restart.
-
-**Proxy request blocked (IP in blocked range)**: The target hostname resolves to a private IP that is in `blockedIpRanges`. Either add a specific exception to `allowedHosts` or remove the conflicting range, but only if the target is genuinely safe to reach.
-
-**Unexpected SQL syntax errors**: The connection string may not contain enough signal for provider auto-detection. Check the [SQL Providers reference](/reference/sql-providers) for required keywords.
-
-To increase log verbosity for environment issues:
+Debug logging:
 
 ```json
 {

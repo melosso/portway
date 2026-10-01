@@ -5,11 +5,11 @@ description: "Health checks, traffic logging, and connection pool visibility for
 
 # Monitoring
 
-Knowing your gateway is healthy shouldn't require guesswork. Portway gives you a few complementary ways to keep an eye on things: health check endpoints for your uptime probes, optional per-request traffic logging to file or SQLite, and SQL connection pool statistics written to the application log on a schedule. Let's walk through each of them, starting with the endpoints your monitoring tools will call most often.
+Monitoring sources: health check endpoints, optional per-request traffic logging to file or SQLite, and SQL connection pool statistics in the application log.
 
 ## Health checks
 
-The health endpoints are designed to be cheap to call, so you can point your probes at them without worrying about load. Each one caches its result briefly, which keeps aggressive polling from touching your backends on every request.
+Health endpoints cache their result, so frequent polling does not reach the backends on every request.
 
 ### Basic health check
 
@@ -17,7 +17,7 @@ The health endpoints are designed to be cheap to call, so you can point your pro
 GET /health
 ```
 
-This is the endpoint most uptime monitors will want. It returns a cached status report that stays valid for 15 seconds:
+Overall status, cached for 15 seconds:
 
 ```json
 {
@@ -33,7 +33,7 @@ This is the endpoint most uptime monitors will want. It returns a cached status 
 GET /health/live
 ```
 
-This one simply answers `Alive` with a 5-second cache. It is the natural choice for Kubernetes liveness probes or load balancer checks, since it only confirms the process is responsive without touching any downstream services.
+Returns `Alive`, cached for 5 seconds, without checking downstream services. Intended for liveness probes and load balancers.
 
 ### Detailed health check
 
@@ -42,7 +42,7 @@ GET /health/details
 Authorization: Bearer <token>
 ```
 
-When something looks off, this is where you get the full picture. It reports every component check individually with its timing, so you can see at a glance whether it is disk space, a proxy target, or a database connection that is dragging the status down. Because it exposes internal details, it asks for a valid token:
+Each component check with its status and duration, cached for 60 seconds. Requires a token:
 
 ```json
 {
@@ -72,7 +72,7 @@ When something looks off, this is where you get the full picture. It reports eve
 
 ## Request traffic logging
 
-Sometimes you want more than a health status: you want to know exactly which requests came through, how long they took, and who sent them. Traffic logging records that per-request metadata to file or SQLite. It is disabled by default, since not every deployment needs it, and you can enable it in `appsettings.json` whenever the question comes up:
+Traffic logging records per-request metadata (path, status, duration, user, client IP) to file or SQLite. Disabled by default; enabled in `appsettings.json`:
 
 ```json
 {
@@ -95,10 +95,10 @@ Sometimes you want more than a health status: you want to know exactly which req
 
 ### Configuration options
 
-The defaults are sensible for most deployments. Every field, including the SQLite storage options and the retention settings, is listed in [Audit and traffic logging](/reference/audit#configuration).
+All fields, including SQLite storage and retention: [Audit and traffic logging](/reference/audit#configuration).
 
 :::warning
-`IncludeRequestBodies` and `IncludeResponseBodies` can capture sensitive data. Authorization headers are automatically redacted, but request and response bodies are not filtered.
+With `IncludeRequestBodies` and `IncludeResponseBodies`, bodies are logged unfiltered. Authorization headers are always redacted.
 :::
 
 ### Log entry format
@@ -125,7 +125,7 @@ The defaults are sensible for most deployments. Every field, including the SQLit
 
 ### SQLite storage
 
-File storage is fine for occasional inspection, but if you find yourself wanting to ask questions of your traffic data (which endpoints are slow, where errors cluster), SQLite is the more comfortable choice. It turns your traffic log into a queryable database:
+SQLite storage makes the traffic log queryable:
 
 ```json
 {
@@ -136,7 +136,7 @@ File storage is fine for occasional inspection, but if you find yourself wanting
 }
 ```
 
-A few queries to get you started; each answers a question you will sooner or later want answered:
+Example queries:
 
 ```sql
 -- Top endpoints by request count (last hour)
@@ -174,7 +174,7 @@ LIMIT 20;
 
 ## Log levels
 
-Verbosity lives in `appsettings.json`, under the `Serilog` section. `Default` sets the level for Portway's own events, and the `Override` entries quiet the framework so you get detail without drowning in ASP.NET and Entity Framework chatter:
+The `Serilog` section of `appsettings.json` sets log levels. The `Default` level applies to Portway's events; `Override` entries apply to framework namespaces:
 
 ```json
 {
@@ -190,23 +190,23 @@ Verbosity lives in `appsettings.json`, under the `Serilog` section. `Default` se
 }
 ```
 
-Overrides match on the source context that a log event carries. Portway's own events are written through Serilog's static logger and carry no source context, so they follow `Default` rather than any per-namespace override. Raise `Default` to `Debug` when you want the detailed traces.
+Overrides match a log event's source context. Portway's events have no source context and follow `Default`; `Debug` enables detailed traces.
 
-Rotation is handled for you: application logs roll over daily (`portwayapi-20250503.log`) while traffic logs roll by file size (`proxy_traffic_20250503_143000.json`).
+Application logs rotate daily (`portwayapi-20250503.log`); traffic logs rotate by file size (`proxy_traffic_20250503_143000.json`).
 
 ## SQL connection pool metrics
 
-If your gateway leans heavily on SQL endpoints, the connection pool is worth a periodic glance. Portway writes pool statistics to the application log every 10 minutes at Information level, so a slow pool exhaustion shows up in the log history before it becomes an outage:
+Pool statistics are logged every 10 minutes at `Information`:
 
 ```
 SQL Connection Pool Status: Active connections: 12, Available: 88
 ```
 
-Pool sizing can be adjusted in `appsettings.json` if the defaults do not fit your workload. The `SqlConnectionPooling` properties and their defaults are listed in [Application Settings](/reference/app-settings#sql-connection-pooling).
+Pool sizing: `SqlConnectionPooling` in [Application Settings](/reference/app-settings#sql-connection-pooling).
 
 ## Prometheus integration
 
-Portway can serve its request metrics on a native Prometheus scrape endpoint. Set the telemetry provider and Prometheus pulls metrics straight from the gateway:
+The Prometheus provider serves metrics on a scrape endpoint:
 
 ```json
 {
@@ -224,17 +224,15 @@ scrape_configs:
       - targets: ["portway.yourdomain.com"]
 ```
 
-The endpoint defaults to `/metrics` and exposes request duration histograms (tagged per endpoint), cache hit rates, and the standard ASP.NET Core server metrics. The [Telemetry](/guide/opentelemetry) guide covers the full metric list, path configuration, and the OTLP push alternative.
+The default path is `/metrics`. Metrics include request duration per endpoint, cache hits and misses, and the ASP.NET Core server metrics. Metric list, path configuration and OTLP: [Telemetry](/guide/opentelemetry).
 
 ## Troubleshooting
 
-A few situations come up often enough to mention here.
-
-**Missing traffic logs**: usually one of three things. Check that `Enabled` is `true`, that the process can write to the log directory, and that the queue has not been exhausted (`QueueCapacity` in the configuration).
-
-**Health check degraded**: `GET /health/details` tells you which check failed and how long it took. Disk space and proxy endpoint connectivity are the most common culprits, so those are good places to look first.
-
-**High response times**: enabling traffic logging with `StorageType: sqlite` and querying `DurationMs` will quickly show you which endpoints are slow, and whether the slowness is broad or concentrated.
+| Symptom | Resolution |
+|---|---|
+| No traffic logs | Check `Enabled: true`, write access to the log directory and `QueueCapacity`. |
+| Health check degraded | `GET /health/details` names the failing check; common causes are disk space and proxy targets. |
+| High response times | Log traffic to SQLite and query `DurationMs` per endpoint. |
 
 ::: code-group
 

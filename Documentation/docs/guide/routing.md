@@ -5,9 +5,7 @@ description: "Each subfolder under endpoints/ corresponds to an endpoint type"
 
 # Folder structure and routing
 
-Each subfolder under `endpoints/` corresponds to an endpoint type. The folder name within each type becomes the endpoint name in the API URL. Portway watches these folders and reloads configuration when files change.
-
-In practice this means Portway derives your API routes from the `endpoints/` folder hierarchy, so there is no route registration step at all. When you want different naming, the `Namespace` and `DisplayName` attributes let you override the derived route; that's an advanced setup covered further down.
+Routes are derived from the `endpoints/` folder tree: the first level is the endpoint type, the folder names below it form the namespace and endpoint name. Changes are reloaded without a restart. `Namespace` in `entity.json` overrides the folder namespace ([Namespaces](/reference/namespaces)).
 
 ## Directory layout
 
@@ -63,11 +61,11 @@ PortwayApi/
 | File | `endpoints/Files/[{Namespace}/]{Name}/entity.json` | `/api/{env}/files/[{Namespace}/]{Name}` |
 | Static | `endpoints/Static/[{Namespace}/]{Name}/entity.json` | `/api/{env}/[{Namespace}/]{Name}` |
 
-Segments in square brackets are optional: add a namespace folder and it becomes part of the URL, leave it out and the endpoint sits directly under the environment. The endpoint name in the URL is case-sensitive and matches the folder name exactly.
+Segments in square brackets are optional; a namespace folder adds its name to the URL.
 
 ## Folder permissions
 
-Grant the IIS Application Pool identity read/write access to the deployment directory:
+Application Pool identity access to the deployment directory:
 
 ```powershell
 # ApplicationPoolIdentity
@@ -79,14 +77,14 @@ icacls "C:\Apps\Portway" /grant "DOMAIN\SVC_PORTWAY:(F)" /T /C
 
 | Folder | Minimum permission | Reason |
 |---|---|---|
-| `log/` | Read/Write | Log file creation and rotation |
-| `tokens/` | Read/Write | Token file management |
-| `environments/` | Read | Configuration reads |
-| `endpoints/` | Read | Configuration reads |
-| Root | Read/Write | `auth.db` and temporary files |
+| `log/` | Read/Write | Log files and rotation |
+| `tokens/` | Read/Write | Token files |
+| `environments/` | Read/Write | Configuration; console edits and secret encryption |
+| `endpoints/` | Read/Write | Configuration; console edits |
+| Root | Read/Write | `auth.db`, `mcp.db`, `metrics.db`, `portway.key` |
 
 :::warning
-Do not expose the deployment directory via web browsing. Verify that `web.config` disables directory listing.
+Directory browsing must be disabled in `web.config`.
 :::
 
 ## Next steps
@@ -94,4 +92,4 @@ Do not expose the deployment directory via web browsing. Verify that `web.config
 - [Environments](/guide/environments)
 - [SQL Endpoints](/guide/endpoints-sql)
 - [Proxy Endpoints](/guide/endpoints-proxy)
-- [HTTP Methods](/reference/http-methods): which verbs each endpoint type accepts
+- [HTTP Methods](/reference/http-methods)

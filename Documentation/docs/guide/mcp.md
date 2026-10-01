@@ -5,11 +5,11 @@ description: "Expose Portway endpoints as Model Context Protocol tools that AI a
 
 # MCP Server
 
-Portway implements an MCP server over HTTP. When you flag an endpoint with `Exposed: true`, it appears in the MCP tool registry and becomes callable by any MCP-compatible client: Claude Desktop, VS Code Copilot, custom agents, or the built-in [Chat UI](/guide/mcp-chat). Portway's own authentication and environment scoping apply to every tool call.
+Portway hosts an MCP server over HTTP. Endpoints with `Mcp.Exposed: true` are registered as tools for MCP clients (e.g. Claude Desktop, VS Code Copilot, custom agents) and the built-in [Chat UI](/guide/mcp-chat). Every tool call runs under the caller's token, scopes and environments.
 
 ## Enable the MCP server
 
-Set `Mcp:Enabled` to `true` in `appsettings.json`. The server mounts at the path defined by `Mcp:Path` (default `/mcp`).
+Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Path` (default `/mcp`).
 
 ```json
 "Mcp": {
@@ -23,19 +23,19 @@ Set `Mcp:Enabled` to `true` in `appsettings.json`. The server mounts at the path
 
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `Enabled` | Yes | bool | Activates the MCP server. Default: `false`. |
-| `Path` | No | string | HTTP path the MCP server is mounted on. Default: `/mcp`. |
-| `RequireAuthentication` | No | bool | Require a valid Portway Bearer token on MCP requests. Default: `true`. |
-| `AppsEnabled` | No | bool | Register embedded UI resources as MCP resource URIs. Default: `true`. |
-| `ChatEnabled` | No | bool | Activates the Chat UI and `/ui/api/mcp/chat` endpoint. Credentials are configured separately via the setup wizard. Default: `false`. |
+| `Enabled` | Yes | bool | Enables the MCP server (default `false`) |
+| `Path` | No | string | Server path (default `/mcp`) |
+| `RequireAuthentication` | No | bool | Requires a Portway Bearer token (default `true`) |
+| `AppsEnabled` | No | bool | Registers embedded UI resources as MCP resource URIs (default `true`) |
+| `ChatEnabled` | No | bool | Enables the Chat UI and `/ui/api/mcp/chat`; provider credentials are set in the setup wizard (default `false`) |
 
 :::warning
-Set `RequireAuthentication: true` in any deployment accessible over a network. Disabling it exposes all registered tools without a credential check.
+Keep `RequireAuthentication: true` on any network-reachable deployment; `false` exposes all registered tools without credentials.
 :::
 
 ## Expose an endpoint as an MCP tool
 
-Add `"Exposed": true` to the endpoint's `entity.json` under the `Mcp` object. Portway registers one tool per HTTP method the endpoint supports.
+Setting `Mcp.Exposed: true` in `entity.json` registers one tool per HTTP method of the endpoint.
 
 ```json
 {
@@ -52,18 +52,16 @@ Add `"Exposed": true` to the endpoint's `entity.json` under the `Mcp` object. Po
 
 | Field | Required | Type | Description |
 |---|---|---|---|
-| `Exposed` | Yes | bool | Registers this endpoint as an MCP tool. Default: `false`. |
-| `Instruction` | No | string | Text appended to the tool's LLM-facing description. Use it to guide the model on required parameters, filtering conventions, or data shape. |
+| `Exposed` | Yes | bool | Registers the endpoint as MCP tools (default `false`) |
+| `Instruction` | No | string | Text appended to the tool description for the model, e.g. required filters or data shape |
 
-The tool name in the registry is derived from the endpoint's namespace and name: `{namespace}_{name}_{method}`. If the endpoint has no namespace the name is `{name}_{method}`, for example `products_GET`.
+Tool names follow `{namespace}_{name}_{method}`, or `{name}_{method}` without a namespace (e.g. `products_GET`). `Instruction` changes only the model-facing description, not the Explorer summary.
 
-Endpoints where `Exposed` is absent or `false` do not appear in the tool list.
-
-`Instruction` does not affect the human-readable summary shown in the Explorer UI; it only extends the description the AI model receives when deciding whether and how to call the tool.
+Tools for endpoints with [tenant headers](/guide/security#tenant-headers) list them in `GetEndpointInfo` (`TenantHeaders`) and accept their values in the `tenants` argument of `CallEndpoint`, e.g. `{"X-Company-Id": "ACME"}`.
 
 ## Namespaces
 
-Group related tools by setting `Namespace` in `entity.json`. The MCP Explorer UI and the `ListEndpoints` tool both group by namespace. Without a namespace, tools appear under `default`.
+The Explorer and `ListEndpoints` group tools by `Namespace`; tools without one are listed under `default`.
 
 ```json
 {
@@ -74,48 +72,45 @@ Group related tools by setting `Namespace` in `entity.json`. The MCP Explorer UI
 }
 ```
 
-See [Namespaces](/reference/namespaces) for full configuration details.
+Configuration: [Namespaces](/reference/namespaces).
 
 ## Built-in server tools
 
-Portway registers three tools in every MCP session regardless of which endpoints are exposed:
+Available in every session with `Mcp:Enabled: true`:
 
 | Tool | Description |
 |---|---|
 | `ListEndpoints` | Returns all registered tools grouped by namespace |
-| `GetEndpointInfo` | Returns URL, methods, and environment constraints for a named endpoint |
-| `ListUiEnabledEndpoints` | Returns endpoints that have an embedded UI resource |
-
-These tools are always available once `Mcp:Enabled` is `true`. They do not require `Exposed` on any endpoint.
+| `GetEndpointInfo` | Returns URL, methods, environments and tenant headers of an endpoint |
+| `ListUiEnabledEndpoints` | Returns endpoints with an embedded UI resource |
+| `CallEndpoint` | Calls an endpoint with an environment, OData query, JSON body and tenant values |
 
 ## Connect an MCP client
 
-Point any MCP-over-HTTP client at:
+MCP-over-HTTP endpoint:
 
 ```
 http(s)://{host}{Mcp:Path}
 ```
 
-Include a Portway Bearer token in the `Authorization` header if `RequireAuthentication` is `true`:
+With `RequireAuthentication: true`, requests include a Portway Bearer token:
 
 ```
 Authorization: Bearer {token}
 ```
 
-Tokens are managed through the Web UI or the token API. Scope tokens to the environments and endpoints the agent is allowed to access. See [Access Tokens](/guide/tokens).
+Scope agent tokens to the required endpoints and environments: [Access Tokens](/guide/tokens).
 
 ## Web UI
 
-The Web UI provides two views under **MCP** in the sidebar:
+Console views under **MCP**:
 
-- **Explorer** (`/ui/mcp/explorer`): lists all registered tools grouped by namespace, shows allowed methods, and links to endpoint detail
-- **Chat** (`/ui/mcp/chat`): conversational interface where an AI model calls Portway tools on your behalf
-
-The Explorer requires no additional configuration beyond `Mcp:Enabled: true`. The Chat view requires [Chat configuration](/guide/mcp-chat).
+- **Explorer** (`/ui/mcp/explorer`): registered tools by namespace, with methods and endpoint links; requires only `Mcp:Enabled: true`
+- **Chat** (`/ui/mcp/chat`): an AI model calling Portway tools; requires [Chat configuration](/guide/mcp-chat)
 
 ## Next steps
 
-- [MCP Chat](/guide/mcp-chat): configure an AI provider for the Chat UI
-- [Access Tokens](/guide/tokens): scope tokens for MCP clients
-- [Namespaces](/reference/namespaces): group tools logically
+- [MCP Chat](/guide/mcp-chat)
+- [Access Tokens](/guide/tokens)
+- [Namespaces](/reference/namespaces)
 - [Entity configuration](/reference/entity-config): full `entity.json` reference including `Exposed`

@@ -5,19 +5,19 @@ description: "Expose SQL tables, views, stored procedures, and table-valued func
 
 # SQL Endpoints
 
-SQL endpoints turn a table, view, or stored procedure into a REST resource with OData querying, without you writing any SQL. Four backends are supported (SQL Server, PostgreSQL, MySQL, and SQLite), and Portway picks the correct driver automatically from the connection string in the environment's `settings.json`, so your endpoint configuration stays identical across providers.
+SQL endpoints expose a table, view, stored procedure or table-valued function as a REST resource with OData queries. Supported providers are SQL Server, PostgreSQL, MySQL/MariaDB and SQLite. The provider is detected from the connection string in the environment's `settings.json`; endpoint configuration is the same for every provider.
 
 ::: tip
-Before exposing any table or view, it is worth double-checking the database permissions in play and the data those objects contain. Portway enforces column-level restrictions, but only for the columns you explicitly configure.
+Review the database permissions of the connection account and the data in each exposed object. Portway restricts columns only through `AllowedColumns`.
 :::
 
 :::info Info
-Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work across all four providers. See the [SQL Providers reference](/reference/sql-providers#capability-matrix) for the full capability matrix.
+Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work on all four providers. Capability matrix: [SQL Providers](/reference/sql-providers#capability-matrix).
 :::
 
 ## Configuration
 
-Create `endpoints/SQL/{EndpointName}/entity.json`:
+Each endpoint is defined in `endpoints/SQL/{EndpointName}/entity.json`:
 
 ```json
 {
@@ -38,12 +38,11 @@ Create `endpoints/SQL/{EndpointName}/entity.json`:
 
 ### Configuration properties
 
-
-Every property this endpoint type accepts, with its type and default, is listed in [Entity configuration](/reference/entity-config#endpoint-sql).
+All properties, types and defaults: [Entity configuration](/reference/entity-config#endpoint-sql).
 
 ## Column aliases
 
-Map internal column names to API-facing names using semicolon syntax in `AllowedColumns`:
+An `AllowedColumns` entry `DbColumn;PublicName` maps a database column to a public name:
 
 ```json
 {
@@ -56,7 +55,7 @@ Map internal column names to API-facing names using semicolon syntax in `Allowed
 }
 ```
 
-The API accepts and returns `ProductNumber`, `ProductName`, and `Category`. Portway maps them to the underlying column names before querying the database.
+The API accepts and returns `ProductNumber`, `ProductName` and `Category`; queries use the database column names.
 
 ```http
 GET /api/prod/Items?$select=ProductNumber,ProductName&$filter=Category eq 'Electronics'
@@ -64,7 +63,7 @@ GET /api/prod/Items?$select=ProductNumber,ProductName&$filter=Category eq 'Elect
 
 ## Querying with OData
 
-All GET requests support OData query parameters:
+GET requests accept these OData query options:
 
 | Parameter | Description | Example |
 |---|---|---|
@@ -75,7 +74,7 @@ All GET requests support OData query parameters:
 | `$skip` | Skip rows (for pagination) | `$skip=20` |
 | `$count` | Add the total matching count as `totalCount` | `$count=true` |
 
-Filter operators: `eq`, `ne`, `gt`, `lt`, `ge`, `le`, `and`, `or`, `contains()`
+Filter operators: `eq`, `ne`, `gt`, `lt`, `ge`, `le`, `and`, `or`, `not`, `contains()`, `startswith()`, `endswith()`.
 
 ```http
 GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price desc&$top=25
@@ -96,7 +95,7 @@ GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price d
 
 ### Related data with $expand
 
-Declare a to-one relationship to another SQL endpoint, and readers can pull the related row into the response with `$expand`:
+A to-one relationship to another SQL endpoint makes the related row available through `$expand`:
 
 ```json
 {
@@ -113,7 +112,7 @@ Declare a to-one relationship to another SQL endpoint, and readers can pull the 
 GET /api/prod/Products?$expand=Category
 ```
 
-Portway joins the target and nests it under the navigation name, reusing the target's own column allowlist. It applies to Table and View endpoints and to-one navigations only; a table-valued function returns `400`. The full contract and limits are in [Expanding Related Data](/reference/expand).
+The related row is nested under the navigation name and limited to the target endpoint's `AllowedColumns`. Supported on Table and View endpoints with to-one navigations; table-valued functions return `400`. Details: [Expanding Related Data](/reference/expand).
 
 ## Write operations
 
@@ -133,7 +132,7 @@ Content-Type: application/json
 
 ### PUT: update a record
 
-Include the primary key in the request body:
+The request body includes the primary key:
 
 ```http
 PUT /api/prod/Products
@@ -154,7 +153,7 @@ DELETE /api/prod/Products?id=abc123
 
 ## Stored procedures
 
-For write operations that require business logic, validation, or audit logging, configure a stored procedure:
+Write operations with business logic, validation or audit logging use a stored procedure:
 
 ```json
 {
@@ -166,7 +165,7 @@ For write operations that require business logic, validation, or audit logging, 
 }
 ```
 
-The procedure receives the HTTP method as `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`). Requests that arrive as `MERGE` come through as `PATCH` (as an alias), no need to built seperate stored procedure branch for it:
+The procedure receives the operation as `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`). `MERGE` requests arrive as `PATCH`:
 
 ```sql
 CREATE PROCEDURE [dbo].[sp_ManageServiceRequests]
@@ -188,12 +187,12 @@ END
 ```
 
 :::info
-Stored procedures handle write operations only. GET requests use the standard OData query path against `DatabaseObjectName` directly.
+Stored procedures handle writes only. GET requests query `DatabaseObjectName` through OData.
 :::
 
 ## Table write mode
 
-When a stored procedure is more setup than the job needs, or the database cannot provide one at all (SQLite), an endpoint can opt into direct table writes:
+With `WriteMode: Table`, writes go directly to the table, without a stored procedure. This is the write path on SQLite.
 
 ```json
 {
@@ -206,18 +205,18 @@ When a stored procedure is more setup than the job needs, or the database cannot
 }
 ```
 
-Portway then generates parameterized `INSERT`, `UPDATE` and `DELETE` statements through the same query compiler that powers OData reads. The mode is deliberately strict:
+Portway generates parameterized `INSERT`, `UPDATE` and `DELETE` statements with the OData query compiler. Rules:
 
-* `AllowedColumns` and `PrimaryKey` are required; an endpoint missing either refuses all writes and logs a configuration error at startup.
-* Payload fields outside `AllowedColumns` reject the whole request rather than being dropped.
-* Updates and deletes only ever filter on the primary key, and a key that matches nothing returns `404`.
-* `WriteMode` and `Procedure` are mutually exclusive; pick one strategy per endpoint.
+* `AllowedColumns` and `PrimaryKey` are required; without either, all writes are refused and a configuration error is logged at startup.
+* A payload field outside `AllowedColumns` rejects the request.
+* Updates and deletes filter on the primary key; an unmatched key returns `404`.
+* `WriteMode` and `Procedure` are mutually exclusive.
 
-Table mode works on every provider and is what enables full CRUD on SQLite. For production endpoints with business rules, validation chains or audit requirements, stored procedures remain the recommended path. A working example ships in the repository as `WMS/Bins` against the SQLite demo environment.
+Table mode works on every provider. Stored procedures are recommended for business rules, validation chains and audit requirements. Example: `WMS/Bins` in the SQLite demo environment.
 
 ## Table-valued functions
 
-TVFs support parameterized queries, useful for reporting, generated datasets, or complex parameterized lookups that views cannot express.
+Table-valued functions accept parameters, for queries a view cannot express.
 
 ```json
 {
@@ -251,7 +250,7 @@ TVFs support parameterized queries, useful for reporting, generated datasets, or
 }
 ```
 
-Parameters can be sourced from `Path`, `Query`, or `Header`. `Header` parameter values are client-supplied. Parameters named in `Tenancy` receive the token's [tenant value](/guide/security#tenant-headers) instead. Example calls:
+Parameter sources are `Path`, `Query` and `Header`. `Header` values are client-supplied; parameters named in `Tenancy` receive the token's [tenant value](/guide/security#tenant-headers). Example calls:
 
 ```http
 GET /api/dev/Departments/5?UserCount=25
@@ -259,12 +258,12 @@ GET /api/dev/Departments?UserCount=50&$top=20&$orderby=FirstName
 ```
 
 :::info
-`PrimaryKey` is not applicable to TVF endpoints.
+Table-valued function endpoints ignore `PrimaryKey`.
 :::
 
 ## Column-level access control
 
-Use `AllowedColumns` to exclude sensitive fields from API responses and requests. Any column not listed is invisible to callers, it is neither returned in GET results nor accepted in POST/PUT bodies.
+Columns missing from `AllowedColumns` are not returned by GET and not accepted in POST or PUT bodies.
 
 ```json
 {
@@ -277,19 +276,18 @@ Use `AllowedColumns` to exclude sensitive fields from API responses and requests
 }
 ```
 
-Columns containing credentials, SSNs, financial data, or internal system fields should be excluded explicitly rather than relying on callers not to request them.
+Leave credentials, personal identifiers, financial data and internal system fields out of `AllowedColumns`.
 
 ## Troubleshooting
 
-**"Column not allowed"**: The column is not listed in `AllowedColumns`, or the name does not match exactly (case-sensitive).
+| Symptom | Resolution |
+|---|---|
+| "Column not allowed" | Add the column to `AllowedColumns`; names are case-sensitive. |
+| "Method not allowed" | Add the method to `AllowedMethods`; a configured procedure must handle it. |
+| No results | Check the filter, the data in the target environment and the connection account's permissions. |
+| Slow queries | Index columns used in `$filter` and `$orderby`; limit with `$top`. |
 
-**"Method not allowed"**: Add the HTTP method to `AllowedMethods`, and ensure the stored procedure handles it if one is configured.
-
-**No results returned**: Verify filter syntax, check that data exists in the target environment, and confirm database permissions for the connection string account.
-
-**Performance issues**: Add indexes on columns used in `$filter` and `$orderby`. Use `$top` to limit result set size. Consider stored procedures for complex multi-table queries.
-
-To increase log verbosity:
+Debug logging:
 
 ```json
 {

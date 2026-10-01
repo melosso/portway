@@ -1,32 +1,25 @@
 ---
 title: Environment Settings
-description: "Environments are how Portway keeps your development, testing, and production worlds from bleeding into each other"
+description: "Global and per-environment settings files and the network access policy"
 ---
 
 # Environment Settings
 
-Environments are how Portway keeps your development, testing, and production worlds from bleeding into each other. Their settings control database connections, the allowed environment list, and per-environment behavior. This page covers the files involved and what you can configure in each.
+Environment files define the routable environments, each environment's database connection and headers, and the hosts proxy endpoints may call.
 
 ## File structure
 
-Environment configuration files are organized in the following structure:
-
 ```
 /environments/
-  ├── [EnvironmentName]/             # Environment-specific folders
-  │   └── settings.json              # Environment-specific settings
+  ├── [EnvironmentName]/
+  │   └── settings.json              # Environment settings
   ├── settings.json                  # Global settings
-  └── network-access-policy.json     # Network security policy
+  └── network-access-policy.json     # Proxy target policy
 ```
 
 ## Global settings
 
-The root `settings.json` file defines which environments are allowed:
-
-### File location
-`/environments/settings.json`
-
-### Configuration structure
+File: `/environments/settings.json`
 
 ```json
 {
@@ -37,22 +30,15 @@ The root `settings.json` file defines which environments are allowed:
 }
 ```
 
-### Property reference
-
 | Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `Environment` | object | Yes | Environment configuration container |
+|---|---|---|---|
+| `Environment` | object | Yes | Container |
 | `Environment.ServerName` | string | Yes | Default server name |
-| `Environment.AllowedEnvironments` | array | Yes | List of allowed environment names |
+| `Environment.AllowedEnvironments` | array | Yes | Routable environment names |
 
-## Environment-Specific settings
+## Environment settings
 
-Each environment has its own configuration file with connection details:
-
-### File location
-`/environments/[EnvironmentName]/settings.json`
-
-### Basic configuration
+File: `/environments/[EnvironmentName]/settings.json`
 
 ```json
 {
@@ -66,33 +52,19 @@ Each environment has its own configuration file with connection details:
 }
 ```
 
-### Property reference
-
 | Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `ServerName` | string | Yes | Database server name (used for display and health checks) |
-| `ConnectionString` | string | Yes | Database connection string |
-| `Headers` | object | No | Custom headers for requests |
+|---|---|---|---|
+| `ServerName` | string | Yes | Server name for display and health checks |
+| `ConnectionString` | string | Yes | Database connection string; also selects the SQL provider |
+| `Headers` | object | No | Headers added to proxy requests; they replace client headers of the same name |
+| `Authentication` | object | No | Environment authentication ([Environment Authentication](/reference/environment-auth)) |
+| `Encrypt` | boolean | No | `false` keeps secrets plaintext (default `true`) |
 
-### Headers configuration
-
-Custom headers added to all requests for this environment:
-
-| Header | Type | Description |
-|--------|------|-------------|
-| `DatabaseName` | string | Target database name |
-| `ServerName` | string | Target server name |
-| `Origin` | string | Request origin identifier |
-| `[Custom]` | string | Any additional headers needed |
+Common headers: `DatabaseName`, `ServerName`, `Origin`; any header name is accepted.
 
 ## Network access policy
 
-Controls which hosts and IP ranges are allowed for proxy requests:
-
-### File location
-`/environments/network-access-policy.json`
-
-### Configuration structure
+File: `/environments/network-access-policy.json`
 
 ```json
 {
@@ -109,34 +81,29 @@ Controls which hosts and IP ranges are allowed for proxy requests:
 }
 ```
 
-### Property reference
-
 | Property | Type | Description |
-|----------|------|-------------|
-| `allowedHosts` | array | Whitelisted hostnames |
-| `blockedIpRanges` | array | Blocked IP ranges (CIDR notation) |
+|---|---|---|
+| `allowedHosts` | array | Host names proxy endpoints may call |
+| `blockedIpRanges` | array | CIDR ranges refused after DNS resolution |
 
 ## Examples
 
-### Production environment
+Production, `/environments/prod/settings.json`:
 
-`/environments/prod/settings.json`
 ```json
 {
   "ServerName": "SQLPROD01",
-  "ConnectionString": "Server=SQLPROD01;Database=ProductionDB;User Id=svc_portway;Password=${PROD_DB_PASSWORD};Connection Timeout=30;TrustServerCertificate=false;Encrypt=true;",
+  "ConnectionString": "Server=SQLPROD01;Database=ProductionDB;User Id=svc_portway;Password=your-password;Connection Timeout=30;TrustServerCertificate=false;Encrypt=true;",
   "Headers": {
     "DatabaseName": "ProductionDB",
     "ServerName": "SQLPROD01",
-    "Environment": "Production",
-    "X-Strict-Mode": "true"
+    "Environment": "Production"
   }
 }
 ```
 
-### Development environment
+Development, `/environments/dev/settings.json`:
 
-`/environments/dev/settings.json`
 ```json
 {
   "ServerName": "SQLDEV01",
@@ -144,55 +111,24 @@ Controls which hosts and IP ranges are allowed for proxy requests:
   "Headers": {
     "DatabaseName": "DevelopmentDB",
     "ServerName": "SQLDEV01",
-    "Environment": "Development",
-    "X-Debug-Mode": "true"
+    "Environment": "Development"
   }
 }
 ```
 
-## Connection string configuration
+## Connection strings
 
-The `ConnectionString` value determines both the target database and the SQL driver Portway uses. No additional property is needed, the provider is detected automatically from the connection string itself.
+The provider is detected from `ConnectionString`. Per-provider examples, parameters, detection rules and capability differences: [SQL providers](/reference/sql-providers#connection-string-reference).
 
-```json
-{
-  "ConnectionString": "Server=SERVER;Database=DB;Trusted_Connection=True;TrustServerCertificate=true;"
-}
-```
+SQLite paths are relative to the working directory. SQLite connection strings contain no credentials and are neither encrypted nor masked.
 
-[SQL providers](/reference/sql-providers#connection-string-reference) carries a worked connection string for each supported database, the parameter tables, the detection algorithm and the capability differences between providers.
+## Secrets
 
-SQLite paths are resolved relative to the Portway application working directory. SQLite connection strings carry no credentials and are not subject to automatic encryption or masking.
-
-## Variables
-
-Sensitive values can use environment variables:
-
-```json
-{
-  "ConnectionString": "Server=SQLPROD;Database=ProdDB;User Id=svc_portway;Password=${PROD_DB_PASSWORD};"
-}
-```
-
-Supported variables:
-- `${VARIABLE_NAME}` - Replaced at runtime
-- Azure Key Vault integration (if configured)
-
-## Security notes
-
-:::warning
-Never store passwords or secrets directly in configuration files. Use environment variables, Azure Key Vault, or Portway's automatic `PWENC:` encryption.
-:::
-
-The network access policy in `network-access-policy.json` prevents Server-Side Request Forgery (SSRF) by blocking private IP ranges and restricting proxy target hosts. Use separate database credentials per environment, and set `Encrypt=true; TrustServerCertificate=false` on production SQL Server connections.
-
-## Troubleshooting
-
-See the [troubleshooting guide](/guide/troubleshooting).
+Plaintext connection strings and authentication values are encrypted at the next start (`PWENC:`). Azure Key Vault is an alternative source ([Environments, Azure Key Vault](/guide/environments#azure-key-vault)). Production SQL Server connections use `Encrypt=true;TrustServerCertificate=false` and credentials per environment.
 
 ## Related topics
 
+- [Environments](/guide/environments)
 - [Entity Configuration](/reference/entity-config)
-- [Security Guide](/guide/security)
-- [Deployment Guide](/guide/deployment)
+- [Security](/guide/security)
 - [Application Settings](/reference/app-settings)

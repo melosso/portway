@@ -1,159 +1,65 @@
 ---
 title: OData Syntax
-description: "OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely"
+description: "OData query options for SQL and static endpoints: $select, $filter, $orderby, $top, $skip, $count and $expand"
 ---
 
 # OData Syntax
 
-OData gives your SQL endpoints a query language without you writing a line of SQL: clients express what they need in the URL, and Portway translates it safely. This reference covers each supported query option and its syntax.
-
-## Query options overview
+SQL endpoints, and static endpoints with `EnableFiltering`, accept OData query options in the URL (GET) or in the request body (QUERY). Queries are translated to parameterized SQL.
 
 | Option | Purpose | Example |
-|--------|---------|---------|
-| `$select` | Choose specific fields | `$select=Name,Price` |
-| `$filter` | Filter results | `$filter=Price gt 100` |
-| `$orderby` | Sort results | `$orderby=Name desc` |
-| `$top` | Limit results | `$top=10` |
-| `$skip` | Skip results | `$skip=20` |
-| `$count` | Include the total matching count | `$count=true` |
-| `$expand` | Include a related entity (to-one) | `$expand=Category` |
+|---|---|---|
+| `$select` | Columns to return | `$select=Name,Price` |
+| `$filter` | Row condition | `$filter=Price gt 100` |
+| `$orderby` | Sort order | `$orderby=Name desc` |
+| `$top` | Maximum rows | `$top=10` |
+| `$skip` | Rows to skip | `$skip=20` |
+| `$count` | Adds `totalCount` | `$count=true` |
+| `$expand` | Related to-one entity | `$expand=Category` |
 
-## Basic query structure
-
-```http
-GET /api/{environment}/{endpoint}?{query_options}
-```
-
-Example:
 ```http
 GET /api/prod/Products?$select=ItemCode,Description&$filter=Price gt 50&$orderby=Price desc&$top=10
 ```
 
-## $select - field selection
+## $select
 
-Select specific fields from the entity:
-
-### Syntax
 ```
-$select=field1,field2,field3
+$select=field1,field2
 ```
 
-### Examples
-```http
-# Single field
-GET /api/prod/Products?$select=ItemCode
+Only columns in `AllowedColumns` (public names) can be selected; other names return `400`. Without `$select`, all allowed columns are returned.
 
-# Multiple fields
-GET /api/prod/Products?$select=ItemCode,Description,Price
+## $filter
 
-# All allowed fields (based on entity configuration)
-GET /api/prod/Products
-```
-
-### Field selection rules
-
-- Field names are case-sensitive
-- Only fields listed in `AllowedColumns` can be selected
-- Invalid field names return an error
-- If no `$select` is specified, all allowed fields are returned
-
-## $filter - filtering data
-
-
-Filter results based on conditions:
-
-### Basic syntax
 ```
 $filter=field operator value
 ```
 
-Portway supports comparison operators (`eq`, `ne`, `gt`, `ge`, `lt`, `le`), logical operators (`and`, `or`, `not`) and the string functions `contains`, `startswith` and `endswith`. [Filter operations](/reference/filters) carries the full operator reference, the type-specific rules and the performance notes.
+Operators, functions and literals: [Filter operations](/reference/filters).
 
-### Filter examples
+## $orderby
+
+```
+$orderby=field [asc|desc][,field [asc|desc]]
+```
 
 ```http
-# Exact match
-GET /api/prod/Products?$filter=ItemCode eq 'PROD001'
-
-# Numeric comparison
-GET /api/prod/Products?$filter=Price gt 50.00
-
-# String contains
-GET /api/prod/Products?$filter=contains(Description,'Widget')
-
-# Multiple conditions
-GET /api/prod/Products?$filter=Price gt 100 and Assortment eq 'Electronics'
-
-# Complex filter
-GET /api/prod/Products?$filter=(Price gt 100 and Price lt 500) or contains(Description,'Special')
-```
-
-## $orderby - sorting results
-
-Sort results by one or more fields:
-
-### Syntax
-```
-$orderby=field [asc|desc]
-```
-
-### Examples
-```http
-# Single field ascending (default)
-GET /api/prod/Products?$orderby=Name
-
-# Single field descending
-GET /api/prod/Products?$orderby=Price desc
-
-# Multiple fields
-GET /api/prod/Products?$orderby=Category,Price desc
-
-# Complex sorting
 GET /api/prod/Products?$orderby=Category asc,Price desc,Name asc
 ```
 
-### Sorting rules
+Ascending is the default.
 
-- Default sort order is ascending
-- Use `desc` for descending order
-- Multiple fields are sorted in order listed
-- Field names are case-sensitive
+## $top and $skip
 
-## $top and $skip - pagination
-
-Control result set size and implement pagination:
-
-### $top syntax
-```
-$top=number
-```
-
-### $skip syntax
-```
-$skip=number
-```
-
-### Pagination examples
 ```http
-# First 10 items
-GET /api/prod/Products?$top=10
-
-# Skip first 20 items
-GET /api/prod/Products?$skip=20
-
-# Page 2 with 10 items per page
 GET /api/prod/Products?$top=10&$skip=10
-
-# Page 3 with 25 items per page
-GET /api/prod/Products?$top=25&$skip=50
 ```
 
-Always include `$orderby` when paginating to ensure consistent results across pages. Use the `NextLink` in the response for easy sequential navigation.
+Paging requires a stable `$orderby`. Responses with more rows include `nextLink`. Details: [Sorting & Pagination](/reference/sorting-pagination).
 
-## $count - total result count
+## $count
 
-When you're paginating, it helps to know how many rows match in total, not just how many came back on this page. Adding `$count=true` asks Portway to run an additional COUNT query with the same `$filter`, and the result arrives as a `totalCount` property in the response:
+`$count=true` runs an additional COUNT query with the same `$filter` and adds `totalCount`:
 
 ```http
 GET /api/prod/Products?$filter=Price gt 100&$top=10&$count=true
@@ -168,193 +74,56 @@ GET /api/prod/Products?$filter=Price gt 100&$top=10&$count=true
 }
 ```
 
-A few things worth knowing:
+The `count` property is the number of rows in the response; `totalCount` ignores `$top`, `$skip`, `$select` and `$orderby` and is omitted without `$count=true`.
 
-- `count` is the number of items on this page; `totalCount` is the unpaged total that matches your filter
-- `$top`, `$skip`, `$select`, and `$orderby` have no effect on `totalCount`; only `$filter` shapes it
-- The extra COUNT query only runs when you ask for it, so requests without `$count` pay nothing
-- `totalCount` is omitted from the response entirely when `$count` is not requested
-
-Since the count is one more round-trip to your database, it's most useful on the first page of a listing; subsequent pages can usually reuse it.
-
-## $expand - related data
-
-`$expand` pulls a related entity into the response in the same request, nested under the navigation name:
+## $expand
 
 ```http
 GET /api/prod/Products?$expand=Category
 ```
 
-The relationship is declared once in the endpoint's `entity.json`, and Portway turns it into a SQL `JOIN`. It applies to SQL Table and View endpoints, covers to-one navigations, and reuses the target's own column allowlist. The full contract, configuration and limits live in [Expanding Related Data](/reference/expand).
+The relationship is declared in `entity.json` and executed as a SQL `JOIN` on Table and View endpoints. Details: [Expanding Related Data](/reference/expand).
 
-## Combining query options
-
-Multiple query options can be combined in a single request:
-
-```http
-# Complete query example
-GET /api/prod/Products
-  ?$select=ItemCode,Description,Price,Category
-  &$filter=Price gt 50 and Category eq 'Electronics'
-  &$orderby=Price desc
-  &$top=20
-  &$skip=0
-```
-
-## Data types in queries
-
-
-Literal values follow the OData conventions: strings in single quotes with `''` as the escape, numbers unquoted, dates in ISO 8601, and `true` or `false` in lowercase.
-
-```http
-$filter=Name eq 'It''s a product'
-$filter=Price gt 99.99
-$filter=CreatedDate gt 2024-01-01T00:00:00Z
-$filter=IsActive eq true
-```
-
-[Filter operations](/reference/filters#working-with-data-types) covers each type in detail, including null handling.
-
-## Special characters and encoding
-
-### URL encoding
-Special characters need to be URL encoded:
-
-| Character | Encoded | Example |
-|-----------|---------|---------|
-| Space | `%20` | `$filter=Name%20eq%20'Product'` |
-| `'` | `%27` | `$filter=Name%20eq%20%27Product%27` |
-| `&` | `%26` | In values only |
-| `+` | `%2B` | `$filter=Code%20eq%20'A%2B'` |
-
-### Reserved characters
-These characters have special meaning in OData:
-- `$` - Query option prefix
-- `(` `)` - Function and grouping
-- `'` - String delimiter
-- `,` - List separator
-
-## Query response format
-
-Successful queries return a JSON response:
+## Response format
 
 ```json
 {
-  "Count": 50,
-  "Value": [
-    {
-      "ItemCode": "PROD001",
-      "Description": "Widget A",
-      "Price": 99.99
-    },
-    {
-      "ItemCode": "PROD002",
-      "Description": "Widget B",
-      "Price": 149.99
-    }
+  "success": true,
+  "count": 2,
+  "value": [
+    { "ItemCode": "PROD001", "Description": "Widget A", "Price": 99.99 },
+    { "ItemCode": "PROD002", "Description": "Widget B", "Price": 149.99 }
   ],
-  "NextLink": "/api/prod/Products?$top=10&$skip=20"
+  "nextLink": "/api/prod/Products?$top=2&$skip=2"
 }
 ```
-
-### Response properties
 
 | Property | Description |
-|----------|-------------|
-| `Count` | Number of items in this response |
-| `Value` | Array of result objects |
-| `NextLink` | URL for next page (if applicable) |
+|---|---|
+| `success` | `true` for successful responses |
+| `count` | Rows in this response |
+| `value` | Rows |
+| `nextLink` | Next page URL, or `null` |
+| `totalCount` | Total matching rows, with `$count=true` |
 
-## Common query patterns
+A request by id (`/api/prod/Products/PROD001`) returns the row without the envelope.
 
-### Search by text
-```http
-# Contains search
-GET /api/prod/Products?$filter=contains(Description,'widget')
+## URL encoding
 
-# Starts with search
-GET /api/prod/Products?$filter=startswith(Name,'A')
-```
+| Character | Encoded |
+|---|---|
+| Space | `%20` |
+| `'` | `%27` |
+| `&` (in values) | `%26` |
+| `+` | `%2B` |
 
-### Date range queries
-```http
-# Records created this year
-GET /api/prod/Orders?$filter=CreatedDate ge 2024-01-01T00:00:00Z
+## Errors
 
-# Records in date range
-GET /api/prod/Orders?$filter=OrderDate ge 2024-01-01 and OrderDate lt 2024-02-01
-```
-
-### Null checking
-```http
-# Find unassigned items
-GET /api/prod/Tasks?$filter=AssignedTo eq null
-
-# Find completed items
-GET /api/prod/Tasks?$filter=CompletedDate ne null
-```
-
-### Complex filters
-```http
-# Multiple conditions with grouping
-GET /api/prod/Products
-  ?$filter=(Price gt 100 and Price lt 500) and 
-           (Category eq 'Electronics' or Category eq 'Computers')
-```
-
-## Query limitations
-
-### Maximum values
-
-| Limit | Default Value | Description |
-|-------|--------------|-------------|
-| `$top` | 1000 | Maximum items per request |
-| `$skip` | No limit | Maximum items to skip |
-| Query length | 2048 characters | Maximum URL length |
-| Filter complexity | 10 conditions | Maximum filter conditions |
-
-### Performance considerations
-
-1. Use indexed fields in filters and sorting
-2. Limit result sets with `$top`
-3. Avoid complex string operations on large datasets
-4. Use specific filters rather than post-filtering
-
-## Error responses
-
-### Query syntax errors
-
-```json
-{
-  "error": "Invalid filter syntax",
-  "details": "Unknown operator 'equals' at position 15",
-  "success": false
-}
-```
-
-### Invalid field names
-
-```json
-{
-  "error": "Invalid field name",
-  "details": "Field 'InvalidField' is not allowed",
-  "success": false
-}
-```
-
-### Type mismatch
-
-```json
-{
-  "error": "Type mismatch",
-  "details": "Cannot compare string field 'Name' with numeric value",
-  "success": false
-}
-```
+Malformed options return `400` with "Invalid OData query. Check $filter, $select, $orderby and $expand syntax."; columns outside `AllowedColumns` in `$select` return `400` with "Selected columns not allowed: …".
 
 ## Related topics
 
 - [Filter Operations](/reference/filters)
 - [Sorting & Pagination](/reference/sorting-pagination)
+- [HTTP Methods](/reference/http-methods)
 - [SQL Endpoints](/guide/endpoints-sql)
-- [API Overview](/reference/)

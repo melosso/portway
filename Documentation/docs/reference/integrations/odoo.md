@@ -9,10 +9,10 @@ Odoo's external API speaks JSON-RPC and XML-RPC. Authentication works differentl
 
 ## Overview
 
-The integration uses a proxy endpoint to forward JSON-RPC calls to Odoo. Clients authenticate against Portway with a bearer token, then carry their own Odoo credentials in the request body as usual. Portway decides who reaches Odoo at all; Odoo decides what those credentials may do.
+The integration uses a proxy endpoint to forward JSON-RPC calls to Odoo. Clients authenticate against Portway with a bearer token, then send their own Odoo credentials in the request body. Portway decides who reaches Odoo at all; Odoo decides what those credentials may do.
 
 ::: Note
-If you want credentials kept server-side, the AFAS and NocoDB integrations show the header-injection pattern. Odoo's body-carried credentials rule that pattern out.
+If you want credentials kept server-side, the AFAS and NocoDB integrations show the header-injection pattern. Odoo credentials in the request body rule that pattern out.
 :::
 
 ## Configuration
@@ -91,7 +91,7 @@ The gateway earns its place even without credential injection:
 
 - Odoo credentials pass through the gateway inside request bodies. Body capture in [traffic logging](/reference/audit) is off by default; leave it off for this endpoint, or the log will contain API keys.
 - All calls are `POST` to one endpoint, so per-table endpoint splitting does not apply. Odoo's model-level access rights are the tool for narrowing what an integration can touch.
-- Responses are JSON-RPC envelopes. Caching applies poorly here, since identical URLs carry different bodies.
+- Responses are JSON-RPC envelopes. Caching applies poorly here, since identical URLs have different bodies.
 
 ## Troubleshooting
 

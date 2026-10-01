@@ -555,7 +555,7 @@ echo $ASPNETCORE_ENVIRONMENT
 
 ## A complete file to start from
 
-The `appsettings.json` that ships with Portway is the working reference: it carries every section above with its default value, so you can read it as the canonical example. Rather than replacing it wholesale, keep it as your base and put deployment-specific values in `appsettings.Production.json`, as shown in [Environment-Specific configuration](#environment-specific-configuration).
+The `appsettings.json` that ships with Portway is the working reference: it contains every section above with its default value, so you can read it as the canonical example. Rather than replacing it wholesale, keep it as your base and put deployment-specific values in `appsettings.Production.json`, as shown in [Environment-Specific configuration](#environment-specific-configuration).
 
 ## Related topics
 

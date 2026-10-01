@@ -5,11 +5,11 @@ description: "Serve pre-defined JSON, XML, or CSV files with optional OData filt
 
 # Static Endpoints
 
-Sometimes the data you want to serve doesn't live in a database at all. Static endpoints return the contents of a file stored alongside the endpoint configuration, and when `EnableFiltering` is on they answer the same OData query parameters as SQL endpoints. That makes them a natural fit for mock data, reference datasets, and read-only configuration responses.
+Static endpoints return the contents of a file stored next to the endpoint configuration. With `EnableFiltering`, they accept the same OData query options as SQL endpoints. Typical uses are mock data, reference datasets and read-only configuration.
 
 ## Configuration
 
-Setting one up takes a folder under `endpoints/Static/{EndpointName}/` containing `entity.json` and the content file:
+Each endpoint is a folder `endpoints/Static/{EndpointName}/` with `entity.json` and the content file:
 
 ```
 endpoints/Static/ProductionMachine/
@@ -17,7 +17,7 @@ endpoints/Static/ProductionMachine/
 └── summary.xml
 ```
 
-**`entity.json`:**
+Contents of `entity.json`:
 
 ```json
 {
@@ -37,8 +37,7 @@ endpoints/Static/ProductionMachine/
 
 ### Configuration properties
 
-
-Every property this endpoint type accepts, with its type and default, is listed in [Entity configuration](/reference/entity-config#endpoint-static).
+All properties, types and defaults: [Entity configuration](/reference/entity-config#endpoint-static).
 
 ## Supported content types
 
@@ -52,18 +51,18 @@ Every property this endpoint type accepts, with its type and default, is listed 
 
 ## OData filtering
 
-When `EnableFiltering: true`, static endpoints accept the same OData parameters as SQL endpoints:
+With `EnableFiltering: true`, static endpoints accept the same OData options as SQL endpoints:
 
 ```http
 GET /api/prod/ProductionMachine?$filter=status eq 'running'&$top=5&$orderby=name
 GET /api/prod/ProductionMachine?$select=id,name,status
 ```
 
-When filtering is applied, the response includes:
+Filtered responses include these headers:
 
 - `X-Filtering-Status: Applied`
-- `X-Total-Count`, total items before filtering
-- `X-Returned-Count`, items returned after filtering
+- `X-Total-Count`: item count before filtering
+- `X-Returned-Count`: item count after filtering
 
 ## Next steps
 

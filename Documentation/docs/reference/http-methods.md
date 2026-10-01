@@ -1,11 +1,11 @@
 ---
 title: HTTP Methods
-description: "Every HTTP method Portway endpoints understand, from plain GET to body-based QUERY"
+description: "HTTP methods per endpoint type: GET, QUERY, POST, PUT, PATCH, DELETE and MERGE"
 ---
 
 # HTTP Methods
 
-Every endpoint declares which methods it accepts through `AllowedMethods` in its `entity.json`. This page is your dictionary for those methods: what each one does, which endpoint types support it, and the details that matter when you wire up a client.
+Each endpoint lists its accepted methods in `AllowedMethods` (SQL) or `Methods` (proxy) in `entity.json`.
 
 ## Overview
 
@@ -19,21 +19,21 @@ Every endpoint declares which methods it accepts through `AllowedMethods` in its
 | `DELETE` | Remove a record or file | ✅ | ✅ | ❌ | ❌ | ✅ |
 | `MERGE` | Partial update under its OData name | ✅ | ✅ | ❌ | ❌ | ❌ |
 
-The accepted values for `AllowedMethods` are `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE` and `QUERY`. Anything else is flagged as a configuration error when the endpoint loads. File endpoints manage uploads and downloads through their own routes, so their table column above reflects upload (`POST`), download (`GET`) and removal (`DELETE`).
+Valid values: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE`, `QUERY`; other values fail endpoint loading. File endpoints use upload (`POST`), download and list (`GET`) and delete (`DELETE`).
 
 ## GET
 
-The workhorse. Filters, projection, sorting and paging all travel as OData query parameters in the URL:
+Read with OData query options in the URL:
 
 ```http
 GET /api/prod/Products?$filter=Price gt 20&$orderby=Name&$top=10
 ```
 
-The full query syntax lives in the [OData reference](/reference/odata). SQL Table and View endpoints can also pull related rows in the same request with [`$expand`](/reference/expand).
+Query syntax: [OData](/reference/odata). Related rows on SQL Table and View endpoints: [`$expand`](/reference/expand).
 
 ## QUERY
 
-`QUERY` (RFC 10008) is a safe, idempotent read whose criteria travel in the request body instead of the URL. It shines when a search combines many filters at once and the URL would become unwieldy, or when criteria should not appear in access logs:
+`QUERY` (RFC 10008) is a safe, idempotent read with the criteria in the request body, for long queries or criteria that must stay out of access logs:
 
 ```http
 QUERY /api/prod/Inventory/StockLevels
@@ -48,37 +48,35 @@ Content-Type: application/json
 }
 ```
 
-The body fields mirror the OData query parameters: `select`, `filter`, `orderby`, `top` and `skip`. The response is identical to the equivalent GET.
+Body fields: `select`, `filter`, `orderby`, `top`, `skip`. The response equals the corresponding GET.
 
-A few behaviours worth knowing:
-
-* QUERY only accepts `Content-Type: application/json`; anything else returns `415 Unsupported Media Type`.
-* Responses stay cacheable. The request body is folded into the cache key, so two different queries never share a cache entry.
-* The response carries a `Content-Location` header pointing at the equivalent GET URL.
-* SQL, Static and Proxy endpoints accept QUERY. Composite and Webhook endpoints return `405 Method Not Allowed`.
+* Only `Content-Type: application/json` is accepted; other types return `415`.
+* Responses are cacheable; the cache key includes a hash of the body.
+* The response includes `Content-Location` with the equivalent GET URL.
+* Composite and webhook endpoints return `405`.
 
 ## POST, PUT, PATCH and DELETE
 
-Write methods on SQL endpoints route through one of two strategies:
+SQL endpoints write through one of two strategies:
 
-* **Stored procedure** (default): the procedure receives the verb as `@Method` (`INSERT`, `UPDATE`, `PATCH` or `DELETE`) along with the payload columns. See the [SQL endpoints guide](/guide/endpoints-sql) for the procedure contract.
-* **Table write mode** (`"WriteMode": "Table"`): Portway generates parameterized statements directly, guarded by the `AllowedColumns` allowlist and a declared `PrimaryKey`.
+| Strategy | Behavior |
+|---|---|
+| Stored procedure (default) | The procedure receives `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`) and the payload columns ([SQL Endpoints](/guide/endpoints-sql)) |
+| Table write mode (`"WriteMode": "Table"`) | Parameterized statements limited to `AllowedColumns` and keyed on `PrimaryKey` |
 
-`PUT` expects the full record including the primary key in the body. `PATCH` sends only the columns that change. `DELETE` takes the key as a URL parameter:
+`PUT` sends the full record with the primary key; `PATCH` sends changed columns with the primary key; `DELETE` takes the key from the URL:
 
 ```http
 DELETE /api/prod/Products?id=abc123
 ```
 
-On Proxy endpoints these methods forward to the backing service as-is, unless a translation applies (next section).
+Proxy endpoints forward these methods unchanged unless a translation applies.
 
 ## MERGE and method translation
 
-`MERGE` is the OData spelling of a partial update, and Portway treats it as an alias of `PATCH`. Endpoints opt in by listing it in `AllowedMethods`, and clients that speak it reach the same write path as `PATCH`. Stored procedures still receive `@Method` as `PATCH` for both spellings, so an endpoint can accept `MERGE` without any change to the procedure behind it.
+`MERGE` is the OData name for a partial update and an alias of `PATCH` when listed in `AllowedMethods`. Stored procedures receive `@Method` as `PATCH` for both. The OpenAPI document lists `MERGE` under `additionalOperations`.
 
-In the OpenAPI document `MERGE` appears under a path item's `additionalOperations`, which is where OpenAPI 3.2 places methods that have no field of their own.
-
-Some older backends, notably classic OData services, expect `MERGE` on the way out instead of `PATCH` or `PUT`. Proxy endpoints can translate:
+Proxy endpoints translate methods for backends that expect other verbs (e.g. classic OData services expecting `MERGE`):
 
 ```json
 {
@@ -86,11 +84,11 @@ Some older backends, notably classic OData services, expect `MERGE` on the way o
 }
 ```
 
-Clients keep speaking standard HTTP; the backend receives the verb it understands. The translation targets can be any of `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `MERGE`, `HEAD`, `OPTIONS` and `QUERY`. Details live in the [entity configuration reference](/reference/entity-config).
+Translation targets: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `MERGE`, `HEAD`, `OPTIONS`, `QUERY`. Configuration: [Entity configuration](/reference/entity-config).
 
 ## Related topics
 
-- [Entity Configuration](/reference/entity-config): `AllowedMethods` and the rest of `entity.json`
-- [OData Reference](/reference/odata): the query syntax shared by GET and QUERY
-- [SQL Endpoints Guide](/guide/endpoints-sql): write strategies in depth
-- [Headers Reference](/reference/headers): response headers including cache behaviour
+- [Entity Configuration](/reference/entity-config)
+- [OData](/reference/odata)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Headers](/reference/headers)

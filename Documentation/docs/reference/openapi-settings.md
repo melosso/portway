@@ -1,27 +1,29 @@
 ---
 title: OpenAPI Documentation Settings
-description: "Configuration reference for OpenAPI schema generation and the Scalar documentation UI"
+description: "OpenAPI 3.2 document generation and the Scalar reference at /docs"
 ---
 
 # OpenAPI Documentation Settings
 
-Your endpoint definitions do double duty: besides routing requests, they feed the OpenAPI documentation that Scalar serves at `/docs`. SQL endpoints even get schema discovery for free, with column names and types read from the database at startup. Other endpoint types describe themselves through the `Documentation` block in `entity.json`. This page covers the settings you can adjust.
+The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from the loaded endpoint files. SQL endpoints add column names and types read from the database at startup; other endpoint types use the `Documentation` block in `entity.json`.
 
-Portway builds on **OpenAPI 3.2**, which gives the reference room to describe things earlier versions of the format could not:
+## Generated content
 
-- QUERY endpoints appear as native `query` operations
-- `MERGE` endpoints appear under `additionalOperations` rather than borrowing another verb's name
-- Namespaces become the tag structure
-- `Deprecated` endpoints are shown as such
-- File uploads describe their multipart encoding
-- Every error points at one shared schema, reused as a single media type
-- Each response carries both its status phrase and an explanation of what it means
+| Feature | Representation |
+|---|---|
+| `QUERY` | Native `query` operation |
+| `MERGE` | Under `additionalOperations` |
+| Namespaces | Tags; nested namespaces as nested tags |
+| `Deprecated: true` | Operations marked deprecated |
+| `Enabled: false` | Operations marked deprecated with a `[Disabled]` summary prefix |
+| File uploads | `multipart/form-data` with part media types from `AllowedExtensions` (otherwise `application/octet-stream`) |
+| Errors | `ErrorResponse` and `ValidationErrorResponse` (`422`) components |
+| Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
+| Table-valued function parameters | Query and header parameters from `FunctionParameters` |
+| `Hidden: true` | Endpoint omitted |
+| Stored procedure names | Never included |
 
-All of it follows from your endpoint definitions, so there is usually nothing extra to configure.
-
-## Global OpenAPI configuration
-
-Configure the title, contact details, and Scalar UI behaviour in `appsettings.json`:
+## Global configuration
 
 ```json
 {
@@ -56,35 +58,32 @@ Configure the title, contact details, and Scalar UI behaviour in `appsettings.js
 }
 ```
 
-### Configuration properties
 | Property | Type | Description |
-|----------|------|-------------|
-| `Enabled` | boolean | Enable/disable API documentation generation |
-| `Title` | string | Main title shown in documentation header |
-| `Version` | string | API version displayed in documentation |
-| `Description` | string | Main API description (supports markdown formatting) |
-| `Contact.Name` | string | Contact person or team name |
-| `Contact.Email` | string | Support email address |
-| `Footer.Text` | string | Text displayed in the documentation footer |
-| `Footer.Target` | string | Link target behavior (`_blank` for new tab, `_self` for same tab) |
-| `Footer.Url` | string | URL for the footer link |
-| `SecurityDefinition.Name` | string | Name of the security scheme (e.g., "Bearer") |
-| `SecurityDefinition.Description` | string | Description of the authentication method |
-| `SecurityDefinition.In` | string | Location of the API key (`Header`, `Query`, `Cookie`). Applies only when `Type` is `ApiKey` |
-| `SecurityDefinition.Type` | string | Type of security scheme (`ApiKey`, `Http`, `OAuth2`, `OpenIdConnect`) |
-| `SecurityDefinition.Scheme` | string | Authentication scheme (e.g., "Bearer", "Basic") |
-| `ForceHttpsInProduction` | boolean | Force HTTPS URLs in production environments |
-| `ScalarTheme` | string | Scalar UI color theme |
-| `ScalarLayout` | string | Scalar UI layout style (`modern`, `classic`) |
-| `ScalarShowSidebar` | boolean | Show/hide the navigation sidebar |
-| `ScalarHideDownloadButton` | boolean | Hide the OpenAPI spec download button |
-| `ScalarHideModels` | boolean | Hide the Models/Schemas section |
-| `ScalarHideClientButton` | boolean | Hide the client generation button |
-| `ScalarHideTestRequestButton` | boolean | Hide the test request button |
+|---|---|---|
+| `Enabled` | boolean | Generates the document and `/docs` |
+| `Title` | string | Document title |
+| `Version` | string | Document version |
+| `Description` | string | Document description (Markdown) |
+| `Contact.Name` | string | Contact name |
+| `Contact.Email` | string | Contact e-mail |
+| `Footer.Text` | string | Footer text |
+| `Footer.Target` | string | Footer link target (`_blank`, `_self`) |
+| `Footer.Url` | string | Footer link |
+| `SecurityDefinition.Name` | string | Security scheme name |
+| `SecurityDefinition.Description` | string | Security scheme description |
+| `SecurityDefinition.In` | string | Key location for `ApiKey` (`Header`, `Query`, `Cookie`) |
+| `SecurityDefinition.Type` | string | `ApiKey`, `Http`, `OAuth2`, `OpenIdConnect` |
+| `SecurityDefinition.Scheme` | string | HTTP scheme, e.g. `Bearer` |
+| `ForceHttpsInProduction` | boolean | HTTPS server URLs in production |
+| `ScalarTheme` | string | Scalar theme |
+| `ScalarLayout` | string | `modern` or `classic` |
+| `ScalarShowSidebar` | boolean | Sidebar |
+| `ScalarHideDownloadButton` | boolean | Hides the document download |
+| `ScalarHideModels` | boolean | Hides the schema section |
+| `ScalarHideClientButton` | boolean | Hides client generation |
+| `ScalarHideTestRequestButton` | boolean | Hides test requests |
 
-## Documentation configuration
-
-Each entity can include a `Documentation` section to customize its OpenAPI representation:
+## Endpoint documentation
 
 ```json
 {
@@ -94,9 +93,7 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
     "TagDescription": "**Product Catalog**\n\nAccess the product catalog with detailed item information.",
     "MethodDescriptions": {
       "GET": "Query product catalog with filtering and pagination",
-      "POST": "Add new products to the catalog",
-      "PUT": "Update existing product information",
-      "DELETE": "Remove products from catalog"
+      "POST": "Add new products to the catalog"
     },
     "Examples": {
       "GET": {
@@ -110,22 +107,18 @@ Each entity can include a `Documentation` section to customize its OpenAPI repre
 }
 ```
 
-### Documentation properties
-
 | Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `TagDescription` | string | Yes | Main description for the endpoint group |
-| `MethodDescriptions` | object | No | Specific descriptions for each HTTP method |
-| `MethodDocumentation` | object | No | Longer per-method descriptions (Markdown supported) |
-| `Examples` | object | No | A response example per HTTP method, shown verbatim in the reference instead of generated sample data |
+|---|---|---|---|
+| `TagDescription` | string | Yes | Tag description (Markdown) |
+| `MethodDescriptions` | object | No | Short summary per method |
+| `MethodDocumentation` | object | No | Long description per method (Markdown) |
+| `Examples` | object | No | Success response example per method; replaces generated sample data |
 
-When you provide an example under `Examples`, Portway shows exactly that payload for the method's successful response. It is a friendly way to make sure the reference reflects the shape your integration really returns, rather than a generated approximation of it. Leaving it out is perfectly fine too, in which case Portway falls back to sample data as before. Every endpoint type accepts `Examples`, so this works equally well for SQL, Proxy, Composite, Static, Webhook, and Files.
+Descriptions support GitHub-flavoured Markdown, `<br>` and `<p>`, and Scalar alerts (`> [!tip]`, [Scalar markdown](https://guides.scalar.com/scalar/scalar-api-references/markdown#alerts)). Method keys match the endpoint's methods exactly.
 
-## Retiring an endpoint
+## Deprecated and disabled endpoints
 
-Endpoints rarely disappear overnight. Usually you want to tell people an endpoint is on its way out well before you delete it, and sometimes you need to take one out of service for an afternoon. Portway gives you two separate flags for those two situations, and it can be helpful to think of them as a signal and a switch.
-
-`Deprecated` is the signal. Adding it to any `entity.json` marks every operation that endpoint contributes as deprecated in the document, which Scalar then renders with a strikethrough:
+`Deprecated: true` marks the endpoint's operations deprecated; requests are served unchanged.
 
 ```json
 {
@@ -135,21 +128,7 @@ Endpoints rarely disappear overnight. Usually you want to tell people an endpoin
 }
 ```
 
-Your callers keep working exactly as before, because the flag only touches the documentation. That makes it a comfortable way to announce a planned retirement while you give integrations time to migrate. Every endpoint type understands it: SQL, Proxy, Composite, Static, Webhook, and Files.
-
-## Switching an endpoint off
-
-`Enabled` is the switch. When you set it to `false`, the endpoint stops serving:
-
-```json
-{
-  "DatabaseObjectName": "LegacyOrders",
-  "AllowedMethods": ["GET"],
-  "Enabled": false
-}
-```
-
-Calls then receive `503 Service Unavailable` in the shared error envelope, together with a `Retry-After` header so clients and caches know to wait rather than retry immediately:
+With `Enabled: false`, requests return `503` with `Retry-After`, the operations stay in the document as deprecated with a `[Disabled]` prefix, and the endpoint is removed from MCP. The change applies at the next configuration reload. Example: `Static/Production/Machines`.
 
 ```json
 {
@@ -158,180 +137,28 @@ Calls then receive `503 Service Unavailable` in the shared error envelope, toget
 }
 ```
 
-You will notice the endpoint is still listed in the OpenAPI document, marked deprecated with a `[Disabled]` prefix on its summary. This is deliberate: if it vanished from the reference, a temporary outage would be indistinguishable from a deletion, and your callers would have no way to tell which one they were looking at. Disabled endpoints are left out of the MCP tool list as well, and the change is picked up on the next configuration reload, so a restart is not needed.
+## Nested tags
 
-`Enabled` defaults to `true`, which means leaving it out keeps your existing configuration exactly as it is. If you would like to see the behaviour first-hand, the `Static/Production/Machines` sample ships switched off as a worked example.
-
-## File upload encoding
-
-File endpoints describe their upload as `multipart/form-data` and document how the `file` part itself is encoded. The media types come from the endpoint's `AllowedExtensions`. A reports endpoint limited to `.pdf`, `.xlsx`, and `.csv` therefore advertises exactly those three types, rather than a generic binary blob.
-
-Leaving `AllowedExtensions` out is fine too. The part then falls back to `application/octet-stream`, which is still perfectly valid and simply tells callers less about what you accept.
-
-## Error responses
-
-One of the nicer things about generating the reference from your configuration is that errors only have to be described once. The document registers two component schemas: `ErrorResponse`, which is the familiar `{ success, error }` envelope, and `ValidationErrorResponse`, which adds a per-field `details` array for `422` responses. Every documented `4xx` and `5xx` response then points at one of those two.
-
-Which status codes turn up on a given operation still depends on what that endpoint type can actually return, so a Static endpoint and a Files upload will not show the same list. Only the shape is shared. If you would like to see the envelope itself, the [reference index](/reference/) walks through it.
-
-## Namespaces and tags
-
-Namespaces do double duty in the reference: each one becomes a tag, and your operations are grouped underneath the namespace they belong to. `NamespaceDisplayName` sets the label you see in the sidebar, and `Documentation.TagDescription` fills in the text below it.
-
-OpenAPI 3.2 also allows one tag to be nested under another, and Portway emits that relationship whenever a namespace contains a `/`. Nest the directories to get it: an endpoint at `endpoints/SQL/WMS/Inbound/StagingBins` has the namespace `WMS/Inbound` and routes at `/api/{env}/WMS/Inbound/StagingBins`. The tag carries `parent`, `kind: nav`, and a `summary` holding just the leaf segment. Missing intermediate tags are created for you, so only the leaf needs a `TagDescription`.
-
-The `/docs` sidebar tree is built from `parent`. Nested tag labels come from `summary` (`WMS/Inbound` is labelled `Inbound` under `WMS`).
+A namespace with `/` (e.g. `WMS/Inbound` from `endpoints/SQL/WMS/Inbound/StagingBins`) produces a tag with `parent`, `kind: nav` and a `summary` containing the last segment. Missing parent tags are generated; only the leaf needs a `TagDescription`. The `/docs` sidebar nests tags by `parent` and labels them with `summary`.
 
 ## Schema discovery
 
-For SQL endpoints, Portway reads column metadata from the database at startup. It connects to the first allowed environment listed in the endpoint's `AllowedEnvironments`. Non-SQL endpoints are not queried.
+SQL column metadata is read at startup from the first environment in the endpoint's `AllowedEnvironments`.
 
 :::warning
-If you're using Windows Authentication (`Trusted_Connection=True`) in your Environments, the IIS Application Pool identity needs permissions on every environment database. With SQL Authentication, each environment uses its own credentials instead.
+With Windows Authentication (`Trusted_Connection=True`), the IIS Application Pool identity needs access to every environment database used for discovery.
 :::
-
-## Tag descriptions
-
-### Formatting guidelines
-
-Use **bold titles** and descriptive content:
-
-```json
-"TagDescription": "**Service Management**\n\nComprehensive service request lifecycle management. Track customer issues, assign technicians, and monitor progress."
-```
-
-### Include context and purpose
-
-Provide clear information about what the endpoint does:
-
-```json
-"TagDescription": "**Financial Data**\n\nRetrieve outstanding debtor information and payment tracking. Access critical financial data for accounts receivable management and cash flow analysis."
-```
-
-## Method descriptions
-
-### Standard CRUD operations
-
-Provide clear, action-oriented descriptions:
-
-```json
-"MethodDescriptions": {
-  "GET": "Query and retrieve records with OData filtering support",
-  "POST": "Create new records with validation and business rules",
-  "PUT": "Update existing records with partial or complete data",
-  "DELETE": "Remove records with referential integrity checks"
-}
-```
-
-### Specialized operations
-
-For stored procedures or custom operations:
-
-```json
-"MethodDescriptions": {
-  "GET": "Retrieve service requests with status and assignment filtering",
-  "POST": "Create new service requests with automatic assignment logic",
-  "PUT": "Update service request status, priority, and assignment"
-}
-```
-
-### Composite endpoints
-
-For complex operations:
-
-```json
-"MethodDescriptions": {
-  "POST": "Create complete sales orders with header and multiple order lines in a coordinated transaction"
-}
-```
-
-## Documentation structure
-
-All entity types support the same OpenAPI documentation structure through the `Documentation` section:
-
-```json
-{
-  // ... entity configuration ...
-  "Documentation": {
-    "TagDescription": "**Tag Name**\n\nDescription of what this endpoint group does.",
-    "MethodDescriptions": {
-      "GET": "Description for GET operations",
-      "POST": "Description for POST operations",
-      "PUT": "Description for PUT operations",
-      "DELETE": "Description for DELETE operations"
-    }
-  }
-}
-```
-
-## Markdown support
-
-### Supported elements
-
-OpenAPI descriptions support the Github-flavoured markdown. It also allows for limited HTML-support (`<br>`, `<p>`).
-
-- **Bold text** with `**text**`
-- *Italic text* with `*text*`
-- `Code blocks` with backticks
-- Line breaks with `\n`
-- Links with `[text](url)`
-
-### Admonitions
-
-Use special formatting for callouts:
-
-```json
-"TagDescription": "**Product Catalog**\n\nAccess the product catalog with basic item information.\n> [!tip]> This endpoint doesn't and will never include complex price information."
-```
-
-See the [Scalar markdown reference](https://guides.scalar.com/scalar/scalar-api-references/markdown#alerts) for supported alert types.
-
-## Hidden endpoint handling
-
-Endpoints you mark `Hidden` are left out of the OpenAPI document while continuing to serve requests as normal. This is handy for internal endpoints you would rather not advertise:
-
-```json
-{
-  "Hidden": true
-  // The Documentation section is ignored for hidden endpoints
-}
-```
-
-## Environment-Specific documentation
-
-Documentation is automatically filtered by environment. Only endpoints available in the current environment appear in the OpenAPI documentation:
-
-```json
-{
-  "AllowedEnvironments": ["prod", "dev"]
-  // Only appears in documentation for prod and dev environments
-}
-```
 
 ## Troubleshooting
 
-### Documentation not appearing
-
-1. Verify JSON syntax in entity.json
-2. Check that `Documentation` section is properly formatted
-3. Ensure endpoint is not marked as `Hidden: true`
-4. Confirm endpoint is allowed in current environment
-
-### Markdown not rendering
-
-1. Use `\n` for line breaks in JSON strings
-2. Escape special characters properly
-3. Test markdown formatting in a separate viewer
-4. Check for unclosed formatting tags
-
-### Missing method descriptions
-
-1. Ensure method names match exactly (case-sensitive)
-2. Verify methods are listed in `AllowedMethods` or `Methods`
-3. Check that methods are supported for the endpoint type
+| Symptom | Check |
+|---|---|
+| Endpoint missing from the document | Valid `entity.json`, not `Hidden`, environment allowed |
+| Markdown not rendered | `\n` for line breaks inside JSON strings; closed formatting |
+| Method description missing | Method key matches a configured method exactly |
 
 ## Related topics
 
 - [Entity Configuration](/reference/entity-config)
 - [API Overview](/reference/)
-- [Environment Settings](/reference/environment-settings)
+- [Namespaces](/reference/namespaces)

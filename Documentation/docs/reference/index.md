@@ -5,15 +5,15 @@ description: "Routes, endpoint types, authentication, response codes, and query 
 
 # API Reference
 
-This is the map of Portway's API surface: routes, endpoint types, response codes, and the query parameters available to you. If you're integrating a client, this page and its siblings are where you'll find the contract.
+Routes, endpoint types, response codes and query options of the Portway API.
 
-All requests follow this URL pattern:
+URL pattern:
 
 ```
 /api/{environment}/{endpoint}
 ```
 
-The `{environment}` segment maps to a folder under `environments/`. The `{endpoint}` segment matches a configured endpoint name, or `{namespace}/{endpoint}` for namespaced endpoints.
+The environment segment selects a folder under `environments/`; the endpoint segment is the endpoint name, or `{namespace}/{endpoint}` for namespaced endpoints.
 
 ## Request flow
 
@@ -38,7 +38,7 @@ graph TD
 
 ## Endpoint types
 
-Most endpoints live under a namespace, which becomes the first path segment:
+Namespaced URL patterns (the namespace segment is optional):
 
 | Type | URL Pattern | Description |
 |------|-------------|-------------|
@@ -51,13 +51,13 @@ Most endpoints live under a namespace, which becomes the first path segment:
 
 ## Authentication
 
-Include a bearer token on every request:
+Bearer token on every request:
 
 ```http
 Authorization: Bearer your_token_here
 ```
 
-Requests without a valid token return `401 Unauthorized`. The only unauthenticated endpoint is `/health/live`. See [Authentication](/reference/api-auth) for token scope configuration.
+Requests without a valid token return `401`. Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path. Token scopes: [Authentication](/reference/api-auth).
 
 ## Response codes
 
@@ -65,16 +65,16 @@ Requests without a valid token return `401 Unauthorized`. The only unauthenticat
 |------|---------|
 | 200 | OK |
 | 201 | Created |
-| 400 | Bad Request: invalid format or query parameters |
-| 401 | Unauthorized: missing or invalid token |
-| 403 | Forbidden: token lacks the required scope or environment access |
-| 404 | Not Found: endpoint or resource does not exist |
-| 429 | Too Many Requests: rate limit exceeded |
+| 400 | Invalid request, query or tenant header |
+| 401 | Missing or invalid token |
+| 403 | Token scope, environment or tenant excludes the request |
+| 404 | Endpoint or record not found |
+| 429 | Rate limit exceeded |
 | 500 | Internal Server Error |
 
 ## Error format
 
-Every endpoint type answers errors with the same small envelope, so you can handle failures the same way everywhere:
+Errors share one envelope on every endpoint type:
 
 ```json
 {
@@ -83,7 +83,7 @@ Every endpoint type answers errors with the same small envelope, so you can hand
 }
 ```
 
-Validation failures (`422`) add a `details` array describing each problem:
+Validation failures (`422`) add a `details` array:
 
 ```json
 {
@@ -95,9 +95,9 @@ Validation failures (`422`) add a `details` array describing each problem:
 }
 ```
 
-In the API reference these appear as the shared `ErrorResponse` and `ValidationErrorResponse` schemas, which every operation references.
+The OpenAPI document defines them as `ErrorResponse` and `ValidationErrorResponse`.
 
-A `500` carries one extra field, `traceId`. The message itself stays deliberately vague, so this identifier is what ties your response back to the matching entry in the server log. It is worth quoting whenever you report a problem:
+A `500` adds `traceId`, which identifies the matching server log entry:
 
 ```json
 {
@@ -109,7 +109,7 @@ A `500` carries one extra field, `traceId`. The message itself stays deliberatel
 
 ## Status codes by endpoint type
 
-Every endpoint type shares the same error envelope, but each returns only the codes that make sense for it. This is the set you will see documented per operation in the API reference:
+Status codes documented per operation:
 
 | Endpoint type | Success | Error codes |
 |---------------|---------|-------------|
@@ -119,23 +119,20 @@ Every endpoint type shares the same error envelope, but each returns only the co
 | Proxy | pass-through | `400` `401` `403` `404` `500` `503` |
 | Static | `200` | `400` `401` `403` `404` `406` `500` `503` |
 | Composite | `200` | `400` `401` `403` `404` `422` `500` `503` |
-| Webhook | `200` | `400` `401` `403` `404` `500` `503` |
+| Webhook | `201` | `400` `401` `403` `404` `500` `503` |
 | Files | `200` `201` `206` | `400` `401` `403` `404` `409` `413` `415` `416` `500` `503` |
 
-A `429 Too Many Requests` can come back from any endpoint when a rate limit is exceeded. A `503` tells you the endpoint has been switched off through `Enabled: false`, and it arrives with a `Retry-After` header so you know how long to wait. `400` covers both a malformed request and an environment that is not on the allowed list; `403` means the token is valid but lacks the scope, or the target was blocked.
+Any endpoint can return `429`. A `503` with `Retry-After` means the endpoint is disabled (`Enabled: false`).
 
-The success body, on the other hand, is specific to each endpoint:
-
-- SQL queries return your rows
-- Static endpoints return their configured content
-- File downloads return bytes
-- Proxy and Composite endpoints pass through whatever the upstream service or the final step returns
-- SQL stored procedures are the freest of all, shaping their own payloads
-
-The reference documents the success shape it can infer for each operation. In short, the error contract is universal and the success contract is per endpoint.
+| Endpoint type | Success body |
+|---|---|
+| SQL read | Rows |
+| SQL stored procedure | Procedure result |
+| Static | Configured content |
+| File download | File bytes |
+| Proxy, Composite | Upstream or final step response |
 
 ## OData query parameters
-
 
 SQL and Static endpoints accept `$select`, `$filter`, `$orderby`, `$top`, `$skip` and `$count`.
 
@@ -143,23 +140,19 @@ SQL and Static endpoints accept `$select`, `$filter`, `$orderby`, `$top`, `$skip
 GET /api/prod/Products?$select=Name,Price&$filter=Price gt 100&$orderby=Name desc&$top=50
 ```
 
-See [OData syntax](/reference/odata) for the full option reference and [Filter operations](/reference/filters) for the operator set.
+Options: [OData syntax](/reference/odata). Operators: [Filter operations](/reference/filters).
 
 ## Rate limiting
 
-
-Requests are limited per IP and per token, and every response carries the `X-RateLimit-*` headers describing the applicable budget. Exceeding a limit returns `429 Too Many Requests` with a `Retry-After` header.
-
-Defaults, per-token overrides and Redis-backed buckets are covered in [Rate limiting](/guide/rate-limiting). The header set is listed in [HTTP headers](/reference/headers).
+Requests are limited per IP address and per token. Responses include `X-RateLimit-*` headers; `429` responses include `Retry-After`. Configuration: [Rate limiting](/guide/rate-limiting). Headers: [HTTP headers](/reference/headers).
 
 ## Health endpoints
 
-
-`/health/live` is an unauthenticated liveness probe for load balancers. `/health` and `/health/details` require a token and report component status. See [Health checks](/reference/health-checks).
+The paths `/health` and `/health/live` are unauthenticated; `/health/details` requires a token. Details: [Health checks](/reference/health-checks).
 
 ## Next steps
 
-- [Authentication](/reference/api-auth): token properties and scope patterns
-- [OData Syntax](/reference/odata): filter, sort, and pagination
-- [Entity Configuration](/reference/entity-config): endpoint configuration reference
-- [HTTP Headers](/reference/headers): request and response headers
+- [Authentication](/reference/api-auth)
+- [OData Syntax](/reference/odata)
+- [Entity Configuration](/reference/entity-config)
+- [HTTP Headers](/reference/headers)

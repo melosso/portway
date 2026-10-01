@@ -30,7 +30,7 @@ public class McpRegistryStartupExtensionsTests
         };
 
     [Fact]
-    public void BuildEndpointMcpInfos_ExposedProxyEndpoint_CarriesFullMetadata()
+    public void BuildEndpointMcpInfos_ExposedProxyEndpoint_HasFullMetadata()
     {
         var endpoints = new Dictionary<string, EndpointDefinition>
         {

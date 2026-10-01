@@ -5,13 +5,9 @@ description: "Run multiple Portway versions side by side on IIS, with routing an
 
 # Versioning
 
-Run more than one version of Portway side by side, so you can move traffic between them without a hard cutover. Setup uses IIS and environment variables.
+Multiple Portway versions can run side by side under IIS, each in its own folder and application, with a default version for the root URL.
 
 ## Overview
-
-Versioning relies on having multiple Portway installations in separate version-specific folders (e.g., `v1`, `v2`). Requests are routed to the appropriate version folder based on the configuration in IIS or environment variables.
-
-Requests to the root URL are redirected to a default version, which you can set with an environment variable.
 
 ```mermaid
 graph TD
@@ -30,18 +26,14 @@ graph TD
 
 ## Setting up versioning in IIS
 
-To enable versioning in IIS, follow these steps:
-
 ### 1. Add version folders
 
-1. Create separate folders for each version of Portway (e.g., `v1`, `v2`). E.g. `C:\path\to\your\PortwayApi\v1` and `C:\path\to\your\PortwayApi\v2`
-2. Add the folder to IIS and convert it to an application:
-   - Open IIS Manager.
-   - Right-click the folder (e.g., `v1`) and select **Convert to Application**.
+1. Create a folder per version, e.g. `C:\path\to\your\PortwayApi\v1` and `C:\path\to\your\PortwayApi\v2`.
+2. In IIS Manager, right-click each folder and select **Convert to Application**.
 
 ### 2. Add configuration files
 
-In the root folder of your IIS site, add the following files (e.g. `C:\path\to\your\PortwayApi`).
+Files in the site root (e.g. `C:\path\to\your\PortwayApi`):
 
 #### `web.config`
 
@@ -126,26 +118,27 @@ The site-level `web.config` declares no `Content-Security-Policy`. Portway sets 
 </html>
 ```
 
-> [!TIP]
-> This is just a configuration example, make sure to change the redirection rules based on your needs and requirements. 
+::: tip
+Adjust the redirect rules to the versions in use.
+:::
 
 ### 3. Update `appsettings.json`
 
-In each version folder, update the `PathBase` property in the `appsettings.json` file to match the version folder name. For example, for version `v1`, set:
+Each version's `appsettings.json` sets `PathBase` to its folder name, e.g. for `v1`:
 
 ```json
 "PathBase": "v1"
 ```
 
-> [!WARNING]
-> Make sure to set-up different instance names for the various data sources that you may be working with (Redis, SQL Server), to make sure you can differentiate traffic from the (now) multiple versions.
+::: warning
+Use distinct instance names per version for shared data sources (e.g. Redis `InstanceName`, SQL `ApplicationName`) to keep their traffic apart.
+:::
 
 ### 4. Create separate Application Pools
 
-The same application pool can't be used twice for the same application. To circumvent this limitation, make sure to create seperate application pools for each version (e.g. `PortwayApi_v1` and `PortwayApi_v2`) and bind them to each site.
+Each version needs its own application pool (e.g. `PortwayApi_v1`, `PortwayApi_v2`).
 
 ### 5. Test the setup
 
-1. Open a browser and navigate to the root URL of your site.
-2. Verify that requests are redirected to the default version (e.g., `/v1/`).
-3. Test other versions by navigating to their specific paths (e.g., `/v2/`).
+- The root URL redirects to the default version (e.g. `/v1/`).
+- Each version path (e.g. `/v2/`) serves its instance.

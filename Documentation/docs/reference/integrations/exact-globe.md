@@ -13,7 +13,7 @@ Globe+ uses Windows/NTLM authentication. When you deploy in IIS, setting the App
 
 ## Overview
 
-The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request carries its environment configuration. That is how data ends up coming from the correct database and server.
+The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request uses its environment configuration, which selects the database and server.
 
 ## Configuration requirements
 

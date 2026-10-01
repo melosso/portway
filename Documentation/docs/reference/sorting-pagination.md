@@ -1,443 +1,81 @@
 ---
 title: Sorting & Pagination
-description: "Once an endpoint returns more rows than fit comfortably in one response, sorting and pagination become your tools of choice"
+description: "Sorting with $orderby and paging with $top, $skip and nextLink"
 ---
 
 # Sorting & Pagination
 
-Once an endpoint returns more rows than fit comfortably in one response, sorting and pagination become your tools of choice. This page shows how `$orderby`, `$top`, and `$skip` work together, and which patterns stay fast as your data grows.
-
 ## Sorting with $orderby
 
-### Basic syntax
-
 ```
-$orderby=field [asc|desc]
+$orderby=field [asc|desc][,field [asc|desc]]
 ```
-
-### Single field sorting
 
 ```http
-# Ascending (default)
 GET /api/prod/Products?$orderby=Name
-
-# Explicit ascending
-GET /api/prod/Products?$orderby=Name asc
-
-# Descending
 GET /api/prod/Products?$orderby=Price desc
-```
-
-### Multiple field sorting
-
-```http
-# Primary and secondary sort
-GET /api/prod/Products?$orderby=Category,Price desc
-
-# Multiple fields with mixed directions
-GET /api/prod/Products?$orderby=Category asc,Price desc,Name asc
-
-# Complex sorting
 GET /api/prod/Orders?$orderby=CustomerCode,OrderDate desc,Priority asc
 ```
 
-### Sorting rules
+Ascending is the default; fields are applied in the listed order, before paging. Only columns in `AllowedColumns` can be sorted on. Null placement follows the database.
 
-1. Default order is ascending if not specified
-2. Fields are sorted in the order listed
-3. Field names are case-sensitive
-4. Sorting applies before pagination
+## Paging with $top and $skip
 
-## Pagination with $top and $skip
+| Option | Default | Behavior |
+|---|---|---|
+| `$top` | `10` | Maximum rows; limited to the endpoint's `MaxPageSize` when set |
+| `$skip` | `0` | Rows skipped before the first returned row |
 
-### $top - limit results
-
-Controls the maximum number of items returned:
-
-```http
-# Return first 10 items
-GET /api/prod/Products?$top=10
-
-# Return first 50 items
-GET /api/prod/Products?$top=50
-```
-
-### $skip - skip results
-
-Skips a specified number of items:
-
-```http
-# Skip first 20 items
-GET /api/prod/Products?$skip=20
-
-# Skip first 100 items
-GET /api/prod/Products?$skip=100
-```
-
-### Combined pagination
-
-```http
-# Page 1 (items 1-10)
-GET /api/prod/Products?$top=10&$skip=0
-
-# Page 2 (items 11-20)
-GET /api/prod/Products?$top=10&$skip=10
-
-# Page 3 (items 21-30)
-GET /api/prod/Products?$top=10&$skip=20
-```
-
-## Pagination patterns
-
-### Standard pagination
-
-Implement page-based navigation:
-
-```http
-# Page size: 25, Page number: 1
-GET /api/prod/Orders?$top=25&$skip=0&$orderby=OrderDate desc
-
-# Page size: 25, Page number: 2
-GET /api/prod/Orders?$top=25&$skip=25&$orderby=OrderDate desc
-
-# Page size: 25, Page number: 3
-GET /api/prod/Orders?$top=25&$skip=50&$orderby=OrderDate desc
-```
-
-Formula:
 ```
 $skip = (pageNumber - 1) * pageSize
-$top = pageSize
+$top  = pageSize
 ```
-
-### Offset-Based pagination
-
-Direct control over starting position:
 
 ```http
-# Get items 51-75
-GET /api/prod/Products?$top=25&$skip=50
-
-# Get items 101-150
-GET /api/prod/Products?$top=50&$skip=100
+GET /api/prod/Orders?$top=25&$skip=25&$orderby=OrderDate desc
 ```
 
-### Cursor-Based pagination
+Paging requires an `$orderby` that is stable; add a unique column as the last sort key:
 
-Use the NextLink provided in responses:
+```http
+GET /api/prod/Products?$orderby=Price desc,ItemCode&$top=20&$skip=0
+```
+
+## nextLink
+
+When more rows exist, the response includes `nextLink` with the next page URL; the last page has `"nextLink": null`:
 
 ```json
 {
   "success": true,
   "count": 10,
-  "value": [...],
-  "nextLink": "/api/prod/Products?$top=10&$skip=10&$orderby=ItemCode"
-}
-```
-
-```http
-# First page
-GET /api/prod/Products?$top=10&$orderby=ItemCode
-
-# Next page (use NextLink)
-GET /api/prod/Products?$top=10&$skip=10&$orderby=ItemCode
-```
-
-## Combining sort and pagination
-
-### Best practices
-
-Always include $orderby when using pagination:
-
-```http
-# Good - consistent ordering
-GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=0
-
-# Problematic - inconsistent results
-GET /api/prod/Products?$top=20&$skip=0
-```
-
-### Common patterns
-
-1. **Recent Items First**
-```http
-GET /api/prod/Orders?$orderby=OrderDate desc&$top=10
-```
-
-2. **Alphabetical with Pagination**
-```http
-GET /api/prod/Customers?$orderby=LastName,FirstName&$top=50&$skip=0
-```
-
-3. **Priority Sorting**
-```http
-GET /api/prod/Tasks?$orderby=Priority asc,DueDate asc&$top=20
-```
-
-4. **Multi-Level Sorting**
-```http
-GET /api/prod/Products?$orderby=Category,SubCategory,Name&$top=100&$skip=0
-```
-
-## Performance optimization
-
-### Indexed field sorting
-
-Sort on indexed fields for better performance:
-
-```http
-# Good - sorting on primary key
-GET /api/prod/Products?$orderby=ItemCode&$top=50
-
-# Good - sorting on indexed field
-GET /api/prod/Orders?$orderby=OrderDate desc&$top=20
-
-# Less efficient - non-indexed field
-GET /api/prod/Products?$orderby=Description&$top=50
-```
-
-### Efficient pagination
-
-1. **Use Reasonable Page Sizes**
-```http
-# Optimal
-GET /api/prod/Products?$top=50&$skip=0
-
-# Too large (may timeout)
-GET /api/prod/Products?$top=10000&$skip=0
-
-# Too small (many requests)
-GET /api/prod/Products?$top=5&$skip=0
-```
-
-2. **Avoid Deep Pagination**
-```http
-# Efficient
-GET /api/prod/Products?$top=50&$skip=100
-
-# Inefficient (deep pagination)
-GET /api/prod/Products?$top=50&$skip=10000
-```
-
-### Sorting performance tips
-
-1. **Single Field vs Multiple Fields**
-```http
-# Faster
-GET /api/prod/Products?$orderby=ItemCode
-
-# Slower
-GET /api/prod/Products?$orderby=Category,SubCategory,Name
-```
-
-2. **Direction Matters**
-```http
-# Often faster (uses index efficiently)
-GET /api/prod/Orders?$orderby=OrderDate desc
-
-# May be slower (depends on index)
-GET /api/prod/Orders?$orderby=OrderDate asc
-```
-
-## Complete examples
-
-### Product catalog with categories
-
-```http
-# Products by category, then price
-GET /api/prod/Products?$orderby=Category,Price desc&$top=20&$skip=0
-
-# Products in "Electronics" category, sorted by price
-GET /api/prod/Products?$filter=Category eq 'Electronics'&$orderby=Price desc&$top=10
-
-# Most expensive products per category
-GET /api/prod/Products?$select=Category,Name,Price&$orderby=Category,Price desc&$top=5
-```
-
-### Customer order history
-
-```http
-# Recent orders for a customer
-GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$top=10
-
-# Customer's largest orders
-GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=TotalAmount desc&$top=5
-
-# Orders with status tracking
-GET /api/prod/Orders?$filter=CustomerCode eq 'CUST001'&$orderby=OrderDate desc&$select=OrderNumber,OrderDate,Status,TotalAmount&$top=20
-```
-
-### Inventory management
-
-```http
-# Low stock items
-GET /api/prod/Products?$filter=StockLevel le 10&$orderby=StockLevel asc&$top=20
-
-# Items by warehouse location
-GET /api/prod/Products?$orderby=WarehouseLocation,Bin&$select=ItemCode,Name,WarehouseLocation,Bin,StockLevel&$top=50
-
-# Recent stock movements
-GET /api/prod/StockMovements?$orderby=MovementDate desc&$top=100
-```
-
-## Error handling
-
-### Invalid $orderby fields
-
-```http
-# Error: Invalid field name
-GET /api/prod/Products?$orderby=InvalidField
-Response: 400 Bad Request
-{
-  "error": "Invalid orderby field: InvalidField"
-}
-
-# Error: Missing field name
-GET /api/prod/Products?$orderby=
-Response: 400 Bad Request
-{
-  "error": "Empty orderby clause"
-}
-```
-
-### Pagination errors
-
-```http
-# Error: Negative $skip value
-GET /api/prod/Products?$skip=-10
-Response: 400 Bad Request
-{
-  "error": "$skip cannot be negative"
-}
-
-# Error: $top exceeds maximum
-GET /api/prod/Products?$top=10000
-Response: 400 Bad Request
-{
-  "error": "$top cannot exceed 1000"
-}
-```
-
-## Response format
-
-### Standard pagination response
-
-```json
-{
-  "success": true,
-  "count": 10,
-  "value": [
-    {
-      "ItemCode": "PROD001",
-      "Name": "Widget A",
-      "Price": 29.99,
-      "Category": "Widgets"
-    },
-    {
-      "ItemCode": "PROD002",
-      "Name": "Widget B",
-      "Price": 39.99,
-      "Category": "Widgets"
-    }
-    // ... 8 more items
-  ],
+  "value": [ "..." ],
   "nextLink": "/api/prod/Products?$orderby=Category,Price desc&$top=10&$skip=10"
 }
 ```
 
-### Last page response
+The total number of matching rows is returned with `$count=true` ([OData](/reference/odata#count)).
 
-```json
-{
-  "success": true,
-  "count": 5,
-  "value": [
-    // ... 5 items
-  ],
-  "nextLink": null
-}
-```
+## Deep pages
 
-## Advanced techniques
-
-### Stable sorting
-
-Ensure consistent pagination by including a unique identifier:
+Large `$skip` values make the database read and discard the skipped rows. Keyset paging filters on the last returned key instead:
 
 ```http
-# Good - stable sorting
-GET /api/prod/Products?$orderby=Price desc,ItemCode&$top=20&$skip=0
-
-# Problematic - may have inconsistent ordering
-GET /api/prod/Products?$orderby=Price desc&$top=20&$skip=0
-```
-
-### Keyset pagination
-
-More efficient for large datasets:
-
-```http
-# Traditional offset pagination (slower for large offsets)
+# Offset
 GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=10000
 
-# Keyset pagination (faster)
+# Keyset
 GET /api/prod/Products?$filter=ItemCode gt 'PROD10000'&$orderby=ItemCode&$top=20
 ```
 
-### Dynamic sorting
+Sorting on indexed columns avoids sorts over the full table.
 
-Build orderby clauses programmatically:
+## Errors
 
-```javascript
-// JavaScript example
-function buildOrderBy(sortFields) {
-  return sortFields
-    .map(field => `${field.name}${field.desc ? ' desc' : ''}`)
-    .join(',');
-}
+Malformed `$orderby` and unknown columns return `400` with "Invalid OData query. Check $filter, $select, $orderby and $expand syntax.".
 
-const sortFields = [
-  { name: 'Category', desc: false },
-  { name: 'Price', desc: true },
-  { name: 'Name', desc: false }
-];
+## Related topics
 
-const orderBy = buildOrderBy(sortFields);
-// Result: "Category,Price desc,Name"
-```
-
-### Sorting with nulls
-
-Handle null values in sorting:
-
-```http
-# Nulls typically sort first in ascending order
-GET /api/prod/Products?$orderby=DiscountPrice asc
-
-# Nulls typically sort last in descending order
-GET /api/prod/Products?$orderby=DiscountPrice desc
-```
-
-## Troubleshooting
-
-### Common issues
-
-1. **Slow Performance**
-   - Sort on indexed columns when possible
-   - Limit page size to reasonable numbers
-   - Avoid deep pagination (high $skip values)
-
-2. **Unexpected Sort Order**
-   - Check field names for case sensitivity
-   - Verify sort direction (asc/desc)
-   - Consider data type effects on sorting
-
-### Performance monitoring
-
-```http
-# Add timing headers to monitor performance
-GET /api/prod/Products?$orderby=Name&$top=100
-Response Headers:
-X-Query-Time: 45ms
-X-Total-Records: 5000
-```
+- [OData Syntax](/reference/odata)
+- [Filter Operations](/reference/filters)
+- [SQL Endpoints](/guide/endpoints-sql)

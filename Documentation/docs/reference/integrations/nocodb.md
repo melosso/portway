@@ -65,7 +65,7 @@ Content-Type: application/json
 }
 ```
 
-Updates and deletes follow NocoDB's v2 convention of carrying the record `Id` in the request body:
+Updates and deletes follow NocoDB's v2 convention: the record `Id` is sent in the request body:
 
 ```http
 PATCH /api/prod/Nocodb/Orders

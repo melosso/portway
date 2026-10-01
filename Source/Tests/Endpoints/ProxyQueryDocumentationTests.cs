@@ -62,7 +62,7 @@ public class ProxyQueryDocumentationTests : ApiTestBase
             .Single(p => p.GetProperty("in").GetString() == "querystring");
 
         Assert.True(passthrough.GetProperty("content").TryGetProperty("application/x-www-form-urlencoded", out _));
-        Assert.False(passthrough.TryGetProperty("schema", out _), "querystring parameters carry a content field, not a schema");
+        Assert.False(passthrough.TryGetProperty("schema", out _), "querystring parameters have a content field, not a schema");
     }
 
     // OpenAPI 3.2 forbids querystring and named query parameters in the same operation

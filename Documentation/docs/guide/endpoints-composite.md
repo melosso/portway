@@ -5,14 +5,14 @@ description: "Orchestrate multiple proxy endpoint calls into a single transactio
 
 # Composite Endpoints
 
-When one call needs to become several, composite endpoints chain existing proxy endpoints into a sequence. Each step calls a named proxy endpoint, receives its response, and can hand extracted values to the steps that follow. Your caller sends one request and receives one combined result; steps execute in order, and if any step fails, execution stops there.
+Composite endpoints call existing proxy endpoints in sequence. Each step calls a named proxy endpoint and can pass values from its response to later steps. The caller sends one request and receives one combined result. Execution stops at the first failing step.
 
 :::warning
-Composite endpoints do not provide automatic rollback: steps that complete before a failure remain committed. It pays to design for this up front, with idempotent steps and a clean-up procedure for partial failures.
+Composite endpoints have no rollback. Steps completed before a failure remain committed; use idempotent steps and a clean-up procedure for partial failures.
 :::
 
 :::info
-Each step references an existing proxy endpoint by name. Configure your proxy endpoints first before building composites on top of them.
+Each step references an existing proxy endpoint by name. A step cannot target an endpoint with `Tenancy`.
 :::
 
 ## Configuration
@@ -54,7 +54,6 @@ Create `endpoints/Proxy/{CompositeName}/entity.json`:
 
 ### Top-level properties
 
-
 The top-level fields, the `CompositeConfig` block, the step properties and the template transformation variables are all listed in [Entity configuration](/reference/entity-config#endpoint-composite).
 
 ### CompositeConfig properties
@@ -79,7 +78,7 @@ The top-level fields, the `CompositeConfig` block, the step properties and the t
 
 ## Template transformations
 
-Use transformations to inject generated values or reference data from earlier steps:
+Transformations insert generated values or values from earlier steps:
 
 | Template | Description |
 |---|---|
@@ -88,7 +87,7 @@ Use transformations to inject generated values or reference data from earlier st
 | `$prev.StepName.property` | References a property from a previous step's response |
 | `$context.variable` | References a context variable |
 
-Access nested and array results with dot notation:
+Nested and array values use dot notation:
 
 ```json
 {
@@ -101,7 +100,7 @@ Access nested and array results with dot notation:
 
 ## Request and response format
 
-**Request:**
+Request:
 
 ```http
 POST /api/prod/composite/CreateOrder
@@ -121,7 +120,7 @@ Authorization: Bearer <token>
 }
 ```
 
-**Success response:**
+Success response:
 
 ```json
 {
@@ -138,7 +137,7 @@ Authorization: Bearer <token>
 }
 ```
 
-**Failure response:**
+Failure response:
 
 ```json
 {
@@ -153,7 +152,7 @@ Authorization: Bearer <token>
 }
 ```
 
-`StepResults` always includes results from steps that completed before the failure.
+The `stepResults` object includes the results of steps completed before the failure.
 
 ## Example: multi-service operation
 
@@ -193,13 +192,13 @@ Authorization: Bearer <token>
 
 ## Troubleshooting
 
-**"Endpoint not found"**: The step's `Endpoint` value must match an existing proxy endpoint name exactly (case-sensitive).
+| Symptom | Resolution |
+|---|---|
+| "Endpoint not found" | The step's `Endpoint` must match an existing proxy endpoint name exactly (case-sensitive). |
+| Transformation resolves to `null` | Check the `$prev.StepName.property` path and array indices against the referenced step's response. |
+| Timeouts | Execution time is the sum of all steps. Test slow steps individually. |
 
-**Transformation resolves to null**: Verify the `$prev.StepName.property` path against the actual response structure of the referenced step. Check array indices when referencing array results.
-
-**Timeouts**: Total execution time includes all steps in sequence. If individual steps are slow, the composite timeout can be reached. Test each step individually first.
-
-To increase log verbosity:
+Debug logging:
 
 ```json
 {
@@ -211,7 +210,7 @@ To increase log verbosity:
 }
 ```
 
-Each step logs its name, target URL and method at `Debug`, so you can see where a composite stops.
+Each step logs its name, target URL and method at `Debug`.
 
 ## Next steps
 

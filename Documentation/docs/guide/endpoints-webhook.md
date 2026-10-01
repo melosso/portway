@@ -5,10 +5,10 @@ description: "Receive HTTP POST payloads from external services and persist them
 
 # Webhook Endpoints
 
-Webhook endpoints give external services a place to deliver events: they accept incoming POST requests and store the JSON payload in a database table you configure. The endpoint validates the webhook ID against an allowed list, inserts the payload with a timestamp, and returns a success response. Nothing is parsed or transformed along the way; the raw payload is stored as-is, ready for downstream processing at your own pace.
+Webhook endpoints accept POST requests from external services and store the JSON payload in a configured table. The webhook id is checked against `AllowedColumns`, the payload is inserted unchanged with a UTC timestamp, and the response returns the new row id.
 
 ::: warning Coming from the flat webhook route
-The shared `endpoints/Webhooks/entity.json` and the flat route `POST /api/{env}/webhook/{id}` have been removed, and that route now answers `410 Gone` with a pointer to the new shape. Each webhook can be defined under `endpoints/Webhooks/{Namespace}/{Name}/entity.json` and called at `POST /api/{env}/{namespace}/{name}/{id}`.
+The shared `endpoints/Webhooks/entity.json` and the route `POST /api/{env}/webhook/{id}` are removed; that route returns `410 Gone` with the new route format. Each webhook is defined in `endpoints/Webhooks/{Namespace}/{Name}/entity.json` and called at `POST /api/{env}/{namespace}/{name}/{id}`.
 :::
 
 ```mermaid
@@ -20,14 +20,14 @@ sequenceDiagram
     External->>Portway: POST /api/prod/Integrations/Inbound/payment-received
     Portway->>DB: INSERT INTO WebhookData
     DB-->>Portway: Success
-    Portway-->>External: 200 OK
+    Portway-->>External: 201 Created
 ```
 
-Downstream processing is handled by a separate job or procedure that reads from the webhook table. Portway does not retry failed inserts or forward payloads further.
+A separate job or procedure processes the table. Portway does not retry failed inserts or forward payloads.
 
 ## Database setup
 
-Create the webhook table before configuring the endpoint:
+SQL Server table:
 
 ```sql
 CREATE TABLE [dbo].[WebhookData] (
@@ -72,9 +72,9 @@ CREATE TABLE WebhookData (
 ```
 :::
 
-`ReceivedAt` is stored in UTC.
+The `ReceivedAt` value is stored in UTC.
 
-If your processing job needs to track status, extend the table accordingly:
+Optional status columns for the processing job:
 
 ```sql
 ALTER TABLE WebhookData ADD
@@ -85,7 +85,7 @@ ALTER TABLE WebhookData ADD
 
 ## Configuration
 
-Create `endpoints/Webhooks/Integrations/Inbound/entity.json` (the `Integrations` folder is the namespace, `Inbound` the endpoint name):
+Example `endpoints/Webhooks/Integrations/Inbound/entity.json`, with namespace `Integrations` and endpoint name `Inbound`:
 
 ```json
 {
@@ -103,11 +103,11 @@ Create `endpoints/Webhooks/Integrations/Inbound/entity.json` (the `Integrations`
 
 | Property | Required | Type | Description |
 |---|---|---|---|
-| `DatabaseObjectName` | Yes | string | Table name for storing webhook payloads |
-| `DatabaseSchema` | No | string | Database schema. Defaults to `dbo` |
-| `AllowedColumns` | No | array | Webhook IDs this endpoint accepts. Any ID not listed is rejected with 400 |
+| `DatabaseObjectName` | Yes | string | Table for webhook payloads |
+| `DatabaseSchema` | No | string | Database schema (default `dbo`) |
+| `AllowedColumns` | No | array | Accepted webhook ids; other ids return `404` |
 
-Webhook IDs map to values in the `WebhookId` column. Use names that identify the source and event type, `stripe_payment_success`, `shopify_order_created`, rather than generic identifiers.
+The webhook id is stored in the `WebhookId` column. Ids that name the source and event (e.g. `stripe_payment_success`, `shopify_order_created`) keep the table queryable.
 
 ## Sending webhooks
 
@@ -129,7 +129,7 @@ Authorization: Bearer <token>
 }
 ```
 
-**Response:**
+Response (`201 Created`):
 
 ```json
 {
@@ -141,12 +141,12 @@ Authorization: Bearer <token>
 ```
 
 :::warning
-All webhook endpoints require Bearer token authentication. External services that do not support custom request headers cannot authenticate directly with Portway. For services that require unauthenticated inbound webhooks, place a proxy or ingress layer in front that adds the token before forwarding to Portway.
+Webhook endpoints require Bearer token authentication. Services that cannot send custom headers need a proxy or ingress layer that adds the token.
 :::
 
 ## Querying stored payloads
 
-Use SQL Server's JSON functions to extract fields from stored payloads:
+Field extraction with SQL Server JSON functions:
 
 ```sql
 -- Recent payloads for one webhook type
@@ -162,21 +162,22 @@ ORDER BY ReceivedAt DESC;
 
 ## Limitations
 
-- POST only, webhook endpoints do not respond to GET, PUT, or DELETE
-- JSON only, payloads need to be valid JSON; non-JSON bodies are rejected
-- No payload validation beyond JSON syntax and webhook ID matching
-- No automatic retry on insert failure
-- Default payload size limit: 10MB
+- POST only
+- JSON payloads only; other bodies are rejected
+- No validation beyond JSON syntax and the webhook id
+- No retry on insert failure
+- Payload size limit: 10MB (default)
+- `Tenancy` is not supported
 
 ## Troubleshooting
 
-**"Webhook ID not configured"**: The ID in the URL must match an entry in `AllowedColumns` exactly. Webhook IDs are case-sensitive.
+| Symptom | Resolution |
+|---|---|
+| "Webhook ID not configured" | Add the id to `AllowedColumns` (case-insensitive match). |
+| Database errors | Check the table definition and the connection account's INSERT permission. |
+| `401` or `403` | Check the token and its access to the environment. |
 
-**Database connection errors**: Verify the table exists with the correct schema and that the environment's connection string account has INSERT permission on the table.
-
-**Authentication failures**: Confirm the Bearer token is valid and has access to the target environment.
-
-To increase log verbosity:
+Debug logging:
 
 ```json
 {
@@ -188,7 +189,7 @@ To increase log verbosity:
 }
 ```
 
-Test with a minimal payload:
+Minimal test request:
 
 ```bash
 curl -X POST https://your-api/api/prod/Integrations/Inbound/test_webhook \
@@ -199,6 +200,6 @@ curl -X POST https://your-api/api/prod/Integrations/Inbound/test_webhook \
 
 ## Next steps
 
-- [SQL Endpoints](/guide/endpoints-sql): query and expose webhook data
+- [SQL Endpoints](/guide/endpoints-sql)
 - [Security](/guide/security)
 - [Monitoring](/guide/monitoring)

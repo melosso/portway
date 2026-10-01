@@ -7,7 +7,7 @@ keywords: [API Gateway, Docker, Windows, SQL Server, REST, OData]
 
 # What is Portway?
 
-Portway is an API gateway. It sits in front of your SQL databases, internal services, and static content, exposing them through a consistent REST interface. If you're running a mix of legacy systems and newer services, Portway surfaces them without rewriting anything.
+Portway is an API gateway that exposes SQL databases, internal HTTP services, static content, files and inbound webhooks through one authenticated REST interface, configured with JSON files.
 
 ## Quick links
 
@@ -15,51 +15,45 @@ Portway is an API gateway. It sits in front of your SQL databases, internal serv
 - [Deployment](/guide/deployment)
 - [Security](/guide/security)
 
-## What Portway works with
+## Supported sources
 
-We've made sure it works with at least the following:
-
-- SQL databases (SQL Server, PostgreSQL, MySQL, SQLite), tables, views, and stored procedures
+- SQL databases (SQL Server, PostgreSQL, MySQL/MariaDB, SQLite): tables, views, stored procedures and table-valued functions
 - Internal HTTP/HTTPS services
-- Static files, not limited to JSON, XML, and CSV
-- File storage, with upload, download, and listing over the API
-- Incoming webhook payloads stored to a database table
-- Multi-step composited operations across proxy endpoints
+- Static files (e.g. JSON, XML, CSV)
+- File storage with upload, download and listing
+- Inbound webhook payloads stored in a database table
+- Multi-step operations across proxy endpoints
 
 ## Concepts
 
 ### Security
 
-All requests to Portway require a Bearer token. Tokens are scoped to specific environments and endpoints, so a token issued for `dev` cannot reach `prod` unless explicitly permitted. Rate limiting, request validation, and optional Azure Key Vault integration are built in.
-
-See [Security](/guide/security) for token management, encryption, and network configuration.
+API requests require a Bearer token, restricted to endpoints, environments and optionally tenant values. Rate limiting, request validation and Azure Key Vault integration are built in. Details: [Security](/guide/security).
 
 ### Environment awareness
 
-Each request URL includes an environment segment, `/api/{environment}/{endpoint}`. Portway routes the request to the connection string, headers, and access rules defined for that environment. Development, testing, and production configurations stay completely separate.
-
-See [Environments](/guide/environments) for configuration details.
+The environment segment in `/api/{environment}/{endpoint}` selects the connection string, headers and access rules of that environment. Details: [Environments](/guide/environments).
 
 ### Endpoint types
 
-Every endpoint you define is one of six types, and the type decides what Portway does with the request:
+Endpoint types:
 
-| Type | What it does |
+| Type | Behavior |
 |---|---|
-| **SQL** | Exposes tables, views, or stored procedures as REST endpoints with OData filtering |
-| **Proxy** | Forwards requests to internal HTTP/HTTPS services with URL rewriting |
-| **Composite** | Orchestrates multiple proxy steps into a single transaction |
-| **File** | Stores and retrieves files via upload/download API calls |
-| **Webhook** | Receives HTTP POST payloads and persists them to a SQL table |
-| **Static** | Serves pre-defined JSON, XML, or CSV content with optional OData filtering |
+| SQL | Tables, views, stored procedures and table-valued functions with OData queries |
+| Proxy | Forwards requests to internal HTTP/HTTPS services with URL rewriting |
+| Composite | Calls several proxy endpoints in sequence |
+| File | File upload, download, delete and listing |
+| Webhook | Stores POST payloads in a SQL table |
+| Static | Serves JSON, XML or CSV content with optional OData queries |
 
 ### Configuration and reloading
 
-Endpoints and environments are defined as JSON files on disk. Portway watches these files and reloads configuration automatically, no restart required. The OpenAPI documentation at `/docs` updates immediately after a configuration change.
+Endpoints and environments are JSON files on disk. Changes are reloaded without a restart, and the OpenAPI document at `/docs` follows them.
 
 ## Next steps
 
-- [Getting Started](/guide/getting-started): install and run Portway for the first time
-- [Deployment](/guide/deployment): run Portway with Docker or on Windows Server
-- [Security](/guide/security): configure tokens, scopes, and network access
-- [Issues](https://github.com/melosso/portway/issues) / [Discussions](https://github.com/melosso/portway/discussions): report bugs or ask questions
+- [Getting Started](/guide/getting-started)
+- [Deployment](/guide/deployment)
+- [Security](/guide/security)
+- [Issues](https://github.com/melosso/portway/issues) and [Discussions](https://github.com/melosso/portway/discussions)

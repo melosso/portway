@@ -5,15 +5,15 @@ description: "Ask questions and trigger operations against your Portway endpoint
 
 # MCP Chat
 
-MCP Chat connects an AI model to the Portway MCP tool registry. When you send a message, the model decides which tools to call, executes them through Portway's normal API layer (authentication, rate limiting, and environment scoping all apply), and incorporates the results into its response. The chat interface streams responses and shows each tool call as a collapsible panel.
+MCP Chat connects an AI model to the Portway MCP tools. The model selects tools; each call goes through the regular API with authentication, rate limiting and environment scoping. Responses are streamed, and each tool call is displayed as a collapsible panel.
 
 :::info
-MCP Chat requires the MCP server to be enabled. Set `Mcp:Enabled: true` and expose at least one endpoint with `"Mcp": { "Exposed": true }` before configuring Chat.
+MCP Chat requires `Mcp:Enabled: true` and at least one endpoint with `"Mcp": { "Exposed": true }`.
 :::
 
 ## Enable chat
 
-Set `Mcp:ChatEnabled` to `true` in `appsettings.json`. This activates the Chat UI and the `/ui/api/mcp/chat` SSE endpoint. The MCP server must also be enabled.
+Setting `Mcp:ChatEnabled: true` in `appsettings.json` enables the Chat UI and the `/ui/api/mcp/chat` SSE endpoint.
 
 ```json
 "Mcp": {
@@ -22,28 +22,26 @@ Set `Mcp:ChatEnabled` to `true` in `appsettings.json`. This activates the Chat U
 }
 ```
 
-Provider, model, and API key are **not** stored in `appsettings.json`. They are configured through the setup wizard and stored in the encrypted `mcp.db` database.
+Provider, model and API key are set in the setup wizard and stored encrypted in `mcp.db`, not in `appsettings.json`.
 
 ## Configure a provider
 
-On first visit to the Chat UI (`/ui/mcp/chat`), a setup wizard opens automatically. It walks through two steps:
+The setup wizard opens on the first visit to `/ui/mcp/chat`:
 
-1. **Choose a provider**: select Anthropic, OpenAI, Gemini, or Mistral and pick a model.
-2. **Enter credentials**: paste the API key. Portway encrypts it using the machine-bound PWENC key before writing it to `mcp.db`. The plaintext key is never stored.
+1. Provider and model: Anthropic, OpenAI, Gemini or Mistral.
+2. API key: encrypted with the machine-bound PWENC key before it is written to `mcp.db`.
 
-The wizard can be re-opened at any time from the Chat page if credentials need to change.
+The wizard is available from the Chat page to change credentials.
 
 ## Supply the API key via environment variable
 
-When deploying via Docker or a process manager, set the API key as an environment variable instead of entering it through the wizard. Portway checks this variable first and uses it if present, ignoring the database value.
+The environment variable `PORTWAY_CHAT_API_KEY` overrides the key stored in `mcp.db`:
 
 ```bash
 export PORTWAY_CHAT_API_KEY=sk-ant-...
 ```
 
-The wizard and the status endpoint will report `api_key_source: environment` when the variable is set.
-
-See [Secret Encryption](/reference/secrets) for how PWENC database encryption works.
+With the variable set, the wizard and the status endpoint report `api_key_source: environment`. PWENC encryption: [Secret Encryption](/reference/secrets).
 
 ## Supported providers
 
@@ -54,7 +52,7 @@ See [Secret Encryption](/reference/secrets) for how PWENC database encryption wo
 "Model": "claude-sonnet-5"
 ```
 
-Uses the Anthropic Messages API with streaming and native tool use. Obtain an API key from [console.anthropic.com](https://console.anthropic.com).
+Anthropic Messages API with streaming and tool use. API keys: [console.anthropic.com](https://console.anthropic.com).
 
 ### OpenAI
 
@@ -63,7 +61,7 @@ Uses the Anthropic Messages API with streaming and native tool use. Obtain an AP
 "Model": "gpt-5.5"
 ```
 
-Uses the OpenAI Chat Completions API with streaming function calling.
+OpenAI Chat Completions API with streaming function calling.
 
 ### Gemini
 
@@ -72,7 +70,7 @@ Uses the OpenAI Chat Completions API with streaming function calling.
 "Model": "gemini-3.5-flash"
 ```
 
-Uses the Google Generative Language API (`streamGenerateContent`) with function declarations.
+Google Generative Language API (`streamGenerateContent`) with function declarations.
 
 ### Mistral / Codestral
 
@@ -81,26 +79,24 @@ Uses the Google Generative Language API (`streamGenerateContent`) with function 
 "Model": "codestral-latest"
 ```
 
-Uses the Mistral Chat Completions API. Codestral models (`codestral-*`) route to `codestral.mistral.ai`; all other Mistral models route to `api.mistral.ai`. Codestral requires a Codestral-specific API key; general Mistral API keys do not work against the Codestral endpoint.
+Mistral Chat Completions API. Codestral models (`codestral-*`) use `codestral.mistral.ai` and a Codestral API key; other models use `api.mistral.ai`.
 
 ## How tool calls work
 
-Each chat turn runs a tool-use loop up to five rounds deep:
+Each chat turn runs up to five tool rounds:
 
-1. Portway sends the conversation history and the full list of exposed MCP tools to the model.
-2. The model either responds with text or requests one or more tool calls.
-3. For each tool call, Portway calls the corresponding endpoint at `{baseUrl}/api/{environment}/{endpoint}`, using the method, query string, and body parameters the model provided.
-4. The tool result is added to the conversation and the model receives it in the next round.
-5. The loop repeats until the model produces a final text response or the five-round limit is reached.
-
-Every tool call goes through the standard Portway request path: the environment selector in the chat UI controls which environment segment is used, and all endpoint-level access rules apply.
+1. The conversation and the exposed tools are sent to the model.
+2. The model returns text or tool calls.
+3. Each tool call requests `{baseUrl}/api/{environment}/{endpoint}` with the model's method, query, body and tenant values, under the user's token.
+4. Tool results are added to the conversation for the next round.
+5. The loop ends with a text response or after five rounds.
 
 ## Environment selector
 
-The Chat UI includes an environment dropdown populated from `GET /ui/api/environments`. Select the target environment before sending a message. The model uses this environment for all tool calls in the session unless you specify a different one explicitly in your message.
+The environment selector is populated from `GET /ui/api/environments`. Tool calls use the selected environment unless the message names another one.
 
 ## Next steps
 
-- [MCP Server](/guide/mcp): enable the MCP server and expose endpoints as tools
-- [Secret Encryption](/reference/secrets): how PWENC key storage works
-- [Access Tokens](/guide/tokens): scope tokens for MCP tool execution
+- [MCP Server](/guide/mcp)
+- [Secret Encryption](/reference/secrets)
+- [Access Tokens](/guide/tokens)

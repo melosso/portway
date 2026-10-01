@@ -5,23 +5,21 @@ description: "Publish Portway's traces and metrics to an OTLP collector, or let 
 
 # Telemetry
 
-Portway can publish its request traces and metrics to the monitoring stack you already run. You pick one provider through a single configuration key, and the gateway takes care of the rest: no code changes, no plugins, just configuration. The built-in dashboard keeps working either way, so enabling telemetry is purely additive.
+Portway exports request traces and metrics through one provider, selected with `Telemetry:Provider`. The built-in dashboard is independent of the provider.
 
 ## Choosing a provider
 
-The `Telemetry:Provider` key selects how telemetry leaves the gateway. Since most teams standardize on either a push or a pull pipeline, only one provider is active at a time:
+One provider is active at a time:
 
-| Provider | Style | What you get |
+| Provider | Style | Output |
 |---|---|---|
-| `None` | (default) | Telemetry export stays off; the built-in dashboard is unaffected |
-| `Otlp` | Push | Traces and metrics sent to any OTLP-compatible collector over gRPC |
-| `Prometheus` | Pull | Metrics served on a scrape endpoint, ready for your Prometheus server |
+| `None` | (default) | No export |
+| `Otlp` | Push | Traces and metrics to an OTLP-compatible collector over gRPC |
+| `Prometheus` | Pull | Metrics on a scrape endpoint |
 
-If you are unsure which fits your setup: teams running an observability platform (Grafana Alloy, Jaeger, Datadog, and similar) generally want `Otlp`, while teams with a plain Prometheus server pointed at their infrastructure will feel right at home with `Prometheus`. Should you ever need both, the OTLP collector can re-expose metrics to Prometheus on your behalf, as shown in the [collector example](#docker-compose) below.
+Observability platforms (Grafana Alloy, Jaeger, Datadog) use `Otlp`; a standalone Prometheus server uses `Prometheus`. An OTLP collector can re-expose metrics to Prometheus, as in the [collector example](#docker-compose).
 
 ## Using the OTLP provider
-
-Point the gateway at your collector's gRPC address and set the provider:
 
 ```json
 {
@@ -36,13 +34,13 @@ Point the gateway at your collector's gRPC address and set the provider:
 }
 ```
 
-A few helpful defaults to be aware of:
+| Key | Default | Description |
+|---|---|---|
+| `ServiceName` | `Portway.Api` | Service name on every span and metric |
+| `ResourceAttributes` | none | Comma-separated `key=value` pairs added to every span and metric |
+| `Otlp:Endpoint` | `http://localhost:4317` | Collector gRPC address |
 
-* `ServiceName` falls back to `Portway.Api` when omitted. Overriding it is a convenient way to tell environments apart in your tracing backend.
-* `ResourceAttributes` accepts a comma-separated `key=value` string and attaches the values to every exported span and metric.
-* `Otlp:Endpoint` defaults to `http://localhost:4317`, the standard OTLP gRPC port.
-
-Every value can also be supplied as an environment variable using the .NET double-underscore convention, which is handy in containerized deployments:
+Each key is also read from environment variables with the .NET double-underscore convention:
 
 ```bash
 Telemetry__Provider=Otlp
@@ -51,8 +49,6 @@ Telemetry__ServiceName=portway-prod
 ```
 
 ## Using the Prometheus provider
-
-If your monitoring is built around Prometheus, you can skip the collector entirely and let Prometheus pull metrics straight from the gateway:
 
 ```json
 {
@@ -65,7 +61,7 @@ If your monitoring is built around Prometheus, you can skip the collector entire
 }
 ```
 
-`Path` defaults to `/metrics` and can be changed if that route conflicts with something else in your setup. A matching scrape configuration looks like this:
+The scrape path defaults to `/metrics`. Matching scrape configuration:
 
 ```yaml
 scrape_configs:
@@ -76,30 +72,24 @@ scrape_configs:
 ```
 
 ::: Note
-The scrape endpoint only exists when the `Prometheus` provider is selected; with any other provider the route is not mapped. When enabled it is served without authentication and exempt from rate limiting, following the same convention as `/health`, and it only exposes aggregate counters and histograms, never request payloads. If the gateway is reachable from untrusted networks, it is recommended to restrict access to the metrics path at your firewall or reverse proxy.
+The scrape endpoint is mapped only with the `Prometheus` provider. It is unauthenticated and rate-limit exempt, like `/health`, and exposes aggregate counters and histograms only. Restrict the path at the firewall or reverse proxy when the gateway is reachable from untrusted networks.
 :::
 
-Since Prometheus is a metrics-only system, traces are not collected with this provider. If you want distributed tracing alongside Prometheus-style metrics, the OTLP provider combined with a collector gives you both.
+The Prometheus provider exports no traces. Traces with Prometheus metrics require the OTLP provider and a collector.
 
 ## What Portway exports
 
 ### Traces (OTLP provider)
 
-Three span types cover the full request path through the gateway:
-
 | Span | Source | Notes |
 |---|---|---|
-| HTTP request | ASP.NET Core | One root span per inbound request. Includes method, route, and status code |
-| SQL query | SqlClient | One child span per database round-trip. Includes statement text when available |
-| Outbound HTTP | HttpClient | One child span per proxy call. Includes target URL and status code |
+| HTTP request | ASP.NET Core | Root span per inbound request, with method, route and status code |
+| SQL query | SqlClient | Child span per database round trip, with statement text when available |
+| Outbound HTTP | HttpClient | Child span per proxy call, with target URL and status code |
 
-Proxy endpoint calls produce a child HttpClient span nested under the inbound request span, giving you an end-to-end latency breakdown per forwarded call. SQL endpoint calls produce SqlClient child spans automatically without any additional configuration.
-
-Errors caught by Portway's exception handler are recorded on the active span with `exception.type`, `exception.message`, and `exception.stacktrace` attributes.
+Errors handled by Portway's exception handler are recorded on the active span with `exception.type`, `exception.message` and `exception.stacktrace`.
 
 ### Metrics (both providers)
-
-Portway publishes its own meters alongside the standard ASP.NET Core instrumentation:
 
 | Metric | Type | Unit | Dimensions |
 |---|---|---|---|
@@ -107,13 +97,11 @@ Portway publishes its own meters alongside the standard ASP.NET Core instrumenta
 | `portway.cache.hit.count` | Counter | `{hit}` | None |
 | `portway.cache.miss.count` | Counter | `{miss}` | None |
 
-`portway.request_source` distinguishes traffic by origin: `api` for endpoint calls, `ui` for dashboard calls, `other` for everything else. `portway.endpoint` carries the configured endpoint name for API calls (for example `Products` or `composite/SalesOrder`), so you can break down latency and error rates per endpoint. It stays empty for requests that do not target a configured endpoint.
-
-ASP.NET Core also emits its own `http.server.request.duration` histogram, which overlaps with `portway.request.duration`. Both are exported, so you can drop one at the collector if you would rather avoid the duplication.
+The `portway.request_source` dimension is `api` for endpoint calls, `ui` for dashboard calls and `other` for the rest. The `portway.endpoint` dimension contains the configured endpoint name for API calls (e.g. `Products`, `composite/SalesOrder`) and is empty for other requests.
 
 ## Docker Compose
 
-A gateway pushing to a collector, with the collector re-exposing metrics to Prometheus and forwarding traces to Jaeger:
+A gateway pushing to a collector that re-exposes metrics to Prometheus and forwards traces to Jaeger:
 
 ```yaml
 services:
@@ -160,15 +148,15 @@ service:
       exporters: [prometheus]
 ```
 
-If you prefer the pull model instead, set `Telemetry__Provider: Prometheus` on the gateway and drop the collector service entirely. Prometheus then scrapes the `portway` container directly.
+With `Telemetry__Provider: Prometheus` the collector service is not needed; Prometheus scrapes the `portway` container.
 
 :::tip
-If you use Grafana Alloy or the Grafana Agent, point `Telemetry__Otlp__Endpoint` at its OTLP receiver and route from there. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through a single pipeline.
+For Grafana Alloy or the Grafana Agent, set `Telemetry__Otlp__Endpoint` to its OTLP receiver. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through one pipeline.
 :::
 
 ## Windows Server and IIS
 
-On Windows, the `Telemetry` section lives in `appsettings.json` next to the rest of your gateway configuration. An environment-specific override file is a good place for collector addresses, keeping them out of source control:
+The `Telemetry` section is read from `appsettings.json`. Collector addresses belong in an environment-specific override file:
 
 ```json [appsettings.Production.json]
 {
@@ -181,7 +169,7 @@ On Windows, the `Telemetry` section lives in `appsettings.json` next to the rest
 }
 ```
 
-For IIS hosting, `web.config` `<environmentVariables>` can override individual values and take precedence over `appsettings.json`:
+Under IIS, `<environmentVariables>` in `web.config` override `appsettings.json`:
 
 ```xml
 <configuration>
@@ -197,9 +185,9 @@ For IIS hosting, `web.config` `<environmentVariables>` can override individual v
 ```
 
 :::info
-IIS worker processes do not inherit system environment variables. Use `appsettings.json` or `web.config` `<environmentVariables>`, not the Windows system environment or application pool advanced settings, which are unreliable across IIS resets.
+IIS worker processes do not inherit system environment variables. Use `appsettings.json` or `web.config` `<environmentVariables>`; system environment variables and application pool settings are unreliable across IIS resets.
 :::
 
 ## Upgrading from earlier versions
 
-Earlier releases configured telemetry with a flat `Enabled` switch and `OtlpEndpoint` key. Both keep working: `"Enabled": true` selects the OTLP provider automatically, and a flat `OtlpEndpoint` is used whenever `Otlp:Endpoint` is not set. You can migrate to the `Provider` key at your own pace.
+Earlier releases used a flat `Enabled` switch and an `OtlpEndpoint` key. Both remain supported: `"Enabled": true` selects the OTLP provider, and `OtlpEndpoint` is used when `Otlp:Endpoint` is not set.

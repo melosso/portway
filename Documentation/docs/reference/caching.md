@@ -5,7 +5,7 @@ description: "Configuration reference for Portway's in-memory and Redis caching"
 
 # Caching
 
-If the same GET requests keep hitting your backends, caching is the easiest win available. Portway stores successful responses from SQL and Proxy endpoints so repeat requests are answered from memory (or Redis) instead of your database. Only `2xx` responses with cacheable content types are stored, so errors never linger.
+Successful GET responses from SQL and proxy endpoints are cached in memory or Redis. Only `2xx` responses with a cacheable content type are stored.
 
 ## Cache flow
 
@@ -68,8 +68,8 @@ flowchart TD
 
 | Provider | Use case |
 |----------|----------|
-| `Memory` | Single-instance deployments. Fastest; cache lost on restart. |
-| `Redis` | Multi-instance or load-balanced deployments. Persists across restarts; shared across instances. |
+| `Memory` | Single instance; cleared on restart |
+| `Redis` | Shared across instances; kept across restarts |
 
 ## Configuration
 
@@ -138,29 +138,21 @@ flowchart TD
 
 ## Cache behaviour
 
-### What is cached
+### Cached responses
 
-- GET requests to SQL and Proxy endpoints
-- Responses with content types listed in `CacheableContentTypes`
-- Successful responses (`2xx` status codes)
-
-### What is not cached
-
-- POST, PUT, DELETE, PATCH requests
-- Error responses (`4xx`, `5xx`)
-- Responses with non-cacheable content types
+GET responses from SQL and proxy endpoints with a `2xx` status and a content type in `CacheableContentTypes`. POST, PUT, DELETE and PATCH responses and error responses are not cached.
 
 ### Cache keys
 
-Keys are generated from: request URL + query string, environment and endpoint name, hashed authentication context, and `Accept-Language` header.
+Proxy keys combine the URL and query string, environment, endpoint name, a hash of the `Authorization` header, the selected tenant values and `Accept-Language`. SQL keys combine the environment, endpoint name and the generated SQL with its parameters, which include tenant predicates.
 
 ### Cache invalidation
 
-Cache entries expire after their configured TTL. A non-GET operation on the same endpoint also invalidates its cache entries. Memory cache is cleared on application restart; Redis persists.
+Entries expire after their TTL. A non-GET request to an endpoint invalidates its entries.
 
 ## Cache durations
 
-All cacheable responses use `DefaultCacheDurationSeconds` unless overridden. Override specific endpoints with `EndpointCacheDurations`:
+The TTL is `DefaultCacheDurationSeconds`; `EndpointCacheDurations` overrides it per endpoint:
 
 ```json
 "EndpointCacheDurations": {
@@ -170,7 +162,7 @@ All cacheable responses use `DefaultCacheDurationSeconds` unless overridden. Ove
 }
 ```
 
-Responses with an explicit `Cache-Control: max-age=N` header use that value instead.
+A response with `Cache-Control: max-age=N` uses that value.
 
 ## High-Availability Redis
 
@@ -192,11 +184,11 @@ Responses with an explicit `Cache-Control: max-age=N` header use that value inst
 }
 ```
 
-When `FallbackToMemoryCache` is `true` and Redis becomes unavailable, Portway switches to in-memory caching automatically and logs a warning. It resumes Redis caching when the connection is restored.
+With `FallbackToMemoryCache: true`, an unavailable Redis switches caching to memory with a logged warning; Redis is used again after the connection recovers.
 
 ## Cache statistics
 
-`GET /health/details` includes cache statistics: item count, hit/miss ratio, memory usage, and Redis connection status.
+The detailed health check (`GET /health/details`) includes item count, hit and miss ratio, memory usage and Redis connection status.
 
 ## Troubleshooting
 
@@ -213,12 +205,12 @@ redis-cli ttl "Portway:proxy:600:Products::"
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Cache not working | `Caching.Enabled` is false, or non-GET request | Set `Enabled: true`; confirm it's a GET |
+| No caching | `Caching.Enabled` is `false`, or not a GET request | Set `Enabled: true` |
 | Content type not cached | Not in `CacheableContentTypes` | Add the content type |
 | Redis connection failures | Wrong connection string or unreachable server | Verify `ConnectionString`; check firewall |
 | High memory usage | Long TTL or a generous budget | Reduce `DefaultCacheDurationSeconds` or `MemoryCacheSizeLimitMB` |
 
 ## Related topics
 
-- [Monitoring](/guide/monitoring): cache configuration via the Web UI
-- [Application Settings](/reference/app-settings): full `appsettings.json` reference
+- [Monitoring](/guide/monitoring)
+- [Application Settings](/reference/app-settings)

@@ -5,17 +5,17 @@ description: "Choose between deploying Portway with Docker Compose or on Windows
 
 # Deploying
 
-Portway ships as a container image, Linux and Windows release. Pick whichever fits your infrastructure: the endpoint and environment configuration is identical either way.
+Portway ships as a container image and as Linux and Windows releases. Endpoint and environment configuration is the same for every installation method.
 
 <div class="info custom-block">
 
-Just want to try it out? Skip to the [Quickstart](../getting-started).
+Quickstart: [Getting Started](../getting-started).
 
 </div>
 
-The following pages cover the supported installation methods:
+Installation methods:
 
 - **[Deploying with Docker](/guide/docker-compose)**
 - **[Deploying on Windows Server](/guide/deployment-windows)**
 
-Once your server is running, continue with [initial configuration](/guide/getting-started#initial-configuration) for your access token and first environment.
+Access token and first environment: [Initial configuration](/guide/getting-started#initial-configuration).

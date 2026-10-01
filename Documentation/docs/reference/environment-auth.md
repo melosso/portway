@@ -5,18 +5,13 @@ description: "Per-environment authentication methods that augment or replace the
 
 # Environment Authentication
 
-Sometimes the global token system isn't quite the right fit for one environment: perhaps a partner needs an API key, or an upstream system already speaks JWT. Environment-specific authentication lets you handle those cases in that environment's `settings.json`, with ApiKey, Basic, Bearer, JWT, and HMAC methods available. Sensitive fields you write in plaintext are encrypted to `PWENC:` format on the next startup, so there is no need to pre-encrypt anything yourself.
-
-If multiple methods are defined, a request is authorised if it satisfies **any** of them.
+An environment's `settings.json` can define ApiKey, Basic, Bearer, JWT and HMAC authentication in addition to, or instead of, Portway tokens. A request is authorized when it satisfies any defined method. Plaintext secrets are encrypted (`PWENC:`) at the next start.
 
 ## Configuration structure
 
-The authentication settings are defined in the `Authentication` object within `settings.json`.
+The `Authentication` object in `/environments/[EnvironmentName]/settings.json`:
 
-### File location
-`/environments/[EnvironmentName]/settings.json`
-
-### Basic structure
+### Structure
 
 ```json
 {
@@ -39,88 +34,88 @@ The authentication settings are defined in the `Authentication` object within `s
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------
-| `Enabled` | boolean | `false` | Whether custom authentication is enabled for this environment. |
-| `OverrideGlobalToken` | boolean | `false` | If `true`, global Portway tokens are ignored for this environment. |
-| `Methods` | array | `[]` | List of authentication methods to check. |
+| `Enabled` | boolean | `false` | Enables the methods for this environment |
+| `OverrideGlobalToken` | boolean | `false` | `true` rejects Portway tokens in this environment |
+| `Methods` | array | `[]` | Authentication methods |
 
 ## Supported authentication methods
 
-### 1. ApiKey
-Matches a static value against a header, query parameter, or cookie.
+### ApiKey
+
+Static value in a header, query parameter or cookie.
 
 | Property | Description |
 |----------|-------------|
 | `Type`| `ApiKey` |
-| `Name`| The identifier name (e.g., "X-API-Key"). |
-| `Value`| The secret key value (auto. encrypted). |
-| `In`| Where to look: `Header` (default), `Query`, or `Cookie`. |
+| `Name`| Header, parameter or cookie name (e.g. `X-API-Key`) |
+| `Value`| Key value (encrypted at rest) |
+| `In`| `Header` (default), `Query` or `Cookie` |
 
-### 2. Basic
-Standard HTTP Basic authentication.
+### Basic
+
+HTTP Basic authentication.
 
 | Property | Description |
 |----------|-------------|
 | `Type`| `Basic` |
-| `Name`| The expected username. |
-| `Value`| The expected password (auto-encrypted). |
+| `Name`| Username |
+| `Value`| Password (encrypted at rest) |
 
-### 3. Bearer
-Matches a static token in the `Authorization: Bearer <token>` header.
+### Bearer
+
+Static token in `Authorization: Bearer <token>`.
 
 | Property | Description |
 |----------|-------------|
 | `Type`| `Bearer` |
-| `Value` | The expected static token (auto. encrypted). |
+| `Value` | Token (encrypted at rest) |
 
-### 4. JWT (JSON web token)
-Performs full JWT validation including signature, issuer, and audience.
+### JWT
+
+JWT validation of signature, issuer and audience.
 
 | Property | Description |
 |----------|-------------|
 | `Type`| `JWT` |
-| `Issuer` | Optional: Validates the `iss` claim. |
-| `Audience` | Optional: Validates the `aud` claim. |
-| `Secret` | Symmetric key for HMAC algorithms (e.g., HS256) (auto-encrypted). |
-| `PublicKey`| RSA Public Key in PEM format for asymmetric algorithms (e.g., RS256). |
-| `Algorithm`| The expected signature algorithm (e.g., `"HS256"`). |
+| `Issuer` | Expected `iss` claim (optional) |
+| `Audience` | Expected `aud` claim (optional) |
+| `Secret` | Symmetric key for HMAC algorithms such as HS256 (encrypted at rest) |
+| `PublicKey`| RSA public key in PEM format for asymmetric algorithms such as RS256 |
+| `Algorithm`| Expected signature algorithm, e.g. `HS256` |
 
-### 5. HMAC
-Validates a request signature generated using a shared secret.
+### HMAC
+
+Request signature with a shared secret.
 
 | Property | Description |
 |----------|-------------|
 | `Type`| `HMAC` |
-| `Name` | The header name for the signature (default `"X-Signature"`). |
-| `Secret`| The shared secret used for hashing (auto-encrypted). |
+| `Name` | Signature header (default `X-Signature`) |
+| `Secret`| Shared secret (encrypted at rest) |
 
 :::info HMAC Implementation
-Portway's HMAC Implementation expects `X-Signature`and `X-Timestamp` headers. The signature is calculated as `HMACSHA256(Secret, Method + Path + Timestamp + Body)`.
+Requests send `X-Signature` and `X-Timestamp`. Signature: `HMACSHA256(Secret, Method + Path + Timestamp + Body)`.
 :::
 
 ## Automatic encryption
 
-When you save a `settings.json` file with plaintext secrets, Portway detects them on next startup and encrypts them using RSA/AES hybrid encryption.
-
-The following fields are automatically encrypted:
-- `Value`
-- `Secret`
-- `ClientSecret`
-
-Encrypted values are prefixed with `PWENC:` and are safe to store on disk.
+Plaintext `Value`, `Secret` and `ClientSecret` fields are encrypted at the next start with RSA/AES hybrid encryption and stored with the `PWENC:` prefix.
 
 ## Global token fallback
 
-By default (`OverrideGlobalToken: false`), Portway uses the following logic:
-1. Try environment-specific authentication.
-2. If it succeeds, authorize the request.
-3. If it fails, attempt to authorize using a standard Portway Bearer token.
-4. If both fail, return `401 Unauthorized`.
+With `OverrideGlobalToken: false`:
 
-If `OverrideGlobalToken` is set to `true`, only requests that satisfy the environment-specific rules are authorised; global tokens are rejected for that environment.
+1. Environment methods are checked; a match authorizes the request.
+2. Otherwise the Portway Bearer token is checked.
+3. Without either, the response is `401`.
+
+With `OverrideGlobalToken: true`, only the environment methods are accepted.
+
+Requests authorized by environment methods have no Portway token and are refused on endpoints with [tenant headers](/guide/security#tenant-headers).
 
 ## Security notes
 
-Use cryptographically strong keys for ApiKey and HMAC methods. Rotate credentials periodically. For OAuth2 provider integrations, prefer JWT for full signature validation. Authentication credentials sent via headers are only secure over HTTPS.
+Use random keys for ApiKey and HMAC and rotate them. JWT validates signatures for OAuth2 providers. Header credentials require HTTPS.
 
 ## Related topics
 

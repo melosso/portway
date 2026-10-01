@@ -54,7 +54,7 @@ Content-Type: application/json
 }
 ```
 
-The response sets the `B1SESSION` cookie. Subsequent calls carry it, alongside the Portway token:
+The response sets the `B1SESSION` cookie. Subsequent calls send it with the Portway token:
 
 ```http
 GET /api/prod/SapB1/ServiceLayer/Items?$filter=ItemsGroupCode eq 100&$top=20

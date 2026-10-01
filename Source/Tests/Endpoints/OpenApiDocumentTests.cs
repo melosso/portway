@@ -106,8 +106,8 @@ public class OpenApiDocumentTests : ApiTestBase
 
             var example = content.GetProperty("examples").EnumerateObject().First().Value;
 
-            Assert.True(example.TryGetProperty("serializedValue", out var serialized), $"{path} should carry serializedValue");
-            Assert.False(example.TryGetProperty("value", out _), $"{path} should not also carry a JSON value");
+            Assert.True(example.TryGetProperty("serializedValue", out var serialized), $"{path} should have serializedValue");
+            Assert.False(example.TryGetProperty("value", out _), $"{path} should not also have a JSON value");
             Assert.False(string.IsNullOrWhiteSpace(serialized.GetString()));
         }
     }

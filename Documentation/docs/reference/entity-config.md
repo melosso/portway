@@ -140,7 +140,7 @@ Table-Valued Functions allow you to expose parameterized, read-only endpoints th
 | `AllowedColumns`      | array   | Yes      | List of accessible columns (supports aliases)                                                |
 | `ResponseTransforms`  | object  | No       | `Remove`, `Rename` and `Mask` rules applied to query results after alias mapping             |
 | `Procedure`           | string  | No       | Stored procedure for data operations                                                         |
-| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for body-carried reads (RFC 10008), or `MERGE` as an alias of `PATCH` |
+| `AllowedMethods`      | array   | No       | HTTP methods (default: ["GET"]). You can also allow `QUERY` for reads with the query in the body (RFC 10008), or `MERGE` as an alias of `PATCH` |
 | `Deprecated`          | boolean | No       | Shows the endpoint's operations as deprecated in the OpenAPI documentation                    |
 | `Enabled`             | boolean | No       | Set to `false` to take the endpoint out of service; calls receive `503` (default: `true`)     |
 | `AllowedEnvironments` | array   | No       | Allowed environments (default: all)                                                          |
@@ -232,7 +232,7 @@ Portway tries the primary URL first. A connection failure, a timeout, or a 502, 
 
 ### With response transforms
 
-When an upstream response carries fields you would rather not expose, you can shape JSON responses declaratively instead of changing the upstream system:
+Response transforms remove, rename or mask upstream JSON fields without changes to the upstream system:
 
 ```json
 {
@@ -263,7 +263,7 @@ Rules apply to top level fields of JSON objects, to each element of JSON arrays,
 | `Deprecated` | boolean | No | Shows the endpoint's operations as deprecated in the OpenAPI documentation |
 | `AllowedEnvironments` | array | No | Allowed environments |
 | `CustomProperties` | object | No | Extended functionality settings |
-| `Tenancy` | object | No | Tenant header to the upstream header that carries the value. See [Tenant headers](/guide/security#tenant-headers) |
+| `Tenancy` | object | No | Tenant header to the upstream header set to the tenant value. See [Tenant headers](/guide/security#tenant-headers) |
 
 #### CustomProperties options
 

@@ -5,29 +5,29 @@ description: "Install Portway and make your first authenticated API call"
 
 # Getting Started
 
-Portway is an ASP.NET Core application. It runs as a Docker container, or on Windows Server behind IIS, and standalone on Kestrel works just as well. This guide covers the Docker and IIS paths through to a working endpoint.
+Portway is an ASP.NET Core application. It runs as a Docker container, on Windows Server behind IIS, or standalone on Kestrel. This guide covers Docker and IIS up to a first API call.
 
 ## Prerequisites
 
-**Docker:**
+### Docker
+
 - Docker Engine with Compose support
 
-Please note you may need additional configuration to mount your configuration to the container, the guide will set the basics up for you.
+### Windows Server / IIS
 
-**Windows Server / IIS:**
 - Windows Server (or Windows 11 for development)
 - [.NET 11 ASP.NET Core Hosting Bundle](https://get.dot.net/11)
 - Internet Information Services (IIS)
 
 :::warning
-Download the **Hosting Bundle**, not the x64 runtime installer. The Hosting Bundle includes the IIS integration module that the runtime package omits.
+Install the Hosting Bundle, not the x64 runtime. Only the Hosting Bundle includes the IIS integration module.
 :::
 
 ## Installation
 
 ### Docker Compose
 
-The quickest way to a running gateway is a small compose file:
+Minimal compose file:
 
 ```yaml
 services:
@@ -49,31 +49,34 @@ volumes:
   portway_app:
 ```
 
-Start the container:
+Start:
 
 ```sh
 docker compose pull && docker compose up -d
 ```
 
-Portway starts on port 8080. Adjust the port mapping and volume paths to suit your environment. For a full walkthrough with configuration options, see [Deploying with Docker](/guide/docker-compose).
+Portway listens on port 8080. Configuration options: [Deploying with Docker](/guide/docker-compose).
 
 ### Windows Server (IIS)
 
-Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/), install the .NET 11 ASP.NET Core Hosting Bundle, generate a machine-level `PORTWAY_ENCRYPTION_KEY`, then point an IIS site at the extracted folder using an application pool set to **No Managed Code**.
+1. Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
+2. Install the .NET 11 ASP.NET Core Hosting Bundle.
+3. Set a machine-level `PORTWAY_ENCRYPTION_KEY`.
+4. Create an IIS site for the extracted folder with an application pool set to **No Managed Code**.
 
-For the full walkthrough with the encryption key command, the application pool settings, NTLM pass-through and a backup routine, see [Deploying on Windows Server](/guide/deployment-windows).
+Key generation, application pool settings, NTLM pass-through and backups: [Deploying on Windows Server](/guide/deployment-windows).
 
 ## Initial configuration
 
 ### Retrieve your access token
 
-Portway greets you on first run by generating an access token and writing it to:
+The first start generates an access token and writes it to:
 
 ```
 tokens/YOUR_SERVER_NAME.txt
 ```
 
-The file contains your Bearer token:
+File contents:
 
 ```json
 {
@@ -87,12 +90,12 @@ The file contains your Bearer token:
 ```
 
 :::warning
-This file contains a plaintext secret. Remove it from disk immediately after recording the token. Unauthorized access to this file compromises your gateway.
+This file contains a plaintext token with full access. Delete it after recording the token.
 :::
 
 ### Configure environments
 
-Environments are how Portway keeps your targets separate (think `dev`, `test`, `prod`). Start by declaring which ones are active in `environments/settings.json`:
+Routable environments are listed in `environments/settings.json`:
 
 ```json
 {
@@ -103,7 +106,7 @@ Environments are how Portway keeps your targets separate (think `dev`, `test`, `
 }
 ```
 
-Then create a folder and `settings.json` for each environment:
+Each environment has a folder with its own `settings.json`:
 
 ```
 environments/
@@ -130,7 +133,7 @@ Example `environments/prod/settings.json`:
 
 ### Create your first endpoint
 
-With an environment in place, you're ready for the fun part. An endpoint is just a JSON file. Create `endpoints/SQL/Products/entity.json`:
+An endpoint is a JSON file, e.g. `endpoints/SQL/Products/entity.json`:
 
 ```json
 {
@@ -147,11 +150,11 @@ With an environment in place, you're ready for the fun part. An endpoint is just
 }
 ```
 
-Portway notices the new file and loads it without a restart. Saving the file is the deployment.
+New and changed endpoint files are loaded without a restart.
 
 ### Test your API
 
-Time to see it respond. Open the OpenAPI UI at `https://localhost/docs`, authorize with your Bearer token, and make your first call:
+The API reference at `https://localhost/docs` accepts the Bearer token for test calls:
 
 ```http
 GET /api/prod/Products
@@ -159,8 +162,6 @@ Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ## Next steps
-
-From here, a few natural directions:
 
 - [Configure SQL Endpoints](/guide/endpoints-sql)
 - [Set up Proxy Endpoints](/guide/endpoints-proxy)

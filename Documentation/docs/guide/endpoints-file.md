@@ -5,11 +5,11 @@ description: "Upload, download, and list files through authenticated API calls"
 
 # File Endpoints
 
-File endpoints expose a storage directory as a REST API, so your callers can upload files via multipart form POST, retrieve them by file ID, and list what's available per endpoint. File type restrictions, environment scoping, and the base directory all live in the endpoint configuration.
+File endpoints expose a storage directory as a REST API: multipart upload, download by file id, delete and list. Allowed extensions, environments and the base directory are set per endpoint.
 
 ## Configuration
 
-You define one with `endpoints/File/{EndpointName}/entity.json`:
+Each endpoint is defined in `endpoints/Files/{EndpointName}/entity.json`:
 
 ```json
 {
@@ -23,39 +23,46 @@ You define one with `endpoints/File/{EndpointName}/entity.json`:
 
 ### Configuration properties
 
-
-Every property this endpoint type accepts, with its type and default, is listed in [Entity configuration](/reference/entity-config#endpoint-files).
+All properties, types and defaults: [Entity configuration](/reference/entity-config#endpoint-files).
 
 ### Base directory placeholders
 
-`BaseDirectory` supports dynamic path segments:
-
-| Placeholder | Resolves to |
+| Placeholder | Value |
 |---|---|
 | `{env}` | Environment name |
 | `{year}` | Current year (`2025`) |
 | `{month}` | Current month (`01` to `12`) |
 | `{date}` | Current date (`2025-01-15`) |
+| `{Header}` | Request [tenant header](/guide/security#tenant-headers) value |
 
 ```json
 { "BaseDirectory": "backups/{env}/{year}/{month}" }
 ```
 
-Files are saved to paths like `files/prod/2025/01/database-backup.sql`. An absolute `BaseDirectory` (e.g. `/srv/exports/{env}`) saves files outside the storage directory. Downloads, deletes and listings are restricted to that directory.
+With the default `FileStorage:StorageDirectory` (`storage/files`), this saves files to `storage/files/prod/backups/prod/2025/01/`. An absolute `BaseDirectory` (e.g. `/srv/exports/{env}`) saves files outside the storage directory.
 
-Uploads are saved to disk before the response is sent. `FileStorage:UseMemoryCache` caches downloaded files in memory. The `isInMemoryOnly` listing field is always `false`.
-
-A `{Header}` placeholder is replaced with the request's [tenant header](/guide/security#tenant-headers) value. Tenant placeholders precede date placeholders:
+Downloads, deletes and listings are restricted to the `BaseDirectory` segments before the first date placeholder. Tenant placeholders precede date placeholders:
 
 ```json
 { "BaseDirectory": "invoices/{X-Company-Id}/{year}", "Tenancy": { "X-Company-Id": "" } }
 ```
 
-Downloads, deletes and listings are restricted to the `BaseDirectory` segments before the first date placeholder (`invoices/ACME` in the example). File ids are encrypted with `PORTWAY_ENCRYPTION_KEY`. A modified id returns `400`; an id outside the endpoint's directory returns `404`. Rotating the key invalidates issued ids.
+In this example, requests for tenant `ACME` are restricted to `invoices/ACME`.
+
+### Storage behavior
+
+| Aspect | Behavior |
+|---|---|
+| Upload | Saved to disk before the response is sent |
+| Existing name | `409` unless `overwrite=true` |
+| Memory cache | `FileStorage:UseMemoryCache` caches downloaded files; `isInMemoryOnly` in listings is always `false` |
+| File id | Encrypted with `PORTWAY_ENCRYPTION_KEY`; rotating the key invalidates issued ids |
+| Modified id | `400` |
+| Id outside the endpoint's directory | `404` |
 
 ## Namespaces
 
-File endpoints support namespaces. Place the endpoint under `endpoints/Files/{Namespace}/{Name}/entity.json` (or set `Namespace` in `entity.json`) and it is served at `/api/{env}/files/{Namespace}/{Name}/...`. All operations (upload, download, delete, list) resolve the namespace, and returned download URLs include it so they round-trip. Non-namespaced endpoints keep their existing `/api/{env}/files/{Name}` URLs. A few names are reserved and cannot be used, which [Namespaces](/reference/namespaces) covers along with the rest of the naming rules.
+An endpoint at `endpoints/Files/{Namespace}/{Name}/entity.json` (or with `Namespace` in `entity.json`) is served at `/api/{env}/files/{Namespace}/{Name}/...`. Upload, download, delete and list resolve the namespace, and returned URLs include it. Endpoints without a namespace use `/api/{env}/files/{Name}`. Reserved names and naming rules: [Namespaces](/reference/namespaces).
 
 ## API operations
 
@@ -103,7 +110,7 @@ Authorization: Bearer YOUR_TOKEN
 
 ### Download a file
 
-Use the `fileId` from the list response:
+The `fileId` comes from the upload or list response:
 
 ```http
 GET /api/{env}/files/{EndpointName}/{fileId}
@@ -118,12 +125,9 @@ curl -X GET "https://your-api/api/500/files/Documents/abc123fileId" \
 
 ## File type restrictions
 
-Specify which extensions callers can upload via `AllowedExtensions`. Any extension not listed is rejected.
+Only extensions in `AllowedExtensions` are accepted. The following extensions are always blocked: `.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`.
 
-Regardless of `AllowedExtensions`, the following types are always blocked:
-`.exe`, `.dll`, `.bat`, `.sh`, `.cmd`, `.msi`, `.vbs`
-
-The default maximum file size is **50MB**. This is configurable in system settings.
+The default maximum file size is 50MB (`FileStorage:MaxFileSizeBytes`).
 
 ## JavaScript integration
 
@@ -135,7 +139,7 @@ const listResponse = await fetch('/api/500/files/Documents/list', {
 const data = await listResponse.json();
 
 // Download a file by ID
-const fileId = data.files[0].fileId;
+const fileId = data.value[0].fileId;
 const fileResponse = await fetch(`/api/500/files/Documents/${fileId}`, {
   headers: { 'Authorization': 'Bearer ' + token }
 });
@@ -145,26 +149,25 @@ const blob = await fileResponse.blob();
 const url = window.URL.createObjectURL(blob);
 const a = document.createElement('a');
 a.href = url;
-a.download = data.files[0].fileName;
+a.download = data.value[0].fileName;
 a.click();
 window.URL.revokeObjectURL(url);
 ```
 
 :::info
-File endpoints require the `Authorization` header. Direct `<img src>` or `<embed src>` tags in HTML will not work unless authentication is handled via JavaScript.
+File endpoints require the `Authorization` header, so `<img src>` and `<embed src>` cannot load files directly.
 :::
 
 ## Troubleshooting
 
-**File list returns empty**: If `BaseDirectory` uses `{env}`, verify Portway created the correct path. A literal folder named `{env}` indicates the placeholder was not resolved. Move files to the correct path under the actual environment name.
+| Symptom | Resolution |
+|---|---|
+| Empty file list | A folder named `{env}` means the placeholder was not resolved; move the files to the folder named after the environment. |
+| "File size exceeds maximum" | Raise `FileStorage:MaxFileSizeBytes` or reduce the file size. |
+| "Extension not allowed" | Add the extension to `AllowedExtensions`. |
+| "File not found" on download | Use the `fileId` from a list response, the same environment, and a file that still exists. |
 
-**"File size exceeds maximum"**: The file exceeds the 50MB default. Either compress the file or increase the limit in system settings.
-
-**"Extension not allowed"**: Add the extension to `AllowedExtensions` in the endpoint config, or convert the file to an allowed format.
-
-**"File not found" on download**: Confirm you are using the `fileId` from a list response (not the filename), that you are requesting from the correct environment, and that the file has not been deleted.
-
-Files are stored at predictable paths: `files/{environment}/{baseDirectory}/{filename}`. Application logs at `log/portwayapi-[date].log` record upload and download events.
+Upload and download events are logged in `log/portwayapi-[date].log`.
 
 ## Next steps
 

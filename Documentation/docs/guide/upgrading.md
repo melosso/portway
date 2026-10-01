@@ -5,33 +5,32 @@ description: "Replace application files and restore configuration to move to a n
 
 # Upgrading Portway
 
-Upgrading Portway is usually a matter of replacing the binaries and letting it start back up, though a little preparation and a back-up go a long way. Releases may include application, configuration, and database changes, so it is recommended to read the [release notes](https://github.com/melosso/portway/releases/) first and to check that no breaking changes apply to your configuration.
+An upgrade replaces the application files and keeps configuration and databases. Releases can change the application, configuration and database schema.
+
+::: important Breaking changes
+Before `v1.0.0`, releases can include breaking changes. Read the release notes before every upgrade.
+:::
 
 ## Find your current version
 
-Your installed version is recorded in `.version.txt` in the deployment directory. Update this file after upgrading to keep version information current, this is useful when submitting bug reports.
+The installed version is recorded in `.version.txt` in the deployment directory. Update it after an upgrade; bug reports reference it.
 
 ## Steps
 
-**1. Read the release notes**
+### 1. Read the release notes
 
-Review the [GitHub release notes](https://github.com/melosso/portway/releases/) for migration steps, breaking changes, and new configuration requirements.
+The [GitHub release notes](https://github.com/melosso/portway/releases/) list breaking changes, migration steps and new configuration.
 
-::: important Beware before updating
-Since Portway has not reached a major version (e.g. `v1.0.0`) breaking changes will occur. Make sure to **read the release notes** before upgrading.
-:::
+### 2. Back up the installation
 
-**2. Back up your installation**
-
-Copy these files and directories to a safe location before making any changes:
-
-- `appsettings.json`
-- `auth.db`
+- `appsettings.json` and `appsettings.overrides.json`
+- `auth.db`, `mcp.db` and `portway.key`
 - `environments/`
 - `endpoints/`
 - `.core/`
+- The file storage directory (`FileStorage:StorageDirectory`, default `storage/files`)
 
-**3. Stop the application**
+### 3. Stop the application
 
 ::: code-group
 
@@ -45,29 +44,27 @@ docker compose down
 
 :::
 
-:::info
-Stopping the IIS Application Pool resets in-memory cache and rate limit state. This is expected behaviour.
-:::
+Stopping resets the in-memory cache and rate limit state.
 
-**4. Replace application files**
+### 4. Replace the application files
 
-Extract the new release over your existing directory, replacing application files. Do not overwrite your configuration files (`appsettings.json`, `environments/`, `endpoints/`).
+IIS: extract the release over the existing directory without overwriting `appsettings.json`, `environments/` and `endpoints/`.
 
-*Docker:*
+Docker:
+
 ```sh
 docker compose pull && docker compose up -d
 ```
 
-**5. Restore configuration**
+### 5. Apply configuration changes
 
-If the release notes require configuration changes (new fields, renamed settings), apply them to your `appsettings.json` and environment files now.
+Apply the configuration changes from the release notes to `appsettings.json` and the environment files.
 
-**6. Start and verify**
+### 6. Start and verify
 
-Start the application pool or container and confirm:
 - `GET /health/live` returns `Alive`
-- Endpoints respond as expected in your test environment
+- Endpoints respond in a test environment
 
 :::tip
-For major version upgrades, validate in a non-production environment before upgrading production.
+Validate major upgrades in a non-production environment first.
 :::

@@ -1,31 +1,27 @@
 ---
 title: Expanding Related Data
-description: "Declare a relationship once in entity.json and let readers pull related rows in a single request with OData $expand"
+description: "To-one relationships in entity.json, joined into SQL Table and View responses with OData $expand"
 ---
 
 # Expanding Related Data
 
-`$expand` lets a reader pull related rows alongside the main record in one request. You declare the relationship once in `entity.json`, and every client gets the joined data under the same authentication, the same environment gates and the same column allowlist as the rest of the endpoint. There is no per-endpoint code and no ORM: Portway turns the relationship into a SQL `JOIN` for you, on any supported dialect.
-
-This is the one join operations teams keep hand-rolling. Portway exposes it directly, and it says no, out loud, to the shapes it cannot serve safely yet.
+A relationship declared in `entity.json` makes the related row available through `$expand`. The relationship is executed as a SQL `JOIN` on every supported provider, with the endpoint's authentication, environment rules and column allowlists.
 
 ## When it applies
 
-`$expand` is handled by Portway only on **SQL Table and View** endpoints. Other endpoint types either cannot join or own the semantics themselves:
+Portway processes `$expand` on SQL Table and View endpoints only:
 
 | Endpoint type | `$expand` | Behaviour |
 |---|:---:|---|
 | SQL Table | ✅ | Portway emits the JOIN |
-| SQL View | ✅ | Same path as Table; a view is just a queryable object |
-| SQL TVF | ❌ | Returns `400`; a table-valued function cannot carry the JOIN |
-| Proxy / Composite | ➡️ | The query string passes through untouched; the upstream owns `$expand` |
+| SQL View | ✅ | Same as Table |
+| SQL TVF | ❌ | Returns `400`; a table-valued function call cannot include a JOIN |
+| Proxy / Composite | ➡️ | Forwarded unchanged to the upstream |
 | File / Static | n/a | Not SQL |
-
-For a Proxy endpoint, `?$expand=Lines` reaches the upstream service exactly as written. Portway never parses, validates or strips it, so an upstream that implements `$expand` natively keeps working.
 
 ## Declaring a relationship
 
-Add a `Relationships` array to the SQL endpoint's `entity.json`. Each entry names a navigation and points at another registered SQL endpoint by name (target-by-name), so the target's schema, table and `AllowedColumns` are reused rather than repeated:
+Each `Relationships` entry names a navigation and a target SQL endpoint; the target's schema, table and `AllowedColumns` apply:
 
 ```json
 {
@@ -53,23 +49,23 @@ Add a `Relationships` array to the SQL endpoint's `entity.json`. Each entry name
 
 | Field | Meaning |
 |---|---|
-| `Name` | The navigation name used in `$expand` and as the nested response key |
-| `Target` | The registered SQL endpoint the navigation points at (may be namespaced, for example `Product/Assortments`) |
-| `LocalColumn` | The foreign key column on this endpoint (the side that holds the key) |
-| `TargetColumn` | The matching column on the target, usually its primary key |
-| `Multiplicity` | `ToOne` (the default). To-many is not supported yet |
+| `Name` | Navigation name in `$expand` and the response |
+| `Target` | Target SQL endpoint, optionally namespaced (e.g. `Product/Assortments`) |
+| `LocalColumn` | Foreign key column on this endpoint |
+| `TargetColumn` | Matching column on the target, usually its primary key |
+| `Multiplicity` | `ToOne` (default); to-many is not supported |
 
-Every field is validated as a plain identifier when the endpoint loads. If `Target` does not resolve to a registered SQL endpoint, the endpoint summary logs a configuration error and the expand is refused at request time.
+Fields are validated as identifiers at load. An unresolved `Target` is logged as a configuration error and the expand returns `400`.
 
 ## Making a request
 
-Name the navigation in `$expand`:
+Request:
 
 ```http
 GET /api/prod/Products?$expand=Category&$filter=AssortmentID eq 10
 ```
 
-Portway joins `Assortments` to `Items` on `Assortment = AssortmentID` and returns each product with its category nested under the navigation name:
+`Assortments` is joined on `Assortment = AssortmentID` and nested under the navigation name:
 
 ```json
 {
@@ -83,18 +79,12 @@ Portway joins `Assortments` to `Items` on `Assortment = AssortmentID` and return
 }
 ```
 
-Only the target endpoint's `AllowedColumns` are joinable. A column that the target does not expose is never selectable through the expand, so an allowlist stays an allowlist across the join.
+Only the target's `AllowedColumns` are returned. Filters, selection, ordering and paging apply to the base entity, including filters on the foreign key.
 
-`$filter`, `$select`, `$orderby` and paging keep working on the base entity while you expand, including filters on the foreign key column itself.
-
-## Before you point a relationship at a table
-
-Three things about the join change what you get back. None of them raise an error, so they are worth checking once when you declare the relationship.
+## Join behavior
 
 ::: danger Your target column needs to be unique
-Nothing verifies that `TargetColumn` identifies a single row. If the column repeats in the target table, you get one copy of the base record per match, and those copies fill the page you asked for.
-
-The primary key is the safe choice. For any other column, this confirms it behaves like a key:
+`TargetColumn` is not checked for uniqueness. A repeated value returns one copy of the base record per match. Use the primary key, or check another column:
 
 ```sql [Verify your configuration:]
 SELECT TargetColumn, COUNT(*)
@@ -103,26 +93,25 @@ GROUP BY TargetColumn
 HAVING COUNT(*) > 1;
 ```
 
-The query returning rows means you are fine!
+Any returned row is a duplicate key value.
 :::
 
-A to-one navigation uses an `INNER JOIN`. Rows whose foreign key has no match in the target drop out, so the same request can return fewer records with `$expand` than without it.
+To-one navigations use an `INNER JOIN`; base rows without a match are omitted. The `$count` value counts base rows for the `$filter` without the join.
 
-`$count` reports the base entity total for your `$filter` and ignores the join, so it will not match the row count when a navigation duplicates or drops rows.
+## Limits
 
-## What it refuses, and why
-
-Portway states its limits rather than returning a wrong result:
-
-* **To-one only.** A navigation from the foreign key holder to a single related row. To-many is rejected when the endpoint loads.
-* **Table and View only.** `$expand` on a table-valued function returns `400`; the function call has no place to carry a JOIN.
-* **No nested options.** `$expand=Category($select=Name)` returns `400`. Expand the navigation whole for now.
-* **An allowlist is required.** The endpoint must declare `AllowedColumns` so its own columns survive the join. Without one, `$expand` returns `400`.
-* **Unknown navigations are rejected.** `$expand=Something` that is not a configured relationship returns `400` naming the navigation.
+| Request | Result |
+|---|---|
+| To-many relationship | Rejected at load |
+| Table-valued function endpoint | `400` |
+| Nested options, e.g. `$expand=Category($select=Name)` | `400` |
+| Endpoint without `AllowedColumns` | `400` |
+| Unknown navigation | `400`, naming the navigation |
+| Target endpoint with `Tenancy` | `400` |
 
 ## Related topics
 
-- [OData Syntax](/reference/odata): the query options shared by GET and QUERY
-- [HTTP Methods](/reference/http-methods): where `$expand` fits among the read verbs
-- [Entity Configuration](/reference/entity-config): the rest of `entity.json`
-- [SQL Endpoints Guide](/guide/endpoints-sql): endpoint types and write strategies
+- [OData Syntax](/reference/odata)
+- [HTTP Methods](/reference/http-methods)
+- [Entity Configuration](/reference/entity-config)
+- [SQL Endpoints](/guide/endpoints-sql)
