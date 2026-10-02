@@ -225,6 +225,52 @@ public sealed class TenancyEndpointTests : ApiTestBase, IDisposable
     }
 
     [Fact]
+    public async Task SqlResponseVariesByTenantHeader()
+    {
+        var response = await Send(HttpMethod.Get, Orders, "multi-token", "ACME");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("X-Company-Id", response.Headers.Vary);
+        Assert.Contains("Authorization", response.Headers.Vary);
+    }
+
+    [Fact]
+    public async Task ProxyResponseVariesByTenantHeaderAndUpstreamVary()
+    {
+        _upstream.ResponseHeaders["Vary"] = "Accept-Language";
+
+        var response = await Send(HttpMethod.Get, Ledger + "?vary=1", "acme-token");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("X-Company-Id", response.Headers.Vary);
+        Assert.Contains("Authorization", response.Headers.Vary);
+        Assert.Contains("Accept-Language", response.Headers.Vary);
+    }
+
+    [Fact]
+    public async Task ProxyResponseWithoutCacheControlIsPrivate()
+    {
+        var response = await Send(HttpMethod.Get, Ledger + "?default=1", "acme-token");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.Private);
+        Assert.False(response.Headers.CacheControl?.Public);
+    }
+
+    [Fact]
+    public async Task ProxyUpstreamPublicCacheControlBecomesPrivate()
+    {
+        _upstream.ResponseHeaders["Cache-Control"] = "public, max-age=60";
+
+        var response = await Send(HttpMethod.Get, Ledger + "?public=1", "acme-token");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.Private);
+        Assert.False(response.Headers.CacheControl?.Public);
+        Assert.Equal(TimeSpan.FromSeconds(60), response.Headers.CacheControl?.MaxAge);
+    }
+
+    [Fact]
     public async Task ProxyRefusesForeignTenant() =>
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Get, Ledger, "acme-token", "GLOBEX")).StatusCode);
 

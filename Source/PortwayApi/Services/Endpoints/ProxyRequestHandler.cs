@@ -675,8 +675,8 @@ public sealed class ProxyRequestHandler
         if (method.Equals("GET", StringComparison.OrdinalIgnoreCase) && !isSoapRequest && !responseHeaders.ContainsKey("Cache-Control"))
         {
             // Add a default cache control header
-            context.Response.Headers["Cache-Control"] = "public, max-age=300"; // 5 minutes
-            responseHeaders["Cache-Control"] = "public, max-age=300";
+            context.Response.Headers["Cache-Control"] = "private, max-age=300";
+            responseHeaders["Cache-Control"] = "private, max-age=300";
         }
 
         // Set status code

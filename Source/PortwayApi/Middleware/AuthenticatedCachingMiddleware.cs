@@ -1,11 +1,16 @@
-// Create a new class file named AuthenticatedCachingMiddleware.cs
 using Microsoft.AspNetCore.Http;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Net.Http.Headers;
 
 namespace PortwayApi.Middleware
 {
     public class AuthenticatedCachingMiddleware
     {
+        /// <summary>
+        /// HttpContext item holding request header names the response depends on, e.g. tenant headers
+        /// </summary>
+        public const string VaryHeadersItem = "Portway.VaryHeaders";
+
         private readonly RequestDelegate _next;
 
         public AuthenticatedCachingMiddleware(RequestDelegate next)
@@ -15,40 +20,66 @@ namespace PortwayApi.Middleware
 
         public async Task InvokeAsync(HttpContext context)
         {
-            // Check if the user is authenticated
             bool isAuthenticated = !string.IsNullOrEmpty(context.User?.Identity?.Name) ||
                                   context.Request.Headers.ContainsKey("Authorization");
 
             if (isAuthenticated)
             {
-                // Set the response cache header for authenticated users
-                context.Response.GetTypedHeaders().CacheControl =
-                    new Microsoft.Net.Http.Headers.CacheControlHeaderValue
-                    {
-                        Public = false,
-                        Private = true,
-                        MaxAge = TimeSpan.FromMinutes(10)
-                    };
+                context.Response.GetTypedHeaders().CacheControl = new CacheControlHeaderValue
+                {
+                    Private = true,
+                    MaxAge = TimeSpan.FromMinutes(10)
+                };
 
-                // Add Vary by Authorization to ensure different users get different cache entries
-                context.Response.Headers.Append("Vary", "Authorization");
+                // handlers replace these headers with upstream or cached values, so they are enforced when the response starts
+                context.Response.OnStarting(() =>
+                {
+                    EnforcePrivateCaching(context);
+                    return Task.CompletedTask;
+                });
             }
             else
             {
-                // For anonymous users, disable caching
-                context.Response.GetTypedHeaders().CacheControl =
-                    new Microsoft.Net.Http.Headers.CacheControlHeaderValue
-                    {
-                        NoStore = true,
-                        NoCache = true
-                    };
+                context.Response.GetTypedHeaders().CacheControl = new CacheControlHeaderValue
+                {
+                    NoStore = true,
+                    NoCache = true
+                };
             }
 
             await _next(context);
         }
+
+        private static void EnforcePrivateCaching(HttpContext context)
+        {
+            var headers = context.Response.GetTypedHeaders();
+            if (headers.CacheControl is { Public: true } cacheControl)
+            {
+                cacheControl.Public = false;
+                cacheControl.Private = true;
+                headers.CacheControl = cacheControl;
+            }
+
+            var vary = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var ordered = new List<string>();
+            void Add(string name)
+            {
+                if (vary.Add(name))
+                    ordered.Add(name);
+            }
+
+            foreach (var value in context.Response.Headers.Vary)
+                foreach (var name in (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                    Add(name);
+            Add("Authorization");
+            if (context.Items[VaryHeadersItem] is IEnumerable<string> extra)
+                foreach (var name in extra)
+                    Add(name);
+
+            context.Response.Headers.Vary = new StringValues(string.Join(", ", ordered));
+        }
     }
 
-    // Extension method
     public static class AuthenticatedCachingMiddlewareExtensions
     {
         public static IApplicationBuilder UseAuthenticatedCaching(this IApplicationBuilder builder)

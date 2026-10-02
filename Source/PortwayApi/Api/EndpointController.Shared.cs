@@ -292,6 +292,8 @@ public partial class EndpointController
     /// </summary>
     private TenantResolution ResolveTenants(EndpointDefinition endpoint, out IActionResult? refusal)
     {
+        if (endpoint.HasTenancy)
+            HttpContext.Items[PortwayApi.Middleware.AuthenticatedCachingMiddleware.VaryHeadersItem] = endpoint.Tenancy!.Keys;
         var resolution = TenantResolver.Resolve(HttpContext.Features.Get<PortwayApi.Auth.AuthToken>(), endpoint, Request.Headers);
         refusal = resolution.Succeeded
             ? null
