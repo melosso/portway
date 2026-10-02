@@ -60,6 +60,7 @@ endpoints/
 | `Relationships` | array | | To-one navigations for [`$expand`](/reference/expand) |
 | `FunctionParameters` | array | | Table-valued function parameters |
 | `ResponseTransforms` | object | | `Remove`, `Rename` and `Mask` rules on result fields |
+| `Properties` | object | | `MaxPageSize` (upper limit for `$top`), `DefaultSort` (`$orderby` when none is given), `CacheEnabled` (`false` bypasses the response cache) |
 
 Writes, validation and table-valued functions: [SQL Endpoints](/guide/endpoints-sql).
 

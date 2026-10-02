@@ -10,22 +10,23 @@
     "Name",
     "City",
     "Country",
-    "Region",
     "CapacityM2",
     "IsActive"
   ],
+  "Tenancy": {
+    "X-Country": "Country"
+  },
   "Properties": {
-    "CacheEnabled": false,
     "MaxPageSize": 50,
     "DefaultSort": "Code ASC"
   },
   "Documentation": {
     "TagDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
     "MethodDescriptions": {
-      "GET": "Retrieve warehouse locations"
+      "GET": "Retrieve warehouses of the selected country"
     },
     "MethodDocumentation": {
-      "GET": "Browse warehouse location reference data stored in a local SQLite database (`demo.db`). Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip`."
+      "GET": "Tenant header demo. Rows are restricted to the `X-Country` value selected from the token's allowed tenants (e.g. `NL`, `DE`, `US`). A token without `X-Country` tenants receives `403`. Tenants are set per token in the console under **Access Tokens**."
     }
   },
   "Mcp": {

@@ -34,15 +34,18 @@ files=(
     "config/environments/WMS/settings.json"
     "config/environments/network-access-policy.json"
     "config/endpoints/Proxy/Accounts/entity.json"
+    "config/endpoints/Proxy/Company/entity.json"
     "config/endpoints/Proxy/Products/entity.json"
     "config/endpoints/Proxy/Production/entity.json"
     "config/endpoints/SQL/WMS/Warehouses/entity.json"
+    "config/endpoints/SQL/WMS/CountryWarehouses/entity.json"
     "data/demo.db"
     "data/auth.db"
 )
 
 for file in "${files[@]}"; do
     echo "Downloading $file..."
+    mkdir -p "$(dirname "$file")"
     curl -sSL "$REPO_RAW_URL/$file" -o "$file"
 done
 
