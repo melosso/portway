@@ -5,7 +5,7 @@
 # overwriting custom settings like docker-compose.yml or nginx.conf.
 #
 # Recommended cron entry (runs every 12 hours):
-# 0 */12 * * * /home/docker/portway-demo/reset-demo.sh > /home/docker/portway-demo/reset.log 2>&1
+# 0 */12 * * * /opt/portway-demo/reset-demo.sh > /opt/portway-demo/reset.log 2>&1
 
 TARGET_DIR="portway-demo"
 REPO_RAW_URL="https://raw.githubusercontent.com/melosso/portway/main/.github/demo"
