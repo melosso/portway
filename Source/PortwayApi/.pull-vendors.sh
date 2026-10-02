@@ -16,7 +16,7 @@ fetch() {
     curl -fsSL "$url" -o "$dest"
 }
 
-SCALAR_VERSION="1.72.1"
+SCALAR_VERSION="1.72.4"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -36,7 +36,7 @@ actual = base64.b64encode(hashlib.sha512(open(sys.argv[1], "rb").read()).digest(
 if actual != expected:
     sys.exit("tarball does not match the registry integrity, refusing")
 PY
-    tar -xzf "$TMP_DIR/package.tgz" -C "$TMP_DIR" "package/$path"
+    tar -xzmf "$TMP_DIR/package.tgz" -C "$TMP_DIR" "package/$path"
     mv "$TMP_DIR/package/$path" "$dest"
     rm -rf "$TMP_DIR/package" "$TMP_DIR/package.tgz"
 }
