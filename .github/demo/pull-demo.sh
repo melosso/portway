@@ -1,25 +1,22 @@
 #!/bin/bash
 
 # Portway Demo Pull Script
-# Run this on your remote server to download the demo configuration.
+# Run this from the demo folder on your server; files are written to the current directory.
 
 REPO_RAW_URL="https://raw.githubusercontent.com/melosso/portway/main/.github/demo"
-TARGET_DIR="portway-demo"
 
-echo "Creating directory structure in $TARGET_DIR..."
-mkdir -p "$TARGET_DIR/config/environments/WMS"
-mkdir -p "$TARGET_DIR/config/endpoints/Proxy/Accounts"
-mkdir -p "$TARGET_DIR/config/endpoints/Proxy/Company"
-mkdir -p "$TARGET_DIR/config/endpoints/Proxy/Products"
-mkdir -p "$TARGET_DIR/config/endpoints/Proxy/Production"
-mkdir -p "$TARGET_DIR/config/endpoints/SQL/WMS/Warehouses"
-mkdir -p "$TARGET_DIR/config/endpoints/SQL/WMS/CountryWarehouses"
-mkdir -p "$TARGET_DIR/tokens"
-mkdir -p "$TARGET_DIR/log"
-mkdir -p "$TARGET_DIR/data"
-mkdir -p "$TARGET_DIR/keys"
-
-cd "$TARGET_DIR" || exit
+echo "Creating directory structure in $(pwd)..."
+mkdir -p "config/environments/WMS"
+mkdir -p "config/endpoints/Proxy/Accounts"
+mkdir -p "config/endpoints/Proxy/Company"
+mkdir -p "config/endpoints/Proxy/Products"
+mkdir -p "config/endpoints/Proxy/Production"
+mkdir -p "config/endpoints/SQL/WMS/Warehouses"
+mkdir -p "config/endpoints/SQL/WMS/CountryWarehouses"
+mkdir -p "tokens"
+mkdir -p "log"
+mkdir -p "data"
+mkdir -p "keys"
 
 # List of files to download
 files=(
@@ -35,6 +32,7 @@ files=(
     "config/endpoints/SQL/WMS/Warehouses/entity.json"
     "config/endpoints/SQL/WMS/CountryWarehouses/entity.json"
     "data/demo.db"
+    "data/auth.db"
 )
 
 for file in "${files[@]}"; do
