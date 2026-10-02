@@ -5,12 +5,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for the $expand read-path gates and proxy passthrough
+/// $expand read-path gates and proxy passthrough on demo endpoints without relationships
 /// </summary>
-/// <remarks>
-/// Uses demo endpoints: WMS/Warehouses (SQL Table, no relationships), Company/Departments (TVF),
-/// Account/Accounts (Proxy). None declares a relationship, so any $expand on the SQL table is unknown.
-/// </remarks>
 public class ExpandEndpointTests : ApiTestBase
 {
     public ExpandEndpointTests()
@@ -45,8 +41,7 @@ public class ExpandEndpointTests : ApiTestBase
     [Fact]
     public async Task Proxy_Expand_PassesThrough_NotBadRequest()
     {
-        // Portway must never parse or reject $expand on a proxy; the upstream owns it.
-        // The demo upstream is unreachable, so a bad gateway or timeout is fine, a 400 is not
+        // Proxy $expand belongs to the upstream; anything but 400 passes
         var response = await _client.GetAsync("/api/500/Account/Accounts?$expand=Lines", TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);

@@ -5,13 +5,8 @@ using Microsoft.Extensions.Hosting;
 using Serilog;
 
 /// <summary>
-/// Background service that proactively refreshes the health cache on a fixed interval
+/// Refreshes the health cache on an interval and broadcasts it to SSE clients
 /// </summary>
-/// <remarks>
-/// This ensures /health always returns immediately from cache rather than blocking
-/// on SQL and proxy connectivity checks
-/// After each refresh the result is broadcast to all connected SSE clients
-/// </remarks>
 public class HealthRefreshService : BackgroundService
 {
     private readonly HealthCheckService _healthService;
@@ -33,8 +28,7 @@ public class HealthRefreshService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // Defer the first check until the HTTP server is ready so that SQL/proxy
-        // connectivity errors don't clutter logs during the service startup phase
+        // Wait for the server to start before the first check
         await WaitForApplicationStartedAsync(stoppingToken);
 
         if (stoppingToken.IsCancellationRequested)

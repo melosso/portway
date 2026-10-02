@@ -106,17 +106,17 @@ public class EndpointDefinition
     public string? Namespace { get; set; }
 
     /// <summary>
-    /// Display name for this specific endpoint (e.g., "Account Management") Used in OpenAPI documentation and UI displays
+    /// Label for this endpoint (e.g., "Account Management") Shown as its tag title and in operation summaries, never part of a route or tag name
     /// </summary>
     public string? DisplayName { get; set; }
 
     /// <summary>
-    /// Display name for the namespace (e.g., "Customer Relationship Management") Used as documentation tag description and documentation grouping
+    /// Label for the namespace (e.g., "Customer Relationship Management") Shown as the namespace group title in the OpenAPI document, never part of a route or tag name
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
 
     /// <summary>
-    /// Folder name where the endpoint definition is located (for backward compatibility) Used as fallback for DocumentationTag when DisplayName is not specified
+    /// Folder name where the endpoint definition is located
     /// </summary>
     public string? FolderName { get; set; }
 
@@ -154,28 +154,9 @@ public class EndpointDefinition
     public string FullPath => HasNamespace ? $"{EffectiveNamespace}/{EndpointName}" : EndpointName;
 
     /// <summary>
-    /// Gets the display path for documentation and UI
+    /// OpenAPI tag name, the route path so namespaced endpoints nest under their namespace
     /// </summary>
-    public string DisplayPath => HasNamespace && !string.IsNullOrEmpty(DisplayName)
-        ? $"{NamespaceDisplayName ?? EffectiveNamespace} - {DisplayName}"
-        : DisplayName ?? EndpointName;
-
-    /// <summary>
-    /// Gets the appropriate documentation tag name for OpenAPI grouping
-    /// </summary>
-    public string DocumentationTag
-    {
-        get
-        {
-            var result = !string.IsNullOrEmpty(Namespace) ? (NamespaceDisplayName ?? Namespace)
-                       : HasNamespace ? (NamespaceDisplayName ?? EffectiveNamespace!)
-                       : (DisplayName ?? FolderName ?? EndpointName);
-
-            System.Diagnostics.Debug.WriteLine($"DocumentationTag Debug - Namespace: '{Namespace}', InferredNamespace: '{InferredNamespace}', EffectiveNamespace: '{EffectiveNamespace}', Result: '{result}'");
-
-            return result;
-        }
-    }
+    public string DocumentationTag => FullPath;
 
     /// <summary>
     /// Creates URL patterns for routing (supports both namespaced and non-namespaced)

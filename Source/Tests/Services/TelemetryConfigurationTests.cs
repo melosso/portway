@@ -6,13 +6,8 @@ using Xunit;
 namespace PortwayApi.Tests.Services;
 
 /// <summary>
-/// Tests for telemetry configuration binding and service registration
+/// Telemetry binding and registration, disabled and enabled, using the WMS environment
 /// </summary>
-/// <remarks>
-/// Uses the demo environment (WMS) as a reference configuration
-/// Telemetry is opt-in (Enabled: false by default), so these tests verify
-/// both the disabled fast-path and the enabled registration path
-/// </remarks>
 public class TelemetryConfigurationTests
 {
     // Option binding
@@ -42,9 +37,7 @@ public class TelemetryConfigurationTests
         Assert.Equal("http://otel-collector.internal:4317", options.EffectiveOtlpEndpoint);
     }
 
-    // Legacy config compatibility
-    // Pre-Provider configs used a flat Enabled switch and OtlpEndpoint key;
-    // both keep working so an upgrade does not silently drop telemetry
+    // Legacy flat Enabled and OtlpEndpoint keys still work
 
     [Fact]
     public void TelemetryOptions_LegacyEnabled_MapsToOtlpProvider()
@@ -186,9 +179,7 @@ public class TelemetryConfigurationTests
         a!.Dispose();
     }
 
-    // Span name constants (breaking-change guard)
-    // Span names are part of the telemetry API surface. Renaming them silently
-    // would break any dashboards or alerts that downstream teams have built
+    // Span names are public API, renames break dashboards
 
     [Fact]
     public void OperationNames_SqlExecute_IsStable()

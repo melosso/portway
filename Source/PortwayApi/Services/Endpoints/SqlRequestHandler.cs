@@ -78,8 +78,7 @@ public sealed partial class SqlRequestHandler
 
         try
         {
-            // Check if this is a SQL endpoint - if not, return 404
-            // Step 1: Validate environment
+            // Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -356,8 +355,7 @@ public sealed partial class SqlRequestHandler
                 return PortwayResults.BadRequest("Invalid OData query. Check $filter, $select, $orderby and $expand syntax.");
             }
 
-            // Step 8: Check cache first if enabled
-            // $count=true adds the unpaged total matching the filter to the response
+            // $count=true adds the unpaged total
             bool countRequested = string.Equals(context.Request.Query["$count"].FirstOrDefault(), "true", StringComparison.OrdinalIgnoreCase);
             object? cachedResponse = null;
             string? cacheKey = null;
@@ -516,7 +514,6 @@ public sealed partial class SqlRequestHandler
 
         try
         {
-            // Check if this is a SQL endpoint
             // Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
@@ -634,8 +631,7 @@ public sealed partial class SqlRequestHandler
 
         try
         {
-            // Check if this is a SQL endpoint - if not, return 404
-            // Step 1: Validate environment
+            // Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -760,8 +756,7 @@ public sealed partial class SqlRequestHandler
 
         try
         {
-            // Step 1: Check if this is a SQL endpoint
-            // Step 2: Validate environment
+            // Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -887,7 +882,6 @@ public sealed partial class SqlRequestHandler
 
         try
         {
-            // Check if this is a SQL endpoint - if not, return 404
             // Validate environment
             var (connectionString, serverName, _) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
             if (string.IsNullOrEmpty(connectionString))
@@ -1118,9 +1112,7 @@ public sealed partial class SqlRequestHandler
             }
         }
 
-        // Fall back to global cache setting; CacheManager.GetAsync already guards
-        // against the global Enabled=false case, so returning true here means
-        // "defer to the global setting" rather than hard-disabling per endpoint
+        // Defer to the global setting, CacheManager enforces Enabled=false
         return true;
     }
 

@@ -106,7 +106,7 @@ public partial class DynamicEndpointDocumentFilter
         };
     }
 
-    private void AddProxyEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddProxyEndpoints(OpenApiDocument document, ref int operationIdCounter)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
 
@@ -125,11 +125,7 @@ public partial class DynamicEndpointDocumentFilter
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
-                !documentTags.ContainsKey(definition.DocumentationTag))
-            {
-                documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
-            }
+            OpenApiTags.Declare(document, definition);
 
             string path = OpenApiEndpointCatalog.BasePath(definition);
 

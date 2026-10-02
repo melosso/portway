@@ -56,8 +56,7 @@ public class HealthCheckService
             return _cachedReport!;
         }
 
-        // Non-blocking try: if a background refresh is already holding the lock, return the
-        // stale cache immediately so the caller (and the UI) is never blocked
+        // Return the stale cache while a refresh holds the lock
         if (!await _lock.WaitAsync(0, cancellationToken))
         {
             return _cachedReport ?? CreateCheckingReport();

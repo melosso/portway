@@ -1,6 +1,4 @@
-// Shared utilities; included by every protected UI page.
-// sidebar.js handles: renderSidebar(), logout(), sidebarVersion fetch.
-// Toast functionality moved to /js/components/toast.js
+// Shared utilities for every console page
 
 // CSRF: echo the portway_csrf cookie on every mutating /ui/api request (double-submit pattern)
 (function () {
@@ -39,10 +37,6 @@ function esc(s) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-// Toast - moved to /js/components/toast.js
-// Include <script src="/js/components/toast.js"></script> in your page
-// Requires: <div class="toast-container" id="toastContainer"></div>
 
 async function api(url, options = {}) {
     const { method = 'GET', body, success, failure = 'Something went wrong.', silent = false } = options;
@@ -84,9 +78,7 @@ function togglePasswordVis(inputId, btn) {
     btn.style.color = showing ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))';
 }
 
-// Animate a numeric counter from its current displayed value to a target.
-// If target contains a non-numeric suffix (e.g. "3 (+1)"), the number is
-// animated and the suffix appended when the animation completes.
+// Animates a counter to its target; a non-numeric suffix is appended at the end
 function animateCounter(el, target, duration) {
     duration = duration || 380;
     var targetStr = String(target);
@@ -127,8 +119,7 @@ function animateCounter(el, target, duration) {
     );
 })();
 
-// Capture unhandled client-side errors and report them to the server log.
-// Errors are rate-limited to avoid flooding.
+// Reports unhandled client errors to the server log, rate limited
 (function () {
     var _reported = 0,
         _maxReports = 10;
@@ -158,8 +149,7 @@ function animateCounter(el, target, duration) {
     });
 })();
 
-// Auto-prepend PortwayBase to all absolute fetch paths so the UI works
-// correctly when the app is hosted under a sub-path (PathBase) like /v1.
+// Prefix absolute fetch paths with PortwayBase for sub-path hosting
 (function () {
     var _fetch = window.fetch;
     window.fetch = function (url, options) {

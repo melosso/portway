@@ -8,9 +8,7 @@ public static class McpChatEndpoints
 {
     public static IEndpointRouteBuilder MapMcpChatEndpoints(this IEndpointRouteBuilder app)
     {
-        // List available MCP tools as JSON (used by chat.html and explorer.html on load)
-        // missingMetadata: tool keys whose SQL field metadata could not be resolved; used by the UI
-        // to surface a health warning without additional server-side log flooding
+        // MCP tools as JSON, with missingMetadata listing tools without SQL field metadata
         app.MapGet("/ui/api/mcp/tools", (McpChatService chat) =>
         {
             var tools = chat.GetToolDefinitions();
@@ -59,9 +57,7 @@ public static class McpChatEndpoints
             }
             history.Add(new Services.Mcp.ChatMessage("user", message));
 
-            // Resolve base URL for internal tool calls
-            // Use localhost bound to the server's actual port rather than the untrusted Host header
-            // to prevent Host-header injection from redirecting tool calls to an arbitrary host (SSRF)
+            // Loopback on the bound port, never the Host header, to prevent SSRF
             var req = context.Request;
             var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
             var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
@@ -85,8 +81,7 @@ public static class McpChatEndpoints
             await chat.StreamAsync(history, environment, writer, baseUrl, bearerToken, locale, context.RequestAborted);
         }).ExcludeFromDescription();
 
-        // MCP health; exposes operational status without requiring full tool enumeration
-        // Used by ops dashboards and monitoring tools to verify MCP is healthy
+        // MCP health without enumerating tools
         app.MapGet("/ui/api/mcp/health", (McpChatService chat) =>
         {
             var tools = chat.GetToolDefinitions();

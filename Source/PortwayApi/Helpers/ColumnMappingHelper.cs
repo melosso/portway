@@ -9,10 +9,8 @@ namespace PortwayApi.Helpers;
 public static class ColumnMappingHelper
 {
     /// <summary>
-    /// Parses semicolon-separated column mappings and returns dictionaries for both directions Format: "DatabaseColumn;Alias" or just "DatabaseColumn" (falls back to same name)
+    /// Parses "DatabaseColumn;Alias" mappings into alias and database lookups
     /// </summary>
-    /// <param name="allowedColumns">List of column definitions with optional semicolon aliases</param>
-    /// <returns>Tuple with (AliasToDatabase, DatabaseToAlias) dictionaries</returns>
     public static (Dictionary<string, string> AliasToDatabase, Dictionary<string, string> DatabaseToAlias)
         ParseColumnMappings(List<string>? allowedColumns)
     {
@@ -96,11 +94,8 @@ public static class ColumnMappingHelper
     }
 
     /// <summary>
-    /// Converts alias column names to database column names for SQL queries
+    /// Converts alias column names to database column names
     /// </summary>
-    /// <param name="aliasColumns">Comma-separated list of alias column names</param>
-    /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
-    /// <returns>Comma-separated list of database column names</returns>
     public static string ConvertAliasesToDatabaseColumns(string? aliasColumns, Dictionary<string, string> aliasToDatabase)
     {
         if (string.IsNullOrWhiteSpace(aliasColumns) || aliasToDatabase.Count == 0)
@@ -135,9 +130,6 @@ public static class ColumnMappingHelper
     /// <summary>
     /// Validates that all requested alias columns are allowed
     /// </summary>
-    /// <param name="requestedAliases">Comma-separated list of requested alias column names</param>
-    /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
-    /// <returns>Tuple with (IsValid, InvalidAliases)</returns>
     public static (bool IsValid, List<string> InvalidAliases) ValidateAliasColumns(
         string? requestedAliases,
         Dictionary<string, string> aliasToDatabase)
@@ -175,19 +167,14 @@ public static class ColumnMappingHelper
     /// <summary>
     /// Gets all database column names
     /// </summary>
-    /// <param name="databaseToAlias">Mapping from database to alias column names</param>
-    /// <returns>List of all database column names</returns>
     public static List<string> GetDatabaseColumns(Dictionary<string, string> databaseToAlias)
     {
         return databaseToAlias.Keys.ToList();
     }
 
     /// <summary>
-    /// Converts alias column references in OData filter expressions to database column names
+    /// Converts alias columns in a $filter expression to database columns
     /// </summary>
-    /// <param name="filterExpression">OData filter expression that may contain alias column names</param>
-    /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
-    /// <returns>Filter expression with database column names</returns>
     public static string ConvertODataFilterAliases(string filterExpression, Dictionary<string, string> aliasToDatabase)
     {
         if (string.IsNullOrWhiteSpace(filterExpression) || aliasToDatabase.Count == 0)
@@ -204,8 +191,7 @@ public static class ColumnMappingHelper
         {
             if (aliasToDatabase.TryGetValue(alias, out var databaseColumn))
             {
-                // Use word boundary regex to avoid partial matches
-                // This will match the alias when it's a separate word (not part of another word)
+                // Word boundaries avoid partial matches
                 var pattern = $@"\b{Regex.Escape(alias)}\b";
                 convertedFilter = Regex.Replace(convertedFilter, pattern, databaseColumn, RegexOptions.IgnoreCase);
             }
@@ -215,11 +201,8 @@ public static class ColumnMappingHelper
     }
 
     /// <summary>
-    /// Converts alias column references in OData orderby expressions to database column names
+    /// Converts alias columns in an $orderby expression to database columns
     /// </summary>
-    /// <param name="orderByExpression">OData orderby expression that may contain alias column names</param>
-    /// <param name="aliasToDatabase">Mapping from alias to database column names</param>
-    /// <returns>OrderBy expression with database column names</returns>
     public static string ConvertODataOrderByAliases(string orderByExpression, Dictionary<string, string> aliasToDatabase)
     {
         if (string.IsNullOrWhiteSpace(orderByExpression) || aliasToDatabase.Count == 0)
@@ -236,8 +219,7 @@ public static class ColumnMappingHelper
         {
             if (aliasToDatabase.TryGetValue(alias, out var databaseColumn))
             {
-                // Use word boundary regex to avoid partial matches
-                // This will match the alias when it's a separate word (not part of another word)
+                // Word boundaries avoid partial matches
                 var pattern = $@"\b{Regex.Escape(alias)}\b";
                 convertedOrderBy = Regex.Replace(convertedOrderBy, pattern, databaseColumn, RegexOptions.IgnoreCase);
             }
@@ -247,11 +229,8 @@ public static class ColumnMappingHelper
     }
 
     /// <summary>
-    /// Transforms query results by converting database column names to aliases in the response
+    /// Renames database columns to aliases in query results
     /// </summary>
-    /// <param name="results">Raw query results with database column names</param>
-    /// <param name="databaseToAlias">Mapping from database to alias column names</param>
-    /// <returns>Transformed results with alias column names</returns>
     public static List<Dictionary<string, object>> TransformQueryResultsToAliases(
         IEnumerable<object> results,
         Dictionary<string, string> databaseToAlias)
@@ -296,10 +275,8 @@ public static class ColumnMappingHelper
     }
 
     /// <summary>
-    /// Converts an object to a dictionary representation
+    /// Converts a Dapper result to a dictionary
     /// </summary>
-    /// <param name="obj">Object to convert (typically a Dapper result)</param>
-    /// <returns>Dictionary representation of the object</returns>
     private static Dictionary<string, object> ConvertToDictionary(object obj)
     {
         if (obj == null)

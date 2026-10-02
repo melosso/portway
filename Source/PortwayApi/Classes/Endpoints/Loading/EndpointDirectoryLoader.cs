@@ -80,7 +80,7 @@ internal static class EndpointDirectoryLoader
         // Inferred namespace is a fallback; entity.json Namespace takes precedence
         definition.InferredNamespace = inferredNamespace;
 
-        // Folder name kept for backward compatibility with DocumentationTag logic
+        // the folder name is the endpoint name
         definition.FolderName = endpointName;
 
         if (string.IsNullOrWhiteSpace(endpointName))

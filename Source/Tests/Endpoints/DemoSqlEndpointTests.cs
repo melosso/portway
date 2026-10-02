@@ -10,17 +10,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for the demo SQL endpoint: WMS/Warehouses
+/// Demo SQL endpoint WMS/Warehouses (endpoints/SQL/WMS/Warehouses/entity.json)
 /// </summary>
-/// <remarks>
-/// Config: endpoints/SQL/WMS/Warehouses/entity.json
-/// - DatabaseObjectName: Warehouses
-/// - AllowedEnvironments: ["WMS"]
-/// - AllowedMethods: ["GET"]
-/// - AllowedColumns: Id, Code, Name, City, Country, Region, CapacityM2, IsActive (no aliases)
-/// - Properties.MaxPageSize: 50
-/// - Properties.DefaultSort: "Code ASC"
-/// </remarks>
 public class DemoSqlEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "WMS";

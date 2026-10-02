@@ -5,12 +5,8 @@ using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
-/// Singleton reading/writing encrypted MCP chat config (<c>mcp.db</c>).
+/// Encrypted MCP chat config in mcp.db, cached until SaveConfigAsync
 /// </summary>
-/// <remarks>
-/// Encrypts sensitive keys via <see cref="SettingsEncryptionHelper"/>.
-/// Uses an in-memory cache, invalidated on <see cref="SaveConfigAsync"/>.
-/// </remarks>
 public sealed class McpConfigService
 {
     // Environment variable that overrides the DB api key; checked first

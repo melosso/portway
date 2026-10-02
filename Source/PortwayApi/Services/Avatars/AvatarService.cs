@@ -6,8 +6,7 @@ using DiceBear;
 using Serilog;
 
 /// <summary>
-/// Identicons for console accounts. The username is the seed, so an account looks the
-/// same everywhere and nothing has to be stored against it.
+/// Identicons seeded by username, nothing stored
 /// </summary>
 public sealed class AvatarService
 {

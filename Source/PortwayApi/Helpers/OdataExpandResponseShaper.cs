@@ -1,8 +1,8 @@
 namespace PortwayApi.Helpers;
 
-/// <summary>Nests the flat dotted keys an $expand JOIN produces (Nav.Column) into a Nav object per row.
-/// Nested columns are mapped to the target endpoint's aliases, so an expanded entity reads the same as
-/// it would from its own endpoint. Root keys pass through untouched</summary>
+/// <summary>
+/// Nests dotted $expand columns into a navigation object using the target's aliases
+/// </summary>
 public static class OdataExpandResponseShaper
 {
     public static List<Dictionary<string, object>> Nest(

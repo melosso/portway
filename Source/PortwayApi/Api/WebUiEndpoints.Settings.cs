@@ -47,17 +47,9 @@ public static partial class WebUiEndpointExtensions
             var knownProxies = config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
             var knownNetworks = config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
             var trustedProxyCount = knownProxies.Length + knownNetworks.Length;
-
-            // What the console gate actually compared for this request, so the page can say whether
-            // the deployment is reporting real client addresses or the reverse proxy's own
             var peerIp = ctx.Connection.RemoteIpAddress;
             var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy = !string.IsNullOrEmpty(forwardedFor);
-            var inContainer = string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
-            var useHttpsEnv = EnvAliases.GetDirect("PORTWAY_USE_HTTPS");
-            var httpsOn = inContainer
-                ? string.Equals(useHttpsEnv, "true", StringComparison.OrdinalIgnoreCase)
-                : !string.Equals(useHttpsEnv, "false", StringComparison.OrdinalIgnoreCase);
 
             return Results.Json(new
             {
@@ -78,9 +70,9 @@ public static partial class WebUiEndpointExtensions
                 {
                     webui_auth_enabled = WebUiAuthState.Enabled,
                     admin_accounts = accountCount,
-                    // The key only ever seeds the first account now; left in place it is a secret with no job
+                    // seeding key has no use after the first account
                     legacy_admin_key = !string.IsNullOrEmpty(adminKey),
-                    https_enabled = httpsOn,
+                    https_enabled = ctx.Request.IsHttps,
                     secure_cookies = config.GetValue<bool>("WebUi:SecureCookies", false),
                     cors_origins_count = corsOriginsCount,
                     public_origins_count = publicOrigins.Length,
@@ -88,8 +80,7 @@ public static partial class WebUiEndpointExtensions
                     csrf_protection = true,
                     client_ip = peerIp?.ToString() ?? "",
                     behind_proxy = behindProxy,
-                    // Forwarded headers arriving from an untrusted hop are ignored, so every client looks
-                    // like the proxy: the console gate, per-IP rate limiting and the login lockout all blur together
+                    // untrusted proxy means every client resolves to the proxy address
                     forwarded_ignored = behindProxy && trustedProxyCount == 0,
                     console_public = publicOrigins.Length > 0
                 },
@@ -99,7 +90,7 @@ public static partial class WebUiEndpointExtensions
                     known_proxies = knownProxies,
                     known_networks = knownNetworks
                 },
-                // The disable group: one place to turn whole subsystems off
+                // subsystem switches
                 features = new
                 {
                     oidc = config.GetValue("Oidc:Enabled", true),
@@ -193,7 +184,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        // Applies a whitelisted subset of configuration; everything else is refused by name
+        // applies allowlisted keys only
         app.MapPut("/ui/api/settings", async (
             HttpContext ctx,
             IConfiguration config,
@@ -216,8 +207,7 @@ public static partial class WebUiEndpointExtensions
             if (changes.Count > 50)
                 return Results.Json(new { error = "Too many settings in one request" }, statusCode: 400);
 
-            // Reaching the console is what these three settings decide, so a change that would shut the
-            // caller out is refused here rather than discovered after the restart that applies it
+            // refuse a change that would lock the caller out of the console
             if (WouldLockCallerOut(ctx, config, urlValidator, changes) is { } lockout)
                 return Results.Json(new { error = lockout.Message, field = lockout.Field }, statusCode: 400);
 
@@ -233,18 +223,16 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true, restart_required = result.RestartRequired });
         }).ExcludeFromDescription();
 
-        // Change-controls: audit trail of UI config changes
+        // config change audit trail
 
-        // MCP Configuration endpoints
-        // Returns masked status (never returns the raw API key)
+        // masked status, never the raw api key
         app.MapGet("/ui/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
         {
             var status = await mcpConfig.GetStatusAsync();
             return Results.Json(status);
         }).ExcludeFromDescription();
 
-        // Saves provider/model/apiKey/internalApiToken to the encrypted DB
-        // Accepts partial updates; omit a field to leave it unchanged
+        // partial update, an omitted field is left unchanged
         app.MapPost("/ui/api/mcp/config", async (
             HttpRequest request,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
@@ -269,7 +257,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        // Clears all stored MCP chat configuration (provider, model, key, token)
+        // clears provider, model, key and token
         app.MapDelete("/ui/api/mcp/config", async (
             HttpContext context,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig,
@@ -280,13 +268,11 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        // Change-controls: audit trail of UI config changes
+        // config change audit trail
     }
 
     /// <summary>
-    /// Refuses a deployment-shape change that would leave the caller outside the console's own gate.
-    /// The gate admits a request whose origin matches PublicOrigins, or whose client IP is local, so
-    /// both halves are recomputed against the values the request is asking to store.
+    /// Refuses a deployment change that would put the caller outside the console gate.
     /// </summary>
     private static (string Message, string Field)? WouldLockCallerOut(
         HttpContext ctx,
@@ -320,12 +306,11 @@ public static partial class WebUiEndpointExtensions
 
         var field = touchesOrigins ? "WebUi:PublicOrigins" : "ForwardedHeaders:KnownProxies";
         return ($"This change would refuse your own requests to the console (seen as {clientIp?.ToString() ?? "an unknown address"}). " +
-                "Keep an entry that covers you, or edit appsettings.json on the server instead.", field);
+                "Keep an entry that covers you.", field);
     }
 
     /// <summary>
-    /// The address the console gate would compare after the change. Trusting a proxy makes the
-    /// forwarded chain authoritative, so the caller stops being the proxy and becomes its client.
+    /// Client address the console gate compares once the change applies.
     /// </summary>
     private static IPAddress? EffectiveClientIp(
         HttpContext ctx, IConfiguration config, IDictionary<string, JsonElement> changes)
@@ -350,8 +335,7 @@ public static partial class WebUiEndpointExtensions
 
         if (!trusted) return peer;
 
-        // ponytail: takes the first hop in the chain, which is the client for the single-proxy case;
-        // a multi-proxy chain with only some hops trusted would resolve to a later entry
+        // ponytail: first hop only, wrong for partially trusted multi-proxy chains
         var forwarded = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (string.IsNullOrEmpty(forwarded)) return peer;
 

@@ -1,13 +1,4 @@
-/**
- * ErrorChart — SVG bar chart for HTTP error code distribution.
- * 4xx bars use --warning color, 5xx use --destructive.
- * Zero external dependencies. Fully theme-aware via CSS vars.
- *
- * Usage:
- *   const chart = new ErrorChart(containerEl);
- *   chart.setData({ '400': 12, '404': 45, '500': 2 }, 1847);
- *   chart.destroy();
- */
+// SVG bar chart of HTTP error codes, setData(counts, total)
 class ErrorChart {
     constructor(container) {
         this._container = container;

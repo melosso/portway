@@ -1,5 +1,4 @@
-// Promo Bar component - matching shadcn-ui design
-// Supports simple markdown: **bold**, [link](url), *italic*
+// Promo bar with **bold**, *italic* and [link](url) markdown
 (function (global) {
     'use strict';
 

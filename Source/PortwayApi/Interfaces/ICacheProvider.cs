@@ -10,45 +10,28 @@ namespace PortwayApi.Services.Caching
     public interface ICacheProvider
     {
         /// <summary>
-        /// Gets a value from the cache
+        /// Gets a cached value, or default when missing
         /// </summary>
-        /// <typeparam name="T">Type of the cached item</typeparam>
-        /// <param name="key">Cache key</param>
-        /// <returns>The cached value or default if not found</returns>
         Task<T?> GetAsync<T>(string key) where T : class;
 
         /// <summary>
-        /// Sets a value in the cache
+        /// Sets a cached value with an expiration
         /// </summary>
-        /// <typeparam name="T">Type of the item to cache</typeparam>
-        /// <param name="key">Cache key</param>
-        /// <param name="value">Value to cache</param>
-        /// <param name="expiration">Cache expiration timespan</param>
-        /// <returns>Task representing the asynchronous operation</returns>
         Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class;
 
         /// <summary>
-        /// Removes an item from the cache
+        /// Removes a cached value
         /// </summary>
-        /// <param name="key">Cache key</param>
-        /// <returns>Task representing the asynchronous operation</returns>
         Task RemoveAsync(string key);
 
         /// <summary>
-        /// Acquires a distributed lock for the specified key
+        /// Acquires a distributed lock; dispose the handle to release it
         /// </summary>
-        /// <param name="lockKey">Key to lock</param>
-        /// <param name="expiryTime">Lock expiry time</param>
-        /// <param name="waitTime">How long to wait for the lock</param>
-        /// <param name="retryTime">Time between retry attempts</param>
-        /// <returns>Lock handle that should be disposed to release the lock</returns>
         Task<IDisposable?> AcquireLockAsync(string lockKey, TimeSpan expiryTime, TimeSpan waitTime, TimeSpan retryTime, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Checks if a cache key exists
+        /// Whether a cache key exists
         /// </summary>
-        /// <param name="key">Cache key</param>
-        /// <returns>True if the key exists in the cache</returns>
         Task<bool> ExistsAsync(string key);
 
         /// <summary>
@@ -62,11 +45,8 @@ namespace PortwayApi.Services.Caching
         bool IsConnected { get; }
 
         /// <summary>
-        /// Refreshes the expiration time for a cached item
+        /// Refreshes an expiration; false when the key is missing
         /// </summary>
-        /// <param name="key">Cache key</param>
-        /// <param name="expiration">New expiration timespan</param>
-        /// <returns>True if the key was found and expiration updated</returns>
         Task<bool> RefreshExpirationAsync(string key, TimeSpan expiration);
     }
 
@@ -91,16 +71,13 @@ namespace PortwayApi.Services.Caching
         bool IsValid { get; }
 
         /// <summary>
-        /// Extends the lock's expiration time
+        /// Extends the lock expiration
         /// </summary>
-        /// <param name="expiryTime">New lock expiry time</param>
-        /// <returns>True if the lock was extended successfully</returns>
         Task<bool> ExtendAsync(TimeSpan expiryTime);
 
         /// <summary>
-        /// Releases the lock explicitly (also happens on Dispose)
+        /// Releases the lock, also done on dispose
         /// </summary>
-        /// <returns>Task representing the asynchronous operation</returns>
         Task ReleaseAsync();
     }
 }

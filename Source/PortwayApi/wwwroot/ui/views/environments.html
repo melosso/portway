@@ -135,8 +135,8 @@ function confirmNavigate(onConfirm) {
   }
   
   AlertDialog.show({
-    title: 'Are you sure?',
-    description: 'You have unsaved changes. Are you sure you want to leave without saving?',
+    title: 'Discard changes?',
+    description: 'Unsaved changes will be lost.',
     actionLabel: 'Leave anyway',
     cancelLabel: 'Stay here',
     onConfirm: () => {
@@ -148,7 +148,7 @@ function confirmNavigate(onConfirm) {
 
 function confirmNavigateSync() {
   if (!state.isDirty) return true;
-  return confirm('You have unsaved changes. Leave without saving?');
+  return confirm('Discard unsaved changes?');
 }
 
 window.addEventListener('beforeunload', e => {
@@ -496,7 +496,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} onchange="markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">When on, the global Portway bearer token is rejected — only the methods above are accepted.</span></span>
+          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">Rejects the Portway bearer token. Only the methods above are accepted.</span></span>
         </div>
       </div>
 
@@ -880,7 +880,7 @@ function confirmAlertDialog() {
 function startRemove(name) {
   showAlertDialog({
     title: `Remove "${name}"?`,
-    description: 'This will remove the environment from the allowed list. The configuration file will be kept unless you choose to delete it.',
+    description: 'Removes the environment from the allowed list. The configuration file is kept unless deleted.',
     actionLabel: 'Remove',
     extraHtml: `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;margin-top:0.5rem;" onclick="document.getElementById('deleteFilesSwitch').click()">
       <label class="switch" onclick="event.stopPropagation()">

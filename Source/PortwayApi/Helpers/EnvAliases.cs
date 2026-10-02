@@ -1,7 +1,8 @@
 namespace PortwayApi.Helpers;
 
-/// PORTWAY_-prefixed names for env vars that used to be unprefixed or ASP.NET's
-/// double-underscore config binding. Old names still work; new names win when both are set.
+/// <summary>
+/// PORTWAY_ names for legacy env vars; old names still work, new names win
+/// </summary>
 public static class EnvAliases
 {
     // (new PORTWAY_ name, old name, config key the new name should land under, or null for a direct-read var)

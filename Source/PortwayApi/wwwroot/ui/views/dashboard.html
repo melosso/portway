@@ -179,8 +179,7 @@ async function load() {
     document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
     document.getElementById('healthUptime').textContent  = d.uptime ?? '—';
 
-    // Fetch health directly so the badge shows even when the SSE initial push is delayed
-    // (e.g. while connectivity checks against unavailable services are timing out).
+    // Fetch health directly in case the SSE push is delayed
     api('/health', { silent: true }).then(applyHealth).catch(() => {});
 
     const rows = [

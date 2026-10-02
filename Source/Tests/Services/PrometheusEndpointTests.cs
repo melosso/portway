@@ -117,16 +117,14 @@ public class PrometheusScrapeEndpointTests : IDisposable
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
-                // UseSetting applies before Program reads builder.Configuration;
-                // ConfigureAppConfiguration would land too late for service registration
+                // UseSetting applies before Program reads configuration
                 builder.UseSetting("Mcp:Enabled", "false");
                 builder.UseSetting("Telemetry:Provider", "Prometheus");
                 builder.UseSetting("WebUi:AdminApiKey", AdminKey);
 
                 builder.ConfigureTestServices(services =>
                 {
-                    // TestServer leaves RemoteIpAddress null; the Web UI network gate rejects that.
-                    // A startup filter runs before app middleware and stamps loopback on every request
+                    // Stamp loopback since TestServer leaves RemoteIpAddress null
                     services.AddSingleton<Microsoft.AspNetCore.Hosting.IStartupFilter>(new LoopbackRemoteIpStartupFilter());
 
                     // Isolate SQLite databases per test instance to prevent file-lock races

@@ -63,7 +63,7 @@
   <form class="signin-panel" onsubmit="event.preventDefault();signIn()">
     <header class="signin-header">
       <h1>Sign in</h1>
-      <p>Please sign in to continue to your dashboard.</p>
+      <p>Sign in to continue.</p>
     </header>
 
     <div class="field">
@@ -81,7 +81,7 @@
     <div class="field" id="newPasswordField" hidden>
       <label class="field-label" for="newPasswordInput">New password</label>
       <input type="password" id="newPasswordInput" class="input" autocomplete="new-password">
-      <div class="field-help">Please enter at least 12 characters.</div>
+      <div class="field-help">At least 12 characters.</div>
     </div>
 
     <div class="signin-error" id="authError" role="alert" aria-live="assertive">Invalid username or password</div>
@@ -146,10 +146,10 @@
     const reason = new URLSearchParams(location.search).get('sso');
     if (!reason) return;
     const messages = {
-      failed:     'That sign-in could not be completed. Check the server log.',
-      denied:     'The sign-in was cancelled.',
-      no_account: 'That account is not allowed to use this console.',
-      inactive:   'That account is inactive.',
+      failed:     'Sign-in failed. See the server log.',
+      denied:     'Sign-in cancelled.',
+      no_account: 'Account not permitted for this console.',
+      inactive:   'Account inactive.',
     };
     const err = document.getElementById('authError');
     err.textContent = messages[reason] ?? messages.failed;
@@ -181,7 +181,7 @@
       if (r.ok && d.must_change_password) {
         _changing = true;
         document.getElementById('newPasswordField').hidden = false;
-        document.querySelector('.signin-header p').textContent = 'Choose a new password to finish signing in.';
+        document.querySelector('.signin-header p').textContent = 'Set a new password to complete sign-in.';
         document.querySelector('#signInBtn .btn-label').textContent = 'Set password';
         err.style.display = 'none';
         btn.classList.remove('is-loading');
@@ -201,7 +201,7 @@
         initCsrf();
       }
     } catch(e) {
-      toast('Connection error. Is the server running?', 'error');
+      toast('Connection error. Server unreachable.', 'error');
       btn.classList.remove('is-loading');
       btn.disabled = false;
     }

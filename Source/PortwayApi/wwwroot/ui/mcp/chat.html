@@ -43,7 +43,7 @@
       <div class="chat-thread" id="thread">
         <div id="emptyState" class="chat-empty">
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <p>Start a conversation. Ask questions about your data or request operations on Portway endpoints.</p>
+          <p>Query data or run operations on Portway endpoints.</p>
           <div id="toolHints" class="chat-tool-hints"></div>
         </div>
       </div>
@@ -173,15 +173,14 @@ function openAuthDialog() {
     size: 'small',
     content: `
       <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.55;margin:0 0 1rem;">
-        Enter a Portway API token with access to the environments and endpoints you want to query.
-        The token is kept for this browser tab only and cleared when you close it.
+        Portway API token scoped to the environments and endpoints to query. Stored for this browser tab only.
       </p>
       <div class="field">
         <label class="field-label" for="dlg-token-input">API Token</label>
         <div style="position:relative;display:flex;align-items:center;">
           <input id="dlg-token-input" type="password" class="input"
             style="flex:1;padding-right:2.5rem"
-            placeholder="Paste your Bearer token…" autocomplete="off" spellcheck="false" />
+            placeholder="Bearer token" autocomplete="off" spellcheck="false" />
           <button type="button" class="btn btn-ghost btn-sm"
             style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;"
             title="Show / hide token" onclick="toggleDlgTokenVis()">
@@ -282,7 +281,7 @@ function confirmClearAuth() {
     id: 'clear-auth',
     title: 'Remove access token',
     size: 'small',
-    content: '<p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">Your saved token will be removed. You\'ll need to enter it again to continue chatting.</p>',
+    content: '<p style="font-size:0.875rem;color:var(--text-secondary);margin:0;">Removes the saved token from this tab.</p>',
     footer: `
       <button type="button" class="btn btn-outline" data-dialog-close>Cancel</button>
       <button type="button" class="btn btn-primary" onclick="clearAuth()">Remove token</button>
@@ -327,8 +326,7 @@ async function init() {
     return;
   }
 
-  // If chat is enabled but no provider/key has been configured, launch the setup wizard.
-  // The wizard is blocking - users cannot chat until setup is complete.
+  // Setup wizard blocks chat until a provider is configured
   if (!chatConfigured) {
     disableForConfig('Complete setup to start chatting…');
     openSetupWizard(() => { window.location.reload(); });
@@ -377,8 +375,8 @@ async function init() {
   if (missing.length) {
     toast(
       missing.length === 1
-        ? "Database metadata is missing for 1 tool. Check your logs."
-        : `Database metadata is missing for ${missing.length} tools. Check your logs.`,
+        ? "Database metadata is missing for 1 tool. See the server log."
+        : `Database metadata is missing for ${missing.length} tools. See the server log.`,
       'warning',
       8000
     );
@@ -773,7 +771,7 @@ document.addEventListener('click', e => {
   e.stopPropagation();
   AlertDialog.show({
     title: 'Leave conversation?',
-    description: 'You have an ongoing conversation. Leaving this page will clear it.',
+    description: 'Leaving this page clears the conversation.',
     actionLabel: 'Leave',
     cancelLabel: 'Stay here',
     variant: 'default',
@@ -781,9 +779,7 @@ document.addEventListener('click', e => {
   });
 });
 
-// MCP Setup Wizard
-// Shown when Chat is enabled but no provider/key is configured in the DB.
-// Two-step: (1) choose provider → (2) enter model + API key + optional token.
+// Setup wizard, provider then model, API key and optional token
 
 
 let _wizardStep     = 1;
@@ -811,7 +807,7 @@ function _renderWizardStep1() {
     closeOnBackdrop: true,
     closeOnEscape: true,
     content: `
-      <p class="wizard-intro">Choose the AI provider that will power the chat assistant. Your API key is stored encrypted on the server - it never leaves Portway.</p>
+      <p class="wizard-intro">AI provider for the chat assistant. The API key is stored encrypted on the server.</p>
       <div class="wizard-providers">${rows}</div>
       <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
     footer: `
@@ -832,7 +828,7 @@ function _wizardNext1() {
   const checked = document.querySelector('input[name="wizard-provider"]:checked');
   const err = document.getElementById('wizard-step1-err');
   if (!checked) {
-    err.textContent = 'Please select a provider.';
+    err.textContent = 'Select a provider.';
     err.hidden = false;
     return;
   }
@@ -851,7 +847,7 @@ function _renderWizardStep2() {
     closeOnBackdrop: true,
     closeOnEscape: true,
     content: `
-      <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
+      <p class="wizard-intro">API key and model for <strong>${esc(p.label)}</strong>.</p>
       <div class="field">
         <label class="field-label" for="wiz-model">Model</label>
         <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
@@ -859,12 +855,12 @@ function _renderWizardStep2() {
       <div class="field" style="margin-top:1rem;">
         <label class="field-label" for="wiz-key">API Key <span style="color:var(--destructive)">*</span></label>
         <div style="position:relative;display:flex;align-items:center;">
-          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem" placeholder="Paste your ${esc(p.label)} API key…" autocomplete="off" spellcheck="false" />
+          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem" placeholder="${esc(p.label)} API key" autocomplete="off" spellcheck="false" />
           <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <div class="field-help">Your keys are safely encrypted.</div>
+        <div class="field-help">Stored encrypted.</div>
       </div>
       <details class="wizard-details">
         <summary>Internal API token <span style="color:var(--text-secondary);font-weight:400;">(optional)</span></summary>

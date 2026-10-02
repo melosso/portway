@@ -1,6 +1,4 @@
-// Toast notification component
-// Usage: toast('Message', 'success' | 'error' | 'warning')
-// Requires: <div class="toast-container" id="toastContainer"> in the page
+// toast(message, 'success' | 'error' | 'warning'), needs #toastContainer
 (function (global) {
     'use strict';
 

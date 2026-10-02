@@ -7,14 +7,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for MERGE, the OData spelling of a partial update
+/// MERGE partial updates against WMS/Bins, WMS/Warehouses and Account/Accounts
 /// </summary>
-/// <remarks>
-/// Fixtures:
-/// - SQL WMS/Bins       : AllowedMethods include MERGE, env WMS (table writes against the SQLite demo db)
-/// - SQL WMS/Warehouses : AllowedMethods ["GET"], env WMS
-/// - Proxy Account/Accounts : Methods GET/POST/PUT/DELETE (no MERGE), env 500
-/// </remarks>
 public class MergeEndpointTests : ApiTestBase
 {
     private static HttpRequestMessage Merge(string url, string json = "{}") =>

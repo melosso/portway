@@ -6,7 +6,7 @@ namespace PortwayApi.Classes.OpenApi;
 public partial class DynamicEndpointDocumentFilter
 {
 
-    private void AddSqlEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddSqlEndpoints(OpenApiDocument document, ref int operationIdCounter)
     {
         // Get SQL endpoints
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
@@ -27,11 +27,7 @@ public partial class DynamicEndpointDocumentFilter
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-            // Collect tag description if provided
-            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
-            {
-                documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
-            }
+            OpenApiTags.Declare(document, definition);
 
             // Path template for this endpoint (use FullPath to include namespace if present)
             string path = OpenApiEndpointCatalog.BasePath(definition);
@@ -42,9 +38,7 @@ public partial class DynamicEndpointDocumentFilter
                 document.Paths[path] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
             }
 
-            // Document exactly the endpoint's declared methods. Never mutate the shared definition, and
-            // let GetOperationType decide what is renderable, so unknown verbs (like QUERY, until OpenAPI 3.2)
-            // are skipped instead of being misrendered as GET.
+            // Declared methods only, without mutating the definition; unknown verbs are skipped
             foreach (var method in definition.Methods)
             {
                 if (method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))

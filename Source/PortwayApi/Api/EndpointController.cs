@@ -24,9 +24,8 @@ using System.Runtime.CompilerServices;
 namespace PortwayApi.Api;
 
 /// <summary>
-/// Unified controller that handles all endpoint types (SQL, Proxy, Composite, Webhook)
+/// Handles every endpoint type; error responses are documented by StandardErrorCodes
 /// </summary>
-/// <remarks>No [ProducesResponseType] here; catchall paths are stripped from the document, StandardErrorCodes is the source!!</remarks>
 [ApiController]
 [Route("api")] // Base route only, we'll use action-level routing
 public partial class EndpointController : ControllerBase

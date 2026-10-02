@@ -6,15 +6,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for the demo Static endpoint: Masterdata/CostCenters
+/// Demo static endpoint Masterdata/CostCenters (endpoints/Static/Masterdata/CostCenters/entity.json)
 /// </summary>
-/// <remarks>
-/// Config: endpoints/Static/Masterdata/CostCenters/entity.json
-/// - ContentType: application/json
-/// - ContentFile: costcenters-2025.json
-/// - EnableFiltering: true
-/// - AllowedEnvironments: ["500", "700", "Synergy"]
-/// </remarks>
 public class DemoStaticEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";
@@ -103,8 +96,7 @@ public class DemoStaticEndpointTests : ApiTestBase
     [Fact]
     public async Task GetCostCenters_WithODataFilter_NotUnauthorizedOrBadRequest()
     {
-        // Arrange: EnableFiltering: true; OData params should be accepted
-        // Act
+        // EnableFiltering accepts OData parameters
         var response = await _client.GetAsync($"{ApiPath}?$filter=Code eq 'CC100'", TestContext.Current.CancellationToken);
 
         // Assert

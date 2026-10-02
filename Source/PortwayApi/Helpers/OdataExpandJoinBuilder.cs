@@ -3,9 +3,9 @@ namespace PortwayApi.Helpers;
 using PortwayApi.Classes;
 using SqlKata;
 
-/// <summary>Adds to-one $expand navigations as SqlKata JOINs onto a base query built by the fork.
-/// The base query stays on the fork's open model so root filters are never type-checked; the JOIN is
-/// added here. Identifiers are plain-identifier validated at config, SqlKata quotes them per dialect</summary>
+/// <summary>
+/// Adds to-one $expand navigations as SqlKata joins on the open base query
+/// </summary>
 public static class OdataExpandJoinBuilder
 {
     public static Query Apply(Query query, string rootTable, IReadOnlyList<RelationalExpandSpec> specs)

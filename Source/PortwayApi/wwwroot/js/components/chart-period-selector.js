@@ -1,9 +1,4 @@
-/**
- * ChartPeriodSelector — Shadcn-style tab strip for chart period selection.
- * Usage:
- *   const sel = new ChartPeriodSelector(containerEl, ['24h','7d','30d'], period => { ... });
- *   sel.destroy();
- */
+// Chart period tabs, new ChartPeriodSelector(el, periods, onChange)
 class ChartPeriodSelector {
     /** @param {HTMLElement} container @param {string[]} periods @param {(p:string)=>void} onChange */
     constructor(container, periods, onChange) {

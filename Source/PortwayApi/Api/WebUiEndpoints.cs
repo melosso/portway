@@ -27,7 +27,7 @@ public static partial class WebUiEndpointExtensions
     private static readonly DateTime ProcessStartTime = DateTime.UtcNow;
 
     /// <summary>
-    /// Registers the UI authorz. and local network-only middleware. To not make my same mistake twice: must be called before UseStaticFiles...
+    /// Registers console auth and the local network gate. Must run before UseStaticFiles.
     /// </summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, bool webUiEnabled)
     {
@@ -37,8 +37,6 @@ public static partial class WebUiEndpointExtensions
         {
             var path = context.Request.Path;
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
-
-            // Deny every UI route when the UI is not enabled
             if (!webUiEnabled)
             {
                 Log.Warning("Web UI request to {Path} rejected: neither WebUi:Enabled nor WebUi:AdminApiKey is configured", path);
@@ -48,7 +46,7 @@ public static partial class WebUiEndpointExtensions
                 return;
             }
 
-            // Allow external clients only when their origin matches a configured PublicOrigins pattern, otherwise local network only
+            // public origins may reach the console, everything else must be local
             var isPublicOrigin = publicOrigins.Length > 0 && IsPublicOriginAllowed(context.Request, publicOrigins);
 
             if (!isPublicOrigin)
@@ -73,7 +71,7 @@ public static partial class WebUiEndpointExtensions
                 }
             }
 
-            // Read per request: accounts are seeded after this middleware is registered
+            // read per request since accounts are seeded later
             if (WebUiAuthState.Enabled &&
                 !path.StartsWithSegments("/ui/login") &&
                 !path.StartsWithSegments("/ui/api/auth") &&
@@ -91,8 +89,7 @@ public static partial class WebUiEndpointExtensions
 
                 context.Items[SignedInUserKey] = userId.Value;
 
-                // Server-side revocation, checked on every request (not just admin-only writes) so a
-                // deactivated or deleted account loses access at once instead of within the cookie's 12h life
+                // recheck the account on every request so revocation is immediate
                 var accounts = context.RequestServices.GetRequiredService<AdminUserService>();
                 var account = await accounts.FindByIdAsync(userId.Value);
                 if (account is null || !account.IsActive)
@@ -101,7 +98,7 @@ public static partial class WebUiEndpointExtensions
                     return;
                 }
 
-                // CSRF double-submit check on mutating UI API calls; client-error is sendBeacon and cannot set headers
+                // csrf double submit on mutations, client-error uses sendBeacon and is exempt
                 if (path.StartsWithSegments("/ui/api") &&
                     !path.StartsWithSegments("/ui/api/client-error") &&
                     (HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) ||
@@ -119,7 +116,7 @@ public static partial class WebUiEndpointExtensions
                         return;
                     }
 
-                    // Viewers read the console and manage their own sign-in; every other write is administrator-only
+                    // viewers may only change their own sign-in
                     if (!IsSelfServiceWrite(path) && account.Role != AdminUserRoles.Administrator)
                     {
                         Log.Warning("Console account {UserId} was refused {Method} {Path}: administrator role required",
@@ -139,24 +136,24 @@ public static partial class WebUiEndpointExtensions
     }
 
     /// <summary>
-    /// Writes any signed-in account may make about itself, so the viewer role stays usable
+    /// Writes any signed-in account may make about itself.
     /// </summary>
     private static bool IsSelfServiceWrite(PathString path)
     {
         if (path.StartsWithSegments("/ui/api/client-error")) return true;
         if (path.StartsWithSegments("/ui/api/oidc/link")) return true;
 
-        // Binding this account to a provider: /ui/api/oidc/providers/{slug}/link
+        // links this account to a provider
         return path.StartsWithSegments("/ui/api/oidc/providers")
             && (path.Value ?? "").EndsWith("/link", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// Returns true if the request's effective origin matches any of the configured PublicOrigins patterns. Patterns support a single wildcard (*) per segment, e.g. "https://*.melosso.com"
+    /// Matches the request origin against PublicOrigins. A wildcard matches one host label.
     /// </summary>
     internal static bool IsPublicOriginAllowed(HttpRequest request, string[] patterns)
     {
-        // Origin header is present on XHR/fetch; for navigation requests fall back to scheme+host
+        // navigation requests carry no origin header, fall back to scheme and host
         var origin = request.Headers.Origin.FirstOrDefault();
         if (string.IsNullOrEmpty(origin))
         {
@@ -171,9 +168,6 @@ public static partial class WebUiEndpointExtensions
     {
         if (!pattern.Contains('*'))
             return string.Equals(origin.TrimEnd('/'), pattern.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
-
-        // * matches a single host label (no dots), e.g. https://*.melosso.com matches
-        // https://foo.melosso.com but NOT https://a.b.melosso.com
         var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", "[^.]+") + "/?$";
         return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
     }
@@ -187,11 +181,9 @@ public static partial class WebUiEndpointExtensions
         var appVersion = typeof(WebUiEndpointExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0";
-
-        // Get security settings from configuration
         var secureCookies = app.Configuration.GetValue<bool>("WebUi:SecureCookies", false);
 
-        // Change-controls: audit every config mutation, back up files before UI writes
+        // audit every config change and back up files before ui writes
         var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
 
 
@@ -230,7 +222,7 @@ public static partial class WebUiEndpointExtensions
             Expires = expires
         });
 
-        // Readable by page JS, so a fetch can echo it; that is the point of a double-submit check
+        // readable by page js so fetch can echo it
         context.Response.Cookies.Append(CsrfCookieName, Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)), new CookieOptions
         {
             HttpOnly = false,
@@ -243,7 +235,7 @@ public static partial class WebUiEndpointExtensions
 
     private static (string? filePath, string? error) ResolveEndpointPath(string type, string name)
     {
-        // Allow namespace/name paths
+        // allow namespaced paths
         if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_-]+)*$"))
             return (null, "Invalid endpoint name");
 
@@ -270,9 +262,7 @@ public static partial class WebUiEndpointExtensions
             !filePath.Equals(allowedBase, StringComparison.OrdinalIgnoreCase))
             return (null, "Invalid path");
 
-        // Fallback: if path doesn't exist and name is namespaced (e.g. NS/Name), retry with just the
-        // leaf folder; handles the doubled-key case where Namespace == folder name (e.g. Production/Production → Production/)
-        // and the explicit-namespace case (e.g. Catalog/Products → Products/)
+        // fall back to the leaf folder for namespaced names
         if (!isFixed && !File.Exists(filePath) && name.Contains('/'))
         {
             var leafName = name.Split('/')[^1];
@@ -320,8 +310,6 @@ public static partial class WebUiEndpointExtensions
     {
         if (!File.Exists(filePath)) return Results.NotFound();
         var html = File.ReadAllText(filePath);
-
-        // Inject Login Footer if this is the login page
         if (filePath.EndsWith("login.html") && config != null)
         {
             var footerMd = config.GetValue<string>("WebUi:Customization:LoginFooter");

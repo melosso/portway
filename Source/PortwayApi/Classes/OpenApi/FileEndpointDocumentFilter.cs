@@ -33,9 +33,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Add schema definitions for file models
             AddFileSchemas(document);
 
-            // Collect tag descriptions for file endpoints
-            var documentTags = new Dictionary<string, string>();
-
             // Create paths for each file endpoint
             foreach (var (endpointName, endpoint) in fileEndpoints)
             {
@@ -48,16 +45,11 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Get effective environments for this endpoint (endpoint-specific or global fallback)
                 var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
 
-                // Group namespaced file endpoints under their namespace; flat ones stay under "Files"
-                string mainTag = endpoint.HasNamespace
-                    ? (endpoint.NamespaceDisplayName ?? endpoint.EffectiveNamespace!)
-                    : OpenApiEndpointCatalog.FilesFallbackTag;
-
-                if (!documentTags.ContainsKey(mainTag))
+                // flat file endpoints nest under the files group
+                string mainTag = OpenApiTags.Declare(document, endpoint, endpoint.HasNamespace ? null : $"{OpenApiTags.FilesGroup}/{endpoint.FullPath}");
+                if (!endpoint.HasNamespace)
                 {
-                    documentTags[mainTag] = endpoint.HasNamespace
-                        ? $"**{mainTag}**\n\nFile storage endpoints in the {mainTag} namespace."
-                        : "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.";
+                    OpenApiTags.Ensure(document, OpenApiTags.FilesGroup, "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
                 }
 
                 // Add file upload operation
@@ -72,11 +64,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Add file listing operation
                 AddFileListOperation(document, endpointName, endpoint, effectiveEnvironments, mainTag);
             }
-
-            // Add collected file endpoint tags to the document
-            AddFileTagsToDocument(document, documentTags);
-
-            // Note: Tag sorting is now handled by TagSorterDocumentFilter which runs after this filter
         }
         catch (Exception ex)
         {
@@ -84,34 +71,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
 
         return Task.CompletedTask;
-    }
-
-    private void AddFileTagsToDocument(OpenApiDocument document, Dictionary<string, string> documentTags)
-    {
-        // Initialize tags collection if it doesn't exist
-        document.Tags ??= new HashSet<OpenApiTag>();
-
-        // Add each file endpoint tag with its description (sorting will be handled by TagSorterDocumentFilter)
-        foreach (var tagEntry in documentTags)
-        {
-            var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, tagEntry.Key, StringComparison.OrdinalIgnoreCase));
-            if (existingTag == null)
-            {
-                document.Tags.Add(new OpenApiTag
-                {
-                    Name = tagEntry.Key,
-                    Description = tagEntry.Value
-                });
-            }
-            else
-            {
-                // Update existing tag description if it's empty
-                if (string.IsNullOrWhiteSpace(existingTag.Description))
-                {
-                    existingTag.Description = tagEntry.Value;
-                }
-            }
-        }
     }
 
     private string GetOperationDescription(EndpointDefinition endpoint, string method, string defaultDescription)

@@ -9,9 +9,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Namespaces nested more than one level deep, which the loader has always produced but routing could not reach
+/// Multi-level namespaces, using SQL WMS/Inbound/StagingBins
 /// </summary>
-/// <remarks>Fixture: SQL WMS/Inbound/StagingBins, env WMS, backed by the committed SQLite demo database</remarks>
 public class NestedNamespaceTests : ApiTestBase
 {
     /// <summary>

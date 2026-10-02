@@ -145,8 +145,7 @@ public class ContentNegotiationMiddleware
                 "Content-Type header is required for requests with body. Use application/json.");
         }
 
-        // Non-proxy endpoints (SQL, webhooks, UI) are JSON APIs; proxy-family paths
-        // skip this gate entirely via IsProxyFamilyPath
+        // JSON gate for non-proxy endpoints; proxy paths skip it via IsProxyFamilyPath
         if (!contentType.Contains("application/json", StringComparison.OrdinalIgnoreCase))
         {
             Log.Warning("Invalid Content-Type '{ContentType}' for {Method} request from {RemoteIp}",

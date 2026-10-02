@@ -39,7 +39,7 @@ Settings saved in the console are written to `appsettings.overrides.json`, layer
 
 The section **Settings → Security → Deployment & Access** sets trusted proxies, trusted proxy networks and public console origins. A change that would exclude the current request returns `400`.
 
-Every console change to environments, endpoints and MCP settings is recorded in the audit trail, and the previous file version is backed up. Both are listed under **Settings → Security & Change Controls**, with restore.
+Every console change to environments, endpoints and MCP settings is recorded in the audit trail, and the previous file version is backed up. Both are listed under **Settings → Security → Recent Configuration Changes**, with restore.
 
 ## API
 

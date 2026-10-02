@@ -3,10 +3,9 @@ namespace PortwayApi.Helpers;
 using System.Text.RegularExpressions;
 using PortwayApi.Classes;
 
-/// <summary>Shape validation for $expand relationship config. Fail closed: identifiers must be plain,
-/// only to-one is expressible (fork JoinClauseBuilder constraint), and TVF endpoints cannot include
-/// relationships because their hybrid splice path drops JOINs. Target resolution is a separate
-/// cross-endpoint check that runs where the full SQL endpoint set is known</summary>
+/// <summary>
+/// Fail-closed shape validation for $expand relationships; plain identifiers, to-one, no TVF
+/// </summary>
 public static partial class OdataExpandRelationshipValidator
 {
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]

@@ -1,7 +1,7 @@
 {
   "DatabaseObjectName": "Bins",
   "Namespace": "WMS/Inbound",
-  "NamespaceDisplayName": "WMS/Inbound",
+  "NamespaceDisplayName": "Inbound Logistics",
   "AllowedEnvironments": [
     "WMS"
   ],

@@ -16,8 +16,7 @@ public static class PrometheusTelemetryExtensions
         if (options.ActiveMetricsPath is not { } path)
             return app;
 
-        // Guard against config drift between registration and map time; a missing
-        // MeterProvider would otherwise turn a config mismatch into a startup crash
+        // Missing MeterProvider means config drift, skip instead of crashing
         if (app.Services.GetService<MeterProvider>() is null)
             return app;
 

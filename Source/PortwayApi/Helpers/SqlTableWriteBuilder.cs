@@ -10,9 +10,9 @@ using SqlKata;
 /// </summary>
 public sealed record TableWriteCommand(string Sql, Dictionary<string, object?> Parameters);
 
-/// <summary>Builds guarded INSERT/UPDATE/DELETE statements for WriteMode: Table endpoints.
-/// Every identifier comes from validated endpoint configuration, every value is a bound parameter,
-/// and every predicate is primary key equality only</summary>
+/// <summary>
+/// Guarded INSERT, UPDATE and DELETE for table writes; bound values, primary key predicates only
+/// </summary>
 public static partial class SqlTableWriteBuilder
 {
     [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]*$")]

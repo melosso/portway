@@ -73,8 +73,7 @@ public static partial class WebUiEndpointExtensions
             // Success - clear failed attempts
             WebUiAuthHelper.ClearFailedAttempts(clientIp);
 
-            // No session until the account owns its password: it was generated or read from configuration.
-            // The token stays unspent, the change request that follows is the rest of this sign-in.
+            // No session until the account sets its own password
             if (account.MustChangePassword)
                 return Results.Json(new { ok = false, must_change_password = true });
 

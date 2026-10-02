@@ -159,10 +159,8 @@ public static partial class EndpointHandler
     }
 
     /// <summary>
-    /// Scans the specified directory for endpoint definition files and returns a dictionary of endpoints
+    /// Scans a directory for endpoint definitions keyed by endpoint name
     /// </summary>
-    /// <param name="endpointsDirectory">Directory containing endpoint definitions</param>
-    /// <returns>Dictionary with endpoint names as keys and tuples of (url, methods, isPrivate, isMcpExposed, type) as values</returns>
     public static Dictionary<string, ProxyEndpointInfo> GetEndpoints(string endpointsDirectory)
     {
         // Check if the directory is for proxy or SQL endpoints

@@ -114,9 +114,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
         var dynamicEdmModelBuilder = new DynamicODataToSQL.EdmModelBuilder();
         var dynamicConverter = new DynamicODataToSQL.ODataToSqlConverter(dynamicEdmModelBuilder, compiler);
 
-        // $expand is applied as manual SqlKata JOINs on the fork's open model. Declaring the FK as a
-        // typed EDM property would make the OData binder reject filters like "Fk eq 10" (typed vs literal),
-        // so the base query stays fully open and the JOIN is added after the fact
+        // $expand joins are added after binding so typed FK filters still parse
         bool expandRequested = odataParams.TryGetValue("expand", out var expandValue) && !string.IsNullOrWhiteSpace(expandValue);
         List<RelationalExpandSpec>? expandSpecs = expandRequested && relationships is { Count: > 0 } && !count
             ? BuildExpandSpecs(expandValue!, relationships, provider, sqlEndpoints)

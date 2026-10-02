@@ -96,7 +96,7 @@
     <div class="page-title">
       <div class="page-heading">
         <h1 class="select-none">Settings</h1>
-        <p class="page-sub">Rate limits, caching, storage and integrations.</p>
+        <p class="page-sub">Console, security, performance, storage and integrations.</p>
       </div>
     </div>
     <div class="page-actions">
@@ -110,8 +110,24 @@
   <div class="main-content">
 
 
+    <!-- Section: General -->
+    <div class="settings-section active" id="section-general">
+      <div class="settings-pane">
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Console Customization</h2>
+          </div>
+          <div class="card-body" id="customizationBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- Section: Security & Change Controls -->
-    <div class="settings-section active" id="section-security">
+    <div class="settings-section" id="section-security">
       <div class="settings-pane">
 
         <div class="card">
@@ -128,24 +144,6 @@
             <h2 class="card-title">Deployment &amp; Access</h2>
           </div>
           <div class="card-body" id="deploymentBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Feature Toggles</h2>
-          </div>
-          <div class="card-body" id="featuresBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Console Customization</h2>
-          </div>
-          <div class="card-body" id="customizationBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
           </div>
         </div>
@@ -243,6 +241,13 @@
         <div class="card">
           <div class="card-header"><h2 class="card-title">Telemetry</h2></div>
           <div class="card-body" id="telemetryBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">OpenAPI</h2></div>
+          <div class="card-body" id="openApiBody">
             <span class="muted" style="font-size:0.8rem">Loading…</span>
           </div>
         </div>
@@ -391,8 +396,7 @@ function cardFooter(bodyId) {
   </div>`;
 }
 
-// Clears the seeding key. Only the empty value is accepted server side, so this cannot set a secret.
-// WebUi:Enabled is set alongside it so the console stays reachable once the key is gone, requires a restart to take effect.
+// Clears the seeding key and sets WebUi:Enabled, applied on restart
 function clearAdminKey() {
   AlertDialog.show({
     title:       'Remove the seeding key?',
@@ -473,62 +477,60 @@ async function load() {
       settingItemRaw('Sign-in required',
         sec.webui_auth_enabled
           ? '<span class="setting-on">Yes</span>'
-          : '<span class="setting-off">No, anyone can reach the console</span>',
-        'Sign-in is required as soon as one account exists'),
+          : '<span class="setting-off">No, console is unauthenticated</span>',
+        'Enforced once an account exists'),
       settingItemRaw('Accounts',
         `<span class="${accounts > 0 ? 'setting-on' : 'setting-off'}">${accounts}</span>`,
-        'Manage them on the Users page'),
+        'Managed on the Users page'),
       riskItem('Client addresses', !sec.forwarded_ignored,
-        sec.client_ip || 'Direct', 'Seeing the proxy, not the client',
+        sec.client_ip || 'Direct', 'Untrusted proxy',
         sec.forwarded_ignored
-          ? `Requests arrive through a proxy but none is trusted, so every client looks like ${sec.client_ip || 'one address'}. The console gate, per-IP rate limits and the login lockout all key on this. Add the proxy below.`
-          : `The address this request was judged by${sec.behind_proxy ? ', taken from the trusted proxy chain' : ''}`),
+          ? `Proxy not trusted. Every client resolves to ${sec.client_ip || 'one address'}, which the console gate, per-IP rate limits and login lockout key on. Add the proxy under Trusted proxies.`
+          : `Client address for this request${sec.behind_proxy ? ', from the trusted proxy chain' : ''}`),
       riskItem('Console reach', !sec.console_public,
         'Local network only', 'Reachable from configured origins',
         sec.console_public
-          ? 'Public origins are matched on the Origin header, which any client can set. Treat this as exposure of the sign-in page, not as access control.'
-          : 'Only loopback and local addresses reach /ui'),
+          ? 'Exposes the sign-in page. Origin matching is not access control.'
+          : '/ui limited to loopback and local addresses'),
       riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
-        'HSTS is only sent over HTTPS, and depends on a trusted proxy forwarding the scheme'),
+        'Scheme of this request. HSTS requires HTTPS; behind a TLS-terminating proxy, the proxy must be trusted'),
       riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
         sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
-        'The session cookie is a bearer credential; mark it Secure whenever there is TLS'),
+        'Session cookie is a bearer credential; set Secure under TLS'),
       boolItem('CSRF Protection', sec.csrf_protection),
-      boolItem('Administrator-only writes', true, 'Viewer accounts can read the console and manage their own sign-in, nothing else'),
-      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0, 'Configured in appsettings.json'),
+      boolItem('Administrator-only writes', true, 'Viewers have read access and manage only their own sign-in'),
+      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
     ].join('');
 
     const dep = d.deployment ?? {};
     document.getElementById('deploymentBody').innerHTML = [
       listRow('ForwardedHeaders:KnownProxies', 'Trusted proxies', dep.known_proxies,
-        'One IP per line. Only these are believed when they forward a client address.',
+        'One IP per line. Forwarded client addresses are accepted only from these.',
         sec.behind_proxy && sec.client_ip ? sec.client_ip : '10.0.0.8'),
       listRow('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', dep.known_networks,
-        'One CIDR range per line, for a proxy whose address is not fixed', '172.18.0.0/16'),
+        'One CIDR range per line, for proxies without a fixed address', '172.18.0.0/16'),
       listRow('WebUi:PublicOrigins', 'Public console origins', dep.public_origins,
-        'One origin per line. Empty keeps /ui on the local network. Matched on the Origin header, so this widens reach rather than authenticating it.',
+        'One origin per line. Empty limits /ui to the local network. Matched on the client-set Origin header.',
         'https://portway.example.com'),
+      switchRow('Oidc:Enabled', 'Single sign-on', feat.oidc,
+        feat.oidc_providers ? `${feat.oidc_providers} provider(s) enabled. Off hides all providers and rejects callbacks`
+                            : 'No providers configured. Off rejects callbacks'),
       ...(sec.legacy_admin_key ? [settingItemRaw('Seeding key',
         '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
-        'WebUi:AdminApiKey only ever seeded the first account. Remove it once you can sign in; the console stays reachable.')] : []),
+        'WebUi:AdminApiKey seeds the first account only. Safe to remove after first sign-in.')] : []),
     ].join('') + cardFooter('deploymentBody');
 
-    document.getElementById('featuresBody').innerHTML = [
-      switchRow('Oidc:Enabled', 'Single sign-on', feat.oidc,
-        feat.oidc_providers ? `${feat.oidc_providers} provider(s) enabled; off hides them all and refuses every callback`
-                            : 'No providers configured yet; off refuses every callback'),
-      switchRow('OpenApi:Enabled', 'OpenAPI specification', feat.openapi, 'Serves the spec and the reference at /docs'),
-      switchRow('RequestTrafficLogging:Enabled', 'Request traffic logging', feat.traffic_logging, 'Records proxied requests to file or SQLite'),
-      switchRow('WebUi:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serve the public page at the root path'),
-      switchRow('Mcp:Enabled', 'MCP server', d.mcp?.enabled ?? false, 'Also configurable under Integrations'),
-    ].join('') + cardFooter('featuresBody');
+    document.getElementById('openApiBody').innerHTML = [
+      switchRow('OpenApi:Enabled', 'Enabled', feat.openapi, 'Serves the spec and the reference at /docs'),
+    ].join('') + cardFooter('openApiBody');
 
     document.getElementById('customizationBody').innerHTML = [
+      switchRow('WebUi:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serve the public page at the root path'),
       textRow('WebUi:Customization:PromoText', 'Promo banner', cus.promo_text,
         'Shown across the console. Supports **bold**, *italic* and [links](https://example.com)', 'Leave empty to hide the banner'),
-      switchRow('WebUi:Customization:PromoLogin', 'Show on sign-in', cus.promo_login, 'The banner is visible before anyone signs in'),
+      switchRow('WebUi:Customization:PromoLogin', 'Show on sign-in', cus.promo_login, 'Banner shown on the sign-in page'),
       textRow('WebUi:Customization:LoginFooter', 'Sign-in footer', cus.login_footer,
-        'Markdown under the sign-in form, usually a contact address', 'Contact your [administrator](mailto:...)'),
+        'Markdown below the sign-in form, e.g. a contact address', 'Contact your [administrator](mailto:...)'),
     ].join('') + cardFooter('customizationBody');
 
     document.getElementById('maintenanceBody').innerHTML = [
@@ -568,7 +570,8 @@ async function load() {
 
     document.getElementById('loggingBody').innerHTML = [
       choiceRow('Serilog:MinimumLevel:Default', 'Minimum level', log.min_level, 'Events below this level are not written'),
-      settingItem('Sinks', (log.sinks ?? []).join(', ') || '—', 'Configured in appsettings.json'),
+      switchRow('RequestTrafficLogging:Enabled', 'Request traffic logging', feat.traffic_logging, 'Records proxied requests to file or SQLite'),
+      settingItem('Sinks', (log.sinks ?? []).join(', ') || '—'),
     ].join('') + cardFooter('loggingBody');
 
     document.getElementById('reloadBody').innerHTML = [
@@ -590,7 +593,7 @@ async function load() {
 
     document.getElementById('mcpBody').innerHTML = [
       switchRow('Mcp:Enabled',               'Enabled',       m.enabled),
-      settingItem('Path', m.path ?? '—', 'Changing the route needs an edit to appsettings.json'),
+      settingItem('Path', m.path ?? '—'),
       switchRow('Mcp:RequireAuthentication', 'Require a token', m.require_authentication, 'Reject MCP calls without a bearer token'),
       switchRow('Mcp:AppsEnabled',           'MCP apps',      m.apps_enabled, 'Serve the resource UI at /mcp/apps'),
       switchRow('Mcp:ChatEnabled',           'Chat',          d.chat?.enabled ?? false, 'Enable the chat console'),
@@ -599,7 +602,7 @@ async function load() {
 
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','featuresBody','customizationBody','deploymentBody'].forEach(id => {
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','openApiBody','customizationBody','deploymentBody'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = msg;
     });
@@ -640,7 +643,7 @@ async function loadAudit() {
 function restoreChange(id) {
   AlertDialog.show({
     title: 'Restore this configuration?',
-    description: 'The file returns to its state before this change. The current state is backed up first.',
+    description: 'Restores the file to its state before this change. The current file is backed up first.',
     actionLabel: 'Restore',
     onConfirm: () => doRestoreChange(id)
   });
@@ -727,7 +730,7 @@ function _aiWizardStep1() {
     title: 'Configure chat provider - Step 1 of 2',
     size: 'small',
     content: `
-      <p class="wizard-intro">Choose the AI provider for the chat assistant. The API key is stored encrypted on the server - it never leaves Portway.</p>
+      <p class="wizard-intro">AI provider for the chat assistant. The API key is stored encrypted on the server.</p>
       <div class="wizard-providers">${rows}</div>
       <div id="wizard-step1-err" class="wizard-error" hidden></div>`,
     footer: `
@@ -749,7 +752,7 @@ function _aiWizardNext1() {
   const checked = document.querySelector('input[name="wizard-provider"]:checked');
   const err     = document.getElementById('wizard-step1-err');
   if (!checked) {
-    err.textContent = 'Please select a provider.';
+    err.textContent = 'Select a provider.';
     err.hidden = false;
     return;
   }
@@ -765,7 +768,7 @@ function _aiWizardStep2() {
     title: 'Configure chat provider - Step 2 of 2',
     size: 'small',
     content: `
-      <p class="wizard-intro">You selected <strong>${esc(p.label)}</strong>. Enter your API key and the model name.</p>
+      <p class="wizard-intro">API key and model for <strong>${esc(p.label)}</strong>.</p>
       <div class="field">
         <label class="field-label" for="wiz-model">Model</label>
         <input id="wiz-model" type="text" class="input" value="${esc(p.model)}" placeholder="${esc(p.hint)}" spellcheck="false" autocomplete="off" />
@@ -773,12 +776,12 @@ function _aiWizardStep2() {
       <div class="field" style="margin-top:1rem;">
         <label class="field-label" for="wiz-key">API Key <span style="color:hsl(var(--destructive))">*</span></label>
         <div style="position:relative;display:flex;align-items:center;">
-          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;" placeholder="Paste your ${esc(p.label)} API key..." autocomplete="off" spellcheck="false" />
+          <input id="wiz-key" type="password" class="input" style="flex:1;padding-right:2.5rem;" placeholder="${esc(p.label)} API key" autocomplete="off" spellcheck="false" />
           <button type="button" class="btn btn-ghost btn-sm" style="position:absolute;right:0.375rem;padding:0.25rem;border:none;background:transparent;" onclick="document.getElementById('wiz-key').type=document.getElementById('wiz-key').type==='password'?'text':'password'">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
-        <div class="field-help">Your keys are safely encrypted.</div>
+        <div class="field-help">Stored encrypted.</div>
       </div>
       <details class="wizard-details">
         <summary>Internal API token <span style="color:hsl(var(--muted-foreground));font-weight:400;">(optional)</span></summary>
@@ -845,7 +848,7 @@ async function _aiWizardSave() {
 function confirmClearAiConfig() {
   AlertDialog.show({
     title:       'Clear AI configuration?',
-    description: 'The provider, model, and API key will be deleted. Chat will be unavailable until you reconfigure.',
+    description: 'Deletes the provider, model and API key. Chat is unavailable until reconfigured.',
     actionLabel: 'Clear configuration',
     variant:     'destructive',
     onConfirm:   clearAiConfig

@@ -8,9 +8,7 @@
     } catch (e) {}
 })();
 
-// Data-driven sidebar, edit NAV_GROUPS to add, remove, or reorder nav items.
-// The active item is auto-detected from location.pathname.
-// Adding a new page: push an entry into the appropriate group and include this script.
+// Navigation from NAV_GROUPS; the active item follows location.pathname
 
 const NAV_GROUPS = [
     {
@@ -55,6 +53,7 @@ const NAV_GROUPS = [
                 href: '/ui/settings',
                 label: 'Settings',
                 children: [
+                    { hash: 'general', label: 'General' },
                     { hash: 'security', label: 'Security' },
                     { hash: 'performance', label: 'Performance' },
                     { hash: 'storage', label: 'Storage & Logs' },

@@ -258,9 +258,8 @@ public sealed partial class McpChatService
     }
 
     /// <summary>
-    /// Runs a complete chat turn with the tool-use loop
+    /// Runs one chat turn with tool use, writing text, tool_call, done and error SSE events
     /// </summary>
-    /// <remarks>Writes SSE events directly to writer. Each event is a line starting with data followed by the json payload. Event types are text, tool_call, done, and error.</remarks>
     public async Task StreamAsync(
         IReadOnlyList<ChatMessage> history,
         string defaultEnvironment,

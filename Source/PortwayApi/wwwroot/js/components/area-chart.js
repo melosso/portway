@@ -1,14 +1,4 @@
-/**
- * AreaChart — Shadcn/Recharts-inspired SVG area chart.
- * Supports single or dual (stacked) series with dots and crosshair.
- * Zero external dependencies. Respects CSS custom properties for theming.
- *
- * Usage (single series):
- *   chart.setData([{ label: '14:00', timestamp: '...', count: 45 }, ...]);
- *
- * Usage (stacked dual series — API on top of UI):
- *   chart.setData(apiArray, uiArray);  // same-length arrays
- */
+// SVG area chart, setData(points) or setData(apiPoints, uiPoints) for stacked series
 class AreaChart {
     constructor(container, opts = {}) {
         this._container = container;
@@ -92,9 +82,7 @@ class AreaChart {
         const maxV = Math.max(...totals, 1);
         const yOf = (v) => PAD.top + cH * (1 - Math.min(v, maxV) / maxV);
 
-        // Point sets
-        // pts1 = top of stacked chart (total when dual, api alone when single)
-        // pts2 = top of UI layer (base of API layer)
+        // pts1 is the stack top, pts2 the UI layer top
         const pts1 = this._s1.map((d, i) => ({
             x: PAD.left + i * step,
             y: yOf(totals[i]),
@@ -175,9 +163,7 @@ class AreaChart {
             svg.appendChild(this._el('path', { d: uiPath, fill: `url(#${gUi})`, stroke: 'none' }));
         }
 
-        // API / primary fill
-        // When stacked: band between pts2 (linear bottom) and pts1 (cubic top)
-        // When single:  area from baseline to pts1
+        // Primary fill, between pts2 and pts1 when stacked
         let apiPath;
         if (pts2) {
             apiPath = this._cubic(pts1);

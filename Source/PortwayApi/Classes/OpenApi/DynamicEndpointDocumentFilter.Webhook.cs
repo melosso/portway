@@ -27,22 +27,7 @@ public partial class DynamicEndpointDocumentFilter
             // Effective environments and documentation are resolved per endpoint
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
             var webhookDocumentation = definition.Documentation ?? LoadWebhookDocumentation();
-            var webhookTag = definition.DocumentationTag;
-
-            // Register this webhook's tag description; namespaced webhooks define it in their own Documentation block
-            if (!string.IsNullOrWhiteSpace(webhookDocumentation?.TagDescription))
-            {
-                document.Tags ??= new HashSet<OpenApiTag>();
-                var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, webhookTag, StringComparison.OrdinalIgnoreCase));
-                if (existingTag == null)
-                {
-                    document.Tags.Add(new OpenApiTag { Name = webhookTag, Description = webhookDocumentation.TagDescription });
-                }
-                else if (string.IsNullOrWhiteSpace(existingTag.Description))
-                {
-                    existingTag.Description = webhookDocumentation.TagDescription;
-                }
-            }
+            var webhookTag = OpenApiTags.Declare(document, definition, fallbackDescription: webhookDocumentation?.TagDescription);
 
             // Create path item if it doesn't exist
             if (!document.Paths.ContainsKey(path))

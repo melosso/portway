@@ -17,9 +17,7 @@ public static class TelemetryServiceExtensions
         // Single bound instance for middlewares and endpoints; avoids repeated config binds and registration-vs-map-time drift
         services.AddSingleton(options);
 
-        // Always register PortwayMetrics so that CacheManager and other services can depend on
-        // it unconditionally. When telemetry is disabled, the Meter counters are no-ops
-        // (nothing is listening), but DI graph validation succeeds in all configurations
+        // Always registered so dependents resolve; counters are no-ops when telemetry is off
         services.AddSingleton<PortwayMetrics>();
 
         var provider = options.EffectiveProvider;

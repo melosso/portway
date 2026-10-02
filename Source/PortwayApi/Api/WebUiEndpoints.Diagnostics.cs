@@ -61,8 +61,7 @@ public static partial class WebUiEndpointExtensions
                 if (logFiles.Count == 0)
                     return Results.Json(new { file = "", lines = Array.Empty<object>(), total = 0, has_more = false });
 
-                // Serilog default file output template:
-                // {Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}
+                // Serilog default file template {Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}
                 var logPattern = new System.Text.RegularExpressions.Regex(
                     @"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) \[(\w{3,})\] (.*)$");
 

@@ -37,8 +37,7 @@ public class EnvironmentFileWatcher : FileWatchPump
                 return Task.CompletedTask;
             }
 
-            // Re-encrypt if a plaintext connection string was written (e.g. after IIS reset / config restore)
-            // Only applies to per-environment settings (parts.Length >= 2), not the global settings.json
+            // Re-encrypt plaintext connection strings in per-environment settings
             var relativePath = Path.GetRelativePath(WatchPath, filePath);
             var parts = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             if (parts.Length >= 2 && changeType != WatcherChangeTypes.Deleted)

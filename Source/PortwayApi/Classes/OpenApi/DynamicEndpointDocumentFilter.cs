@@ -27,20 +27,11 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Generate unique operation IDs
             int operationIdCounter = 1;
 
-            // Collect all tags with descriptions for the document
-            var documentTags = new Dictionary<string, string>();
-
             // Add documentation for each endpoint type
-            AddSqlEndpoints(document, ref operationIdCounter, documentTags);
-            AddProxyEndpoints(document, ref operationIdCounter, documentTags);
+            AddSqlEndpoints(document, ref operationIdCounter);
+            AddProxyEndpoints(document, ref operationIdCounter);
             AddWebhookEndpoints(document, ref operationIdCounter);
-            AddStaticEndpoints(document, ref operationIdCounter, documentTags);
-
-            // Collect file endpoint tags (but don't create operations since they're handled by EndpointController)
-            CollectFileEndpointTags(documentTags);
-
-            // Add all collected tags to the document with descriptions
-            AddTagsToDocument(document, documentTags);
+            AddStaticEndpoints(document, ref operationIdCounter);
 
 
             // Ensure application/json is added automatically to all operations with request bodies
@@ -191,41 +182,6 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 
         // Return default description for static endpoints
         return $"Returns {contentType} content from the {endpointName} endpoint.";
-    }
-
-    /// <summary>
-    /// Adds all collected tags with descriptions to the OpenAPI document
-    /// </summary>
-    private void AddTagsToDocument(OpenApiDocument document, Dictionary<string, string> documentTags)
-    {
-        // Initialize tags collection if it doesn't exist
-        document.Tags ??= new HashSet<OpenApiTag>();
-
-        // Add each tag with its description (sorting will be handled by TagSorterDocumentFilter)
-        foreach (var tagEntry in documentTags)
-        {
-            var existingTag = document.Tags.FirstOrDefault(t => string.Equals(t.Name, tagEntry.Key, StringComparison.OrdinalIgnoreCase));
-            if (existingTag == null)
-            {
-                document.Tags.Add(new OpenApiTag
-                {
-                    Name = tagEntry.Key,
-                    Description = tagEntry.Value
-                });
-            }
-            else
-            {
-                // Update existing tag description if it's empty
-                if (string.IsNullOrWhiteSpace(existingTag.Description))
-                {
-                    existingTag.Description = tagEntry.Value;
-                }
-            }
-        }
-
-        // Webhook tag descriptions are registered per endpoint in AddWebhookEndpoints (namespaced since v0.7.0)
-        // Sort all tags alphabetically
-        document.Tags = new HashSet<OpenApiTag>(document.Tags.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase));
     }
 
     /// <summary>

@@ -166,7 +166,7 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
 | `RequestTrafficLogging:Enabled` | `false` | Traffic logging |
 | `WebUi:Customization:EnableLandingPage` | `true` | The landing page |
 
-Each switch is also available under **Settings → Security → Feature Toggles**.
+Console locations: `Oidc:Enabled` under **Settings → Security → Deployment & Access**, `OpenApi:Enabled` and `Mcp:Enabled` under **Settings → Integrations**, `RequestTrafficLogging:Enabled` under **Settings → Storage & Logs → Logging**, `WebUi:Customization:EnableLandingPage` under **Settings → General**.
 
 ## Environment variables
 

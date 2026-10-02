@@ -8,9 +8,7 @@ using Testcontainers.PostgreSql;
 using Xunit;
 
 /// <summary>
-/// Load test for the pooling path against a real database. This is a stress test, not a
-/// regression guard: it exercises the connection-string cache, provider lookup and pooled
-/// connect path under heavy parallelism rather than pinning one specific race.
+/// Load test of the pooled connect path against a real database, not a regression guard
 /// </summary>
 public class SqlConnectionPoolConcurrencyTests : IAsyncLifetime
 {

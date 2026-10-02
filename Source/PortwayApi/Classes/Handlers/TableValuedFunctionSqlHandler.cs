@@ -15,14 +15,8 @@ namespace PortwayApi.Classes.Handlers;
 public static class TableValuedFunctionSqlHandler
 {
     /// <summary>
-    /// Handles GET requests for Table Valued Function endpoints
+    /// Handles GET requests for table valued function endpoints
     /// </summary>
-    /// <param name="endpoint">Endpoint definition</param>
-    /// <param name="request">HTTP request</param>
-    /// <param name="pathSegments">URL path segments after endpoint name</param>
-    /// <param name="connectionString">Database connection string</param>
-    /// <param name="odataParams">OData query parameters</param>
-    /// <returns>Query results</returns>
     public static async Task<(bool Success, IActionResult? Result, List<object>? Data)> HandleTVFGetRequest(
         EndpointDefinition endpoint,
         HttpRequest request,
@@ -232,10 +226,8 @@ public static class TableValuedFunctionSqlHandler
     }
 
     /// <summary>
-    /// Validates that a TVF endpoint configuration is correct
+    /// Validates a table valued function endpoint configuration
     /// </summary>
-    /// <param name="endpoint">Endpoint definition to validate</param>
-    /// <returns>List of validation errors</returns>
     public static List<string> ValidateTVFConfiguration(EndpointDefinition endpoint)
     {
         var errors = new List<string>();
@@ -346,10 +338,8 @@ public static class TableValuedFunctionSqlHandler
     }
 
     /// <summary>
-    /// Builds URL pattern documentation for a TVF endpoint
+    /// URL pattern examples for a table valued function endpoint
     /// </summary>
-    /// <param name="endpoint">TVF endpoint definition</param>
-    /// <returns>URL pattern examples</returns>
     public static List<string> BuildUrlPatternExamples(EndpointDefinition endpoint)
     {
         var examples = new List<string>();

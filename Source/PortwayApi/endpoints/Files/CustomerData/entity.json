@@ -3,5 +3,8 @@
   "BaseDirectory": "customer-data/{env}",
   "AllowedExtensions": [".csv", ".json", ".xml", ".xlsx"],
   "Hidden": false,
-  "AllowedEnvironments": ["500", "700"]
+  "AllowedEnvironments": ["500", "700"],
+  "Documentation": {
+    "TagDescription": "**Customer Data**\n\nCustomer exports per environment."
+  }
 }

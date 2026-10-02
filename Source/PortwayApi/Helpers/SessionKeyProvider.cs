@@ -4,8 +4,7 @@ using System.Security.Cryptography;
 using Serilog;
 
 /// <summary>
-/// The key that signs console session cookies. Kept in portway.key rather than derived from
-/// WebUi:AdminApiKey, so sessions survive that setting being removed.
+/// Session cookie signing key from portway.key, independent of WebUi:AdminApiKey
 /// </summary>
 public static class SessionKeyProvider
 {

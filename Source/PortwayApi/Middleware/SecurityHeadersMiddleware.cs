@@ -106,8 +106,7 @@ public class SecurityHeadersMiddleware
                 context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
             }
 
-            // HSTS: only emit over HTTPS to prevent browsers caching it for HTTP-only deployments
-            // (e.g. Docker behind a TLS-terminating reverse proxy with plain HTTP internally)
+            // HSTS over HTTPS only
             if (context.Request.IsHttps)
             {
                 context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";

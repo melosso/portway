@@ -10,14 +10,8 @@ using Serilog;
 public static class UrlRewriter
 {
     /// <summary>
-    /// Rewrites URLs in a JSON string to use proxy URLs
+    /// Rewrites upstream URLs in content to proxy URLs
     /// </summary>
-    /// <param name="content">The original content with URLs</param>
-    /// <param name="originalBaseUrl">The original base URL to replace</param>
-    /// <param name="originalPath">The original path segment</param>
-    /// <param name="newBaseUrl">The new base URL</param>
-    /// <param name="newPath">The new path</param>
-    /// <returns>Content with rewritten URLs</returns>
     public static string RewriteUrl(
         string content,
         string originalBaseUrl,

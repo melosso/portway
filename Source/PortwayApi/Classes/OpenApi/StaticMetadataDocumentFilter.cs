@@ -310,8 +310,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         if (getOperation.Responses?.TryGetValue("200", out var response) == true)
         {
-            // Clear existing content to ensure we replace placeholders
-            // Note: Content is a read-only dictionary, so we use Clear()
+            // Replace placeholder content
             response.Content?.Clear();
 
             var mediaType = new OpenApiMediaType

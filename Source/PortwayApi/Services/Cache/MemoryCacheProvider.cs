@@ -192,8 +192,7 @@ public class MemoryCacheProvider : ICacheProvider
         }
     }
 
-    // ponytail: drops unheld entries only; a key pruned between handout and WaitAsync can be
-    // acquired twice, costing one duplicate upstream fetch. Reference-count if that ever matters
+    // ponytail: pruning can hand out a lock twice, reference count if duplicate fetches matter
     private void PruneUnheldLocks()
     {
         foreach (var pair in _locks)

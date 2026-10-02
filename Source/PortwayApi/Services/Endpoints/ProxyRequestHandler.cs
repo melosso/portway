@@ -160,8 +160,7 @@ public sealed class ProxyRequestHandler
                 }
             }
 
-            // Re-attach the endpoint Url's own query; DELETE QueryParameter style may already
-            // have introduced a '?', so merge rather than blindly prepend
+            // Merge the endpoint Url query, a DELETE pattern may already have added one
             if (!string.IsNullOrEmpty(baseQuery))
             {
                 fullUrl += fullUrl.Contains('?') ? "&" + baseQuery : "?" + baseQuery;
@@ -577,8 +576,7 @@ public sealed class ProxyRequestHandler
                 requestMessage.Content = new ByteArrayContent(bodyBytes);
                 if (context.Request.ContentType != null)
                 {
-                    // Parse, not the ctor: values like "application/json; charset=utf-8" have
-                    // parameters the ctor rejects with a FormatException (500 on the request)
+                    // Parse, since the constructor rejects parameters like charset
                     requestMessage.Content.Headers.ContentType =
                         System.Net.Http.Headers.MediaTypeHeaderValue.Parse(context.Request.ContentType);
                 }

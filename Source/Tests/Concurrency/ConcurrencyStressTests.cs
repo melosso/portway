@@ -13,8 +13,7 @@ using PortwayApi.Tests.Support;
 using Xunit;
 
 /// <summary>
-/// Stress tests that hammer shared mutable state from many threads at once.
-/// Each one fails deterministically against the pre-fix code within a couple of seconds.
+/// Shared mutable state under many threads; each fails fast against the pre-fix code
 /// </summary>
 [Collection(ConcurrencyCollection.Name)]
 public class ConcurrencyStressTests
@@ -61,8 +60,7 @@ public class ConcurrencyStressTests
     private static string Describe(IEnumerable<Exception> errors) =>
         string.Join("\n", errors.Take(5).Select(e => $"{e.GetType().Name}: {e.Message}"));
 
-    // EnvironmentSettings: the allowed-environment list is cleared and refilled by Reload()
-    // while request threads read it. A reader must never see the list empty or torn.
+    // Reload must never expose an empty or torn allowed-environment list
     [Fact]
     public void EnvironmentSettings_ReloadUnderLoad_AllowlistStaysIntact()
     {
@@ -102,8 +100,7 @@ public class ConcurrencyStressTests
             "requests would have been rejected with 'environment not allowed'");
     }
 
-    // EndpointHandler: reload nulls the static caches while readers are between
-    // "load if needed" and "return the field", producing a NullReferenceException.
+    // Reload nulling static caches mid-read threw NullReferenceException
     [Fact]
     public void EndpointHandler_ReloadUnderLoad_NeverNullDerefs()
     {
@@ -137,9 +134,7 @@ public class ConcurrencyStressTests
         Assert.True(errors.IsEmpty, $"endpoint readers threw while a reload was in flight:\n{Describe(errors)}");
     }
 
-    // FileHandlerService: _currentMemoryUsage was mutated with a non-atomic += / -=, so
-    // concurrent uploads and deletes lose updates and the counter drifts away from what is
-    // really cached, which silently disables the MaxTotalMemoryCacheMB cap.
+    // Non-atomic memory counter drifted and disabled MaxTotalMemoryCacheMB
     [Fact]
     public async Task FileHandlerService_ConcurrentUploadsAndDeletes_CounterMatchesCacheContents()
     {
@@ -170,8 +165,7 @@ public class ConcurrencyStressTests
         Assert.Equal(service.MeasuredMemoryUsage, service.CurrentMemoryUsage);
     }
 
-    // MemoryCacheProvider keyed its semaphores by proxy cache key, which contains the full
-    // request URL. Distinct URLs therefore leaked a SemaphoreSlim each, forever.
+    // Semaphores keyed by full URL leaked one per distinct request
     [Fact]
     public async Task MemoryCacheProvider_ManyDistinctLockKeys_StaysBounded()
     {

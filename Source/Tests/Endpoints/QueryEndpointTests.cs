@@ -6,15 +6,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for the QUERY method (RFC 10008) against demo endpoints
+/// QUERY method (RFC 10008) against demo endpoints
 /// </summary>
-/// <remarks>
-/// Fixtures:
-/// - SQL Inventory/StockLevels  : AllowedMethods ["QUERY"], envs 500/700 (QUERY-only read endpoint)
-/// - SQL WMS/Warehouses         : AllowedMethods ["GET"],   env WMS
-/// - Proxy Account/Accounts     : Methods GET/POST/PUT/DELETE (no QUERY), env 500
-/// - Static Masterdata/CostCenters : env 500/700/Synergy
-/// </remarks>
 public class QueryEndpointTests : ApiTestBase
 {
     private static HttpRequestMessage Query(string url, string json = "{}") =>

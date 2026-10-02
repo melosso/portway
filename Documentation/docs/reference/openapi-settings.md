@@ -13,7 +13,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 |---|---|
 | `QUERY` | Native `query` operation |
 | `MERGE` | Under `additionalOperations` |
-| Namespaces | Tags; nested namespaces as nested tags |
+| Namespaces | Tag groups; each endpoint is a tag under its namespace |
 | `Deprecated: true` | Operations marked deprecated |
 | `Enabled: false` | Operations marked deprecated with a `[Disabled]` summary prefix |
 | File uploads | `multipart/form-data` with part media types from `AllowedExtensions` (otherwise `application/octet-stream`) |
@@ -140,7 +140,7 @@ With `Enabled: false`, requests return `503` with `Retry-After`, the operations 
 
 ## Nested tags
 
-A namespace with `/` (e.g. `WMS/Inbound` from `endpoints/SQL/WMS/Inbound/StagingBins`) produces a tag with `parent`, `kind: nav` and a `summary` containing the last segment. Missing parent tags are generated; only the leaf needs a `TagDescription`. The `/docs` sidebar nests tags by `parent` and labels them with `summary`.
+Every namespaced endpoint is tagged by its route path (`WMS/Inbound/StagingBins`) with `parent` set to the tag one segment up and `kind: nav` on every group. Missing parent tags are generated. `summary` holds the `DisplayName` or `NamespaceDisplayName`, else the last segment. The `/docs` sidebar nests tags by `parent` and labels them with `summary`. See [Namespaces](/reference/namespaces#openapi-tags).
 
 ## Schema discovery
 

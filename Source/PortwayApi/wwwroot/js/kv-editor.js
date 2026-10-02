@@ -1,6 +1,4 @@
-// Key-value row editor, shared by any page that needs a header/property editor.
-// Depends on: shared.js (esc)
-// Contract: pages using this must define markDirty() (or no-op it).
+// Key-value row editor; needs esc from shared.js and a markDirty function
 
 // Render existing key-value pairs as editable rows
 function buildKvEditor(headers) {
@@ -18,8 +16,7 @@ function buildKvEditor(headers) {
         .join('');
 }
 
-// Append a blank editable row to a container
-// options.onValueInput, optional listener attached to the value input (e.g. to track user edits)
+// Appends a blank row; options.onValueInput listens on the value input
 function addKvRow(containerId, options = {}) {
     const c = document.getElementById(containerId);
     if (!c) return;
@@ -48,8 +45,7 @@ function collectHeaders(containerId) {
     return headers;
 }
 
-// Validate that every row with a key also has a value
-// Returns an error string, or null if valid.
+// Error string when a row has a key without a value, else null
 function validateHeaders(containerId) {
     let err = null;
     document.querySelectorAll(`#${containerId} .kv-row`).forEach((row) => {

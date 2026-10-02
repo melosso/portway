@@ -320,6 +320,24 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task SettingsPage_SecuritySectionHoldsOnlySecurityCards()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/settings", authCookie), TestContext.Current.CancellationToken);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var start = html.IndexOf("id=\"section-security\"", StringComparison.Ordinal);
+        var end = html.IndexOf("class=\"settings-section\"", start, StringComparison.Ordinal);
+        var security = html[start..end];
+        Assert.Contains("id=\"securityBody\"", security);
+        Assert.DoesNotContain("customizationBody", security);
+        Assert.DoesNotContain("featuresBody", html);
+        Assert.Contains("id=\"section-general\"", html);
+    }
+
+    [Fact]
     public async Task SettingsEndpoint_ReportsSecurityPosture()
     {
         var client = CreateClient();
@@ -367,8 +385,7 @@ public class WebUiSecurityTests : IDisposable
     [Fact]
     public async Task DeactivatedAccount_LosesAccessImmediately_EvenOnAPlainReadRequest()
     {
-        // Separate clients per account: WebApplicationFactory's client auto-tracks Set-Cookie,
-        // so reusing one client across two logins would silently overwrite the admin's session
+        // One client per account, the factory client tracks Set-Cookie
         var adminClient = CreateClient();
         var (adminCookie, adminCsrf) = await LoginAsync(adminClient);
 
@@ -457,8 +474,7 @@ public class WebUiSecurityTests : IDisposable
         var stillEnabled = await client.GetAsync("/ui/api/auth/oidc/acme/start", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, stillEnabled.StatusCode);
 
-        // The switch has to hold at the start route too, not just hide the buttons:
-        // with it off every slug is unknown, which is the same 404 an unknown slug already gets
+        // Disabled OIDC answers the start route with the unknown slug 404
         var unknown = await client.GetAsync("/ui/api/auth/oidc/anything/start", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
@@ -490,8 +506,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        // TestServer connections have no remote IP, so this session reaches /ui only through PublicOrigins.
-        // Replacing the entry that admits it must be refused rather than applied and discovered on restart.
+        // This session reaches /ui via PublicOrigins only, so replacing it is refused
         var evict = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
         var evictResp = await client.SendAsync(evict, TestContext.Current.CancellationToken);
@@ -524,9 +539,7 @@ public class WebUiSecurityTests : IDisposable
     [Fact]
     public async Task UntrustedForwardedFor_CannotChooseItsOwnClientIp()
     {
-        // ForwardedHeadersMiddleware skips its trust check when both lists are empty, so registering it
-        // with nothing configured would let any caller set RemoteIpAddress through X-Forwarded-For and
-        // walk past the console's local-network gate, the per-IP rate limiter and the login lockout.
+        // Untrusted X-Forwarded-For must not set RemoteIpAddress
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
@@ -538,6 +551,23 @@ public class WebUiSecurityTests : IDisposable
         var security = json.GetProperty("security");
         Assert.False(security.GetProperty("trusted_proxies_configured").GetBoolean());
         Assert.NotEqual("203.0.113.9", security.GetProperty("client_ip").GetString());
+    }
+
+    [Theory]
+    [InlineData("http://localhost/ui/api/settings", false)]
+    [InlineData("https://localhost/ui/api/settings", true)]
+    public async Task SettingsEndpoint_ReportsHttpsFromTheRequestScheme(string url, bool expectHttps)
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Get, url, authCookie);
+        req.Headers.Add("Origin", "http://localhost");
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+        var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.Equal(expectHttps, json.GetProperty("security").GetProperty("https_enabled").GetBoolean());
     }
 
     [Fact]
@@ -558,8 +588,7 @@ public class WebUiSecurityTests : IDisposable
         var ignored = security.GetProperty("forwarded_ignored").GetBoolean();
 
         Assert.True(behindProxy);   // the header was sent, so the deployment looks proxied
-        // The warning fires exactly when a forwarded address arrives with no proxy trusted to send it.
-        // Asserted as the relationship because sibling tests share one appsettings.overrides.json.
+        // Asserted as a relationship, tests share appsettings.overrides.json
         Assert.Equal(behindProxy && !trusted, ignored);
     }
 

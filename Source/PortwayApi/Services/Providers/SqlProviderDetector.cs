@@ -1,22 +1,8 @@
 namespace PortwayApi.Services.Providers;
 
 /// <summary>
-/// Detects the SQL provider type from a connection string without allocating
+/// Detects the provider from a connection string without allocating; ambiguous strings default to SQL Server
 /// </summary>
-/// <remarks>
-/// any intermediate strings. All comparisons use OrdinalIgnoreCase
-///
-/// Detection priority (first match wins):
-/// 1. SQL Server positive keywords, unambiguous, checked before everything else
-/// 2. SQL Server OLE DB provider names  (Provider=SQLOLEDB / MSOLEDBSQL / SQLNCLI*)
-/// 3. SQL Server ODBC driver names      (Driver={SQL Server} / {SQL Native Client})
-/// 4. PostgreSQL URI prefix             (postgres:// / postgresql://)
-/// 5. MySQL URI prefix                  (mysql://)
-/// 6. Npgsql key-value                  (Host= without Server= / Data Source=)
-/// 7. MySQL-unambiguous keywords        (AllowUserVariables= / SslMode=)
-/// 8. SQLite Data Source value          (*.db / *.sqlite / :memory:)
-/// 9. Default → SQL Server
-/// </remarks>
 public static class SqlProviderDetector
 {
     /// <summary>
@@ -90,9 +76,7 @@ public static class SqlProviderDetector
          || connectionString.Contains("provider=sqlxmloledb", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.SqlServer;
 
-        // 3. SQL Server ODBC drivers
-        // "Driver={SQL Server}", "Driver={SQL Native Client …}", "Driver={SQL Server Native Client …}"
-        // "Driver={ODBC Driver 17/13/11 for SQL Server}", needs "sql server" in driver name
+        // 3. SQL Server ODBC drivers, "sql server" in the driver name
         if (connectionString.Contains("driver={sql", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.SqlServer;
 
@@ -109,31 +93,25 @@ public static class SqlProviderDetector
         if (connectionString.StartsWith("mysql://", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.MySql;
 
-        // 6. Npgsql key-value: Host=
-        // SQL Server uses Server= or Data Source=, never Host= for the server address
+        // 6. Npgsql Host=, which SQL Server never uses
         if (connectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase)
          && !connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase)
          && !connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.PostgreSql;
 
-        // 7. MySQL-unambiguous keywords
-        // AllowUserVariables and AllowPublicKeyRetrieval are MySqlConnector-only
-        // SslMode= is used by MySqlConnector (not Npgsql, which uses SSL*= keywords)
+        // 7. MySqlConnector-only keywords
         if (connectionString.Contains("AllowUserVariables=", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("AllowPublicKeyRetrieval=", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains("SslMode=", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.MySql;
 
-        // 8. SQLite
-        // Parse "Data Source=<value>" without allocating; check file extension or :memory:.
+        // 8. SQLite Data Source with a .db, .sqlite or :memory: value
         if (IsSqliteDataSource(connectionString.AsSpan())
          || connectionString.Contains("Mode=Memory", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.Sqlite;
 
-        // 9. Default
-        // Ambiguous strings (e.g. Server=x;Database=y;User Id=z;Password=w) fall through
-        // to SQL Server, the safest default since Portway originated as a SQL Server gateway
+        // 9. Default to SQL Server
         return SqlProviderType.SqlServer;
     }
 

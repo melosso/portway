@@ -23,9 +23,7 @@ public sealed record WritableSetting(
 public sealed record SettingsWriteResult(bool Ok, string? Error = null, string? Field = null, bool RestartRequired = false);
 
 /// <summary>
-/// Applies a whitelisted subset of configuration through appsettings.overrides.json.
-/// appsettings.json is never written: it stays the operator's file, and deleting the
-/// overrides file restores whatever it declares.
+/// Writes allowlisted settings to appsettings.overrides.json, never appsettings.json
 /// </summary>
 public sealed class SettingsWriteService
 {
@@ -36,8 +34,7 @@ public sealed class SettingsWriteService
 
     private static readonly Regex ScheduleFormat = new(@"^([01]\d|2[0-3]):[0-5]\d$", RegexOptions.Compiled);
 
-    // Only these keys can be written. Anything absent is refused by name, including secrets,
-    // connection strings, file system paths and anything that changes routing.
+    // Writable keys; anything else is refused by name
     private static readonly Dictionary<string, WritableSetting> Allowed =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -82,8 +79,7 @@ public sealed class SettingsWriteService
 
             ["FileStorage:MaxFileSizeBytes"] = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
 
-            // Deployment shape. These decide who reaches the console and whose IP is believed, so the
-            // endpoint additionally refuses a change that would lock the caller out of the console.
+            // Deployment shape; the endpoint refuses changes that lock the caller out
             ["WebUi:PublicOrigins"] = new("WebUi:PublicOrigins", "originlist", true, Max: 50),
             ["ForwardedHeaders:KnownProxies"] = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
             ["ForwardedHeaders:KnownNetworks"] = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
@@ -100,9 +96,7 @@ public sealed class SettingsWriteService
     public static string OverridesPath => Path.Combine(Directory.GetCurrentDirectory(), OverridesFileName);
 
     /// <summary>
-    /// Creates an empty overrides document when none exists. The configuration provider only
-    /// watches a file that was present when it was added, so without this the first write
-    /// would need a restart to take effect.
+    /// Creates an empty overrides file so the first write reloads without a restart
     /// </summary>
     public static void EnsureExists()
     {
@@ -233,8 +227,7 @@ public sealed class SettingsWriteService
         if (!IPNetwork.TryParse(value, out var network))
             return $"'{value}' is not a network in CIDR form, such as 10.0.0.0/8";
 
-        // A zero-length prefix trusts every address on the internet to forge its own client IP.
-        // ponytail: only the catastrophic case is refused; a needlessly wide private range is the operator's call
+        // ponytail: refuses only a zero-length prefix, wide private ranges are the operator's call
         if (network.PrefixLength == 0)
             return $"'{value}' covers every address; name the proxy's network instead";
 

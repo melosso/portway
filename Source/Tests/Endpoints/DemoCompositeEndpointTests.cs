@@ -6,18 +6,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for the demo Composite endpoint: Financial/SalesInvoice
+/// Demo composite endpoint Financial/SalesInvoice (endpoints/Proxy/Financial/SalesInvoice/entity.json)
 /// </summary>
-/// <remarks>
-/// Config: endpoints/Proxy/Financial/SalesInvoice/entity.json
-/// - Type: Composite
-/// - Methods: ["POST"]
-/// - Namespace: Financial
-/// - CompositeConfig.Steps:
-/// 1. CreateInvoiceLines (POST InvoiceLine array, TemplateTransformations: InvoiceID → $guid)
-/// 2. CreateInvoiceHeader (POST InvoiceHeader, TemplateTransformations: InvoiceID → $prev.CreateInvoiceLines.0.d.InvoiceID)
-/// - AllowedEnvironments: ["500", "700"]
-/// </remarks>
 public class DemoCompositeEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";
@@ -102,8 +92,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     [Fact]
     public async Task GetSalesInvoice_CompositeEndpointGetNotSupported_ReturnsMethodNotAllowed()
     {
-        // Arrange: composite endpoints only support POST; GET must return 405
-        // Act
+        // Composite endpoints are POST only
         var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         // Assert

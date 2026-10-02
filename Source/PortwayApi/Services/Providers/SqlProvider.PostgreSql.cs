@@ -34,8 +34,7 @@ public class PostgreSqlProvider : SqlProviderBase
 
     public override Compiler GetCompiler() => new PostgresCompiler();
 
-    // Rowset-returning routines are functions here and CALL cannot return rows, so invoke via SELECT.
-    // Named notation keeps argument order free; function parameter names are the lowercased payload keys
+    // Functions return rowsets via SELECT with named arguments from lowercased payload keys
     public override (string CommandText, System.Data.CommandType CommandType) BuildProcedureInvocation(
         string schema, string procedureName, IReadOnlyCollection<string> parameterNames)
     {

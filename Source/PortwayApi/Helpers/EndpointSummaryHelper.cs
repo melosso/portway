@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Serilog;
 using PortwayApi.Classes;
+using PortwayApi.Classes.OpenApi;
 
 namespace PortwayApi.Helpers;
 
@@ -83,8 +84,7 @@ public static class EndpointSummaryHelper
         {
             var key = kvp.Key;
 
-            // Skip if this looks like a backward-compatibility duplicate
-            // (non-namespaced key when a namespaced version exists)
+            // Skip the non-namespaced duplicate of a namespaced key
             if (!key.Contains('/'))
             {
                 var namespacedVersion = endpoints.Keys.FirstOrDefault(k => k.Contains('/') && k.EndsWith($"/{key}"));
@@ -168,6 +168,9 @@ public static class EndpointSummaryHelper
 
         // Fail closed when an $expand relationship points at an endpoint that is not a registered SQL endpoint
         ValidateRelationshipTargets(sqlEndpoints);
+
+        foreach (var (ns, labels) in OpenApiTags.NamespaceLabelConflicts(OpenApiEndpointCatalog.All().Select(e => e.Definition)))
+            Log.Warning("Namespace {Namespace} has conflicting NamespaceDisplayName values {Labels}; /docs uses {Label}. Set one value on every endpoint in the namespace", ns, labels, labels[0]);
 
         var proxies = proxyEndpointMap.Where(e => e.Value.Type != "Composite").ToDictionary(e => e.Key, e => e.Value);
         var composites = proxyEndpointMap.Where(e => e.Value.Type == "Composite").ToDictionary(e => e.Key, e => e.Value);

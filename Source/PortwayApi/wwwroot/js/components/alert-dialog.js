@@ -1,15 +1,4 @@
-// Alert Dialog component - modal confirmation dialog
-// Usage:
-//   HTML: <div id="alertDialogContainer"></div>
-//   JS:
-//     AlertDialog.show({
-//       title: 'Delete item?',
-//       description: 'This action cannot be undone.',
-//       actionLabel: 'Delete',
-//       onConfirm: () => { ... },
-//       onCancel: () => { ... },
-//       variant: 'destructive' // optional: 'default' | 'destructive'
-//     })
+// Alert dialog, AlertDialog.show({ title, description, actionLabel, onConfirm, onCancel, variant })
 (function (global) {
     'use strict';
 

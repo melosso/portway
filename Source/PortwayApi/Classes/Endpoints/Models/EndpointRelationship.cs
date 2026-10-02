@@ -1,7 +1,8 @@
 namespace PortwayApi.Classes;
 
-/// <summary>Declares a to-one navigation from a SQL endpoint to another registered SQL endpoint,
-/// exposed to readers through OData $expand. Target-by-name: schema/table/columns/gates derive from the target</summary>
+/// <summary>
+/// To-one $expand navigation to another SQL endpoint, resolved from the target
+/// </summary>
 public class EndpointRelationship
 {
     /// <summary>

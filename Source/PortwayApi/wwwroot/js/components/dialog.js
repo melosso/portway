@@ -1,17 +1,4 @@
-// Dialog component - general-purpose modal dialog
-// Usage:
-//   Dialog.open({
-//     id: 'myDialog',
-//     title: 'Edit Item',
-//     content: '...',
-//     footer: '...',
-//     closeOnBackdrop: true,
-//     closeOnEscape: true,
-//     onClose: () => { ... }
-//   })
-//
-//   Dialog.close('myDialog')
-//   Dialog.getContent('myDialog') - returns content element for dynamic updates
+// Modal dialog, Dialog.open({ id, title, content, footer, onClose }), Dialog.close(id), Dialog.getContent(id)
 (function (global) {
     'use strict';
 
@@ -130,8 +117,7 @@
 
                 setTimeout(() => {
                     container?.remove();
-                    // Guard against deleting a replacement dialog registered under the same ID
-                    // during the animation window (e.g. stepping back in a wizard).
+                    // Keep a replacement dialog registered under the same id during the animation
                     if (this._dialogs[id] === dialog) {
                         delete this._dialogs[id];
                     }

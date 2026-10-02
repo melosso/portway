@@ -102,10 +102,7 @@ public class RateLimiter
     {
         var pathBase = context.Request.PathBase.Value ?? "";
 
-        // Rate-limit exemption logic for /ui routes:
-        // - Exempt all /ui traffic if UI auth is disabled.
-        // - If auth is enabled, exempt only authenticated sessions on non-auth routes.
-        // - Never exempt login/auth endpoints to protect against brute-force attacks.
+        // Exempt /ui when auth is off, else signed-in non-auth routes; login is never exempt
         if (context.Request.Path.StartsWithSegments("/ui"))
         {
             if (!_uiAuthEnabled)

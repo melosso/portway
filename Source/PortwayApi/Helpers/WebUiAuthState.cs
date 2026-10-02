@@ -1,8 +1,7 @@
 namespace PortwayApi.Helpers;
 
 /// <summary>
-/// Whether the console asks for a sign-in. True once at least one account exists.
-/// Set at startup and again whenever the last account is removed or the first is added.
+/// Whether the console requires sign-in; true once an account exists
 /// </summary>
 public static class WebUiAuthState
 {

@@ -1,17 +1,4 @@
-// Drawer component - slide-in panel from right
-// Usage:
-//   HTML:
-//     <div class="drawer-backdrop" id="myDrawerBackdrop"></div>
-//     <div class="drawer" id="myDrawer">
-//       <div class="drawer-header">...</div>
-//       <div class="drawer-body">...</div>
-//       <div class="drawer-footer">...</div>
-//     </div>
-//   JS:
-//     Drawer.open('myDrawer')
-//     Drawer.close('myDrawer')
-//     Drawer.toggle('myDrawer')
-//     Drawer.onClose('myDrawer', callback) - called when drawer closes
+// Slide-in drawer, Drawer.open, close, toggle and onClose by element id
 (function (global) {
     'use strict';
 
@@ -58,7 +45,7 @@
                 const discard = await new Promise((resolve) => {
                     AlertDialog.show({
                         title: 'Discard unsaved changes?',
-                        description: 'This drawer has changes that have not been saved.',
+                        description: 'Unsaved changes will be lost.',
                         actionLabel: 'Discard changes',
                         variant: 'destructive',
                         onConfirm: () => resolve(true),

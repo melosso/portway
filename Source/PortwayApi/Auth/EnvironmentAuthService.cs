@@ -22,9 +22,8 @@ public class EnvironmentAuthService
 
 
     /// <summary>
-    /// Validates a request against environment-specific authentication settings
+    /// Validates a request against the environment authentication settings
     /// </summary>
-    /// <returns>True if authentication succeeded, false otherwise</returns>
     public async Task<bool> ValidateAsync(HttpContext context, AuthenticationSettings settings)
     {
         // Auth disabled: nothing to enforce, let the global token path decide
@@ -196,8 +195,7 @@ public class EnvironmentAuthService
 
     private async Task<bool> ValidateHmacAsync(HttpContext context, AuthenticationMethod method)
     {
-        // Simple HMAC implementation: Expects 'X-Signature' and 'X-Timestamp' headers
-        // Signature = HMAC(Secret, Method + Path + Timestamp + Body)
+        // HMAC over Method + Path + Timestamp + Body from X-Signature and X-Timestamp
 
         string? signature = context.Request.Headers[method.Name.Split('|')[0]]; // Default "X-Signature"
         string? timestamp = context.Request.Headers.TryGetValue("X-Timestamp", out var ts) ? ts.ToString() : null;

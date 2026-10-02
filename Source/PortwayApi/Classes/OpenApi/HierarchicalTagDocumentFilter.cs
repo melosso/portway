@@ -44,7 +44,7 @@ public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
             }
         }
 
-        // Link every namespaced tag to its immediate parent segment
+        // link to the declared parent spelling so casing cannot orphan a tag
         foreach (var tag in document.Tags)
         {
             var segments = Segments(tag.Name);
@@ -53,8 +53,10 @@ public class HierarchicalTagDocumentFilter : IOpenApiDocumentTransformer
                 continue;
             }
 
-            tag.Parent = new OpenApiTagReference(string.Join('/', segments.Take(segments.Length - 1)));
+            var parent = byName[string.Join('/', segments.Take(segments.Length - 1))];
+            tag.Parent = new OpenApiTagReference(parent.Name!);
             tag.Kind ??= NamespaceTagKind;
+            parent.Kind ??= NamespaceTagKind;
 
             // tag.Name keeps the full path so the hierarchy survives; Summary holds just the leaf segment for display
             tag.Summary ??= segments[^1];

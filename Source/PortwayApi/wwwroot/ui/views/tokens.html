@@ -517,7 +517,7 @@ function renderTable() {
   });
 
   if (!filteredTokens.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${allTokens.length ? 'No tokens match your search' : 'No tokens found'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${allTokens.length ? 'No matching tokens' : 'No tokens found'}</td></tr>`;
     updatePagination(0);
     return;
   }
@@ -906,7 +906,7 @@ async function copyRevealToken() {
       btn?.classList.remove('is-check');
     }, 2000);
   } catch(e) {
-    toast('Copy failed! Please select and copy manually (Ctrl+C)', 'warning');
+    toast('Copy failed. Select and copy manually (Ctrl+C).', 'warning');
   }
 }
 

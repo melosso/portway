@@ -184,8 +184,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         var requestSchema = CreateSchemaFromProcedureMetadata(parameters, definition, method);
 
-        // For POST response, we should return the created record (not wrapped)
-        // For PUT/PATCH, return success message with affected record count
+        // POST returns the created record, PUT and PATCH the affected count
         var objectMetadata = _metadataService.GetObjectMetadata(endpointName);
         OpenApiSchema responseSchema;
 
@@ -417,9 +416,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             if (string.IsNullOrWhiteSpace(propertyName))
                 continue;
 
-            // SPECIAL HANDLING: For PUT operations, include primary key parameters
-            // For POST, exclude primary key (auto-generated)
-            // For PUT, include primary key (required for updates)
+            // Primary key parameters on PUT only
             if (method == "POST" && propertyName.Equals(endpoint.PrimaryKey, StringComparison.OrdinalIgnoreCase))
             {
                 continue;

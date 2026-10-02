@@ -61,8 +61,8 @@ The explicit `Namespace` takes precedence over the folder. Nested namespaces rou
 | Property | Type | Required | Description |
 |---|---|---|---|
 | `Namespace` | string | No | Overrides the folder namespace |
-| `NamespaceDisplayName` | string | No | Namespace label in the documentation |
-| `DisplayName` | string | No | Endpoint label |
+| `NamespaceDisplayName` | string | No | Namespace title in `/docs`; not part of the route or tag name |
+| `DisplayName` | string | No | Endpoint title in `/docs`; not part of the route or tag name |
 
 ```json
 {
@@ -188,17 +188,21 @@ Reserved names: `api`, `docs`, `openapi`, `health`, `admin`, `system`, `composit
 
 ## OpenAPI tags
 
-| Configuration | Tag name |
+Tag names follow the route: `{namespace}/{endpoint}` for a namespaced endpoint, `{endpoint}` otherwise, and `Files/{endpoint}` for a file endpoint without a namespace. Each tag sets `parent` to the tag one segment up, so `/docs` lists `CRM` with `Accounts` and `Suppliers` beneath it. Labels set the sidebar title (`summary`) and never change a tag name.
+
+| Tag | Title |
 |---|---|
-| `NamespaceDisplayName` | `NamespaceDisplayName` value |
-| `Namespace` only | `Namespace` value |
-| Folder only | Folder name |
+| Namespace (`CRM`) | `NamespaceDisplayName`, else the last namespace segment |
+| Endpoint (`CRM/Accounts`) | `DisplayName`, else the endpoint folder |
+
+The endpoint's `TagDescription` describes its own tag. Endpoints in one namespace should share one `NamespaceDisplayName`. With conflicting values the title is the ordinal first value, and startup logs a warning naming the namespace and its values.
 
 ```json
 {
   "tags": [
-    { "name": "Account", "description": "Account Management - Contact and customer operations" },
-    { "name": "Finance", "description": "Financial Management System" }
+    { "name": "CRM", "summary": "Customer Relationship Management", "kind": "nav" },
+    { "name": "CRM/Accounts", "summary": "Accounts", "parent": "CRM", "kind": "nav", "description": "Account Management" },
+    { "name": "CRM/Suppliers", "summary": "Vendors", "parent": "CRM", "kind": "nav" }
   ]
 }
 ```

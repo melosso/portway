@@ -18,14 +18,10 @@ public static class ForwardedHeadersExtensions
                             ForwardedHeaders.XForwardedProto |
                             ForwardedHeaders.XForwardedHost,
 
-            // Disabled to prevent IIS header count symmetry warnings
+            // avoids iis header symmetry warnings
             RequireHeaderSymmetry = false,
-
-            // Support deep proxy chains
             ForwardLimit = null
         };
-
-        // Clear default trusted proxies and networks
         forwardedHeadersOptions.KnownIPNetworks.Clear();
         forwardedHeadersOptions.KnownProxies.Clear();
 
@@ -39,8 +35,6 @@ public static class ForwardedHeadersExtensions
         foreach (var network in knownNetworks)
             if (System.Net.IPNetwork.TryParse(network, out var net))
                 forwardedHeadersOptions.KnownIPNetworks.Add(net);
-
-        // Skip middleware registration if no trusted proxies are configured
         if (forwardedHeadersOptions.KnownProxies.Count == 0 && forwardedHeadersOptions.KnownIPNetworks.Count == 0)
         {
             Log.Warning("ForwardedHeaders: no trusted proxies configured, X-Forwarded-For ignored. Set ForwardedHeaders:KnownProxies.");
@@ -51,7 +45,7 @@ public static class ForwardedHeadersExtensions
             app.UseForwardedHeaders(forwardedHeadersOptions);
         }
 
-        // Restore Cloudflare client IP and scheme if coming from a valid Cloudflare IP
+        // restore client ip and scheme for requests from cloudflare
         app.Use((context, next) =>
         {
             if (context.Request.Headers.TryGetValue("CF-Ray", out _) &&

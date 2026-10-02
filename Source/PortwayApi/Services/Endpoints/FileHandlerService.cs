@@ -550,13 +550,11 @@ public class FileHandlerService : IDisposable
         if (Path.IsPathRooted(filename))
             return false;
 
-        // Reject backslashes explicitly; on Linux Path.GetFileName does not treat them
-        // as separators, so a Windows-style path would otherwise slip through
+        // Backslashes are not separators on Linux, reject them explicitly
         if (filename.Contains('\\'))
             return false;
 
-        // Path.GetFileName returns only the last segment; if it differs, the original
-        // contained forward-slash path components
+        // A different last segment means the name contained path components
         string safeFilename = Path.GetFileName(filename);
         if (string.IsNullOrEmpty(safeFilename) || safeFilename != filename)
             return false;
@@ -621,10 +619,7 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>
-    /// Sanitizes a filename to prevent path traversal attacks
-    /// </summary>
-    /// <summary>
-    /// Rejects files whose extension is blocked or not in the configured allow list
+    /// Rejects blocked extensions and those outside the allow list
     /// </summary>
     private void ValidateExtension(string filename)
     {

@@ -1,6 +1,4 @@
-// setup-guide.js — first-run setup checklist for the Portway dashboard.
-// Shows once per browser until dismissed. Reads /ui/api/overview to determine
-// which setup steps are complete.
+// First-run checklist from /ui/api/overview, shown until dismissed
 (function () {
     'use strict';
 

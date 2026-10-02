@@ -7,9 +7,7 @@ namespace PortwayApi.Tests.Helpers;
 
 public class SqlErrorClassifierTests
 {
-    // SqlException and MySqlException have internal constructors, so unit coverage
-    // uses PostgresException plus a plain DbException; the driver-specific arms are
-    // exercised by the Testcontainers parity suite
+    // Driver exceptions without public constructors are covered by the parity suite
     private sealed class FakeDbException(string message) : DbException(message);
 
     [Fact]

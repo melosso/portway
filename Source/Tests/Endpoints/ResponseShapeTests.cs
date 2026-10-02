@@ -154,9 +154,7 @@ public class ResponseShapeTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        // DELETE on a non-existent file returns 404 with error shape,
-        // but a successful delete must return mutation shape
-        // We test the error path here to verify shape correctness
+        // Error shape on a missing file delete
         var response = await _client.DeleteAsync("/api/500/files/attachments/nonexistent-file-id", TestContext.Current.CancellationToken);
 
         // Either 404 (file not found) or 400/500; both should have { success, error }

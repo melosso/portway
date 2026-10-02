@@ -12,10 +12,8 @@ namespace PortwayApi.Helpers;
 public static class SqlTableValuedFunctionHelper
 {
     /// <summary>
-    /// Determines if an endpoint is a Table Valued Function
+    /// Whether an endpoint is a table valued function
     /// </summary>
-    /// <param name="endpoint">Endpoint definition</param>
-    /// <returns>True if it's a TVF endpoint</returns>
     public static bool IsTableValuedFunction(EndpointDefinition endpoint)
     {
         return !string.IsNullOrEmpty(endpoint.DatabaseObjectType) &&
@@ -23,12 +21,8 @@ public static class SqlTableValuedFunctionHelper
     }
 
     /// <summary>
-    /// Extracts parameter values from HTTP request based on TVF parameter configuration
+    /// Extracts table valued function parameter values from the request
     /// </summary>
-    /// <param name="functionParameters">TVF parameter definitions</param>
-    /// <param name="request">HTTP request</param>
-    /// <param name="pathSegments">URL path segments after the endpoint name</param>
-    /// <returns>Dictionary of parameter values</returns>
     public static (Dictionary<string, object> Parameters, List<string> Errors) ExtractParameterValues(
         List<TVFParameter> functionParameters,
         HttpRequest request,
@@ -118,13 +112,8 @@ public static class SqlTableValuedFunctionHelper
     }
 
     /// <summary>
-    /// Builds the SQL function call with parameters
+    /// Builds the table valued function call and its Dapper parameters
     /// </summary>
-    /// <param name="schema">Database schema</param>
-    /// <param name="functionName">Function name</param>
-    /// <param name="parameterValues">Parameter values</param>
-    /// <param name="functionParameters">Function parameter definitions</param>
-    /// <returns>SQL function call and parameters for Dapper</returns>
     public static (string FunctionCall, Dictionary<string, object> SqlParameters) BuildFunctionCall(
         string schema,
         string functionName,

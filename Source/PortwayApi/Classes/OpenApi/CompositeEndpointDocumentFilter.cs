@@ -31,9 +31,6 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 .Where(kvp => kvp.Value.IsComposite)
                 .ToList();
 
-            // Collect tags with descriptions for proper namespace grouping
-            var documentTags = new Dictionary<string, string>();
-
             // Sort composite endpoints by name to ensure alphabetical order in documentation
             var sortedCompositeEndpoints = compositeEndpoints
                 .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
@@ -51,12 +48,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Get effective environments for this endpoint (endpoint-specific or global fallback)
                 var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-                // Collect tag description if provided using the DocumentationTag for proper namespace grouping
-                if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription) &&
-                    !documentTags.ContainsKey(definition.DocumentationTag))
-                {
-                    documentTags[definition.DocumentationTag] = definition.Documentation.TagDescription;
-                }
+                OpenApiTags.Declare(document, definition);
 
                 // Use the namespaced path from FullPath instead of hardcoded /composite/
                 string path = OpenApiEndpointCatalog.BasePath(definition);
@@ -115,9 +107,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Description = "Composite request data"
                 };
 
-                // ==============================================================
-                // NON-BREAKING CHANGE: Try dynamic example first, then fallback
-                // ==============================================================
+                // Dynamic example first, fallback otherwise
 
                 var dynamicExample = TryLoadDynamicExample(definition, endpointKey);
 
@@ -200,24 +190,6 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 StandardResponses.AddErrors(operation, ApiOperationKind.Composite);
 
                 document.Paths[path].Operations![HttpMethod.Post] = operation;
-            }
-
-            // Add all collected tags to the document (unchanged from original)
-            if (documentTags.Any())
-            {
-                document.Tags ??= new HashSet<OpenApiTag>();
-
-                foreach (var tag in documentTags)
-                {
-                    if (!document.Tags.Any(t => string.Equals(t.Name, tag.Key, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        document.Tags.Add(new OpenApiTag
-                        {
-                            Name = tag.Key,
-                            Description = tag.Value
-                        });
-                    }
-                }
             }
         }
         catch (Exception ex)

@@ -22,8 +22,7 @@ public static partial class MarkdownParser
         html = ItalicAsterisks().Replace(html, "<em>$1</em>");
         html = ItalicUnderscores().Replace(html, "<em>$1</em>");
 
-        // Reject javascript:, data:, vbscript: and any other non-http(s) scheme
-        // HtmlEncode does not strip these; only allow relative (//) or http(s) URLs
+        // Only relative or http(s) URLs; HtmlEncode does not strip other schemes
         html = MarkdownLink().Replace(html, m =>
         {
             var text = m.Groups[1].Value;

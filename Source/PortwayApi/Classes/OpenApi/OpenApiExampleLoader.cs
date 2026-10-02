@@ -23,11 +23,8 @@ public class OpenApiExampleLoader
     }
 
     /// <summary>
-    /// Load an example from a .example file and cache it
+    /// Loads and caches an example from a .example file
     /// </summary>
-    /// <param name="endpointPath">The path to the endpoint (e.g., "Proxy/SalesOrder" or "Proxy/Financial/SalesOrder")</param>
-    /// <param name="forceReload">Force reload from disk, bypassing cache</param>
-    /// <returns>The parsed OpenAPI example or null if not found</returns>
     public JsonNode? LoadExample(string endpointPath, bool forceReload = false)
     {
         var cacheKey = endpointPath.ToLowerInvariant();
@@ -86,11 +83,8 @@ public class OpenApiExampleLoader
     }
 
     /// <summary>
-    /// Load an example specifically for a composite endpoint
+    /// Loads the example for a composite endpoint
     /// </summary>
-    /// <param name="compositeEndpointName">Name of the composite endpoint (e.g., "SalesOrder")</param>
-    /// <param name="namespacePath">Optional namespace path (e.g., "Financial")</param>
-    /// <returns>The parsed OpenAPI example or null if not found</returns>
     public JsonNode? LoadCompositeExample(string compositeEndpointName, string? namespacePath = null)
     {
         // Build the full path
@@ -121,9 +115,8 @@ public class OpenApiExampleLoader
     }
 
     /// <summary>
-    /// Clear the example cache
+    /// Clears one cached example, or all when null
     /// </summary>
-    /// <param name="endpointPath">Optional specific endpoint to clear, or null to clear all</param>
     public static void ClearCache(string? endpointPath = null)
     {
         if (endpointPath == null)

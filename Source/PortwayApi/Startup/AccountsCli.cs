@@ -5,8 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using PortwayApi.Auth;
 
 /// <summary>
-/// `portway accounts ...`: recovering a console account without the console.
-/// Whoever has the shell outranks whoever merely has a sign-in.
+/// `portway accounts` recovers console accounts from the shell
 /// </summary>
 public static class AccountsCli
 {
@@ -30,8 +29,7 @@ public static class AccountsCli
     private static string DatabasePath => Path.Combine(Directory.GetCurrentDirectory(), "auth.db");
 
     /// <summary>
-    /// Run from the wrong directory, EnsureCreated would make an empty auth.db there and every
-    /// command would then truthfully report that the account does not exist. Refusing is clearer.
+    /// Refuses to run without auth.db so EnsureCreated cannot create an empty one
     /// </summary>
     private static bool MissingDatabase()
     {

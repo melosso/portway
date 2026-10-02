@@ -9,11 +9,6 @@ using PortwayApi.Classes;
 /// </summary>
 internal static class OpenApiEndpointCatalog
 {
-    /// <summary>
-    /// Tag shared by file endpoints that declare no namespace
-    /// </summary>
-    public const string FilesFallbackTag = "Files";
-
     public static string BasePath(EndpointDefinition definition) => $"/api/{{env}}/{definition.FullPath}";
 
     /// <summary>

@@ -50,7 +50,7 @@
       <div class="card-header">
         <div>
           <h2 class="card-title">Your sign-in</h2>
-          <p class="muted">Bind a provider identity to the account you are signed in with, so you can use it to sign in.</p>
+          <p class="muted">Provider identities linked to this account for sign-in.</p>
         </div>
       </div>
       <div class="card-body" id="myLinkBody"></div>
@@ -88,7 +88,7 @@
     <div class="field">
       <label class="field-label" for="provSlug">Key</label>
       <input type="text" id="provSlug" class="input" placeholder="e.g. authelia">
-      <div class="field-help">Appears in the redirect URI, so renaming the provider does not break it. Lowercase letters, numbers and hyphens.</div>
+      <div class="field-help">Part of the redirect URI; stable across renames. Lowercase letters, numbers and hyphens.</div>
     </div>
     <div class="field">
       <label class="field-label" for="provAuthority">Issuer URL</label>
@@ -102,7 +102,7 @@
     <div class="field">
       <label class="field-label" for="provClientSecret">Client secret</label>
       <input type="password" id="provClientSecret" class="input" autocomplete="new-password">
-      <div class="field-help">Leave blank for a public client, which is how Pocket ID registers one. PKCE is always used.</div>
+      <div class="field-help">Blank for a public client (e.g. Pocket ID). PKCE is always used.</div>
     </div>
     <div class="field">
       <label class="field-label" for="provScopes">Scopes</label>
@@ -116,7 +116,7 @@
     <div class="setting-row">
       <div class="setting-label">
         <label for="provEnabled">Enabled</label>
-        <p>Offer this provider on the sign-in page.</p>
+        <p>Listed on the sign-in page.</p>
       </div>
       <label class="switch">
         <input type="checkbox" id="provEnabled" checked>
@@ -126,7 +126,7 @@
     <div class="setting-row">
       <div class="setting-label">
         <label for="provCreate">Create accounts</label>
-        <p>Off means an unknown person is refused instead of given an account.</p>
+        <p>Off rejects identities without an existing account.</p>
       </div>
       <label class="switch">
         <input type="checkbox" id="provCreate">
@@ -186,7 +186,7 @@
     <div class="field">
       <label class="field-label" for="createConfirm">Your password</label>
       <input type="password" id="createConfirm" class="input" autocomplete="current-password">
-      <div class="field-help">Confirms it is you changing who can sign in.</div>
+      <div class="field-help">Required to change account access.</div>
     </div>
   </div>
   <div class="drawer-footer">
@@ -232,7 +232,7 @@
     <div class="field">
       <label class="field-label" for="editConfirm">Your password</label>
       <input type="password" id="editConfirm" class="input" autocomplete="current-password">
-      <div class="field-help">Confirms it is you changing who can sign in.</div>
+      <div class="field-help">Required to change account access.</div>
     </div>
   </div>
   <div class="drawer-footer">
@@ -376,7 +376,7 @@ function confirmDelete(id) {
   if (!u) return;
   AlertDialog.show({
     title: `Delete ${u.username}?`,
-    description: 'The account is removed and any open session for it stops working.',
+    description: 'Deletes the account and ends its open sessions.',
     actionLabel: 'Delete user',
     variant: 'destructive',
     extraHtml: `<div class="field" style="margin-top:0.75rem">
@@ -409,7 +409,7 @@ async function loadProviders() {
     _providers = d.providers ?? [];
 
     if (!_providers.length) {
-      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No providers yet. Accounts sign in with a password.</span>';
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No providers. Password sign-in only.</span>';
       return;
     }
 
@@ -504,7 +504,7 @@ function confirmDeleteProvider(id) {
   if (!p) return;
   AlertDialog.show({
     title: `Delete ${p.name}?`,
-    description: 'Accounts that sign in only through this provider will have no way in afterwards.',
+    description: 'Accounts that sign in only through this provider lose access.',
     actionLabel: 'Delete provider',
     variant: 'destructive',
     onConfirm: () => doDeleteProvider(id)
@@ -566,10 +566,10 @@ async function loadMyLink() {
 function linkMe(slug, name) {
   AlertDialog.show({
     title: `Link ${name}?`,
-    description: 'You will be sent to the provider. Whichever identity signs in there becomes bound to this account.',
+    description: 'Redirects to the provider. The identity that signs in there is linked to this account.',
     actionLabel: 'Continue',
     extraHtml: `<div class="field" style="margin-top:0.75rem">
-      <p class="alert-dialog-description" style="margin-bottom:0.25rem">Please confirm your password to continue.</p>
+      <p class="alert-dialog-description" style="margin-bottom:0.25rem">Confirm your password.</p>
       <label class="field-label" for="linkConfirm">Your password</label>
       <input type="password" id="linkConfirm" class="input" autocomplete="current-password">
     </div>`,
@@ -589,7 +589,7 @@ async function startLink(slug, currentPassword) {
 function unlinkMe() {
   AlertDialog.show({
     title: 'Unlink this provider?',
-    description: 'You will sign in with a password afterwards.',
+    description: 'Password sign-in remains available.',
     actionLabel: 'Unlink',
     variant: 'destructive',
     onConfirm: doUnlinkMe
@@ -609,7 +609,7 @@ async function doUnlinkMe() {
   const outcome = new URLSearchParams(location.search).get('link');
   if (!outcome) return;
   if (outcome === 'linked') toast('Provider linked to your account', 'success');
-  else toast('That identity could not be linked. It may already belong to another account.', 'error');
+  else toast('Identity not linked. It may belong to another account.', 'error');
   history.replaceState(null, '', location.pathname);
 })();
 

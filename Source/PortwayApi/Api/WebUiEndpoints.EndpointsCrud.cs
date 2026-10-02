@@ -50,8 +50,7 @@ public static partial class WebUiEndpointExtensions
             Directory.CreateDirectory(Path.GetDirectoryName(newDir)!);
             Directory.Move(oldDir, newDir);
 
-            // If the entity.json Namespace equals the old folder name (doubled-key pattern, e.g. Accounts/Accounts),
-            // clear it so the routing key after rename is simply newName instead of "Accounts/newName"
+            // A Namespace equal to the old folder name is cleared so the new key is newName
             var actualName = newName;
             try
             {
@@ -273,8 +272,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { valid = errors.Count == 0, errors });
         }).ExcludeFromDescription();
 
-        // Receive and log client-side JS errors for production visibility
-        // Exempt from auth (sendBeacon fires from any page state); rate-limited by the IP limiter
+        // Client JS errors, unauthenticated for sendBeacon and IP rate limited
     }
 
     private static string? TenancyError(string type, string json) =>

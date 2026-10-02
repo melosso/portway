@@ -6,17 +6,8 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Integration tests for the demo Proxy endpoint: Account/Accounts
+/// Demo proxy endpoint Account/Accounts (endpoints/Proxy/Account/Accounts/entity.json)
 /// </summary>
-/// <remarks>
-/// Config: endpoints/Proxy/Account/Accounts/entity.json
-/// - Url: http://localhost:8020/.../Account
-/// - Methods: GET, POST, PUT, DELETE
-/// - CustomProperties.HttpMethodTranslation: "PUT:MERGE"
-/// - CustomProperties.HttpMethodAppendHeaders: "PUT:X-Custom-Original-Method={ORIGINAL_METHOD}"
-/// - DeletePatterns: [{Style: "ODataGuid"}]
-/// - No AllowedEnvironments restriction (inherits global)
-/// </remarks>
 public class DemoProxyEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";

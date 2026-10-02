@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
+using PortwayApi.Classes;
 using PortwayApi.Classes.OpenApi;
 using Xunit;
 
@@ -61,5 +62,73 @@ public class HierarchicalTagTests
         var tag = document.Tags!.Single();
         Assert.Null(tag.Parent);
         Assert.Null(tag.Kind);
+    }
+
+    [Fact]
+    public void Tag_FollowsTheRoute_NotTheLabels()
+    {
+        var labelled = new EndpointDefinition { Namespace = "CRM", NamespaceDisplayName = "Customers", FolderName = "Suppliers", DisplayName = "Vendors" };
+
+        Assert.Equal("CRM/Suppliers", labelled.DocumentationTag);
+    }
+
+    [Fact]
+    public void FlatEndpoint_KeepsItsOwnTag()
+    {
+        Assert.Equal("Products", new EndpointDefinition { FolderName = "Products", DisplayName = "Catalog" }.DocumentationTag);
+    }
+
+    [Fact]
+    public async Task NamespaceCasing_LinksToTheDeclaredParent()
+    {
+        var document = await TransformAsync("crm/Accounts", "CRM/Contacts");
+
+        Assert.Single(document.Tags!, t => string.Equals(t.Name, "crm", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("crm", document.Tags!.Single(t => t.Name == "CRM/Contacts").Parent?.Name);
+    }
+
+    [Fact]
+    public async Task RootGroup_IsNav()
+    {
+        var document = await TransformAsync("CRM/Accounts");
+
+        Assert.Equal("nav", document.Tags!.Single(t => t.Name == "CRM").Kind);
+    }
+
+    [Fact]
+    public void ConflictingNamespaceLabels_ResolveTheSameInAnyOrder()
+    {
+        var zeta = new EndpointDefinition { Namespace = "CRM", NamespaceDisplayName = "Zeta", FolderName = "Accounts" };
+        var alpha = new EndpointDefinition { Namespace = "crm", NamespaceDisplayName = "Alpha", FolderName = "Contacts" };
+
+        var forward = new OpenApiDocument();
+        OpenApiTags.Declare(forward, zeta);
+        OpenApiTags.Declare(forward, alpha);
+
+        var reverse = new OpenApiDocument();
+        OpenApiTags.Declare(reverse, alpha);
+        OpenApiTags.Declare(reverse, zeta);
+
+        Assert.Equal("Alpha", forward.Tags!.Single(t => t.Name == "CRM").Summary);
+        Assert.Equal("Alpha", reverse.Tags!.Single(t => t.Name == "crm").Summary);
+    }
+
+    [Fact]
+    public void NamespaceLabelConflicts_ListsOnlyDisagreeingDocumentedNamespaces()
+    {
+        EndpointDefinition[] endpoints =
+        [
+            new() { Namespace = "CRM", NamespaceDisplayName = "Zeta", FolderName = "Accounts" },
+            new() { Namespace = "crm", NamespaceDisplayName = "Alpha", FolderName = "Contacts" },
+            new() { Namespace = "CRM", FolderName = "Leads" },
+            new() { Namespace = "WMS", NamespaceDisplayName = "Warehouse", FolderName = "Bins" },
+            new() { Namespace = "WMS", NamespaceDisplayName = "Warehouse", FolderName = "Zones" },
+            new() { Namespace = "WMS", NamespaceDisplayName = "Hidden", FolderName = "Legacy", Hidden = true }
+        ];
+
+        var conflict = Assert.Single(OpenApiTags.NamespaceLabelConflicts(endpoints));
+
+        Assert.Equal("CRM", conflict.Namespace, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(["Alpha", "Zeta"], conflict.Labels);
     }
 }

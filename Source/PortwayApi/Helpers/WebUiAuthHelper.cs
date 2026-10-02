@@ -32,9 +32,8 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Checks if the client is rate limited or locked out
+    /// Error message when rate limited or locked out, null when allowed
     /// </summary>
-    /// <returns>Error message if blocked, null if allowed</returns>
     public static string? CheckAccess(string clientIp)
     {
         if (_failedAttempts.TryGetValue(clientIp, out var attempt))
@@ -92,10 +91,7 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Validates an HMAC-signed session cookie against the admin key; returns false on tamper or expiry
-    /// </summary>
-    /// <summary>
-    /// Signs a session for one account; the id travels in the cookie so the console knows who is asking
+    /// Signs a session cookie carrying the account id
     /// </summary>
     public static string IssueSessionCookie(int userId, int expiryHours)
     {
@@ -141,7 +137,6 @@ public static class WebUiAuthHelper
     /// <summary>
     /// Validates a CSRF token
     /// </summary>
-    /// <returns>True if valid</returns>
     public static bool ValidateCsrfToken(string? token)
     {
         if (string.IsNullOrEmpty(token))

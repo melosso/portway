@@ -355,8 +355,7 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.True(offenders.Count == 0, "Non-standardized response descriptions:\n" + string.Join("\n", offenders));
     }
 
-    // Regression: a QUERY-only endpoint must not be advertised as GET, and generating the document
-    // must not mutate the endpoint's methods (which previously injected GET and broke the 405 gate).
+    // Regression: QUERY-only endpoints are not documented as GET or mutated
     [Fact]
     public async Task QueryOnlyEndpoint_NotRenderedAsGet_AndGetStays405()
     {

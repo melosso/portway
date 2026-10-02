@@ -135,8 +135,8 @@ function confirmNavigate(onConfirm) {
   }
   
   AlertDialog.show({
-    title: 'Are you sure?',
-    description: 'You have unsaved changes in this endpoint. Are you sure you want to leave without saving?',
+    title: 'Discard changes?',
+    description: 'Unsaved endpoint changes will be lost.',
     actionLabel: 'Leave anyway',
     cancelLabel: 'Stay here',
     onConfirm: () => {
@@ -148,7 +148,7 @@ function confirmNavigate(onConfirm) {
 
 function confirmNavigateSync() {
   if (!_dirty) return true;
-  return confirm('You have unsaved changes. Leave without saving?');
+  return confirm('Discard unsaved changes?');
 }
 
 window.addEventListener('beforeunload', e => {
@@ -230,7 +230,7 @@ function renderList() {
           `<div style="font-size:0.82rem;font-weight:500;color:hsl(var(--foreground))">No endpoints configured</div>` +
           `<div style="font-size:0.76rem;color:hsl(var(--muted-foreground));line-height:1.5">` +
             `Add an <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">entity.json</code> ` +
-            `file inside the <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">endpoints/</code> directory to register your first endpoint.` +
+            `file inside the <code style="font-size:0.73rem;background:hsl(var(--muted));padding:0.1em 0.35em;border-radius:3px">endpoints/</code> directory to register an endpoint.` +
           `</div>` +
           `<pre style="font-size:0.72rem;color:hsl(var(--muted-foreground));line-height:1.6;margin:0.25rem 0 0;` +
             `background:hsl(var(--muted));border-radius:4px;padding:0.65rem 0.75rem;overflow:hidden">` +
@@ -580,10 +580,7 @@ function fieldDocumentation(c) {
 
 // Structured forms per type
 
-// SQL, order matches file convention:
-// DatabaseSchema, DatabaseObjectName, Namespace, NamespaceDisplayName, Hidden,
-// AllowedEnvironments, AllowedMethods, Procedure, PrimaryKey,
-// [Columns accordion], [Advanced accordion], Documentation
+// SQL fields in entity.json order
 function renderSqlForm(c) {
   return `
     <div class="card">
@@ -624,8 +621,7 @@ function renderSqlForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Proxy, order: Url, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, Hidden,
-//                [Delete Patterns accordion], [Custom Properties accordion], Documentation
+// Proxy fields in entity.json order
 function renderProxyForm(c) {
   const cp = c.CustomProperties ?? {};
   const hasCp = !!(cp.ContentType || cp.HttpMethodTranslation || cp.HttpMethodAppendHeaders);
@@ -665,8 +661,7 @@ function renderProxyForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Composite, order: Type, Methods, Namespace, NamespaceDisplayName, AllowedEnvironments, Hidden,
-//                    CompositeConfig (Name, Description, Steps), Documentation
+// Composite fields in entity.json order
 function renderCompositeForm(c) {
   const cfg = c.CompositeConfig ?? {};
   return `
@@ -699,8 +694,7 @@ function renderCompositeForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// File, order: StorageType, BaseDirectory, AllowedExtensions, Namespace, NamespaceDisplayName,
-//               AllowedEnvironments, Hidden, Documentation
+// File fields in entity.json order
 function renderFileForm(c) {
   return `
     <div class="card">
@@ -732,8 +726,7 @@ function renderFileForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Static, order: ContentType, ContentFile, EnableFiltering, Namespace, NamespaceDisplayName,
-//                 AllowedEnvironments, Hidden, Documentation
+// Static fields in entity.json order
 function renderStaticForm(c) {
   return `
     <div class="card">
@@ -764,8 +757,7 @@ function renderStaticForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Webhook, order: DatabaseObjectName, DatabaseSchema, AllowedColumns, AllowedMethods,
-//                  AllowedEnvironments, Namespace, NamespaceDisplayName, Documentation
+// Webhook fields in entity.json order
 function renderWebhookForm(c) {
   const hasAdvanced = !!(c.RequiredColumns?.length || c.ColumnValidation);
   return `
@@ -855,8 +847,7 @@ function validateForm(type) {
   return errors;
 }
 
-// Collect form → JSON object
-// Always spread existing content first so fields not shown in the UI are preserved.
+// Form to JSON over the existing content so hidden fields are kept
 function collectFormConfig(type, existingContent) {
   const c = existingContent ?? {};
   const methods = readMethods();

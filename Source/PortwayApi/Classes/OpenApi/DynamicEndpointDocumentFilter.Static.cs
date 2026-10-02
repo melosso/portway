@@ -6,34 +6,9 @@ namespace PortwayApi.Classes.OpenApi;
 public partial class DynamicEndpointDocumentFilter
 {
     /// <summary>
-    /// Collects file endpoint tags for documentation (operations are handled by EndpointController)
-    /// </summary>
-    private void CollectFileEndpointTags(Dictionary<string, string> documentTags)
-    {
-        // Get file endpoints and collect their tag descriptions
-        var fileEndpoints = EndpointHandler.GetFileEndpoints();
-
-        foreach (var endpoint in fileEndpoints)
-        {
-            string endpointName = endpoint.Key;
-            var definition = endpoint.Value;
-
-            // Skip private endpoints
-            if (!OpenApiEndpointCatalog.IsDocumented(definition))
-                continue;
-
-            // Collect tag description if provided
-            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
-            {
-                documentTags[endpointName] = definition.Documentation.TagDescription;
-            }
-        }
-    }
-
-    /// <summary>
     /// Adds static endpoints to the OpenAPI document
     /// </summary>
-    private void AddStaticEndpoints(OpenApiDocument document, ref int operationIdCounter, Dictionary<string, string> documentTags)
+    private void AddStaticEndpoints(OpenApiDocument document, ref int operationIdCounter)
     {
         var staticEndpoints = EndpointHandler.GetStaticEndpoints();
 
@@ -54,12 +29,7 @@ public partial class DynamicEndpointDocumentFilter
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-            // Collect tag description using the DocumentationTag for proper namespace grouping
-            string documentationTag = definition.DocumentationTag;
-            if (!string.IsNullOrWhiteSpace(definition.Documentation?.TagDescription))
-            {
-                documentTags[documentationTag] = definition.Documentation.TagDescription;
-            }
+            string documentationTag = OpenApiTags.Declare(document, definition);
 
             // Get content type and filtering capability
             var contentType = definition.Properties?.GetValueOrDefault("ContentType", "text/plain")?.ToString() ?? "text/plain";

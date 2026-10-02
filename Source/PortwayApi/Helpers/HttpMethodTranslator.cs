@@ -9,11 +9,8 @@ using Serilog;
 public static class HttpMethodTranslator
 {
     /// <summary>
-    /// Translates an HTTP method based on the HttpMethodTranslation custom property
+    /// Translates a method using HttpMethodTranslation, or returns it unchanged
     /// </summary>
-    /// <param name="originalMethod">The original HTTP method (e.g., "PUT")</param>
-    /// <param name="customProperties">Custom properties from the endpoint definition</param>
-    /// <returns>The translated HTTP method or the original method if no translation is configured</returns>
     public static string TranslateMethod(string originalMethod, Dictionary<string, object>? customProperties)
     {
         if (customProperties == null || !customProperties.ContainsKey("HttpMethodTranslation"))
@@ -64,10 +61,8 @@ public static class HttpMethodTranslator
     }
 
     /// <summary>
-    /// Parses translation mappings from a string format like "PUT:MERGE,POST:CREATE" (preferred) or "PUT;MERGE,POST;CREATE" (legacy)
+    /// Parses "PUT:MERGE,POST:CREATE" or legacy "PUT;MERGE" mappings
     /// </summary>
-    /// <param name="translationString">The translation configuration string</param>
-    /// <returns>Dictionary mapping original methods to translated methods</returns>
     private static Dictionary<string, string> ParseTranslationMappings(string translationString)
     {
         var translations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -112,10 +107,8 @@ public static class HttpMethodTranslator
     }
 
     /// <summary>
-    /// Validates that a translated HTTP method is supported
+    /// Validates that a translated method is supported
     /// </summary>
-    /// <param name="method">The HTTP method to validate</param>
-    /// <returns>True if the method is supported, false otherwise</returns>
     public static bool IsValidHttpMethod(string method)
     {
         var validMethods = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

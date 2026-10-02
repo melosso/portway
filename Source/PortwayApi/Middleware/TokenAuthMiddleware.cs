@@ -191,13 +191,7 @@ public class TokenAuthMiddleware
     /// </summary>
     private string? ExtractEndpointName(PathString path)
     {
-        // Parse patterns like:
-        // /api/{env}/{endpointName}
-        // /api/{env}/{namespace}/{endpointName}
-        // /api/{env}/{endpointName}/{id}
-        // /api/{env}/{namespace}/{endpointName}/{id}
-        // /api/{env}/composite/{endpointName}
-        // /webhook/{env}/{webhookId}
+        // Parses /api/{env}/[{namespace}/]{name}[/{id}], /api/{env}/composite/{name} and /webhook/{env}/{id}
 
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments == null || segments.Length < 3)

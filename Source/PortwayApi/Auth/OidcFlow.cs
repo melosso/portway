@@ -14,9 +14,7 @@ using Serilog;
 public sealed record OidcIdentity(string Subject, string Username, string Email, bool EmailVerified, IReadOnlyCollection<string> ClaimNames);
 
 /// <summary>
-/// Authorization code with PKCE against any provider publishing a discovery document.
-/// ConfigurationManager caches the document and its signing keys; JsonWebTokenHandler validates
-/// the id_token against them. What is written here is the redirect, the exchange and the one-time state.
+/// Authorization code flow with PKCE against any provider with a discovery document
 /// </summary>
 public static class OidcFlow
 {
@@ -32,17 +30,14 @@ public static class OidcFlow
     /// </summary>
     public static readonly TimeSpan FlowLifetime = TimeSpan.FromMinutes(10);
 
-    // Per process. Portway is one instance over one SQLite file, so a sign-in that starts here finishes here.
-    // Behind more than one instance this needs a shared store, or sticky sessions.
+    // ponytail: per process state, needs a shared store or sticky sessions for multiple instances
     private static readonly ConcurrentDictionary<string, PendingFlow> Pending = new(StringComparer.Ordinal);
 
     // Keyed on the authority too, so editing a provider's URL drops the document cached for the old one
     private static readonly ConcurrentDictionary<string, ConfigurationManager<OpenIdConnectConfiguration>> Documents = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// LinkTo is zero for a sign-in. When it names an account, the flow is that account binding a
-    /// provider identity to itself: the callback writes what comes back instead of matching on it.
-    /// The account was chosen by an authenticated session before the redirect, never by a claim.
+    /// Zero for a sign-in, otherwise the session-chosen account to link the identity to
     /// </summary>
     public sealed record PendingFlow(int ProviderId, string Verifier, string Nonce, string RedirectUri, DateTime ExpiresAt, int LinkTo = 0);
 
@@ -129,9 +124,7 @@ public static class OidcFlow
             ["code_verifier"] = flow.Verifier
         };
 
-        // PKCE alone authenticates a public client, which is how Pocket ID can register one.
-        // A confidential client authenticates the way its provider says it will: most default to
-        // HTTP Basic, and answer invalid_client when the secret arrives in the form body instead.
+        // Public clients use PKCE only, confidential clients use the provider's auth method
         var basic = !string.IsNullOrEmpty(provider.ClientSecret) && PrefersBasic(document);
         if (!string.IsNullOrEmpty(provider.ClientSecret) && !basic) form["client_secret"] = provider.ClientSecret;
 
@@ -207,9 +200,7 @@ public static class OidcFlow
     }
 
     /// <summary>
-    /// Which client authentication the provider asked for. When it advertises the methods it
-    /// supports, basic wins unless only post is offered; when it advertises nothing, the spec's
-    /// default is basic.
+    /// Basic unless the provider advertises only post
     /// </summary>
     private static bool PrefersBasic(OpenIdConnectConfiguration document)
     {
