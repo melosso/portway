@@ -173,4 +173,32 @@ public class DemoSqlEndpointTests : ApiTestBase
                 It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
             Times.AtLeastOnce);
     }
+
+    [Fact]
+    public async Task GetWarehouses_TopAboveMaxPageSize_IsClampedToMaxPageSize()
+    {
+        await _client.GetAsync($"{ApiPath}?$top=100", TestContext.Current.CancellationToken);
+
+        _mockODataToSqlConverter.Verify(
+            c => c.ConvertToSQL(
+                It.Is<string>(s => s.Contains("Warehouses")),
+                It.Is<Dictionary<string, string>>(d => d["top"] == "51"),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
+            Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task GetWarehouses_NoOrderBy_UsesDefaultSort()
+    {
+        await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
+
+        _mockODataToSqlConverter.Verify(
+            c => c.ConvertToSQL(
+                It.Is<string>(s => s.Contains("Warehouses")),
+                It.Is<Dictionary<string, string>>(d => d.ContainsKey("orderby") && d["orderby"] == "Code ASC"),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()),
+            Times.AtLeastOnce);
+    }
 }

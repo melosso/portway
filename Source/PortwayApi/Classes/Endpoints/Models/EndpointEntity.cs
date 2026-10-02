@@ -38,4 +38,6 @@ public class EndpointEntity : EndpointEntityBase
     public CompositeDefinition? CompositeConfig { get; set; }
 
     public Dictionary<string, object>? CustomProperties { get; set; }
+
+    public Dictionary<string, object>? Properties { get; set; }
 }

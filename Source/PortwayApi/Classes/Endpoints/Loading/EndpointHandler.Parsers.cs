@@ -168,7 +168,8 @@ public static partial class EndpointHandler
             DatabaseObjectType = entity.DatabaseObjectType ?? "Table",
             FunctionParameters = entity.FunctionParameters,
             Relationships = entity.Relationships,
-            Methods = allowedMethods
+            Methods = allowedMethods,
+            Properties = entity.Properties
         };
 
         entity.ApplyTo(definition);
