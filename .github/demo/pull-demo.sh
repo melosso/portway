@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Portway Demo Pull Script
-# Run this from the demo folder on your server; files are written to the current directory.
+# Pulls the demo files into the current directory
 
 REPO_RAW_URL="https://raw.githubusercontent.com/melosso/portway/main/.github/demo"
 

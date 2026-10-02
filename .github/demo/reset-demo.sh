@@ -1,11 +1,6 @@
 #!/bin/bash
 
-# Portway Demo Reset Script
-# This script safely resets the demo database and configuration without 
-# overwriting custom settings like docker-compose.yml or nginx.conf.
-#
-# Recommended cron entry (runs every 12 hours):
-# 0 */12 * * * /opt/portway-demo/reset-demo.sh > /opt/portway-demo/reset.log 2>&1
+# Resets demo data and config, cron: 0 */12 * * * /opt/portway-demo/reset-demo.sh > /opt/portway-demo/reset.log 2>&1
 
 TARGET_DIR="portway-demo"
 REPO_RAW_URL="https://raw.githubusercontent.com/melosso/portway/main/.github/demo"
