@@ -111,7 +111,7 @@ With `OverrideGlobalToken: false`:
 
 With `OverrideGlobalToken: true`, only the environment methods are accepted.
 
-Requests authorized by environment methods have no Portway token and are refused on endpoints with [tenant headers](/guide/security#tenant-headers).
+Requests authorized by environment methods have no Portway token and are refused on endpoints with [tenant headers](/guide/tenant-headers).
 
 ## Security notes
 

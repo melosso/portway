@@ -14,7 +14,7 @@ description: "Request and response headers Portway reads or writes: authenticati
 | `Accept` | No | Response format for content negotiation |
 | `Accept-Encoding` | No | `br` or `gzip` response compression |
 | `If-None-Match` | No | ETag revalidation |
-| Tenant headers | On endpoints with `Tenancy` | Header names from the endpoint's `Tenancy` ([Tenant headers](/guide/security#tenant-headers)) |
+| Tenant headers | On endpoints with `Tenancy` | Header names from the endpoint's `Tenancy` ([Tenant headers](/guide/tenant-headers)) |
 
 ## Proxy forwarding
 

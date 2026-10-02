@@ -202,4 +202,4 @@ curl -X POST https://your-api/api/prod/Integrations/Inbound/test_webhook \
 
 - [SQL Endpoints](/guide/endpoints-sql)
 - [Security](/guide/security)
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)

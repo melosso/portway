@@ -23,11 +23,15 @@ Tokens are cryptographically random values, stored hashed in `auth.db`, and boun
 
 ### First-run token
 
-The first start generates a token and writes it to `tokens/YOUR_SERVER_NAME.txt`. File format: [Token generator](/reference/token-generator).
+The first start generates a token and writes it to `tokens/YOUR_SERVER_NAME.txt`. File format: [Token Audit Log](/reference/token-audit).
 
 ::: warning
 This file contains a token with full scope and environment access. Delete it after recording the token.
 :::
+
+### Console accounts
+
+Roles, recovery and session keys: [Console Accounts](/guide/accounts).
 
 ## Authorization
 
@@ -37,44 +41,7 @@ Token fields `AllowedScopes` and `AllowedEnvironments` restrict a token to endpo
 
 ### Tenant headers
 
-Tenant headers restrict a token to the rows, upstream records and files of specific customers. `Tenancy` on the endpoint maps each header to its target; `AllowedTenants` on the token lists the permitted values per header. The request header selects one permitted value and cannot add a value.
-
-```json [endpoints/SQL/Sales/Orders/entity.json]
-{
-  "DatabaseObjectName": "Orders",
-  "AllowedColumns": ["Id", "Total"],
-  "Tenancy": { "X-Company-Id": "CompanyId" }
-}
-```
-
-```json [token AllowedTenants]
-{ "X-Company-Id": ["ACME", "GLOBEX"] }
-```
-
-Header names are configurable (e.g. `X-Company-Id`, `X-Client-Id`, `Administratie`). Reserved names are rejected: `Authorization`, `Cookie`, `Host`, `Origin`, `Content-*`, `X-Forwarded-*` and hop-by-hop headers. Values match `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`; `*` in `AllowedTenants` accepts any value of that form.
-
-| Request | Result |
-|---|---|
-| Endpoint has no `Tenancy` | Request unchanged |
-| No bearer token (environment authentication) | `403` |
-| Token holds no value for the header | `403` |
-| Header absent, token holds one value | That value |
-| Header absent, token holds several values or `*` | `400` |
-| Header holds a value the token holds | That value |
-| Header holds another value | `403` |
-| Header repeated or malformed | `400` |
-
-The `Tenancy` value depends on the endpoint type:
-
-| Endpoint type | `Tenancy` value | Behavior |
-|---|---|---|
-| SQL table or view | Column | Reads and `$count` include `Column = value`, combined with `AND` outside the client `$filter`. Inserts set the column; updates and deletes require a match; the column cannot be changed. Rows of other tenants return `404`. |
-| SQL table-valued function | Function parameter | Receives the tenant value; client values are ignored. |
-| SQL stored procedure | Procedure parameter | `@{value}` receives the tenant value after the payload parameters. The procedure enforces it. |
-| Proxy | Upstream header | Set to the tenant value. Client copies of the inbound and upstream headers are removed. |
-| File | Ignored | `BaseDirectory` contains a `{Header}` placeholder per tenant header. Uploads, downloads, deletes and listings are restricted to the resolved directory. |
-
-Tenancy is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document lists tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.
+Tenant headers restrict a token to the rows, upstream records and files of specific customers: [Tenant Headers](/guide/tenant-headers).
 
 ### Endpoint-level restrictions
 
@@ -132,12 +99,6 @@ Console pages at `/ui` also send `Cross-Origin-Opener-Policy` and `Cross-Origin-
 
 Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The MCP configuration store (`mcp.db`) is encrypted too. `appsettings.json` is not rewritten; values there (e.g. `WebUi:AdminApiKey`) remain plaintext.
 
-### Console accounts
-
-Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `WebUi:SeedPassword` or the legacy `WebUi:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `WebUi:SeedPassword` sets a fixed password without a forced change, for demo instances only.
-
-The legacy `WebUi:AdminApiKey` is not used for sign-in. It enables the console like `WebUi:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
-
 ### Azure Key Vault
 
 Connection strings, server names and headers can be read from Azure Key Vault: [Environments, Azure Key Vault](/guide/environments#azure-key-vault).
@@ -191,42 +152,7 @@ Traffic logging with headers and bodies:
 }
 ```
 
-Configuration: [Monitoring](/guide/monitoring).
-
-### Recovering an account
-
-Account recovery runs from the shell, in the directory that contains `auth.db`:
-
-```bash
-portway accounts list
-portway accounts password <username> <new-password>
-portway accounts create <username> <password> [administrator|viewer]
-```
-
-Docker (the image has no `portway` binary):
-
-```bash
-docker exec <container> dotnet /app/PortwayApi.dll accounts list
-docker exec <container> dotnet /app/PortwayApi.dll accounts password <username> <new-password>
-docker exec <container> dotnet /app/PortwayApi.dll accounts create <username> <password> [administrator|viewer]
-```
-
-Further subcommands: `promote`, `demote`, `enable`, `disable`, `delete`. A command that would leave no active administrator is refused.
-
-### Account roles
-
-| Role | Access |
-|---|---|
-| `administrator` | All console settings, endpoints, environments, tokens and accounts |
-| `viewer` | Read access; own password and own [single sign-on](/guide/sso) link. Other writes return `403` |
-
-The role is read from `auth.db` on every request, not from the session cookie; a demotion applies to the next request.
-
-::: warning Upgrades
-Earlier builds did not enforce the `viewer` role. Review the accounts under **Users** after upgrading.
-:::
-
-Sessions are signed with `portway.key`, created next to `auth.db`. Deleting it ends all sessions.
+Configuration: [Health and Logs](/guide/monitoring).
 
 ## Pre-deployment checklist
 
@@ -259,5 +185,5 @@ Sessions are signed with `portway.key`, created next to `auth.db`. Deleting it e
 
 - [Rate Limiting](/guide/rate-limiting)
 - [Environments, authentication](/guide/environments#per-environment-authentication)
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)
 - [Deployment](/guide/deployment)

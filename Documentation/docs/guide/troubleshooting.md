@@ -10,7 +10,7 @@ description: "Diagnose and resolve authentication, rate limiting, connectivity, 
 | Status | Message | Cause | Resolution |
 |---|---|---|---|
 | `400` | "Environment '{env}' is not allowed" | The environment is not routable for the endpoint | Add it to `AllowedEnvironments` in `environments/settings.json` and the endpoint's `entity.json` |
-| `400` | "Header {name} is required" | Tenant endpoint, token with several tenant values, header missing | Send the [tenant header](/guide/security#tenant-headers) |
+| `400` | "Header {name} is required" | Tenant endpoint, token with several tenant values, header missing | Send the [tenant header](/guide/tenant-headers) |
 | `401` | "Invalid or expired token" | Missing, malformed, expired or archived token | Check the `Authorization` header and the token under **Access Tokens** |
 | `403` | "Access denied to endpoint" / "to environment" | Token scopes or environments exclude the request | Edit the token under **Access Tokens** |
 | `403` | Tenant access refused | Token has no value for the tenant header, or the header names another value | Add the value to the token's tenants |
@@ -367,7 +367,7 @@ iisreset /start
 
 ## Related topics
 
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)
 - [Security](/guide/security)
 - [Deployment](/guide/deployment)
 - [SQL Endpoints](/guide/endpoints-sql)

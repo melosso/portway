@@ -29,7 +29,7 @@ The console never rewrites `appsettings.json`. A value in `appsettings.overrides
 | `RateLimiting` | [Rate Limiting](/guide/rate-limiting) |
 | `RequestTrafficLogging` | [Auditing](/reference/audit) |
 | `Caching` | [Caching](/reference/caching) |
-| `Telemetry` | [OpenTelemetry](/guide/opentelemetry) |
+| `Telemetry` | [Telemetry](/guide/telemetry) |
 | `Mcp` | [MCP Server](/guide/mcp) |
 | `Oidc` | [Single Sign-On](/guide/sso) |
 | `WebUi` | Below, and [Web UI](/guide/webui) |

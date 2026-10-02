@@ -31,7 +31,7 @@ Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
 | `Methods` | Yes | array | Allowed HTTP methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
 | `Hidden` | No | boolean | Excludes the endpoint from the OpenAPI document (default `false`) |
 | `AllowedEnvironments` | No | array | Environments the endpoint serves |
-| `Tenancy` | No | object | Tenant header to upstream header; see [Tenant headers](/guide/security#tenant-headers) |
+| `Tenancy` | No | object | Tenant header to upstream header; see [Tenant headers](/guide/tenant-headers) |
 
 All properties: [Entity configuration](/reference/entity-config#proxy).
 

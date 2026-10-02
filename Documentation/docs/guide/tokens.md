@@ -23,7 +23,7 @@ The create drawer opens from **Access Tokens → New Token**:
 | Rate limit | No | Requests per window for this token; empty uses the global limit |
 | Scopes | No | Endpoint restriction (default `*`) |
 | Environments | No | Environment restriction (default `*`) |
-| Tenants | No | Allowed values per [tenant header](/guide/security#tenant-headers) |
+| Tenants | No | Allowed values per [tenant header](/guide/tenant-headers) |
 
 The token value is displayed once, after **Create**.
 
@@ -54,7 +54,7 @@ A token reaches an endpoint when the endpoint matches its scopes and the environ
 
 ### Tenant scopes
 
-The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/security#tenant-headers).
+The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/tenant-headers).
 
 ### Common configurations
 
@@ -76,7 +76,7 @@ Archiving revokes a token; requests with it return `401`, and its plaintext toke
 
 ## Token audit log
 
-Each token records its operations (created, scopes, environments and tenants changed, rotated, archived). The log opens from the token's edit drawer under **Audit Log**. API: `GET /ui/api/tokens/{id}/audit` ([Web UI API Reference](/reference/webui)).
+Each token records its operations (created, scopes, environments and tenants changed, rotated, archived). The log opens from the token's edit drawer under **Audit Log**. API: `GET /ui/api/tokens/{id}/audit` ([Console API](/reference/console-api)).
 
 ## Related
 

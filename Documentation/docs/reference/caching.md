@@ -212,5 +212,5 @@ redis-cli ttl "Portway:proxy:600:Products::"
 
 ## Related topics
 
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)
 - [Application Settings](/reference/app-settings)

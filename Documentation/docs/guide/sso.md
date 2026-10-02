@@ -45,7 +45,7 @@ Steps 2 and 3 consider only password accounts and accounts of this provider. The
 
 Without a match and with **Create accounts** off, the sign-in is refused and the subject is logged with the reason. The subject can be linked under **Users**.
 
-Created accounts receive the provider's role; use `viewer` when the whole directory can reach the provider. Roles: [Account roles](/guide/security#account-roles).
+Created accounts receive the provider's role; use `viewer` when the whole directory can reach the provider. Roles: [Account roles](/guide/accounts#account-roles).
 
 ## Linking your own account
 

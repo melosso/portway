@@ -250,7 +250,7 @@ Table-valued functions accept parameters, for queries a view cannot express.
 }
 ```
 
-Parameter sources are `Path`, `Query` and `Header`. `Header` values are client-supplied; parameters named in `Tenancy` receive the token's [tenant value](/guide/security#tenant-headers). Example calls:
+Parameter sources are `Path`, `Query` and `Header`. `Header` values are client-supplied; parameters named in `Tenancy` receive the token's [tenant value](/guide/tenant-headers). Example calls:
 
 ```http
 GET /api/dev/Departments/5?UserCount=25

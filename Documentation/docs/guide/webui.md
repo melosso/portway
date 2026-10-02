@@ -27,7 +27,7 @@ portway accounts create <username> <password>
 portway accounts password <username> <new-password>
 ```
 
-Shell recovery for bare-metal and Docker installs: [Recovering an account](/guide/security#recovering-an-account). Roles: [Account roles](/guide/security#account-roles). OpenID Connect sign-in: [Single sign-on](/guide/sso).
+Shell recovery for bare-metal and Docker installs: [Recovering an account](/guide/accounts#recovering-an-account). Roles: [Account roles](/guide/accounts#account-roles). OpenID Connect sign-in: [Single sign-on](/guide/sso).
 
 ## Sessions
 
@@ -43,4 +43,4 @@ Every console change to environments, endpoints and MCP settings is recorded in 
 
 ## API
 
-The console API under `/ui/api` uses the `portway_auth` session cookie and a CSRF header on writes: [Web UI API Reference](/reference/webui).
+The console API under `/ui/api` uses the `portway_auth` session cookie and a CSRF header on writes: [Console API](/reference/console-api).

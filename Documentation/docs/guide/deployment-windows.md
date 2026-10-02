@@ -5,7 +5,7 @@ description: "Deploy Portway as an IIS website on Windows Server with HTTPS and 
 
 # Deploying on Windows Server
 
-Portway on Windows Server behind IIS. Container deployment: [Deploying with Docker](/guide/docker-compose).
+Portway on Windows Server behind IIS. Container deployment: [Deploying with Docker](/guide/deployment-docker).
 
 ## Prerequisites
 
@@ -107,4 +107,4 @@ Back up `auth.db`, `mcp.db`, `portway.key`, `.core/`, `appsettings.overrides.jso
 - [Configure Environments](/guide/environments)
 - [Configure Endpoints](/guide/endpoints-sql)
 - [Security](/guide/security)
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)

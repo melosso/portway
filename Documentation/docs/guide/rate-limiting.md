@@ -168,4 +168,4 @@ Debug logging:
 ## Next steps
 
 - [Security](/guide/security)
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)

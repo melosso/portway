@@ -214,5 +214,5 @@ Reserved names: `api`, `docs`, `openapi`, `health`, `admin`, `system`, `composit
 ## Related topics
 
 - [Entity Configuration](/reference/entity-config)
-- [Routing](/guide/routing)
+- [Folders and Routes](/guide/layout)
 - [API Overview](/reference/)

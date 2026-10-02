@@ -57,7 +57,7 @@ Setting `Mcp.Exposed: true` in `entity.json` registers one tool per HTTP method 
 
 Tool names follow `{namespace}_{name}_{method}`, or `{name}_{method}` without a namespace (e.g. `products_GET`). `Instruction` changes only the model-facing description, not the Explorer summary.
 
-Tools for endpoints with [tenant headers](/guide/security#tenant-headers) list them in `GetEndpointInfo` (`TenantHeaders`) and accept their values in the `tenants` argument of `CallEndpoint`, e.g. `{"X-Company-Id": "ACME"}`.
+Tools for endpoints with [tenant headers](/guide/tenant-headers) list them in `GetEndpointInfo` (`TenantHeaders`) and accept their values in the `tenants` argument of `CallEndpoint`, e.g. `{"X-Company-Id": "ACME"}`.
 
 ## Namespaces
 

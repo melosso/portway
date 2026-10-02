@@ -29,7 +29,7 @@ endpoints/
 | `DisplayName` | string | | Endpoint label |
 | `Documentation` | object | | [OpenAPI settings](/reference/openapi-settings#endpoint-documentation) |
 | `Mcp` | object | | [MCP exposure](/guide/mcp) |
-| `Tenancy` | object | | [Tenant headers](/guide/security#tenant-headers) |
+| `Tenancy` | object | | [Tenant headers](/guide/tenant-headers) |
 
 ## SQL
 

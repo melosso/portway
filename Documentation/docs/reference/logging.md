@@ -99,6 +99,6 @@ ls -lhtS log/*.log
 
 ## Related topics
 
-- [Monitoring](/guide/monitoring)
+- [Health and Logs](/guide/monitoring)
 - [Auditing](/reference/audit)
 - [Application Settings](/reference/app-settings)

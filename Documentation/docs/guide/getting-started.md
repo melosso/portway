@@ -55,7 +55,7 @@ Start:
 docker compose pull && docker compose up -d
 ```
 
-Portway listens on port 8080. Configuration options: [Deploying with Docker](/guide/docker-compose).
+Portway listens on port 8080. Configuration options: [Deploying with Docker](/guide/deployment-docker).
 
 ### Windows Server (IIS)
 

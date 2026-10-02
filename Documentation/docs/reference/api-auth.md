@@ -56,7 +56,7 @@ Tokens are managed in the console under **Access Tokens** ([Access Tokens](/guid
 
 ### Tenant values (`allowedTenants`)
 
-A JSON object of tenant header to permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`; `*` permits any valid value. Resolution rules: [Tenant headers](/guide/security#tenant-headers).
+A JSON object of tenant header to permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`; `*` permits any valid value. Resolution rules: [Tenant headers](/guide/tenant-headers).
 
 ## Authentication flow
 
@@ -64,15 +64,15 @@ A JSON object of tenant header to permitted values, e.g. `{"X-Company-Id": ["ACM
 sequenceDiagram
     participant Client
     participant Portway
-    participant TokenService
+    participant Store as auth.db
     participant Endpoint
 
     Client->>Portway: Request with Bearer token
-    Portway->>TokenService: Verify token
-    TokenService-->>Portway: Token valid/invalid
+    Portway->>Store: Verify token
+    Store-->>Portway: Token valid/invalid
     alt Token valid
-        Portway->>TokenService: Check permissions
-        TokenService-->>Portway: Allowed scopes & environments
+        Portway->>Store: Check permissions
+        Store-->>Portway: Allowed scopes & environments
         Portway->>Endpoint: Forward request
         Endpoint-->>Portway: Response
         Portway-->>Client: API Response
@@ -125,4 +125,4 @@ Authorization: your_token_here
 - [Access Tokens](/guide/tokens)
 - [Security](/guide/security)
 - [HTTP Headers](/reference/headers)
-- [Token generator](/reference/token-generator)
+- [Token Audit Log](/reference/token-audit)

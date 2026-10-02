@@ -1,9 +1,9 @@
 ---
-title: Monitoring
+title: Health and Logs
 description: "Health checks, traffic logging, and connection pool visibility for a running Portway instance"
 ---
 
-# Monitoring
+# Health and Logs
 
 Monitoring sources: health check endpoints, optional per-request traffic logging to file or SQLite, and SQL connection pool statistics in the application log.
 
@@ -204,27 +204,7 @@ SQL Connection Pool Status: Active connections: 12, Available: 88
 
 Pool sizing: `SqlConnectionPooling` in [Application Settings](/reference/app-settings#sqlconnectionpooling).
 
-## Prometheus integration
-
-The Prometheus provider serves metrics on a scrape endpoint:
-
-```json
-{
-  "Telemetry": {
-    "Provider": "Prometheus"
-  }
-}
-```
-
-```yaml
-scrape_configs:
-  - job_name: "portway"
-    scrape_interval: 15s
-    static_configs:
-      - targets: ["portway.yourdomain.com"]
-```
-
-The default path is `/metrics`. Metrics include request duration per endpoint, cache hits and misses, and the ASP.NET Core server metrics. Metric list, path configuration and OTLP: [Telemetry](/guide/opentelemetry).
+Metrics for Prometheus and OTLP: [Telemetry](/guide/telemetry).
 
 ## Troubleshooting
 

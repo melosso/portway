@@ -33,7 +33,7 @@ All properties, types and defaults: [Entity configuration](/reference/entity-con
 | `{year}` | Current year (`2025`) |
 | `{month}` | Current month (`01` to `12`) |
 | `{date}` | Current date (`2025-01-15`) |
-| `{Header}` | Request [tenant header](/guide/security#tenant-headers) value |
+| `{Header}` | Request [tenant header](/guide/tenant-headers) value |
 
 ```json
 { "BaseDirectory": "backups/{env}/{year}/{month}" }

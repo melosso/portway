@@ -15,7 +15,7 @@ Quickstart: [Getting Started](../getting-started).
 
 Installation methods:
 
-- **[Deploying with Docker](/guide/docker-compose)**
+- **[Deploying with Docker](/guide/deployment-docker)**
 - **[Deploying on Windows Server](/guide/deployment-windows)**
 
 Access token and first environment: [Initial configuration](/guide/getting-started#initial-configuration).

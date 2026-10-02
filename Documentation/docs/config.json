@@ -7,7 +7,7 @@
   "brandImage": "/assets/brand-image.webp",
   "favicon": "🌊",
   "lastUpdated": true,
-  "promo": "**Coming up!** Version 0.7-preview is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
+  "promo": "**Announcement!** Version 0.7 is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
   "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/hawkinslabdev/bark/).",
   "editLink": {
     "pattern": "https://github.com/melosso/portway/edit/main/Documentation/docs/:path",
@@ -56,12 +56,26 @@
             "path": "guide/getting-started"
           },
           {
-            "title": "Structure",
-            "path": "guide/routing"
+            "title": "Folders and Routes",
+            "path": "guide/layout"
+          }
+        ]
+      },
+      {
+        "title": "Deployment",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Overview",
+            "path": "guide/deployment"
           },
           {
-            "title": "Deploy",
-            "path": "guide/deployment"
+            "title": "Versioning",
+            "path": "guide/versioning"
+          },
+          {
+            "title": "Upgrading",
+            "path": "guide/upgrading"
           }
         ]
       },
@@ -86,7 +100,7 @@
             "path": "guide/endpoints-composite"
           },
           {
-            "title": "File System",
+            "title": "Files",
             "path": "guide/endpoints-file"
           },
           {
@@ -96,7 +110,7 @@
         ]
       },
       {
-        "title": "Configuration",
+        "title": "Access",
         "collapsed": false,
         "items": [
           {
@@ -108,24 +122,34 @@
             "path": "guide/tokens"
           },
           {
-            "title": "Web UI",
-            "path": "guide/webui"
-          },
-          {
-            "title": "Single sign-on",
-            "path": "guide/sso"
-          },
-          {
-            "title": "Security",
-            "path": "guide/security"
+            "title": "Tenant Headers",
+            "path": "guide/tenant-headers"
           },
           {
             "title": "Rate Limiting",
             "path": "guide/rate-limiting"
           },
           {
-            "title": "Versioning",
-            "path": "guide/versioning"
+            "title": "Security",
+            "path": "guide/security"
+          }
+        ]
+      },
+      {
+        "title": "Console",
+        "collapsed": false,
+        "items": [
+          {
+            "title": "Web UI",
+            "path": "guide/webui"
+          },
+          {
+            "title": "Console Accounts",
+            "path": "guide/accounts"
+          },
+          {
+            "title": "Single Sign-On",
+            "path": "guide/sso"
           }
         ]
       },
@@ -138,7 +162,7 @@
             "path": "guide/mcp"
           },
           {
-            "title": "Built-in chat",
+            "title": "Built-in Chat",
             "path": "guide/mcp-chat"
           }
         ]
@@ -148,20 +172,16 @@
         "collapsed": false,
         "items": [
           {
-            "title": "Monitoring",
+            "title": "Health and Logs",
             "path": "guide/monitoring"
           },
           {
-            "title": "OpenTelemetry",
-            "path": "guide/opentelemetry"
+            "title": "Telemetry",
+            "path": "guide/telemetry"
           },
           {
             "title": "Troubleshooting",
             "path": "guide/troubleshooting"
-          },
-          {
-            "title": "Upgrading",
-            "path": "guide/upgrading"
           }
         ]
       },
@@ -180,7 +200,7 @@
         ]
       },
       {
-        "title": "Coding & API Reference",
+        "title": "Reference",
         "path": "reference/"
       }
     ],
@@ -202,8 +222,8 @@
             "path": "reference/headers"
           },
           {
-            "title": "Web UI API",
-            "path": "reference/webui"
+            "title": "Console API",
+            "path": "reference/console-api"
           }
         ]
       },
@@ -278,8 +298,8 @@
         "collapsed": false,
         "items": [
           {
-            "title": "Token Generator",
-            "path": "reference/token-generator"
+            "title": "Token Audit Log",
+            "path": "reference/token-audit"
           },
           {
             "title": "Secret Encryption",

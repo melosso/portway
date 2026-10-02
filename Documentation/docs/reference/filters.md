@@ -75,7 +75,7 @@ Case sensitivity follows the database collation. There is no wildcard or regular
 
 ## Column names
 
-Filters use the public names from `AllowedColumns` (aliases included). Tenant restrictions are applied outside the filter and cannot be widened by it ([Tenant headers](/guide/security#tenant-headers)).
+Filters use the public names from `AllowedColumns` (aliases included). Tenant restrictions are applied outside the filter and cannot be widened by it ([Tenant headers](/guide/tenant-headers)).
 
 ## Errors
 
