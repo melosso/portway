@@ -3,12 +3,12 @@ services:
     image: ghcr.io/hawkinslabdev/bark:latest
     container_name: portway_docs
     volumes:
-      - ./docs:/app/docs
+      - ./docs:/app/docs:z
       # Overlay brand assets per item; mounting the whole wwwroot shadows Bark's framework assets (js, icons)
-      - ./wwwroot/favicon.ico:/app/wwwroot/favicon.ico
-      - ./wwwroot/logo.png:/app/wwwroot/logo.png
-      - ./wwwroot/logo.svg:/app/wwwroot/logo.svg
-      - ./wwwroot/icons:/app/wwwroot/icons
-      - ./wwwroot/theme:/app/wwwroot/theme
+      - ./wwwroot/favicon.ico:/app/wwwroot/favicon.ico:z
+      - ./wwwroot/logo.png:/app/wwwroot/logo.png:z
+      - ./wwwroot/logo.svg:/app/wwwroot/logo.svg:z
+      - ./wwwroot/icons:/app/wwwroot/icons:z
+      - ./wwwroot/theme:/app/wwwroot/theme:z
     ports:
       - "5991:8080"
