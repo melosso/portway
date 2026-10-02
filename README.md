@@ -6,9 +6,9 @@
 
 Portway is a lightweight **API gateway** that simplifies secure service routing and infrastructure management.
 
-It unifies databases, internal services, and webhooks into a single interface using simple, file-based configuration. Built-in caching, audit logging, and automated documentation keep your data flow reliable and easy to control.
+It unifies databases, internal services, and webhooks into a single interface using simple, file-based configuration. Caching, audit logging and generated documentation are built in.
 
-Out of the box, Portway handles proxy pass-through, SQL endpoints, and webhooks, with native support for MCP and OData. It also includes Azure Key Vault authentication, rate limiting, management (web) console and full observability through Prometheus or any OTLP collector.
+Portway serves proxy, SQL and webhook endpoints with MCP and OData support, plus Azure Key Vault secrets, rate limiting, a management console and metrics through Prometheus or any OTLP collector.
 
 <div>
       <p align="center">
@@ -23,25 +23,21 @@ Out of the box, Portway handles proxy pass-through, SQL endpoints, and webhooks,
 
 ## Prerequisites
 
-Before deploying Portway, make sure your environment meets the following requirements. These ensure full functionality across all features, especially SQL and authentication.
+Requirements:
 
 * .NET Hosting Bundle: <a href="https://get.dot.net/11" target="_blank" rel="noopener noreferrer">.NET 11</a>
-* If you're running on Windows: Internet Information Services (IIS)
+* Windows: Internet Information Services (IIS)
 * *Optional*: a supported SQL database: SQL Server, PostgreSQL, MySQL/MariaDB, or SQLite
 
-Ready to go? Then lets continue:
-
 ## Getting Started
-
-Follow these steps to get Portway up and running in your environment. Setup is fast and modular, making it easy to configure just what you need.
 
 ### 1. Download & Extract
 
 #### Windows Server (IIS)
 
-Grab the <a href="https://github.com/melosso/portway/releases" target="_blank" rel="noopener noreferrer">latest release</a> and extract it to your deployment folder. This build already includes a set of example environment and endpoint configurations. 
+Download the <a href="https://github.com/melosso/portway/releases" target="_blank" rel="noopener noreferrer">latest release</a> and extract it to your deployment folder. The build includes example environment and endpoint configurations.
 
-Note, before configuring the application in Internet Information Services, make sure to configure your environment-specific secret:
+Set the encryption key before configuring the site in IIS:
 
 ```powershell
 $bytes = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes); [Environment]::SetEnvironmentVariable("PORTWAY_ENCRYPTION_KEY", [Convert]::ToBase64String($bytes), "Machine")
@@ -87,11 +83,11 @@ Then run:
 docker compose pull && docker compose up -d
 ```
 
-This will start Portway on port [8080](#) and mount your configuration folders. Adjust paths and ports as needed for your environment. Before you can start using the API, you'll have to configure your environment settings and endpoint configurations.
+Portway listens on port 8080 with the configuration folders mounted. The API requires environment and endpoint configuration before first use.
 
 ### 2. Define Your Environments
 
-Define your server and environment settings to isolate the various environments you may require (e.g. `prod` and `dev`). These configurations are used across the endpoints that you'll configure later on. First configure the allowed environments, after which the individual environment has to be defined:
+Environments (e.g. `prod`, `dev`) isolate server and connection settings for all endpoints. `environments/settings.json` lists the allowed environments; each has its own `settings.json`:
 
 **`environments/settings.json`**
 
@@ -115,7 +111,7 @@ Define your server and environment settings to isolate the various environments 
 
 ### 3. Define Your Endpoints
 
-Endpoints are configured as JSON files. Each type has its own directory and format, making them easy to manage and extend. These are plain examples, for more advanced configuration you may have to read our extensive documentation on our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>. There are various types that Portway supports:
+Each endpoint is an `entity.json` file in a directory per type. Advanced configuration is in the <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation</a>. Endpoint types:
 
 * **SQL** (SQL Server, PostgreSQL, MySQL, SQLite): Direct CRUD access with schema-level control and documentation
 * **Proxy**: Forward to internal services; supports complex orchestration
@@ -124,13 +120,13 @@ Endpoints are configured as JSON files. Each type has its own directory and form
 * **Webhook**: Receive external calls and persist data to SQL
 * **Static**: read static files or set up a mock endpoint
 
-These are handled seperately below. Once configured, the request side of each type is shown under [Examples](#examples).
+Requests for each type are listed under [Examples](#examples).
 
 <br>
 
 <details>
 <summary>SQL Endpoints</summary>
-These point straight at your database tables. You choose which columns get exposed and what their public names should be. It keeps the surface area clean and lets you hide internal schemas or naming quirks.
+Map to a database table or view. `AllowedColumns` sets the exposed columns and their public names.
 
 #### Example — `endpoints/SQL/Products/entity.json`
 
@@ -153,7 +149,7 @@ These point straight at your database tables. You choose which columns get expos
 <br>
 <details>
 <summary>Proxy Endpoints</summary>
-These just pass the call through to another service. It’s basically a small reverse proxy where you decide which HTTP verbs you want to support.
+Forward requests to another service, limited to the configured HTTP methods.
 
 #### Example — `endpoints/Proxy/Accounts/entity.json`
 
@@ -210,7 +206,7 @@ These help when a single logical action actually means “call a bunch of other 
 <br>
 <details>
 <summary>Static Endpoints</summary>
-Sometimes you just want to serve a file. JSON, XML, CSV, whatever. These endpoints expose static content and can still use OData filtering if you turn it on.
+Serve static JSON, XML or CSV content, with optional OData filtering.
 
 #### Example — `endpoints/Static/ProductionMachine/entity.json`
 
@@ -227,7 +223,7 @@ Sometimes you just want to serve a file. JSON, XML, CSV, whatever. These endpoin
 <br>
 <details>
 <summary>Files Endpoints</summary>
-This is for storing or retrieving actual files rather than rows or JSON. Handy for documents, images, exports.
+Store and retrieve files such as documents, images and exports.
 
 #### Example — `endpoints/Files/Documents/entity.json`
 
@@ -244,7 +240,7 @@ This is for storing or retrieving actual files rather than rows or JSON. Handy f
 <br>
 <details>
 <summary>Webhook Endpoints</summary>
-When an external service needs to push data into your system, this is the entry point. The payload goes straight into your table of choice.
+Receive inbound calls from external services and write the payload to a table.
 
 #### Example — `endpoints/Webhooks/Integrations/Inbound/entity.json`
 
@@ -278,7 +274,7 @@ The first-run token file, scope control, Azure Key Vault, secret encryption at r
 
 ## Examples
 
-Here are some common requests you'll make using Portway's endpoints.
+Common requests per endpoint type.
 
 <details>
 <summary>SQL</summary>
@@ -384,20 +380,20 @@ Content-Type: application/json
 
 </details>
 
-You'll find comprehensive configuration examples in our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>.
+More configuration examples are in the <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>.
 
 ## Documentation
 
-We allow you to expose the API with a configurable documentation endpoint. This can be disabled if necessary. 
+The API documentation endpoint is configurable and can be disabled.
 
 ### Interactive documentation
-The application uses <a href="https://github.com/scalar/scalar" target="_blank" rel="noopener noreferrer">Scalar</a> to render your OpenAPI specification as interactive API documentation. Access it at `/docs` to explore endpoints, test requests, and view response schemas, which are all generated automatically from your endpoint configurations.
+The application uses <a href="https://github.com/scalar/scalar" target="_blank" rel="noopener noreferrer">Scalar</a> to render your OpenAPI specification as interactive API documentation. `/docs` lists endpoints, request and response schemas and a request client, generated from the endpoint configuration.
 
 ### Model Context Protocol (MCP)
-The application also can act as a MCP server over HTTP. Your endpoints can appear in the MCP tool registry and becomes callable by any MCP-compatible client, e.g. Mistral, VS Code Copilot, custom agents, or the built-in Chat UI. Beware that this is opt-in, meaning all endpoints are not exposed as tool by default. Portway's own authentication and environment scoping apply to every tool call. Please read more on MCP integration at <a href="https://melosso.github.io/portway/guide/mcp" target="_blank" rel="noopener noreferrer">MCP documentation</a>.
+Portway is an MCP server over HTTP. Endpoints with MCP enabled are tools for any MCP client (e.g. Mistral, VS Code Copilot, custom agents or the built-in chat). MCP is opt-in per endpoint. Token authentication and environment scoping apply to every tool call. See the <a href="https://melosso.github.io/portway/guide/mcp" target="_blank" rel="noopener noreferrer">MCP documentation</a>.
 
 ### Walkthrough
-Our <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a> will walk you through setting up Portway. This covers both basic usage, and advanced configuration. Feel free to submit a pull request if you'd like to see changes to the documentation.
+The <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation</a> covers setup, basic usage and advanced configuration. Documentation changes are accepted as pull requests.
 
 ## Contribution 
 
