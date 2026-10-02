@@ -1,15 +1,13 @@
 ---
 title: Integrations
-description: "Portway tends to live next to other systems, and these guides walk you through the ones we see most often"
+description: "Environment and endpoint configuration for common ERP, no-code and PIM systems"
 ---
 
 # Integrations
 
-Portway tends to live next to other systems, and these guides walk you through the ones we see most often. Each covers the environment setup, the endpoint definitions, and the quirks worth knowing in advance.
+Environment settings, endpoint definitions and known limitations per system.
 
-## Enterprise resource planning (ERP) systems
-
-These integrations put Portway in front of on-premise ERP APIs, usually with Windows authentication and environment headers doing the routing:
+## ERP
 
 - [Exact Globe+](/reference/integrations/exact-globe)
 - [Exact Synergy](/reference/integrations/exact-synergy)
@@ -20,13 +18,9 @@ These integrations put Portway in front of on-premise ERP APIs, usually with Win
 
 ## No-code databases
 
-Spreadsheet-style databases with REST APIs that Portway fronts with token scoping and rate limiting:
-
 - [NocoDB](/reference/integrations/nocodb)
 - [Teable](/reference/integrations/teable)
 
-## Product information management (PIM)
-
-Self-hosted product data platforms, fronted with credential isolation:
+## Product information management
 
 - [Pimcore](/reference/integrations/pimcore)

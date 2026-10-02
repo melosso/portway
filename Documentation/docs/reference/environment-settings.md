@@ -118,7 +118,7 @@ Development, `/environments/dev/settings.json`:
 
 ## Connection strings
 
-The provider is detected from `ConnectionString`. Per-provider examples, parameters, detection rules and capability differences: [SQL providers](/reference/sql-providers#connection-string-reference).
+The provider is detected from `ConnectionString`. Per-provider examples, parameters, detection rules and capability differences: [SQL providers](/reference/sql-providers#connection-strings).
 
 SQLite paths are relative to the working directory. SQLite connection strings contain no credentials and are neither encrypted nor masked.
 

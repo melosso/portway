@@ -65,7 +65,7 @@ Request:
 GET /api/prod/Products?$expand=Category&$filter=AssortmentID eq 10
 ```
 
-`Assortments` is joined on `Assortment = AssortmentID` and nested under the navigation name:
+The `Assortments` navigation is joined on `Assortment = AssortmentID` and nested under the navigation name:
 
 ```json
 {

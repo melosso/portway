@@ -33,7 +33,7 @@ Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
 | `AllowedEnvironments` | No | array | Environments the endpoint serves |
 | `Tenancy` | No | object | Tenant header to upstream header; see [Tenant headers](/guide/security#tenant-headers) |
 
-All properties: [Entity configuration](/reference/entity-config#endpoint-proxy).
+All properties: [Entity configuration](/reference/entity-config#proxy).
 
 ## Request forwarding
 

@@ -1,92 +1,22 @@
 ---
 title: Secrets encryption
-description: "Portway automatically encrypts sensitive data in your environment settings files on startup"
+description: "Encryption of connection strings, headers and authentication secrets in environment settings"
 ---
 
 # Secrets encryption
 
-Portway automatically encrypts sensitive data in your environment settings files on startup. Connection strings and sensitive headers (containing words like "password", "secret", "token", etc.) are encrypted using RSA + AES hybrid encryption to keep your data safe at rest.
+At startup, Portway encrypts plaintext secrets in `environments/*/settings.json` and saves the encrypted values back to the file. Encrypted values start with `PWENC:` and use RSA 2048 with AES.
 
-## How it works
+## Encrypted values
 
-On startup, Portway:
+| Field | Condition |
+|---|---|
+| `ConnectionString` | Key-value format (`Key=Value;...`) |
+| `Headers` | Header name contains `password`, `secret`, `token`, `key`, `auth`, `credential`, `signature`, `hmac`, `bearer` or `value` |
+| `Authentication.Methods` | `Value`, `Secret` and `ClientSecret` |
 
-1. Checks for encryption keys in the `.core` folder
-2. If keys don't exist, it generates a new RSA 2048-bit keypair automatically
-3. It scans all environment folders (`environments/*/settings.json`)
-4. Any unencrypted connection strings or sensitive headers are automatically encrypted
-5. The encrypted values are saved back to the settings files
-
-**Key Storage:**
-- Private key: `.core/recovery.binlz4` (encrypted with `PORTWAY_ENCRYPTION_KEY`)
-- Public key: `.core/snapshot_blob.bin`
-
-## Encryption key management
-
-### Setting the encryption key
-
-The `PORTWAY_ENCRYPTION_KEY` is used to protect the private key. Priority order:
-
-1. **Windows Machine Environment Variable** (recommended for production):
-   ```powershell
-   [System.Environment]::SetEnvironmentVariable('PORTWAY_ENCRYPTION_KEY', 'your-secure-key-here', 'Machine')
-   ```
-
-2. **Process Environment Variable**:
-   ```powershell
-   $env:PORTWAY_ENCRYPTION_KEY = 'your-secure-key-here'
-   ```
-
-3. **.env file** (for Docker):
-   ```bash
-   PORTWAY_ENCRYPTION_KEY=your-secure-key-here
-   ```
-
-4. **Fallback**: A hardcoded key (not recommended for production)
-
-### Regenerating keys
-
-If you need to regenerate encryption keys:
-
-1. Stop the application
-2. Delete the `.core` folder
-3. (Optional) Set a new `PORTWAY_ENCRYPTION_KEY`
-4. Restart the application - new keys will be generated
-5. All environment files will be re-encrypted with the new keys
-
-**Warning:** If you change `PORTWAY_ENCRYPTION_KEY` without deleting `.core`, the application won't be able to decrypt the existing private key and encryption will fail.
-
-## What gets encrypted
-
-**Always encrypted:**
-- `ConnectionString` field (if valid MSSQL format)
-
-**Conditionally encrypted (headers containing these keywords):**
-- password
-- secret
-- token
-- key
-- auth
-- credential
-- signature
-- hmac
-- bearer
-
-**Example - Before encryption:**
 ```json
 {
-  "ServerName": "localhost",
-  "ConnectionString": "Server=localhost;Database=MyDB;User ID=sa;Password=mypass;",
-  "Headers": {
-    "ApiToken": "secret-token-123"
-  }
-}
-```
-
-**After encryption:**
-```json
-{
-  "ServerName": "localhost",
   "ConnectionString": "PWENC:aG5kc2...::dG9rZW4=",
   "Headers": {
     "ApiToken": "PWENC:bXlzZW...::c2VjcmV0"
@@ -94,74 +24,59 @@ If you need to regenerate encryption keys:
 }
 ```
 
-## Validation
+A connection string that is not in key-value format (e.g. `postgresql://...`) is not encrypted, and the error `Invalid connection string format in environment '{Env}' - skipping encryption.` is logged.
 
-Connection strings are validated before encryption. They need to include:
-- `DataSource` (server name)
-- `InitialCatalog` (database name)
-- Either `IntegratedSecurity=true` OR valid `UserID` and `Password`
+## Keys
 
-**Invalid connection strings will not be encrypted** and an error will be logged:
+| File | Content |
+|---|---|
+| `.core/snapshot_blob.bin` | Public key |
+| `.core/recovery.binlz4` | Private key, encrypted with `PORTWAY_ENCRYPTION_KEY` |
+
+The key pair is generated on the first start. `PORTWAY_ENCRYPTION_KEY` is read from, in order:
+
+1. Machine environment variable (Windows)
+2. Process environment variable
+3. `.env` in the working directory
+
+Outside Development, Portway refuses to start without `PORTWAY_ENCRYPTION_KEY`.
+
+::: code-group
+
+```powershell [Windows]
+[System.Environment]::SetEnvironmentVariable('PORTWAY_ENCRYPTION_KEY', 'your-secure-key', 'Machine')
 ```
-[ERR] Invalid MSSQL connection string format in environment 'MyEnv' - skipping encryption.
+
+```bash [Docker .env]
+PORTWAY_ENCRYPTION_KEY=your-secure-key
 ```
+
+:::
+
+:::warning
+Back up `.core` together with `PORTWAY_ENCRYPTION_KEY`. Without both, `PWENC:` values cannot be decrypted. Keep `.core` out of source control.
+:::
+
+## Key replacement
+
+1. Replace every `PWENC:` value in `environments/*/settings.json` with its plaintext value.
+2. Stop Portway and delete `.core`.
+3. Set the new `PORTWAY_ENCRYPTION_KEY`.
+4. Start Portway; new keys are generated and the values are encrypted again.
+
+Changing `PORTWAY_ENCRYPTION_KEY` without these steps leaves the private key unreadable: `Failed to load or decrypt private key from .core/recovery.binlz4`.
 
 ## Troubleshooting
 
-### File permission errors
+| Error | Resolution |
+|---|---|
+| `Access denied when saving to ...settings.json` | Remove the read-only attribute or grant the service account write access |
+| `Failed to load or decrypt private key` | Restore the original `PORTWAY_ENCRYPTION_KEY` or `.core` |
+| `PORTWAY_ENCRYPTION_KEY is not set` | Set the key before starting outside Development |
 
-If you see:
-```
-[ERR] Access denied when saving to C:\...\settings.json
-```
+Encryption details are logged at `Debug` ([Logging](/reference/logging)).
 
-**Solution:** Remove the read-only flag:
-```powershell
-# Single file
-Set-ItemProperty "C:\Apps\Portway API\v1\environments\prod\settings.json" -Name IsReadOnly -Value $false
+## Related topics
 
-# All settings files
-Get-ChildItem "C:\Apps\Portway API\v1\environments\*\settings.json" | ForEach-Object { $_.IsReadOnly = $false }
-```
-
-### Decryption failures
-
-If the application can't decrypt settings on startup:
-
-```
-[ERR] Failed to load or decrypt private key from .core/recovery.binlz4
-```
-
-**Causes:**
-1. The `PORTWAY_ENCRYPTION_KEY` was changed after keys were generated
-2. The `.core/recovery.binlz4` file is corrupted
-3. Wrong encryption key is being used
-
-**Solution:** Delete the `.core` folder and restart to regenerate keys.
-
-### Viewing logs
-
-Enable debug logging to see encryption details:
-
-In `appsettings.json`:
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Debug"
-    }
-  }
-}
-```
-
-You'll see:
-```
-[DBG] Scanning all environments for values to encrypt
-[DBG] Found 3 environment(s): 500,700, Synergy
-[DBG] Encrypted ConnectionString for environment: 600
-[DBG] Encryption scan complete: 3 encrypted, 0 already encrypted, 0 errors
-```
-
-## Security notes
-
-Set a strong `PORTWAY_ENCRYPTION_KEY` in production using a machine-level environment variable. Back up the `.core` folder securely, without it you cannot decrypt your settings. Never commit `.core` to source control. Use different encryption keys for different environments.
+- [Environment Settings](/reference/environment-settings)
+- [Security](/guide/security)

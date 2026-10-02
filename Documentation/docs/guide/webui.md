@@ -16,7 +16,7 @@ environment:
   - PORTWAY_SECURE_COOKIES=true
 ```
 
-Setting `WebUi__Enabled=true` enables the console. It is reachable from the local network only; `WebUi__PublicOrigins` allows external origins; `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `WebUi` settings: [Application settings](/reference/app-settings#web-ui-configuration).
+Setting `WebUi__Enabled=true` enables the console. It is reachable from the local network only; `WebUi__PublicOrigins` allows external origins; `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `WebUi` settings: [Application settings](/reference/app-settings#webui).
 
 ## Accounts
 

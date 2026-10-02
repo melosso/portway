@@ -37,7 +37,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
       "Email": "support@yourcompany.com"
     },
     "Footer": {
-      "Text": "Powered by Scalar",
+      "Text": "Powered by Portway",
       "Target": "_blank",
       "Url": "#"
     },
@@ -48,12 +48,13 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
       "Type": "Http",
       "Scheme": "Bearer"
     },
-    "EnableFilter": false,
-    "EnableValidator": true,
     "ScalarTheme": "default",
+    "ScalarLayout": "modern",
     "ScalarShowSidebar": true,
-    "ScalarHideDownloadButton": true,
-    "ScalarHideModels": true
+    "ScalarHideDownloadButton": false,
+    "ScalarHideModels": true,
+    "ScalarHideClientButton": true,
+    "ScalarHideTestRequestButton": false
   }
 }
 ```
@@ -74,7 +75,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `SecurityDefinition.In` | string | Key location for `ApiKey` (`Header`, `Query`, `Cookie`) |
 | `SecurityDefinition.Type` | string | `ApiKey`, `Http`, `OAuth2`, `OpenIdConnect` |
 | `SecurityDefinition.Scheme` | string | HTTP scheme, e.g. `Bearer` |
-| `ForceHttpsInProduction` | boolean | HTTPS server URLs in production |
+| `ForceHttpsInProduction` | boolean | HTTPS server URLs in production (default `true`) |
 | `ScalarTheme` | string | Scalar theme |
 | `ScalarLayout` | string | `modern` or `classic` |
 | `ScalarShowSidebar` | boolean | Sidebar |
@@ -109,7 +110,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `TagDescription` | string | Yes | Tag description (Markdown) |
+| `TagDescription` | string | No | Tag description (Markdown) |
 | `MethodDescriptions` | object | No | Short summary per method |
 | `MethodDocumentation` | object | No | Long description per method (Markdown) |
 | `Examples` | object | No | Success response example per method; replaces generated sample data |
@@ -118,7 +119,7 @@ Descriptions support GitHub-flavoured Markdown, `<br>` and `<p>`, and Scalar ale
 
 ## Deprecated and disabled endpoints
 
-`Deprecated: true` marks the endpoint's operations deprecated; requests are served unchanged.
+With `Deprecated: true`, the endpoint's operations are marked deprecated; requests are served unchanged.
 
 ```json
 {

@@ -23,7 +23,7 @@ Each endpoint is defined in `endpoints/Files/{EndpointName}/entity.json`:
 
 ### Configuration properties
 
-All properties, types and defaults: [Entity configuration](/reference/entity-config#endpoint-files).
+All properties, types and defaults: [Entity configuration](/reference/entity-config#file).
 
 ### Base directory placeholders
 

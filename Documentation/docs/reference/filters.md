@@ -37,7 +37,7 @@ GET /api/500/Customers?$filter=Name gt 'M'
 | `or` | Either condition | `$filter=Status eq 'New' or Status eq 'Pending'` |
 | `not` | Negation | `$filter=not contains(Description,'test')` |
 
-`and` binds stronger than `or`; parentheses override the order:
+The `and` operator binds stronger than `or`; parentheses override the order:
 
 ```http
 # (Price gt 100 and Category eq 'A') or Category eq 'B'

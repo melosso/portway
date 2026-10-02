@@ -1,204 +1,89 @@
 ---
 title: SQL Providers
-description: Reference for all supported SQL database providers, e.g. SQL Server, PostgreSQL, MySQL, and SQLite, including connection string formats, provider auto-detection logic, and capability matrix.
+description: Supported SQL providers, connection string detection, capabilities and schema defaults.
 outline: [2, 3]
 keywords: [SQL Server, PostgreSQL, MySQL, SQLite, connection string, provider detection, OData]
 ---
 
 # SQL Providers
 
-Portway speaks to four relational database backends, and you rarely have to tell it which one you're using: the active provider for each environment is detected automatically from the connection string in `settings.json`, with no extra configuration key required.
+Portway supports SQL Server, PostgreSQL, MySQL/MariaDB and SQLite. The provider of an environment is detected from the `ConnectionString` in its `settings.json`. The parity suite runs against SQL Server 2025, PostgreSQL 18 and MySQL 8.0.
 
-## Supported providers
+## Detection
 
-| Provider | Typical use |
-|---|---|
-| **SQL Server** | Enterprise ERP, WMS, and legacy Windows applications. Default when nothing else matches. |
-| **PostgreSQL** | Open-source RDBMS common in Linux and cloud-native stacks. |
-| **MySQL / MariaDB** | Web databases and LAMP-stack back-ends. |
-| **SQLite** | Local file databases, demos, and lightweight read-only APIs. |
+The first matching rule wins.
 
----
-
-## Provider auto-Detection
-
-Portway reads the connection string and identifies the provider without requiring an explicit `Provider` field. Detection runs top-to-bottom through a priority list; the first match wins.
-
-| Priority | Condition | Detected provider |
+| Priority | Condition | Provider |
 |:---:|---|---|
-| 1 | SQL Server-exclusive keywords present (`TrustServerCertificate=`, `Integrated Security=`, `Initial Catalog=`, `MultipleActiveResultSets=`, `Encrypt=`, `ApplicationIntent=`, …) | SQL Server |
-| 2 | OLE DB provider name (`Provider=SQLOLEDB`, `MSOLEDBSQL`, `SQLNCLI`) | SQL Server |
-| 3 | ODBC driver name (`Driver={SQL Server}`, `Driver={ODBC Driver 17 for SQL Server}`) | SQL Server |
-| 4 | URI prefix `postgres://` or `postgresql://` | PostgreSQL |
-| 5 | URI prefix `mysql://` | MySQL |
-| 6 | Key `Host=` present without `Server=` or `Data Source=` | PostgreSQL |
-| 7 | MySQL-exclusive keys (`SslMode=`, `AllowUserVariables=`, `AllowPublicKeyRetrieval=`) | MySQL |
-| 8 | `Data Source=` value ends in `.db`, `.sqlite`, `.sqlite3`, or equals `:memory:` | SQLite |
-| 9 | _(anything else)_ | **SQL Server** (default) |
+| 1 | SQL Server keywords (`TrustServerCertificate=`, `Integrated Security=`, `Trusted_Connection=`, `Encrypt=`, `Initial Catalog=`, `MultipleActiveResultSets=`, `ApplicationIntent=`, …) | SQL Server |
+| 2 | OLE DB provider (`Provider=SQLOLEDB`, `MSOLEDBSQL`, `SQLNCLI`) | SQL Server |
+| 3 | ODBC driver (`Driver={SQL Server}`, `Driver={ODBC Driver 17 for SQL Server}`) | SQL Server |
+| 4 | `postgres://` or `postgresql://` prefix | PostgreSQL |
+| 5 | `mysql://` prefix | MySQL |
+| 6 | `Host=` without `Server=` or `Data Source=` | PostgreSQL |
+| 7 | `SslMode=`, `AllowUserVariables=` or `AllowPublicKeyRetrieval=` | MySQL |
+| 8 | `Data Source=` ending in `.db`, `.sqlite` or `.sqlite3`, or `:memory:` | SQLite |
+| 9 | Anything else | SQL Server |
 
-:::tip
-Standard SQL Server connection strings naturally contain keywords like `TrustServerCertificate=` or `Integrated Security=` and are caught at priority 1. Existing environments require no changes.
-:::
+## Connection strings
 
----
+::: code-group
 
-## Connection string reference
-
-### SQL Server
-
-Windows (integrated) authentication:
-```json
-{
-  "ConnectionString": "Server=SQLPROD01;Database=ProductionDB;Integrated Security=True;TrustServerCertificate=true;"
-}
-```
-
-SQL authentication:
-```json
+```json [SQL Server]
 {
   "ConnectionString": "Server=SQLPROD01;Database=ProductionDB;User Id=svc_portway;Password=your-password;TrustServerCertificate=true;Encrypt=true;"
 }
 ```
 
-**Common SQL Server parameters**
-
-| Parameter | Description | Default |
-|---|---|---|
-| `Server` | SQL Server instance name or IP | Required |
-| `Database` | Target database name | Required |
-| `Integrated Security` | Use Windows authentication | `False` |
-| `User Id` / `Password` | SQL authentication credentials | - |
-| `Encrypt` | Encrypt the connection | `False` |
-| `TrustServerCertificate` | Skip certificate validation (dev only) | `False` |
-| `Connection Timeout` | Seconds before giving up | `15` |
-| `MultipleActiveResultSets` | Enable MARS | `False` |
-| `ApplicationIntent` | `ReadOnly` for AG read replicas | - |
-
----
-
-### PostgreSQL
-
-Key-value format (Npgsql):
-```json
+```json [PostgreSQL]
 {
   "ConnectionString": "Host=db.example.com;Port=5432;Database=mydb;Username=portway;Password=your-password;"
 }
 ```
 
-URI format:
-```json
-{
-  "ConnectionString": "postgresql://portway:your-password@db.example.com:5432/mydb"
-}
-```
-
-**Common PostgreSQL parameters**
-
-| Parameter | Description | Default |
-|---|---|---|
-| `Host` | Server hostname or IP | Required |
-| `Port` | Server port | `5432` |
-| `Database` | Target database name | Required |
-| `Username` / `Password` | Credentials | - |
-| `SSL Mode` | `Require`, `Prefer`, `Disable` | `Prefer` |
-| `Timeout` | Connection timeout (seconds) | `15` |
-
----
-
-### MySQL / MariaDB
-
-```json
+```json [MySQL]
 {
   "ConnectionString": "Server=db.example.com;Port=3306;Database=mydb;Uid=portway;Pwd=your-password;SslMode=Preferred;"
 }
 ```
 
-**Common MySQL parameters**
-
-| Parameter | Description | Default |
-|---|---|---|
-| `Server` | Hostname or IP | Required |
-| `Port` | Server port | `3306` |
-| `Database` | Target database name | Required |
-| `Uid` / `Pwd` | Credentials | - |
-| `SslMode` | `Preferred`, `Required`, `None` | `Preferred` |
-| `AllowUserVariables` | Allow user-defined variables in queries | `False` |
-| `ConnectionTimeout` | Timeout in seconds | `15` |
-
----
-
-### SQLite
-
-File-based (path relative to the application working directory):
-```json
+```json [SQLite]
 {
   "ConnectionString": "Data Source=environments/WMS/demo.db;"
 }
 ```
 
-In-memory (data is lost when the process restarts):
-```json
-{
-  "ConnectionString": "Data Source=:memory:;"
-}
-```
-
-:::info
-SQLite connection strings contain no credentials. Portway skips the credential-masking step for SQLite environments entirely.
 :::
 
----
+SQLite paths are relative to the working directory.
 
-## Capability matrix
+## Capabilities
 
 | Feature | SQL Server | PostgreSQL | MySQL | SQLite |
 |---|:---:|:---:|:---:|:---:|
-| GET with OData (`$filter`, `$orderby`, `$select`, `$top`, `$skip`) | ✅ | ✅ | ✅ | ✅ |
-| POST / PUT / PATCH / DELETE via stored procedure | ✅ | ✅ | ✅ | ❌ |
-| POST / PUT / PATCH / DELETE via table write mode | ✅ | ✅ | ✅ | ✅ |
-| Table-valued functions (TVF) | ✅ | ✅ | ❌ | ❌ |
-| `$expand` to-one related data (Table / View) | ✅ | ✅ | ✅ | ✅ |
-| Schema namespacing (`dbo.TableName`) | ✅ | ✅ | ✅ | ❌ |
-| Column metadata & OpenAPI generation | ✅ | ✅ | ✅ | ✅ |
-| Connection pooling | ✅ | ✅ | ✅ | Limited |
-| Health check | ✅ | ✅ | ✅ | ✅ |
+| OData reads | Yes | Yes | Yes | Yes |
+| Writes through stored procedures | Yes | Yes | Yes | No |
+| Writes with `"WriteMode": "Table"` | Yes | Yes | Yes | Yes |
+| Table-valued functions | Yes | Yes | No | No |
+| `$expand` (Table and View) | Yes | Yes | Yes | Yes |
+| Schemas | Yes | Yes | Yes | No |
 
-:::warning
-**SQLite, write operations:** SQLite does not support stored procedures, so endpoints that define a `Procedure` field cannot write against a SQLite environment. Setting `"WriteMode": "Table"` on the endpoint enables full CRUD instead; see the [SQL endpoints guide](/guide/endpoints-sql) for the guardrails that apply.
-:::
+On PostgreSQL, write routines are functions, since only functions return the created row. They are called with named arguments; parameter names match the lowercased payload fields (e.g. `method`, `id`, `name`). On SQL Server and MySQL, a procedure ends with a `SELECT` of the affected row.
 
-:::info
-**MySQL, table-valued functions:** MySQL/MariaDB has no TVF concept. Endpoints configured as `DatabaseObjectType: TableValuedFunction` are skipped during metadata initialisation for MySQL environments and will not appear in the OpenAPI spec.
-:::
+## Schemas
 
-::: note
-On PostgreSQL, write routines are functions rather than procedures, since only functions can return the created row. Portway invokes them with named arguments, so it helps to name your function parameters after the lowercased payload fields (for example `method`, `id`, `name`). On SQL Server and MySQL a regular procedure with a trailing `SELECT` of the affected row works as before.
-:::
+| Provider | Default schema |
+|---|---|
+| SQL Server | `dbo` |
+| PostgreSQL | `public` |
+| MySQL | Database in the connection string |
+| SQLite | None; the prefix is omitted |
 
-::: info
-**`$expand`:** Table and View endpoints can pull a related entity into the response with `$expand`, translated to an `INNER JOIN` on every dialect above. It covers to-one navigations declared in `entity.json`; table-valued functions return `400`, and Proxy or Composite endpoints pass the query string through to the upstream. See [Expanding Related Data](/reference/expand).
-:::
-
-The provider combination Portway is continuously tested against: SQL Server 2025, PostgreSQL 18 and MySQL 8.0. Other versions of the same engines generally work fine; these are simply the ones the automated parity suite runs on.
-
----
-
-## Schema behaviour
-
-| Provider | Schema support | Default schema |
-|---|---|---|
-| SQL Server | Full two-part names (`dbo.TableName`) | `dbo` |
-| PostgreSQL | Full two-part names (`public.table_name`) | `public` |
-| MySQL | Schema maps to the database in the connection string | _(from connection string)_ |
-| SQLite | No schema support: prefix is omitted automatically | - |
-
-When `DatabaseSchema` is omitted from an endpoint's `entity.json`, Portway uses the provider's own default from the table above. A configured `dbo` on a non SQL Server environment is treated as the template default and mapped the same way, so entity files copied from SQL Server examples work unchanged on PostgreSQL and MySQL. Any other explicit schema is used exactly as written.
-
----
+Without `DatabaseSchema`, the provider default applies. A `dbo` on a non SQL Server environment maps to that provider's default; other schemas are used as written.
 
 ## Related topics
 
-- [Environments Guide](/guide/environments): creating and managing environments
-- [Environment Settings Reference](/reference/environment-settings): full `settings.json` reference
-- [SQL Endpoints Guide](/guide/endpoints-sql): configuring SQL endpoints
-- [Health Checks](/reference/health-checks): per-environment health status
+- [Environment Settings](/reference/environment-settings)
+- [SQL Endpoints](/guide/endpoints-sql)
+- [Expanding Related Data](/reference/expand)
+- [Health Checks](/reference/health-checks)

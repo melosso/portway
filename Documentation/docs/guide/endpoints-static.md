@@ -37,7 +37,7 @@ Contents of `entity.json`:
 
 ### Configuration properties
 
-All properties, types and defaults: [Entity configuration](/reference/entity-config#endpoint-static).
+All properties, types and defaults: [Entity configuration](/reference/entity-config#static).
 
 ## Supported content types
 

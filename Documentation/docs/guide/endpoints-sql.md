@@ -12,7 +12,7 @@ Review the database permissions of the connection account and the data in each e
 :::
 
 :::info Info
-Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work on all four providers. Capability matrix: [SQL Providers](/reference/sql-providers#capability-matrix).
+Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work on all four providers. Capability matrix: [SQL Providers](/reference/sql-providers#capabilities).
 :::
 
 ## Configuration
@@ -38,7 +38,7 @@ Each endpoint is defined in `endpoints/SQL/{EndpointName}/entity.json`:
 
 ### Configuration properties
 
-All properties, types and defaults: [Entity configuration](/reference/entity-config#endpoint-sql).
+All properties, types and defaults: [Entity configuration](/reference/entity-config#sql).
 
 ## Column aliases
 

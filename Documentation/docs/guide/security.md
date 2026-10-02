@@ -7,7 +7,7 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 Tokens authenticate callers; scopes, environments and tenant headers restrict what a token reaches; the network access policy restricts upstream targets.
 
-::: Note
+::: info
 Align this configuration with your organisation's security policies before production use.
 :::
 
@@ -25,7 +25,7 @@ Tokens are cryptographically random values, stored hashed in `auth.db`, and boun
 
 The first start generates a token and writes it to `tokens/YOUR_SERVER_NAME.txt`. File format: [Token generator](/reference/token-generator).
 
-::: Caution
+::: warning
 This file contains a token with full scope and environment access. Delete it after recording the token.
 :::
 

@@ -1,66 +1,69 @@
 ---
 title: Token Audit Log
-description: "Schema and queries for the token operations audit trail stored in auth.db"
+description: "TokenAudits table in auth.db and the first-run token file"
 ---
 
 # Token Audit Log
 
-Every token operation you perform (create, rotate, revoke, update) is recorded automatically in the `TokenAudits` table of `auth.db`, so there is always a trail to consult when you're wondering who changed what. This page documents the schema, along with some queries to get you started.
+Token operations are recorded in the `TokenAudits` table of `auth.db`. The console shows them per token under **Audit Log** in the token's edit drawer.
 
-## Audit schema
+## Schema
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `Id` | integer | Unique audit entry ID |
-| `TokenId` | integer | Associated token ID |
-| `Username` | string | Token owner |
-| `Operation` | string | `Created`, `Rotated`, `Revoked`, `Updated` |
-| `OldTokenHash` | string | Previous hash (rotation only) |
-| `NewTokenHash` | string | New hash (rotation only) |
-| `Timestamp` | datetime | UTC timestamp |
-| `Details` | string | JSON metadata |
-| `Source` | string | Origin: `PortwayApi` |
-| `IpAddress` | string | Client IP (when available) |
-| `UserAgent` | string | Client user agent (when available) |
+| Column | Type | Description |
+|---|---|---|
+| `Id` | integer | Entry id |
+| `TokenId` | integer | Token id |
+| `Username` | string | Token name |
+| `Operation` | string | See below |
+| `OldTokenHash` | string | Previous hash, on revoke |
+| `NewTokenHash` | string | New hash, on create |
+| `Timestamp` | datetime | UTC |
+| `Details` | string | JSON with the changed values |
+| `Source` | string | `PortwayApi` |
+| `IpAddress` | string | Not recorded |
+| `UserAgent` | string | Machine and process user |
 
-The Web UI exposes per-token audit history at `GET /ui/api/tokens/{id}/audit`. See the [Web UI API reference](/reference/webui).
+| Operation | Recorded on |
+|---|---|
+| `Created` | Create, and the new token of a rotation |
+| `Revoked` | Archive, and the old token of a rotation |
+| `Unarchived` | Restore |
+| `ScopesUpdated` | Endpoint scope change |
+| `EnvironmentsUpdated` | Environment change |
+| `TenantsUpdated` | Tenant change |
+| `RateLimitUpdated` | Rate limit change |
+| `DescriptionUpdated` | Description change |
 
-## Direct queries
+## Queries
 
 ```sql
--- All operations for a token owner
 SELECT * FROM TokenAudits WHERE Username = 'api-service' ORDER BY Timestamp DESC;
 
--- Recent rotations
 SELECT Username, Operation, Timestamp FROM TokenAudits
-WHERE Operation = 'Rotated' AND Timestamp > datetime('now', '-1 day')
-ORDER BY Timestamp DESC;
-
--- Last 24 hours of activity
-SELECT * FROM TokenAudits
 WHERE Timestamp > datetime('now', '-1 day')
 ORDER BY Timestamp DESC;
 ```
 
 ## First-run token file
 
-On first run, Portway writes the initial token to `tokens/{SERVER_NAME}.txt`:
+The first start creates a token named after the machine and saves it to `tokens/{MACHINE_NAME}.txt`:
 
 ```json
 {
   "Username": "SERVER-NAME",
-  "Token": "base64-encoded-secure-token",
+  "Token": "...",
   "AllowedScopes": "*",
   "AllowedEnvironments": "*",
+  "AllowedTenants": {},
   "ExpiresAt": "Never",
-  "CreatedAt": "2024-01-01 00:00:00"
+  "CreatedAt": "2026-01-01 00:00:00"
 }
 ```
 
-Record the token value, delete the file, and use the Web UI to create all subsequent tokens.
+Copy the token value and delete the file.
 
 ## Related topics
 
-- [Web UI guide](/guide/webui): browser-based token management
-- [Authentication reference](/reference/api-auth): token properties and scope patterns
-- [Security guide](/guide/security): incident response and token rotation
+- [Tokens](/guide/tokens)
+- [Authentication](/reference/api-auth)
+- [Security](/guide/security)

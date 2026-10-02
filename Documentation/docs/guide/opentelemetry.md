@@ -71,7 +71,7 @@ scrape_configs:
       - targets: ["portway.internal:5000"]
 ```
 
-::: Note
+::: info
 The scrape endpoint is mapped only with the `Prometheus` provider. It is unauthenticated and rate-limit exempt, like `/health`, and exposes aggregate counters and histograms only. Restrict the path at the firewall or reverse proxy when the gateway is reachable from untrusted networks.
 :::
 

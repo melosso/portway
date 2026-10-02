@@ -122,7 +122,7 @@ sqlcmd -S YOUR_SERVER -d 500 -Q "SELECT 1" && echo "Connection successful"
 
 :::
 
-Intermittent failures under load indicate an undersized pool (`MaxPoolSize`). Queries that stop at exactly `CommandTimeout` need a higher timeout or a faster query. Settings: [`SqlConnectionPooling`](/reference/app-settings#sql-connection-pooling).
+Intermittent failures under load indicate an undersized pool (`MaxPoolSize`). Queries that stop at exactly `CommandTimeout` need a higher timeout or a faster query. Settings: [`SqlConnectionPooling`](/reference/app-settings#sqlconnectionpooling).
 
 ## Proxy endpoints
 

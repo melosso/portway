@@ -54,7 +54,7 @@ Create `endpoints/Proxy/{CompositeName}/entity.json`:
 
 ### Top-level properties
 
-The top-level fields, the `CompositeConfig` block, the step properties and the template transformation variables are all listed in [Entity configuration](/reference/entity-config#endpoint-composite).
+The top-level fields, the `CompositeConfig` block, the step properties and the template transformation variables are all listed in [Entity configuration](/reference/entity-config#composite).
 
 ### CompositeConfig properties
 

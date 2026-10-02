@@ -1,36 +1,17 @@
 ---
 title: Exact Globe+ Integration
-description: "Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of"
+description: "Proxy and composite endpoints for the Exact Globe+ REST services"
 ---
 
 # Exact Globe+ Integration
 
-Exact Globe+ (previously known as Globe Next) exposes an API layer that Portway can put a friendly gateway in front of. Through proxy endpoints, your external applications talk to Globe+ data and services, while environment-specific headers route each request to the correct database instance.
+Exact Globe+ (formerly Globe Next) REST services are exposed through proxy endpoints. Environment headers select the Globe+ database and server.
 
-::: Note
-Globe+ uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Globe+ permissions gives Portway the access it needs
-::: 
+:::info
+Globe+ uses Windows (NTLM) authentication. Under IIS, the Application Pool identity is a domain account with Globe+ access.
+:::
 
-## Overview
-
-The Exact Globe+ integration uses Portway's proxy endpoints to forward requests to the internal Globe+ REST services. Each request uses its environment configuration, which selects the database and server.
-
-## Configuration requirements
-
-### Environment headers
-
-All requests to Globe+ endpoints require two critical headers that are automatically added based on the environment:
-
-| Header | Description | Example |
-|--------|-------------|---------|
-| `DatabaseName` | The Globe+ database identifier | `500`, `700` |
-| `ServerName` | The server hosting Globe+ | `YOUR-SERVER` |
-
-These headers are configured in the environment settings and automatically injected into proxy requests.
-
-### Environment settings
-
-Each environment needs to be configured in its settings:
+## Environment
 
 ```json [environments/500/settings.json]
 {
@@ -44,11 +25,12 @@ Each environment needs to be configured in its settings:
 }
 ```
 
-## Available Globe+ endpoints
+| Header | Value |
+|---|---|
+| `DatabaseName` | Globe+ administration, e.g. `500` |
+| `ServerName` | Globe+ server |
 
-### Proxy endpoints
-
-Each Globe+ service you want to expose gets a proxy endpoint definition. The endpoint URL points at the internal Globe+ REST service, and the environment headers above route it to the right database:
+## Proxy endpoints
 
 ```json [endpoints/Proxy/Account/entity.json]
 {
@@ -59,127 +41,45 @@ Each Globe+ service you want to expose gets a proxy endpoint definition. The end
 }
 ```
 
-### Composite endpoints
+Globe+ URLs in responses are rewritten to the Portway URL, e.g. `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')` to `https://api.company.com/api/500/Account(guid'123')`. Behind a TLS-terminating proxy, the scheme is taken from `X-Forwarded-Proto` only when the proxy is listed in `ForwardedHeaders` ([Application Settings](/reference/app-settings#forwardedheaders)).
 
-These endpoints handle complex operations that require multiple related transactions:
+## Composite endpoints
 
-#### Sales order creation
+The sample composites create lines and a header that share a generated `TransactionKey`, which Globe+ processes as one entry.
 
 ```http
 POST /api/{env}/composite/SalesOrder
 Content-Type: application/json
 
 {
-  "Header": {
-    "OrderDebtor": "60093",
-    "YourReference": "Connect async"
-  },
+  "Header": { "OrderDebtor": "60093", "YourReference": "Connect async" },
   "Lines": [
-    {
-      "Itemcode": "ITEM-001",
-      "Quantity": 2,
-      "Price": 0
-    },
-    {
-      "Itemcode": "ITEM-002",
-      "Quantity": 4,
-      "Price": 0
-    }
+    { "Itemcode": "ITEM-001", "Quantity": 2, "Price": 0 },
+    { "Itemcode": "ITEM-002", "Quantity": 4, "Price": 0 }
   ]
 }
 ```
-
-This composite endpoint:
-1. Creates sales order lines with a shared TransactionKey
-2. Creates the sales order header using the same key
-3. Returns the complete order information
-
-#### Financial entry creation
 
 ```http
 POST /api/{env}/composite/FinancialEntry
 Content-Type: application/json
 
 {
-  "Header": {
-    "Journal": "90",
-    "Description": "Invoice payment"
-  },
+  "Header": { "Journal": "90", "Description": "Invoice payment" },
   "Lines": [
-    {
-      "GLAccount": "1000",
-      "Amount": 1000,
-      "Description": "Payment received"
-    },
-    {
-      "GLAccount": "1300", 
-      "Amount": -1000,
-      "Description": "AR clearing"
-    }
+    { "GLAccount": "1000", "Amount": 1000, "Description": "Payment received" },
+    { "GLAccount": "1300", "Amount": -1000, "Description": "AR clearing" }
   ]
 }
 ```
 
-This composite endpoint:
-1. Creates financial lines with a shared TransactionKey
-2. Creates the financial header to complete the transaction
-3. Ensures balanced entries
-
-## Authentication with Globe+
-
-The proxy endpoints handle Globe+ authentication transparently:
-
-1. Requests are forwarded with Windows authentication
-2. The service account running Portway needs Globe+ access
-3. Individual API tokens control access to specific endpoints
-
-## Error handling
-
-Globe+ specific error responses are preserved and forwarded:
-
-```json
-// Globe+ validation error
-{
-  "error": {
-    "code": "ValidationError",
-    "message": "Customer 60093 not found",
-    "details": {
-      "field": "OrderDebtor",
-      "value": "60093"
-    }
-  }
-}
-```
-
-## URL rewriting
-
-Portway automatically rewrites Globe+ URLs in responses to maintain proxy routing:
-
-- Original: `http://localhost:8020/services/Exact.Entity.REST.EG/Account(guid'123')`
-- Rewritten: `https://api.company.com/api/500/Account(guid'123')`
-
-## Transaction management
-
-### TransactionKey handling
-
-Composite endpoints manage TransactionKey automatically:
-
-1. A unique GUID is generated for the transaction
-2. The key is applied to all related records
-3. Globe+ processes the records as a single unit
-
-### Atomic operations
-
-Composite endpoints ensure atomicity:
-- The operation completes only when every step succeeds
-- Failures in any step roll back the entire transaction
-- Detailed error information is provided for troubleshooting
+Steps run in order; a failed step stops the composite, and earlier steps are not undone. The response names the failed step. Configuration: [Composite Endpoints](/guide/endpoints-composite).
 
 ## Troubleshooting
 
 | Symptom | Check |
-|---------|-------|
-| Authentication failures (401/403) | Service account permissions in Globe+; NTLM enabled on IIS Application Pool; correct domain user bound |
-| Transaction errors | Globe+ application logs; locked records; re-use same TransactionKey UUID across all lines in a composite |
-| Missing data in responses | Environment headers (`DatabaseName`, `ServerName`) correctly set in `settings.json` |
-| URL links in responses broken | URL rewriting is automatic and follows the incoming request scheme. Behind a TLS-terminating proxy, add it to `ForwardedHeaders:KnownProxies` or `KnownNetworks` so the scheme survives |
+|---|---|
+| `401` or `403` from Globe+ | Globe+ rights of the service account; NTLM on the Application Pool |
+| Transaction errors | Globe+ logs; locked records; one `TransactionKey` across all lines |
+| Wrong or missing data | `DatabaseName` and `ServerName` headers in `settings.json` |
+| `http` links behind HTTPS | Proxy listed in `ForwardedHeaders:KnownProxies` or `KnownNetworks` |

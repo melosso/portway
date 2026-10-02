@@ -1,29 +1,17 @@
 ---
 title: Exact Synergy Enterprise Integration
-description: "While Synergy Enterprise ships a native REST API, you may not want to expose all of it"
+description: "Proxy endpoints that expose selected parts of the Exact Synergy Enterprise REST API"
 ---
 
 # Exact Synergy Enterprise Integration
 
-While Synergy Enterprise ships a native REST API, you may not want to expose all of it. Portway shines when you need only specific database sections available, or when Synergy sits behind a firewall on your internal network. Proxy endpoints give you that selective, controlled access.
+Proxy endpoints expose selected Synergy Enterprise REST entities, including from a Synergy server on an internal network. Entities without an endpoint stay unreachable.
 
-::: Note
-On-premise Synergy uses Windows/NTLM authentication. When you deploy in IIS, setting the Application Pool Identity to a domain user with Synergy permissions gives Portway the access it needs.
+:::info
+On-premise Synergy uses Windows (NTLM) authentication. Under IIS, the Application Pool identity is a domain account with Synergy access. Synergy needs no environment headers.
 :::
 
-## Overview
-
-Portway proxies requests to the internal Synergy REST API. This is useful when Synergy is behind a firewall, or when you want to expose only a subset of its API surface through a controlled gateway.
-
-## Configuration requirements
-
-### Environment headers
-
-Synergy Enterprise uses standard HTTP authentication. Unlike Globe+, it needs no special environment headers. Authentication typically runs through **Windows Authentication**, since Synergy environments are domain-integrated. The installation instructions of Exact Synergy Enterprise cover that setup.
-
-### Environment settings
-
-Each environment needs to be configured in its settings:
+## Environment
 
 ```json [environments/Synergy/settings.json]
 {
@@ -35,29 +23,22 @@ Each environment needs to be configured in its settings:
 }
 ```
 
-## Available Synergy endpoints
+## Proxy endpoints
 
-### Proxy endpoints
-
-You can selectively configure which Synergy endpoints to expose through proxy endpoints:
-
-#### Accounts (selective exposure)
-
-```json
+```json [endpoints/Proxy/Account/entity.json]
 {
   "Url": "http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account",
   "Methods": ["GET"],
   "SupportsOData": true,
-  "Hidden": false,
   "AllowedEnvironments": ["Synergy"]
 }
 ```
 
-### Composite endpoints
+Synergy URLs in responses are rewritten to the Portway URL, e.g. `http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account(guid'12345')` to `https://api.company.com/api/Synergy/Account(guid'12345')`.
 
-These endpoints handle complex operations that require multiple related Synergy API calls:
+## Composite endpoints
 
-#### Project creation with resources
+A composite creates related entities in one request, e.g. a project with its WBS elements. It requires a composite definition with one step per entity ([Composite Endpoints](/guide/endpoints-composite)):
 
 ```http
 POST /api/Synergy/composite/ProjectSetup
@@ -71,85 +52,21 @@ Content-Type: application/json
     "Type": 2
   },
   "ProjectWBS": [
-    {
-      "Code": "DEV001",
-      "Description": "Development Phase",
-      "Project": "PRJ-2025-001"
-    },
-    {
-      "Code": "TEST001",
-      "Description": "Testing Phase", 
-      "Project": "PRJ-2025-001"
-    }
+    { "Code": "DEV001", "Description": "Development Phase", "Project": "PRJ-2025-001" },
+    { "Code": "TEST001", "Description": "Testing Phase", "Project": "PRJ-2025-001" }
   ]
 }
 ```
 
-This composite endpoint:
-1. Creates a project in Synergy using the Project entity
-2. Creates associated project WBS elements
-3. Links WBS elements to the project with proper hierarchy
-
-#### Binary data upload
-
-```http
-POST /api/Synergy/composite/BinaryUpload
-Content-Type: application/json
-
-{
-  "Binary": {
-    "Data": "UERGLTEuNCBmaWxlIGNvbnRlbnQ=",
-    "Encoded": true,
-    "DataString": "Sample PDF document"
-  },
-  "Document": {
-    "Subject": "Project Documentation",
-    "Type": 1,
-    "Category": "Technical"
-  }
-}
-```
-
-This composite endpoint:
-1. Creates binary data entry in Synergy
-2. Creates associated document record
-3. Returns the MessageID for future reference
-
-## Error handling
-
-Synergy specific error responses are preserved and forwarded:
-
-```json
-// Synergy validation error
-{
-  "error": {
-    "code": "ValidationError",
-    "message": "Account {UUID} does not exist",
-    "details": {
-      "entity": "Accounts",
-      "field": "ID",
-      "value": "c91ca921-86e7-47d1-b52a-d3e41ab295a6"
-    }
-  }
-}
-```
-
-## URL rewriting
-
-Portway automatically rewrites Synergy URLs in responses to maintain proxy routing:
-
-- Original: `http://YOUR-SERVER/Synergy/services/Exact.Entity.REST.svc/Account(guid'12345')`
-- Rewritten: `https://api.company.com/api/Synergy/Account(guid'12345')`
+:::warning
+Separate Portway environments and separate Synergy accounts for test and production keep writes and audit trails apart.
+:::
 
 ## Troubleshooting
 
 | Symptom | Check |
-|---------|-------|
-| Authentication failures (401/403) | Domain user permissions in Synergy; NTLM enabled on IIS Application Pool |
-| Connection refused | Synergy web service running; firewall rules from Portway host to Synergy server |
-| URL links in responses broken | URL rewriting is automatic and follows the incoming request scheme. Behind a TLS-terminating proxy, add it to `ForwardedHeaders:KnownProxies` or `KnownNetworks` so the scheme survives |
-| Missing data | Proxy endpoint `Url` points to correct Synergy REST service path |
-
-:::warning
-Use separate Portway environments (and separate Synergy accounts) for TEST and PROD. A single shared account across environments removes the audit trail and risks cross-environment data writes.
-:::
+|---|---|
+| `401` or `403` from Synergy | Synergy rights of the domain account; NTLM on the Application Pool |
+| Connection refused | Synergy web service; firewall between Portway and Synergy |
+| `http` links behind HTTPS | Proxy listed in `ForwardedHeaders:KnownProxies` or `KnownNetworks` |
+| Missing data | Synergy REST path in `Url` |

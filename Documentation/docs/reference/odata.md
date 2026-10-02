@@ -59,7 +59,7 @@ Paging requires a stable `$orderby`. Responses with more rows include `nextLink`
 
 ## $count
 
-`$count=true` runs an additional COUNT query with the same `$filter` and adds `totalCount`:
+With `$count=true`, Portway runs an additional COUNT query with the same `$filter` and adds `totalCount`:
 
 ```http
 GET /api/prod/Products?$filter=Price gt 100&$top=10&$count=true

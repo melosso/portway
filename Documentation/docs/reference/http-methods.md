@@ -33,7 +33,7 @@ Query syntax: [OData](/reference/odata). Related rows on SQL Table and View endp
 
 ## QUERY
 
-`QUERY` (RFC 10008) is a safe, idempotent read with the criteria in the request body, for long queries or criteria that must stay out of access logs:
+The `QUERY` method (RFC 10008) is a safe, idempotent read with the criteria in the request body, for long queries or criteria that must stay out of access logs:
 
 ```http
 QUERY /api/prod/Inventory/StockLevels
@@ -64,7 +64,7 @@ SQL endpoints write through one of two strategies:
 | Stored procedure (default) | The procedure receives `@Method` (`INSERT`, `UPDATE`, `PATCH`, `DELETE`) and the payload columns ([SQL Endpoints](/guide/endpoints-sql)) |
 | Table write mode (`"WriteMode": "Table"`) | Parameterized statements limited to `AllowedColumns` and keyed on `PrimaryKey` |
 
-`PUT` sends the full record with the primary key; `PATCH` sends changed columns with the primary key; `DELETE` takes the key from the URL:
+A `PUT` sends the full record with the primary key; `PATCH` sends changed columns with the primary key; `DELETE` takes the key from the URL:
 
 ```http
 DELETE /api/prod/Products?id=abc123
@@ -74,7 +74,7 @@ Proxy endpoints forward these methods unchanged unless a translation applies.
 
 ## MERGE and method translation
 
-`MERGE` is the OData name for a partial update and an alias of `PATCH` when listed in `AllowedMethods`. Stored procedures receive `@Method` as `PATCH` for both. The OpenAPI document lists `MERGE` under `additionalOperations`.
+The `MERGE` method is the OData name for a partial update and an alias of `PATCH` when listed in `AllowedMethods`. Stored procedures receive `@Method` as `PATCH` for both. The OpenAPI document lists `MERGE` under `additionalOperations`.
 
 Proxy endpoints translate methods for backends that expect other verbs (e.g. classic OData services expecting `MERGE`):
 

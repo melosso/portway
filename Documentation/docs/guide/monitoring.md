@@ -202,7 +202,7 @@ Pool statistics are logged every 10 minutes at `Information`:
 SQL Connection Pool Status: Active connections: 12, Available: 88
 ```
 
-Pool sizing: `SqlConnectionPooling` in [Application Settings](/reference/app-settings#sql-connection-pooling).
+Pool sizing: `SqlConnectionPooling` in [Application Settings](/reference/app-settings#sqlconnectionpooling).
 
 ## Prometheus integration
 
