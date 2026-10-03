@@ -27,6 +27,8 @@
     };
 })();
 
+const ROLE_LABELS = { administrator: 'Administrator', viewer: 'Viewer' };
+
 // Sanitizer
 function esc(s) {
     if (s == null) return '';

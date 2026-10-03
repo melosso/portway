@@ -57,7 +57,8 @@ const NAV_GROUPS = [
                     { hash: 'security', label: 'Security' },
                     { hash: 'performance', label: 'Performance' },
                     { hash: 'storage', label: 'Storage & Logs' },
-                    { hash: 'integrations', label: 'Integrations' }
+                    { hash: 'integrations', label: 'Integrations' },
+                    { hash: 'ai', label: 'AI' }
                 ],
                 icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
             }
@@ -188,13 +189,13 @@ function renderSidebar(mcpEnabled) {
     <div class="account-menu hidden" id="accountMenu" role="menu" aria-label="Account">
       <div class="account-menu-head">
         <strong id="accountMenuName">Portway</strong>
-        <span id="accountMenuServer"></span>
+        <span id="accountMenuEmail"></span>
       </div>
       <div class="account-menu-sep" role="separator"></div>
-      <div class="account-menu-nest">
+      <div class="account-menu-nest" onpointerenter="hoverAppearance(event, true)" onpointerleave="hoverAppearance(event, false)">
         <button type="button" role="menuitem" id="appearanceTrigger" aria-haspopup="menu" aria-expanded="false" onclick="toggleAppearance(event)">
           Appearance
-          <svg class="account-menu-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+          <svg class="account-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>
         <div class="account-submenu hidden" id="appearanceMenu" role="menu" aria-label="Appearance">
           <button type="button" role="menuitemradio" data-appearance="light" onclick="chooseAppearance('light', event)">Light</button>
@@ -206,7 +207,10 @@ function renderSidebar(mcpEnabled) {
       <div id="accountMenuDocs"></div>
       <a href="https://github.com/melosso/portway" target="_blank" rel="noopener" role="menuitem">View on GitHub</a>
       <div class="account-menu-sep" role="separator"></div>
-      <button type="button" role="menuitem" onclick="logout()">Sign out</button>
+      <button type="button" role="menuitem" onclick="logout()">
+        Sign out
+        <svg class="account-menu-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+      </button>
     </div>
   </div>`;
 
@@ -246,9 +250,6 @@ Promise.all([
                 el.textContent = label;
             }
         }
-
-        const server = document.getElementById('accountMenuServer');
-        if (server) server.textContent = d.server_name ?? location.host;
 
         paintAccount(me);
 
@@ -351,6 +352,9 @@ function paintAccount(me) {
     const headEl = document.getElementById('accountMenuName');
     if (headEl) headEl.textContent = name;
 
+    const emailEl = document.getElementById('accountMenuEmail');
+    if (emailEl) emailEl.textContent = me.email || ROLE_LABELS[me.role] || me.role || '';
+
     const avatar = document.getElementById('sidebarAvatar');
     if (!avatar) return;
     avatar.innerHTML = me.avatar ? `<img src="${me.avatar}" alt="" width="32" height="32">` : '';
@@ -446,18 +450,32 @@ function closeAccountMenu() {
 }
 
 function closeAppearance() {
-    document.getElementById('appearanceMenu')?.classList.add('hidden');
-    document.getElementById('appearanceTrigger')?.setAttribute('aria-expanded', 'false');
+    setAppearanceOpen(false);
+}
+
+function setAppearanceOpen(open) {
+    clearTimeout(_appearanceTimer);
+    const menu = document.getElementById('appearanceMenu');
+    if (!menu) return;
+    menu.classList.toggle('hidden', !open);
+    document.getElementById('appearanceTrigger')?.setAttribute('aria-expanded', String(open));
+    if (open) markAppearance();
 }
 
 function toggleAppearance(e) {
     if (e) e.stopPropagation();
     const menu = document.getElementById('appearanceMenu');
     if (!menu) return;
-    const opening = menu.classList.contains('hidden');
-    menu.classList.toggle('hidden', !opening);
-    document.getElementById('appearanceTrigger')?.setAttribute('aria-expanded', String(opening));
-    if (opening) markAppearance();
+    // a mouse click lands after hover already opened it
+    setAppearanceOpen(menu.classList.contains('hidden') || e?.pointerType === 'mouse');
+}
+
+let _appearanceTimer;
+
+function hoverAppearance(e, open) {
+    if (e.pointerType !== 'mouse') return;
+    if (open) setAppearanceOpen(true);
+    else _appearanceTimer = setTimeout(closeAppearance, 150);
 }
 
 function markAppearance() {
