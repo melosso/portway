@@ -156,7 +156,9 @@ public class TokenAuthMiddleware
         // Check endpoint permissions if endpoint name was successfully extracted
         if (!string.IsNullOrEmpty(endpointName))
         {
-            bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName);
+            // legacy files scope grants every file endpoint
+            bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName)
+                || (endpointName.StartsWith(FileScopePrefix, StringComparison.OrdinalIgnoreCase) && tokenDetails.HasAccessToEndpoint("files"));
 
             if (!hasEndpointAccess)
             {
@@ -186,6 +188,23 @@ public class TokenAuthMiddleware
         await _next(context);
     }
 
+    private const string FileScopePrefix = "files/";
+
+    /// <summary>
+    /// Scope identity of a file route, files/{name} with @v{n} when the route includes a version
+    /// </summary>
+    internal static string? FileEndpointIdentity(string[] segments)
+    {
+        var start = segments.Length > 2 && EndpointVersion.TryParse(segments[0], out _) ? 1 : 0;
+        if (segments.Length < start + 2 || !segments[start].Equals("files", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        EndpointVersion.TryParse(segments[0], out var version);
+        return FileScopePrefix + segments[start + 1] + EndpointVersion.Suffix(start == 1 ? version : null);
+    }
+
     /// <summary>
     /// Extract the endpoint name from the request path
     /// </summary>
@@ -205,10 +224,15 @@ public class TokenAuthMiddleware
                 return $"composite/{segments[3]}";
             }
 
+            if (FileEndpointIdentity(segments[2..]) is { } file)
+            {
+                return file;
+            }
+
             // Same longest match resolver as the controller; keeps scope checks and dispatch aligned.
             if (Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { } resolved)
             {
-                return $"{resolved.Namespace}/{resolved.Name}";
+                return resolved.Namespace.Length > 0 ? $"{resolved.Namespace}/{resolved.Name}" : resolved.Name;
             }
 
             // Fall back to non-namespaced format: /api/{env}/{endpointName}

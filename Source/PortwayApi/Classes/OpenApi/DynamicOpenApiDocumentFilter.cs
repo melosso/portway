@@ -26,6 +26,12 @@ public class DynamicOpenApiDocumentFilter : IOpenApiDocumentTransformer
         document.Info.Version = settings.Version;
         document.Info.Description = settings.Description;
 
+        if (settings.MarkdownEnabled)
+        {
+            var pathBase = context.ApplicationServices.GetService<IHttpContextAccessor>()?.HttpContext?.Request.PathBase.Value ?? "";
+            document.Info.Description = $"{settings.Description}\n\n[View as Markdown]({pathBase}/docs/openapi.md)".TrimStart();
+        }
+
         if (settings.Contact != null)
         {
             document.Info.Contact = new OpenApiContact
@@ -34,6 +40,11 @@ public class DynamicOpenApiDocumentFilter : IOpenApiDocumentTransformer
                 Email = settings.Contact.Email
             };
         }
+
+        // the operator's own guide, absolute web urls only since the document is read outside this origin
+        document.ExternalDocs = Uri.TryCreate(settings.ExternalDocs.Url, UriKind.Absolute, out var url) && url.Scheme is "http" or "https"
+            ? new OpenApiExternalDocs { Url = url, Description = string.IsNullOrWhiteSpace(settings.ExternalDocs.Description) ? null : settings.ExternalDocs.Description }
+            : null;
 
         return Task.CompletedTask;
     }

@@ -24,6 +24,8 @@ endpoints/
 | `Enabled` | boolean | `true` | `false` returns `503` and removes the endpoint from MCP |
 | `Hidden` | boolean | `false` | Omits the endpoint from the OpenAPI document; requests are served |
 | `Deprecated` | boolean | `false` | Marks the operations deprecated in the OpenAPI document |
+| `DeprecatedSince` | date | | `Deprecation` response header when `Deprecated` is `true` |
+| `Sunset` | date | | `Sunset` response header |
 | `Namespace` | string | Folder | [Namespaces](/reference/namespaces) |
 | `NamespaceDisplayName` | string | | Namespace label in the documentation |
 | `DisplayName` | string | | Endpoint label |

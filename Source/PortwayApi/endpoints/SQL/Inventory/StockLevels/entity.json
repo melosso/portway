@@ -2,7 +2,6 @@
     "DatabaseObjectName": "StockLevels",
     "DatabaseSchema": "dbo",
     "PrimaryKey": "Sku",
-    "Namespace": "Inventory",
     "NamespaceDisplayName": "Inventory",
     "AllowedColumns": [
         "Sku;Sku",

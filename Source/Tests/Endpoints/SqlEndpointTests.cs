@@ -17,7 +17,7 @@ public class SqlEndpointTests : ApiTestBase
     {
         // Arrange
         string testEnv = "500";
-        string endpointName = "Product/Products";
+        string endpointName = "Inventory/Products";
 
         // Ensure the environment is allowed
         SetAllowedEnvironments("500", "700");
@@ -57,7 +57,7 @@ public class SqlEndpointTests : ApiTestBase
     {
         // Arrange
         string testEnv = "invalid";
-        string endpointName = "Product/Products";
+        string endpointName = "Inventory/Products";
 
         // Configure allowed environments to not include the test environment
         SetAllowedEnvironments("500", "700");
@@ -74,7 +74,7 @@ public class SqlEndpointTests : ApiTestBase
     {
         // Arrange
         string testEnv = "500";
-        string endpointName = "Product/Products";
+        string endpointName = "Inventory/Products";
 
         // Remove authorization header
         _client.DefaultRequestHeaders.Authorization = null;
@@ -91,7 +91,7 @@ public class SqlEndpointTests : ApiTestBase
     {
         // Arrange
         string testEnv = "500";
-        string endpointName = "Product/Products";
+        string endpointName = "Inventory/Products";
 
         SetAllowedEnvironments("500", "700");
 

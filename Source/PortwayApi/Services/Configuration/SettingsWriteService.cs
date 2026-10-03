@@ -37,7 +37,7 @@ public sealed class SettingsWriteService
     private static readonly Regex NameFormat = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$", RegexOptions.Compiled);
 
     private static readonly string[] ScalarThemes =
-        ["default", "alternate", "moon", "purple", "solarized", "bluePlanet", "saturn", "kepler", "mars", "deepSpace", "elysiajs", "fastify", "laserwave", "none"];
+        ["portway", "default", "alternate", "moon", "purple", "solarized", "bluePlanet", "saturn", "kepler", "mars", "deepSpace", "elysiajs", "fastify", "laserwave", "none"];
 
     // Writable keys; anything else is refused by name
     private static readonly Dictionary<string, WritableSetting> Allowed =
@@ -80,13 +80,17 @@ public sealed class SettingsWriteService
             ["Oidc:Enabled"] = new("Oidc:Enabled", "bool", false),
             ["OpenApi:Enabled"] = new("OpenApi:Enabled", "bool", true),
             ["OpenApi:Title"] = new("OpenApi:Title", "text", false, Max: 200),
-            ["OpenApi:Version"] = new("OpenApi:Version", "name", true),
+            ["OpenApi:Version"] = new("OpenApi:Version", "name", false),
             ["OpenApi:Description"] = new("OpenApi:Description", "text", false, Max: 4_000),
             ["OpenApi:Contact:Name"] = new("OpenApi:Contact:Name", "text", false, Max: 200),
             ["OpenApi:Contact:Email"] = new("OpenApi:Contact:Email", "email", false),
             ["OpenApi:ForceHttpsInProduction"] = new("OpenApi:ForceHttpsInProduction", "bool", false),
             ["OpenApi:ShowNamespaces"] = new("OpenApi:ShowNamespaces", "bool", false),
             ["OpenApi:DefaultGroup"] = new("OpenApi:DefaultGroup", "name", false),
+            ["OpenApi:ShowBadges"] = new("OpenApi:ShowBadges", "bool", false),
+            ["OpenApi:MarkdownEnabled"] = new("OpenApi:MarkdownEnabled", "bool", false),
+            ["OpenApi:ExternalDocs:Url"] = new("OpenApi:ExternalDocs:Url", "weburl", false),
+            ["OpenApi:ExternalDocs:Description"] = new("OpenApi:ExternalDocs:Description", "text", false, Max: 200),
             ["OpenApi:SecurityDefinition:Description"] = new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),
             ["OpenApi:Footer:Text"] = new("OpenApi:Footer:Text", "text", false, Max: 200),
             ["OpenApi:Footer:Url"] = new("OpenApi:Footer:Url", "link", false),
@@ -214,6 +218,10 @@ public sealed class SettingsWriteService
         "link" => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be an http, https or mailto link, or #"),
+
+        "weburl" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || Uri.TryCreate(raw.GetString(), UriKind.Absolute, out var web) && web.Scheme is "http" or "https")
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' must be an http or https link, or empty"),
 
         "email" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || IsEmail(raw.GetString()!))
             ? (JsonValue.Create(raw.GetString()), null)

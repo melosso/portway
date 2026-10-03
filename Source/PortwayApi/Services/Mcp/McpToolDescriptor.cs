@@ -1,5 +1,7 @@
 namespace PortwayApi.Services.Mcp;
 
+using PortwayApi.Classes;
+
 public sealed record McpToolDescriptor
 {
     public string Name { get; init; } = string.Empty;
@@ -13,6 +15,19 @@ public sealed record McpToolDescriptor
     public string DisplayDescription { get; init; } = string.Empty;
     public string EndpointName { get; init; } = string.Empty;
     public string? Namespace { get; init; }
+    public string? Version { get; init; }
+
+    private string BasePath => string.IsNullOrEmpty(Namespace) ? EndpointName : $"{Namespace}/{EndpointName}";
+
+    /// <summary>
+    /// Scope key the token middleware checks for the same endpoint
+    /// </summary>
+    public string Identity => (EndpointKind == "file" ? "files/" : "") + BasePath + EndpointVersion.Suffix(Version);
+
+    /// <summary>
+    /// Path below /api/{env} that serves this endpoint
+    /// </summary>
+    public string RoutePath => EndpointVersion.RoutePrefix(Version) + (EndpointKind == "file" ? "files/" : "") + BasePath;
     public string Method { get; init; } = string.Empty;
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }

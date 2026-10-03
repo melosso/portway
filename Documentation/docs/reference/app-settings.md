@@ -166,7 +166,7 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
 | `RequestTrafficLogging:Enabled` | `false` | Traffic logging |
 | `WebUi:Customization:EnableLandingPage` | `true` | The landing page |
 
-Console locations: `Oidc:Enabled` under **Settings → Security → Deployment & Access**, `OpenApi:Enabled` and `Mcp:Enabled` under **Settings → Integrations**, `Mcp:ChatEnabled` and the chat provider under **Settings → AI**, `RequestTrafficLogging:Enabled` under **Settings → Storage & Logs → Logging**, `WebUi:Customization:EnableLandingPage` under **Settings → General**.
+Console locations: `Oidc:Enabled` under **Settings → Security → Deployment & Access**, `OpenApi:Enabled` under **Settings → OpenAPI**, `Mcp:Enabled`, `Mcp:ChatEnabled` and the chat provider under **Settings → AI**, `RequestTrafficLogging:Enabled` under **Settings → Storage & Logs → Logging**, `WebUi:Customization:EnableLandingPage` under **Settings → General**.
 
 ## Environment variables
 

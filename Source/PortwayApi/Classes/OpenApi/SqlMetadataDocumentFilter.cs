@@ -323,7 +323,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             var idField = idFields.First();
             operation.Description = (operation.Description ?? "") +
-                $"\n\n**Primary Key:** `{idField.ColumnName}` ({idField.DataType})";
+                $"\n\n**Primary Key:** `{idField.ColumnName}`";
         }
     }
 
@@ -443,7 +443,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             Type = JsonSchemaType.Object,
             Properties = properties,
-            Description = GetSchemaDescription(method, parameters.Count)
+            Description = GetSchemaDescription(method)
         };
 
         // For PATCH, no required fields (all optional)
@@ -572,13 +572,11 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Builds a descriptive text for a column
     /// </summary>
-    private string BuildColumnDescription(
+    internal static string BuildColumnDescription(
         ColumnMetadata column,
         EndpointDefinition? endpoint = null)
     {
         var parts = new List<string>();
-
-        parts.Add($"SQL Type: {column.DataType}");
 
         if (column.MaxLength.HasValue && column.MaxLength.Value > 0 && column.MaxLength.Value != -1)
         {
@@ -612,12 +610,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Builds a descriptive text for a procedure parameter
     /// </summary>
-    private string BuildParameterDescription(ParameterMetadata parameter)
+    internal static string BuildParameterDescription(ParameterMetadata parameter)
     {
         var parts = new List<string>();
-
-        parts.Add($"SQL Type: {parameter.DataType}");
-        parts.Add($"Position: {parameter.Position}");
 
         if (parameter.MaxLength.HasValue && parameter.MaxLength.Value > 0 && parameter.MaxLength.Value != -1)
         {
@@ -636,7 +631,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         if (parameter.IsOutput)
         {
-            parts.Add("**Output Parameter**");
+            parts.Add("**Output**");
         }
 
         if (parameter.HasDefaultValue)
@@ -669,14 +664,14 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Gets the schema description based on method
     /// </summary>
-    private string GetSchemaDescription(string method, int parameterCount)
+    internal static string GetSchemaDescription(string method)
     {
         return method switch
         {
-            "POST" => $"Stored procedure parameters for creating a new record ({parameterCount} parameters)",
-            "PUT" => $"Stored procedure parameters for updating a record ({parameterCount} parameters)",
-            "PATCH" => $"Stored procedure parameters for partial update ({parameterCount} parameters, all optional)",
-            _ => $"Stored procedure parameters ({parameterCount} parameters)"
+            "POST" => "Fields for creating a record",
+            "PUT" => "Fields for updating a record",
+            "PATCH" => "Fields for a partial update, all optional",
+            _ => "Record fields"
         };
     }
 

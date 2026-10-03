@@ -210,6 +210,13 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
     {
         try
         {
+            if (definition.ConfigDirectory is { } directory)
+            {
+                var own = _exampleLoader.LoadExample(Path.GetRelativePath(Path.Combine(Directory.GetCurrentDirectory(), "endpoints"), directory));
+                if (own != null)
+                    return own;
+            }
+
             // Try loading with the full endpoint key path
             var example = _exampleLoader.LoadExample(endpointKey);
             if (example != null)

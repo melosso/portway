@@ -56,7 +56,8 @@ const NAV_GROUPS = [
                     { hash: 'general', label: 'General' },
                     { hash: 'security', label: 'Security' },
                     { hash: 'performance', label: 'Performance' },
-                    { hash: 'storage', label: 'Storage & Logs' },
+                    { hash: 'storage', label: 'Storage' },
+                    { hash: 'openapi', label: 'OpenAPI' },
                     { hash: 'integrations', label: 'Integrations' },
                     { hash: 'ai', label: 'AI' }
                 ],

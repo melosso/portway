@@ -15,7 +15,7 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task OpenApiDocument_Generates_And_Parses()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -34,7 +34,7 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task SharedErrorResponse_ComponentSchema_IsRegistered()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -53,7 +53,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
@@ -75,7 +75,7 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task SharedErrorResponse_MediaTypeComponent_IsRegistered()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var mediaTypes = doc.RootElement.GetProperty("components").GetProperty("mediaTypes");
@@ -92,7 +92,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
@@ -120,7 +120,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var pathItem = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/Masterdata/Countries");
@@ -140,7 +140,7 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task SecurityScheme_IsHttpBearer()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var bearer = doc.RootElement.GetProperty("components").GetProperty("securitySchemes").GetProperty("Bearer");
@@ -159,7 +159,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var verbs = new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "MERGE", "QUERY" };
@@ -266,16 +266,177 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.DoesNotContain("'+alert(3)+'", html);
     }
 
+    private static JsonDocument ScalarConfig(string html)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(html, "data-configuration='([^']*)'");
+        Assert.True(match.Success);
+        return JsonDocument.Parse(match.Groups[1].Value);
+    }
+
+    // code samples are limited to the clients gateway consumers use, curl first
+    [Fact]
+    public async Task ScalarPage_LimitsCodeSampleClients()
+    {
+        using var config = ScalarConfig(await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken));
+        var root = config.RootElement;
+
+        var hidden = root.GetProperty("hiddenClients").EnumerateObject().Select(p => p.Name).ToList();
+        Assert.Contains("ruby", hidden);
+        foreach (var shown in new[] { "shell", "csharp", "js", "python", "powershell" })
+            Assert.DoesNotContain(shown, hidden);
+
+        Assert.Equal("shell", root.GetProperty("defaultHttpClient").GetProperty("targetKey").GetString());
+        Assert.Equal("curl", root.GetProperty("defaultHttpClient").GetProperty("clientKey").GetString());
+    }
+
+    // the portway theme is scalar without a theme plus the console colours
+    [Fact]
+    public async Task ScalarPage_PortwayTheme_UsesConsoleColours()
+    {
+        using var defaultConfig = ScalarConfig(await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken));
+        Assert.NotEqual("none", defaultConfig.RootElement.GetProperty("theme").GetString());
+        Assert.DoesNotContain("--scalar-color-accent", defaultConfig.RootElement.GetProperty("customCss").GetString());
+
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["OpenApi:ScalarTheme"] = "portway"
+        })));
+        using var config = ScalarConfig(await factory.CreateClient().GetStringAsync("/docs", TestContext.Current.CancellationToken));
+        Assert.Equal("none", config.RootElement.GetProperty("theme").GetString());
+        var css = config.RootElement.GetProperty("customCss").GetString();
+        Assert.Contains("--scalar-color-accent", css);
+        Assert.Contains(".dark-mode", css);
+    }
+
+    // every operation has its own url under /docs, the document route stays json
+    [Fact]
+    public async Task ScalarPage_ServesDeepLinks()
+    {
+        var response = await _client.GetAsync("/docs/tag/product-stock", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("href=\"/favicon.ico\"", html);
+
+        using var config = ScalarConfig(html);
+        Assert.Equal("/docs", config.RootElement.GetProperty("pathRouting").GetProperty("basePath").GetString());
+
+        var spec = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        Assert.Equal("application/json", spec.Content.Headers.ContentType?.MediaType);
+    }
+
+    // badges come from the endpoint file and the operation itself, and the setting turns them off
+    [Fact]
+    public async Task Operations_CarryBadges_UnlessDisabled()
+    {
+        SetAllowedEnvironments("500", "700");
+
+        static JsonElement Get(JsonDocument doc, string path) => doc.RootElement.GetProperty("paths").GetProperty(path).GetProperty("get");
+        static List<string> Badges(JsonElement op) => op.TryGetProperty("x-badges", out var b)
+            ? b.EnumerateArray().Select(x => x.GetProperty("name").GetString()!).ToList()
+            : [];
+
+        using (var doc = JsonDocument.Parse(await _client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken)))
+        {
+            Assert.Equal(["MCP", "OData"], Badges(Get(doc, "/api/{env}/Inventory/ProductStock")));
+            Assert.Equal(["OData"], Badges(Get(doc, "/api/{env}/Inventory/Products")));
+        }
+
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["OpenApi:ShowBadges"] = "false"
+        })));
+        var json = await factory.CreateClient().GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("x-badges", json);
+    }
+
+    // the operator's own documentation link, only when it is an absolute web url
+    [Fact]
+    public async Task Document_DeclaresExternalDocs_WhenConfigured()
+    {
+        using (var doc = JsonDocument.Parse(await _client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken)))
+        {
+            Assert.False(doc.RootElement.TryGetProperty("externalDocs", out _));
+        }
+
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["OpenApi:ExternalDocs:Url"] = "https://docs.example.com/api",
+            ["OpenApi:ExternalDocs:Description"] = "Integration guide"
+        })));
+        using var configured = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken));
+        var external = configured.RootElement.GetProperty("externalDocs");
+        Assert.Equal("https://docs.example.com/api", external.GetProperty("url").GetString());
+        Assert.Equal("Integration guide", external.GetProperty("description").GetString());
+    }
+
+    // v1 is the unversioned endpoint document; other pre 0.8 document names redirect to the full document
+    [Fact]
+    public async Task LegacyVersionedDocumentUrl_KeepsWorking()
+    {
+        var client = _factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var v1 = await client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, v1.StatusCode);
+        Assert.StartsWith("3.2", JsonDocument.Parse(await v1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).RootElement.GetProperty("openapi").GetString());
+
+        var named = await client.GetAsync("/docs/openapi/2.0/openapi.json", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.PermanentRedirect, named.StatusCode);
+        Assert.Equal("/docs/openapi.json", named.Headers.Location?.OriginalString);
+    }
+
+    // markdown for llms is opt in, and off it answers like any missing document
+    [Fact]
+    public async Task MarkdownDocument_IsOptIn()
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["OpenApi:MarkdownEnabled"] = "false"
+        })));
+        var client = factory.CreateClient();
+
+        var off = await client.GetAsync("/docs/openapi.md", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.NotFound, off.StatusCode);
+        Assert.Equal("application/json", off.Content.Headers.ContentType?.MediaType);
+        Assert.DoesNotContain("openapi.md", await client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken));
+    }
+
+    // the markdown is rendered from the same document, grouped by namespace
+    [Fact]
+    public async Task MarkdownDocument_RendersTheDocument()
+    {
+        SetAllowedEnvironments("500", "700");
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["OpenApi:MarkdownEnabled"] = "true",
+            ["OpenApi:Title"] = "Gateway Reference"
+        })));
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/docs/openapi.md", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/markdown", response.Content.Headers.ContentType?.MediaType);
+
+        var markdown = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.StartsWith("# Gateway Reference", markdown);
+        Assert.Contains("\n## Inventory\n", markdown);
+        Assert.Contains("`GET /api/{env}/Inventory/Products`", markdown);
+        Assert.Contains("| `$filter` | query |", markdown);
+        Assert.Contains("\n## Errors\n", markdown);
+
+        var json = await client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        Assert.Contains("[View as Markdown](/docs/openapi.md)", json);
+    }
+
     // The document names its own URI so other descriptions can reference it
     [Fact]
     public async Task Document_DeclaresSelfUri()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var self = doc.RootElement.GetProperty("$self").GetString();
         Assert.NotNull(self);
-        Assert.EndsWith("/docs/openapi/v1/openapi.json", self);
+        Assert.EndsWith("/docs/openapi.json", self);
         Assert.True(Uri.IsWellFormedUriString(self, UriKind.Absolute));
     }
 
@@ -285,7 +446,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
@@ -321,7 +482,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var upload = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/files/Images").GetProperty("post");
@@ -339,20 +500,20 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
-        // Product/Products declares an Assortment navigation; Product/Stock declares none
-        var expand = GetQueryParameter(paths, "/api/{env}/Product/Products", "$expand");
+        // Inventory/Products declares an Assortment navigation; Inventory/ProductStock declares none
+        var expand = GetQueryParameter(paths, "/api/{env}/Inventory/Products", "$expand");
         Assert.NotNull(expand);
         // Optional parameters are serialized without a "required" key, so it stays unchecked in the UI
         Assert.False(expand.Value.TryGetProperty("required", out var required) && required.GetBoolean());
         Assert.Equal("string", expand.Value.GetProperty("schema").GetProperty("type").GetString());
         Assert.Contains("Assortment", expand.Value.GetProperty("description").GetString());
 
-        Assert.Null(GetQueryParameter(paths, "/api/{env}/Product/Stock", "$expand"));
-        Assert.NotNull(GetQueryParameter(paths, "/api/{env}/Product/Stock", "$select"));
+        Assert.Null(GetQueryParameter(paths, "/api/{env}/Inventory/ProductStock", "$expand"));
+        Assert.NotNull(GetQueryParameter(paths, "/api/{env}/Inventory/ProductStock", "$select"));
     }
 
     private static JsonElement? GetQueryParameter(JsonElement paths, string path, string name)
@@ -376,7 +537,7 @@ public class OpenApiDocumentTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         var paths = doc.RootElement.GetProperty("paths");
 
@@ -407,7 +568,7 @@ public class OpenApiDocumentTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
 
         // Generate the OpenAPI document (runs the document filter over the live endpoint definitions)
-        var docResponse = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var docResponse = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, docResponse.StatusCode);
 
         using var doc = JsonDocument.Parse(await docResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -433,7 +594,7 @@ public class OpenApiDocumentTests : ApiTestBase
     [Fact]
     public async Task TvfQueryParameterDocumented()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var parameters = json.RootElement.GetProperty("paths").GetProperty("/api/{env}/Company/Departments").GetProperty("get").GetProperty("parameters").EnumerateArray().ToList();

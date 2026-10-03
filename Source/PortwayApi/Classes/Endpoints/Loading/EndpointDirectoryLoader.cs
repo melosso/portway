@@ -47,6 +47,7 @@ internal static class EndpointDirectoryLoader
                         : BuildFlatKey(file, definition);
                     if (key == null) continue;
 
+                    definition.ConfigDirectory = Path.GetDirectoryName(file);
                     endpoints[key] = definition;
                     spec.LogLoaded(key, definition);
                 }
@@ -76,6 +77,18 @@ internal static class EndpointDirectoryLoader
     private static string? BuildNamespacedKey(string file, string endpointsDirectory, EndpointDefinition definition)
     {
         var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
+
+        if (inferredNamespace is not null && EndpointVersion.TryParse(endpointName, out var version))
+        {
+            definition.Version = version;
+            var cut = inferredNamespace.LastIndexOf('/');
+            endpointName = inferredNamespace[(cut + 1)..];
+            inferredNamespace = cut < 0 ? null : inferredNamespace[..cut];
+        }
+        else if (ShadowedByV1Folder(file))
+        {
+            return null;
+        }
 
         // Inferred namespace is a fallback; entity.json Namespace takes precedence
         definition.InferredNamespace = inferredNamespace;
@@ -122,10 +135,24 @@ internal static class EndpointDirectoryLoader
             return null;
         }
 
-        var effectiveNamespace = definition.EffectiveNamespace;
-        return !string.IsNullOrEmpty(effectiveNamespace)
-            ? $"{effectiveNamespace}/{endpointName}"
-            : endpointName;
+        if (EndpointVersion.TryParse(definition.EffectiveNamespace?.Split('/')[0], out _))
+        {
+            Log.Warning("Endpoint {EndpointName}: namespace '{Namespace}' starts with a version segment; a versioned endpoint with the same path takes precedence", endpointName, definition.EffectiveNamespace);
+        }
+
+        return definition.Identity;
+    }
+
+    // a v1 folder holds the v1 endpoint and takes precedence over the entity.json beside it
+    private static bool ShadowedByV1Folder(string file)
+    {
+        if (!File.Exists(Path.Combine(Path.GetDirectoryName(file)!, EndpointVersion.Default, "entity.json")))
+        {
+            return false;
+        }
+
+        Log.Warning("Skipped {File}: the v1 folder beside it defines this endpoint", file);
+        return true;
     }
 
     /// <summary>
@@ -133,13 +160,25 @@ internal static class EndpointDirectoryLoader
     /// </summary>
     private static string? BuildFlatKey(string file, EndpointDefinition definition)
     {
-        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
+        var directory = Path.GetDirectoryName(file);
+        var endpointName = Path.GetFileName(directory) ?? "";
+        if (EndpointVersion.TryParse(endpointName, out var version))
+        {
+            definition.Version = version;
+            endpointName = Path.GetFileName(Path.GetDirectoryName(directory)) ?? "";
+        }
+
+        else if (ShadowedByV1Folder(file))
+        {
+            return null;
+        }
+
         if (string.IsNullOrWhiteSpace(endpointName))
         {
             Log.Warning("Could not determine endpoint name for {File}", file);
             return null;
         }
         definition.FolderName = endpointName;
-        return endpointName;
+        return endpointName + EndpointVersion.Suffix(definition.Version);
     }
 }

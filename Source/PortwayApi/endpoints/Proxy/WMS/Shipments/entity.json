@@ -1,0 +1,23 @@
+{
+  "Url": "http://localhost:8020/api/shipments",
+  "FallbackUrls": [
+    "http://localhost:8021/api/shipments"
+  ],
+  "Retry": {
+    "Attempts": 2,
+    "DelayMs": 200
+  },
+  "Methods": [
+    "GET",
+    "POST"
+  ],
+  "Documentation": {
+    "TagDescription": "**Shipments**\n\nShipments and their delivery status.",
+    "MethodDescriptions": {
+      "GET": "Query shipment data",
+      "POST": "Register a new shipment"
+    }
+  },
+  "NamespaceDisplayName": "WMS",
+  "Enabled": true
+}

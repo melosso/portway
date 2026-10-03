@@ -19,7 +19,7 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.GetAsync("/api/500/Product/Products", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/api/500/Inventory/Products", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
     }
@@ -54,7 +54,7 @@ public class NamespacedRoutingTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.PostAsync("/api/500/Financial/SalesInvoice", new StringContent("{}", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+        var response = await _client.PostAsync("/api/500/Sales/Invoices", new StringContent("{}", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         // Only the composite handler reports which step failed
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -103,7 +103,7 @@ public class NamespacedRoutingTests : ApiTestBase
             });
         AddAuthorizationHeader("wms-scoped-token");
 
-        var response = await _client.GetAsync("/api/WMS/WMS/Inbound/StagingBins", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/api/WMS/WMS/InboundBins", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

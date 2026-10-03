@@ -386,7 +386,7 @@ public partial class DynamicEndpointDocumentFilter
                                         ["success"] = JsonValue.Create(true),
                                         ["count"] = JsonValue.Create(0),
                                         ["value"] = new JsonArray(),
-                                        ["nextLink"] = JsonValue.Create($"/api/{endpointName}?$top=10&$skip=0")
+                                        ["nextLink"] = JsonValue.Create($"/api/{{env}}/{EndpointVersion.RoutePath(endpointName)}?$top=10&$skip=0")
                                     }
                                 }
                             },

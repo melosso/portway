@@ -9,10 +9,30 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Multi-level namespaces, using SQL WMS/Inbound/StagingBins
+/// Multi-level namespaces, using a WMS/Inbound/StagingBins fixture on the WMS demo database
 /// </summary>
-public class NestedNamespaceTests : ApiTestBase
+public sealed class NestedNamespaceTests : ApiTestBase, IDisposable
 {
+    private static readonly string FixtureRoot = Path.Combine("endpoints", "SQL", "WMS", "Inbound");
+
+    public NestedNamespaceTests()
+    {
+        var dir = Path.Combine(FixtureRoot, "StagingBins");
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(Path.Combine(dir, "entity.json"), """
+            { "DatabaseObjectName": "Bins", "DatabaseSchema": "dbo", "AllowedEnvironments": ["WMS"], "AllowedMethods": ["GET"], "AllowedColumns": ["Id", "Code", "Zone", "CapacityUnits", "IsActive"] }
+            """);
+        EndpointHandler.ReloadAllEndpoints();
+    }
+
+    public new void Dispose()
+    {
+        if (Directory.Exists(FixtureRoot))
+            Directory.Delete(FixtureRoot, recursive: true);
+        EndpointHandler.ReloadAllEndpoints();
+        base.Dispose();
+    }
+
     /// <summary>
     /// Only the OData translation is stubbed; routing, handler, driver and envelope remain intact
     /// </summary>
@@ -72,7 +92,7 @@ public class NestedNamespaceTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var tags = doc.RootElement.GetProperty("tags").EnumerateArray().ToList();

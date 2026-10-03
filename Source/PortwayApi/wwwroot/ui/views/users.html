@@ -1,243 +1,313 @@
-  <script src="js/components/drawer.js"></script>
+<script src="js/components/drawer.js"></script>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Users</h1>
-        <p class="page-sub">Accounts that can sign in to this console.</p>
-      </div>
-    </div>
-    <div class="page-actions">
-      <button class="btn btn-outline" id="refreshBtn" onclick="load()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-      <button class="btn btn-primary" onclick="openCreateDrawer()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New user
-      </button>
-    </div>
-  </div>
-
-  <div class="main-content">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Accounts</h2>
-      </div>
-      <div class="table-wrap">
-        <div class="scroll-area">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Role</th>
-              <th>Sign-in</th>
-              <th>Status</th>
-              <th>Last signed in</th>
-              <th style="width:96px; text-align:right; padding-right:1rem;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="usersBody">
-            <tr><td colspan="6" class="empty-state">Loading…</td></tr>
-          </tbody>
-        </table>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Users</h1>
+                <p class="page-sub">Accounts that can sign in to this console.</p>
+            </div>
         </div>
-      </div>
-    </div>
-
-    <div class="card" id="myLinkCard" hidden>
-      <div class="card-header">
-        <div>
-          <h2 class="card-title">Your sign-in</h2>
-          <p class="muted">Provider identities linked to this account for sign-in.</p>
+        <div class="page-actions">
+            <button class="btn btn-outline" id="refreshBtn" onclick="load()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+            <button class="btn btn-primary" onclick="openCreateDrawer()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New user
+            </button>
         </div>
-      </div>
-      <div class="card-body" id="myLinkBody"></div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <h2 class="card-title">Sign-in providers</h2>
-          <p class="muted">OpenID Connect, for Authelia, Authentik, Pocket ID, Keycloak and anything else publishing a discovery document.</p>
+    <div class="main-content">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Accounts</h2>
+            </div>
+            <div class="table-wrap">
+                <div class="scroll-area">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Sign-in</th>
+                                <th>Status</th>
+                                <th>Last signed in</th>
+                                <th style="width:96px; text-align:right; padding-right:1rem;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersBody">
+                            <tr>
+                                <td colspan="6" class="empty-state">Loading…</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        <button class="btn btn-outline btn-sm" onclick="openProviderDrawer()">Add provider</button>
-      </div>
-      <div class="card-body" id="providersBody">
-        <span class="muted" style="font-size:0.8rem">Loading…</span>
-      </div>
+
+        <div class="card" id="myLinkCard" hidden>
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Your sign-in</h2>
+                    <p class="muted">Provider identities linked to this account for sign-in.</p>
+                </div>
+            </div>
+            <div class="card-body" id="myLinkBody"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Sign-in providers</h2>
+                    <p class="muted">
+                        OpenID Connect, for Authelia, Authentik, Pocket ID, Keycloak and anything else publishing a
+                        discovery document.
+                    </p>
+                </div>
+                <button class="btn btn-outline btn-sm" onclick="openProviderDrawer()">Add provider</button>
+            </div>
+            <div class="card-body" id="providersBody">
+                <span class="muted" style="font-size:0.8rem">Loading…</span>
+            </div>
+        </div>
     </div>
-  </div>
 </main>
 
 <div class="drawer-backdrop" id="providerBackdrop" data-drawer-backdrop="providerDrawer"></div>
 <div class="drawer" id="providerDrawer">
-  <div class="drawer-header">
-    <span class="drawer-title" id="providerTitle">Add provider</span>
-    <button class="btn-icon" data-drawer-close="providerDrawer" aria-label="Close">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body">
-    <div class="field">
-      <label class="field-label" for="provName">Name</label>
-      <input type="text" id="provName" class="input" placeholder="e.g. Authelia">
-      <div class="field-help">Shown on the sign-in button.</div>
+    <div class="drawer-header">
+        <span class="drawer-title" id="providerTitle">Add provider</span>
+        <button class="btn-icon" data-drawer-close="providerDrawer" aria-label="Close">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
     </div>
-    <div class="field">
-      <label class="field-label" for="provSlug">Key</label>
-      <input type="text" id="provSlug" class="input" placeholder="e.g. authelia">
-      <div class="field-help">Part of the redirect URI; stable across renames. Lowercase letters, numbers and hyphens.</div>
+    <div class="drawer-body">
+        <div class="field">
+            <label class="field-label" for="provName">Name</label>
+            <input type="text" id="provName" class="input" placeholder="e.g. Authelia" />
+            <div class="field-help">Shown on the sign-in button.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="provSlug">Key</label>
+            <input type="text" id="provSlug" class="input" placeholder="e.g. authelia" />
+            <div class="field-help">
+                Part of the redirect URI; stable across renames. Lowercase letters, numbers and hyphens.
+            </div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="provAuthority">Issuer URL</label>
+            <input type="text" id="provAuthority" class="input" placeholder="https://auth.example.com" />
+            <div class="field-help">
+                Discovery is read from <code>/.well-known/openid-configuration</code> under this URL.
+            </div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="provClientId">Client ID</label>
+            <input type="text" id="provClientId" class="input" />
+        </div>
+        <div class="field">
+            <label class="field-label" for="provClientSecret">Client secret</label>
+            <input type="password" id="provClientSecret" class="input" autocomplete="new-password" />
+            <div class="field-help">Blank for a public client (e.g. Pocket ID). PKCE is always used.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="provScopes">Scopes</label>
+            <input type="text" id="provScopes" class="input" value="openid profile email" />
+        </div>
+        <div class="field">
+            <label class="field-label" for="provClaim">Username claim</label>
+            <input type="text" id="provClaim" class="input" value="preferred_username" />
+            <div class="field-help">Authelia, Authentik and Pocket ID all send <code>preferred_username</code>.</div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-label">
+                <label for="provEnabled">Enabled</label>
+                <p>Listed on the sign-in page.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="provEnabled" checked />
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="setting-row">
+            <div class="setting-label">
+                <label for="provCreate">Create accounts</label>
+                <p>Off rejects identities without an existing account.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="provCreate" />
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="field">
+            <label class="field-label" for="provRole">Role for new accounts</label>
+            <select id="provRole" class="input">
+                <option value="viewer">Viewer</option>
+                <option value="administrator">Administrator</option>
+            </select>
+        </div>
+        <div class="field" id="provRedirectField" hidden>
+            <label class="field-label">Redirect URI</label>
+            <div class="code-block" id="provRedirect"></div>
+            <div class="field-help">Register this at the provider.</div>
+        </div>
     </div>
-    <div class="field">
-      <label class="field-label" for="provAuthority">Issuer URL</label>
-      <input type="text" id="provAuthority" class="input" placeholder="https://auth.example.com">
-      <div class="field-help">Discovery is read from <code>/.well-known/openid-configuration</code> under this URL.</div>
+    <div class="drawer-footer">
+        <button class="btn btn-primary btn-block" onclick="saveProvider()" id="provSaveBtn">Save provider</button>
     </div>
-    <div class="field">
-      <label class="field-label" for="provClientId">Client ID</label>
-      <input type="text" id="provClientId" class="input">
-    </div>
-    <div class="field">
-      <label class="field-label" for="provClientSecret">Client secret</label>
-      <input type="password" id="provClientSecret" class="input" autocomplete="new-password">
-      <div class="field-help">Blank for a public client (e.g. Pocket ID). PKCE is always used.</div>
-    </div>
-    <div class="field">
-      <label class="field-label" for="provScopes">Scopes</label>
-      <input type="text" id="provScopes" class="input" value="openid profile email">
-    </div>
-    <div class="field">
-      <label class="field-label" for="provClaim">Username claim</label>
-      <input type="text" id="provClaim" class="input" value="preferred_username">
-      <div class="field-help">Authelia, Authentik and Pocket ID all send <code>preferred_username</code>.</div>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">
-        <label for="provEnabled">Enabled</label>
-        <p>Listed on the sign-in page.</p>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="provEnabled" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="setting-row">
-      <div class="setting-label">
-        <label for="provCreate">Create accounts</label>
-        <p>Off rejects identities without an existing account.</p>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="provCreate">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="field">
-      <label class="field-label" for="provRole">Role for new accounts</label>
-      <select id="provRole" class="input">
-        <option value="viewer">Viewer</option>
-        <option value="administrator">Administrator</option>
-      </select>
-    </div>
-    <div class="field" id="provRedirectField" hidden>
-      <label class="field-label">Redirect URI</label>
-      <div class="code-block" id="provRedirect"></div>
-      <div class="field-help">Register this at the provider.</div>
-    </div>
-  </div>
-  <div class="drawer-footer">
-    <button class="btn btn-primary btn-block" onclick="saveProvider()" id="provSaveBtn">Save provider</button>
-  </div>
 </div>
 
 <div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
-  <div class="drawer-header">
-    <span class="drawer-title">New user</span>
-    <button class="btn-icon" data-drawer-close="createDrawer" aria-label="Close">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body">
-    <div class="field">
-      <label class="field-label" for="createUsername">Username</label>
-      <input type="text" id="createUsername" class="input" autocomplete="off" placeholder="e.g. jules">
-      <div class="field-help">Letters, numbers, dots, hyphens and underscores.</div>
+    <div class="drawer-header">
+        <span class="drawer-title">New user</span>
+        <button class="btn-icon" data-drawer-close="createDrawer" aria-label="Close">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
     </div>
-    <div class="field">
-      <label class="field-label" for="createPassword">Password</label>
-      <input type="password" id="createPassword" class="input" autocomplete="new-password">
-      <div class="field-help">At least 12 characters.</div>
+    <div class="drawer-body">
+        <div class="field">
+            <label class="field-label" for="createUsername">Username</label>
+            <input type="text" id="createUsername" class="input" autocomplete="off" placeholder="e.g. jules" />
+            <div class="field-help">Letters, numbers, dots, hyphens and underscores.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="createPassword">Password</label>
+            <input type="password" id="createPassword" class="input" autocomplete="new-password" />
+            <div class="field-help">At least 12 characters.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="createEmail">Email</label>
+            <input type="email" id="createEmail" class="input" autocomplete="off" placeholder="optional" />
+            <div class="field-help">A provider identity with this address binds to this account.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="createRole">Role</label>
+            <select id="createRole" class="input">
+                <option value="administrator">Administrator</option>
+                <option value="viewer">Viewer</option>
+            </select>
+            <div class="field-help">Administrators can change configuration. Viewers can only read it.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="createConfirm">Your password</label>
+            <input type="password" id="createConfirm" class="input" autocomplete="current-password" />
+            <div class="field-help">Required to change account access.</div>
+        </div>
     </div>
-    <div class="field">
-      <label class="field-label" for="createEmail">Email</label>
-      <input type="email" id="createEmail" class="input" autocomplete="off" placeholder="optional">
-      <div class="field-help">A provider identity with this address binds to this account.</div>
+    <div class="drawer-footer">
+        <button class="btn btn-primary btn-block" onclick="createUser()" id="createBtn">Create user</button>
     </div>
-    <div class="field">
-      <label class="field-label" for="createRole">Role</label>
-      <select id="createRole" class="input">
-        <option value="administrator">Administrator</option>
-        <option value="viewer">Viewer</option>
-      </select>
-      <div class="field-help">Administrators can change configuration. Viewers can only read it.</div>
-    </div>
-    <div class="field">
-      <label class="field-label" for="createConfirm">Your password</label>
-      <input type="password" id="createConfirm" class="input" autocomplete="current-password">
-      <div class="field-help">Required to change account access.</div>
-    </div>
-  </div>
-  <div class="drawer-footer">
-    <button class="btn btn-primary btn-block" onclick="createUser()" id="createBtn">Create user</button>
-  </div>
 </div>
 
 <div class="drawer-backdrop" id="editBackdrop" data-drawer-backdrop="editDrawer"></div>
 <div class="drawer" id="editDrawer">
-  <div class="drawer-header">
-    <span class="drawer-title" id="editTitle">Edit user</span>
-    <button class="btn-icon" data-drawer-close="editDrawer" aria-label="Close">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body">
-    <div class="field">
-      <label class="field-label" for="editPassword">New password</label>
-      <input type="password" id="editPassword" class="input" autocomplete="new-password">
-      <div class="field-help">Leave blank to keep the current password.</div>
+    <div class="drawer-header">
+        <span class="drawer-title" id="editTitle">Edit user</span>
+        <button class="btn-icon" data-drawer-close="editDrawer" aria-label="Close">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
     </div>
-    <div class="field">
-      <label class="field-label" for="editEmail">Email</label>
-      <input type="email" id="editEmail" class="input" autocomplete="off" placeholder="optional">
+    <div class="drawer-body">
+        <div class="field">
+            <label class="field-label" for="editPassword">New password</label>
+            <input type="password" id="editPassword" class="input" autocomplete="new-password" />
+            <div class="field-help">Leave blank to keep the current password.</div>
+        </div>
+        <div class="field">
+            <label class="field-label" for="editEmail">Email</label>
+            <input type="email" id="editEmail" class="input" autocomplete="off" placeholder="optional" />
+        </div>
+        <div class="field">
+            <label class="field-label" for="editRole">Role</label>
+            <select id="editRole" class="input">
+                <option value="administrator">Administrator</option>
+                <option value="viewer">Viewer</option>
+            </select>
+        </div>
+        <div class="setting-row">
+            <div class="setting-label">
+                <label for="editActive">Active</label>
+                <p>An inactive account cannot sign in.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="editActive" />
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="field">
+            <label class="field-label" for="editConfirm">Your password</label>
+            <input type="password" id="editConfirm" class="input" autocomplete="current-password" />
+            <div class="field-help">Required to change account access.</div>
+        </div>
     </div>
-    <div class="field">
-      <label class="field-label" for="editRole">Role</label>
-      <select id="editRole" class="input">
-        <option value="administrator">Administrator</option>
-        <option value="viewer">Viewer</option>
-      </select>
+    <div class="drawer-footer">
+        <button class="btn btn-primary btn-block" onclick="saveUser()" id="saveBtn">Save changes</button>
     </div>
-    <div class="setting-row">
-      <div class="setting-label">
-        <label for="editActive">Active</label>
-        <p>An inactive account cannot sign in.</p>
-      </div>
-      <label class="switch">
-        <input type="checkbox" id="editActive">
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="field">
-      <label class="field-label" for="editConfirm">Your password</label>
-      <input type="password" id="editConfirm" class="input" autocomplete="current-password">
-      <div class="field-help">Required to change account access.</div>
-    </div>
-  </div>
-  <div class="drawer-footer">
-    <button class="btn btn-primary btn-block" onclick="saveUser()" id="saveBtn">Save changes</button>
-  </div>
 </div>
 
 <script>

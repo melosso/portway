@@ -2,7 +2,6 @@
   "ContentType": "application/json",
   "ContentFile": "costcenters-2025.json",
   "EnableFiltering": true,
-  "Namespace": "Masterdata",
   "NamespaceDisplayName": "Masterdata",
   "NamespaceDescription": "Access all relevant masterdata, which may be used throughout the system.",
   "AllowedEnvironments": [
@@ -22,5 +21,7 @@
   "Mcp": {
     "Exposed": true,
     "Instruction": ""
-  }
+  },
+  "DisplayName": "Cost centers",
+  "Enabled": true
 }

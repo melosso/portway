@@ -1,0 +1,27 @@
+{
+  "DatabaseObjectName": "Bins",
+  "DisplayName": "Inbound Bins",
+  "AllowedEnvironments": [
+    "WMS"
+  ],
+  "AllowedMethods": [
+    "GET"
+  ],
+  "AllowedColumns": [
+    "Id",
+    "Code",
+    "Zone",
+    "CapacityUnits",
+    "IsActive"
+  ],
+  "Documentation": {
+    "TagDescription": "Staging bins used while inbound goods are being received.",
+    "MethodDescriptions": {
+      "GET": "Retrieve inbound staging bins"
+    },
+    "MethodDocumentation": {
+      "GET": "Read-only view of the bins reserved for inbound receiving."
+    }
+  },
+  "DatabaseSchema": "dbo"
+}

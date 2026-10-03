@@ -21,6 +21,10 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
 | Table-valued function parameters | Query and header parameters from `FunctionParameters` |
 | `Hidden: true` | Endpoint omitted |
+| `Mcp.Exposed: true` | `MCP` badge (`x-badges`) on the endpoint's operations |
+| OData parameters | `OData` badge on operations that accept `$filter` |
+| `ExternalDocs` | Document-level `externalDocs` |
+| Endpoint versions | `/api/{env}/v{n}/...` paths under the endpoint's tag; `(v{n})` summary and `operationId` suffix ([Versions](/reference/namespaces#versions)) |
 | Stored procedure names | Never included |
 
 ## Global configuration
@@ -48,6 +52,11 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
       "Type": "Http",
       "Scheme": "Bearer"
     },
+    "ShowBadges": true,
+    "ExternalDocs": {
+      "Url": "https://example.com/api-guide",
+      "Description": "Integration guide"
+    },
     "ScalarTheme": "default",
     "ScalarLayout": "modern",
     "ScalarShowSidebar": true,
@@ -63,7 +72,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 |---|---|---|
 | `Enabled` | boolean | Generates the document and `/docs` |
 | `Title` | string | Document title |
-| `Version` | string | Document version |
+| `Version` | string | Document version label (`info.version`); not part of any URL and unrelated to [endpoint versions](/reference/namespaces#versions) |
 | `Description` | string | Document description (Markdown) |
 | `Contact.Name` | string | Contact name |
 | `Contact.Email` | string | Contact e-mail |
@@ -78,7 +87,10 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ForceHttpsInProduction` | boolean | HTTPS server URLs in production (default `true`) |
 | `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
 | `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
-| `ScalarTheme` | string | Scalar theme |
+| `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`) |
+| `ExternalDocs.Url` | string | Link to your own API guide, shown with the document description; empty omits it |
+| `ExternalDocs.Description` | string | Label for that link |
+| `ScalarTheme` | string | Scalar theme; `portway` applies the console colours |
 | `ScalarLayout` | string | `modern` or `classic` |
 | `ScalarShowSidebar` | boolean | Sidebar |
 | `ScalarHideDownloadButton` | boolean | Hides the document download |
@@ -86,7 +98,11 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ScalarHideClientButton` | boolean | Hides client generation |
 | `ScalarHideTestRequestButton` | boolean | Hides test requests |
 
-The console edits these properties under **Settings → Integrations** (OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled`, `Version` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`.
+The console edits these properties under **Settings → OpenAPI** (`/ui/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
+
+The document is served at `/docs/openapi.json`; `/docs/openapi/v{n}/openapi.json` holds the operations of one endpoint version. Other names under `/docs/openapi/{name}/openapi.json` redirect to `/docs/openapi.json`.
+
+Every operation has a shareable URL under `/docs` (for example `/docs/tag/...`). Code samples cover curl (default), C#, JavaScript, Python and PowerShell.
 
 ## Endpoint documentation
 

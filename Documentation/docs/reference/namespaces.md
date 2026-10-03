@@ -88,6 +88,49 @@ Examples: `/api/prod/Account/Contacts`, `/api/prod/Finance/Transactions/12345`.
 
 Endpoints without a namespace use `/api/{env}/{endpoint}` and `/api/{env}/{endpoint}/{id}`. File endpoints use `/api/{env}/files/{namespace}/{endpoint}`; returned download URLs include the namespace. Composite endpoints are also reachable at `/api/{env}/composite/{endpoint}`.
 
+## Versions
+
+A `v{n}` folder (`v1` to `v999`) below an endpoint folder holds that version of the endpoint. Without a `v1` folder, the endpoint folder's own `entity.json` is `v1`.
+
+```
+endpoints/SQL/Inventory/Products/
+├── entity.json        → /api/{env}/Inventory/Products  (also /api/{env}/v1/Inventory/Products)
+└── v2/
+    └── entity.json    → /api/{env}/v2/Inventory/Products
+```
+
+| Rule | Behavior |
+|---|---|
+| Configuration | Each version is a complete endpoint: columns, methods, environments, `Mcp`, `Enabled` and `Deprecated` are set per version, nothing is inherited |
+| Route | The version segment follows the environment; file endpoints use `/api/{env}/v2/files/{endpoint}` |
+| Unknown version | `404`, the same response as a missing endpoint |
+| `v1` folder | Optional. `v1/entity.json` defines v1 and takes precedence over the `entity.json` beside it, which is skipped with a warning |
+| Endpoint types | SQL, Proxy, Composite, Static, Webhook and Files |
+| Token scope | `Inventory/Products` grants v1, `Inventory/Products@v2` grants v2, `Inventory/Products*` grants every version ([Endpoint scopes](/guide/tokens#endpoint-scopes)) |
+| Composite steps | A step names a version with `@v2`, e.g. `"Endpoint": "Sales/OrderLine@v2"` |
+| MCP | Each exposed version registers its own tool, with the version in the tool name |
+| Namespace named `v2` | Resolves as before; a versioned endpoint with the same path takes precedence, logged at load |
+
+The OpenAPI document lists every version under the endpoint's tag, with the version appended to the operation summary and `operationId`. `/docs/openapi/v{n}/openapi.json` holds one version; `/docs` offers a version switch when more than one version exists.
+
+### Retiring a version
+
+| Property | Response header |
+|---|---|
+| `Deprecated: true` with `DeprecatedSince` | `Deprecation: @{unix time}` ([RFC 9745](https://www.rfc-editor.org/rfc/rfc9745)) |
+| `Sunset` | `Sunset: {HTTP date}` ([RFC 8594](https://www.rfc-editor.org/rfc/rfc8594)) |
+| `Deprecated: true` and a higher version exists | `Link: </api/{env}/v2/...>; rel="successor-version"` |
+
+```json
+{
+  "Deprecated": true,
+  "DeprecatedSince": "2026-10-01T00:00:00Z",
+  "Sunset": "2027-04-01T00:00:00Z"
+}
+```
+
+The console's **New version** action copies `entity.json` and its sibling files into the next `v{n}` folder. A base endpoint with versions is deleted after its versions; a version is renamed through its base endpoint.
+
 ## Examples
 
 SQL, `/endpoints/SQL/Company/Employees/entity.json`:

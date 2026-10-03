@@ -55,6 +55,7 @@ public static class McpRegistryStartupExtensions
             {
                 Name = kvp.Value.EndpointName,
                 Namespace = kvp.Value.EffectiveNamespace,
+                Version = EndpointVersion.IsDefault(kvp.Value.Version) ? null : kvp.Value.Version,
                 Url = kvp.Value.Url,
                 // File endpoints expose GET only; POST (upload) and DELETE are not useful in chat
                 Methods = kvp.Value.Type == EndpointType.Files

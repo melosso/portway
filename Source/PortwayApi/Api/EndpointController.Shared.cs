@@ -79,17 +79,31 @@ public partial class EndpointController
     /// <summary>
     /// Longest match first, so Sales/EMEA/Orders wins over Sales/EMEA. Checked against every endpoint type. Token scope checks resolve the same URL through this, so they cannot disagree with dispatch about which endpoint it names
     /// </summary>
+    /// <remarks>
+    /// A leading v{n} segment selects a versioned endpoint. The returned name includes the @v{n} suffix; the namespace can be empty.
+    /// </remarks>
     internal static (EndpointType Type, string Namespace, string Name, int NameIndex)? ResolveEndpointIdentity(string[] segments)
     {
-        for (int nameIndex = segments.Length - 1; nameIndex >= 1; nameIndex--)
+        if (segments.Length > 1 && EndpointVersion.TryParse(segments[0], out var version)
+            && ResolveFrom(segments, 1, EndpointVersion.Suffix(version)) is { } versioned)
         {
-            var potentialNamespace = string.Join('/', segments.Take(nameIndex));
+            return versioned;
+        }
+
+        return ResolveFrom(segments, 0, "");
+    }
+
+    private static (EndpointType Type, string Namespace, string Name, int NameIndex)? ResolveFrom(string[] segments, int start, string suffix)
+    {
+        for (int nameIndex = segments.Length - 1; nameIndex >= Math.Max(start, 1); nameIndex--)
+        {
+            var potentialNamespace = string.Join('/', segments[start..nameIndex]);
 
             // Remove any OData-style key appended to the endpoint name (e.g. "Cancellations(123)" or "Cancellations(guid'...')")
-            var potentialEndpoint = Regex.Replace(segments[nameIndex], @"\([^\)]*\)$", "");
-            var namespacedKey = $"{potentialNamespace}/{potentialEndpoint}";
+            var potentialEndpoint = Regex.Replace(segments[nameIndex], @"\([^\)]*\)$", "") + suffix;
+            var key = potentialNamespace.Length > 0 ? $"{potentialNamespace}/{potentialEndpoint}" : potentialEndpoint;
 
-            if (TryDetermineEndpointType(namespacedKey, out var endpointType))
+            if (TryDetermineEndpointType(key, out var endpointType))
                 return (endpointType, potentialNamespace, potentialEndpoint, nameIndex);
         }
 
@@ -115,7 +129,7 @@ public partial class EndpointController
             string remainingPath = "";
 
             // If the endpoint part itself included the id (e.g. Cancellations(123) ) extract it
-            if (potentialEndpointRaw != potentialEndpoint)
+            if (Regex.IsMatch(potentialEndpointRaw, @"\([^\)]*\)$"))
             {
                 // attempt to extract id from the parentheses in segment[1]
                 var segment = potentialEndpointRaw;

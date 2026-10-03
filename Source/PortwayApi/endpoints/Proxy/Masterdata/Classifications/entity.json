@@ -3,7 +3,6 @@
     "SupportsOData": true,
     "Methods": ["GET"],
     "AllowedEnvironments": ["500","700"],
-    "Namespace": "Masterdata",
     "NamespaceDisplayName": "Masterdata",
     "NamespaceDescription": "Access all relevant masterdata, which may be used throughout the system.",
     "Documentation": {

@@ -270,16 +270,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
 
     private string ResolveContentFilePath(EndpointDefinition endpoint, string endpointName)
     {
-        string endpointPath;
-        if (endpoint.HasNamespace)
-        {
-            endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static",
-                endpoint.EffectiveNamespace!, endpoint.FolderName ?? endpointName);
-        }
-        else
-        {
-            endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
-        }
+        var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
 
         if (endpoint.Properties?.TryGetValue("ContentFile", out var contentFileObj) == true)
         {
@@ -324,7 +315,7 @@ public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
                 {
                     ["mock_data"] = new OpenApiExample
                     {
-                        Summary = "Randomized mock example (not real content)",
+                        Summary = "Sample request body (placeholder values)",
                         Value = example,
                         SerializedValue = serialized
                     }

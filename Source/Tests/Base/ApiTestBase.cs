@@ -144,11 +144,8 @@ public class ApiTestBase : IDisposable
                     services.AddSingleton(_mockSqlMetadataService.Object);
                     services.AddSingleton(_mockTokenService.Object);
 
-                    // Disable rate limiting for tests
-                    services.Configure<PortwayApi.Middleware.RateLimitSettings>(options =>
-                    {
-                        options.Enabled = false;
-                    });
+                    // limiter reads the settings singleton bound at startup
+                    services.AddSingleton(new PortwayApi.Middleware.RateLimitSettings { Enabled = false });
 
                     // Configure minimal logging for tests
                     services.AddLogging(logging =>

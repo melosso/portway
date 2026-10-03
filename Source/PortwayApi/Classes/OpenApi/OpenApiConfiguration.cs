@@ -2,7 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
+using PortwayApi.Helpers;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -10,6 +12,9 @@ namespace PortwayApi.Classes.OpenApi;
 
 public static class OpenApiConfiguration
 {
+    // framework default document name, resolved by the unversioned route
+    internal const string DocumentName = "v1";
+
     public static void ConfigureOpenApi(WebApplicationBuilder builder)
     {
         // Register OpenApiSettings with IOptionsMonitor for dynamic reload
@@ -22,6 +27,7 @@ public static class OpenApiConfiguration
             openApiSettings.Contact ??= new ContactInfo();
             openApiSettings.Footer ??= new FooterInfo();
             openApiSettings.SecurityDefinition ??= new SecurityDefinitionInfo();
+            openApiSettings.ExternalDocs ??= new ExternalDocsInfo();
 
             // Validate and fix critical values
             if (string.IsNullOrWhiteSpace(openApiSettings.Title))
@@ -55,7 +61,7 @@ public static class OpenApiConfiguration
         // Register OpenAPI services if enabled
         if (openApiSettings.Enabled)
         {
-            builder.Services.AddOpenApi(openApiSettings.Version, options =>
+            builder.Services.AddOpenApi(DocumentName, options =>
             {
                 // Emit OpenAPI 3.2 so QUERY renders as a native query operation and namespaces as hierarchical tags
                 options.OpenApiVersion = OpenApiSpecVersion.OpenApi3_2;
@@ -146,7 +152,7 @@ public static class OpenApiConfiguration
                         };
 
                         // The document's own URI, so other descriptions can reference it and relative refs resolve against it
-                        if (Uri.TryCreate($"{serverUrl}/docs/openapi/{currentSettings.Version}/openapi.json", UriKind.Absolute, out var selfUri))
+                        if (Uri.TryCreate($"{serverUrl}/docs/openapi.json", UriKind.Absolute, out var selfUri))
                         {
                             document.Self = selfUri;
                         }
@@ -170,6 +176,8 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<TenancyDocumentFilter>();
                 options.AddDocumentTransformer<TableValuedFunctionDocumentFilter>();
                 options.AddDocumentTransformer<ConfigExampleDocumentFilter>();
+                options.AddDocumentTransformer<EndpointBadgeDocumentFilter>();
+                options.AddDocumentTransformer<EndpointVersionDocumentFilter>();
                 options.AddDocumentTransformer<GroupTitleDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();
 
@@ -214,7 +222,45 @@ public static class OpenApiConfiguration
         }
 
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
-        app.MapOpenApi("/docs/openapi/{documentName}/openapi.json");
+        app.MapOpenApi("/docs/openapi.json");
+
+        // one document per endpoint version; any other name is the pre 0.8 versioned url of the full document
+        app.MapGet("/docs/openapi/{documentName}/openapi.json", async (string documentName, HttpContext context) =>
+        {
+            if (!EndpointVersion.TryParse(documentName, out var version))
+            {
+                return Results.Redirect($"{context.Request.PathBase}/docs/openapi.json", permanent: true, preserveMethod: true);
+            }
+
+            var provider = context.RequestServices.GetRequiredKeyedService<IOpenApiDocumentProvider>(DocumentName);
+            var document = await provider.GetOpenApiDocumentAsync(context.RequestAborted);
+            if (!OpenApiVersionSelector.Select(document, version))
+            {
+                return Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound);
+            }
+
+            if (document.Self is { } self)
+            {
+                document.Self = new Uri(self, $"openapi/{version}/openapi.json");
+            }
+
+            document.Info.Version = version;
+
+            return Results.Text(await document.SerializeAsJsonAsync(OpenApiSpecVersion.OpenApi3_2, context.RequestAborted), "application/json; charset=utf-8");
+        }).ExcludeFromDescription();
+
+        // markdown for llms, opt in and read per request so the console switch applies on save
+        app.MapGet("/docs/openapi.md", async (HttpContext context) =>
+        {
+            if (!openApiMonitor.CurrentValue.MarkdownEnabled)
+            {
+                return Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var provider = context.RequestServices.GetRequiredKeyedService<IOpenApiDocumentProvider>(DocumentName);
+            var document = await provider.GetOpenApiDocumentAsync(context.RequestAborted);
+            return Results.Text(OpenApiMarkdownRenderer.Render(document), "text/markdown; charset=utf-8");
+        }).ExcludeFromDescription();
 
         // Warn in production if unauthenticated OpenAPI docs expose endpoint topology
         if (app.Environment.IsProduction())
@@ -224,7 +270,7 @@ public static class OpenApiConfiguration
         app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
         // Configure unified documentation interface at /docs using Scalar
-        app.MapGet("/docs", (HttpContext context) =>
+        IResult DocsPage(HttpContext context)
         {
             // Read current configuration on each request for dynamic reload
             var openApiSettings = openApiMonitor.CurrentValue;
@@ -239,11 +285,16 @@ public static class OpenApiConfiguration
 
             // console-writable values are encoded for the context they land in
             var title = System.Text.Encodings.Web.HtmlEncoder.Default.Encode(openApiSettings.Title);
-            var version = Uri.EscapeDataString(openApiSettings.Version);
             string Js(string? value) => JsonSerializer.Serialize(value ?? "");
 
             // scalar fonts stay off so the console onest files are served from this origin instead
-            var customCss = JsonEncodedText.Encode(DocsCss.Replace("{pathBase}", pathBase));
+            var portwayTheme = string.Equals(openApiSettings.ScalarTheme, "portway", StringComparison.OrdinalIgnoreCase);
+            var customCss = JsonEncodedText.Encode(DocsCss.Replace("{pathBase}", pathBase) + (portwayTheme ? PortwayThemeCss : ""));
+            var docsBase = JsonEncodedText.Encode(pathBase + "/docs");
+            var versions = OpenApiVersionSelector.Versions();
+            var sources = versions.Count < 2 ? "" : $@"""sources"": {JsonSerializer.Serialize(
+                versions.Select(v => new { title = v, slug = v, url = $"{pathBase}/docs/openapi/{v}/openapi.json" })
+                    .Prepend(new { title = "All versions", slug = "all", url = $"{pathBase}/docs/openapi.json" }))},";
 
             // Debug logging
             Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
@@ -258,6 +309,10 @@ public static class OpenApiConfiguration
                     ""hideClientButton"": {(openApiSettings.ScalarHideClientButton ? "true" : "false")},
                     ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")},
                     ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }},
+                    ""hiddenClients"": {HiddenClients},
+                    ""defaultHttpClient"": {{ ""targetKey"": ""shell"", ""clientKey"": ""curl"" }},
+                    ""pathRouting"": {{ ""basePath"": ""{docsBase}"" }},
+                    {sources}
                     ""withDefaultFonts"": false,
                     ""customCss"": ""{customCss}"",
                     ""telemetry"": false,
@@ -308,7 +363,7 @@ public static class OpenApiConfiguration
     <meta charset=""utf-8"" />
     <meta name=""viewport"" content=""width=device-width, initial-scale=1"" />
     <meta name=""referrer"" content=""no-referrer"">
-    <link rel=""icon"" href=""favicon.ico"" type=""image/x-icon"">
+    <link rel=""icon"" href=""{pathBase}/favicon.ico"" type=""image/x-icon"">
     <style>
         body {{ margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }}
     </style>
@@ -317,7 +372,7 @@ public static class OpenApiConfiguration
     <script
         id=""api-reference""
         {frontAttr}=""""
-        data-url=""{pathBase}/docs/openapi/{version}/openapi.json""
+        {(versions.Count < 2 ? $@"data-url=""{pathBase}/docs/openapi.json""" : "")}
         data-configuration='{configJson}'
         >
     </script>
@@ -332,7 +387,7 @@ public static class OpenApiConfiguration
         {openapiAttr}=""""
         >
         console.log(
-            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi/{version}/openapi.json',
+            '%c@melosso/portway%c. OpenAPI URL: %c{pathBase}/docs/openapi.json',
             'color: #6f42c1; font-weight: bold; font-size: 12px;',
             'color: #333; font-size: 12px;',
             'color: #dcaf34ff; font-weight: bold; font-size: 12px;'
@@ -476,7 +531,11 @@ public static class OpenApiConfiguration
 </body>
 </html>";
             return Results.Content(html, "text/html");
-        });
+        }
+
+        // every operation has its own url under /docs, the more specific document route still wins
+        app.MapGet("/docs", DocsPage);
+        app.MapGet("/docs/{**slug}", DocsPage).ExcludeFromDescription();
 
         Log.Information("OpenAPI documentation is enabled and available at '/docs'.");
     }
@@ -488,7 +547,19 @@ public static class OpenApiConfiguration
         :root, .light-mode, .dark-mode { --scalar-font: "Onest", ui-sans-serif, system-ui, sans-serif; }
         .scalar-app nav.context-bar { display: none; }
         .scalar-app .endpoints-card:not(:has(li)) { display: none; }
+        .scalar-app .peer\/button.cursor-auto.font-bold { margin-top: 0.75rem; }
+        .scalar-app .darklight-reference { padding-top: 0.75rem; }
         """;
+
+    // targets other than curl, c sharp, javascript, python and powershell
+    private const string HiddenClients = """{ "c": true, "clojure": true, "dart": true, "fsharp": true, "go": true, "http": true, "java": true, "julia": true, "kotlin": true, "node": true, "objc": true, "ocaml": true, "php": true, "r": true, "ruby": true, "rust": true, "swift": true }""";
+
+    // the console palette from css/site.css on a theme-less scalar
+    private const string PortwayThemeCss = """
+        .light-mode { --scalar-color-1: hsl(240 10% 3.9%); --scalar-color-2: hsl(240 3.8% 46.1%); --scalar-color-3: hsl(240 3.8% 56%); --scalar-color-accent: hsl(294 45% 32%); --scalar-background-1: hsl(0 0% 100%); --scalar-background-2: hsl(240 4.8% 97.5%); --scalar-background-3: hsl(240 4.8% 95.9%); --scalar-background-accent: hsl(294 40% 94%); --scalar-border-color: hsl(240 5.9% 90%); --scalar-sidebar-background-1: hsl(294 16% 95%); --scalar-sidebar-color-1: hsl(294 12% 8%); --scalar-sidebar-color-2: hsl(294 8% 44%); --scalar-sidebar-border-color: hsl(294 14% 88%); --scalar-sidebar-item-hover-background: hsl(294 16% 91%); --scalar-sidebar-item-active-background: hsl(294 40% 94%); --scalar-sidebar-color-active: hsl(294 45% 32%); }
+        .dark-mode { --scalar-color-1: hsl(0 0% 98%); --scalar-color-2: hsl(240 5% 64.9%); --scalar-color-3: hsl(240 5% 50%); --scalar-color-accent: hsl(294 45% 66%); --scalar-background-1: hsl(240 10% 3.9%); --scalar-background-2: hsl(240 10% 2.5%); --scalar-background-3: hsl(240 3.7% 15.9%); --scalar-background-accent: hsl(294 30% 16%); --scalar-border-color: hsl(240 3.7% 15.9%); --scalar-sidebar-background-1: hsl(294 12% 9%); --scalar-sidebar-color-1: hsl(294 10% 96%); --scalar-sidebar-color-2: hsl(294 8% 62%); --scalar-sidebar-border-color: hsl(294 10% 18%); --scalar-sidebar-item-hover-background: hsl(294 12% 15%); --scalar-sidebar-item-active-background: hsl(294 30% 16%); --scalar-sidebar-color-active: hsl(294 45% 66%); }
+        """;
+
 
     private static string GetScalarThemeName(string theme)
     {
@@ -507,6 +578,7 @@ public static class OpenApiConfiguration
             "elysiajs" => "elysiajs",
             "fastify" => "fastify",
             "laserwave" => "laserwave",
+            "portway" => "none",
             "none" => "none",
             _ => "purple"
         };

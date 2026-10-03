@@ -52,7 +52,6 @@ public sealed class TableValuedFunctionDocumentFilter : IOpenApiDocumentTransfor
                             Name = name,
                             In = location,
                             Required = parameter.Required && string.IsNullOrEmpty(parameter.DefaultValue),
-                            Description = $"Function parameter {parameter.Name} ({parameter.SqlType})",
                             Schema = new OpenApiSchema { Type = SchemaType(parameter.SqlType), Pattern = parameter.ValidationPattern }
                         });
                     }

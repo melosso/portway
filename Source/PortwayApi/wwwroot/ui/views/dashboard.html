@@ -1,166 +1,259 @@
-  <script src="js/components/chart-period-selector.js"></script>
-  <script src="js/components/area-chart.js"></script>
-  <script src="js/components/error-chart.js"></script>
-  <script src="js/components/setup-guide.js"></script>
-  <style>
+<script src="js/components/chart-period-selector.js"></script>
+<script src="js/components/area-chart.js"></script>
+<script src="js/components/error-chart.js"></script>
+<script src="js/components/setup-guide.js"></script>
+<style>
     /* Stacked-chart legend */
-    .chart-legend { display:flex; gap:1rem; align-items:center; }
-    .chart-legend-item { display:flex; align-items:center; gap:0.35rem; font-size:0.72rem; color:hsl(var(--muted-foreground)); }
-    .chart-legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .chart-legend {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .chart-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        color: hsl(var(--muted-foreground));
+    }
+    .chart-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
 
     /* Cache card */
-    .cache-layout { display:flex; align-items:center; gap:1.25rem; }
-    .cache-ring   { flex-shrink:0; }
-    .cache-stats  { display:flex; flex-direction:column; gap:0.6rem; flex:1; min-width:0; }
-    .cache-row    { display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; gap:0.5rem; }
-    .cache-row-key{ color:hsl(var(--muted-foreground)); }
-    .cache-row-val{ font-variant-numeric:tabular-nums; font-weight:600; color:hsl(var(--foreground)); }
+    .cache-layout {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+    }
+    .cache-ring {
+        flex-shrink: 0;
+    }
+    .cache-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        flex: 1;
+        min-width: 0;
+    }
+    .cache-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        gap: 0.5rem;
+    }
+    .cache-row-key {
+        color: hsl(var(--muted-foreground));
+    }
+    .cache-row-val {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: hsl(var(--foreground));
+    }
 
     /* Top endpoints */
-    .top-ep-list  { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.6rem 1.25rem; }
-    .top-ep-item  { display:grid; grid-template-columns:1.2rem 1fr auto; grid-template-rows:auto auto; gap:0.2rem 0.6rem; align-items:center; }
-    .top-ep-rank  { font-size:0.7rem; font-variant-numeric:tabular-nums; color:hsl(var(--muted-foreground)); text-align:right; }
-    .top-ep-name  { font-size:0.8rem; color:hsl(var(--foreground)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .top-ep-count { font-size:0.72rem; font-variant-numeric:tabular-nums; color:hsl(var(--muted-foreground)); white-space:nowrap; }
-    .top-ep-bar-track { grid-column:2/-1; height:4px; background:hsl(var(--muted)); border-radius:999px; overflow:hidden; }
-    .top-ep-bar-fill  { height:100%; width:100%; background:hsl(var(--info)); border-radius:999px; transform-origin:left; transition:transform .3s; }
-  </style>
+    .top-ep-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 0.6rem 1.25rem;
+    }
+    .top-ep-item {
+        display: grid;
+        grid-template-columns: 1.2rem 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 0.2rem 0.6rem;
+        align-items: center;
+    }
+    .top-ep-rank {
+        font-size: 0.7rem;
+        font-variant-numeric: tabular-nums;
+        color: hsl(var(--muted-foreground));
+        text-align: right;
+    }
+    .top-ep-name {
+        font-size: 0.8rem;
+        color: hsl(var(--foreground));
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .top-ep-count {
+        font-size: 0.72rem;
+        font-variant-numeric: tabular-nums;
+        color: hsl(var(--muted-foreground));
+        white-space: nowrap;
+    }
+    .top-ep-bar-track {
+        grid-column: 2/-1;
+        height: 4px;
+        background: hsl(var(--muted));
+        border-radius: 999px;
+        overflow: hidden;
+    }
+    .top-ep-bar-fill {
+        height: 100%;
+        width: 100%;
+        background: hsl(var(--info));
+        border-radius: 999px;
+        transform-origin: left;
+        transition: transform 0.3s;
+    }
+</style>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Dashboard</h1>
-        <p class="page-sub">Live traffic, health and endpoint counts.</p>
-      </div>
-    </div>
-    <div class="page-actions">
-      <button id="refreshBtn" class="btn btn-outline" onclick="load()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-    </div>
-  </div>
-
-  <div class="main-content">
-
-    <div id="setupGuide"></div>
-
-    <div class="summary-cards">
-      <div class="summary-card">
-        <div class="summary-value" id="statSql">—</div>
-        <div class="summary-label">SQL Endpoints</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-value" id="statProxy">—</div>
-        <div class="summary-label">Proxy Endpoints</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-value" id="statFile">—</div>
-        <div class="summary-label">File / Static</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-value" id="statEnvs">—</div>
-        <div class="summary-label">Environments</div>
-      </div>
-    </div>
-
-    <!-- Row 2: equal-height pair via stretch -->
-    <div class="pair-grid">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Service Health</span>
-          <span class="badge badge-muted" id="healthBadge">—</span>
-        </div>
-        <div class="card-body" style="flex:1">
-          <div class="kv-grid">
-            <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
-            <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
-            <span class="kv-key">Version</span><span class="kv-val" id="healthVersion">—</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">Endpoint Breakdown</span></div>
-        <div class="card-body" id="breakdownBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 3: traffic (stacked API/UI) + errors -->
-    <div class="pair-grid pair-grid-wide" style="align-items:start">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Request Traffic</span>
-          <div style="display:flex;align-items:center;gap:1rem">
-            <div class="chart-legend">
-              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:hsl(var(--info))"></span>API</span>
-              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:hsl(var(--muted-foreground)/.5)"></span>UI</span>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Dashboard</h1>
+                <p class="page-sub">Live traffic, health and endpoint counts.</p>
             </div>
-            <div id="trafficPeriodSel"></div>
-          </div>
         </div>
-        <div class="card-body" style="padding-bottom:1.25rem">
-          <div id="trafficChart" style="height:180px"></div>
+        <div class="page-actions">
+            <button id="refreshBtn" class="btn btn-outline" onclick="load()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">HTTP Errors</span>
-          <div id="errorPeriodSel"></div>
-        </div>
-        <div class="card-body" style="padding-bottom:1.25rem">
-          <div id="errorChart" style="height:180px"></div>
-        </div>
-      </div>
     </div>
 
-    <!-- Row 4: cache + top endpoints — equal height -->
-    <div class="pair-grid">
+    <div class="main-content">
+        <div id="setupGuide"></div>
 
-      <div class="card">
-        <div class="card-header"><span class="card-title">Cache</span></div>
-        <div class="card-body" id="cacheBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-value" id="statSql">—</div>
+                <div class="summary-label">SQL Endpoints</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="statProxy">—</div>
+                <div class="summary-label">Proxy Endpoints</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="statFile">—</div>
+                <div class="summary-label">File / Static</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="statEnvs">—</div>
+                <div class="summary-label">Environments</div>
+            </div>
         </div>
-      </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Top Endpoints</span>
-          <span class="badge badge-muted" style="font-size:0.68rem" id="topEpPeriodLabel"></span>
-        </div>
-        <div class="card-body" id="topEndpointsBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
+        <div class="pair-grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Service Health</span>
+                    <span class="badge badge-muted" id="healthBadge">—</span>
+                </div>
+                <div class="card-body" style="flex:1">
+                    <div class="kv-grid">
+                        <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
+                        <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
+                        <span class="kv-key">Version</span><span class="kv-val" id="healthVersion">—</span>
+                        <span class="kv-key">API version</span><span class="kv-val" id="healthApiVersion">—</span>
+                    </div>
+                </div>
+            </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Rate Limiting</span>
-          <span class="badge badge-muted" id="rlBadge">—</span>
+            <div class="card">
+                <div class="card-header"><span class="card-title">Endpoint Breakdown</span></div>
+                <div class="card-body" id="breakdownBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
         </div>
-        <div class="card-body" id="rateLimitBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
 
-      <div class="card" id="mcpCard" hidden>
-        <div class="card-header">
-          <span class="card-title">MCP (Model Context Protocol)</span>
-          <span class="badge badge-muted" id="mcpBadge">—</span>
-        </div>
-        <div class="card-body" id="mcpBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
+        <div class="pair-grid pair-grid-wide" style="align-items:start">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Request Traffic</span>
+                    <div style="display:flex;align-items:center;gap:1rem">
+                        <div class="chart-legend">
+                            <span class="chart-legend-item"
+                                ><span class="chart-legend-dot" style="background:hsl(var(--info))"></span>API</span
+                            >
+                            <span class="chart-legend-item"
+                                ><span
+                                    class="chart-legend-dot"
+                                    style="background:hsl(var(--muted-foreground)/.5)"
+                                ></span
+                                >UI</span
+                            >
+                        </div>
+                        <div id="trafficPeriodSel"></div>
+                    </div>
+                </div>
+                <div class="card-body" style="padding-bottom:1.25rem">
+                    <div id="trafficChart" style="height:180px"></div>
+                </div>
+            </div>
 
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">HTTP Errors</span>
+                    <div id="errorPeriodSel"></div>
+                </div>
+                <div class="card-body" style="padding-bottom:1.25rem">
+                    <div id="errorChart" style="height:180px"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pair-grid">
+            <div class="card">
+                <div class="card-header"><span class="card-title">Cache</span></div>
+                <div class="card-body" id="cacheBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Top Endpoints</span>
+                    <span class="badge badge-muted" style="font-size:0.68rem" id="topEpPeriodLabel"></span>
+                </div>
+                <div class="card-body" id="topEndpointsBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Rate Limiting</span>
+                    <span class="badge badge-muted" id="rlBadge">—</span>
+                </div>
+                <div class="card-body" id="rateLimitBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+
+            <div class="card" id="mcpCard" hidden>
+                <div class="card-header">
+                    <span class="card-title">MCP (Model Context Protocol)</span>
+                    <span class="badge badge-muted" id="mcpBadge">—</span>
+                </div>
+                <div class="card-body" id="mcpBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+        </div>
     </div>
-
-  </div>
 </main>
 
 <script>
@@ -177,6 +270,7 @@ async function load() {
     animateCounter(document.getElementById('statEnvs'),  d.environments ?? '0');
 
     document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
+    document.getElementById('healthApiVersion').textContent = d.api_version ?? '—';
     document.getElementById('healthUptime').textContent  = d.uptime ?? '—';
 
     // Fetch health directly in case the SSE push is delayed

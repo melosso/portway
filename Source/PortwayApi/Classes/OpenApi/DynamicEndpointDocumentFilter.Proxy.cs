@@ -172,7 +172,7 @@ public partial class DynamicEndpointDocumentFilter
                         Name = "query",
                         In = ParameterLocation.QueryString,
                         Required = false,
-                        Description = "Query parameters are forwarded to the proxied service unchanged. Consult that service for the parameters it accepts.",
+                        Description = "Endpoint-specific query parameters.",
                         Content = new Dictionary<string, IOpenApiMediaType>
                         {
                             ["application/x-www-form-urlencoded"] = new OpenApiMediaType

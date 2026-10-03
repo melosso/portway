@@ -62,11 +62,12 @@ public class McpEndpointRegistry
 
                 var descriptor = new McpToolDescriptor
                 {
-                    Name = $"{ep.Namespace}_{ep.Name}_{method}".Trim('_'),
+                    Name = $"{ep.Namespace}_{ep.Name}_{ep.Version}_{method}".Replace("__", "_").Trim('_'),
                     Description = llmDescription,
                     DisplayDescription = humanSummary,
                     EndpointName = ep.Name,
                     Namespace = ep.Namespace,
+                    Version = ep.Version,
                     Method = method,
                     AllowedEnvironments = ep.AllowedEnvironments,
                     TenantHeaders = ep.TenantHeaders,
@@ -80,9 +81,9 @@ public class McpEndpointRegistry
                 builder.Add(descriptor);
 
                 // Index by sanitized name; first method variant wins for lookup purposes
-                var key = SanitiseName(string.IsNullOrEmpty(ep.Namespace)
+                var key = SanitiseName((string.IsNullOrEmpty(ep.Namespace)
                     ? ep.Name
-                    : $"{ep.Namespace}_{ep.Name}");
+                    : $"{ep.Namespace}_{ep.Name}") + (ep.Version is null ? "" : $"_{ep.Version}"));
                 dictBuilder.TryAdd(key, descriptor);
             }
         }

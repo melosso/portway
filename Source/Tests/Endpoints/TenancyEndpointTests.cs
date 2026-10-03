@@ -298,7 +298,7 @@ public sealed class TenancyEndpointTests : ApiTestBase, IDisposable
     [Fact]
     public async Task DocumentListsTenantHeader()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var paths = json.RootElement.GetProperty("paths");

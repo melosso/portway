@@ -7,6 +7,7 @@ using Serilog;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.SqlClient;
@@ -29,6 +30,9 @@ public static partial class WebUiEndpointExtensions
 
         app.MapMethods("/ui/api/endpoints/{type}/{**name}", ["PATCH"], async (string type, string name, HttpContext context) =>
         {
+            if (IsVersionPath(name))
+                return Results.Json(new { error = "Rename the base endpoint; its versions move with it" }, statusCode: 400);
+
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
             if (!File.Exists(filePath!))
@@ -131,6 +135,8 @@ public static partial class WebUiEndpointExtensions
             }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
+            rawContent = StampDeprecatedSince(rawContent);
+
             if (TenancyError(type, rawContent) is { } putTenancyError)
                 return Results.Json(new { error = putTenancyError }, statusCode: 400);
 
@@ -194,6 +200,9 @@ public static partial class WebUiEndpointExtensions
             if (!File.Exists(filePath!))
                 return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
 
+            if (!IsVersionPath(name) && VersionFolders(Path.GetDirectoryName(filePath!)!) is { Count: > 0 } versions)
+                return Results.Json(new { error = $"Delete versions {string.Join(", ", versions)} first" }, statusCode: 409);
+
             var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
             var dir = Path.GetDirectoryName(filePath!);
             if (dir != null && Directory.Exists(dir))
@@ -206,6 +215,37 @@ public static partial class WebUiEndpointExtensions
 
             Audit(context, "delete", "endpoint", $"{type}/{name}", null, backupPath);
             return Results.Ok(new { ok = true });
+        }).ExcludeFromDescription();
+
+        // copies the base entity.json and its sibling files into the next version folder
+        app.MapPost("/ui/api/endpoints/{type}/versions/{**name}", (string type, string name, HttpContext context) =>
+        {
+            var baseName = IsVersionPath(name) ? name[..name.LastIndexOf('/')] : name;
+            var (filePath, err) = ResolveEndpointPath(type, name);
+            if (err != null) return Results.Json(new { error = err }, statusCode: 400);
+            if (!File.Exists(filePath!))
+                return Results.Json(new { error = "Endpoint not found" }, statusCode: 404);
+
+            var sourceDir = Path.GetDirectoryName(filePath!)!;
+            var baseDir = IsVersionPath(name) ? Path.GetDirectoryName(sourceDir)! : sourceDir;
+            var next = VersionFolders(baseDir).Select(EndpointVersion.Number).Append(1).Max() + 1;
+            if (next > 999)
+                return Results.Json(new { error = "Version limit reached" }, statusCode: 409);
+
+            var targetDir = Path.Combine(baseDir, $"v{next}");
+            Directory.CreateDirectory(targetDir);
+            foreach (var source in Directory.GetFiles(sourceDir))
+                File.Copy(source, Path.Combine(targetDir, Path.GetFileName(source)));
+
+            var copied = Path.Combine(targetDir, "entity.json");
+            File.WriteAllText(copied, WithoutLifecycle(File.ReadAllText(copied)));
+
+            var epType = TypeStringToEndpointType(type);
+            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+
+            var versionName = $"{baseName}/v{next}";
+            Audit(context, "create", "endpoint", $"{type}/{versionName}", $"new version of {name}");
+            return Results.Ok(new { ok = true, name = versionName, version = $"v{next}" });
         }).ExcludeFromDescription();
 
         // POST /ui/api/endpoints/{type}/validate , dry-run configuration check without saving
@@ -279,4 +319,44 @@ public static partial class WebUiEndpointExtensions
         TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateTenancy(endpointType, json) is { Count: > 0 } errors
             ? string.Join("; ", errors)
             : null;
+
+    private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset"];
+
+    // the deprecation header needs a date, a deprecated endpoint without one gets today
+    private static string StampDeprecatedSince(string json)
+    {
+        if (JsonNode.Parse(json) is not JsonObject entity
+            || !entity.Any(p => p.Key.Equals("Deprecated", StringComparison.OrdinalIgnoreCase) && p.Value?.GetValueKind() == JsonValueKind.True)
+            || entity.Any(p => p.Key.Equals("DeprecatedSince", StringComparison.OrdinalIgnoreCase)))
+            return json;
+
+        entity["DeprecatedSince"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        return entity.ToJsonString(IndentedJson);
+    }
+
+    // a new version starts without the base endpoint's deprecation
+    private static string WithoutLifecycle(string json)
+    {
+        if (JsonNode.Parse(json) is not JsonObject entity)
+            return json;
+
+        foreach (var key in entity.Select(p => p.Key).Where(k => LifecycleKeys.Contains(k, StringComparer.OrdinalIgnoreCase)).ToList())
+            entity.Remove(key);
+        return entity.ToJsonString(IndentedJson);
+    }
+
+    private static bool IsVersionPath(string name) =>
+        name.Contains('/') && EndpointVersion.TryParse(name[(name.LastIndexOf('/') + 1)..], out _);
+
+    private static List<string> VersionFolders(string endpointDir) =>
+        Directory.Exists(endpointDir)
+            ? Directory.GetDirectories(endpointDir)
+                .Select(Path.GetFileName)
+                .Where(d => EndpointVersion.TryParse(d, out _) && File.Exists(Path.Combine(endpointDir, d!, "entity.json")))
+                .Select(d => d!)
+                .OrderBy(EndpointVersion.Number)
+                .ToList()
+            : [];
 }

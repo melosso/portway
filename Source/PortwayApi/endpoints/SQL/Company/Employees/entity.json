@@ -1,7 +1,6 @@
 {
   "DatabaseSchema": "Portway",
   "DatabaseObjectName": "CompanyEmployees",
-  "Namespace": "Company",
   "NamespaceDisplayName": "Company",
   "NamespaceDescription": "Retrieve and manage company information and related organizational settings.",
   "Hidden": false,

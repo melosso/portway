@@ -9,12 +9,16 @@ using PortwayApi.Classes;
 /// </summary>
 internal static class OpenApiEndpointCatalog
 {
-    public static string BasePath(EndpointDefinition definition) => $"/api/{{env}}/{definition.FullPath}";
+    public static string BasePath(EndpointDefinition definition) => $"/api/{{env}}/{definition.RoutePath}";
 
     /// <summary>
     /// File operations are served under a fixed /files segment keyed by the endpoint key
     /// </summary>
-    public static string FileBasePath(string endpointKey) => $"/api/{{env}}/files/{endpointKey}";
+    public static string FileBasePath(string endpointKey)
+    {
+        var (name, version) = EndpointVersion.Split(endpointKey);
+        return $"/api/{{env}}/{EndpointVersion.RoutePrefix(version)}files/{name}";
+    }
 
     public static IEnumerable<(string BasePath, EndpointDefinition Definition)> All()
     {

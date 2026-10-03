@@ -141,7 +141,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Gets the operation description, using custom description if available or default format
     /// </summary>
-    private string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
+    internal static string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
     {
         // Check if there's a custom detailed description for this method in MethodDocumentation
         if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDocumentation) == true
@@ -159,7 +159,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Return default description based on endpoint type
         if (definition.IsSql)
         {
-            return $"{method} operation for entity {definition.DatabaseObjectName}";
+            return $"{method} {endpointName} records.";
         }
         else if (definition.Type == EndpointType.Files)
         {
@@ -172,7 +172,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
         else
         {
-            return $"Proxies {method} requests to an internal webservice.";
+            return $"{method} {endpointName} resource.";
         }
     }
 

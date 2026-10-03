@@ -1,308 +1,333 @@
-  <script src="js/components/dialog.js"></script>
-  <style>
-  /* Wizard & dialog styles */
-  .wizard-intro {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin: 0 0 1.25rem;
-  }
-  .wizard-providers {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  .wizard-provider-option {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.625rem 0.875rem;
-    border: 1px solid hsl(var(--border));
-    border-radius: 8px;
-    cursor: pointer;
-    transition: border-color 0.12s, background 0.12s;
-    user-select: none;
-  }
-  .wizard-provider-option input[type="radio"] { display: none; }
-  .wizard-provider-option:hover { background: hsl(var(--muted)); }
-  .wizard-provider-option.selected {
-    border-color: hsl(var(--primary));
-    background: hsl(var(--primary) / 0.06);
-  }
-  .wizard-provider-label { font-weight: 500; font-size: 0.875rem; }
-  .wizard-error {
-    font-size: 0.8rem;
-    color: hsl(var(--destructive));
-    margin-top: 0.5rem;
-    padding: 0.4rem 0.6rem;
-    background: hsl(var(--destructive) / 0.08);
-    border: 1px solid hsl(var(--destructive) / 0.25);
-    border-radius: 5px;
-  }
-  .wizard-details { margin-top: 1rem; font-size: 0.82rem; }
-  .wizard-details summary {
-    cursor: pointer;
-    font-weight: 500;
-    color: hsl(var(--muted-foreground));
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-  .wizard-details summary::before {
-    content: '>';
-    font-size: 1rem;
-    transition: transform 0.15s;
-    display: inline-block;
-  }
-  .wizard-details[open] summary::before { transform: rotate(90deg); }
+<script src="js/components/dialog.js"></script>
+<style>
+    /* Wizard & dialog styles */
+    .wizard-intro {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin: 0 0 1.25rem;
+    }
+    .wizard-providers {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .wizard-provider-option {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.625rem 0.875rem;
+        border: 1px solid hsl(var(--border));
+        border-radius: 8px;
+        cursor: pointer;
+        transition:
+            border-color 0.12s,
+            background 0.12s;
+        user-select: none;
+    }
+    .wizard-provider-option input[type='radio'] {
+        display: none;
+    }
+    .wizard-provider-option:hover {
+        background: hsl(var(--muted));
+    }
+    .wizard-provider-option.selected {
+        border-color: hsl(var(--primary));
+        background: hsl(var(--primary) / 0.06);
+    }
+    .wizard-provider-label {
+        font-weight: 500;
+        font-size: 0.875rem;
+    }
+    .wizard-error {
+        font-size: 0.8rem;
+        color: hsl(var(--destructive));
+        margin-top: 0.5rem;
+        padding: 0.4rem 0.6rem;
+        background: hsl(var(--destructive) / 0.08);
+        border: 1px solid hsl(var(--destructive) / 0.25);
+        border-radius: 5px;
+    }
+    .wizard-details {
+        margin-top: 1rem;
+        font-size: 0.82rem;
+    }
+    .wizard-details summary {
+        cursor: pointer;
+        font-weight: 500;
+        color: hsl(var(--muted-foreground));
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .wizard-details summary::before {
+        content: '>';
+        font-size: 1rem;
+        transition: transform 0.15s;
+        display: inline-block;
+    }
+    .wizard-details[open] summary::before {
+        transform: rotate(90deg);
+    }
 
-  /* Section groupings */
-  .settings-section { display: none; flex-direction: column; gap: 2rem; }
-  .settings-section.active { display: flex; }
-  .settings-pane {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    max-width: 46rem;
-  }
+    /* Section groupings */
+    .settings-section {
+        display: none;
+        flex-direction: column;
+        gap: 2rem;
+    }
+    .settings-section.active {
+        display: flex;
+    }
+    .settings-pane {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+        max-width: 46rem;
+    }
 
-  /* Markdown fields need the full card width, not the 22rem control column */
-  .setting-row-stacked { grid-template-columns: minmax(0, 1fr); }
-  .setting-row-stacked textarea {
-    width: 100%;
-    resize: vertical;
-    min-height: 3.5rem;
-    font-family: inherit;
-    line-height: 1.5;
-  }
+    /* Markdown fields need the full card width, not the 22rem control column */
+    .setting-row-stacked {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .setting-row-stacked textarea {
+        width: 100%;
+        resize: vertical;
+        min-height: 3.5rem;
+        font-family: inherit;
+        line-height: 1.5;
+    }
 
-  /* Setting value variants */
-  .setting-on   { color: hsl(var(--success)); font-weight: 600; }
-  .setting-off  { color: hsl(var(--muted-foreground)); }
-  .setting-warn { color: hsl(var(--warning, var(--destructive))); font-weight: 600; }
+    /* Setting value variants */
+    .setting-on {
+        color: hsl(var(--success));
+        font-weight: 600;
+    }
+    .setting-off {
+        color: hsl(var(--muted-foreground));
+    }
+    .setting-warn {
+        color: hsl(var(--warning, var(--destructive)));
+        font-weight: 600;
+    }
 
-  /* AI Provider card */
-  .card-featured .ai-clear-row {
-    margin-top: 0.5rem;
-    padding-top: 0.75rem;
-    border-top: 0px solid hsl(var(--border));
-  }
-  </style>
+    /* AI Provider card */
+    .card-featured .ai-clear-row {
+        margin-top: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 0px solid hsl(var(--border));
+    }
+</style>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Settings</h1>
-        <p class="page-sub">Console, security, performance, storage, integrations and AI.</p>
-      </div>
-    </div>
-    <div class="page-actions">
-      <button class="btn btn-outline" id="refreshBtn" onclick="load()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-    </div>
-  </div>
-
-  <div class="main-content">
-
-
-    <!-- Section: General -->
-    <div class="settings-section active" id="section-general">
-      <div class="settings-pane">
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Console Customization</h2>
-          </div>
-          <div class="card-body" id="customizationBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Settings</h1>
+                <p class="page-sub">Console, security, performance, storage, integrations, OpenAPI and AI.</p>
+            </div>
         </div>
-
-      </div>
+        <div class="page-actions">
+            <button class="btn btn-outline" id="refreshBtn" onclick="load()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+        </div>
     </div>
 
-    <!-- Section: Security & Change Controls -->
-    <div class="settings-section" id="section-security">
-      <div class="settings-pane">
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Security Posture</h2>
-          </div>
-          <div class="card-body" id="securityBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
+    <div class="main-content">
+        <div class="settings-section active" id="section-general">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Console Customization</h2>
+                    </div>
+                    <div class="card-body" id="customizationBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Deployment &amp; Access</h2>
-          </div>
-          <div class="card-body" id="deploymentBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
+        <div class="settings-section" id="section-security">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Security Posture</h2>
+                    </div>
+                    <div class="card-body" id="securityBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Deployment &amp; Access</h2>
+                    </div>
+                    <div class="card-body" id="deploymentBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Recent Configuration Changes</h2>
+                    </div>
+                    <div class="card-body" id="auditBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Recent Configuration Changes</h2>
-          </div>
-          <div class="card-body" id="auditBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
+        <div class="settings-section" id="section-performance">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Rate Limiting</h2>
+                    </div>
+                    <div class="card-body" id="rateLimitBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Caching</h2>
+                    </div>
+                    <div class="card-body" id="cachingBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">SQL Connection Pooling</h2>
+                    </div>
+                    <div class="card-body" id="sqlBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-      </div>
+        <div class="settings-section" id="section-storage">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Database Maintenance</h2>
+                    </div>
+                    <div class="card-body" id="maintenanceBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">File Storage</h2></div>
+                    <div class="card-body" id="fileBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">Logging</h2></div>
+                    <div class="card-body" id="loggingBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Endpoint Reloading</h2>
+                    </div>
+                    <div class="card-body" id="reloadBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section" id="section-integrations">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">Telemetry</h2></div>
+                    <div class="card-body" id="telemetryBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section" id="section-openapi">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">OpenAPI</h2></div>
+                    <div class="card-body" id="openApiBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">API Reference</h2></div>
+                    <div class="card-body" id="docsBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">Reference Footer</h2></div>
+                    <div class="card-body" id="footerBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section" id="section-ai">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">MCP (Model Context Protocol)</h2>
+                    </div>
+                    <div class="card-body" id="mcpBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title">Chat</h2></div>
+                    <div class="card-body" id="chatBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+
+                <div class="card card-featured">
+                    <div class="card-header">
+                        <h2 class="card-title">AI Provider</h2>
+                        <div id="aiProviderActions"></div>
+                    </div>
+                    <div class="card-body" id="aiBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <!-- Section: Performance -->
-    <div class="settings-section" id="section-performance">
-      <div class="settings-pane">
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Rate Limiting</h2>
-          </div>
-          <div class="card-body" id="rateLimitBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Caching</h2>
-          </div>
-          <div class="card-body" id="cachingBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">SQL Connection Pooling</h2>
-          </div>
-          <div class="card-body" id="sqlBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Section: Storage & Observability -->
-    <div class="settings-section" id="section-storage">
-      <div class="settings-pane">
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Database Maintenance</h2>
-          </div>
-          <div class="card-body" id="maintenanceBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">File Storage</h2></div>
-          <div class="card-body" id="fileBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">Logging</h2></div>
-          <div class="card-body" id="loggingBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Endpoint Reloading</h2>
-          </div>
-          <div class="card-body" id="reloadBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-
-      </div>
-    </div>
-
-    <!-- Section: Integrations -->
-    <div class="settings-section" id="section-integrations">
-      <div class="settings-pane">
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">Telemetry</h2></div>
-          <div class="card-body" id="telemetryBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">OpenAPI</h2></div>
-          <div class="card-body" id="openApiBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">API Reference</h2></div>
-          <div class="card-body" id="docsBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">Reference Footer</h2></div>
-          <div class="card-body" id="footerBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Section: AI -->
-    <div class="settings-section" id="section-ai">
-      <div class="settings-pane">
-
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">MCP (Model Context Protocol)</h2>
-          </div>
-          <div class="card-body" id="mcpBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header"><h2 class="card-title">Chat</h2></div>
-          <div class="card-body" id="chatBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-        <div class="card card-featured">
-          <div class="card-header">
-            <h2 class="card-title">AI Provider</h2>
-            <div id="aiProviderActions"></div>
-          </div>
-          <div class="card-body" id="aiBody">
-            <span class="muted" style="font-size:0.8rem">Loading…</span>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-  </div>
 </main>
 
 <script>
@@ -563,17 +588,21 @@ async function load() {
     document.getElementById('openApiBody').innerHTML = [
       switchRow('OpenApi:Enabled', 'Enabled', feat.openapi, 'Serves the spec and the reference at /docs'),
       inputRow('OpenApi:Title', 'Title', oa.title),
-      inputRow('OpenApi:Version', 'Version', oa.version, 'Part of the spec URL'),
+      inputRow('OpenApi:Version', 'Document version', oa.version, 'Label in the OpenAPI document. Endpoint versions are v2, v3 folders per endpoint'),
       textRow('OpenApi:Description', 'Description', oa.description, 'Markdown, shown above the reference'),
       inputRow('OpenApi:Contact:Name', 'Contact name', oa.contact_name),
       inputRow('OpenApi:Contact:Email', 'Contact e-mail', oa.contact_email),
       switchRow('OpenApi:ForceHttpsInProduction', 'Force HTTPS', oa.force_https, 'HTTPS server URL outside Development'),
+      switchRow('OpenApi:MarkdownEnabled', 'Markdown', oa.markdown_enabled, 'Serves /docs/openapi.md for LLMs'),
+      inputRow('OpenApi:ExternalDocs:Url', 'Guide link', oa.external_docs_url, 'Your own API guide, http or https', 'https://example.com/guide'),
+      inputRow('OpenApi:ExternalDocs:Description', 'Guide label', oa.external_docs_description),
       textRow('OpenApi:SecurityDefinition:Description', 'Authentication note', oa.security_description, 'Shown with the bearer token field'),
     ].join('') + cardFooter('openApiBody');
 
     document.getElementById('docsBody').innerHTML = [
       switchRow('OpenApi:ShowNamespaces', 'Show namespaces', oa.show_namespaces, 'Group endpoints by namespace in the sidebar'),
       inputRow('OpenApi:DefaultGroup', 'Default group', oa.default_group, 'Group for endpoints without a namespace. Empty lists them ungrouped', 'General'),
+      switchRow('OpenApi:ShowBadges', 'Badges', oa.show_badges, 'Marks MCP and OData operations'),
       choiceRow('OpenApi:ScalarTheme', 'Theme', oa.theme),
       choiceRow('OpenApi:ScalarLayout', 'Layout', oa.layout),
       switchRow('OpenApi:ScalarShowSidebar', 'Sidebar', oa.show_sidebar),

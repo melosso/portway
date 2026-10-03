@@ -116,4 +116,33 @@ public class McpRegistryStartupExtensionsTests
         Assert.Equal("file", info.EndpointKind);
         Assert.Equal(new[] { "GET" }, info.Methods);
     }
+
+    // a versioned tool includes the version in its name, scope key and call path
+    [Fact]
+    public void VersionedEndpoint_GetsItsOwnToolIdentity()
+    {
+        var exposed = new McpSettings { Exposed = true };
+        var v2 = ProxyEndpoint(mcp: exposed);
+        v2.Version = "v2";
+        var endpoints = new Dictionary<string, EndpointDefinition>
+        {
+            ["Account/Accounts"] = ProxyEndpoint(mcp: exposed),
+            ["Account/Accounts@v2"] = v2
+        };
+
+        var registry = new McpEndpointRegistry();
+        registry.RegisterEndpoints(McpRegistryStartupExtensions.BuildEndpointMcpInfos(endpoints));
+
+        var tools = registry.Tools.Where(t => t.Method == "GET").ToList();
+        Assert.Equal(2, tools.Select(t => t.Name).Distinct().Count());
+
+        var versioned = tools.Single(t => t.Version == "v2");
+        Assert.Equal("Account/Accounts@v2", versioned.Identity);
+        Assert.Equal("v2/Account/Accounts", versioned.RoutePath);
+
+        var unversioned = tools.Single(t => t.Version is null);
+        Assert.Equal("Account/Accounts", unversioned.Identity);
+        Assert.Equal("Account/Accounts", unversioned.RoutePath);
+        Assert.Equal(2, registry.ToolsByInvokeName.Count);
+    }
 }

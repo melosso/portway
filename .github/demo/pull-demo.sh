@@ -6,10 +6,10 @@ REPO_RAW_URL="https://raw.githubusercontent.com/melosso/portway/main/.github/dem
 
 echo "Creating directory structure in $(pwd)..."
 mkdir -p "config/environments/WMS"
-mkdir -p "config/endpoints/Proxy/Accounts"
-mkdir -p "config/endpoints/Proxy/Company"
-mkdir -p "config/endpoints/Proxy/Products"
-mkdir -p "config/endpoints/Proxy/Production"
+mkdir -p "config/endpoints/Proxy/CRM/Accounts"
+mkdir -p "config/endpoints/Proxy/Company/Companies"
+mkdir -p "config/endpoints/Proxy/Inventory/Products/v2"
+mkdir -p "config/endpoints/Proxy/Production/Orders"
 mkdir -p "config/endpoints/SQL/WMS/Warehouses"
 mkdir -p "config/endpoints/SQL/WMS/CountryWarehouses"
 mkdir -p "tokens"
@@ -24,10 +24,11 @@ files=(
     "config/environments/settings.json"
     "config/environments/WMS/settings.json"
     "config/environments/network-access-policy.json"
-    "config/endpoints/Proxy/Accounts/entity.json"
-    "config/endpoints/Proxy/Company/entity.json"
-    "config/endpoints/Proxy/Products/entity.json"
-    "config/endpoints/Proxy/Production/entity.json"
+    "config/endpoints/Proxy/CRM/Accounts/entity.json"
+    "config/endpoints/Proxy/Company/Companies/entity.json"
+    "config/endpoints/Proxy/Inventory/Products/entity.json"
+    "config/endpoints/Proxy/Inventory/Products/v2/entity.json"
+    "config/endpoints/Proxy/Production/Orders/entity.json"
     "config/endpoints/SQL/WMS/Warehouses/entity.json"
     "config/endpoints/SQL/WMS/CountryWarehouses/entity.json"
     "data/demo.db"
@@ -36,7 +37,7 @@ files=(
 
 for file in "${files[@]}"; do
     echo "Downloading $file..."
-    curl -sSL "$REPO_RAW_URL/$file" -o "$file"
+    curl -fsSL "$REPO_RAW_URL/$file" -o "$file" || echo "Failed to download $file"
 done
 
 # Randomize the encryption key

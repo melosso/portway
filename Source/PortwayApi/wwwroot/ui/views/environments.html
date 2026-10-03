@@ -1,118 +1,237 @@
-  <script src="js/components/drawer.js"></script>
-  <script src="js/kv-editor.js"></script>
-  <style>
-    main { display: flex; flex-direction: column; }
-  </style>
+<script src="js/components/drawer.js"></script>
+<script src="js/kv-editor.js"></script>
+<style>
+    main {
+        display: flex;
+        flex-direction: column;
+    }
+</style>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Environments</h1>
-        <p class="page-sub">Servers, credentials and headers per environment.</p>
-      </div>
-    </div>
-    <div class="page-actions">
-      <button class="btn btn-outline" onclick="refreshAll()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-      <button class="btn btn-primary" onclick="openCreateDrawer()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New environment
-      </button>
-    </div>
-  </div>
-
-  <div class="main-content-fill">
-    <div class="filter-bar">
-      <div class="filter-btns" id="envTabs" role="group" aria-label="Filter"></div>
-      <div class="search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="input" id="envSearchInput" placeholder="Search..." oninput="filterEnvList()">
-      </div>
-    </div>
-    <div class="ep-split">
-
-      <!-- Left: list -->
-      <div class="ep-list">
-        <div class="ep-list-scroll" id="envListScroll">
-          <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Environments</h1>
+                <p class="page-sub">Servers, credentials and headers per environment.</p>
+            </div>
         </div>
-        <div class="ep-list-footer">
-          <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Environment
-          </button>
+        <div class="page-actions">
+            <button class="btn btn-outline" onclick="refreshAll()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+            <button class="btn btn-primary" onclick="openCreateDrawer()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New environment
+            </button>
         </div>
-      </div>
-
-      <!-- Right: detail -->
-      <div class="ep-detail" id="envDetail">
-        <div class="ep-empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="1"/></svg>
-          Loading…
-        </div>
-      </div>
-
     </div>
-  </div>
+
+    <div class="main-content-fill">
+        <div class="filter-bar">
+            <div class="filter-btns" id="envTabs" role="group" aria-label="Filter"></div>
+            <div class="search-wrap">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                    type="text"
+                    class="input"
+                    id="envSearchInput"
+                    placeholder="Search..."
+                    oninput="filterEnvList()"
+                />
+            </div>
+        </div>
+        <div class="ep-split">
+            <div class="ep-list">
+                <div class="ep-list-scroll" id="envListScroll">
+                    <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+                </div>
+                <div class="ep-list-footer">
+                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Environment
+                    </button>
+                </div>
+            </div>
+
+            <div class="ep-detail" id="envDetail">
+                <div class="ep-empty">
+                    <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="1" />
+                    </svg>
+                    Loading…
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
-<!-- Create Environment Drawer -->
 <div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
-  <div class="drawer-header">
-    <span class="drawer-title">Add Environment</span>
-    <button class="btn-icon" data-drawer-close="createDrawer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body">
-    <div class="field">
-      <label class="field-label">Name <span style="color:hsl(var(--destructive))">*</span></label>
-      <input type="text" id="createName" placeholder="e.g. prod, staging" class="input"
-        oninput="validateCreateName(this); syncDatabaseNameFromEnvName(this.value)">
-      <div id="createNameErr" style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;display:none"></div>
-    </div>
-    <div class="field">
-      <label class="field-label">Server Name</label>
-      <div class="field-help" style="margin-bottom:0.375rem">SQL server address for this environment. Overrides the global server name.</div>
-      <input type="text" id="createServerName" placeholder="localhost" class="input">
-    </div>
-    <div class="field">
-      <label class="field-label">Connection String</label>
-      <div style="position:relative;">
-        <input type="password" id="createConnStr" placeholder="Server=...;Database=...;User Id=...;Password=...;" class="input input-secret">
-        <button type="button" onclick="togglePasswordVis('createConnStr', this)"
-          style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;" title="Show / hide">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <div class="drawer-header">
+        <span class="drawer-title">Add Environment</span>
+        <button class="btn-icon" data-drawer-close="createDrawer">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
         </button>
-      </div>
-      <div class="field-help">Optional. Required only for SQL endpoints.</div>
     </div>
-    <div class="field">
-      <label class="field-label">Headers</label>
-      <div class="field-help" style="margin-bottom:0.375rem">HTTP headers forwarded with every request for this environment.</div>
-      <div class="kv-editor" id="createHeaders"></div>
-      <button class="ep-add-row" onclick="addCreateHeader()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add header
-      </button>
+    <div class="drawer-body">
+        <div class="field">
+            <label class="field-label">Name <span style="color:hsl(var(--destructive))">*</span></label>
+            <input
+                type="text"
+                id="createName"
+                placeholder="e.g. prod, staging"
+                class="input"
+                oninput="validateCreateName(this); syncDatabaseNameFromEnvName(this.value)"
+            />
+            <div
+                id="createNameErr"
+                style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;display:none"
+            ></div>
+        </div>
+        <div class="field">
+            <label class="field-label">Server Name</label>
+            <div class="field-help" style="margin-bottom:0.375rem">
+                SQL server address for this environment. Overrides the global server name.
+            </div>
+            <input type="text" id="createServerName" placeholder="localhost" class="input" />
+        </div>
+        <div class="field">
+            <label class="field-label">Connection String</label>
+            <div style="position:relative;">
+                <input
+                    type="password"
+                    id="createConnStr"
+                    placeholder="Server=...;Database=...;User Id=...;Password=...;"
+                    class="input input-secret"
+                />
+                <button
+                    type="button"
+                    onclick="togglePasswordVis('createConnStr', this)"
+                    style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;"
+                    title="Show / hide"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
+            </div>
+            <div class="field-help">Optional. Required only for SQL endpoints.</div>
+        </div>
+        <div class="field">
+            <label class="field-label">Headers</label>
+            <div class="field-help" style="margin-bottom:0.375rem">
+                HTTP headers forwarded with every request for this environment.
+            </div>
+            <div class="kv-editor" id="createHeaders"></div>
+            <button class="ep-add-row" onclick="addCreateHeader()">
+                <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add header
+            </button>
+        </div>
+        <div id="createAuthContainer"></div>
     </div>
-    <div id="createAuthContainer"></div>
-  </div>
-  <div class="drawer-footer">
-    <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
-    <button class="btn btn-primary" onclick="submitCreate()" style="margin-left:auto">
-      <span class="btn-label">Create</span>
-      <span class="btn-spinner"></span>
-    </button>
-  </div>
+    <div class="drawer-footer">
+        <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreate()" style="margin-left:auto">
+            <span class="btn-label">Create</span>
+            <span class="btn-spinner"></span>
+        </button>
+    </div>
 </div>
-
-<!-- Toast container -->
-
 
 <script>
 // State 
@@ -932,7 +1051,7 @@ async function confirmEnvRename(oldName) {
   }
   try {
     await api(`/ui/api/environments/${encodeURIComponent(oldName)}`, {
-      method: 'PATCH', body: { new_name: newName }, success: 'Renamed successfully'
+      method: 'PATCH', body: { new_name: newName }, success: 'Renamed successfully', silent: true
     });
     _envRenaming = false;
     state.selected = newName;

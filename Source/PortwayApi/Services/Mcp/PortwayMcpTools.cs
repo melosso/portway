@@ -32,8 +32,7 @@ public static class PortwayMcpTools
     /// <summary>
     /// Same key TokenAuthMiddleware checks scope against, so listings match what the token can actually call
     /// </summary>
-    private static string ScopeKey(McpToolDescriptor tool) =>
-        string.IsNullOrEmpty(tool.Namespace) ? tool.EndpointName : $"{tool.Namespace}/{tool.EndpointName}";
+    private static string ScopeKey(McpToolDescriptor tool) => tool.Identity;
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Browse available Portway endpoints with an interactive UI")]
     public static async Task<string> ListEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)

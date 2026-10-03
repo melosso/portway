@@ -438,11 +438,7 @@ public sealed partial class McpChatService
             query = $"$top={_mcpOptions.DefaultPageSize}";
         }
 
-        // Build the endpoint path, including namespace if present
-        var endpointPath = string.IsNullOrEmpty(tool.Namespace)
-            ? tool.EndpointName
-            : $"{tool.Namespace}/{tool.EndpointName}";
-
+        var endpointPath = tool.RoutePath;
         var url = $"{baseUrl}/api/{environment}/{endpointPath}";
         if (!string.IsNullOrEmpty(query))
             url += $"?{query.TrimStart('?')}";

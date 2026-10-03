@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using PortwayApi.Auth;
+using PortwayApi.Helpers;
 
 /// <summary>
 /// Token creation payload for the web UI, duplicate names are rejected via async validation
@@ -48,6 +49,12 @@ public sealed class TokenCreateRequest : IAsyncValidatableObject
         if (username.Length == 0)
         {
             yield return new ValidationResult("username is required", [nameof(Username)]);
+            yield break;
+        }
+
+        if (TokenScopeValidator.Validate(AllowedScopes) is { } scopeError)
+        {
+            yield return new ValidationResult(scopeError, [nameof(AllowedScopes)]);
             yield break;
         }
 

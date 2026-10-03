@@ -57,8 +57,8 @@ public class ResponseShapeTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        // GET to the demo composite endpoint (Financial/SalesInvoice only supports POST)
-        var response = await _client.GetAsync("/api/500/Financial/SalesInvoice", TestContext.Current.CancellationToken);
+        // GET to the demo composite endpoint (Sales/Invoices only supports POST)
+        var response = await _client.GetAsync("/api/500/Sales/Invoices", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
 
@@ -294,7 +294,7 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
 
         // No SQL server is reachable from the test host, so this endpoint fails on connect
-        var response = await _client.GetAsync("/api/500/Product/Products", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/api/500/Inventory/Products", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
 

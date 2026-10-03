@@ -561,7 +561,7 @@ public class CompositeEndpointHandler
 
                     // Proxy path = /api/{env}/{endpoint}
                     var proxyHost = $"{context.Request.Scheme}://{context.Request.Host}";
-                    var proxyPath = $"/api/{env}/{endpoint.Key}";
+                    var proxyPath = $"/api/{env}/{EndpointVersion.RoutePath(endpoint.Key)}";
 
                     // Apply URL rewriting
                     jsonString = UrlRewriter.RewriteUrl(

@@ -49,7 +49,7 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task DisabledEndpoint_StaysInTheDocument_MarkedUnavailable()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var operation = doc.RootElement.GetProperty("paths")
@@ -63,7 +63,7 @@ public class DisabledEndpointTests : ApiTestBase
     [Fact]
     public async Task EveryOperation_Documents503()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var offenders = new List<string>();

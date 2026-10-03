@@ -66,7 +66,7 @@ internal sealed class UpstreamCapture : IDisposable
 /// </summary>
 public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
 {
-    private const string ApiPath = "/api/500/Account/Accounts";
+    private const string ApiPath = "/api/500/CRM/Accounts";
     private readonly UpstreamCapture _upstream;
 
     public ProxyProtocolCompatibilityTests()
@@ -241,7 +241,7 @@ public class ContentNegotiationByEndpointTypeTests : ApiTestBase
     [Fact]
     public async Task XmlPost_ToSqlEndpoint_Returns415()
     {
-        var response = await _client.PostAsync("/api/700/Product/Products", new StringContent("<item/>", System.Text.Encoding.UTF8, "application/xml"), TestContext.Current.CancellationToken);
+        var response = await _client.PostAsync("/api/700/Inventory/Products", new StringContent("<item/>", System.Text.Encoding.UTF8, "application/xml"), TestContext.Current.CancellationToken);
 
         Assert.Equal(System.Net.HttpStatusCode.UnsupportedMediaType, response.StatusCode);
     }
@@ -249,7 +249,7 @@ public class ContentNegotiationByEndpointTypeTests : ApiTestBase
     [Fact]
     public async Task JsonPost_ToSqlEndpoint_PassesContentGate()
     {
-        var response = await _client.PostAsync("/api/700/Product/Products", new StringContent("""{"x":1}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+        var response = await _client.PostAsync("/api/700/Inventory/Products", new StringContent("""{"x":1}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
 
         // Downstream SQL failure is fine; the content gate specifically is what must not fire
         Assert.NotEqual(System.Net.HttpStatusCode.UnsupportedMediaType, response.StatusCode);

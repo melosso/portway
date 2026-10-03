@@ -49,10 +49,10 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
 
                 // flat file endpoints nest under the files group
-                string mainTag = OpenApiTags.Declare(document, endpoint, $"files/{endpointName}", _openApiSettings.CurrentValue, OpenApiTags.FilesGroup);
+                string mainTag = OpenApiTags.Declare(document, endpoint, $"files/{EndpointVersion.Split(endpointName).Key}", _openApiSettings.CurrentValue, OpenApiTags.FilesGroup);
                 if (!endpoint.HasNamespace && _openApiSettings.CurrentValue.ShowNamespaces)
                 {
-                    OpenApiTags.Ensure(document, OpenApiTags.GroupName(OpenApiTags.FilesGroup),"**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
+                    OpenApiTags.Ensure(document, OpenApiTags.GroupName(OpenApiTags.FilesGroup), "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
                 }
 
                 // Add file upload operation

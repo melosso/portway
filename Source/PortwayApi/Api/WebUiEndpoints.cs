@@ -263,7 +263,7 @@ public static partial class WebUiEndpointExtensions
             return (null, "Invalid path");
 
         // fall back to the leaf folder for namespaced names
-        if (!isFixed && !File.Exists(filePath) && name.Contains('/'))
+        if (!isFixed && !File.Exists(filePath) && name.Contains('/') && !EndpointVersion.TryParse(name.Split('/')[^1], out _))
         {
             var leafName = name.Split('/')[^1];
             var fallbackPath = Path.GetFullPath(Path.Combine(baseDir, typeDir, leafName, "entity.json"));

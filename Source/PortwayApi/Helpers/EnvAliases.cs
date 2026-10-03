@@ -13,6 +13,7 @@ public static class EnvAliases
         ("PORTWAY_ALLOWED_HOSTS", "AllowedHosts", "AllowedHosts"),
         ("PORTWAY_PATH_BASE", "PathBase", "PathBase"),
         ("PORTWAY_SECURE_COOKIES", "WebUi__SecureCookies", "WebUi:SecureCookies"),
+        ("PORTWAY_OPENAPI_MARKDOWN", "OpenApi__MarkdownEnabled", "OpenApi:MarkdownEnabled"),
         ("PORTWAY_USE_HTTPS", "Use_HTTPS", null),
         ("PORTWAY_PROXY_USERNAME", "PROXY_USERNAME", null),
         ("PORTWAY_PROXY_PASSWORD", "PROXY_PASSWORD", null),

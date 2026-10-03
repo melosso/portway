@@ -1,0 +1,22 @@
+{
+    "Url": "http://nginx/api/products",
+    "Methods": [
+        "GET"
+    ],
+    "Documentation": {
+        "TagDescription": "Manage your product catalog and inventory SKUs. Version 2 returns `itemCode` and `description`.",
+        "MethodDescriptions": {
+            "GET": "List all products"
+        }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    },
+    "ResponseTransforms": {
+        "Rename": {
+            "sku": "itemCode",
+            "name": "description"
+        }
+    }
+}

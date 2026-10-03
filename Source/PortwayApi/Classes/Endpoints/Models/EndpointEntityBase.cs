@@ -29,6 +29,16 @@ public abstract class EndpointEntityBase
     /// </summary>
     public bool Deprecated { get; set; } = false;
 
+    /// <summary>
+    /// Date the endpoint was deprecated, sent as the Deprecation header
+    /// </summary>
+    public DateTimeOffset? DeprecatedSince { get; set; }
+
+    /// <summary>
+    /// Date the endpoint stops serving, sent as the Sunset header
+    /// </summary>
+    public DateTimeOffset? Sunset { get; set; }
+
     public McpSettings? Mcp { get; set; }
 
     /// <summary>
@@ -71,6 +81,8 @@ public abstract class EndpointEntityBase
         definition.Enabled = Enabled;
         definition.Hidden = Hidden;
         definition.Deprecated = Deprecated;
+        definition.DeprecatedSince = DeprecatedSince;
+        definition.Sunset = Sunset;
         definition.Mcp = Mcp;
         definition.AllowedEnvironments = AllowedEnvironments;
         definition.Documentation = Documentation;

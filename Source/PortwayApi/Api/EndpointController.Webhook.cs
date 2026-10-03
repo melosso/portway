@@ -80,7 +80,7 @@ public partial class EndpointController
                 webhookId, insertedId);
 
             // Return 201 Created with location header for consistency
-            var locationUrl = $"/api/{env}/{webhookEndpointKey}/{webhookId}/{insertedId}";
+            var locationUrl = $"/api/{env}/{EndpointVersion.RoutePath(webhookEndpointKey)}/{webhookId}/{insertedId}";
             return PortwayResults.Create(locationUrl, "Webhook processed successfully.", id: insertedId);
         }
         catch (Exception ex)

@@ -17,7 +17,7 @@ sequenceDiagram
     participant Portway as Portway Gateway
     participant DB as SQL Database
 
-    External->>Portway: POST /api/prod/Integrations/Inbound/payment-received
+    External->>Portway: POST /api/prod/Webhooks/Incoming/payment-received
     Portway->>DB: INSERT INTO WebhookData
     DB-->>Portway: Success
     Portway-->>External: 201 Created
@@ -85,7 +85,7 @@ ALTER TABLE WebhookData ADD
 
 ## Configuration
 
-Example `endpoints/Webhooks/Integrations/Inbound/entity.json`, with namespace `Integrations` and endpoint name `Inbound`:
+Example `endpoints/Webhooks/Webhooks/Incoming/entity.json`, with namespace `Webhooks` and endpoint name `Incoming`:
 
 ```json
 {
@@ -116,7 +116,7 @@ POST /api/{environment}/{namespace}/{name}/{webhookId}
 ```
 
 ```http
-POST /api/prod/Integrations/Inbound/payment-received
+POST /api/prod/Webhooks/Incoming/payment-received
 Content-Type: application/json
 Authorization: Bearer <token>
 
@@ -192,7 +192,7 @@ Debug logging:
 Minimal test request:
 
 ```bash
-curl -X POST https://your-api/api/prod/Integrations/Inbound/test_webhook \
+curl -X POST https://your-api/api/prod/Webhooks/Incoming/test_webhook \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"test": "data"}'

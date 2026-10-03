@@ -58,8 +58,8 @@ public static class StandardResponses
         [415] = "The Content-Type of the request is not supported by this endpoint.",
         [416] = "The requested byte range falls outside the file.",
         [422] = "The payload is well formed but one or more fields failed validation.",
-        [500] = "The gateway or an upstream failed; traceId correlates the failure with the server log.",
-        [503] = "The endpoint is disabled or its upstream is unreachable."
+        [500] = "The request failed; traceId correlates the failure with the server log.",
+        [503] = "The endpoint is unavailable."
     }.ToFrozenDictionary();
 
     /// <summary>

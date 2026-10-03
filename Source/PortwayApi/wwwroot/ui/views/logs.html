@@ -1,45 +1,70 @@
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Logs</h1>
-        <p class="page-sub" id="fileLabel"></p>
-      </div>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Logs</h1>
+                <p class="page-sub" id="fileLabel"></p>
+            </div>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline" id="autoRefreshBtn" onclick="toggleAutoRefresh()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Auto-refresh
+            </button>
+            <button class="btn btn-outline" onclick="resetAndLoad()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+        </div>
     </div>
-    <div class="page-actions">
-      <button class="btn btn-outline" id="autoRefreshBtn" onclick="toggleAutoRefresh()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Auto-refresh
-      </button>
-      <button class="btn btn-outline" onclick="resetAndLoad()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-    </div>
-  </div>
 
-  <div class="log-toolbar">
-    <div class="filter-btns" role="group" aria-label="Log level">
-      <button class="filter-btn active" id="btn-ALL" aria-pressed="true" onclick="setLevel('ALL')">ALL</button>
-      <button class="filter-btn" id="btn-INF" aria-pressed="false" onclick="setLevel('INF')">INF</button>
-      <button class="filter-btn" id="btn-WRN" aria-pressed="false" onclick="setLevel('WRN')">WRN</button>
-      <button class="filter-btn" id="btn-ERR" aria-pressed="false" onclick="setLevel('ERR')">ERR</button>
-      <button class="filter-btn" id="btn-DBG" aria-pressed="false" onclick="setLevel('DBG')">DBG</button>
+    <div class="log-toolbar">
+        <div class="filter-btns" role="group" aria-label="Log level">
+            <button class="filter-btn active" id="btn-ALL" aria-pressed="true" onclick="setLevel('ALL')">ALL</button>
+            <button class="filter-btn" id="btn-INF" aria-pressed="false" onclick="setLevel('INF')">INF</button>
+            <button class="filter-btn" id="btn-WRN" aria-pressed="false" onclick="setLevel('WRN')">WRN</button>
+            <button class="filter-btn" id="btn-ERR" aria-pressed="false" onclick="setLevel('ERR')">ERR</button>
+            <button class="filter-btn" id="btn-DBG" aria-pressed="false" onclick="setLevel('DBG')">DBG</button>
+        </div>
+        <div class="log-divider"></div>
+        <select id="limitSelect" class="input input-sm" onchange="resetAndLoad()">
+            <option value="100">100 lines</option>
+            <option value="200" selected>200 lines</option>
+            <option value="500">500 lines</option>
+            <option value="1000">1000 lines</option>
+        </select>
+        <button class="btn btn-outline" id="loadMoreBtn" onclick="loadMore()" style="display:none">Load More</button>
+        <span class="log-count" id="logCount"></span>
     </div>
-    <div class="log-divider"></div>
-    <select id="limitSelect" class="input input-sm" onchange="resetAndLoad()">
-      <option value="100">100 lines</option>
-      <option value="200" selected>200 lines</option>
-      <option value="500">500 lines</option>
-      <option value="1000">1000 lines</option>
-    </select>
-    <button class="btn btn-outline" id="loadMoreBtn" onclick="loadMore()" style="display:none">Load More</button>
-    <span class="log-count" id="logCount"></span>
-  </div>
 
-  <div class="log-viewer" id="logViewer">
-    <div class="log-line"><span class="log-msg">Loading logs…</span></div>
-  </div>
+    <div class="log-viewer" id="logViewer">
+        <div class="log-line"><span class="log-msg">Loading logs…</span></div>
+    </div>
 </main>
 
 <script>

@@ -445,6 +445,8 @@ public class WebUiSecurityTests : IDisposable
             ("OpenApi:SecurityDefinition:Type", "OAuth2"),
             ("OpenApi:DefaultGroup", "A/B"),
             ("OpenApi:ScalarTheme", "evil"),
+            ("OpenApi:ExternalDocs:Url", "javascript:alert(1)"),
+            ("OpenApi:ExternalDocs:Url", "mailto:a@example.com"),
             ("OpenApi:Contact:Email", "not an address"),
             ("OpenApi:Title", new string('x', 201))
         })
@@ -454,8 +456,85 @@ public class WebUiSecurityTests : IDisposable
         }
 
         var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com" });
+            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:ScalarTheme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:MarkdownEnabled"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    // console version management: next version, guarded delete and rename, scope field in the list
+    [Fact]
+    public async Task Console_ManagesEndpointVersions()
+    {
+        var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiVer", "Items");
+        Directory.CreateDirectory(dir);
+        await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), """{ "ContentType": "application/json", "ContentFile": "content.json", "Deprecated": true, "DeprecatedSince": "2026-01-01T00:00:00Z" }""", TestContext.Current.CancellationToken);
+        try
+        {
+            var client = CreateClient();
+            var (authCookie, csrfCookie) = await LoginAsync(client);
+            async Task<HttpResponseMessage> Send(HttpMethod method, string url, object? body = null) =>
+                await client.SendAsync(AuthedRequest(method, url, authCookie, csrfCookie, body), TestContext.Current.CancellationToken);
+
+            var created = await Send(HttpMethod.Post, "/ui/api/endpoints/static/versions/UiVer/Items");
+            Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+            var body = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            Assert.Equal("UiVer/Items/v2", body.GetProperty("name").GetString());
+            Assert.True(File.Exists(Path.Combine(dir, "v2", "content.json")));
+            Assert.DoesNotContain("Deprecated", await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken));
+
+            var saved = await Send(HttpMethod.Put, "/ui/api/endpoints/static/UiVer/Items/v2",
+                new { content = new { ContentType = "application/json", ContentFile = "content.json", Deprecated = true } });
+            Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+            Assert.Contains("\"DeprecatedSince\"", await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken));
+
+            var third = await (await Send(HttpMethod.Post, "/ui/api/endpoints/static/versions/UiVer/Items/v2")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            Assert.Equal("v3", third.GetProperty("version").GetString());
+
+            var overview = await (await Send(HttpMethod.Get, "/ui/api/overview")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            Assert.True(int.Parse(overview.GetProperty("api_version").GetString()![1..]) >= 3);
+
+            var list = await (await Send(HttpMethod.Get, "/ui/api/endpoints")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            var v2 = list.GetProperty("static").EnumerateArray().Single(e => e.GetProperty("name").GetString() == "UiVer/Items/v2");
+            Assert.Equal("v2", v2.GetProperty("version").GetString());
+            Assert.Equal("UiVer/Items@v2", v2.GetProperty("scope").GetString());
+
+            Assert.Equal(HttpStatusCode.Conflict, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await Send(new HttpMethod("PATCH"), "/ui/api/endpoints/static/UiVer/Items/v2", new { new_name = "UiVer/Other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items/v3")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items/v2")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items")).StatusCode);
+        }
+        finally
+        {
+            var root = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiVer");
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+            PortwayApi.Classes.EndpointHandler.ReloadAllEndpoints();
+        }
+    }
+
+    // token scopes are validated on create and on update
+    [Fact]
+    public async Task TokenScopes_AreValidated()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var bad = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/tokens", authCookie, csrfCookie,
+            new { username = "scope-bad", allowed_scopes = "CRM Accounts" }), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+
+        var good = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/tokens", authCookie, csrfCookie,
+            new { username = "scope-good", allowed_scopes = "CRM/Accounts@v2" }), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, good.StatusCode);
+
+        var tokens = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/tokens", authCookie), TestContext.Current.CancellationToken))
+            .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        var id = tokens.EnumerateArray()
+            .First(x => x.GetProperty("username").GetString() == "scope-good").GetProperty("id").GetInt32();
+
+        var update = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/ui/api/tokens/{id}", authCookie, csrfCookie,
+            new { allowed_scopes = "CRM/Accounts@v1" }), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
     }
 
     /// <summary>

@@ -55,6 +55,9 @@ public static partial class WebUiEndpointExtensions
 
             if (body.TryGetProperty("allowed_scopes", out var scopes) && scopes.ValueKind == JsonValueKind.String)
             {
+                if (TokenScopeValidator.Validate(scopes.GetString()) is { } scopeError)
+                    return Results.Json(new { error = scopeError }, statusCode: 400);
+
                 if (!await tokenService.UpdateTokenScopesAsync(id, scopes.GetString() ?? "*"))
                     return Results.Json(new { error = "Cannot narrow the last full-access token" }, statusCode: 409);
             }

@@ -1,83 +1,153 @@
-  <script src="js/components/drawer.js"></script>
-  <style>
-    main { display: flex; flex-direction: column; }
-  </style>
+<script src="js/components/drawer.js"></script>
+<style>
+    main {
+        display: flex;
+        flex-direction: column;
+    }
+</style>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Endpoints</h1>
-        <p class="page-sub">Define the routes this gateway serves.</p>
-      </div>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Endpoints</h1>
+                <p class="page-sub">Define the routes this gateway serves.</p>
+            </div>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline" onclick="refreshAll()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+            <button class="btn btn-primary" onclick="openCreateDrawer()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New endpoint
+            </button>
+        </div>
     </div>
-    <div class="page-actions">
-      <button class="btn btn-outline" onclick="refreshAll()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-      <button class="btn btn-primary" onclick="openCreateDrawer()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New endpoint
-      </button>
-    </div>
-  </div>
 
-  <!-- Split panel -->
-  <div class="main-content-fill">
-    <div class="filter-bar">
-      <div class="filter-btns" id="epTabs" role="group" aria-label="Filter"></div>
-      <div class="search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="input" id="epSearch" placeholder="Search..." oninput="filterList()">
-      </div>
+    <div class="main-content-fill">
+        <div class="filter-bar ep-filter-bar">
+            <div class="search-wrap">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input type="text" class="input" id="epSearch" placeholder="Search endpoints, namespaces or versions" aria-label="Search endpoints" oninput="filterList()" />
+            </div>
+            <select class="input ep-type-filter" id="epType" aria-label="Endpoint type" onchange="switchTab(this.value)"></select>
+        </div>
+        <div class="ep-split">
+            <div class="ep-list">
+                <div class="ep-list-scroll" id="epListScroll">
+                    <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+                </div>
+                <div class="ep-list-footer">
+                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Endpoint
+                    </button>
+                </div>
+            </div>
+            <div class="ep-detail" id="epDetail">
+                <div class="ep-empty">
+                    <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <rect x="2" y="3" width="20" height="14" rx="2" />
+                        <path d="M8 21h8M12 17v4" />
+                    </svg>
+                    <span>Select an endpoint to view and edit its configuration</span>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="ep-split">
-      <!-- Left: list -->
-      <div class="ep-list">
-        <div class="ep-list-scroll" id="epListScroll">
-          <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
-        </div>
-        <div class="ep-list-footer">
-          <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Endpoint
-          </button>
-        </div>
-      </div>
-      <!-- Right: detail -->
-      <div class="ep-detail" id="epDetail">
-        <div class="ep-empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-          <span>Select an endpoint to view and edit its configuration</span>
-        </div>
-      </div>
-    </div>
-  </div>
 </main>
 
-
-
-<!-- Create Drawer -->
 <div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
-  <div class="drawer-header">
-    <h3 class="drawer-title">Add Endpoint</h3>
-    <button class="btn btn-ghost btn-sm" data-drawer-close="createDrawer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body">
-    <!-- Type selector tabs -->
-    <div style="display:flex;gap:0.375rem;flex-wrap:wrap;margin-bottom:0rem" id="createTypePicker"></div>
-
-    <div id="createForm"></div>
-
-    <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
-      <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
-      <button class="btn btn-primary" onclick="submitCreate()">Create</button>
+    <div class="drawer-header">
+        <h3 class="drawer-title">Add Endpoint</h3>
+        <button class="btn btn-ghost btn-sm" data-drawer-close="createDrawer">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
     </div>
-  </div>
+    <div class="drawer-body">
+        <div style="display:flex;gap:0.375rem;flex-wrap:wrap;margin-bottom:0rem" id="createTypePicker"></div>
+
+        <div id="createForm"></div>
+
+        <div style="margin-top:1.5rem;display:flex;gap:0.5rem;justify-content:flex-end">
+            <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
+            <button class="btn btn-primary" onclick="submitCreate()">Create</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -159,7 +229,7 @@ window.addEventListener('beforeunload', e => {
 async function refreshAll() {
   confirmNavigate(async () => {
     try {
-      const d = await api('/ui/api/endpoints', { failure: 'Failed to load endpoints' });
+      const d = await api('/ui/api/endpoints', { silent: true });
       _allData = {
         sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
         proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
@@ -179,21 +249,46 @@ async function refreshAll() {
 
 // Tabs 
 function renderTabs() {
-  const total = Object.values(_allData).reduce((s, a) => s + a.length, 0);
-  const tabs = [{ key: 'all', label: 'All', count: total }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label, count: (_allData[t.key] ?? []).length }))];
-  document.getElementById('epTabs').innerHTML = tabs.map(t => `
-    <button class="filter-btn ${_activeTab === t.key ? 'active' : ''}" aria-pressed="${_activeTab === t.key}" onclick="switchTab('${t.key}')">
-      ${esc(t.label)}
-      <span class="filter-count">${t.count}</span>
-    </button>`).join('');
+  const count = key => resourcesOf(key === 'all' ? Object.values(_allData).flat() : (_allData[key] ?? [])).length;
+  const options = [{ key: 'all', label: 'All types' }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label }))];
+  document.getElementById('epType').innerHTML = options
+    .map(o => `<option value="${o.key}" ${_activeTab === o.key ? 'selected' : ''}>${esc(o.label)} (${count(o.key)})</option>`)
+    .join('');
 }
 
 function switchTab(key) {
+  document.getElementById('epType').value = _activeTab;
   confirmNavigate(() => {
     _activeTab = key;
     renderTabs();
     renderList();
   });
+}
+
+// Resources: one entry per endpoint path and type, holding its versions in order
+function versionNumber(item) {
+  return item.version ? parseInt(item.version.slice(1), 10) : 1;
+}
+
+function resourcesOf(items) {
+  const map = new Map();
+  for (const item of items) {
+    const base = baseName(item);
+    const key = `${item._type}:${base}`;
+    if (!map.has(key)) {
+      const cut = base.lastIndexOf('/');
+      map.set(key, { type: item._type, base, ns: cut < 0 ? '' : base.slice(0, cut), leaf: base.slice(cut + 1), versions: [] });
+    }
+    map.get(key).versions.push(item);
+  }
+  for (const r of map.values()) r.versions.sort((a, b) => versionNumber(a) - versionNumber(b));
+  return [...map.values()];
+}
+
+function selectedResource() {
+  if (!_selected) return null;
+  const base = selectedVersion() ? _selected.name.slice(0, _selected.name.lastIndexOf('/')) : _selected.name;
+  return resourcesOf(_allData[_selected.type] ?? []).find(r => r.base === base) ?? null;
 }
 
 // List
@@ -203,7 +298,7 @@ function getFilteredItems() {
   const results = [];
   for (const type of types) {
     for (const item of (_allData[type] ?? [])) {
-      if (!q || (item.name ?? '').toLowerCase().includes(q) || type.includes(q)) {
+      if (!q || (item.name ?? '').toLowerCase().includes(q) || type.includes(q) || (item.scope ?? '').toLowerCase().includes(q)) {
         results.push(item);
       }
     }
@@ -237,37 +332,49 @@ function renderList() {
             `endpoints/\n` +
             `└── SQL/\n` +
             `    └── Products/\n` +
-            `        └── entity.json` +
+            `        ├── entity.json\n` +
+            `        └── v2/\n` +
+            `            └── entity.json` +
           `</pre>` +
         `</div>`;
     }
     return;
   }
 
-  // Group by type
-  const byType = {};
-  for (const item of items) {
-    (byType[item._type] = byType[item._type] ?? []).push(item);
+  const byNamespace = new Map();
+  for (const r of resourcesOf(items)) {
+    const ns = r.ns || 'General';
+    if (!byNamespace.has(ns)) byNamespace.set(ns, []);
+    byNamespace.get(ns).push(r);
   }
 
+  const current = selectedResource();
   let html = '';
-  const showGroups = _activeTab === 'all';
-  for (const typeKey of ENDPOINT_TYPES.map(t => t.key)) {
-    const group = byType[typeKey];
-    if (!group?.length) continue;
-    const typeCfg = ENDPOINT_TYPES.find(t => t.key === typeKey);
-    if (showGroups) {
-      html += `<div class="ep-list-group">${esc(typeCfg?.label ?? typeKey)}</div>`;
-    }
-    for (const item of group) {
-      const isActive = _selected?.type === typeKey && _selected?.name === item.name;
-      html += `<div class="ep-list-item ${isActive ? 'active' : ''}" onclick="trySelect('${esc(typeKey)}','${esc(item.name)}')">
+  for (const ns of [...byNamespace.keys()].sort((a, b) => a.localeCompare(b))) {
+    html += `<div class="ep-list-group">${esc(ns)}</div>`;
+    for (const r of byNamespace.get(ns).sort((a, b) => a.leaf.localeCompare(b.leaf))) {
+      const typeCfg = ENDPOINT_TYPES.find(t => t.key === r.type);
+      const latest = r.versions[r.versions.length - 1];
+      const isActive = current?.type === r.type && current?.base === r.base;
+      const retired = r.versions.every(v => v.deprecated);
+      const versions = r.versions.length > 1 ? r.versions.map(v => v.version ?? 'v1').join(' · ') : '';
+      html += `<div class="ep-list-item ${isActive ? 'active' : ''}${retired ? ' is-deprecated' : ''}" onclick="trySelect('${esc(r.type)}','${esc(latest.name)}')" title="${esc(typeCfg?.label ?? r.type)}">
         <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
-        <span class="ep-list-name">${esc(item.name)}</span>
+        <span class="ep-list-name">${esc(r.leaf)}</span>
+        ${versions ? `<span class="ep-list-versions">${esc(versions)}</span>` : ''}
       </div>`;
     }
   }
   scroll.innerHTML = html;
+}
+
+function baseName(item) {
+  return item.version ? item.name.slice(0, -(item.version.length + 1)) : item.name;
+}
+
+function selectedVersion() {
+  const leaf = _selected?.name.split('/').pop() ?? '';
+  return /^v[1-9][0-9]{0,2}$/.test(leaf) ? leaf : null;
 }
 
 function filterList() {
@@ -300,12 +407,13 @@ function renderDetail() {
   const typeCfg = ENDPOINT_TYPES.find(t => t.key === type);
   const detail = document.getElementById('epDetail');
   const isWebhook = type === 'webhook';
+  const version = selectedVersion();
 
   const nameDisplay = _renaming
     ? `<input type="text" id="renameInput" value="${esc(name.split('/').pop())}" class="input input-title" onkeydown="if(event.key==='Enter')confirmRename();if(event.key==='Escape')cancelRename()" autofocus>
        <button class="btn btn-primary btn-sm" onclick="confirmRename()">Save</button>
        <button class="btn btn-outline btn-sm" onclick="cancelRename()">Cancel</button>`
-    : `<h2>${esc(name)}</h2>
+    : `<h2>${esc(version ? name.slice(0, -(version.length + 1)) : name)}</h2>
        <span class="badge badge-muted" style="font-size:0.7rem">${esc(typeCfg?.label ?? type)}</span>`;
 
   detail.innerHTML = `
@@ -313,7 +421,7 @@ function renderDetail() {
       <span class="ep-type-dot ${typeCfg?.dotClass ?? ''}"></span>
       ${nameDisplay}
       ${_renaming ? '' : `<div class="actions">
-        ${isWebhook ? '' : `<button class="btn btn-outline btn-sm" onclick="startRename()" data-tooltip="Rename endpoint name">
+        ${isWebhook || version ? '' : `<button class="btn btn-outline btn-sm" onclick="startRename()" data-tooltip="Rename endpoint name">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           Rename
         </button>`}
@@ -326,6 +434,7 @@ function renderDetail() {
         </button>`}
       </div>`}
     </div>
+    ${_renaming ? '' : renderVersionBar(type)}
     <div class="ep-detail-body" id="epDetailBody">
       ${_rawMode ? renderRawForm(raw) : renderStructuredForm(type, content)}
     </div>
@@ -357,7 +466,73 @@ function renderStructuredForm(type, content) {
     case 'webhook':   inner = renderWebhookForm(c);   break;
     default:          return `<div class="ep-empty">Unknown type</div>`;
   }
-  return `<div class="ep-form">${inner}</div>`;
+  return `<div class="ep-form">${renderLifecycleCard(c)}${inner}</div>`;
+}
+
+function renderVersionBar(type) {
+  const r = selectedResource();
+  if (!r) return '';
+  const item = r.versions.find(v => v.name === _selected.name) ?? r.versions[0];
+  const version = item.version ?? 'v1';
+  const prefix = version === 'v1' ? '' : version + '/';
+  const route = type === 'file' ? `/api/{env}/${prefix}files/${r.base}` : `/api/{env}/${prefix}${r.base}`;
+  const chips = r.versions.map(v => {
+    const label = v.version ?? 'v1';
+    const active = v.name === _selected.name;
+    const state = v.deprecated ? (v.sunset ? `Deprecated, sunset ${String(v.sunset).slice(0, 10)}` : 'Deprecated') : 'Active';
+    return `<button type="button" class="ep-version-chip${active ? ' active' : ''}${v.deprecated ? ' is-deprecated' : ''}" aria-pressed="${active}" data-tooltip="${esc(state)}" onclick="trySelect('${esc(type)}','${esc(v.name)}')">${esc(label)}</button>`;
+  }).join('');
+  return `<div class="ep-version-bar">
+    <div class="ep-version-chips" role="group" aria-label="Versions">
+      ${chips}
+      ${type === 'webhook' ? '' : `<button type="button" class="ep-version-chip ep-version-add" onclick="createVersion()" data-tooltip="Copy ${esc(version)} into the next version">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Version
+      </button>`}
+    </div>
+    <div class="ep-version-meta">
+      <button type="button" class="ep-copy" onclick="copyText('${esc(route)}')" data-tooltip="Copy route"><code>${esc(route)}</code></button>
+      <button type="button" class="ep-copy" onclick="copyText('${esc(item.scope ?? r.base)}')" data-tooltip="Copy token scope"><code>${esc(item.scope ?? r.base)}</code></button>
+    </div>
+  </div>`;
+}
+
+function copyText(text) {
+  navigator.clipboard?.writeText(text).then(() => toast('Copied', 'success'), () => toast('Copy failed', 'error'));
+}
+
+function dateValue(value) {
+  return value ? String(value).slice(0, 10) : '';
+}
+
+function renderLifecycleCard(c) {
+  return `<div class="card">
+    <div class="card-header"><h2 class="card-title">Lifecycle</h2></div>
+    ${fieldToggle('lcDeprecated', 'Deprecated', c.Deprecated ?? false)}
+    <div class="ep-lifecycle-dates">
+      <div class="field">
+        <label class="field-label" for="lcDeprecatedSince">Deprecated since</label>
+        <input type="date" class="input" id="lcDeprecatedSince" value="${esc(dateValue(c.DeprecatedSince))}" oninput="markDirty()">
+      </div>
+      <div class="field">
+        <label class="field-label" for="lcSunset">Sunset</label>
+        <input type="date" class="input" id="lcSunset" value="${esc(dateValue(c.Sunset))}" oninput="markDirty()">
+      </div>
+    </div>
+    <p class="field-hint">Sent as Deprecation, Sunset and successor-version Link headers.</p>
+  </div>`;
+}
+
+function applyLifecycle(cfg) {
+  const deprecated = document.getElementById('lcDeprecated')?.checked ?? false;
+  const since = document.getElementById('lcDeprecatedSince')?.value;
+  const sunset = document.getElementById('lcSunset')?.value;
+  return {
+    ...cfg,
+    Deprecated: deprecated || undefined,
+    DeprecatedSince: deprecated && since ? `${since}T00:00:00Z` : undefined,
+    Sunset: sunset ? `${sunset}T00:00:00Z` : undefined
+  };
 }
 
 // Field helpers
@@ -1019,7 +1194,7 @@ async function saveEndpoint() {
     } else {
       const errs = validateForm(type);
       if (errs.length) { toast(errs[0], 'error'); return; }
-      const cfg = collectFormConfig(type, _detailData.content);
+      const cfg = applyLifecycle(collectFormConfig(type, _detailData.content));
       body = { content: cfg };
       await api(`/ui/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
       _dirty = false;
@@ -1086,9 +1261,20 @@ async function confirmDelete() {
       <span>Select an endpoint to view and edit its configuration</span>
     </div>`;
     await refreshAll();
-  } catch(e) {
-    toast('Delete failed: ' + e.message, 'error');
-  }
+  } catch(e) {}
+}
+
+// Versions
+
+async function createVersion() {
+  if (!_selected) return;
+  const { type, name } = _selected;
+  try {
+    const d = await api(`/ui/api/endpoints/${type}/versions/${name}`, { method: 'POST', failure: 'Version not created' });
+    toast(`${d.version} created`, 'success');
+    await refreshAll();
+    selectEndpoint(type, d.name);
+  } catch(e) {}
 }
 
 // Rename

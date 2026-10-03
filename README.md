@@ -242,7 +242,7 @@ Store and retrieve files such as documents, images and exports.
 <summary>Webhook Endpoints</summary>
 Receive inbound calls from external services and write the payload to a table.
 
-#### Example — `endpoints/Webhooks/Integrations/Inbound/entity.json`
+#### Example — `endpoints/Webhooks/Webhooks/Incoming/entity.json`
 
 ```json
 {
@@ -367,7 +367,7 @@ GET /api/prod/files/Documents/abc123fileId
 Receive data from external services:
 
 ```bash
-POST /api/prod/Integrations/Inbound/webhook1
+POST /api/prod/Webhooks/Incoming/webhook1
 Content-Type: application/json
 {
   "eventType": "order.created",

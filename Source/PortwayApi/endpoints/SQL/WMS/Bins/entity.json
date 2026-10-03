@@ -1,7 +1,6 @@
 {
   "DatabaseObjectName": "Bins",
   "DatabaseObjectType": "Table",
-  "Namespace": "WMS",
   "NamespaceDisplayName": "WMS",
   "NamespaceDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
   "AllowedEnvironments": [
