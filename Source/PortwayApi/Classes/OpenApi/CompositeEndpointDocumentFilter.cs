@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 namespace PortwayApi.Classes.OpenApi;
@@ -11,10 +12,12 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<CompositeEndpointDocumentFilter> _logger;
     private readonly OpenApiExampleLoader _exampleLoader;
+    private readonly IOptionsMonitor<OpenApiSettings> _openApiSettings;
 
-    public CompositeEndpointDocumentFilter(ILogger<CompositeEndpointDocumentFilter> logger)
+    public CompositeEndpointDocumentFilter(ILogger<CompositeEndpointDocumentFilter> logger, IOptionsMonitor<OpenApiSettings> openApiSettings)
     {
         _logger = logger;
+        _openApiSettings = openApiSettings;
         // Initialize example loader without passing logger (it creates its own if needed)
         _exampleLoader = new OpenApiExampleLoader();
     }
@@ -33,7 +36,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 
             // Sort composite endpoints by name to ensure alphabetical order in documentation
             var sortedCompositeEndpoints = compositeEndpoints
-                .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(ep => ep.Value.FullPath, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
             // Create paths for each composite endpoint
@@ -48,7 +51,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Get effective environments for this endpoint (endpoint-specific or global fallback)
                 var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-                OpenApiTags.Declare(document, definition);
+                var tag = OpenApiTags.Declare(document, definition, OpenApiTags.NameFor(definition), _openApiSettings.CurrentValue);
 
                 // Use the namespaced path from FullPath instead of hardcoded /composite/
                 string path = OpenApiEndpointCatalog.BasePath(definition);
@@ -62,7 +65,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                 // Create the POST operation for the composite endpoint
                 var operation = new OpenApiOperation
                 {
-                    Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(definition.DocumentationTag) },
+                    Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(tag) },
                     Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("POST")
                         ?? $"Execute {definition.EndpointName} composite endpoint",
                     Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST")

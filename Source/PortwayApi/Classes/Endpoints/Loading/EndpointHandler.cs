@@ -34,11 +34,11 @@ public static partial class EndpointHandler
         "Static", "static", "static ", "entity.json", NamespaceAware: true,
         ParseStaticEndpointDefinition,
         _ => true,
-        (key, d) => Log.Debug("Static Endpoint: {Name} ({Hidden}) - {ContentType} | DocumentationTag: {DocumentationTag} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
+        (key, d) => Log.Debug("Static Endpoint: {Name} ({Hidden}) - {ContentType} | FullPath: {FullPath} | Namespace: {Namespace} | InferredNamespace: {InferredNamespace}",
             key,
             d.Hidden ? "Private" : "Public",
             d.Properties?.GetValueOrDefault("ContentType", "unknown"),
-            d.DocumentationTag,
+            d.FullPath,
             d.Namespace ?? "null",
             d.InferredNamespace ?? "null"));
 

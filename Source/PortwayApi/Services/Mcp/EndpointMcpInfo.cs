@@ -21,7 +21,6 @@ public sealed record EndpointMcpInfo
     /// Usage instruction appended to the tool description (from Mcp.Instruction)
     /// </summary>
     public string? Instruction { get; init; }
-    public bool UiEnabled { get; init; } = false;
     /// <summary>
     /// MIME type for Static endpoints (e.g. "text/csv"); null for SQL/Proxy
     /// </summary>

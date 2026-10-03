@@ -573,6 +573,7 @@ function fieldDocumentation(c) {
   const doc = c.Documentation ?? {};
   return accordion('Documentation',
     fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true) +
+    fieldTextarea('namespaceDescription', 'Namespace Description', c.NamespaceDescription ?? '', '80px', true) +
     fieldJson('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions, '72px') +
     fieldJson('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation, '100px')
   );
@@ -865,6 +866,7 @@ function collectFormConfig(type, existingContent) {
         DatabaseObjectType:   document.getElementById('objectType')?.value === 'Table' ? undefined : (document.getElementById('objectType')?.value ?? undefined),
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         Hidden:            document.getElementById('hidden')?.checked || undefined,
         Enabled:           document.getElementById('enabled')?.checked ?? true,
@@ -897,6 +899,7 @@ function collectFormConfig(type, existingContent) {
         Methods:              methods,
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         Hidden:            document.getElementById('hidden')?.checked || undefined,
@@ -917,6 +920,7 @@ function collectFormConfig(type, existingContent) {
         Methods:              methods,
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         Hidden:            document.getElementById('hidden')?.checked || undefined,
@@ -942,6 +946,7 @@ function collectFormConfig(type, existingContent) {
         Tenancy:              readTenancy(),
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         Hidden:            document.getElementById('hidden')?.checked || undefined,
@@ -959,6 +964,7 @@ function collectFormConfig(type, existingContent) {
         EnableFiltering:      document.getElementById('enableFiltering')?.checked ?? false,
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         AllowedEnvironments:  envs,
         Hidden:            document.getElementById('hidden')?.checked || undefined,
@@ -980,6 +986,7 @@ function collectFormConfig(type, existingContent) {
         AllowedEnvironments:  envs,
         Namespace:            document.getElementById('namespace')?.value?.trim() || undefined,
         NamespaceDisplayName: document.getElementById('namespaceDisplayName')?.value?.trim() || undefined,
+        NamespaceDescription: document.getElementById('namespaceDescription')?.value?.trim() || undefined,
         DisplayName:          document.getElementById('displayName')?.value?.trim() || undefined,
         Hidden:            document.getElementById('hidden')?.checked || undefined,
         Enabled:           document.getElementById('enabled')?.checked ?? true,

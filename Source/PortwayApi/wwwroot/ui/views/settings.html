@@ -96,7 +96,7 @@
     <div class="page-title">
       <div class="page-heading">
         <h1 class="select-none">Settings</h1>
-        <p class="page-sub">Console, security, performance, storage and integrations.</p>
+        <p class="page-sub">Console, security, performance, storage, integrations and AI.</p>
       </div>
     </div>
     <div class="page-actions">
@@ -253,6 +253,27 @@
         </div>
 
         <div class="card">
+          <div class="card-header"><h2 class="card-title">API Reference</h2></div>
+          <div class="card-body" id="docsBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Reference Footer</h2></div>
+          <div class="card-body" id="footerBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section: AI -->
+    <div class="settings-section" id="section-ai">
+      <div class="settings-pane">
+
+        <div class="card">
           <div class="card-header">
             <h2 class="card-title">MCP (Model Context Protocol)</h2>
           </div>
@@ -261,9 +282,16 @@
           </div>
         </div>
 
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Chat</h2></div>
+          <div class="card-body" id="chatBody">
+            <span class="muted" style="font-size:0.8rem">Loading…</span>
+          </div>
+        </div>
+
         <div class="card card-featured">
           <div class="card-header">
-            <h2 class="card-title">AI Provider (Chat)</h2>
+            <h2 class="card-title">AI Provider</h2>
             <div id="aiProviderActions"></div>
           </div>
           <div class="card-body" id="aiBody">
@@ -350,7 +378,7 @@ function choiceRow(key, label, value, desc) {
   if (!spec) return settingItem(label, value, desc);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const opts = (spec.choices ?? []).map(c =>
-    `<option value="${esc(c)}"${c === value ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    `<option value="${esc(c)}"${c.toLowerCase() === String(value ?? '').toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('');
   return `<div class="setting-row">
     ${labelBlock(label, desc, id)}
     <select class="input" id="${id}" data-setting="${key}" data-kind="choice">${opts}</select>
@@ -364,6 +392,17 @@ function timeRow(key, label, value, desc) {
   return `<div class="setting-row">
     ${labelBlock(label, desc, id)}
     <input type="time" class="input" id="${id}" data-setting="${key}" data-kind="time" value="${esc(value ?? '')}">
+  </div>`;
+}
+
+function inputRow(key, label, value, desc, placeholder) {
+  const spec = _writable[key];
+  if (!spec) return settingItem(label, value || '—', desc);
+  const id = 'set-' + key.replace(/[:.]/g, '-');
+  const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
+  return `<div class="setting-row">
+    ${labelBlock(label, desc, id)}
+    <input type="text" class="input" id="${id}" data-setting="${key}" data-kind="text"${max} spellcheck="false" placeholder="${esc(placeholder ?? '')}" value="${esc(value ?? '')}">
   </div>`;
 }
 
@@ -471,6 +510,7 @@ async function load() {
     const feat = d.features          ?? {};
     const cus  = d.customization     ?? {};
     const dbm = d.database_maintenance ?? {};
+    const oa  = d.openapi             ?? {};
 
     const accounts = sec.admin_accounts ?? 0;
     document.getElementById('securityBody').innerHTML = [
@@ -522,7 +562,33 @@ async function load() {
 
     document.getElementById('openApiBody').innerHTML = [
       switchRow('OpenApi:Enabled', 'Enabled', feat.openapi, 'Serves the spec and the reference at /docs'),
+      inputRow('OpenApi:Title', 'Title', oa.title),
+      inputRow('OpenApi:Version', 'Version', oa.version, 'Part of the spec URL'),
+      textRow('OpenApi:Description', 'Description', oa.description, 'Markdown, shown above the reference'),
+      inputRow('OpenApi:Contact:Name', 'Contact name', oa.contact_name),
+      inputRow('OpenApi:Contact:Email', 'Contact e-mail', oa.contact_email),
+      switchRow('OpenApi:ForceHttpsInProduction', 'Force HTTPS', oa.force_https, 'HTTPS server URL outside Development'),
+      textRow('OpenApi:SecurityDefinition:Description', 'Authentication note', oa.security_description, 'Shown with the bearer token field'),
     ].join('') + cardFooter('openApiBody');
+
+    document.getElementById('docsBody').innerHTML = [
+      switchRow('OpenApi:ShowNamespaces', 'Show namespaces', oa.show_namespaces, 'Group endpoints by namespace in the sidebar'),
+      inputRow('OpenApi:DefaultGroup', 'Default group', oa.default_group, 'Group for endpoints without a namespace. Empty lists them ungrouped', 'General'),
+      choiceRow('OpenApi:ScalarTheme', 'Theme', oa.theme),
+      choiceRow('OpenApi:ScalarLayout', 'Layout', oa.layout),
+      switchRow('OpenApi:ScalarShowSidebar', 'Sidebar', oa.show_sidebar),
+      switchRow('OpenApi:ScalarHideDownloadButton', 'Hide download', oa.hide_download, 'Hides the spec download'),
+      switchRow('OpenApi:ScalarHideModels', 'Hide models', oa.hide_models, 'Hides the schema section'),
+      switchRow('OpenApi:ScalarHideClientButton', 'Hide client generation', oa.hide_client),
+      switchRow('OpenApi:ScalarHideTestRequestButton', 'Hide test requests', oa.hide_test_request),
+    ].join('') + cardFooter('docsBody');
+
+    document.getElementById('footerBody').innerHTML = [
+      inputRow('OpenApi:Footer:Text', 'Text', oa.footer_text),
+      inputRow('OpenApi:Footer:Url', 'Link', oa.footer_url, 'http, https or mailto, or #', 'https://example.com'),
+      choiceRow('OpenApi:Footer:Target', 'Opens in', oa.footer_target),
+      switchRow('OpenApi:Footer:ShowSourceIcon', 'Source icon', oa.footer_source_icon, 'Shows the GitHub link'),
+    ].join('') + cardFooter('footerBody');
 
     document.getElementById('customizationBody').innerHTML = [
       switchRow('WebUi:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serve the public page at the root path'),
@@ -595,14 +661,15 @@ async function load() {
       switchRow('Mcp:Enabled',               'Enabled',       m.enabled),
       settingItem('Path', m.path ?? '—'),
       switchRow('Mcp:RequireAuthentication', 'Require a token', m.require_authentication, 'Reject MCP calls without a bearer token'),
-      switchRow('Mcp:AppsEnabled',           'MCP apps',      m.apps_enabled, 'Serve the resource UI at /mcp/apps'),
-      switchRow('Mcp:ChatEnabled',           'Chat',          d.chat?.enabled ?? false, 'Enable the chat console'),
-      settingItem('MCP Apps Path', m.apps_path ?? '—'),
     ].join('') + cardFooter('mcpBody');
+
+    document.getElementById('chatBody').innerHTML = [
+      switchRow('Mcp:ChatEnabled', 'Enabled', d.chat?.enabled ?? false, 'Enable the chat console'),
+    ].join('') + cardFooter('chatBody');
 
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','openApiBody','customizationBody','deploymentBody'].forEach(id => {
+    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','openApiBody','docsBody','footerBody','chatBody','customizationBody','deploymentBody'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = msg;
     });

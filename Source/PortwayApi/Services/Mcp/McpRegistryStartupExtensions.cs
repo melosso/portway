@@ -4,14 +4,13 @@ using Serilog;
 namespace PortwayApi.Services.Mcp;
 
 /// <summary>
-/// Startup wiring for the MCP endpoint registry; builds the tool list, wires hot-reload and maps the MCP Apps route
+/// Startup wiring for the MCP endpoint registry; builds the tool list and wires hot-reload
 /// </summary>
 public static class McpRegistryStartupExtensions
 {
     public static WebApplication MapMcpRegistry(this WebApplication app)
     {
         var mcpRegistry = app.Services.GetRequiredService<McpEndpointRegistry>();
-        var mcpAppsProvider = app.Services.GetRequiredService<McpAppsResourceProvider>();
 
         var mcpEndpoints = new List<EndpointMcpInfo>();
 
@@ -24,8 +23,6 @@ public static class McpRegistryStartupExtensions
             mcpEndpoints.AddRange(BuildEndpointMcpInfos(EndpointHandler.GetFileEndpoints()));
             mcpEndpoints.AddRange(BuildEndpointMcpInfos(EndpointHandler.GetStaticEndpoints()));
             mcpRegistry.RegisterEndpoints(mcpEndpoints);
-            var html = McpAppsResourceProvider.GenerateEndpointExplorerHtml(mcpEndpoints);
-            mcpAppsProvider.RegisterUiResource("ui://portway/endpoint-explorer", html);
             Log.Information("MCP registry refreshed: {Count} tools registered", mcpEndpoints.Count);
         }
 
@@ -37,23 +34,6 @@ public static class McpRegistryStartupExtensions
         // Initialize the MCP protocol tools
         PortwayMcpTools.Initialize(mcpRegistry);
 
-        // Add MCP Apps UI resource endpoint
-        app.MapGet("/mcp/apps/{*path}", async (HttpContext context, CancellationToken ct) =>
-        {
-            var path = context.Request.RouteValues["path"]?.ToString() ?? "";
-            var resourceUri = $"ui://portway/{path.TrimStart('/')}";
-
-            if (mcpAppsProvider.GetUiResource(resourceUri) is { } html)
-            {
-                context.Response.ContentType = "text/html; profile=mcp-app";
-                await context.Response.WriteAsync(html, ct);
-                return;
-            }
-
-            context.Response.StatusCode = 404;
-        }).ExcludeFromDescription();
-
-        Log.Information("MCP Apps support enabled, resources registered: {Count}", mcpAppsProvider.GetAllResources().Count);
 
         return app;
     }

@@ -430,6 +430,34 @@ public class WebUiSecurityTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
     }
 
+    [Fact]
+    public async Task SettingsWrite_RejectsUnsafeOpenApiValues()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        foreach (var (key, value) in new (string, object)[]
+        {
+            ("OpenApi:Footer:Url", "javascript:alert(1)"),
+            ("OpenApi:Footer:Target", "_top"),
+            ("OpenApi:Version", "../v1"),
+            ("OpenApi:SecurityDefinition:In", "Query"),
+            ("OpenApi:SecurityDefinition:Type", "OAuth2"),
+            ("OpenApi:DefaultGroup", "A/B"),
+            ("OpenApi:ScalarTheme", "evil"),
+            ("OpenApi:Contact:Email", "not an address"),
+            ("OpenApi:Title", new string('x', 201))
+        })
+        {
+            var req = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie, new Dictionary<string, object> { [key] = value });
+            Assert.True(HttpStatusCode.BadRequest == (await client.SendAsync(req, TestContext.Current.CancellationToken)).StatusCode, key);
+        }
+
+        var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com" });
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
     /// <summary>
     /// Puts one enabled provider in the database so the kill switch has something to hide
     /// </summary>

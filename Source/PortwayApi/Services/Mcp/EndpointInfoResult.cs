@@ -15,6 +15,4 @@ public sealed record EndpointInfoResult
     public string? Url { get; init; }
     public IReadOnlyList<string> AllowedEnvironments { get; init; } = [];
     public IReadOnlyList<string> TenantHeaders { get; init; } = [];
-    public bool HasUi { get; init; }
-    public string? UiUri { get; init; }
 }

@@ -77,10 +77,10 @@ public class NestedNamespaceTests : ApiTestBase
 
         var tags = doc.RootElement.GetProperty("tags").EnumerateArray().ToList();
 
-        var child = tags.Single(t => t.GetProperty("name").GetString() == "WMS/Inbound");
-        Assert.Equal("WMS", child.GetProperty("parent").GetString());
+        var child = tags.Single(t => t.GetProperty("name").GetString() == "ns:WMS/Inbound");
+        Assert.Equal("ns:WMS", child.GetProperty("parent").GetString());
         Assert.Equal("nav", child.GetProperty("kind").GetString());
 
-        Assert.Contains(tags, t => t.GetProperty("name").GetString() == "WMS");
+        Assert.Contains(tags, t => t.GetProperty("name").GetString() == "ns:WMS");
     }
 }

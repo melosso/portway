@@ -28,7 +28,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, HttpContext ctx) =>
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, IOptionsMonitor<PortwayApi.Classes.OpenApi.OpenApiSettings> openApiMonitor, HttpContext ctx) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -50,6 +50,7 @@ public static partial class WebUiEndpointExtensions
             var peerIp = ctx.Connection.RemoteIpAddress;
             var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy = !string.IsNullOrEmpty(forwardedFor);
+            var openApi = openApiMonitor.CurrentValue;
 
             return Results.Json(new
             {
@@ -98,6 +99,29 @@ public static partial class WebUiEndpointExtensions
                     traffic_logging = config.GetValue("RequestTrafficLogging:Enabled", false),
                     landing_page = config.GetValue("WebUi:Customization:EnableLandingPage", true),
                     oidc_providers = await db.OidcProviders.CountAsync(p => p.IsEnabled)
+                },
+                openapi = new
+                {
+                    title = openApi.Title,
+                    version = openApi.Version,
+                    description = openApi.Description,
+                    contact_name = openApi.Contact.Name,
+                    contact_email = openApi.Contact.Email,
+                    force_https = openApi.ForceHttpsInProduction,
+                    show_namespaces = openApi.ShowNamespaces,
+                    default_group = openApi.DefaultGroup,
+                    security_description = openApi.SecurityDefinition.Description,
+                    footer_text = openApi.Footer.Text,
+                    footer_url = openApi.Footer.Url,
+                    footer_target = openApi.Footer.Target,
+                    footer_source_icon = openApi.Footer.ShowSourceIcon,
+                    theme = openApi.ScalarTheme,
+                    layout = openApi.ScalarLayout,
+                    show_sidebar = openApi.ScalarShowSidebar,
+                    hide_download = openApi.ScalarHideDownloadButton,
+                    hide_models = openApi.ScalarHideModels,
+                    hide_client = openApi.ScalarHideClientButton,
+                    hide_test_request = openApi.ScalarHideTestRequestButton
                 },
                 customization = new
                 {
@@ -160,9 +184,7 @@ public static partial class WebUiEndpointExtensions
                 {
                     enabled = config.GetValue<bool>("Mcp:Enabled"),
                     path = config.GetValue<string>("Mcp:Path") ?? "/mcp",
-                    require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication"),
-                    apps_enabled = config.GetValue<bool>("Mcp:AppsEnabled", true),
-                    apps_path = "/mcp/apps"
+                    require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication")
                 },
                 chat = new
                 {
@@ -335,7 +357,7 @@ public static partial class WebUiEndpointExtensions
 
         if (!trusted) return peer;
 
-        // ponytail: first hop only, wrong for partially trusted multi-proxy chains
+        // first hop only, wrong for partially trusted multi-proxy chains
         var forwarded = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (string.IsNullOrEmpty(forwarded)) return peer;
 

@@ -4,6 +4,7 @@
     "DatabaseObjectType": "TableValuedFunction",
     "Namespace": "Company",
     "NamespaceDisplayName": "Company",
+    "NamespaceDescription": "Retrieve and manage company information and related organizational settings.",
     "FunctionParameters": [
         {
             "Name": "DepartmentId",
@@ -37,7 +38,7 @@
     "AllowedMethods": ["GET"],
     "AllowedEnvironments": ["500", "700"],
     "Documentation": {
-        "TagDescription": "Retrieve and manage company information and related organizational settings.",
+        "TagDescription": "Department records.",
         "MethodDescriptions": {
             "GET": "Retrieve department data"
         },

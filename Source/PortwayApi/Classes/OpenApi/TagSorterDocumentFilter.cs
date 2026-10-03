@@ -8,26 +8,14 @@ public class TagSorterDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        // Sort all tags alphabetically
         if (document.Tags != null && document.Tags.Count > 0)
         {
-            // Log the tags before sorting for debugging
-            var tagsBefore = string.Join(", ", document.Tags.Select(t => t.Name));
-            Debug.WriteLine($"TagSorterDocumentFilter - Tags before sorting: {tagsBefore}");
-
-            var sortedTags = document.Tags
-                .OrderBy(tag => tag.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-
+            var sortedTags = SortTree(document.Tags);
             document.Tags.Clear();
             foreach (var tag in sortedTags)
             {
                 document.Tags.Add(tag);
             }
-
-            // Log the tags after sorting for debugging
-            var tagsAfter = string.Join(", ", document.Tags.Select(t => t.Name));
-            Debug.WriteLine($"TagSorterDocumentFilter - Tags after sorting: {tagsAfter}");
         }
         else
         {
@@ -65,5 +53,34 @@ public class TagSorterDocumentFilter : IOpenApiDocumentTransformer
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Depth first per group, endpoints before subgroups, siblings by the title the sidebar shows
+    /// </summary>
+    internal static List<OpenApiTag> SortTree(IEnumerable<OpenApiTag> tags)
+    {
+        var all = tags.ToList();
+        var names = all.Select(t => t.Name).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var children = all.ToLookup(t => t.Parent?.Name is { } parent && names.Contains(parent) ? parent : string.Empty, StringComparer.OrdinalIgnoreCase);
+
+        var sorted = new List<OpenApiTag>(all.Count);
+        void Add(string parent)
+        {
+            foreach (var tag in children[parent]
+                .OrderBy(t => children.Contains(t.Name ?? string.Empty))
+                .ThenBy(t => t.Summary ?? t.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(t => t.Name, StringComparer.Ordinal))
+            {
+                sorted.Add(tag);
+                if (!string.IsNullOrEmpty(tag.Name))
+                {
+                    Add(tag.Name);
+                }
+            }
+        }
+
+        Add(string.Empty);
+        return sorted;
     }
 }

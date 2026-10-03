@@ -4,13 +4,14 @@
   "EnableFiltering": true,
   "Namespace": "Masterdata",
   "NamespaceDisplayName": "Masterdata",
+  "NamespaceDescription": "Access all relevant masterdata, which may be used throughout the system.",
   "AllowedEnvironments": [
     "500",
     "700",
     "Synergy"
   ],
   "Documentation": {
-    "TagDescription": "**Masterdata**\n\nAccess all relevent masterdata, which may be used throughout the system.",
+    "TagDescription": "Cost center codes.",
     "MethodDescriptions": {
       "GET": "Retrieve costcenters"
     },

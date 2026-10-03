@@ -11,9 +11,8 @@ public partial class DynamicEndpointDocumentFilter
         // Get SQL endpoints
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
 
-        // Sort endpoints by DocumentationTag to ensure alphabetical order in documentation
         var sortedSqlEndpoints = sqlEndpoints
-            .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(ep => ep.Value.FullPath, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         foreach (var endpoint in sortedSqlEndpoints)
@@ -27,7 +26,7 @@ public partial class DynamicEndpointDocumentFilter
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-            OpenApiTags.Declare(document, definition);
+            DeclareTag(document, definition);
 
             // Path template for this endpoint (use FullPath to include namespace if present)
             string path = OpenApiEndpointCatalog.BasePath(definition);
@@ -112,7 +111,7 @@ public partial class DynamicEndpointDocumentFilter
 
         var operation = new OpenApiOperation
         {
-            Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) }, // Use DocumentationTag for proper namespace grouping
+            Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
             Summary = GetOperationSummary(method, endpointName, definition),
             Description = GetOperationDescription(method, endpointName, definition),
             OperationId = $"op_{operationId}",
@@ -434,7 +433,7 @@ public partial class DynamicEndpointDocumentFilter
 
         var operation = new OpenApiOperation
         {
-            Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) }, // Use DocumentationTag for proper namespace grouping (consistent with other operations)
+            Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
             Summary = GetOperationSummary("DELETE", endpointName, definition),
             Description = GetOperationDescription("DELETE", endpointName, definition),
             OperationId = $"op_{operationId}",

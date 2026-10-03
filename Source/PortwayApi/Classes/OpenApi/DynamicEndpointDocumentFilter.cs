@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 namespace PortwayApi.Classes.OpenApi;
@@ -8,12 +9,19 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<DynamicEndpointDocumentFilter> _logger;
     private readonly EnvironmentSettings _environmentSettings;
+    private readonly IOptionsMonitor<OpenApiSettings> _openApiSettings;
 
-    public DynamicEndpointDocumentFilter(ILogger<DynamicEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings)
+    public DynamicEndpointDocumentFilter(ILogger<DynamicEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings, IOptionsMonitor<OpenApiSettings> openApiSettings)
     {
         _logger = logger;
         _environmentSettings = environmentSettings;
+        _openApiSettings = openApiSettings;
     }
+
+    private static string TagFor(EndpointDefinition definition) => OpenApiTags.NameFor(definition);
+
+    private string DeclareTag(OpenApiDocument document, EndpointDefinition definition, string? fallbackDescription = null) =>
+        OpenApiTags.Declare(document, definition, TagFor(definition), _openApiSettings.CurrentValue, fallbackDescription: fallbackDescription);
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {

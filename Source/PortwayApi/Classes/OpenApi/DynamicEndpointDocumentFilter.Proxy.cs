@@ -31,7 +31,7 @@ public partial class DynamicEndpointDocumentFilter
 
         var operation = new OpenApiOperation
         {
-            Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) },
+            Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
             Summary = GetOperationSummary("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             Description = GetOperationDescription("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             OperationId = $"delete_{definition.FullPath}".Replace("/", "_"),
@@ -111,7 +111,7 @@ public partial class DynamicEndpointDocumentFilter
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
 
         var sortedProxyEndpoints = proxyEndpoints
-            .OrderBy(ep => ep.Value.DocumentationTag, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(ep => ep.Value.FullPath, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         foreach (var endpoint in sortedProxyEndpoints)
@@ -125,7 +125,7 @@ public partial class DynamicEndpointDocumentFilter
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-            OpenApiTags.Declare(document, definition);
+            DeclareTag(document, definition);
 
             string path = OpenApiEndpointCatalog.BasePath(definition);
 
@@ -146,7 +146,7 @@ public partial class DynamicEndpointDocumentFilter
 
                 var operation = new OpenApiOperation
                 {
-                    Tags = new HashSet<OpenApiTagReference> { new(definition.DocumentationTag) },
+                    Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
                     Summary = GetOperationSummary(method, definition.DisplayName ?? definition.EndpointName, definition),
                     Description = GetOperationDescription(method, definition.DisplayName ?? definition.EndpointName, definition),
                     OperationId = $"{method.ToLower()}_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),

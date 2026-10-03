@@ -3,6 +3,7 @@
   "DatabaseObjectName": "CompanyEmployees",
   "Namespace": "Company",
   "NamespaceDisplayName": "Company",
+  "NamespaceDescription": "Retrieve and manage company information and related organizational settings.",
   "Hidden": false,
   "AllowedEnvironments": ["Synergy"],
   "AllowedMethods": ["GET", "POST", "PATCH"],
@@ -11,7 +12,7 @@
   "Documentation": {
     "Summary": "Retrieve employee data",
     "Description": "Access and manage employee records including personal details, job information, organizational assignments, and employment history. Useful for HR processes, payroll, performance tracking, and workforce management.",
-    "TagDescription": "Retrieve and manage company information and related organizational settings.",
+    "TagDescription": "Employee records.",
     "MethodDescriptions": {
         "GET": "Retrieve employee records",
         "POST": "Create a new employee",

@@ -5,8 +5,9 @@
     "AllowedEnvironments": ["500","700"],
     "Namespace": "Masterdata",
     "NamespaceDisplayName": "Masterdata",
+    "NamespaceDescription": "Access all relevant masterdata, which may be used throughout the system.",
     "Documentation": {
-        "TagDescription": "**Masterdata**\n\nAccess all relevent masterdata, which may be used throughout the system.",
+        "TagDescription": "Classification codes.",
         "MethodDescriptions": {
             "GET": "Retrieve classifications"
         },

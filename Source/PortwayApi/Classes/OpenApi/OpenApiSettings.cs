@@ -9,6 +9,8 @@ public class OpenApiSettings
     public ContactInfo Contact { get; set; } = new ContactInfo();
     public SecurityDefinitionInfo SecurityDefinition { get; set; } = new SecurityDefinitionInfo();
     public bool ForceHttpsInProduction { get; set; } = true; // Always use HTTPS in production environments
+    public bool ShowNamespaces { get; set; } = true; // groups endpoints by namespace in the sidebar
+    public string DefaultGroup { get; set; } = "General"; // sidebar group for endpoints without a namespace, empty keeps them flat
 
     // Scalar-specific
     public FooterInfo Footer { get; set; } = new FooterInfo();

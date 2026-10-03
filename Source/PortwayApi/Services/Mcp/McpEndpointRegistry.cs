@@ -72,7 +72,6 @@ public class McpEndpointRegistry
                     TenantHeaders = ep.TenantHeaders,
                     AvailableFields = ep.AvailableFields,
                     Url = ep.Url,
-                    UiResourceUri = ep.UiEnabled ? $"ui://endpoints/{ep.Name}" : null,
                     ContentType = ep.ContentType,
                     EndpointKind = ep.EndpointKind,
                     Instruction = ep.Instruction

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Text.Json;
 using PortwayApi.Tests.Base;
@@ -219,6 +221,49 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Equal("never", root.GetProperty("showDeveloperTools").GetString());
         Assert.True(root.GetProperty("agent").GetProperty("disabled").GetBoolean());
         Assert.True(root.GetProperty("mcp").GetProperty("disabled").GetBoolean());
+    }
+
+    // the footer script rewrites the powered by link, the vendored bundle must still emit that url
+    [Fact]
+    public async Task ScalarPage_FooterSelectorMatchesVendoredBundle()
+    {
+        const string poweredBy = "https://scalar.com/?utm_source=powered-by";
+        var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
+        Assert.Contains($"a[href^=\"{poweredBy}\"]", html);
+
+        var bundle = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "wwwroot", "js", "vendor", "scalar-api-reference.js"), TestContext.Current.CancellationToken);
+        Assert.Contains("`https://scalar.com/`", bundle);
+        Assert.Contains("`utm_source`,`powered-by`", bundle);
+    }
+
+    // scalar draws an empty operations card for namespace groups, the page css hides it
+    [Fact]
+    public async Task ScalarPage_HidesEmptyOperationsCard()
+    {
+        var html = await _client.GetStringAsync("/docs", TestContext.Current.CancellationToken);
+        var match = System.Text.RegularExpressions.Regex.Match(html, "data-configuration='([^']*)'");
+        Assert.True(match.Success);
+
+        using var config = JsonDocument.Parse(match.Groups[1].Value);
+        Assert.Contains(".scalar-app .endpoints-card:not(:has(li)) { display: none; }", config.RootElement.GetProperty("customCss").GetString());
+    }
+
+    // footer and title come from settings the console can write, so the docs page must encode them
+    [Fact]
+    public async Task ScalarPage_EncodesTitleAndFooter()
+    {
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["OpenApi:Title"] = "</title><script>alert(1)</script>",
+            ["OpenApi:Footer:Text"] = "x'; alert(2); '",
+            ["OpenApi:Footer:Url"] = "https://example.com/'+alert(3)+'",
+            ["OpenApi:Footer:Target"] = "_blank'</script><script>alert(4)</script>"
+        })));
+        var html = await factory.CreateClient().GetStringAsync("/docs", TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain("<script>alert(", html);
+        Assert.DoesNotContain("'; alert(2); '", html);
+        Assert.DoesNotContain("'+alert(3)+'", html);
     }
 
     // The document names its own URI so other descriptions can reference it

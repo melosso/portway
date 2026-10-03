@@ -116,6 +116,11 @@ public class EndpointDefinition
     public string? NamespaceDisplayName { get; set; }
 
     /// <summary>
+    /// Markdown description of the namespace group in the OpenAPI document
+    /// </summary>
+    public string? NamespaceDescription { get; set; }
+
+    /// <summary>
     /// Folder name where the endpoint definition is located
     /// </summary>
     public string? FolderName { get; set; }
@@ -152,11 +157,6 @@ public class EndpointDefinition
     /// Gets the full path including namespace (for routing keys)
     /// </summary>
     public string FullPath => HasNamespace ? $"{EffectiveNamespace}/{EndpointName}" : EndpointName;
-
-    /// <summary>
-    /// OpenAPI tag name, the route path so namespaced endpoints nest under their namespace
-    /// </summary>
-    public string DocumentationTag => FullPath;
 
     /// <summary>
     /// Creates URL patterns for routing (supports both namespaced and non-namespaced)

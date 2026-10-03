@@ -199,7 +199,6 @@ aside {
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
     transition: width 0.22s ease, min-width 0.22s ease;
 }
 
@@ -209,6 +208,7 @@ aside {
     padding: 0 0.5rem 0 0.625rem;
     display: flex;
     align-items: center;
+    overflow: hidden;
     border-bottom: 1px solid hsl(var(--sidebar-border));
 }
 
@@ -615,7 +615,9 @@ body.sidebar-expanding main {
 
 .account-menu button,
 .account-menu a {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     width: 100%;
     padding: 0.5rem 0.625rem;
     border: none;
@@ -660,30 +662,38 @@ body.sidebar-expanding main {
 
 .account-menu-nest { position: relative; }
 
-.account-menu-nest > button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.account-menu-chevron {
+.account-menu-icon {
     margin-left: auto;
     color: hsl(var(--muted-foreground));
 }
 
+/* flies out beside its row since the menu already sits against the bottom of the window */
 .account-submenu {
+    position: absolute;
+    bottom: -0.25rem;
+    left: calc(100% + 0.5rem);
+    z-index: 31;
+    min-width: 9rem;
+    padding: 0.25rem;
+    border-radius: var(--nav-radius);
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
     display: flex;
     flex-direction: column;
     gap: 0.125rem;
-    padding-left: 0.625rem;
 }
 
 .account-submenu.hidden { display: none; }
 
-.account-submenu button {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+/* bridges the gap so the pointer can cross to the flyout */
+.account-submenu::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 100%;
+    width: 0.5rem;
 }
 
 .account-submenu button::before {

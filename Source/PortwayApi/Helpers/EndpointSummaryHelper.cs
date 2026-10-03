@@ -169,8 +169,10 @@ public static class EndpointSummaryHelper
         // Fail closed when an $expand relationship points at an endpoint that is not a registered SQL endpoint
         ValidateRelationshipTargets(sqlEndpoints);
 
-        foreach (var (ns, labels) in OpenApiTags.NamespaceLabelConflicts(OpenApiEndpointCatalog.All().Select(e => e.Definition)))
-            Log.Warning("Namespace {Namespace} has conflicting NamespaceDisplayName values {Labels}; /docs uses {Label}. Set one value on every endpoint in the namespace", ns, labels, labels[0]);
+        var documented = OpenApiEndpointCatalog.All().Select(e => e.Definition).ToList();
+        foreach (var (key, setting) in new (string, Func<EndpointDefinition, string?>)[] { ("NamespaceDisplayName", e => e.NamespaceDisplayName), ("NamespaceDescription", e => e.NamespaceDescription) })
+            foreach (var (ns, values) in OpenApiTags.NamespaceConflicts(documented, setting))
+                Log.Warning("Namespace {Namespace} has conflicting {Setting} values {Values}; /docs uses {Value}. Set one value on every endpoint in the namespace", ns, key, values, values[0]);
 
         var proxies = proxyEndpointMap.Where(e => e.Value.Type != "Composite").ToDictionary(e => e.Key, e => e.Value);
         var composites = proxyEndpointMap.Where(e => e.Value.Type == "Composite").ToDictionary(e => e.Key, e => e.Value);

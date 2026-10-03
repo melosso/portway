@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Text.Json;
 using PortwayApi.Tests.Base;
@@ -40,10 +42,10 @@ public class OpenApiTagTests : ApiTestBase
         Assert.All(OperationTags(doc).Where(o => o.Path.StartsWith("/api/{env}/Finance/OutstandingItems")), o => Assert.Equal("Finance/OutstandingItems", o.Tag));
 
         var leaf = tags["Finance/OutstandingItems"];
-        Assert.Equal("Finance", Text(leaf, "parent"));
+        Assert.Equal("ns:Finance", Text(leaf, "parent"));
         Assert.Equal("Outstanding Items", Text(leaf, "summary"));
-        Assert.Equal("Servicing", Text(tags["ServiceRequest"], "summary"));
-        Assert.Equal("ServiceRequest", Text(tags["ServiceRequest/Requests"], "parent"));
+        Assert.Equal("Servicing", Text(tags["ns:ServiceRequest"], "summary"));
+        Assert.Equal("ns:ServiceRequest", Text(tags["ServiceRequest/Requests"], "parent"));
     }
 
     [Fact]
@@ -56,14 +58,18 @@ public class OpenApiTagTests : ApiTestBase
     }
 
     [Fact]
-    public async Task EveryParent_IsADeclaredTag_AndGroupsAreNav()
+    public async Task EveryParent_IsADeclaredTag_AndOnlyGroupsAreNav()
     {
         using var doc = await GetDocumentAsync();
         var tags = Tags(doc);
         var parents = tags.Values.Select(t => Text(t, "parent")).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var used = OperationTags(doc).Select(o => o.Tag).ToHashSet(StringComparer.Ordinal);
 
         Assert.All(parents, p => Assert.True(tags.ContainsKey(p), $"parent {p} is not a declared tag"));
         Assert.All(parents, p => Assert.Equal("nav", Text(tags[p], "kind")));
+        Assert.All(used, t => Assert.Null(Text(tags[t], "kind")));
+        Assert.All(parents, p => Assert.DoesNotContain(p, used));
+        Assert.All(parents, p => Assert.False(string.IsNullOrWhiteSpace(Text(tags[p], "summary")), $"group {p} has no title"));
     }
 
     [Fact]
@@ -72,9 +78,9 @@ public class OpenApiTagTests : ApiTestBase
         using var doc = await GetDocumentAsync();
         var tags = Tags(doc);
 
-        Assert.Equal("WMS/Inbound", Text(tags["WMS/Inbound/StagingBins"], "parent"));
-        Assert.Equal("WMS", Text(tags["WMS/Inbound"], "parent"));
-        Assert.Equal("Inbound Logistics", Text(tags["WMS/Inbound"], "summary"));
+        Assert.Equal("ns:WMS/Inbound", Text(tags["WMS/Inbound/StagingBins"], "parent"));
+        Assert.Equal("ns:WMS", Text(tags["ns:WMS/Inbound"], "parent"));
+        Assert.Equal("Inbound Logistics", Text(tags["ns:WMS/Inbound"], "summary"));
     }
 
     [Fact]
@@ -83,9 +89,98 @@ public class OpenApiTagTests : ApiTestBase
         using var doc = await GetDocumentAsync();
         var tags = Tags(doc);
 
-        Assert.All(OperationTags(doc).Where(o => o.Path.StartsWith("/api/{env}/files/CustomerData")), o => Assert.Equal("Files/CustomerData", o.Tag));
-        Assert.Equal("Files", Text(tags["Files/CustomerData"], "parent"));
-        Assert.Contains("Customer exports", Text(tags["Files/CustomerData"], "description"));
+        Assert.All(OperationTags(doc).Where(o => o.Path.StartsWith("/api/{env}/files/CustomerData")), o => Assert.Equal("files/CustomerData", o.Tag));
+        Assert.Equal("ns:Files", Text(tags["files/CustomerData"], "parent"));
+        Assert.Equal("Files", Text(tags["ns:Files"], "summary"));
+        Assert.Contains("Customer exports", Text(tags["files/CustomerData"], "description"));
         Assert.False(tags.ContainsKey("CustomerData"), "file TagDescription must not create a tag without operations");
+    }
+
+    [Fact]
+    public async Task NamespaceGroup_CarriesNamespaceDescription()
+    {
+        using var doc = await GetDocumentAsync();
+        var tags = Tags(doc);
+
+        Assert.Contains("masterdata", Text(tags["ns:Masterdata"], "description"), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task EndpointWithoutNamespace_NestsUnderTheDefaultGroup()
+    {
+        using var doc = await GetDocumentAsync();
+        var tags = Tags(doc);
+
+        Assert.All(OperationTags(doc).Where(o => o.Path == "/api/{env}/Requests"), o => Assert.Equal("Requests", o.Tag));
+        Assert.Equal("ns:General", Text(tags["Requests"], "parent"));
+        Assert.Equal("General", Text(tags["ns:General"], "summary"));
+    }
+
+    [Fact]
+    public async Task Siblings_AreOrderedByTitle_EndpointsBeforeSubgroups()
+    {
+        using var doc = await GetDocumentAsync();
+        var names = doc.RootElement.GetProperty("tags").EnumerateArray().Select(t => t.GetProperty("name").GetString()!).ToList();
+
+        Assert.True(names.IndexOf("Production/Machines") < names.IndexOf("Production/Lines"), "Machine Details sorts before Production Line Data");
+        Assert.True(names.IndexOf("WMS/Warehouses") < names.IndexOf("ns:WMS/Inbound"), "endpoints come before the nested group");
+        Assert.Equal(names.IndexOf("ns:WMS/Inbound") + 1, names.IndexOf("WMS/Inbound/StagingBins"));
+    }
+
+    [Fact]
+    public async Task ShowNamespacesOff_ListsEveryEndpointFlat()
+    {
+        SetAllowedEnvironments("500", "700", "WMS");
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(
+            new Dictionary<string, string?> { ["OpenApi:ShowNamespaces"] = "false" })));
+        var json = await factory.CreateClient().GetStringAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(json);
+        var tags = Tags(doc);
+        var used = OperationTags(doc).Select(o => o.Tag).ToHashSet(StringComparer.Ordinal);
+
+        Assert.All(tags.Values, t => Assert.Null(Text(t, "parent")));
+        Assert.All(tags.Values, t => Assert.Null(Text(t, "kind")));
+        Assert.All(tags.Keys, name => Assert.Contains(name, used));
+        Assert.Contains("Requests", used);
+        Assert.Contains("files/CustomerData", used);
+        Assert.Contains("Masterdata/Classifications", used);
+        Assert.Equal("Accounts", Text(tags["Account/Accounts"], "summary"));
+        Assert.Equal("Outstanding Items", Text(tags["Finance/OutstandingItems"], "summary"));
+    }
+
+    // the settings page saves these without a restart, so the document must follow a configuration reload
+    [Fact]
+    public async Task ShowNamespaces_AppliesOnConfigurationReload()
+    {
+        SetAllowedEnvironments("500", "700", "WMS");
+        var toggle = new ToggleSource();
+        using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.Add(toggle)));
+        var client = factory.CreateClient();
+        async Task<bool> HasGroups()
+        {
+            using var doc = JsonDocument.Parse(await client.GetStringAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken));
+            return Tags(doc).Values.Any(t => Text(t, "parent") is not null);
+        }
+
+        Assert.True(await HasGroups());
+
+        toggle.Provider.Change("OpenApi:ShowNamespaces", "false");
+
+        Assert.False(await HasGroups());
+    }
+
+    private sealed class ToggleSource : IConfigurationSource
+    {
+        public ToggleProvider Provider { get; } = new();
+        public IConfigurationProvider Build(IConfigurationBuilder builder) => Provider;
+    }
+
+    private sealed class ToggleProvider : ConfigurationProvider
+    {
+        public void Change(string key, string value)
+        {
+            Data[key] = value;
+            OnReload();
+        }
     }
 }

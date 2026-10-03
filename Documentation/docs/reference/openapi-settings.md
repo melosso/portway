@@ -76,6 +76,8 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `SecurityDefinition.Type` | string | `ApiKey`, `Http`, `OAuth2`, `OpenIdConnect` |
 | `SecurityDefinition.Scheme` | string | HTTP scheme, e.g. `Bearer` |
 | `ForceHttpsInProduction` | boolean | HTTPS server URLs in production (default `true`) |
+| `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
+| `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
 | `ScalarTheme` | string | Scalar theme |
 | `ScalarLayout` | string | `modern` or `classic` |
 | `ScalarShowSidebar` | boolean | Sidebar |
@@ -83,6 +85,8 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ScalarHideModels` | boolean | Hides the schema section |
 | `ScalarHideClientButton` | boolean | Hides client generation |
 | `ScalarHideTestRequestButton` | boolean | Hides test requests |
+
+The console edits these properties under **Settings → Integrations** (OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled`, `Version` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`.
 
 ## Endpoint documentation
 
@@ -140,7 +144,7 @@ With `Enabled: false`, requests return `503` with `Retry-After`, the operations 
 
 ## Nested tags
 
-Every namespaced endpoint is tagged by its route path (`WMS/Inbound/StagingBins`) with `parent` set to the tag one segment up and `kind: nav` on every group. Missing parent tags are generated. `summary` holds the `DisplayName` or `NamespaceDisplayName`, else the last segment. The `/docs` sidebar nests tags by `parent` and labels them with `summary`. See [Namespaces](/reference/namespaces#openapi-tags).
+Endpoint tags are named by their route path (`WMS/Inbound/StagingBins`) with `parent` set to their group. Group tags are named `ns:{namespace}` (`ns:WMS/Inbound`), carry `kind: nav` and set `parent` to the group one segment up; missing groups are generated. `summary` holds the `DisplayName` or `NamespaceDisplayName`, else the last segment. The `/docs` sidebar nests tags by `parent` and labels them with `summary`. See [Namespaces](/reference/namespaces#openapi-tags).
 
 ## Schema discovery
 

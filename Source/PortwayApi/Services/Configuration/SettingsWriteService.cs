@@ -34,6 +34,11 @@ public sealed class SettingsWriteService
 
     private static readonly Regex ScheduleFormat = new(@"^([01]\d|2[0-3]):[0-5]\d$", RegexOptions.Compiled);
 
+    private static readonly Regex NameFormat = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$", RegexOptions.Compiled);
+
+    private static readonly string[] ScalarThemes =
+        ["default", "alternate", "moon", "purple", "solarized", "bluePlanet", "saturn", "kepler", "mars", "deepSpace", "elysiajs", "fastify", "laserwave", "none"];
+
     // Writable keys; anything else is refused by name
     private static readonly Dictionary<string, WritableSetting> Allowed =
         new(StringComparer.OrdinalIgnoreCase)
@@ -64,7 +69,6 @@ public sealed class SettingsWriteService
 
             ["Mcp:Enabled"] = new("Mcp:Enabled", "bool", true),
             ["Mcp:RequireAuthentication"] = new("Mcp:RequireAuthentication", "bool", true),
-            ["Mcp:AppsEnabled"] = new("Mcp:AppsEnabled", "bool", true),
             ["Mcp:ChatEnabled"] = new("Mcp:ChatEnabled", "bool", true),
 
             ["WebUi:SecureCookies"] = new("WebUi:SecureCookies", "bool", true),
@@ -75,6 +79,26 @@ public sealed class SettingsWriteService
 
             ["Oidc:Enabled"] = new("Oidc:Enabled", "bool", false),
             ["OpenApi:Enabled"] = new("OpenApi:Enabled", "bool", true),
+            ["OpenApi:Title"] = new("OpenApi:Title", "text", false, Max: 200),
+            ["OpenApi:Version"] = new("OpenApi:Version", "name", true),
+            ["OpenApi:Description"] = new("OpenApi:Description", "text", false, Max: 4_000),
+            ["OpenApi:Contact:Name"] = new("OpenApi:Contact:Name", "text", false, Max: 200),
+            ["OpenApi:Contact:Email"] = new("OpenApi:Contact:Email", "email", false),
+            ["OpenApi:ForceHttpsInProduction"] = new("OpenApi:ForceHttpsInProduction", "bool", false),
+            ["OpenApi:ShowNamespaces"] = new("OpenApi:ShowNamespaces", "bool", false),
+            ["OpenApi:DefaultGroup"] = new("OpenApi:DefaultGroup", "name", false),
+            ["OpenApi:SecurityDefinition:Description"] = new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),
+            ["OpenApi:Footer:Text"] = new("OpenApi:Footer:Text", "text", false, Max: 200),
+            ["OpenApi:Footer:Url"] = new("OpenApi:Footer:Url", "link", false),
+            ["OpenApi:Footer:Target"] = new("OpenApi:Footer:Target", "choice", false, Choices: ["_blank", "_self"]),
+            ["OpenApi:Footer:ShowSourceIcon"] = new("OpenApi:Footer:ShowSourceIcon", "bool", false),
+            ["OpenApi:ScalarTheme"] = new("OpenApi:ScalarTheme", "choice", false, Choices: ScalarThemes),
+            ["OpenApi:ScalarLayout"] = new("OpenApi:ScalarLayout", "choice", false, Choices: ["modern", "classic"]),
+            ["OpenApi:ScalarShowSidebar"] = new("OpenApi:ScalarShowSidebar", "bool", false),
+            ["OpenApi:ScalarHideDownloadButton"] = new("OpenApi:ScalarHideDownloadButton", "bool", false),
+            ["OpenApi:ScalarHideModels"] = new("OpenApi:ScalarHideModels", "bool", false),
+            ["OpenApi:ScalarHideClientButton"] = new("OpenApi:ScalarHideClientButton", "bool", false),
+            ["OpenApi:ScalarHideTestRequestButton"] = new("OpenApi:ScalarHideTestRequestButton", "bool", false),
             ["RequestTrafficLogging:Enabled"] = new("RequestTrafficLogging:Enabled", "bool", true),
 
             ["FileStorage:MaxFileSizeBytes"] = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
@@ -182,6 +206,19 @@ public sealed class SettingsWriteService
             ? (JsonValue.Create(""), null)
             : (null, $"'{spec.Key}' can only be cleared from here, not set"),
 
+        // identifiers that land in routes, tag names and the docs page; empty restores the default
+        "name" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || NameFormat.IsMatch(raw.GetString()!))
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' allows letters, digits, dots, dashes and underscores only"),
+
+        "link" => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' must be an http, https or mailto link, or #"),
+
+        "email" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || IsEmail(raw.GetString()!))
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' must be an e-mail address"),
+
         "time" => raw.ValueKind == JsonValueKind.String && ScheduleFormat.IsMatch(raw.GetString() ?? "")
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be a 24-hour time such as 03:00"),
@@ -219,6 +256,16 @@ public sealed class SettingsWriteService
         return (items, null);
     }
 
+    /// <summary>
+    /// Link targets a page may render: http, https, mailto or a bare fragment
+    /// </summary>
+    public static bool IsSafeLink(string value) =>
+        value == "#" ||
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto";
+
+    private static bool IsEmail(string value) =>
+        value.Length <= 254 && !value.Any(char.IsWhiteSpace) && System.Net.Mail.MailAddress.TryCreate(value, out var address) && address.Address == value;
+
     private static string? ParseIp(string value) =>
         IPAddress.TryParse(value, out _) ? null : $"'{value}' is not an IP address";
 
@@ -227,7 +274,7 @@ public sealed class SettingsWriteService
         if (!IPNetwork.TryParse(value, out var network))
             return $"'{value}' is not a network in CIDR form, such as 10.0.0.0/8";
 
-        // ponytail: refuses only a zero-length prefix, wide private ranges are the operator's call
+        // refuses only a zero-length prefix, wide private ranges are the operator's call
         if (network.PrefixLength == 0)
             return $"'{value}' covers every address; name the proxy's network instead";
 

@@ -2,6 +2,7 @@
   "DatabaseObjectName": "Warehouses",
   "Namespace": "WMS",
   "NamespaceDisplayName": "WMS",
+  "NamespaceDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
   "AllowedEnvironments": [
     "WMS"
   ],
@@ -24,7 +25,7 @@
     "DefaultSort": "Code ASC"
   },
   "Documentation": {
-    "TagDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
+    "TagDescription": "Warehouse master data.",
     "MethodDescriptions": {
       "GET": "Retrieve warehouse locations"
     },

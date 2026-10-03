@@ -31,7 +31,7 @@ The setup wizard opens on the first visit to `/ui/mcp/chat`:
 1. Provider and model: Anthropic, OpenAI, Gemini or Mistral.
 2. API key: encrypted with the machine-bound PWENC key before it is written to `mcp.db`.
 
-The wizard is available from the Chat page to change credentials.
+The wizard is available from the Chat page and under **Settings → AI** to change credentials.
 
 ## Supply the API key via environment variable
 

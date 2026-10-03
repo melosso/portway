@@ -21,7 +21,6 @@ public static class McpServiceExtensions
         {
             services.Configure<McpOptions>(configuration.GetSection("Mcp"));
             services.AddSingleton<McpEndpointRegistry>();
-            services.AddSingleton<McpAppsResourceProvider>();
             services.AddSingleton<McpChatService>();
 
             // "internal" client: tool-execution calls back into the Portway API; timeout configurable, default 30 s

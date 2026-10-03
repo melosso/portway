@@ -62,12 +62,14 @@ The explicit `Namespace` takes precedence over the folder. Nested namespaces rou
 |---|---|---|---|
 | `Namespace` | string | No | Overrides the folder namespace |
 | `NamespaceDisplayName` | string | No | Namespace title in `/docs`; not part of the route or tag name |
+| `NamespaceDescription` | string | No | Namespace description in `/docs` (Markdown) |
 | `DisplayName` | string | No | Endpoint title in `/docs`; not part of the route or tag name |
 
 ```json
 {
   "Namespace": "Finance",
   "NamespaceDisplayName": "Financial Management System",
+  "NamespaceDescription": "Ledgers, invoices and payments.",
   "DisplayName": "General Ledger Entries"
 }
 ```
@@ -188,21 +190,25 @@ Reserved names: `api`, `docs`, `openapi`, `health`, `admin`, `system`, `composit
 
 ## OpenAPI tags
 
-Tag names follow the route: `{namespace}/{endpoint}` for a namespaced endpoint, `{endpoint}` otherwise, and `Files/{endpoint}` for a file endpoint without a namespace. Each tag sets `parent` to the tag one segment up, so `/docs` lists `CRM` with `Accounts` and `Suppliers` beneath it. Labels set the sidebar title (`summary`) and never change a tag name.
+Endpoint tags are named by the route below `/api/{env}`: `{namespace}/{endpoint}` for a namespaced endpoint, `{endpoint}` without a namespace, `files/{endpoint}` for a file endpoint. Group tags are named `ns:{namespace}` and carry `kind: nav`; endpoint tags never do. Each endpoint tag sets `parent` to its group, and a nested group sets `parent` to the group one segment up, so `/docs` lists `CRM` with `Accounts` and `Suppliers` beneath it. The `ns:` prefix keeps a group from sharing a name with an endpoint, so an endpoint named `CRM` and a namespace `CRM` stay apart. Labels set the sidebar title (`summary`) and never change a tag name.
 
-| Tag | Title |
-|---|---|
-| Namespace (`CRM`) | `NamespaceDisplayName`, else the last namespace segment |
-| Endpoint (`CRM/Accounts`) | `DisplayName`, else the endpoint folder |
+An endpoint without a namespace is placed in the `ns:{DefaultGroup}` group (`OpenApi:DefaultGroup`, default `General`), a file endpoint without a namespace in `ns:Files`. With an empty `DefaultGroup` an endpoint without a namespace has no `parent`. With `OpenApi:ShowNamespaces` set to `false` no group tags are declared and no tag has a `parent`.
 
-The endpoint's `TagDescription` describes its own tag. Endpoints in one namespace should share one `NamespaceDisplayName`. With conflicting values the title is the ordinal first value, and startup logs a warning naming the namespace and its values.
+| Tag | Title | Description |
+|---|---|---|
+| Group (`ns:CRM`) | `NamespaceDisplayName`, else the last namespace segment | `NamespaceDescription` |
+| Endpoint (`CRM/Accounts`) | `DisplayName`, else the endpoint folder | `Documentation.TagDescription` |
+
+Endpoints in one namespace should share one `NamespaceDisplayName` and one `NamespaceDescription`. Set them on every endpoint in the namespace or on one. With conflicting values the ordinal first value is used, and startup logs a warning naming the namespace, the setting and its values.
+
+Within each group, endpoints are listed before subgroups, each ordered by title. A namespace named like `DefaultGroup` shares its group.
 
 ```json
 {
   "tags": [
-    { "name": "CRM", "summary": "Customer Relationship Management", "kind": "nav" },
-    { "name": "CRM/Accounts", "summary": "Accounts", "parent": "CRM", "kind": "nav", "description": "Account Management" },
-    { "name": "CRM/Suppliers", "summary": "Vendors", "parent": "CRM", "kind": "nav" }
+    { "name": "ns:CRM", "summary": "Customer Relationship Management", "kind": "nav", "description": "Customers, contacts and suppliers." },
+    { "name": "CRM/Accounts", "summary": "Accounts", "parent": "ns:CRM", "description": "Account Management" },
+    { "name": "CRM/Suppliers", "summary": "Vendors", "parent": "ns:CRM" }
   ]
 }
 ```

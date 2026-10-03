@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using PortwayApi.Classes;
 
@@ -16,11 +17,13 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<FileEndpointDocumentFilter> _logger;
     private readonly EnvironmentSettings _environmentSettings;
+    private readonly IOptionsMonitor<OpenApiSettings> _openApiSettings;
 
-    public FileEndpointDocumentFilter(ILogger<FileEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings)
+    public FileEndpointDocumentFilter(ILogger<FileEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings, IOptionsMonitor<OpenApiSettings> openApiSettings)
     {
         _logger = logger;
         _environmentSettings = environmentSettings;
+        _openApiSettings = openApiSettings;
     }
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -46,10 +49,10 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
 
                 // flat file endpoints nest under the files group
-                string mainTag = OpenApiTags.Declare(document, endpoint, endpoint.HasNamespace ? null : $"{OpenApiTags.FilesGroup}/{endpoint.FullPath}");
-                if (!endpoint.HasNamespace)
+                string mainTag = OpenApiTags.Declare(document, endpoint, $"files/{endpointName}", _openApiSettings.CurrentValue, OpenApiTags.FilesGroup);
+                if (!endpoint.HasNamespace && _openApiSettings.CurrentValue.ShowNamespaces)
                 {
-                    OpenApiTags.Ensure(document, OpenApiTags.FilesGroup, "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
+                    OpenApiTags.Ensure(document, OpenApiTags.GroupName(OpenApiTags.FilesGroup),"**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
                 }
 
                 // Add file upload operation

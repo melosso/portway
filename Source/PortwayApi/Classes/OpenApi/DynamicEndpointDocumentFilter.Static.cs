@@ -29,7 +29,7 @@ public partial class DynamicEndpointDocumentFilter
             // Get effective environments for this endpoint (endpoint-specific or global fallback)
             var effectiveEnvironments = GetEffectiveEnvironments(definition);
 
-            string documentationTag = OpenApiTags.Declare(document, definition);
+            string documentationTag = DeclareTag(document, definition);
 
             // Get content type and filtering capability
             var contentType = definition.Properties?.GetValueOrDefault("ContentType", "text/plain")?.ToString() ?? "text/plain";

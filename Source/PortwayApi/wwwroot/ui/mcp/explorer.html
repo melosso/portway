@@ -89,8 +89,6 @@ async function load() {
     document.getElementById('mcpConfig').innerHTML = [
       settingItem('Server path', mcp.path || '/mcp'),
       boolItem('Require Authentication', mcp.require_authentication),
-      boolItem('Apps Enabled', mcp.apps_enabled),
-      settingItem('Apps Path', mcp.apps_path || '/mcp/apps'),
     ].join('');
 
     const [endpointsRes, toolsRes] = await Promise.all([

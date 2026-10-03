@@ -47,9 +47,14 @@ public abstract class EndpointEntityBase
     public string? DisplayName { get; set; }
 
     /// <summary>
-    /// Label for the namespace, used as the documentation tag
+    /// Title of the namespace group in the documentation
     /// </summary>
     public string? NamespaceDisplayName { get; set; }
+
+    /// <summary>
+    /// Description of the namespace group in the documentation
+    /// </summary>
+    public string? NamespaceDescription { get; set; }
 
     public Documentation? Documentation { get; set; }
 
@@ -72,6 +77,7 @@ public abstract class EndpointEntityBase
         definition.Namespace = Namespace;
         definition.DisplayName = DisplayName;
         definition.NamespaceDisplayName = NamespaceDisplayName;
+        definition.NamespaceDescription = NamespaceDescription;
         definition.Tenancy = Tenancy is { Count: > 0 }
             ? new Dictionary<string, string>(Tenancy, StringComparer.OrdinalIgnoreCase).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase)
             : null;

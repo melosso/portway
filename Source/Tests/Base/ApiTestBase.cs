@@ -119,7 +119,10 @@ public class ApiTestBase : IDisposable
                     // Disable the MCP HTTP server: its hosted service conflicts when parallel WebApplicationFactory instances start
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Mcp:Enabled"] = "false"
+                        ["Mcp:Enabled"] = "false",
+                        // pinned so a local console save cannot change the generated document
+                        ["OpenApi:ShowNamespaces"] = "true",
+                        ["OpenApi:DefaultGroup"] = "General"
                     });
                 });
 
