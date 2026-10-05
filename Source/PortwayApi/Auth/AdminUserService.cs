@@ -19,6 +19,9 @@ public class AdminUserService
 
     private const string ReadableAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+    // constant-time stand-in for a missing or password-less account
+    private static readonly string DummyHash = HashPassword(RandomNumberGenerator.GetString(ReadableAlphabet, 32));
+
     private readonly AuthDbContext _db;
 
     public AdminUserService(AuthDbContext db) => _db = db;
@@ -97,7 +100,7 @@ public class AdminUserService
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);
 
-        var stored = user?.PasswordHash ?? HashPassword("no-such-account");
+        var stored = user?.PasswordHash is { Length: > 0 } hash ? hash : DummyHash;
         var ok = VerifyPassword(password, stored);
 
         if (user is null || !ok || !user.IsActive) return null;
@@ -202,11 +205,11 @@ public class AdminUserService
     public async Task<bool> ConfirmPasswordAsync(int userId, string password)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null || !user.IsActive) return false;
 
-        if (user.PasswordHash.Length == 0) return false;
+        var stored = user?.PasswordHash is { Length: > 0 } hash ? hash : DummyHash;
+        var ok = VerifyPassword(password, stored);
 
-        return VerifyPassword(password, user.PasswordHash);
+        return user is { IsActive: true } && ok;
     }
 
     /// <summary>
@@ -215,7 +218,11 @@ public class AdminUserService
     public async Task<bool> ChangePasswordAsync(string username, string currentPassword, string newPassword)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);
-        if (user is null || !user.IsActive || !VerifyPassword(currentPassword, user.PasswordHash)) return false;
+
+        var stored = user?.PasswordHash is { Length: > 0 } hash ? hash : DummyHash;
+        var ok = VerifyPassword(currentPassword, stored);
+
+        if (user is null || !user.IsActive || !ok) return false;
 
         user.PasswordHash = HashPassword(newPassword);
         user.MustChangePassword = false;
