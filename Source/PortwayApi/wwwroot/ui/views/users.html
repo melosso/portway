@@ -52,14 +52,24 @@
             </div>
             <div class="table-wrap">
                 <div class="scroll-area">
-                    <table class="table">
+                    <table class="table" id="usersTable">
                         <thead>
                             <tr>
-                                <th>Username</th>
-                                <th>Role</th>
-                                <th>Sign-in</th>
-                                <th>Status</th>
-                                <th>Last signed in</th>
+                                <th class="sortable" data-col="username" tabindex="0" aria-sort="none">
+                                    Username <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-col="role" tabindex="0" aria-sort="none">
+                                    Role <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-col="provider" tabindex="0" aria-sort="none">
+                                    Sign-in <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-col="status" tabindex="0" aria-sort="none">
+                                    Status <span class="sort-icon">↕</span>
+                                </th>
+                                <th class="sortable" data-col="last_login_at" tabindex="0" aria-sort="none">
+                                    Last signed in <span class="sort-icon">↕</span>
+                                </th>
                                 <th style="width:96px; text-align:right; padding-right:1rem;">Actions</th>
                             </tr>
                         </thead>
@@ -314,6 +324,21 @@
 let _users = [];
 let _meId = null;
 let _editingId = null;
+let _sortCol = null, _sortDir = 'asc';
+
+const SORT_VALUES = {
+  username: u => u.username.toLowerCase(),
+  role: u => ROLE_LABELS[u.role] ?? u.role,
+  provider: u => u.provider === 'local' ? 'Password' : u.provider,
+  status: u => u.is_active ? 0 : 1,
+  last_login_at: u => u.last_login_at ? Date.parse(u.last_login_at) : 0
+};
+
+function setSort(col) {
+  _sortDir = _sortCol === col && _sortDir === 'asc' ? 'desc' : 'asc';
+  _sortCol = col;
+  renderUsers();
+}
 
 
 async function load() {
@@ -325,13 +350,35 @@ async function load() {
     const d = await api('/ui/api/users', { failure: 'Failed to load users' });
     _users = d.users ?? [];
     _meId = d.signed_in_user_id ?? null;
+    renderUsers();
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Failed to load: ${esc(e.message)}</td></tr>`;
+  }
+}
 
-    if (!_users.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users yet</td></tr>';
-      return;
-    }
+function renderUsers() {
+  const value = SORT_VALUES[_sortCol];
+  const rows = value
+    ? [..._users].sort((a, b) => {
+        const x = value(a), y = value(b);
+        const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+        return _sortDir === 'asc' ? c : -c;
+      })
+    : _users;
+  document.querySelectorAll('#usersTable th.sortable').forEach(th => {
+    const active = th.dataset.col === _sortCol;
+    th.classList.toggle('sort-active', active);
+    th.setAttribute('aria-sort', active ? (_sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.querySelector('.sort-icon').textContent = active ? (_sortDir === 'asc' ? '↑' : '↓') : '↕';
+  });
 
-    tbody.innerHTML = _users.map(u => `<tr>
+  const tbody = document.getElementById('usersBody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(u => `<tr>
       <td>
         <span style="display:inline-flex;align-items:center;gap:0.5rem">
           <span class="avatar-sm">${u.avatar ? `<img src="${u.avatar}" alt="" width="24" height="24">` : esc(u.username.charAt(0).toUpperCase())}</span>
@@ -351,9 +398,6 @@ async function load() {
         </button>
       </td>
     </tr>`).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Failed to load: ${esc(e.message)}</td></tr>`;
-  }
 }
 
 function openCreateDrawer() {
@@ -682,6 +726,12 @@ async function doUnlinkMe() {
   history.replaceState(null, '', location.pathname);
 })();
 
+document.querySelectorAll('#usersTable th.sortable').forEach(th => {
+  th.addEventListener('click', () => setSort(th.dataset.col));
+  th.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSort(th.dataset.col); }
+  });
+});
 load();
 loadProviders().then(loadMyLink);
 </script>

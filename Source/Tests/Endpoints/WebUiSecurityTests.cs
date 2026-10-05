@@ -355,6 +355,23 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task UsersPage_ColumnsAreSortable()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/users", authCookie), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        foreach (var col in new[] { "username", "role", "provider", "status", "last_login_at" })
+        {
+            Assert.Contains($"class=\"sortable\" data-col=\"{col}\" tabindex=\"0\" aria-sort=\"none\"", html);
+            Assert.Contains($"  {col}: u => ", html);
+        }
+    }
+
+    [Fact]
     public async Task RotateToken_IssuesReplacementAndArchivesOriginal()
     {
         var client = CreateClient();

@@ -1205,6 +1205,10 @@ h1 {
 .table th.sortable:hover {
     color: hsl(var(--foreground));
 }
+.table th.sortable:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: -2px;
+}
 .table th.sort-active {
     color: hsl(var(--foreground));
     font-weight: 600;
