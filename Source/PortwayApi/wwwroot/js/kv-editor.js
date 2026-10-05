@@ -51,7 +51,7 @@ function validateHeaders(containerId) {
     document.querySelectorAll(`#${containerId} .kv-row`).forEach((row) => {
         const k = row.querySelector('.kv-key-input')?.value?.trim();
         const v = row.querySelector('.kv-val-input')?.value?.trim();
-        if (k && !v) err = `Header "${k}" must have a value, fill it in or remove the row.`;
+        if (k && !v) err = `Header "${k}" has no value. Add a value or remove the row.`;
     });
     return err;
 }

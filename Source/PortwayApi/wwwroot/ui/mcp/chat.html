@@ -51,7 +51,7 @@
       <!-- Composer -->
       <div class="chat-composer">
         <div class="chat-composer-inner">
-          <textarea id="input" rows="1" placeholder="Authenticate to start chatting…" disabled></textarea>
+          <textarea id="input" rows="1" placeholder="Add a token to start…" disabled></textarea>
           <div class="chat-composer-footer">
             <span class="chat-hint">Shift+Enter for new line</span>
             <button id="sendBtn" class="btn btn-outline chat-send-auth">
@@ -173,7 +173,7 @@ function openAuthDialog() {
     size: 'small',
     content: `
       <p style="font-size:0.82rem;color:var(--text-secondary);line-height:1.55;margin:0 0 1rem;">
-        Portway API token scoped to the environments and endpoints to query. Stored for this browser tab only.
+        Portway API token with access to the environments and endpoints to query. Stored in this browser tab.
       </p>
       <div class="field">
         <label class="field-label" for="dlg-token-input">API Token</label>
@@ -233,7 +233,7 @@ async function confirmAuthDialog() {
       });
       // 401 → invalid token; any other status → token accepted (endpoint may not exist)
       if (testResp.status === 401) {
-        if (errEl) { errEl.textContent = 'Token not accepted. Check that it is valid and has access to at least one environment.'; errEl.style.display = ''; }
+        if (errEl) { errEl.textContent = 'Token rejected. The token must be valid and have access to at least one environment.'; errEl.style.display = ''; }
         return;
       }
     } catch { /* network error - proceed anyway */ }
@@ -271,7 +271,7 @@ function setAuthenticated(ok) {
     if (chatReady) {
       const inputEl = document.getElementById('input');
       inputEl.disabled = true;
-      inputEl.placeholder = 'Authenticate to start chatting…';
+      inputEl.placeholder = 'Add a token to start…';
     }
   }
 }
@@ -322,13 +322,13 @@ async function init() {
     st.textContent = 'Chat disabled';
     st.style.color = 'hsl(var(--warning, 38 92% 50%))';
     st.removeAttribute('hidden');
-    disableForConfig('Chat is disabled. Set Mcp:ChatEnabled = true in appsettings.json to enable it.');
+    disableForConfig('Chat is disabled. Set Mcp:ChatEnabled to true in appsettings.json.');
     return;
   }
 
   // Setup wizard blocks chat until a provider is configured
   if (!chatConfigured) {
-    disableForConfig('Complete setup to start chatting…');
+    disableForConfig('Complete setup to start…');
     openSetupWizard(() => { window.location.reload(); });
     return;
   }
@@ -862,14 +862,6 @@ function _renderWizardStep2() {
         </div>
         <div class="field-help">Stored encrypted.</div>
       </div>
-      <details class="wizard-details">
-        <summary>Internal API token <span style="color:var(--text-secondary);font-weight:400;">(optional)</span></summary>
-        <div class="field" style="margin-top:0.75rem;">
-          <label class="field-label" for="wiz-token">Portway Bearer Token</label>
-          <input id="wiz-token" type="password" class="input" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
-          <div class="field-help">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
-        </div>
-      </details>
       <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
     footer: `
       <button type="button" class="btn btn-outline" onclick="_renderWizardStep1()">← Back</button>
@@ -884,7 +876,6 @@ function _renderWizardStep2() {
 async function _wizardSave() {
   const model  = document.getElementById('wiz-model')?.value.trim();
   const apiKey = document.getElementById('wiz-key')?.value.trim();
-  const token  = document.getElementById('wiz-token')?.value.trim() ?? '';
   const err    = document.getElementById('wizard-step2-err');
   const btn    = document.getElementById('wiz-save-btn');
 
@@ -906,8 +897,7 @@ async function _wizardSave() {
       body: {
         provider:         _wizardProvider.id,
         model:            model || _wizardProvider.model,
-        apiKey:           apiKey,
-        internalApiToken: token
+        apiKey:           apiKey
       },
       silent: true
     });

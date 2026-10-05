@@ -464,7 +464,7 @@ function cardFooter(bodyId) {
 function clearAdminKey() {
   AlertDialog.show({
     title:       'Remove the seeding key?',
-    description: 'WebUi:AdminApiKey only ever created the first account. Accounts and active sessions are unaffected. Restart to apply.',
+    description: 'WebUi:AdminApiKey seeds the first account. Accounts and active sessions are unchanged. Restart to apply.',
     actionLabel: 'Remove',
     variant:     'destructive',
     onConfirm:   async () => {
@@ -543,14 +543,14 @@ async function load() {
         sec.webui_auth_enabled
           ? '<span class="setting-on">Yes</span>'
           : '<span class="setting-off">No, console is unauthenticated</span>',
-        'Enforced once an account exists'),
+        'Enforced if an account exists'),
       settingItemRaw('Accounts',
         `<span class="${accounts > 0 ? 'setting-on' : 'setting-off'}">${accounts}</span>`,
         'Managed on the Users page'),
       riskItem('Client addresses', !sec.forwarded_ignored,
         sec.client_ip || 'Direct', 'Untrusted proxy',
         sec.forwarded_ignored
-          ? `Proxy not trusted. Every client resolves to ${sec.client_ip || 'one address'}, which the console gate, per-IP rate limits and login lockout key on. Add the proxy under Trusted proxies.`
+          ? `Proxy not trusted. Every client resolves to ${sec.client_ip || 'one address'}. The console gate, per-IP rate limits and login lockout use this address. Add the proxy to Trusted proxies.`
           : `Client address for this request${sec.behind_proxy ? ', from the trusted proxy chain' : ''}`),
       riskItem('Console reach', !sec.console_public,
         'Local network only', 'Reachable from configured origins',
@@ -558,12 +558,12 @@ async function load() {
           ? 'Exposes the sign-in page. Origin matching is not access control.'
           : '/ui limited to loopback and local addresses'),
       riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
-        'Scheme of this request. HSTS requires HTTPS; behind a TLS-terminating proxy, the proxy must be trusted'),
+        'Scheme of this request. HSTS requires HTTPS. A TLS-terminating proxy must be trusted'),
       riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
         sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
         'Session cookie is a bearer credential; set Secure under TLS'),
       boolItem('CSRF Protection', sec.csrf_protection),
-      boolItem('Administrator-only writes', true, 'Viewers have read access and manage only their own sign-in'),
+      boolItem('Administrator-only writes', true, 'Viewers have read access and manage their own sign-in'),
       settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
     ].join('');
 
@@ -582,7 +582,7 @@ async function load() {
                             : 'No providers configured. Off rejects callbacks'),
       ...(sec.legacy_admin_key ? [settingItemRaw('Seeding key',
         '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
-        'WebUi:AdminApiKey seeds the first account only. Safe to remove after first sign-in.')] : []),
+        'WebUi:AdminApiKey seeds the first account. Safe to remove after first sign-in.')] : []),
     ].join('') + cardFooter('deploymentBody');
 
     document.getElementById('openApiBody').innerHTML = [
@@ -622,7 +622,7 @@ async function load() {
     document.getElementById('customizationBody').innerHTML = [
       switchRow('WebUi:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serve the public page at the root path'),
       textRow('WebUi:Customization:PromoText', 'Promo banner', cus.promo_text,
-        'Shown across the console. Supports **bold**, *italic* and [links](https://example.com)', 'Leave empty to hide the banner'),
+        'Shown across the console. Supports **bold**, *italic* and [links](https://example.com)', 'Empty hides the banner'),
       switchRow('WebUi:Customization:PromoLogin', 'Show on sign-in', cus.promo_login, 'Banner shown on the sign-in page'),
       textRow('WebUi:Customization:LoginFooter', 'Sign-in footer', cus.login_footer,
         'Markdown below the sign-in form, e.g. a contact address', 'Contact your [administrator](mailto:...)'),
@@ -680,7 +680,7 @@ async function load() {
         telActive
           ? `<span class="setting-on">${esc(tel.provider)}</span>`
           : '<span class="setting-off">Off</span>',
-        'Telemetry:Provider is only set at startup'),
+        'Telemetry:Provider is read at startup'),
       settingItem('Service Name', tel.service_name ?? '—'),
       ...(tel.otlp_endpoint   ? [settingItem('OTLP Endpoint',   tel.otlp_endpoint)]   : []),
       ...(tel.prometheus_path ? [settingItem('Scrape Path',     tel.prometheus_path)] : []),
@@ -715,7 +715,7 @@ async function loadAudit() {
     const d = await api('/ui/api/audit?limit=15', { silent: true });
     const entries = d.entries ?? [];
     if (!entries.length) {
-      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No configuration changes recorded yet</span>';
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No configuration changes recorded</span>';
       return;
     }
     el.innerHTML = entries.map(e => {
@@ -789,8 +789,7 @@ async function loadAiConfig() {
     aiBody.innerHTML = [
       settingItemRaw('Provider', providerLabel),
       settingItemRaw('Model',    esc(cfg.model || '—')),
-      settingItemRaw('API Key',  apiKeyHtml, envDesc),
-      settingItemRaw('Internal Token', cfg.has_internal_token ? 'Configured' : '<span class="setting-off">Not set</span>'),
+      settingItemRaw('API Key',  apiKeyHtml, envDesc)
     ].join('') + `<div class="ai-clear-row">
       <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" onclick="confirmClearAiConfig()">Clear configuration</button>
     </div>`;
@@ -879,14 +878,6 @@ function _aiWizardStep2() {
         </div>
         <div class="field-help">Stored encrypted.</div>
       </div>
-      <details class="wizard-details">
-        <summary>Internal API token <span style="color:hsl(var(--muted-foreground));font-weight:400;">(optional)</span></summary>
-        <div class="field" style="margin-top:0.75rem;">
-          <label class="field-label" for="wiz-token">Portway Bearer Token</label>
-          <input id="wiz-token" type="password" class="input" placeholder="Used for tool calls when no user token is forwarded" autocomplete="off" spellcheck="false" />
-          <div class="field-help">A Portway token with access to all MCP-exposed endpoints and environments. If omitted, users must authenticate individually in chat.</div>
-        </div>
-      </details>
       <div id="wizard-step2-err" class="wizard-error" hidden></div>`,
     footer: `
       <button type="button" class="btn btn-outline" onclick="_aiWizardStep1()">Back</button>
@@ -901,7 +892,6 @@ function _aiWizardStep2() {
 async function _aiWizardSave() {
   const model  = document.getElementById('wiz-model')?.value.trim();
   const apiKey = document.getElementById('wiz-key')?.value.trim();
-  const token  = document.getElementById('wiz-token')?.value.trim() ?? '';
   const err    = document.getElementById('wizard-step2-err');
   const btn    = document.getElementById('wiz-save-btn');
 
@@ -923,15 +913,14 @@ async function _aiWizardSave() {
       body: {
         provider:         _wizardProvider.id,
         model:            model || _wizardProvider.model,
-        apiKey:           apiKey,
-        internalApiToken: token
+        apiKey:           apiKey
       },
       silent: true
     });
 
     Dialog.close('ai-setup');
     await loadAiConfig();
-    toast('AI provider configuration saved.', 'success');
+    toast('AI provider configuration saved', 'success');
 
   } catch(e) {
     err.textContent = 'Failed to save: ' + e.message;
@@ -953,7 +942,7 @@ function confirmClearAiConfig() {
 
 async function clearAiConfig() {
   try {
-    await api('/ui/api/mcp/config', { method: 'DELETE', success: 'AI provider configuration cleared.', failure: 'Failed to clear configuration' });
+    await api('/ui/api/mcp/config', { method: 'DELETE', success: 'AI provider configuration cleared', failure: 'Failed to clear configuration' });
     await loadAiConfig();
   } catch(e) {}
 }

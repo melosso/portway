@@ -98,8 +98,7 @@
                 <div>
                     <h2 class="card-title">Sign-in providers</h2>
                     <p class="muted">
-                        OpenID Connect, for Authelia, Authentik, Pocket ID, Keycloak and anything else publishing a
-                        discovery document.
+                        OpenID Connect providers with a discovery document: Authelia, Authentik, Pocket ID, Keycloak.
                     </p>
                 </div>
                 <button class="btn btn-outline btn-sm" onclick="openProviderDrawer()">Add provider</button>
@@ -167,7 +166,7 @@
         <div class="field">
             <label class="field-label" for="provClaim">Username claim</label>
             <input type="text" id="provClaim" class="input" value="preferred_username" />
-            <div class="field-help">Authelia, Authentik and Pocket ID all send <code>preferred_username</code>.</div>
+            <div class="field-help">Authelia, Authentik and Pocket ID send <code>preferred_username</code>.</div>
         </div>
         <div class="setting-row">
             <div class="setting-label">
@@ -241,7 +240,7 @@
         <div class="field">
             <label class="field-label" for="createEmail">Email</label>
             <input type="email" id="createEmail" class="input" autocomplete="off" placeholder="optional" />
-            <div class="field-help">A provider identity with this address binds to this account.</div>
+            <div class="field-help">Links a provider identity with this address to this account.</div>
         </div>
         <div class="field">
             <label class="field-label" for="createRole">Role</label>
@@ -286,7 +285,7 @@
         <div class="field">
             <label class="field-label" for="editPassword">New password</label>
             <input type="password" id="editPassword" class="input" autocomplete="new-password" />
-            <div class="field-help">Leave blank to keep the current password.</div>
+            <div class="field-help">Blank keeps the current password.</div>
         </div>
         <div class="field">
             <label class="field-label" for="editEmail">Email</label>
@@ -628,7 +627,7 @@ async function doDeleteProvider(id) {
   try {
     const r = await api(`/ui/api/oidc/providers/${id}`, { method: 'DELETE', failure: 'Failed to delete provider' });
     toast(r.stranded_accounts
-      ? `Provider deleted. ${r.stranded_accounts} account(s) now have no way to sign in.`
+      ? `Provider deleted. ${r.stranded_accounts} account(s) have no sign-in method.`
       : 'Provider deleted', r.stranded_accounts ? 'warning' : 'success');
     await loadProviders();
     // The accounts that used it are unbound now, so both the table and this account's own card change
@@ -657,7 +656,7 @@ async function loadMyLink() {
       el.innerHTML = `<div class="setting-row">
         <div class="setting-label">
           <label>${esc(p?.name ?? _me.provider)}</label>
-          <p>${esc(_me.username)} signs in through this provider.${_me.has_password ? '' : ' There is no password on this account.'}</p>
+          <p>${esc(_me.username)} signs in through this provider.${_me.has_password ? '' : ' This account has no password.'}</p>
         </div>
         <button class="btn btn-outline btn-sm" onclick="unlinkMe()" ${_me.has_password ? '' : 'disabled title="Set a password first"'}>Unlink</button>
       </div>`;
@@ -679,7 +678,7 @@ async function loadMyLink() {
 function linkMe(slug, name) {
   AlertDialog.show({
     title: `Link ${name}?`,
-    description: 'Redirects to the provider. The identity that signs in there is linked to this account.',
+    description: 'Redirects to the provider. The provider identity is linked to this account.',
     actionLabel: 'Continue',
     extraHtml: `<div class="field" style="margin-top:0.75rem">
       <p class="alert-dialog-description" style="margin-bottom:0.25rem">Confirm your password.</p>

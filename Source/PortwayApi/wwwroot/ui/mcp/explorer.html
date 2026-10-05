@@ -82,7 +82,7 @@ async function load() {
       banner.className = 'setup-banner';
       banner.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-        '<span>Chat is enabled but not configured. <a href="/ui/mcp/chat">Open Chat</a> to complete setup.</span>';
+        '<span>Chat is not configured. <a href="/ui/mcp/chat">Open Chat</a> to complete setup.</span>';
       document.querySelector('.main-content').prepend(banner);
     }
 
@@ -112,7 +112,7 @@ async function load() {
 
     if (!mcpEndpoints.length) {
       document.getElementById('toolsBody').innerHTML = 
-        '<p class="muted" style="font-size:0.875rem;">No endpoints exposed via MCP. Enable "Expose in MCP" on endpoints to see them here.</p>';
+        '<p class="muted" style="font-size:0.875rem;">No endpoints exposed via MCP. Enable Expose in MCP on an endpoint.</p>';
       return;
     }
 
@@ -135,7 +135,7 @@ async function load() {
         // ep.name is already the full dict key e.g. "Finance/OutstandingItems"
         const isUnhealthy = missingMetadataKeys.has(ep.name);
         const unhealthyBadge = isUnhealthy
-          ? '<span class="badge-unhealthy" title="No SQL field metadata found — query hints will be limited for this tool">No metadata</span>'
+          ? '<span class="badge-unhealthy" title="No SQL field metadata. Query hints for this tool are limited.">No metadata</span>'
           : '';
         html += '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem; background: var(--bg-secondary); border-radius: 6px;">';
         html += '<div style="flex: 1;">';

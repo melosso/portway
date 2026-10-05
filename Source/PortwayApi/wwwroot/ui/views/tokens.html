@@ -175,7 +175,7 @@
         </div>
         <div class="field">
             <label class="field-label">Expiration (days)</label>
-            <input type="number" id="createExpiry" placeholder="Leave blank for never" min="1" class="input" />
+            <input type="number" id="createExpiry" placeholder="Blank never expires" min="1" class="input" />
         </div>
         <div class="field">
             <label class="field-label">Rate limit</label>
@@ -210,7 +210,7 @@
                 <input type="text" id="createScopesInput" class="tag-input" placeholder="Type to search or * for all" />
             </div>
             <div class="tag-dropdown" id="createScopesDropdown"></div>
-            <div class="field-help">Enter endpoint names or <code>*</code> for all. Press Enter or click to add.</div>
+            <div class="field-help">Endpoint names, or <code>*</code> for all.</div>
         </div>
         <div class="field">
             <label class="field-label">Environments</label>
@@ -218,7 +218,7 @@
                 <input type="text" id="createEnvsInput" class="tag-input" placeholder="Type to search or * for all" />
             </div>
             <div class="tag-dropdown" id="createEnvsDropdown"></div>
-            <div class="field-help">Enter environment names or <code>*</code> for all.</div>
+            <div class="field-help">Environment names, or <code>*</code> for all.</div>
         </div>
         <div class="field">
             <label class="field-label" id="createTenantsLabel">Tenants</label>
@@ -364,12 +364,12 @@
                 />
                 <span style="font-size:0.8125rem; color:hsl(var(--muted-foreground));">s</span>
             </div>
-            <div class="field-help">Clear to revert to the global token limit.</div>
+            <div class="field-help">Blank uses the global token limit.</div>
         </div>
         <div class="field">
             <label class="field-label">Expiration</label>
             <input type="datetime-local" id="editExpiry" class="input" />
-            <div class="field-help">Leave blank to keep existing expiration unchanged.</div>
+            <div class="field-help">Blank keeps the current expiration.</div>
         </div>
         <div class="setting-row" id="rotateRow">
             <div class="setting-label">
@@ -428,11 +428,10 @@
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-            <strong style="font-size:1rem">Success</strong>
+            <strong style="font-size:1rem">Token created</strong>
         </div>
         <p style="font-size:0.875rem; color:hsl(var(--muted-foreground)); margin-bottom:1rem; line-height:1.5;">
-            This token will <strong>only be shown once</strong>. Copy it now and store it securely, it will not be shown
-            again.
+            This token is <strong>shown once</strong>. Copy it and store it securely.
         </p>
         <div
             class="code-block"
@@ -1126,7 +1125,7 @@ async function copyRevealToken() {
   try {
     await navigator.clipboard.writeText(token);
     const btn = document.getElementById('copyBtn');
-    document.getElementById('copyLabel').textContent = 'Copied!';
+    document.getElementById('copyLabel').textContent = 'Copied';
     document.getElementById('copyIcon').innerHTML = `<polyline points="20 6 9 17 4 12"/>`;
     btn?.classList.add('is-check');
     setTimeout(() => {
@@ -1135,7 +1134,7 @@ async function copyRevealToken() {
       btn?.classList.remove('is-check');
     }, 2000);
   } catch(e) {
-    toast('Copy failed. Select and copy manually (Ctrl+C).', 'warning');
+    toast('Copy failed. Select the token and press Ctrl+C.', 'warning');
   }
 }
 

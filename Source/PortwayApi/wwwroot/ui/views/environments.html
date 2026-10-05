@@ -197,7 +197,7 @@
                     </svg>
                 </button>
             </div>
-            <div class="field-help">Optional. Required only for SQL endpoints.</div>
+            <div class="field-help">Required for SQL endpoints.</div>
         </div>
         <div class="field">
             <label class="field-label">Headers</label>
@@ -255,7 +255,7 @@ function confirmNavigate(onConfirm) {
   
   AlertDialog.show({
     title: 'Discard changes?',
-    description: 'Unsaved changes will be lost.',
+    description: 'Unsaved changes are discarded.',
     actionLabel: 'Leave anyway',
     cancelLabel: 'Stay here',
     onConfirm: () => {
@@ -535,7 +535,7 @@ function buildFormView(name, d, headersHtml) {
   return `
     ${notExists ? `<div style="padding:0.5rem 0.75rem;background:hsl(43 96% 56% / 0.1);border:1px solid hsl(43 96% 56% / 0.3);border-radius:var(--nav-radius);font-size:0.8rem;color:hsl(43 85% 45%);display:flex;align-items:center;gap:0.5rem">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      No settings.json found, saving will create it.
+      No settings.json. Saving creates it.
     </div>` : ''}
     <div class="card">
       <div class="card-header"><h2 class="card-title">Server</h2></div>
@@ -562,13 +562,13 @@ function buildFormView(name, d, headersHtml) {
            <div id="testResult" style="display:none;font-size:0.78rem;margin-bottom:0.375rem;"></div>
            <div id="replaceCs" style="display:none;">
              <div style="position:relative;">
-               <input type="password" id="editConnStr" placeholder="New plaintext connection string, will be encrypted on save" class="input input-secret" oninput="markDirty()">
+               <input type="password" id="editConnStr" placeholder="New connection string, encrypted on save" class="input input-secret" oninput="markDirty()">
                <button type="button" onclick="togglePasswordVis('editConnStr', this)"
                  style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                </button>
              </div>
-             <div class="field-help" style="margin-top:0.25rem">Will be encrypted before saving.</div>
+             <div class="field-help" style="margin-top:0.25rem">Encrypted on save.</div>
            </div>`
         : `<div style="position:relative;">
              <input type="password" id="editConnStr" value="${esc(d.connection_string ?? '')}" placeholder="Server=...;Database=...;" class="input input-secret" oninput="markDirty()">
@@ -577,7 +577,7 @@ function buildFormView(name, d, headersHtml) {
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
              </button>
            </div>
-           <div class="field-help" style="margin-top:0.25rem">Optional. Required only for SQL endpoints.</div>`
+           <div class="field-help" style="margin-top:0.25rem">Required for SQL endpoints.</div>`
       }
     </div>
     ${buildAuthSection(d.authentication)}
@@ -606,7 +606,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthEnabled" ${auth.enabled ? 'checked' : ''} onchange="toggleAuthUI('${prefix}'); markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Enable custom authentication<span class="tooltip tooltip-above">Add auth methods (API key, Bearer, Basic, JWT, HMAC) applied to all requests for this environment.</span></span>
+          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Enable custom authentication<span class="tooltip tooltip-above">Accepts API key, Bearer, Basic, JWT or HMAC credentials on every request to this environment.</span></span>
         </div>
 
         <div id="${prefix}AuthOverrideContainer" style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;${auth.enabled ? '' : 'opacity:0.5;pointer-events:none'}"
@@ -615,7 +615,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} onchange="markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">Rejects the Portway bearer token. Only the methods above are accepted.</span></span>
+          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">Rejects the Portway bearer token. Accepts the methods above.</span></span>
         </div>
       </div>
 
@@ -999,14 +999,14 @@ function confirmAlertDialog() {
 function startRemove(name) {
   showAlertDialog({
     title: `Remove "${name}"?`,
-    description: 'Removes the environment from the allowed list. The configuration file is kept unless deleted.',
+    description: 'Removes the environment from the allowed list.',
     actionLabel: 'Remove',
     extraHtml: `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;margin-top:0.5rem;" onclick="document.getElementById('deleteFilesSwitch').click()">
       <label class="switch" onclick="event.stopPropagation()">
         <input type="checkbox" id="deleteFilesSwitch">
         <span class="slider"></span>
       </label>
-      <span style="font-size:0.8125rem;font-weight:500;">Also delete environment files</span>
+      <span style="font-size:0.8125rem;font-weight:500;">Delete environment files</span>
     </div>`,
     onConfirm: () => doRemove(name)
   });
@@ -1051,7 +1051,7 @@ async function confirmEnvRename(oldName) {
   }
   try {
     await api(`/ui/api/environments/${encodeURIComponent(oldName)}`, {
-      method: 'PATCH', body: { new_name: newName }, success: 'Renamed successfully', silent: true
+      method: 'PATCH', body: { new_name: newName }, success: 'Renamed', silent: true
     });
     _envRenaming = false;
     state.selected = newName;
@@ -1103,7 +1103,7 @@ function addCreateHeader() {
 function validateCreateName(input) {
   const err = document.getElementById('createNameErr');
   const ok  = /^[a-zA-Z0-9_-]*$/.test(input.value);
-  err.textContent   = ok ? '' : 'Only letters, numbers, hyphens, and underscores allowed.';
+  err.textContent   = ok ? '' : 'Letters, numbers, hyphens and underscores.';
   err.style.display = ok ? 'none' : 'block';
 }
 

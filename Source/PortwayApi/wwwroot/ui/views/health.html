@@ -292,7 +292,7 @@ function clearHealthFilters() {
 function purgeHealth() {
   AlertDialog.show({
     title:       'Purge request metrics?',
-    description: 'Deletes every recorded request from memory and metrics.db. Health, traffic and top endpoints restart from zero.',
+    description: 'Deletes every recorded request from memory and metrics.db. Health, traffic and top endpoints reset to zero.',
     actionLabel: 'Purge',
     variant:     'destructive',
     onConfirm:   async () => {
