@@ -338,6 +338,54 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task TokensPage_RotateLivesInEditSheetNotTableRow()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/tokens", authCookie), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        var start = html.IndexOf("id=\"editDrawer\"", StringComparison.Ordinal);
+        var end = html.IndexOf("id=\"editFooter\"", start, StringComparison.Ordinal);
+        Assert.Contains("id=\"rotateRow\"", html[start..end]);
+        Assert.Contains("onclick=\"confirmRotate()\"", html[start..end]);
+        Assert.DoesNotContain("data-tooltip=\"Rotate token\"", html);
+    }
+
+    [Fact]
+    public async Task RotateToken_IssuesReplacementAndArchivesOriginal()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        var ct = TestContext.Current.CancellationToken;
+
+        var create = AuthedRequest(HttpMethod.Post, "/ui/api/tokens", authCookie, csrfCookie,
+            new { username = "rotate-me", allowed_scopes = "CRM/Accounts", allowed_environments = "dev" });
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, ct)).StatusCode);
+
+        var list = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/tokens", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var id = list.EnumerateArray().Single(t => t.GetProperty("username").GetString() == "rotate-me").GetProperty("id").GetInt32();
+
+        var rotate = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/ui/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
+        Assert.Equal(HttpStatusCode.OK, rotate.StatusCode);
+        var rotated = await rotate.Content.ReadFromJsonAsync<JsonElement>(ct);
+        Assert.False(string.IsNullOrEmpty(rotated.GetProperty("token").GetString()));
+        Assert.Equal("CRM/Accounts", rotated.GetProperty("allowed_scopes").GetString());
+
+        var after = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/tokens", authCookie), ct))
+            .Content.ReadFromJsonAsync<JsonElement>(ct);
+        var active = after.EnumerateArray().Where(t => t.GetProperty("username").GetString() == "rotate-me").ToList();
+        Assert.Single(active);
+        Assert.NotEqual(id, active[0].GetProperty("id").GetInt32());
+
+        var again = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/ui/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+    }
+
+    [Fact]
     public async Task SettingsEndpoint_ReportsSecurityPosture()
     {
         var client = CreateClient();

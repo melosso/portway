@@ -1091,7 +1091,8 @@ h1 {
     border-bottom: none;
 }
 
-.setting-row:has(> .switch) {
+.setting-row:has(> .switch),
+.setting-row:has(> .btn) {
     grid-template-columns: minmax(0, 1fr) auto;
 }
 
