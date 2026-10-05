@@ -53,7 +53,7 @@ sed -i "s|PORTWAY_ENCRYPTION_KEY=.*|PORTWAY_ENCRYPTION_KEY=$RANDOM_KEY|" docker-
 
 # Optional: Prompt for domain or leave as default
 echo "Portway is configured for: https://portway-demo.melosso.com"
-echo "If you use a different domain, edit WebUi__PublicOrigins in docker-compose.yml"
+echo "If you use a different domain, edit PORTWAY_PUBLIC_ORIGINS in docker-compose.yml"
 
 echo ""
 echo "Pull complete."

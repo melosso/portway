@@ -18,12 +18,11 @@ services:
 
       # Configure Web UI settings
       - PORTWAY_ADMIN_KEY=INSECURE-CHANGE-ME-admin-api-key
-      #- WebUi__PublicOrigins__0=https://example.com
-      #- WebUi__PublicOrigins__1=https://api.example.com
+      #- PORTWAY_PUBLIC_ORIGINS=https://example.com,https://api.example.com
       #- PORTWAY_SECURE_COOKIES=false
 
       # Model Context Protocol (MCP)
-      - Mcp__Enabled=true
+      - PORTWAY_MCP_ENABLED=true
       - Mcp__Path=/mcp
 
       # Proxy settings for Kerberos/NTLM
