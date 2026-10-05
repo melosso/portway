@@ -57,7 +57,7 @@ Bearer token on every request:
 Authorization: Bearer your_token_here
 ```
 
-Requests without a valid token return `401`. Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path. Token scopes: [Authentication](/reference/api-auth).
+Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path. Token scopes: [Authentication](/reference/api-auth).
 
 ## Response codes
 

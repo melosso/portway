@@ -6,7 +6,7 @@ using Microsoft.OpenApi;
 /// <summary>
 /// Standardizes every response onto the shared per-status-code phrase (summary) and explanation (description); endpoint specifics stay on the operation
 /// </summary>
-public class ResponseDescriptionDocumentFilter : IOpenApiDocumentTransformer
+public sealed class ResponseDescriptionDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {

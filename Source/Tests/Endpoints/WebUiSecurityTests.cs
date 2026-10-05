@@ -383,6 +383,32 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task ClearMetrics_RequiresAdministrator_AndEmptiesHealth()
+    {
+        var client = CreateClient();
+        var (adminCookie, adminCsrf) = await LoginAsync(client);
+        var metrics = _factory.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+        metrics.Record(500, "GET", "api", "Orders", "500", "", 12);
+
+        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
+            new { username = "metrics-viewer", password = "V13wer-metrics-pw-88", role = "viewer", current_password = SeededPassword });
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+        var (viewerCookie, viewerCsrf) = await SignInAsync(client, "metrics-viewer", "V13wer-metrics-pw-88");
+
+        var viewerRead = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/metrics/health?period=1h", viewerCookie), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, viewerRead.StatusCode);
+        var health = await viewerRead.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+        Assert.True(health.GetProperty("summary").GetProperty("failures").GetInt64() >= 1);
+
+        var viewerClear = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/ui/api/metrics", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.Forbidden, viewerClear.StatusCode);
+
+        var adminClear = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/ui/api/metrics", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, adminClear.StatusCode);
+        Assert.Equal(0, metrics.GetHealth(TimeSpan.FromDays(30), new PortwayApi.Services.HealthFilter()).Summary.Total);
+    }
+
+    [Fact]
     public async Task DeactivatedAccount_LosesAccessImmediately_EvenOnAPlainReadRequest()
     {
         // One client per account, the factory client tracks Set-Cookie

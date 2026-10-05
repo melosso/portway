@@ -101,6 +101,7 @@ public class AuthDbContext : DbContext
             ("RateLimitRequests", "ALTER TABLE Tokens ADD COLUMN RateLimitRequests INTEGER NULL"),
             ("RateLimitWindowSeconds", "ALTER TABLE Tokens ADD COLUMN RateLimitWindowSeconds INTEGER NULL"),
             ("AllowedTenants", "ALTER TABLE Tokens ADD COLUMN AllowedTenants TEXT NOT NULL DEFAULT '{}'"),
+            ("LastUsedAt", "ALTER TABLE Tokens ADD COLUMN LastUsedAt DATETIME NULL"),
         };
 
         foreach (var (column, alterSql) in migrations)
@@ -164,7 +165,8 @@ public class AuthDbContext : DbContext
                     Description TEXT NOT NULL DEFAULT '',
                     RateLimitRequests INTEGER NULL,
                     RateLimitWindowSeconds INTEGER NULL,
-                    AllowedTenants TEXT NOT NULL DEFAULT '{}'
+                    AllowedTenants TEXT NOT NULL DEFAULT '{}',
+                    LastUsedAt DATETIME NULL
                 )");
 
             OpenConnection().Execute(@"

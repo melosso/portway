@@ -8,8 +8,7 @@ public partial class DynamicEndpointDocumentFilter
 
     private void AddProxyDeleteOperation(
         OpenApiDocument document,
-        EndpointDefinition definition,
-        ref int operationIdCounter)
+        EndpointDefinition definition)
     {
         // Get effective environments for this endpoint (endpoint-specific or global fallback)
         var effectiveEnvironments = GetEffectiveEnvironments(definition);
@@ -34,7 +33,7 @@ public partial class DynamicEndpointDocumentFilter
             Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
             Summary = GetOperationSummary("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
             Description = GetOperationDescription("DELETE", definition.DisplayName ?? definition.EndpointName, definition),
-            OperationId = $"delete_{definition.FullPath}".Replace("/", "_"),
+            OperationId = OpenApiEndpointCatalog.OperationId("DELETE", definition),
             Parameters = []
         };
 
@@ -88,7 +87,6 @@ public partial class DynamicEndpointDocumentFilter
         StandardResponses.AddErrors(operation, ApiOperationKind.Proxy);
 
         document.Paths[deletePath].Operations![HttpMethod.Delete] = operation;
-        operationIdCounter++;
     }
 
     private static DeletePattern GetDeletePatternForDocs(EndpointDefinition definition)
@@ -106,7 +104,7 @@ public partial class DynamicEndpointDocumentFilter
         };
     }
 
-    private void AddProxyEndpoints(OpenApiDocument document, ref int operationIdCounter)
+    private void AddProxyEndpoints(OpenApiDocument document)
     {
         var proxyEndpoints = EndpointHandler.GetProxyEndpoints();
 
@@ -149,7 +147,7 @@ public partial class DynamicEndpointDocumentFilter
                     Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
                     Summary = GetOperationSummary(method, definition.DisplayName ?? definition.EndpointName, definition),
                     Description = GetOperationDescription(method, definition.DisplayName ?? definition.EndpointName, definition),
-                    OperationId = $"{method.ToLower()}_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
+                    OperationId = OpenApiEndpointCatalog.OperationId(method, definition),
                     Parameters = []
                 };
 
@@ -282,7 +280,7 @@ public partial class DynamicEndpointDocumentFilter
             // Special handling for DELETE
             if (definition.Methods.Contains("DELETE", StringComparer.OrdinalIgnoreCase))
             {
-                AddProxyDeleteOperation(document, definition, ref operationIdCounter);
+                AddProxyDeleteOperation(document, definition);
             }
         }
     }

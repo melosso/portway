@@ -77,9 +77,7 @@ public class DisabledEndpointTests : ApiTestBase
                     continue;
                 }
 
-                var reference = unavailable.GetProperty("content").GetProperty("application/json")
-                    .GetProperty("$ref").GetString();
-                Assert.Equal("#/components/mediaTypes/ErrorJson", reference);
+                Assert.Equal("#/components/responses/ServiceUnavailable", unavailable.GetProperty("$ref").GetString());
             }
 
         Assert.True(offenders.Count == 0, "Operations missing a 503 response:\n" + string.Join("\n", offenders));

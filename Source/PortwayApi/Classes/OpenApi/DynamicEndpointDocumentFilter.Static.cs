@@ -8,7 +8,7 @@ public partial class DynamicEndpointDocumentFilter
     /// <summary>
     /// Adds static endpoints to the OpenAPI document
     /// </summary>
-    private void AddStaticEndpoints(OpenApiDocument document, ref int operationIdCounter)
+    private void AddStaticEndpoints(OpenApiDocument document)
     {
         var staticEndpoints = EndpointHandler.GetStaticEndpoints();
 
@@ -46,7 +46,7 @@ public partial class DynamicEndpointDocumentFilter
             // Add GET operation
             var getOperation = new OpenApiOperation
             {
-                OperationId = $"get{endpointName}Static{operationIdCounter++}",
+                OperationId = OpenApiEndpointCatalog.OperationId("GET", definition),
                 Summary = definition.Documentation?.MethodDescriptions?.GetValueOrDefault("GET") ?? $"Get content from {endpointName}",
                 Description = GetStaticOperationDescription("GET", endpointName, definition, contentType),
                 Tags = new HashSet<OpenApiTagReference> { new OpenApiTagReference(documentationTag) },
@@ -315,7 +315,7 @@ public partial class DynamicEndpointDocumentFilter
             // Static endpoints serve QUERY through the same read path, so a filterable one also documents the body form
             if (enableFiltering && (contentType.Contains("json") || contentType.Contains("xml")))
             {
-                document.Paths[path].Operations![OpenApiHttpMethods.Query] = BuildStaticQueryOperation(getOperation);
+                document.Paths[path].Operations![OpenApiHttpMethods.Query] = BuildStaticQueryOperation(getOperation, definition);
             }
         }
     }
@@ -323,14 +323,14 @@ public partial class DynamicEndpointDocumentFilter
     /// <summary>
     /// Mirrors a static GET as a QUERY operation whose OData criteria travel in the body instead of the URL
     /// </summary>
-    private static OpenApiOperation BuildStaticQueryOperation(OpenApiOperation getOperation)
+    private static OpenApiOperation BuildStaticQueryOperation(OpenApiOperation getOperation, EndpointDefinition definition)
     {
         var queryOperation = new OpenApiOperation
         {
             Tags = getOperation.Tags,
             Summary = getOperation.Summary,
             Description = getOperation.Description,
-            OperationId = $"{getOperation.OperationId}_query",
+            OperationId = OpenApiEndpointCatalog.OperationId("QUERY", definition),
             Deprecated = getOperation.Deprecated,
             Responses = getOperation.Responses,
             // OData criteria move into the body, so only the path parameters are copied

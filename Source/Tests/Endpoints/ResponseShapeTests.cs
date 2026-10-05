@@ -148,6 +148,33 @@ public class ResponseShapeTests : ApiTestBase
         Assert.False(root.TryGetProperty("Success", out _));
     }
 
+    // The document promises the record itself for a key lookup, so the collection envelope must be absent
+    [Fact]
+    public async Task SqlGetById_ReturnsTheRecordWithoutEnvelope()
+    {
+        Assert.True(WmsDemoDbAvailable, $"WMS demo database missing at {WmsDemoDbPath}");
+
+        SetAllowedEnvironments("WMS");
+
+        _mockODataToSqlConverter
+            .Setup(c => c.ConvertToSQL(
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
+            .Returns(("SELECT Id, Code, Name, City, Country, Region, CapacityM2, IsActive FROM Warehouses LIMIT 2",
+                new Dictionary<string, object>()));
+
+        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses(1)", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var root = (await ParseBody(response)).RootElement;
+        Assert.Equal(JsonValueKind.Object, root.ValueKind);
+        Assert.False(root.TryGetProperty("value", out _));
+        Assert.False(root.TryGetProperty("success", out _));
+        Assert.True(root.TryGetProperty("Code", out _) || root.TryGetProperty("code", out _));
+    }
+
     // Mutation shape tests
     [Fact]
     public async Task FileDelete_MutationShape_HasSuccessAndMessage()

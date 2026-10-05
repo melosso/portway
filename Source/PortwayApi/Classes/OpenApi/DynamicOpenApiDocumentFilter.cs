@@ -7,7 +7,7 @@ namespace PortwayApi.Classes.OpenApi;
 /// <summary>
 /// Document transformer that injects dynamic configuration values into the OpenAPI document
 /// </summary>
-public class DynamicOpenApiDocumentFilter : IOpenApiDocumentTransformer
+public sealed class DynamicOpenApiDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly IOptionsMonitor<OpenApiSettings> _openApiMonitor;
 

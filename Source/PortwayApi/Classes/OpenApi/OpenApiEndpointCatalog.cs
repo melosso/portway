@@ -39,6 +39,12 @@ internal static class OpenApiEndpointCatalog
     }
 
     /// <summary>
+    /// Stable operation id from the action and the route, so adding an endpoint never renames another; versions are suffixed by EndpointVersionDocumentFilter
+    /// </summary>
+    public static string OperationId(string action, EndpointDefinition definition)
+        => $"{action.ToLowerInvariant()}_{definition.FullPath}".Replace(' ', '_').Replace('/', '_');
+
+    /// <summary>
     /// Whether an endpoint belongs in the document; disabled ones stay in, marked by EndpointStateDocumentFilter
     /// </summary>
     public static bool IsDocumented(EndpointDefinition definition) => !definition.Hidden;

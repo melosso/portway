@@ -30,6 +30,38 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.True(root.TryGetProperty("info", out _));
     }
 
+    // An empty requirement object would declare anonymous access
+    [Fact]
+    public async Task Security_IsRequiredOnceAtRoot_NeverPerOperation()
+    {
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var root = doc.RootElement;
+        var scheme = Assert.Single(root.GetProperty("components").GetProperty("securitySchemes").EnumerateObject()).Name;
+
+        Assert.True(root.TryGetProperty("security", out var security), "root security requirement missing");
+        var requirement = Assert.Single(security.EnumerateArray());
+        var entry = Assert.Single(requirement.EnumerateObject());
+        Assert.Equal(scheme, entry.Name);
+        Assert.Equal(0, entry.Value.GetArrayLength());
+
+        var offenders = new List<string>();
+        foreach (var path in root.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var op in path.Value.EnumerateObject())
+            {
+                var operations = op.Name == "additionalOperations" ? op.Value.EnumerateObject().ToList() : [op];
+                offenders.AddRange(operations
+                    .Where(o => o.Value.ValueKind == JsonValueKind.Object && o.Value.TryGetProperty("security", out _))
+                    .Select(o => $"{o.Name} {path.Name}"));
+            }
+        }
+
+        Assert.True(offenders.Count == 0, "Operations declaring their own security:\n" + string.Join("\n", offenders));
+    }
+
     // The shared error envelope is registered once as a reusable component schema
     [Fact]
     public async Task SharedErrorResponse_ComponentSchema_IsRegistered()
@@ -60,15 +92,15 @@ public class OpenApiDocumentTests : ApiTestBase
         var query = paths.GetProperty("/api/{env}/Inventory/StockLevels").GetProperty("query");
         var responses = query.GetProperty("responses");
 
-        var badRequestRef = responses.GetProperty("400")
-            .GetProperty("content").GetProperty("application/json")
-            .GetProperty("$ref").GetString();
-        Assert.Equal("#/components/mediaTypes/ErrorJson", badRequestRef);
+        Assert.Equal("#/components/responses/BadRequest", responses.GetProperty("400").GetProperty("$ref").GetString());
+        var badRequest = doc.RootElement.GetProperty("components").GetProperty("responses").GetProperty("BadRequest");
+        Assert.Equal("#/components/mediaTypes/ErrorJson",
+            badRequest.GetProperty("content").GetProperty("application/json").GetProperty("$ref").GetString());
 
         // Response summaries are the standard HTTP reason phrase; descriptions explain what it means here
-        Assert.Equal("Bad Request", responses.GetProperty("400").GetProperty("summary").GetString());
+        Assert.Equal("Bad Request", badRequest.GetProperty("summary").GetString());
         Assert.Equal("OK", responses.GetProperty("200").GetProperty("summary").GetString());
-        Assert.Contains("validation", responses.GetProperty("400").GetProperty("description").GetString());
+        Assert.Contains("validation", badRequest.GetProperty("description").GetString());
     }
 
     // The shared error envelope is registered once as a reusable media type, not repeated per response
@@ -422,6 +454,7 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Contains("`GET /api/{env}/Inventory/Products`", markdown);
         Assert.Contains("| `$filter` | query |", markdown);
         Assert.Contains("\n## Errors\n", markdown);
+        Assert.Contains("- `401` Unauthorized: The bearer token is missing", markdown);
 
         var json = await client.GetStringAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         Assert.Contains("[View as Markdown](/docs/openapi.md)", json);
@@ -440,6 +473,20 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.True(Uri.IsWellFormedUriString(self, UriKind.Absolute));
     }
 
+    // Only UseForwardedHeaders may change the scheme, and it trusts no proxy here
+    [Fact]
+    public async Task UntrustedForwardedProto_DoesNotChangeTheServerUrl()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/docs/openapi.json");
+        request.Headers.Add("X-Forwarded-Proto", "https");
+
+        var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+
+        Assert.StartsWith("http://", doc.RootElement.GetProperty("servers")[0].GetProperty("url").GetString());
+        Assert.StartsWith("http://", doc.RootElement.GetProperty("$self").GetString());
+    }
+
     // Audit: no operation may inline its own error schema, whatever endpoint type produced it
     [Fact]
     public async Task EveryErrorResponse_UsesTheSharedEnvelope()
@@ -448,32 +495,30 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        var paths = doc.RootElement.GetProperty("paths");
+        var shared = doc.RootElement.GetProperty("components").GetProperty("responses");
 
         var offenders = new List<string>();
-        foreach (var path in paths.EnumerateObject())
-            foreach (var op in path.Value.EnumerateObject())
+        foreach (var (path, method, operation) in Operations(doc.RootElement))
+            foreach (var r in operation.GetProperty("responses").EnumerateObject())
             {
-                if (!op.Value.TryGetProperty("responses", out var responses) || responses.ValueKind != JsonValueKind.Object) continue;
-                foreach (var r in responses.EnumerateObject())
+                if (!int.TryParse(r.Name, out var code) || code < 400) continue;
+
+                var reference = r.Value.TryGetProperty("$ref", out var refValue) ? refValue.GetString() : null;
+                var media = reference is not null && reference.StartsWith("#/components/responses/") &&
+                            shared.TryGetProperty(reference["#/components/responses/".Length..], out var component)
+                    ? component.GetProperty("content").GetProperty("application/json").GetProperty("$ref").GetString()
+                    : null;
+
+                if (media != "#/components/mediaTypes/ErrorJson" && media != "#/components/mediaTypes/ValidationErrorJson")
                 {
-                    if (!int.TryParse(r.Name, out var code) || code < 400) continue;
-
-                    var reference = r.Value.TryGetProperty("content", out var content) &&
-                                    content.TryGetProperty("application/json", out var media) &&
-                                    media.TryGetProperty("$ref", out var refValue)
-                        ? refValue.GetString()
-                        : null;
-
-                    if (reference != "#/components/mediaTypes/ErrorJson" &&
-                        reference != "#/components/mediaTypes/ValidationErrorJson")
-                    {
-                        offenders.Add($"{path.Name} {op.Name} {r.Name}: {reference ?? "no $ref"}");
-                    }
+                    offenders.Add($"{path} {method} {r.Name}: {reference ?? "inline"}");
                 }
             }
 
-        Assert.True(offenders.Count == 0, "Error responses not using the shared envelope:\n" + string.Join("\n", offenders));
+        Assert.True(offenders.Count == 0, "Error responses not using a shared response:\n" + string.Join("\n", offenders));
+
+        var challenge = shared.GetProperty("Unauthorized").GetProperty("headers");
+        Assert.True(challenge.TryGetProperty("WWW-Authenticate", out _), "401 declares its Bearer challenge");
     }
 
     // Multipart uploads describe the part encoding, narrowed to the extensions the endpoint allows
@@ -516,6 +561,110 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.NotNull(GetQueryParameter(paths, "/api/{env}/Inventory/ProductStock", "$select"));
     }
 
+    // Ids derive from the route, so adding an endpoint never renames the operations of another
+    [Fact]
+    public async Task OperationIds_AreStable_UniqueAndDerivedFromTheRoute()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var ids = Operations(doc.RootElement)
+            .ToDictionary(o => $"{o.Method} {o.Path}", o => o.Operation.GetProperty("operationId").GetString()!);
+
+        Assert.All(ids.Values, id => Assert.Matches("^[a-zA-Z]+_[A-Za-z0-9_]+$", id));
+        Assert.Equal(ids.Count, ids.Values.Distinct().Count());
+
+        Assert.Equal("get_WMS_Bins", ids["get /api/{env}/WMS/Bins"]);
+        Assert.Equal("merge_WMS_Bins", ids["MERGE /api/{env}/WMS/Bins"]);
+        Assert.Equal("delete_WMS_Bins", ids["delete /api/{env}/WMS/Bins({id})"]);
+        Assert.Equal("query_Inventory_StockLevels", ids["query /api/{env}/Inventory/StockLevels"]);
+        Assert.Equal("get_Masterdata_CostCenters", ids["get /api/{env}/Masterdata/CostCenters"]);
+        Assert.Equal("query_Masterdata_CostCenters", ids["query /api/{env}/Masterdata/CostCenters"]);
+        Assert.Equal("post_Webhooks_Incoming", ids["post /api/{env}/Webhooks/Incoming/{webhookId}"]);
+
+        // ids that were already stable keep their value
+        Assert.Equal("get_CRM_Accounts", ids["get /api/{env}/CRM/Accounts"]);
+        Assert.Equal("delete_CRM_Accounts", ids["delete /api/{env}/CRM/Accounts/{id}"]);
+        Assert.Equal("composite_Sales_Orders", ids["post /api/{env}/Sales/Orders"]);
+        Assert.Equal("uploadFile_Images", ids["post /api/{env}/files/Images"]);
+    }
+
+    // SqlRequestHandler serves Bins(1) as one record, so the document offers it where GET is allowed
+    [Fact]
+    public async Task SqlGetById_IsDocumented_ForTablesAndViews()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var paths = doc.RootElement.GetProperty("paths");
+
+        var byId = paths.GetProperty("/api/{env}/WMS/Bins({id})").GetProperty("get");
+        Assert.Equal("get_WMS_Bins_byId", byId.GetProperty("operationId").GetString());
+        var parameters = byId.GetProperty("parameters").EnumerateArray().ToList();
+        Assert.Contains(parameters, p => p.GetProperty("name").GetString() == "id" && p.GetProperty("in").GetString() == "path");
+        Assert.DoesNotContain(parameters, p => p.GetProperty("name").GetString()!.StartsWith('$'));
+
+        var responses = byId.GetProperty("responses");
+        Assert.True(responses.TryGetProperty("404", out _));
+        var schema = responses.GetProperty("200").GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.False(schema.TryGetProperty("properties", out var props) && props.TryGetProperty("value", out _),
+            "a single record is returned without the collection envelope");
+
+        // GET-only endpoints get the id path too; table valued functions have no key
+        Assert.True(paths.GetProperty("/api/{env}/WMS/Warehouses({id})").TryGetProperty("get", out _));
+        Assert.False(paths.TryGetProperty("/api/{env}/Company/Departments({id})", out _));
+    }
+
+    // $count adds totalCount to the body; the pagination headers are the ones SqlRequestHandler sends
+    [Fact]
+    public async Task SqlGet_DocumentsCount_AndTheHeadersItSends()
+    {
+        SetAllowedEnvironments("500", "700", "Synergy", "WMS");
+
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        var paths = doc.RootElement.GetProperty("paths");
+
+        var count = GetQueryParameter(paths, "/api/{env}/WMS/Bins", "$count");
+        Assert.NotNull(count);
+        Assert.Equal("boolean", count.Value.GetProperty("schema").GetProperty("type").GetString());
+        Assert.Null(GetQueryParameter(paths, "/api/{env}/Company/Departments", "$count"));
+
+        var ok = paths.GetProperty("/api/{env}/WMS/Bins").GetProperty("get").GetProperty("responses").GetProperty("200");
+        var headers = ok.GetProperty("headers").EnumerateObject().Select(h => h.Name).ToList();
+        Assert.Contains("X-Has-More", headers);
+        Assert.Contains("X-Returned-Count", headers);
+        Assert.DoesNotContain("X-Has-More-Results", headers);
+        Assert.DoesNotContain("X-Total-Count", headers);
+        Assert.Contains("totalCount", ok.GetProperty("content").GetProperty("application/json").GetRawText());
+
+        var list = paths.GetProperty("/api/{env}/files/Images/list").GetProperty("get").GetProperty("responses").GetProperty("200");
+        var listHeaders = list.GetProperty("headers").EnumerateObject().Select(h => h.Name).ToList();
+        Assert.Contains("X-Has-More", listHeaders);
+        Assert.DoesNotContain("X-Has-More-Results", listHeaders);
+    }
+
+    private static IEnumerable<(string Path, string Method, JsonElement Operation)> Operations(JsonElement root)
+    {
+        foreach (var path in root.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var entry in path.Value.EnumerateObject())
+            {
+                if (entry.Name == "additionalOperations")
+                {
+                    foreach (var extra in entry.Value.EnumerateObject())
+                        yield return (path.Name, extra.Name, extra.Value);
+                }
+                else if (entry.Value.ValueKind == JsonValueKind.Object && entry.Value.TryGetProperty("responses", out _))
+                {
+                    yield return (path.Name, entry.Name, entry.Value);
+                }
+            }
+        }
+    }
+
     private static JsonElement? GetQueryParameter(JsonElement paths, string path, string name)
     {
         if (!paths.TryGetProperty(path, out var operations)) return null;
@@ -539,22 +688,21 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
-        var paths = doc.RootElement.GetProperty("paths");
+        var shared = doc.RootElement.GetProperty("components").GetProperty("responses");
 
         var offenders = new List<string>();
-        foreach (var path in paths.EnumerateObject())
-            foreach (var op in path.Value.EnumerateObject())
+        foreach (var (path, method, operation) in Operations(doc.RootElement))
+            foreach (var r in operation.GetProperty("responses").EnumerateObject())
             {
-                if (!op.Value.TryGetProperty("responses", out var resp) || resp.ValueKind != JsonValueKind.Object) continue;
-                foreach (var r in resp.EnumerateObject())
+                if (!int.TryParse(r.Name, out var code)) continue;
+                var expected = PortwayApi.Classes.OpenApi.StandardResponses.DescriptionFor(code);
+                if (expected == null) continue;
+                var resolved = r.Value.TryGetProperty("$ref", out var reference)
+                    ? shared.GetProperty(reference.GetString()!["#/components/responses/".Length..])
+                    : r.Value;
+                if (!resolved.TryGetProperty("description", out var d) || d.GetString() != expected)
                 {
-                    if (!int.TryParse(r.Name, out var code)) continue;
-                    var expected = PortwayApi.Classes.OpenApi.StandardResponses.DescriptionFor(code);
-                    if (expected == null) continue;
-                    if (!r.Value.TryGetProperty("description", out var d) || d.GetString() != expected)
-                    {
-                        offenders.Add($"{path.Name} {op.Name} {r.Name}: '{d.GetString()}' (expected '{expected}')");
-                    }
+                    offenders.Add($"{path} {method} {r.Name}: '{d.GetString()}' (expected '{expected}')");
                 }
             }
 

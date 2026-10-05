@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace PortwayApi.Classes.OpenApi;
 
-public class TagSorterDocumentFilter : IOpenApiDocumentTransformer
+public sealed class TagSorterDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {

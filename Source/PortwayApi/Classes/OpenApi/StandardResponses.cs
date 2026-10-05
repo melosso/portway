@@ -73,13 +73,42 @@ public static class StandardResponses
     public static string? DescriptionFor(int code) => Descriptions.TryGetValue(code, out var d) ? d : null;
 
     /// <summary>
-    /// Registers the shared { success, error } and validation schemas, plus the media types wrapping them, as reusable components (once)
+    /// Component name of the shared error response for a status code, the reason phrase without spaces
+    /// </summary>
+    public static string ResponseIdFor(int code) => (SummaryFor(code) ?? $"Error{code}").Replace(" ", "");
+
+    /// <summary>
+    /// Registers the shared { success, error } and validation schemas, the media types wrapping them and one error response per status code, as reusable components (once)
     /// </summary>
     public static void EnsureSchemas(OpenApiDocument document)
     {
         document.Components ??= new OpenApiComponents();
         document.Components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
         document.Components.MediaTypes ??= new Dictionary<string, IOpenApiMediaType>();
+        document.Components.Responses ??= new Dictionary<string, IOpenApiResponse>();
+
+        foreach (var code in StandardErrorCodes.All)
+        {
+            document.Components.Responses.TryAdd(ResponseIdFor(code), new OpenApiResponse
+            {
+                Summary = SummaryFor(code),
+                Description = DescriptionFor(code),
+                Headers = code == 401
+                    ? new Dictionary<string, IOpenApiHeader>
+                    {
+                        ["WWW-Authenticate"] = new OpenApiHeader
+                        {
+                            Description = "Bearer challenge (RFC 6750); error=\"invalid_token\" when a token was sent and rejected",
+                            Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+                        }
+                    }
+                    : null,
+                Content = new Dictionary<string, IOpenApiMediaType>
+                {
+                    ["application/json"] = new OpenApiMediaTypeReference(code == 422 ? ValidationMediaTypeId : ErrorMediaTypeId, document)
+                }
+            });
+        }
 
         document.Components.MediaTypes.TryAdd(ErrorMediaTypeId, new OpenApiMediaType
         {
@@ -157,7 +186,7 @@ public static class StandardResponses
         => AddErrors(operation, StandardErrorCodes.For(kind));
 
     /// <summary>
-    /// Replaces every error response on an operation with the given codes, each referencing the shared schema (422 uses the validation schema)
+    /// Replaces every error response on an operation with references to the shared error responses for the given codes
     /// </summary>
     public static void AddErrors(OpenApiOperation operation, params int[] codes)
     {
@@ -175,16 +204,7 @@ public static class StandardResponses
 
         foreach (var code in codes)
         {
-            var mediaTypeId = code == 422 ? ValidationMediaTypeId : ErrorMediaTypeId;
-            operation.Responses[code.ToString()] = new OpenApiResponse
-            {
-                Summary = SummaryFor(code),
-                Description = DescriptionFor(code) ?? "Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaTypeReference(mediaTypeId)
-                }
-            };
+            operation.Responses[code.ToString()] = new OpenApiResponseReference(ResponseIdFor(code));
         }
     }
 }

@@ -209,6 +209,7 @@ public class TokenService
                     Convert.FromBase64String(storedToken.TokenHash)))
             {
                 Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
+                await RecordLastUseAsync(storedToken);
                 _tokenCache.Set(cacheKey, storedToken, storedToken.Id);
                 return storedToken;
             }
@@ -221,6 +222,26 @@ public class TokenService
         _tokenCache.SetMiss(cacheKey);
 
         return null;
+    }
+
+    /// <summary>
+    /// Stores the verification time; runs only on a cache miss, so at most once per token per cache window
+    /// </summary>
+    private async Task RecordLastUseAsync(AuthToken token)
+    {
+        var now = DateTime.UtcNow;
+        try
+        {
+            await _dbContext.Tokens
+                .Where(t => t.Id == token.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.LastUsedAt, now));
+            token.LastUsedAt = now;
+        }
+        catch (Exception ex)
+        {
+            // a busy auth.db must not fail the request
+            Log.Warning(ex, "Could not record last use of token {TokenId}", token.Id);
+        }
     }
 
     /// <summary>

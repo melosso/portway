@@ -3,6 +3,7 @@ namespace PortwayApi.Middleware;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
@@ -72,9 +73,7 @@ public class TokenAuthMiddleware
                 if (config.Authentication.OverrideGlobalToken)
                 {
                     Log.Warning("Custom environment authentication failed for '{Env}' and OverrideGlobalToken is enabled", env);
-                    context.Response.StatusCode = 401;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new { error = "Environment authentication failed", success = false });
+                    await WriteErrorAsync(context, 401, "Environment authentication failed", EnvironmentChallenges(config.Authentication.Methods));
                     return;
                 }
 
@@ -88,14 +87,7 @@ public class TokenAuthMiddleware
         {
             Log.Debug("Authorization header missing for {Path}", context.Request.Path);
 
-            // Omit clientIp and requestedPath
-            context.Response.StatusCode = 401;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                error = "Authentication required",
-                success = false
-            });
+            await WriteErrorAsync(context, 401, "Authentication required", BearerChallenge);
             return;
         }
 
@@ -121,9 +113,7 @@ public class TokenAuthMiddleware
             // Log failed authentication attempt in audit trail
             await LogFailedAuthAttemptAsync(dbContext, tokenString, context);
 
-            context.Response.StatusCode = 401;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token", success = false });
+            await WriteErrorAsync(context, 401, "Invalid or expired token", InvalidTokenChallenge);
             return;
         }
 
@@ -140,15 +130,7 @@ public class TokenAuthMiddleware
                 // Log authorization failure in audit trail
                 await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Environment", env);
 
-                context.Response.StatusCode = 403;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    error = $"Access denied to environment '{env}'",
-                    availableEnvironments = tokenDetails.AllowedEnvironments,
-                    requestedEnvironment = env,
-                    success = false
-                });
+                await WriteErrorAsync(context, 403, "Access denied to environment");
                 return;
             }
         }
@@ -168,15 +150,8 @@ public class TokenAuthMiddleware
                 // Log authorization failure in audit trail
                 await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Endpoint", endpointName);
 
-                context.Response.StatusCode = 403;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    error = $"Access denied to endpoint '{endpointName}'",
-                    availableScopes = tokenDetails.AllowedScopes,
-                    requestedEndpoint = endpointName,
-                    success = false
-                });
+                // constant message so an out of scope endpoint reads like a missing one
+                await WriteErrorAsync(context, 403, "Access denied to endpoint");
                 return;
             }
         }
@@ -189,6 +164,34 @@ public class TokenAuthMiddleware
     }
 
     private const string FileScopePrefix = "files/";
+    private const string BearerChallenge = "Bearer realm=\"portway\"";
+    private const string InvalidTokenChallenge = "Bearer realm=\"portway\", error=\"invalid_token\"";
+
+    private static Task WriteErrorAsync(HttpContext context, int status, string error, StringValues challenge = default)
+    {
+        if (!StringValues.IsNullOrEmpty(challenge))
+        {
+            context.Response.Headers.WWWAuthenticate = challenge;
+        }
+
+        context.Response.StatusCode = status;
+        return context.Response.WriteAsJsonAsync(ErrorResponse.Of(error));
+    }
+
+    /// <summary>
+    /// Basic when the environment accepts it, Bearer for every other method
+    /// </summary>
+    internal static StringValues EnvironmentChallenges(IEnumerable<AuthenticationMethod>? methods)
+    {
+        var basic = methods?.Any(m => m.Type.Equals("basic", StringComparison.OrdinalIgnoreCase)) == true;
+        var other = methods?.Any(m => !m.Type.Equals("basic", StringComparison.OrdinalIgnoreCase)) != false;
+        return (basic, other) switch
+        {
+            (true, true) => new StringValues(["Basic realm=\"portway\"", BearerChallenge]),
+            (true, false) => "Basic realm=\"portway\"",
+            _ => BearerChallenge
+        };
+    }
 
     /// <summary>
     /// Scope identity of a file route, files/{name} with @v{n} when the route includes a version

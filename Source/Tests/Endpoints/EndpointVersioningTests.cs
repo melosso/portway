@@ -47,10 +47,14 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         Token("files-legacy", "files");
     }
 
+    private static readonly string StorageRoot = Path.Combine(Path.GetTempPath(), "portway-version-tests");
+
     public new void Dispose()
     {
         foreach (var dir in EndpointDirs.Where(Directory.Exists))
             Directory.Delete(dir, recursive: true);
+        if (Directory.Exists(StorageRoot))
+            Directory.Delete(StorageRoot, recursive: true);
         EndpointHandler.ReloadAllEndpoints();
         base.Dispose();
     }
@@ -76,7 +80,7 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         File.WriteAllText(Path.Combine(dir, "entity.json"), JsonSerializer.Serialize(new
         {
             StorageType = "Local",
-            BaseDirectory = Path.Combine(Path.GetTempPath(), "portway-version-tests", baseDirectory),
+            BaseDirectory = Path.Combine(StorageRoot, baseDirectory),
             AllowedEnvironments = new[] { "500" }
         }));
     }
@@ -107,6 +111,20 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         return JsonDocument.Parse(body).RootElement.EnumerateArray().First().GetProperty("marker").GetString()!;
+    }
+
+    [Fact]
+    public async Task Metrics_LabelVersionSeparatelyFromEndpoint()
+    {
+        var metrics = _factory.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+        metrics.Clear();
+
+        await Get("/api/500/v2/VerTest/Items");
+        await Get("/api/500/v2/files/VerDocs/list");
+
+        var rows = metrics.GetHealth(TimeSpan.FromHours(1), new PortwayApi.Services.HealthFilter(Version: "v2")).Breakdown;
+        Assert.Contains(rows, r => r.Endpoint == "VerTest/Items");
+        Assert.Contains(rows, r => r.Endpoint == "files/VerDocs");
     }
 
     [Fact]
@@ -187,6 +205,67 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         Assert.Equal("Fri, 01 Jan 2027 00:00:00 GMT", response.Headers.GetValues("Sunset").Single());
         Assert.Equal("</api/500/v2/VerTest/Items>; rel=\"successor-version\"", response.Headers.GetValues("Link").Single());
         Assert.False((await Get("/api/500/v2/VerTest/Items")).Headers.Contains("Deprecation"));
+    }
+
+    [Fact]
+    public async Task DeprecatedVersion_DocumentsTheLifecycleHeadersItSends()
+    {
+        using var doc = await Document("/docs/openapi.json");
+        var paths = doc.RootElement.GetProperty("paths");
+
+        static List<string> Headers(JsonElement operation) =>
+            operation.GetProperty("responses").GetProperty("200").TryGetProperty("headers", out var headers)
+                ? headers.EnumerateObject().Select(h => h.Name).ToList()
+                : [];
+
+        var deprecated = Headers(paths.GetProperty("/api/{env}/VerTest/Items").GetProperty("get"));
+        Assert.Contains("Deprecation", deprecated);
+        Assert.Contains("Sunset", deprecated);
+        Assert.Contains("Link", deprecated);
+
+        var current = Headers(paths.GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get"));
+        Assert.DoesNotContain("Deprecation", current);
+    }
+
+    // The documented FileInfo is the item shape the list action returns
+    [Fact]
+    public async Task FileList_ItemsMatchTheDocumentedFileInfo()
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new ByteArrayContent("hello"u8.ToArray()), "file", "shape.txt");
+        using var upload = new HttpRequestMessage(HttpMethod.Post, "/api/500/files/VerDocs") { Content = content };
+        upload.Headers.Authorization = new AuthenticationHeaderValue("Bearer", "test-token");
+        Assert.Equal(HttpStatusCode.Created, (await _client.SendAsync(upload, TestContext.Current.CancellationToken)).StatusCode);
+
+        using var list = await Document("/api/500/files/VerDocs/list");
+        var returned = list.RootElement.GetProperty("value")[0].EnumerateObject().Select(p => p.Name).Order().ToList();
+
+        using var doc = await Document("/docs/openapi.json");
+        var root = doc.RootElement;
+        var documented = root.GetProperty("components").GetProperty("schemas").GetProperty("FileInfo")
+            .GetProperty("properties").EnumerateObject().Select(p => p.Name).Order().ToList();
+        Assert.Equal(returned, documented);
+
+        var listSchema = root.GetProperty("paths").GetProperty("/api/{env}/files/VerDocs/list").GetProperty("get")
+            .GetProperty("responses").GetProperty("200").GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.Equal("#/components/schemas/FileListResponse", listSchema.GetProperty("$ref").GetString());
+
+        // response shapes do not vary by version, so every version references the same components
+        foreach (var basePath in new[] { "/api/{env}/files/VerDocs", "/api/{env}/v2/files/VerDocs" })
+        {
+            var uploadSchema = root.GetProperty("paths").GetProperty(basePath).GetProperty("post")
+                .GetProperty("responses").GetProperty("201").GetProperty("content").GetProperty("application/json").GetProperty("schema");
+            Assert.Equal("#/components/schemas/FileUploadResponse", uploadSchema.GetProperty("$ref").GetString());
+        }
+
+        // a single-version document keeps the components its operations reference
+        using var v2 = await Document("/docs/openapi/v2/openapi.json");
+        var v2Schemas = v2.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.True(v2Schemas.TryGetProperty("FileListResponse", out _));
+        Assert.True(v2Schemas.TryGetProperty("FileInfo", out _));
+        Assert.Equal("#/components/schemas/FileListResponse", v2.RootElement.GetProperty("paths")
+            .GetProperty("/api/{env}/v2/files/VerDocs/list").GetProperty("get").GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json").GetProperty("schema").GetProperty("$ref").GetString());
     }
 
     private async Task<JsonDocument> Document(string url)

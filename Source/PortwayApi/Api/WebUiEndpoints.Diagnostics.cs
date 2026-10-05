@@ -163,5 +163,57 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
+        app.MapGet("/ui/api/metrics/health", (HttpRequest request, MetricsService metrics) =>
+        {
+            string? Param(string name) => request.Query[name].FirstOrDefault() is { Length: > 0 } v ? v : null;
+            var period = Param("period") is { } p && MetricsService.HealthPeriod(p) is not null ? p : "24h";
+            var health = metrics.GetHealth(MetricsService.HealthPeriod(period)!.Value,
+                new HealthFilter(Param("env"), Param("endpoint"), Param("version"), Param("method")));
+
+            static object SummaryDto(HealthSummary s) => new
+            {
+                total = s.Total,
+                failures = s.Failures,
+                client_errors = s.ClientErrors,
+                success_rate = s.SuccessRate,
+                mean_ms = s.MeanMs,
+                p50 = s.P50,
+                p90 = s.P90,
+                p95 = s.P95,
+                p99 = s.P99
+            };
+
+            return Results.Json(new
+            {
+                period,
+                summary = SummaryDto(health.Summary),
+                latency = health.Latency.Select(b => new { upper_ms = b.UpperMs, count = b.Count }),
+                breakdown = health.Breakdown.Select(r => new
+                {
+                    environment = r.Environment,
+                    endpoint = r.Endpoint,
+                    version = r.Version,
+                    method = r.Method,
+                    summary = SummaryDto(r.Summary)
+                }),
+                breakdown_total = health.BreakdownTotal,
+                options = new
+                {
+                    environments = health.Options.Environments,
+                    endpoints = health.Options.Endpoints,
+                    versions = health.Options.Versions,
+                    methods = health.Options.Methods
+                }
+            });
+        }).ExcludeFromDescription();
+
+        app.MapDelete("/ui/api/metrics", async (HttpContext context, MetricsService metrics, MetricsPersistenceService persistence,
+            PortwayApi.Services.Configuration.ConfigAuditService configAudit) =>
+        {
+            var clearedAt = metrics.Clear();
+            await persistence.ClearAsync(clearedAt, context.RequestAborted);
+            configAudit.Record("clear", "metrics", "request metrics", context.Connection.RemoteIpAddress?.ToString());
+            return Results.Json(new { success = true });
+        }).ExcludeFromDescription();
     }
 }

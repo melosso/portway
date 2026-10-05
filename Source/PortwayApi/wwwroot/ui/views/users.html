@@ -478,7 +478,7 @@ async function loadProviders() {
     _providers = d.providers ?? [];
 
     if (!_providers.length) {
-      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No providers. Password sign-in only.</span>';
+      el.innerHTML = '<span class="muted" style="font-size:0.8rem">No providers are configured.</span>';
       return;
     }
 

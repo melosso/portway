@@ -17,6 +17,11 @@ public class AuthToken
     public DateTime? RevokedAt { get; set; } = null;
 
     /// <summary>
+    /// When the token last passed verification, UTC; null when never used
+    /// </summary>
+    public DateTime? LastUsedAt { get; set; }
+
+    /// <summary>
     /// Comma-separated list of allowed endpoint scopes (e.g., "Products,Customers,*") Use "*" for full access to all endpoints
     /// </summary>
     public string AllowedScopes { get; set; } = "*";

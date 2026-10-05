@@ -97,7 +97,7 @@ Errors handled by Portway's exception handler are recorded on the active span wi
 | `portway.cache.hit.count` | Counter | `{hit}` | None |
 | `portway.cache.miss.count` | Counter | `{miss}` | None |
 
-The `portway.request_source` dimension is `api` for endpoint calls, `ui` for dashboard calls and `other` for the rest. The `portway.endpoint` dimension contains the configured endpoint name for API calls (e.g. `Products`, `composite/SalesOrder`) and is empty for other requests.
+The `portway.request_source` dimension is `api` for `/api` calls, `ui` for console calls and `other` for the rest. The `portway.endpoint` dimension contains the configured endpoint name with namespace and version for API calls (e.g. `Products`, `CRM/Accounts`, `Inventory/Products@v2`, `composite/SalesOrder`) and is empty for other requests and for paths that match no configured endpoint. `http.method` is `OTHER` for methods outside `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `MERGE`, `QUERY`, `HEAD` and `OPTIONS`.
 
 ## Docker Compose
 

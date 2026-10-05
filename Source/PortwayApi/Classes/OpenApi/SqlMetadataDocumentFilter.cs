@@ -9,7 +9,7 @@ namespace PortwayApi.Classes.OpenApi;
 /// <summary>
 /// Document filter that enriches SQL endpoint documentation with database column metadata
 /// </summary>
-public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
+public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly Services.SqlMetadataService _metadataService;
 
@@ -63,6 +63,12 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             if (pathItem.Operations.TryGetValue(HttpMethod.Get, out var getOperation))
             {
                 EnrichGetOperationWithObjectMetadata(getOperation, endpointName, definition);
+            }
+
+            if (document.Paths.TryGetValue(path + "({id})", out var byIdItem) &&
+                byIdItem.Operations?.TryGetValue(HttpMethod.Get, out var byIdOperation) == true)
+            {
+                EnrichGetByIdOperationWithObjectMetadata(byIdOperation, endpointName, definition);
             }
 
             // Enrich POST operation with procedure metadata
@@ -147,7 +153,8 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                         Type = JsonSchemaType.String | JsonSchemaType.Null,
                         Description = "URL for pagination (null if no more pages)",
                         Examples = null
-                    }
+                    },
+                    ["totalCount"] = DynamicEndpointDocumentFilter.TotalCountSchema()
                 },
                 Required = new HashSet<string> { "success", "count", "value" }
             };
@@ -163,6 +170,26 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         Log.Debug("Enriched GET operation for {EndpointName} with {ColumnCount} columns",
             endpointName, metadata.Count);
+    }
+
+    private void EnrichGetByIdOperationWithObjectMetadata(
+        OpenApiOperation operation,
+        string endpointName,
+        EndpointDefinition definition)
+    {
+        var metadata = _metadataService.GetObjectMetadata(endpointName);
+        if (metadata is not { Count: > 0 } ||
+            operation.Responses is null ||
+            !operation.Responses.TryGetValue("200", out var response) ||
+            response.Content is not { } content)
+        {
+            return;
+        }
+
+        content["application/json"] = new OpenApiMediaType
+        {
+            Schema = CreateSchemaFromObjectMetadata(metadata, excludePrimaryKey: false, endpoint: definition)
+        };
     }
 
     /// <summary>
@@ -247,12 +274,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                     ? CreateExampleObjectFromObjectMetadata(objectMetadata, definition)
                     : CreateSuccessResponseExample()
             };
-        }
-
-        // Add 422 response for validation errors
-        if (operation.Responses != null && !operation.Responses.ContainsKey("422"))
-        {
-            operation.Responses["422"] = CreateValidationErrorResponse();
         }
 
         Log.Debug("Enriched {Method} operation for {EndpointName} with {ParameterCount} parameters",
@@ -675,43 +696,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         };
     }
 
-    /// <summary>
-    /// Creates a validation error response schema
-    /// </summary>
-    private OpenApiResponse CreateValidationErrorResponse()
-    {
-        return new OpenApiResponse
-        {
-            Description = "Validation failed - Required fields missing or regex pattern mismatch",
-            Content = new Dictionary<string, IOpenApiMediaType>
-            {
-                ["application/json"] = new OpenApiMediaType
-                {
-                    Schema = new OpenApiSchema
-                    {
-                        Type = JsonSchemaType.Object,
-                        Properties = new Dictionary<string, IOpenApiSchema>
-                        {
-                            ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                            ["details"] = new OpenApiSchema
-                            {
-                                Type = JsonSchemaType.Array,
-                                Items = new OpenApiSchema
-                                {
-                                    Type = JsonSchemaType.Object,
-                                    Properties = new Dictionary<string, IOpenApiSchema>
-                                    {
-                                        ["field"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
 
     /// <summary>
     /// Creates an example object from procedure parameters

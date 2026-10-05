@@ -13,6 +13,9 @@ internal static class OpenApiMarkdownRenderer
 
     public static string Render(OpenApiDocument document)
     {
+        // operations reference the shared error responses by id, resolved through the host document
+        document.SetReferenceHostDocument();
+
         var md = new StringBuilder();
 
         md.Append("# ").AppendLine(document.Info?.Title).AppendLine();

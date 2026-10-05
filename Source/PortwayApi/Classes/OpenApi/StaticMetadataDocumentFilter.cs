@@ -10,7 +10,7 @@ namespace PortwayApi.Classes.OpenApi;
 /// <summary>
 /// Document transformer that enriches static JSON, CSV, and XML endpoint documentation by analyzing actual content files while generating randomized mock data for examples to prevent data leakage
 /// </summary>
-public class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
+public sealed class StaticMetadataDocumentFilter : IOpenApiDocumentTransformer
 {
     private const long MaxFileSizeToAnalyze = 1 * 1024 * 1024; // 1 MB limit for analysis
 

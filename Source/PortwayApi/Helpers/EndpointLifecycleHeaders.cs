@@ -30,7 +30,7 @@ internal static class EndpointLifecycleHeaders
         }
     }
 
-    private static EndpointDefinition? Successor(EndpointDefinition endpoint) =>
+    internal static EndpointDefinition? Successor(EndpointDefinition endpoint) =>
         OpenApiEndpointCatalog.All()
             .Select(e => e.Definition)
             .Where(d => d.Enabled

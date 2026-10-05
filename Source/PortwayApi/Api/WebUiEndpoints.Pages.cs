@@ -155,6 +155,7 @@ public static partial class WebUiEndpointExtensions
         var pageTitles = new Dictionary<string, string>
         {
             ["dashboard"] = "Dashboard",
+            ["health"] = "Health",
             ["endpoints"] = "Endpoints",
             ["environments"] = "Environments",
             ["tokens"] = "Access Tokens",

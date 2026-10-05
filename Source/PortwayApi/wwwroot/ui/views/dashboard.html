@@ -102,6 +102,28 @@
         transform-origin: left;
         transition: transform 0.3s;
     }
+
+    a.summary-card {
+        color: inherit;
+        text-decoration: none;
+        transition: border-color 0.15s, background 0.15s;
+    }
+    a.summary-card:hover {
+        border-color: hsl(var(--foreground) / 0.25);
+    }
+    a.summary-card:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+    }
+    .health-strip .summary-value.is-good {
+        color: hsl(var(--success));
+    }
+    .health-strip .summary-value.is-warn {
+        color: hsl(var(--warning));
+    }
+    .health-strip .summary-value.is-bad {
+        color: hsl(var(--destructive));
+    }
 </style>
 
 <main>
@@ -136,47 +158,27 @@
     <div class="main-content">
         <div id="setupGuide"></div>
 
-        <div class="summary-cards">
-            <div class="summary-card">
-                <div class="summary-value" id="statSql">—</div>
-                <div class="summary-label">SQL Endpoints</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-value" id="statProxy">—</div>
-                <div class="summary-label">Proxy Endpoints</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-value" id="statFile">—</div>
-                <div class="summary-label">File / Static</div>
-            </div>
-            <div class="summary-card">
-                <div class="summary-value" id="statEnvs">—</div>
-                <div class="summary-label">Environments</div>
-            </div>
-        </div>
-
-        <div class="pair-grid">
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">Service Health</span>
-                    <span class="badge badge-muted" id="healthBadge">—</span>
-                </div>
-                <div class="card-body" style="flex:1">
-                    <div class="kv-grid">
-                        <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
-                        <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
-                        <span class="kv-key">Version</span><span class="kv-val" id="healthVersion">—</span>
-                        <span class="kv-key">API version</span><span class="kv-val" id="healthApiVersion">—</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header"><span class="card-title">Endpoint Breakdown</span></div>
-                <div class="card-body" id="breakdownBody" style="flex:1">
-                    <span class="muted" style="font-size:0.8rem">Loading…</span>
-                </div>
-            </div>
+        <div class="summary-cards health-strip">
+            <a class="summary-card" href="ui/health">
+                <div class="summary-value" id="hsSuccess">—</div>
+                <div class="summary-label">Success rate</div>
+                <div class="summary-sub">API, last 24 hours</div>
+            </a>
+            <a class="summary-card" href="ui/health">
+                <div class="summary-value" id="hsFailures">—</div>
+                <div class="summary-label">Failures (5xx)</div>
+                <div class="summary-sub" id="hsClientErrors">—</div>
+            </a>
+            <a class="summary-card" href="ui/health">
+                <div class="summary-value" id="hsP95">—</div>
+                <div class="summary-label">p95 latency</div>
+                <div class="summary-sub" id="hsP99">—</div>
+            </a>
+            <a class="summary-card" href="ui/health">
+                <div class="summary-value" id="hsTotal">—</div>
+                <div class="summary-label">API requests</div>
+                <div class="summary-sub">Last 24 hours</div>
+            </a>
         </div>
 
         <div class="pair-grid pair-grid-wide" style="align-items:start">
@@ -217,9 +219,17 @@
 
         <div class="pair-grid">
             <div class="card">
-                <div class="card-header"><span class="card-title">Cache</span></div>
-                <div class="card-body" id="cacheBody" style="flex:1">
-                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                <div class="card-header">
+                    <span class="card-title">Service Health</span>
+                    <span class="badge badge-muted" id="healthBadge">—</span>
+                </div>
+                <div class="card-body" style="flex:1">
+                    <div class="kv-grid">
+                        <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
+                        <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
+                        <span class="kv-key">Version</span><span class="kv-val" id="healthVersion">—</span>
+                        <span class="kv-key">API version</span><span class="kv-val" id="healthApiVersion">—</span>
+                    </div>
                 </div>
             </div>
 
@@ -234,6 +244,13 @@
             </div>
 
             <div class="card">
+                <div class="card-header"><span class="card-title">Cache</span></div>
+                <div class="card-body" id="cacheBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-header">
                     <span class="card-title">Rate Limiting</span>
                     <span class="badge badge-muted" id="rlBadge">—</span>
@@ -243,6 +260,12 @@
                 </div>
             </div>
 
+            <div class="card">
+                <div class="card-header"><span class="card-title">Endpoints</span></div>
+                <div class="card-body" id="breakdownBody" style="flex:1">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
             <div class="card" id="mcpCard" hidden>
                 <div class="card-header">
                     <span class="card-title">MCP (Model Context Protocol)</span>
@@ -264,10 +287,6 @@ async function load() {
   try {
     const d = await api('/ui/api/overview', { failure: 'Failed to load overview' });
     const ep = d.endpoints ?? {};
-    animateCounter(document.getElementById('statSql'),   ep.sql ?? '0');
-    animateCounter(document.getElementById('statProxy'), (ep.proxy ?? 0) + (ep.composite ? ` (+${ep.composite})` : ''));
-    animateCounter(document.getElementById('statFile'),  ((ep.file ?? 0) + (ep.static ?? 0)) || '0');
-    animateCounter(document.getElementById('statEnvs'),  d.environments ?? '0');
 
     document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
     document.getElementById('healthApiVersion').textContent = d.api_version ?? '—';
@@ -287,6 +306,7 @@ async function load() {
         ).join('') +
         `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Total</span>
          <span class="kv-val"  style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">${ep.total ?? 0}</span>` +
+         `<span class="kv-key">Environments</span><span class="kv-val">${d.environments ?? 0}</span>` +
         '</div>'
       : '<span class="muted" style="font-size:0.8rem">No endpoints configured</span>';
   } catch(e) {}
@@ -505,6 +525,27 @@ function renderTopEndpoints(d) {
   </div>`;
 }
 
+function fmtMs(ms) { return ms == null ? '—' : ms < 1 ? '<1 ms' : ms >= 1000 ? `${+(ms/1000).toFixed(1)} s` : `${ms} ms`; }
+
+async function loadHealthStrip() {
+  try {
+    const s = (await api('/ui/api/metrics/health?period=24h', { silent: true })).summary ?? {};
+    const tone = (el, t) => { el.classList.remove('is-good', 'is-warn', 'is-bad'); if (t) el.classList.add(t); };
+    const success = document.getElementById('hsSuccess');
+    success.textContent = s.success_rate == null ? '—' : `${(s.success_rate * 100).toFixed(s.success_rate >= 0.999 && s.success_rate < 1 ? 2 : 1)}%`;
+    tone(success, s.success_rate == null ? null : s.success_rate >= 0.999 ? 'is-good' : s.success_rate >= 0.95 ? 'is-warn' : 'is-bad');
+    const failures = document.getElementById('hsFailures');
+    failures.textContent = s.total ? fmtN(s.failures ?? 0) : '—';
+    tone(failures, s.failures ? 'is-bad' : null);
+    document.getElementById('hsClientErrors').textContent = `${fmtN(s.client_errors ?? 0)} client errors (4xx)`;
+    const p95 = document.getElementById('hsP95');
+    p95.textContent = fmtMs(s.p95);
+    tone(p95, s.p95 != null && s.p95 > 300 ? 'is-warn' : null);
+    document.getElementById('hsP99').textContent = `p99 ${fmtMs(s.p99)}`;
+    document.getElementById('hsTotal').textContent = fmtN(s.total ?? 0);
+  } catch(e) {}
+}
+
 function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0); }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -524,5 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadMetrics('24h', 'traffic');
   loadMetrics('24h', 'error');
+  loadHealthStrip();
+  setInterval(loadHealthStrip, 30000);
 });
 </script>

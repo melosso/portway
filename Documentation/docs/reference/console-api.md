@@ -29,7 +29,9 @@ Write requests (`POST`, `PUT`, `PATCH`, `DELETE`) send the `portway_csrf` cookie
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/ui/api/overview` | Dashboard data |
-| `GET` | `/ui/api/metrics` | Request metrics |
+| `GET` | `/ui/api/metrics` | Request metrics (`period`: `24h`, `7d`, `30d`) |
+| `DELETE` | `/ui/api/metrics` | Deletes all recorded request metrics |
+| `GET` | `/ui/api/metrics/health` | Success rate, failures and latency percentiles (`period`: `1h`, `24h`, `7d`, `30d`; `env`, `endpoint`, `version`, `method`) |
 | `GET` | `/ui/api/events` | Server-sent events |
 | `GET` | `/ui/api/logs` | Application log entries (`limit`, `offset`, `level`) |
 | `GET` | `/ui/api/audit` | Configuration change history |

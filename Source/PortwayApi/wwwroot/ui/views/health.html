@@ -1,0 +1,346 @@
+<script src="js/components/chart-period-selector.js"></script>
+<script src="js/components/latency-chart.js"></script>
+<style>
+    .health-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .health-table th.sortable:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: -2px;
+    }
+    .health-filters select[hidden],
+    .health-filters button[hidden] {
+        display: none;
+    }
+    .health-cards .summary-value.is-good {
+        color: hsl(var(--success));
+    }
+    .health-cards .summary-value.is-warn {
+        color: hsl(var(--warning));
+    }
+    .health-cards .summary-value.is-bad {
+        color: hsl(var(--destructive));
+    }
+    .health-table td.num,
+    .health-table th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .health-table td.fail {
+        color: hsl(var(--destructive));
+        font-weight: 600;
+    }
+    .health-table tbody tr:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: -2px;
+    }
+    .health-table .ep-cell {
+        max-width: 18rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+</style>
+
+<main>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Health</h1>
+                <p class="page-sub">Success rate, failures and latency of API requests.</p>
+            </div>
+        </div>
+        <div class="page-actions">
+            <div id="healthPeriodSel"></div>
+            <button id="healthPurgeBtn" class="btn btn-outline" type="button" hidden onclick="purgeHealth()">Purge</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="health-filters">
+            <select id="filterEnv" class="input input-sm" aria-label="Environment" onchange="loadHealth()"></select>
+            <select id="filterEndpoint" class="input input-sm" aria-label="Endpoint" onchange="loadHealth()"></select>
+            <select id="filterVersion" class="input input-sm" aria-label="Version" onchange="loadHealth()"></select>
+            <select id="filterMethod" class="input input-sm" aria-label="Method" onchange="loadHealth()"></select>
+            <button id="healthClearFiltersBtn" class="btn btn-ghost btn-sm" type="button" hidden onclick="clearHealthFilters()">Clear filters</button>
+        </div>
+
+        <div class="summary-cards health-cards">
+            <div class="summary-card">
+                <div class="summary-value" id="hSuccess">—</div>
+                <div class="summary-label">Success rate</div>
+                <div class="summary-sub" id="hSuccessSub">Target 99.9%</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="hFailures">—</div>
+                <div class="summary-label">Failures (5xx)</div>
+                <div class="summary-sub" id="hFailuresSub">—</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="hP50">—</div>
+                <div class="summary-label">p50 latency</div>
+                <div class="summary-sub">Target &lt; 100 ms</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="hP95">—</div>
+                <div class="summary-label">p95 latency</div>
+                <div class="summary-sub">Target &lt; 300 ms</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value" id="hP99">—</div>
+                <div class="summary-label">p99 latency</div>
+                <div class="summary-sub">Target &lt; 1 s</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Latency Distribution</span>
+                <div id="healthPercentileSel"></div>
+            </div>
+            <div class="card-body">
+                <div id="latencyChart" style="height:220px"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Breakdown</span>
+                <span class="muted" style="font-size:0.75rem" id="healthBreakdownNote"></span>
+            </div>
+            <div class="table-wrap">
+                <div class="scroll-area">
+                    <table class="table health-table">
+                        <thead>
+                            <tr>
+                            <th class="sortable" data-col="environment" tabindex="0" onclick="setSort('environment')">
+                                Environment <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable" data-col="endpoint" tabindex="0" onclick="setSort('endpoint')">
+                                Endpoint <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable" data-col="version" tabindex="0" onclick="setSort('version')">
+                                Version <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable" data-col="method" tabindex="0" onclick="setSort('method')">
+                                Method <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable num" data-col="total" tabindex="0" onclick="setSort('total')">
+                                Requests <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable num" data-col="success" tabindex="0" onclick="setSort('success')">
+                                Success <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable num" data-col="failures" tabindex="0" onclick="setSort('failures')">
+                                Failures <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable num" data-col="p50" tabindex="0" onclick="setSort('p50')">
+                                p50 <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable num" data-col="p95" tabindex="0" onclick="setSort('p95')">
+                                p95 <span class="sort-icon">↕</span>
+                            </th>
+                            <th class="sortable num" data-col="p99" tabindex="0" onclick="setSort('p99')">
+                                p99 <span class="sort-icon">↕</span>
+                            </th>
+                            </tr>
+                        </thead>
+                        <tbody id="healthRows">
+                            <tr>
+                                <td colspan="10" class="muted" style="font-size:0.8rem">Loading…</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+let _latencyChart, _healthPeriod = '24h', _healthPercentile = 'p95', _healthBreakdown = [], _sortCol = null, _sortDir = 'desc';
+const HEALTH_FILTERS = [
+  ['filterEnv', 'env', 'environments', 'All environments', v => v],
+  ['filterEndpoint', 'endpoint', 'endpoints', 'All endpoints', v => v],
+  ['filterVersion', 'version', 'versions', 'All versions', v => v],
+  ['filterMethod', 'method', 'methods', 'All methods', v => v],
+];
+
+async function loadHealth() {
+  const params = new URLSearchParams({ period: _healthPeriod });
+  for (const [id, key] of HEALTH_FILTERS) {
+    const el = document.getElementById(id);
+    if (el.value) params.set(key, el.value);
+  }
+  document.getElementById('healthClearFiltersBtn').hidden = params.size === 1;
+  try {
+    const d = await api(`/ui/api/metrics/health?${params}`, { silent: true });
+    renderHealthFilters(d.options ?? {});
+    renderHealthSummary(d.summary ?? {});
+    _latencyChart.setData(d.latency, d.summary, _healthPercentile);
+    _healthBreakdown = d.breakdown ?? [];
+    _healthBreakdown.total = d.breakdown_total ?? 0;
+    renderHealthRows();
+  } catch(e) {
+    document.getElementById('healthRows').innerHTML = '<tr><td colspan="10" class="muted" style="font-size:0.8rem">Health data unavailable</td></tr>';
+  }
+}
+
+function renderHealthFilters(options) {
+  for (const [id, , key, allLabel, label] of HEALTH_FILTERS) {
+    const el = document.getElementById(id);
+    const current = el.value;
+    const values = (options[key] ?? []).filter(v => v !== '');
+    if (current && !values.includes(current)) values.push(current);
+    el.innerHTML = `<option value="">${esc(allLabel)}</option>` +
+      values.map(v => `<option value="${esc(v)}"${v === current ? ' selected' : ''}>${esc(label(v))}</option>`).join('');
+    el.hidden = id === 'filterVersion' && values.length === 0;
+  }
+}
+
+function healthTone(el, tone) {
+  el.classList.remove('is-good', 'is-warn', 'is-bad');
+  if (tone) el.classList.add(tone);
+}
+
+function renderHealthSummary(s) {
+  const total = s.total ?? 0;
+  const success = document.getElementById('hSuccess');
+  success.textContent = s.success_rate == null ? '—' : `${(s.success_rate * 100).toFixed(s.success_rate >= 0.999 && s.success_rate < 1 ? 2 : 1)}%`;
+  healthTone(success, s.success_rate == null ? null : s.success_rate >= 0.999 ? 'is-good' : s.success_rate >= 0.95 ? 'is-warn' : 'is-bad');
+  document.getElementById('hSuccessSub').textContent = total ? `${fmtN(total - (s.failures ?? 0))} of ${fmtN(total)} requests` : 'Target 99.9%';
+
+  const failures = document.getElementById('hFailures');
+  failures.textContent = total ? fmtN(s.failures ?? 0) : '—';
+  healthTone(failures, total && s.failures ? 'is-bad' : null);
+  document.getElementById('hFailuresSub').textContent = `${fmtN(s.client_errors ?? 0)} client errors (4xx)`;
+
+  for (const [id, key, target] of [['hP50', 'p50', 100], ['hP95', 'p95', 300], ['hP99', 'p99', 1000]]) {
+    const el = document.getElementById(id);
+    el.textContent = LatencyChart.formatMs(s[key]);
+    healthTone(el, s[key] == null ? null : s[key] <= target ? null : 'is-warn');
+  }
+}
+
+const SORT_VALUES = {
+  environment: r => r.environment, endpoint: r => r.endpoint, version: r => r.version, method: r => r.method,
+  total: r => r.summary.total, success: r => r.summary.success_rate ?? -1, failures: r => r.summary.failures,
+  p50: r => r.summary.p50 ?? -1, p95: r => r.summary.p95 ?? -1, p99: r => r.summary.p99 ?? -1,
+};
+
+function setSort(col) {
+  _sortDir = _sortCol === col && _sortDir === 'desc' ? 'asc' : 'desc';
+  _sortCol = col;
+  renderHealthRows();
+}
+
+function renderHealthRows(total = _healthBreakdown.total) {
+  const value = SORT_VALUES[_sortCol];
+  const rows = value
+    ? [..._healthBreakdown].sort((a, b) => {
+        const x = value(a), y = value(b);
+        const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+        return _sortDir === 'asc' ? c : -c;
+      })
+    : _healthBreakdown;
+  document.querySelectorAll('.health-table th.sortable').forEach(th => {
+    const active = th.dataset.col === _sortCol;
+    th.classList.toggle('sort-active', active);
+    th.setAttribute('aria-sort', active ? (_sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.querySelector('.sort-icon').textContent = active ? (_sortDir === 'asc' ? '↑' : '↓') : '↕';
+  });
+  const body = document.getElementById('healthRows');
+  document.getElementById('healthBreakdownNote').textContent = total > rows.length ? `Top ${rows.length} of ${fmtN(total)}` : '';
+  if (rows.length === 0) {
+    body.innerHTML = '<tr><td colspan="10" class="muted" style="font-size:0.8rem">No API requests in this period</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(r => {
+    const s = r.summary;
+    const rate = s.success_rate == null ? '—' : `${(s.success_rate * 100).toFixed(1)}%`;
+    return `<tr class="clickable" tabindex="0" data-row="${_healthBreakdown.indexOf(r)}" title="Filter on this row">
+      <td>${r.environment ? esc(r.environment) : '<span class="muted">Unmatched</span>'}</td>
+      <td class="ep-cell" title="${esc(r.endpoint)}">${r.endpoint ? esc(r.endpoint) : '<span class="muted">Unmatched</span>'}</td>
+      <td>${esc(r.version || 'v1')}</td>
+      <td>${esc(r.method)}</td>
+      <td class="num">${fmtN(s.total)}</td>
+      <td class="num">${rate}</td>
+      <td class="num${s.failures ? ' fail' : ''}">${fmtN(s.failures)}</td>
+      <td class="num">${LatencyChart.formatMs(s.p50)}</td>
+      <td class="num">${LatencyChart.formatMs(s.p95)}</td>
+      <td class="num">${LatencyChart.formatMs(s.p99)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function applyHealthRow(index) {
+  const r = _healthBreakdown[index];
+  if (!r) return;
+  const values = { filterEnv: r.environment, filterEndpoint: r.endpoint, filterVersion: r.version, filterMethod: r.method };
+  for (const [id, value] of Object.entries(values)) {
+    const el = document.getElementById(id);
+    if (value && ![...el.options].some(o => o.value === value)) el.insertAdjacentHTML('beforeend', `<option value="${esc(value)}">${esc(value)}</option>`);
+    el.value = value;
+  }
+  loadHealth();
+}
+
+function clearHealthFilters() {
+  for (const [id] of HEALTH_FILTERS) document.getElementById(id).value = '';
+  loadHealth();
+}
+
+function purgeHealth() {
+  AlertDialog.show({
+    title:       'Purge request metrics?',
+    description: 'Deletes every recorded request from memory and metrics.db. Health, traffic and top endpoints restart from zero.',
+    actionLabel: 'Purge',
+    variant:     'destructive',
+    onConfirm:   async () => {
+      try {
+        await api('/ui/api/metrics', { method: 'DELETE', success: 'Metrics purged', failure: 'Failed to purge metrics' });
+        loadHealth();
+      } catch(e) {}
+    }
+  });
+}
+
+
+function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  _latencyChart = new LatencyChart(document.getElementById('latencyChart'));
+  new ChartPeriodSelector(
+    document.getElementById('healthPeriodSel'),
+    ['1h','24h','7d','30d'],
+    p => { _healthPeriod = p; loadHealth(); },
+    '24h'
+  );
+  new ChartPeriodSelector(
+    document.getElementById('healthPercentileSel'),
+    ['p50','p90','p95','p99'],
+    p => { _healthPercentile = p; _latencyChart.setPercentile(p); },
+    'p95'
+  );
+  document.querySelectorAll('.health-table th.sortable').forEach(th => th.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); setSort(th.dataset.col); }
+  }));
+  const rows = document.getElementById('healthRows');
+  rows.addEventListener('click', ev => {
+    const tr = ev.target.closest('tr[data-row]');
+    if (tr) applyHealthRow(+tr.dataset.row);
+  });
+  rows.addEventListener('keydown', ev => {
+    const tr = ev.target.closest('tr[data-row]');
+    if (tr && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); applyHealthRow(+tr.dataset.row); }
+  });
+  loadHealth();
+  setInterval(loadHealth, 30000);
+  api('/ui/api/users/me', { silent: true })
+    .then(me => { document.getElementById('healthPurgeBtn').hidden = me?.role !== 'administrator'; })
+    .catch(() => {});
+});
+</script>

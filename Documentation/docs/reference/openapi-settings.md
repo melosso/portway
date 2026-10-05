@@ -14,10 +14,13 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `QUERY` | Native `query` operation |
 | `MERGE` | Under `additionalOperations` |
 | Namespaces | Tag groups; each endpoint is a tag under its namespace |
-| `Deprecated: true` | Operations marked deprecated |
+| `Deprecated: true` | Operations marked deprecated; `2xx` responses declare the `Deprecation`, `Sunset` and `Link` headers the endpoint sends |
 | `Enabled: false` | Operations marked deprecated with a `[Disabled]` summary prefix |
 | File uploads | `multipart/form-data` with part media types from `AllowedExtensions` (otherwise `application/octet-stream`) |
-| Errors | `ErrorResponse` and `ValidationErrorResponse` (`422`) components |
+| Errors | One shared response per status code under `components/responses` (`BadRequest`, `Unauthorized`, ...), each with the `ErrorResponse` schema (`ValidationErrorResponse` for `422`); `Unauthorized` declares `WWW-Authenticate` |
+| Security | Bearer requirement declared once on the document root |
+| `operationId` | `{method}_{namespace}_{endpoint}` (`get_WMS_Bins`, `merge_WMS_Bins`); `_byId` for `GET {endpoint}({id})`; composites `composite_...`, files `uploadFile_...`, `listFiles_...`, `downloadFile_...`, `deleteFile_...`. Derived from the route, so adding an endpoint changes no other id |
+| SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET` |
 | Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
 | Table-valued function parameters | Query and header parameters from `FunctionParameters` |
 | `Hidden: true` | Endpoint omitted |

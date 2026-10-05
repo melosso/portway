@@ -8,7 +8,7 @@ namespace PortwayApi.Classes.OpenApi;
 /// <summary>
 /// This adds dynamic example loading while keeping all existing hardcoded examples as fallback
 /// </summary>
-public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
+public sealed class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<CompositeEndpointDocumentFilter> _logger;
     private readonly OpenApiExampleLoader _exampleLoader;
@@ -71,7 +71,7 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                     Description = definition.Documentation?.MethodDocumentation?.GetValueOrDefault("POST")
                         ?? definition.CompositeConfig?.Description
                         ?? $"Executes the {definition.EndpointName} composite process with multiple steps",
-                    OperationId = $"composite_{definition.FullPath}".Replace(" ", "_").Replace("/", "_"),
+                    OperationId = OpenApiEndpointCatalog.OperationId("composite", definition),
                     Parameters = new List<IOpenApiParameter>()
                 };
 
@@ -170,21 +170,6 @@ public class CompositeEndpointDocumentFilter : IOpenApiDocumentTransformer
                                     }
                                 }
                             }
-                        }
-                    },
-                    ["400"] = new OpenApiResponse { Description = "Bad request or validation error" },
-                    ["401"] = new OpenApiResponse { Description = "Unauthorized - invalid or missing bearer token" },
-                    ["404"] = new OpenApiResponse { Description = "Endpoint not found" }
-                };
-
-                // Add security requirement (unchanged from original)
-                operation.Security = new List<OpenApiSecurityRequirement>
-                {
-                    new OpenApiSecurityRequirement
-                    {
-                        {
-                            new OpenApiSecuritySchemeReference("Bearer"),
-                            new List<string>()
                         }
                     }
                 };

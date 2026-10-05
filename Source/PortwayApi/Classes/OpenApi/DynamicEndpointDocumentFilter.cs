@@ -5,7 +5,7 @@ using Microsoft.OpenApi;
 
 namespace PortwayApi.Classes.OpenApi;
 
-public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
+public sealed partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<DynamicEndpointDocumentFilter> _logger;
     private readonly EnvironmentSettings _environmentSettings;
@@ -32,14 +32,11 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Remove any controller-discovered paths that we'll be replacing
             RemoveConflictingPaths(document);
 
-            // Generate unique operation IDs
-            int operationIdCounter = 1;
-
             // Add documentation for each endpoint type
-            AddSqlEndpoints(document, ref operationIdCounter);
-            AddProxyEndpoints(document, ref operationIdCounter);
-            AddWebhookEndpoints(document, ref operationIdCounter);
-            AddStaticEndpoints(document, ref operationIdCounter);
+            AddSqlEndpoints(document);
+            AddProxyEndpoints(document);
+            AddWebhookEndpoints(document);
+            AddStaticEndpoints(document);
 
 
             // Ensure application/json is added automatically to all operations with request bodies

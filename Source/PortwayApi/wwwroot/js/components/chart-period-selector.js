@@ -1,10 +1,10 @@
 // Chart period tabs, new ChartPeriodSelector(el, periods, onChange)
 class ChartPeriodSelector {
-    /** @param {HTMLElement} container @param {string[]} periods @param {(p:string)=>void} onChange */
-    constructor(container, periods, onChange) {
+    /** @param {HTMLElement} container @param {string[]} periods @param {(p:string)=>void} onChange @param {string} [active] */
+    constructor(container, periods, onChange, active = periods[0]) {
         this._container = container;
         this._onChange = onChange;
-        this._active = periods[0];
+        this._active = active;
 
         const wrap = document.createElement('div');
         wrap.className = 'segmented';

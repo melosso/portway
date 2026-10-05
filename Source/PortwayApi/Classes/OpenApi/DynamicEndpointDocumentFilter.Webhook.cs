@@ -6,7 +6,7 @@ namespace PortwayApi.Classes.OpenApi;
 public partial class DynamicEndpointDocumentFilter
 {
 
-    private void AddWebhookEndpoints(OpenApiDocument document, ref int operationIdCounter)
+    private void AddWebhookEndpoints(OpenApiDocument document)
     {
         var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
         if (webhookEndpoints == null || webhookEndpoints.Count == 0)
@@ -41,7 +41,7 @@ public partial class DynamicEndpointDocumentFilter
                 Tags = new HashSet<OpenApiTagReference> { new(webhookTag) },
                 Summary = webhookDocumentation?.MethodDescriptions?.GetValueOrDefault("POST") ?? "Process incoming request",
                 Description = webhookDocumentation?.MethodDocumentation?.GetValueOrDefault("POST") ?? "Receives and processes a request payload",
-                OperationId = $"op_{operationIdCounter++}",
+                OperationId = OpenApiEndpointCatalog.OperationId("POST", definition),
                 Parameters = new List<IOpenApiParameter>
             {
                 new OpenApiParameter()

@@ -23,7 +23,8 @@ public static class HealthServiceExtensions
 
         services.AddSingleton<PortwayApi.Services.SseBroadcaster>();
         services.AddSingleton<PortwayApi.Services.MetricsService>();
-        services.AddHostedService<PortwayApi.Services.MetricsPersistenceService>();
+        services.AddSingleton<PortwayApi.Services.MetricsPersistenceService>();
+        services.AddHostedService(sp => sp.GetRequiredService<PortwayApi.Services.MetricsPersistenceService>());
 
         services.AddHostedService(sp =>
             new PortwayApi.Services.HealthRefreshService(

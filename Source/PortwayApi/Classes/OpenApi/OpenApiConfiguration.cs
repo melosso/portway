@@ -127,20 +127,14 @@ public static class OpenApiConfiguration
                         var currentSettings = context.ApplicationServices
                             .GetRequiredService<IOptionsMonitor<OpenApiSettings>>().CurrentValue;
 
+                        // the scheme comes from UseProxyForwardedHeaders, which honours only trusted proxies
                         string scheme = httpReq.Scheme;
-                        bool isProduction = !string.Equals(
-                            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-                            "Development", StringComparison.OrdinalIgnoreCase);
-                        bool forceHttps = currentSettings.ForceHttpsInProduction && isProduction;
-
                         string host = httpReq.Host.HasValue ? httpReq.Host.Value : "localhost";
-                        bool isLocalhost = host.Contains("localhost") || host.Contains("127.0.0.1");
+                        bool isLoopback = httpReq.Host.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                                          (System.Net.IPAddress.TryParse(httpReq.Host.Host, out var address) && System.Net.IPAddress.IsLoopback(address));
+                        bool isDevelopment = context.ApplicationServices.GetRequiredService<IHostEnvironment>().IsDevelopment();
 
-                        if (forceHttps && !isLocalhost)
-                            scheme = "https";
-
-                        if (httpReq.Headers.ContainsKey("X-Forwarded-Proto") &&
-                            httpReq.Headers["X-Forwarded-Proto"] == "https")
+                        if (currentSettings.ForceHttpsInProduction && !isDevelopment && !isLoopback)
                             scheme = "https";
 
                         var pathBase = httpReq.PathBase.HasValue ? httpReq.PathBase.Value : "";
@@ -181,26 +175,18 @@ public static class OpenApiConfiguration
                 options.AddDocumentTransformer<GroupTitleDocumentFilter>();
                 options.AddDocumentTransformer<TagSorterDocumentFilter>();
 
-                // Apply global security requirement to all operations (runs after all endpoints are added)
+                // every operation needs the token, so the requirement is declared once for the document
                 options.AddDocumentTransformer((document, context, ct) =>
                 {
-                    foreach (var pathItem in document.Paths.Values)
-                    {
-                        if (pathItem.Operations == null) continue;
-                        foreach (var operation in pathItem.Operations.Values)
+                    document.Security =
+                    [
+                        new OpenApiSecurityRequirement
                         {
-                            operation.Security ??= new List<OpenApiSecurityRequirement>();
-                            operation.Security.Add(new OpenApiSecurityRequirement
-                            {
-                                [new OpenApiSecuritySchemeReference(openApiSettings.SecurityDefinition.Name, document)] = new List<string>()
-                            });
+                            [new OpenApiSecuritySchemeReference(openApiSettings.SecurityDefinition.Name, document)] = []
                         }
-                    }
+                    ];
                     return Task.CompletedTask;
                 });
-
-                // Add operation transformers
-                options.AddOperationTransformer<DynamicEndpointOperationFilter>();
             });
 
             Log.Debug("OpenAPI services registered successfully");

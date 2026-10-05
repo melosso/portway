@@ -25,6 +25,7 @@ public static partial class WebUiEndpointExtensions
                 created_at = t.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss"),
                 expires_at = t.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss"),
                 revoked_at = t.RevokedAt?.ToString("yyyy-MM-dd HH:mm:ss"),
+                last_used_at = t.LastUsedAt?.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
                 allowed_scopes = t.AllowedScopes,
                 allowed_environments = t.AllowedEnvironments,
                 allowed_tenants = t.Tenants.ToDictionary(g => g.Key, g => g.Value.Order(StringComparer.Ordinal).ToArray()),

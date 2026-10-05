@@ -1,12 +1,13 @@
 using System.Text.Json.Nodes;
 using Microsoft.OpenApi;
+using PortwayApi.Helpers;
 
 namespace PortwayApi.Classes.OpenApi;
 
 public partial class DynamicEndpointDocumentFilter
 {
 
-    private void AddSqlEndpoints(OpenApiDocument document, ref int operationIdCounter)
+    private void AddSqlEndpoints(OpenApiDocument document)
     {
         // Get SQL endpoints
         var sqlEndpoints = EndpointHandler.GetSqlEndpoints();
@@ -50,8 +51,7 @@ public partial class DynamicEndpointDocumentFilter
                     endpointName,
                     method,
                     definition,
-                    effectiveEnvironments,
-                    operationIdCounter++);
+                    effectiveEnvironments);
 
                 AddOperationToPath(document.Paths[path], method, operation);
             }
@@ -77,8 +77,7 @@ public partial class DynamicEndpointDocumentFilter
                 var deleteOperation = CreateSqlDeleteOperation(
                     endpointName,
                     definition,
-                    effectiveEnvironments,
-                    operationIdCounter++);
+                    effectiveEnvironments);
 
                 // Remove the query parameter for id, and add a path parameter instead
                 deleteOperation.Parameters = (deleteOperation.Parameters ?? new List<IOpenApiParameter>())
@@ -96,6 +95,18 @@ public partial class DynamicEndpointDocumentFilter
 
                 document.Paths[deletePath].Operations![HttpMethod.Delete] = deleteOperation;
             }
+
+            if (definition.Methods.Contains("GET", StringComparer.OrdinalIgnoreCase) &&
+                !SqlTableValuedFunctionHelper.IsTableValuedFunction(definition))
+            {
+                var byIdPath = $"{OpenApiEndpointCatalog.BasePath(definition)}({{id}})";
+                if (!document.Paths.ContainsKey(byIdPath))
+                {
+                    document.Paths[byIdPath] = new OpenApiPathItem { Operations = new Dictionary<HttpMethod, OpenApiOperation>() };
+                }
+
+                document.Paths[byIdPath].Operations![HttpMethod.Get] = CreateSqlGetByIdOperation(endpointName, definition, effectiveEnvironments);
+            }
         }
     }
 
@@ -103,8 +114,7 @@ public partial class DynamicEndpointDocumentFilter
         string endpointName,
         string method,
         EndpointDefinition definition,
-        List<string> effectiveEnvironments,
-        int operationId)
+        List<string> effectiveEnvironments)
     {
         // Determine Accept content type from CustomProperties or default to application/json
         var acceptContentType = definition.CustomProperties?.GetValueOrDefault("ContentType")?.ToString() ?? "application/json";
@@ -114,7 +124,7 @@ public partial class DynamicEndpointDocumentFilter
             Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
             Summary = GetOperationSummary(method, endpointName, definition),
             Description = GetOperationDescription(method, endpointName, definition),
-            OperationId = $"op_{operationId}",
+            OperationId = OpenApiEndpointCatalog.OperationId(method, definition),
             Parameters = new List<IOpenApiParameter>
             {
                 // Environment parameter
@@ -188,6 +198,19 @@ public partial class DynamicEndpointDocumentFilter
             })
             {
                 operation.Parameters.Add(parameter);
+            }
+
+            // table valued functions return before the count query runs
+            if (!SqlTableValuedFunctionHelper.IsTableValuedFunction(definition))
+            {
+                operation.Parameters.Add(new OpenApiParameter()
+                {
+                    Name = "$count",
+                    In = ParameterLocation.Query,
+                    Required = false,
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.Boolean },
+                    Description = "Add totalCount, the number of matching records before paging"
+                });
             }
 
             // Offered only where navigations exist, so the UI never shows an option that always returns 400
@@ -316,17 +339,12 @@ public partial class DynamicEndpointDocumentFilter
                 // Add pagination headers for GET responses
                 Headers = method.Equals("GET", StringComparison.OrdinalIgnoreCase) ? new Dictionary<string, IOpenApiHeader>
                 {
-                    ["X-Total-Count"] = new OpenApiHeader
-                    {
-                        Description = "Total number of records available (when $count=true)",
-                        Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
-                    },
                     ["X-Returned-Count"] = new OpenApiHeader
                     {
                         Description = "Number of records returned in this response",
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
                     },
-                    ["X-Has-More-Results"] = new OpenApiHeader
+                    ["X-Has-More"] = new OpenApiHeader
                     {
                         Description = "Indicates if more results are available (true/false)",
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Boolean }
@@ -355,7 +373,8 @@ public partial class DynamicEndpointDocumentFilter
                                         Type = JsonSchemaType.Array,
                                         Items = new OpenApiSchema { Type = JsonSchemaType.Object }
                                     },
-                                    ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String }
+                                    ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                                    ["totalCount"] = TotalCountSchema()
                                 }
                             },
                             "PUT" or "MERGE" => new OpenApiSchema
@@ -422,11 +441,48 @@ public partial class DynamicEndpointDocumentFilter
         return operation;
     }
 
+    /// <summary>
+    /// GET on the OData key path returns the record itself, without the collection envelope or OData options
+    /// </summary>
+    private OpenApiOperation CreateSqlGetByIdOperation(
+        string endpointName,
+        EndpointDefinition definition,
+        List<string> effectiveEnvironments)
+    {
+        var operation = CreateSqlOperation(endpointName, "GET", definition, effectiveEnvironments);
+        operation.OperationId += "_byId";
+        operation.Parameters = operation.Parameters!
+            .Where(p => p.Name?.StartsWith('$') != true)
+            .Append(new OpenApiParameter
+            {
+                Name = "id",
+                In = ParameterLocation.Path,
+                Required = true,
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String },
+                Description = "Primary key of the record (OData-style: /endpointName(id))"
+            })
+            .ToList();
+        operation.Responses!["200"] = new OpenApiResponse
+        {
+            Description = "The record",
+            Content = new Dictionary<string, IOpenApiMediaType>
+            {
+                ["application/json"] = new OpenApiMediaType { Schema = new OpenApiSchema { Type = JsonSchemaType.Object } }
+            }
+        };
+        return operation;
+    }
+
+    internal static OpenApiSchema TotalCountSchema() => new()
+    {
+        Type = JsonSchemaType.Integer,
+        Description = "Matching records before paging; present when $count=true"
+    };
+
     private OpenApiOperation CreateSqlDeleteOperation(
         string endpointName,
         EndpointDefinition definition,
-        List<string> effectiveEnvironments,
-        int operationId)
+        List<string> effectiveEnvironments)
     {
         // Determine Accept content type from CustomProperties or default to application/json
         var acceptContentType = definition.CustomProperties?.GetValueOrDefault("ContentType")?.ToString() ?? "application/json";
@@ -436,7 +492,7 @@ public partial class DynamicEndpointDocumentFilter
             Tags = new HashSet<OpenApiTagReference> { new(TagFor(definition)) },
             Summary = GetOperationSummary("DELETE", endpointName, definition),
             Description = GetOperationDescription("DELETE", endpointName, definition),
-            OperationId = $"op_{operationId}",
+            OperationId = OpenApiEndpointCatalog.OperationId("DELETE", definition),
             Parameters = new List<IOpenApiParameter>
             {
                 // Environment parameter

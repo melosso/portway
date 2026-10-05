@@ -20,6 +20,11 @@ const NAV_GROUPS = [
                 icon: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'
             },
             {
+                href: '/ui/health',
+                label: 'Health',
+                icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'
+            },
+            {
                 href: '/ui/endpoints',
                 label: 'Endpoints',
                 icon: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'

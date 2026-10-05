@@ -102,6 +102,9 @@
                             <th>Scopes</th>
                             <th>Environments</th>
                             <th style="width:84px">Limit</th>
+                            <th class="sortable" data-col="last_used_at" onclick="setSort('last_used_at')">
+                                Last used <span class="sort-icon">↕</span>
+                            </th>
                             <th class="sortable" data-col="expires_at" onclick="setSort('expires_at')">
                                 Expires <span class="sort-icon">↕</span>
                             </th>
@@ -113,7 +116,7 @@
                     </thead>
                     <tbody id="tokenTableBody">
                         <tr>
-                            <td colspan="10" class="empty-state">Loading…</td>
+                            <td colspan="11" class="empty-state">Loading…</td>
                         </tr>
                     </tbody>
                 </table>
@@ -637,6 +640,21 @@ function tokenStatus(t) {
   return t.revoked_at ? 'archived' : !t.is_active ? 'expired' : 'active';
 }
 
+const STALE_DAYS = 7;
+
+// a token never used counts from its creation date
+function isStale(t) {
+  const since = t.last_used_at ? new Date(t.last_used_at) : new Date(t.created_at.replace(' ', 'T') + 'Z');
+  return Date.now() - since.getTime() > STALE_DAYS * 86400000;
+}
+
+function lastUsedLabel(iso) {
+  if (!iso) return 'Never';
+  const used = new Date(iso);
+  const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(used).setHours(0, 0, 0, 0)) / 86400000);
+  return days === 0 ? 'Today' : days === 1 ? 'Yesterday' : used.toLocaleDateString();
+}
+
 async function refreshAll() {
   const [epsResult, envResult] = await Promise.allSettled([
     api('/ui/api/endpoints', { failure: 'Failed to load endpoints' }),
@@ -684,6 +702,7 @@ function applyFilters() {
     let av, bv;
     if (sortCol === 'id') { av = a.id; bv = b.id; }
     else if (sortCol === 'username') { av = (a.username||'').toLowerCase(); bv = (b.username||'').toLowerCase(); }
+    else if (sortCol === 'last_used_at') { av = a.last_used_at || ''; bv = b.last_used_at || ''; }
     else if (sortCol === 'expires_at') { av = a.expires_at || '9999'; bv = b.expires_at || '9999'; }
     else if (sortCol === 'status') { av = tokenStatus(a); bv = tokenStatus(b); }
     else { av = a[sortCol]; bv = b[sortCol]; }
@@ -720,7 +739,7 @@ function renderTable() {
   });
 
   if (!filteredTokens.length) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">${allTokens.length ? 'No matching tokens' : 'No tokens found'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty-state">${allTokens.length ? 'No matching tokens' : 'No tokens found'}</td></tr>`;
     updatePagination(0);
     return;
   }
@@ -763,13 +782,14 @@ function renderTable() {
     return `<tr>
       <td style="padding-left:1rem; width:36px;"><input type="checkbox" class="row-check" data-id="${t.id}" style="cursor:pointer; accent-color:hsl(var(--primary));"></td>
       <td class="col-mono" style="width:52px;">${t.id}</td>
-      <td><strong>${esc(t.username)}</strong></td>
+      <td><strong class="${isStale(t) ? 'muted' : ''}">${esc(t.username)}</strong></td>
       <td class="muted" style="max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(t.description) || '—'}</td>
       <td>${formatPills(t.allowed_scopes)}</td>
       <td>${formatPills(t.allowed_environments)}${formatTenants(t.allowed_tenants)}</td>
       <td>${t.rate_limit_requests
         ? `<span class="col-mono" style="font-size:0.72rem">${t.rate_limit_requests}/${t.rate_limit_window_seconds || 60}s</span>`
         : `<span class="muted">Default</span>`}</td>
+      <td><span class="${t.last_used_at ? '' : 'muted'}" style="font-size:0.72rem">${esc(lastUsedLabel(t.last_used_at))}</span></td>
       <td>${expires}</td>
       <td>${badge}</td>
       <td style="text-align:right; padding-right:1rem; width:112px;">
