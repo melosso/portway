@@ -29,7 +29,7 @@ Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
 |---|---|---|---|
 | `Url` | Yes | string | Target URL |
 | `Methods` | Yes | array | Allowed HTTP methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
-| `Hidden` | No | boolean | Excludes the endpoint from the OpenAPI document (default `false`) |
+| `Hidden` | No | boolean | Excludes the endpoint from the OpenAPI document; requests are still served (default `false`) |
 | `AllowedEnvironments` | No | array | Environments the endpoint serves |
 | `Tenancy` | No | object | Tenant header to upstream header; see [Tenant headers](/guide/tenant-headers) |
 
@@ -97,42 +97,7 @@ Response returned to the caller:
 
 ## Caching
 
-GET responses are cached for 5 minutes by default. The cache key includes the URL, query string, `Authorization` header and selected tenant values. POST, PUT, DELETE and PATCH bypass the cache and invalidate cached GET responses for the endpoint.
-
-## Hidden endpoints
-
-With `Hidden: true`, the endpoint is excluded from the OpenAPI document at `/docs`; the endpoint continues to serve requests.
-
-```json
-{
-  "Url": "http://admin-service/internal-api",
-  "Methods": ["POST"],
-  "Hidden": true
-}
-```
-
-## Examples
-
-Internal API:
-
-```json
-{
-  "Url": "http://internal-api-gateway:8080/services",
-  "Methods": ["GET", "POST"],
-  "AllowedEnvironments": ["prod", "staging"]
-}
-```
-
-Legacy SOAP service, write-only and unlisted:
-
-```json
-{
-  "Url": "http://legacy-service/soap/endpoint",
-  "Methods": ["POST"],
-  "Hidden": true,
-  "AllowedEnvironments": ["prod"]
-}
-```
+GET responses are cached for `Caching:DefaultCacheDurationSeconds` (default `300`). The cache key includes the URL, query string, `Authorization` header and selected tenant values. POST, PUT, DELETE and PATCH bypass the cache and invalidate cached GET responses for the endpoint.
 
 ## Troubleshooting
 

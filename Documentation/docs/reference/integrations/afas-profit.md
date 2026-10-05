@@ -20,7 +20,7 @@ The app connector token is an XML fragment, base64-encoded into the header value
 }
 ```
 
-The environment `Authorization` header replaces the client's, so AFAS receives only the AFAS token. A second environment with its own token points the same endpoints at an AFAS test member.
+The environment `Authorization` header replaces the client's. A second environment with its own token connects the same endpoints to an AFAS test member.
 
 ## Endpoints
 

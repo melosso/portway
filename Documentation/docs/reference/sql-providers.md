@@ -68,7 +68,7 @@ SQLite paths are relative to the working directory.
 | `$expand` (Table and View) | Yes | Yes | Yes | Yes |
 | Schemas | Yes | Yes | Yes | No |
 
-On PostgreSQL, write routines are functions, since only functions return the created row. They are called with named arguments; parameter names match the lowercased payload fields (e.g. `method`, `id`, `name`). On SQL Server and MySQL, a procedure ends with a `SELECT` of the affected row.
+On PostgreSQL, write routines are functions. Only functions return the created row. They are called with named arguments; parameter names match the lowercased payload fields (e.g. `method`, `id`, `name`). On SQL Server and MySQL, a procedure ends with a `SELECT` of the affected row.
 
 ## Schemas
 

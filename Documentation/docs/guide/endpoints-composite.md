@@ -1,6 +1,6 @@
 ---
 title: Composite Endpoints
-description: "Orchestrate multiple proxy endpoint calls into a single transaction, with data passing between steps"
+description: "Call several proxy endpoints in sequence with one request, passing values between steps"
 ---
 
 # Composite Endpoints
@@ -12,7 +12,7 @@ Composite endpoints have no rollback. Steps completed before a failure remain co
 :::
 
 :::info
-Each step references an existing proxy endpoint by name. A step cannot target an endpoint with `Tenancy`.
+Each step references an existing proxy endpoint by name. A step cannot target an endpoint whose `entity.json` contains a `Tenancy` block, the property that maps [tenant headers](/guide/tenant-headers) to columns, parameters or upstream headers. Such a step returns `403`.
 :::
 
 ## Configuration
@@ -52,29 +52,7 @@ Create `endpoints/Proxy/{CompositeName}/entity.json`:
 }
 ```
 
-### Top-level properties
-
-The top-level fields, the `CompositeConfig` block, the step properties and the template transformation variables are all listed in [Entity configuration](/reference/entity-config#composite).
-
-### CompositeConfig properties
-
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `Name` | Yes | string | Identifier for this composite operation |
-| `Description` | No | string | Human-readable description, included in OpenAPI docs |
-| `Steps` | Yes | array | Ordered list of steps to execute |
-
-### Step properties
-
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `Name` | Yes | string | Unique step name, used in `$prev` references |
-| `Endpoint` | Yes | string | Name of the proxy endpoint to call |
-| `Method` | Yes | string | HTTP method to use for this step |
-| `IsArray` | No | boolean | When `true`, iterates over an array and calls the endpoint once per item |
-| `ArrayProperty` | Yes if IsArray | string | Property in the request body containing the array |
-| `SourceProperty` | No | string | Extract this property from the request body and send it as the step's request body |
-| `TemplateTransformations` | No | object | Values to inject or override in the request body before the step executes |
+All properties, including `DependsOn`: [Entity configuration](/reference/entity-config#composite).
 
 ## Template transformations
 
@@ -82,10 +60,9 @@ Transformations insert generated values or values from earlier steps:
 
 | Template | Description |
 |---|---|
-| `$guid` | Generates a new GUID |
-| `$requestid` | Uses the incoming request ID |
-| `$prev.StepName.property` | References a property from a previous step's response |
-| `$context.variable` | References a context variable |
+| `$guid` | A GUID generated once per request; every step receives the same value |
+| `$requestid` | The composite request id (GUID) |
+| `$prev.StepName.property` | A property from an earlier step's response |
 
 Nested and array values use dot notation:
 
@@ -142,17 +119,15 @@ Failure response:
 ```json
 {
   "success": false,
-  "errorStep": "CreateOrderHeader",
-  "errorMessage": "Insufficient credit limit",
-  "errorDetail": "Customer credit limit exceeded",
+  "error": "Error executing step 'CreateOrderHeader'",
+  "details": { "message": "Insufficient credit limit" },
+  "step": "CreateOrderHeader",
   "statusCode": 400,
-  "stepResults": {
-    "CreateOrderLines": [...]
-  }
+  "completedSteps": ["CreateOrderLines"]
 }
 ```
 
-The `stepResults` object includes the results of steps completed before the failure.
+The response status is the failing step's status. `details` contains the step's upstream error body; a non-JSON body is truncated to 200 characters. `completedSteps` lists the steps completed before the failure.
 
 ## Example: multi-service operation
 

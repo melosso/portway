@@ -5,14 +5,19 @@ description: "Expose SQL tables, views, stored procedures, and table-valued func
 
 # SQL Endpoints
 
-SQL endpoints expose a table, view, stored procedure or table-valued function as a REST resource with OData queries. Supported providers are SQL Server, PostgreSQL, MySQL/MariaDB and SQLite. The provider is detected from the connection string in the environment's `settings.json`; endpoint configuration is the same for every provider.
+SQL endpoints expose a table, view, stored procedure or table-valued function as a REST resource. A plain `GET` returns rows (default `$top=10`); OData query options are optional on every SQL endpoint and need no configuration.
+
+Supported providers are:
+
+- SQL Server
+- PostgreSQL
+- MySQL/MariaDB
+- SQLite
+
+The provider is detected from the connection string in the environment's `settings.json`; endpoint configuration is the same for every provider. Provider differences: [SQL Providers](/reference/sql-providers#capabilities).
 
 ::: tip
 Review the database permissions of the connection account and the data in each exposed object. Portway restricts columns only through `AllowedColumns`.
-:::
-
-:::info Info
-Table-valued functions require SQL Server or PostgreSQL. Stored procedures are not available on SQLite. GET queries work on all four providers. Capability matrix: [SQL Providers](/reference/sql-providers#capabilities).
 :::
 
 ## Configuration
@@ -35,8 +40,6 @@ Each endpoint is defined in `endpoints/SQL/{EndpointName}/entity.json`:
   "AllowedEnvironments": ["dev", "test", "prod"]
 }
 ```
-
-### Configuration properties
 
 All properties, types and defaults: [Entity configuration](/reference/entity-config#sql).
 
@@ -153,7 +156,7 @@ DELETE /api/prod/Products?id=abc123
 
 ## Stored procedures
 
-Write operations with business logic, validation or audit logging use a stored procedure:
+Write operations with business logic, validation or audit logging use a stored procedure. Stored procedures require SQL Server, PostgreSQL or MySQL/MariaDB; SQLite uses [table write mode](#table-write-mode).
 
 ```json
 {
@@ -212,11 +215,11 @@ Portway generates parameterized `INSERT`, `UPDATE` and `DELETE` statements with 
 * Updates and deletes filter on the primary key; an unmatched key returns `404`.
 * `WriteMode` and `Procedure` are mutually exclusive.
 
-Table mode works on every provider. Stored procedures are recommended for business rules, validation chains and audit requirements. Example: `WMS/Bins` in the SQLite demo environment.
+Table mode works on every provider. Example: `WMS/Bins` in the SQLite demo environment.
 
 ## Table-valued functions
 
-Table-valued functions accept parameters, for queries a view cannot express.
+Table-valued functions accept parameters, for queries a view cannot express. They require SQL Server or PostgreSQL.
 
 ```json
 {
@@ -263,20 +266,7 @@ Table-valued function endpoints ignore `PrimaryKey`.
 
 ## Column-level access control
 
-Columns missing from `AllowedColumns` are not returned by GET and not accepted in POST or PUT bodies.
-
-```json
-{
-  "DatabaseObjectName": "Customers",
-  "AllowedColumns": [
-    "CustomerID",
-    "CompanyName",
-    "ContactName"
-  ]
-}
-```
-
-Leave credentials, personal identifiers, financial data and internal system fields out of `AllowedColumns`.
+Columns missing from `AllowedColumns` are not returned by GET and not accepted in POST or PUT bodies. Leave credentials, personal identifiers, financial data and internal system fields out of `AllowedColumns`.
 
 ## Troubleshooting
 

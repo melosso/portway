@@ -13,7 +13,7 @@ The first start writes a full-access token (`*` scopes, `*` environments) to `to
 
 ## Creating a token
 
-The create drawer opens from **Access Tokens → New Token**:
+Fields in **Access Tokens → New token**:
 
 | Field | Required | Description |
 |---|---|---|
@@ -58,7 +58,7 @@ Scopes are validated on create and update: `*`, or an endpoint key of letters, d
 
 ### Tenant scopes
 
-The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/tenant-headers).
+The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/tenant-headers).
 
 ### Common configurations
 
@@ -67,7 +67,7 @@ The `AllowedTenants` field maps each tenant header to its permitted values, e.g.
 | Full access | `*` | `*` |
 | Single integration (Globe+) | `Company/*` | `500,700` |
 | Development | `*` | `dev,test` |
-| Webhook ingestion | `webhooks/*` | `*` |
+| Webhook ingestion | `Webhooks/*` | `*` |
 
 ## Rotating a token
 

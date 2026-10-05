@@ -65,7 +65,7 @@ The console never rewrites `appsettings.json`. A value in `appsettings.overrides
 | `Customization.PromoLogin` | boolean | `false` | Shows the banner on `/login` |
 | `Customization.LoginFooter` | string | `""` | Markdown below the sign-in form |
 
-The first start creates an administrator account with a one-time password, written once to the log. `PublicOrigins` is matched against the client-supplied `Origin` header and does not authenticate; keep the console behind a proxy, VPN or firewall when it is not meant to be public.
+`PublicOrigins` is matched against the client-supplied `Origin` header and does not authenticate; keep the console behind a proxy, VPN or firewall when it is not meant to be public.
 
 ## ForwardedHeaders
 
@@ -170,7 +170,7 @@ Console locations: `Oidc:Enabled` under **Settings → Security → Deployment &
 
 ## Environment variables
 
-Any key is set with `__` as separator (e.g. `WebUi__PublicOrigins__0`, `Oidc__Enabled`). Portway-specific variables:
+Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-specific variables; list values are comma-separated:
 
 | Variable | Configuration key | Legacy name |
 |---|---|---|
@@ -179,6 +179,19 @@ Any key is set with `__` as separator (e.g. `WebUi__PublicOrigins__0`, `Oidc__En
 | `PORTWAY_WEBUI_ENABLED` | `WebUi:Enabled` | `WebUi__Enabled` |
 | `PORTWAY_ADMIN_KEY` | `WebUi:AdminApiKey` | `WebUi__AdminApiKey` |
 | `PORTWAY_SECURE_COOKIES` | `WebUi:SecureCookies` | `WebUi__SecureCookies` |
+| `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:MarkdownEnabled` | `OpenApi__MarkdownEnabled` |
+| `PORTWAY_PUBLIC_ORIGINS` | `WebUi:PublicOrigins` (list) | `WebUi__PublicOrigins__0` |
+| `PORTWAY_SEED_PASSWORD` | `WebUi:SeedPassword` | `WebUi__SeedPassword` |
+| `PORTWAY_PROMO_TEXT` | `WebUi:Customization:PromoText` | `WebUi__Customization__PromoText` |
+| `PORTWAY_LOGIN_FOOTER` | `WebUi:Customization:LoginFooter` | `WebUi__Customization__LoginFooter` |
+| `PORTWAY_KNOWN_PROXIES` | `ForwardedHeaders:KnownProxies` (list) | `ForwardedHeaders__KnownProxies__0` |
+| `PORTWAY_KNOWN_NETWORKS` | `ForwardedHeaders:KnownNetworks` (list) | `ForwardedHeaders__KnownNetworks__0` |
+| `PORTWAY_OIDC_ENABLED` | `Oidc:Enabled` | `Oidc__Enabled` |
+| `PORTWAY_MCP_ENABLED` | `Mcp:Enabled` | `Mcp__Enabled` |
+| `PORTWAY_CHAT_ENABLED` | `Mcp:ChatEnabled` | `Mcp__ChatEnabled` |
+| `PORTWAY_TELEMETRY_PROVIDER` | `Telemetry:Provider` | `Telemetry__Provider` |
+| `PORTWAY_OTLP_ENDPOINT` | `Telemetry:Otlp:Endpoint` | `Telemetry__Otlp__Endpoint` |
+| `PORTWAY_SERVICE_NAME` | `Telemetry:ServiceName` | `Telemetry__ServiceName` |
 | `PORTWAY_ALLOWED_HOSTS` | `AllowedHosts` | `AllowedHosts` |
 | `PORTWAY_PATH_BASE` | `PathBase` | `PathBase` |
 | `PORTWAY_USE_HTTPS` | Kestrel serves HTTPS | `Use_HTTPS` |
@@ -187,7 +200,7 @@ Any key is set with `__` as separator (e.g. `WebUi__PublicOrigins__0`, `Oidc__En
 | `PORTWAY_PROXY_DOMAIN` | Outbound proxy domain | `PROXY_DOMAIN` |
 | `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
 
-A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins when both are set.
+A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins when both are set. For a list, set either the `PORTWAY_` name or the indexed legacy names: indexed entries beyond the list length are kept.
 
 :::warning
 `PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one, startup fails. Leave it unset behind a TLS-terminating proxy.

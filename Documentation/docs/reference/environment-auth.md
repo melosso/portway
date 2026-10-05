@@ -5,13 +5,11 @@ description: "Per-environment authentication methods that augment or replace the
 
 # Environment Authentication
 
-An environment's `settings.json` can define ApiKey, Basic, Bearer, JWT and HMAC authentication in addition to, or instead of, Portway tokens. A request is authorized when it satisfies any defined method. Plaintext secrets are encrypted (`PWENC:`) at the next start.
+An environment's `settings.json` can define ApiKey, Basic, Bearer, JWT and HMAC authentication in addition to, or instead of, Portway tokens. A request is authorized when it satisfies any defined method. Plaintext `Value` and `Secret` fields are encrypted (`PWENC:`) at the next start.
 
-## Configuration structure
+## Configuration
 
 The `Authentication` object in `/environments/[EnvironmentName]/settings.json`:
-
-### Structure
 
 ```json
 {
@@ -29,8 +27,6 @@ The `Authentication` object in `/environments/[EnvironmentName]/settings.json`:
   }
 }
 ```
-
-### Property reference
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------
@@ -97,10 +93,6 @@ Request signature with a shared secret.
 Requests send `X-Signature` and `X-Timestamp`. Signature: `HMACSHA256(Secret, Method + Path + Timestamp + Body)`.
 :::
 
-## Automatic encryption
-
-Plaintext `Value`, `Secret` and `ClientSecret` fields are encrypted at the next start with RSA/AES hybrid encryption and stored with the `PWENC:` prefix.
-
 ## Global token fallback
 
 With `OverrideGlobalToken: false`:
@@ -115,7 +107,7 @@ Requests authorized by environment methods have no Portway token and are refused
 
 ## Security notes
 
-Use random keys for ApiKey and HMAC and rotate them. JWT validates signatures for OAuth2 providers. Header credentials require HTTPS.
+Use random ApiKey and HMAC secrets. Header, query and cookie credentials require HTTPS.
 
 ## Related topics
 

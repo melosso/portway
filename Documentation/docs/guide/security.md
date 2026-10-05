@@ -7,10 +7,6 @@ description: "Token authentication, scope control, network restrictions, and enc
 
 Tokens authenticate callers; scopes, environments and tenant headers restrict what a token reaches; the network access policy restricts upstream targets.
 
-::: info
-Align this configuration with your organisation's security policies before production use.
-:::
-
 ## Authentication
 
 API requests require a Bearer token:
@@ -45,49 +41,35 @@ Tenant headers restrict a token to the rows, upstream records and files of speci
 
 ### Endpoint-level restrictions
 
-Endpoints define their own environments, visibility and methods:
+Endpoints define their own environments and methods:
 
 ```json
 {
   "DatabaseObjectName": "SensitiveData",
   "AllowedEnvironments": ["prod"],
-  "Hidden": true,
   "AllowedMethods": ["GET"]
 }
 ```
+
+`Hidden` removes an endpoint from the OpenAPI document and does not restrict access.
 
 A request must pass both the token and the endpoint restrictions. Matrix: [Environments, access control](/guide/environments#access-control).
 
 ## Network security
 
-### IP restrictions
+### Upstream hosts
 
-Allowed upstream hosts and blocked IP ranges are set in `environments/network-access-policy.json`:
-
-```json
-{
-  "allowedHosts": [
-    "localhost",
-    "127.0.0.1",
-    "your-internal-server.local"
-  ],
-  "blockedIpRanges": [
-    "10.0.0.0/8",
-    "172.16.0.0/12",
-    "192.168.0.0/16"
-  ]
-}
-```
+Proxy targets are restricted by `environments/network-access-policy.json`: [Network access policy](/guide/environments#network-access-policy).
 
 ### Security headers
 
-Headers added to every response:
+Response headers:
 
 | Header | Value |
 |---|---|
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
-| `Strict-Transport-Security` | `max-age=31536000` |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` (HTTPS requests) |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Content-Security-Policy` | `default-src 'self'; object-src 'none'; frame-ancestors 'none'; ...` |
 
@@ -97,7 +79,7 @@ Console pages at `/ui` also send `Cross-Origin-Opener-Policy` and `Cross-Origin-
 
 ### Automatic encryption
 
-Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The MCP configuration store (`mcp.db`) is encrypted too. `appsettings.json` is not rewritten; values there (e.g. `WebUi:AdminApiKey`) remain plaintext.
+Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. `appsettings.json` is not rewritten; values there (e.g. `WebUi:AdminApiKey`) remain plaintext.
 
 ### Azure Key Vault
 
@@ -159,7 +141,7 @@ Configuration: [Health and Logs](/guide/monitoring).
 - [ ] HTTPS binding configured in IIS
 - [ ] IIS Application Pool using minimum-privilege identity
 - [ ] Console account with a strong password; legacy `PORTWAY_ADMIN_KEY` removed
-- [ ] `ForwardedHeaders__KnownProxies` set to the reverse proxy (client addresses for rate limiting, sign-in lockout and the console network gate)
+- [ ] `PORTWAY_KNOWN_PROXIES` set to the reverse proxy (client addresses for rate limiting, sign-in lockout and the console network gate)
 - [ ] Read-only console users hold `viewer`
 - [ ] `portway.key` kept with the deployment and out of shared backups
 - [ ] Azure Key Vault configured (if applicable)
@@ -169,7 +151,9 @@ Configuration: [Health and Logs](/guide/monitoring).
 - [ ] Firewall rules reviewed
 - [ ] Security headers verified with a response inspection tool
 
-## Incident response: compromised token
+## Compromised token
+
+Please make sure to take these actions if a token may be compromised.
 
 1. Under **Access Tokens**, rotate the affected token; rotation revokes the old value and issues a replacement.
 2. Update the applications that use the token.
@@ -179,7 +163,8 @@ Configuration: [Health and Logs](/guide/monitoring).
      "RequestTrafficLogging": { "Enabled": true, "CaptureHeaders": true }
    }
    ```
-4. Record the incident.
+4. Monitor the traffic for any indicators of compromise.
+5. Record the incident.
 
 ## Next steps
 

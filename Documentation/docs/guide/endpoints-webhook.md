@@ -7,24 +7,6 @@ description: "Receive HTTP POST payloads from external services and persist them
 
 Webhook endpoints accept POST requests from external services and store the JSON payload in a configured table. The webhook id is checked against `AllowedColumns`, the payload is inserted unchanged with a UTC timestamp, and the response returns the new row id.
 
-::: warning Coming from the flat webhook route
-The shared `endpoints/Webhooks/entity.json` and the route `POST /api/{env}/webhook/{id}` are removed; that route returns `410 Gone` with the new route format. Each webhook is defined in `endpoints/Webhooks/{Namespace}/{Name}/entity.json` and called at `POST /api/{env}/{namespace}/{name}/{id}`.
-:::
-
-```mermaid
-sequenceDiagram
-    participant External as External Service
-    participant Portway as Portway Gateway
-    participant DB as SQL Database
-
-    External->>Portway: POST /api/prod/Webhooks/Incoming/payment-received
-    Portway->>DB: INSERT INTO WebhookData
-    DB-->>Portway: Success
-    Portway-->>External: 201 Created
-```
-
-A separate job or procedure processes the table. Portway does not retry failed inserts or forward payloads.
-
 ## Database setup
 
 SQL Server table:
@@ -53,7 +35,7 @@ CREATE TABLE public."WebhookData" (
 );
 ```
 
-```sql [MySQL / MariaDB]
+```sql [MySQL]
 CREATE TABLE WebhookData (
     Id         INT AUTO_INCREMENT PRIMARY KEY,
     WebhookId  VARCHAR(255) NOT NULL,
@@ -107,7 +89,7 @@ Example `endpoints/Webhooks/Webhooks/Incoming/entity.json`, with namespace `Webh
 | `DatabaseSchema` | No | string | Database schema (default `dbo`) |
 | `AllowedColumns` | No | array | Accepted webhook ids; other ids return `404` |
 
-The webhook id is stored in the `WebhookId` column. Ids that name the source and event (e.g. `stripe_payment_success`, `shopify_order_created`) keep the table queryable.
+The webhook id is stored in the `WebhookId` column.
 
 ## Sending webhooks
 
@@ -116,7 +98,7 @@ POST /api/{environment}/{namespace}/{name}/{webhookId}
 ```
 
 ```http
-POST /api/prod/Webhooks/Incoming/payment-received
+POST /api/prod/Webhooks/Incoming/payment_webhook
 Content-Type: application/json
 Authorization: Bearer <token>
 
@@ -134,7 +116,7 @@ Response (`201 Created`):
 ```json
 {
   "success": true,
-  "message": "Webhook processed successfully",
+  "message": "Webhook processed successfully.",
   "result": null,
   "id": 12345
 }
@@ -166,14 +148,15 @@ ORDER BY ReceivedAt DESC;
 - JSON payloads only; other bodies are rejected
 - No validation beyond JSON syntax and the webhook id
 - No retry on insert failure
+- No forwarding; a separate job or procedure processes the table
 - Payload size limit: 10MB (default)
-- `Tenancy` is not supported
+- [`Tenancy`](/guide/tenant-headers) is not supported
 
 ## Troubleshooting
 
 | Symptom | Resolution |
 |---|---|
-| "Webhook ID not configured" | Add the id to `AllowedColumns` (case-insensitive match). |
+| "Webhook ID '...' is not configured." | Add the id to `AllowedColumns` (case-insensitive match). |
 | Database errors | Check the table definition and the connection account's INSERT permission. |
 | `401` or `403` | Check the token and its access to the environment. |
 
@@ -187,15 +170,6 @@ Debug logging:
     }
   }
 }
-```
-
-Minimal test request:
-
-```bash
-curl -X POST https://your-api/api/prod/Webhooks/Incoming/test_webhook \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"test": "data"}'
 ```
 
 ## Next steps

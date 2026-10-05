@@ -13,13 +13,13 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 |---|---|
 | `QUERY` | Native `query` operation |
 | `MERGE` | Under `additionalOperations` |
-| Namespaces | Tag groups; each endpoint is a tag under its namespace |
+| Namespaces | Tag groups; each endpoint is a tag under its namespace ([OpenAPI tags](/reference/namespaces#openapi-tags)) |
 | `Deprecated: true` | Operations marked deprecated; `2xx` responses declare the `Deprecation`, `Sunset` and `Link` headers the endpoint sends |
 | `Enabled: false` | Operations marked deprecated with a `[Disabled]` summary prefix |
 | File uploads | `multipart/form-data` with part media types from `AllowedExtensions` (otherwise `application/octet-stream`) |
 | Errors | One shared response per status code under `components/responses` (`BadRequest`, `Unauthorized`, ...), each with the `ErrorResponse` schema (`ValidationErrorResponse` for `422`); `Unauthorized` declares `WWW-Authenticate` |
 | Security | Bearer requirement declared once on the document root |
-| `operationId` | `{method}_{namespace}_{endpoint}` (`get_WMS_Bins`, `merge_WMS_Bins`); `_byId` for `GET {endpoint}({id})`; composites `composite_...`, files `uploadFile_...`, `listFiles_...`, `downloadFile_...`, `deleteFile_...`. Derived from the route, so adding an endpoint changes no other id |
+| `operationId` | `{method}_{namespace}_{endpoint}` (`get_WMS_Bins`, `merge_WMS_Bins`); `_byId` for `GET {endpoint}({id})`; composites `composite_...`, files `uploadFile_...`, `listFiles_...`, `downloadFile_...`, `deleteFile_...`. Derived from the route. Adding an endpoint changes no other id |
 | SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET` |
 | Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
 | Table-valued function parameters | Query and header parameters from `FunctionParameters` |
@@ -38,7 +38,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
     "Enabled": true,
     "Title": "Portway: API Gateway",
     "Version": "v1",
-    "Description": "This is Portway. A lightweight API gateway that connects your platforms to your data sources and services, with a simple and fast setup.",
+    "Description": "Integration API for ERP and warehouse data.",
     "Contact": {
       "Name": "Your Name",
       "Email": "support@yourcompany.com"
@@ -91,7 +91,8 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
 | `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
 | `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`) |
-| `ExternalDocs.Url` | string | Link to your own API guide, shown with the document description; empty omits it |
+| `MarkdownEnabled` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `false`, `PORTWAY_OPENAPI_MARKDOWN`) |
+| `ExternalDocs.Url` | string | Link to an external API guide, shown with the document description; empty omits it |
 | `ExternalDocs.Description` | string | Label for that link |
 | `ScalarTheme` | string | Scalar theme; `portway` applies the console colours |
 | `ScalarLayout` | string | `modern` or `classic` |
@@ -142,7 +143,7 @@ Descriptions support GitHub-flavoured Markdown, `<br>` and `<p>`, and Scalar ale
 
 ## Deprecated and disabled endpoints
 
-With `Deprecated: true`, the endpoint's operations are marked deprecated; requests are served unchanged.
+With `Deprecated: true`, the endpoint's operations are marked deprecated and requests are served. `DeprecatedSince` and `Sunset` add response headers ([Retiring a version](/reference/namespaces#retiring-a-version)).
 
 ```json
 {
@@ -160,10 +161,6 @@ With `Enabled: false`, requests return `503` with `Retry-After`, the operations 
   "error": "This endpoint is temporarily disabled for scheduled maintenance."
 }
 ```
-
-## Nested tags
-
-Endpoint tags are named by their route path (`WMS/Inbound/StagingBins`) with `parent` set to their group. Group tags are named `ns:{namespace}` (`ns:WMS/Inbound`), carry `kind: nav` and set `parent` to the group one segment up; missing groups are generated. `summary` holds the `DisplayName` or `NamespaceDisplayName`, else the last segment. The `/docs` sidebar nests tags by `parent` and labels them with `summary`. See [Namespaces](/reference/namespaces#openapi-tags).
 
 ## Schema discovery
 

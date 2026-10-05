@@ -33,53 +33,13 @@ Tokens are managed in the console under **Access Tokens** ([Access Tokens](/guid
 
 ## Scope patterns
 
-### Endpoint scopes (`allowedScopes`)
+### Endpoints and environments
 
-| Pattern | Access |
-|---|---|
-| `*` | All endpoints |
-| `Products` | One endpoint |
-| `Products,Orders` | Listed endpoints |
-| `Product*` | Endpoints starting with the prefix |
-| `Company/Employees` | Namespaced endpoint |
-| `Company/*` | All endpoints in a namespace |
-| `GET:Products` | One endpoint, one method |
-
-### Environment scopes (`allowedEnvironments`)
-
-| Pattern | Access |
-|---|---|
-| `*` | All environments |
-| `prod` | One environment |
-| `dev,test` | Listed environments |
-| `dev*` | Environments starting with the prefix |
+`allowedScopes` and `allowedEnvironments` patterns: [Access Tokens](/guide/tokens#scoping-tokens).
 
 ### Tenant values (`allowedTenants`)
 
 A JSON object of tenant header to permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`; `*` permits any valid value. Resolution rules: [Tenant headers](/guide/tenant-headers).
-
-## Authentication flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Portway
-    participant Store as auth.db
-    participant Endpoint
-
-    Client->>Portway: Request with Bearer token
-    Portway->>Store: Verify token
-    Store-->>Portway: Token valid/invalid
-    alt Token valid
-        Portway->>Store: Check permissions
-        Store-->>Portway: Allowed scopes & environments
-        Portway->>Endpoint: Forward request
-        Endpoint-->>Portway: Response
-        Portway-->>Client: API Response
-    else Token invalid
-        Portway-->>Client: 401 Unauthorized
-    end
-```
 
 ## Validation order
 

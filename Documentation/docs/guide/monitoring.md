@@ -9,66 +9,13 @@ Monitoring sources: health check endpoints, optional per-request traffic logging
 
 ## Health checks
 
-Health endpoints cache their result, so frequent polling does not reach the backends on every request.
+| Path | Authentication | Cache | Content |
+|---|---|---|---|
+| `/health` | None | 15 s | Overall status |
+| `/health/live` | None | 5 s | `Alive`, without downstream checks; for liveness probes and load balancers |
+| `/health/details` | Token | 60 s | Each component check with status and duration |
 
-### Basic health check
-
-```http
-GET /health
-```
-
-Overall status, cached for 15 seconds:
-
-```json
-{
-  "status": "Healthy",
-  "timestamp": "2025-05-03T10:30:00Z",
-  "cache_expires_in": "15 seconds"
-}
-```
-
-### Liveness probe
-
-```http
-GET /health/live
-```
-
-Returns `Alive`, cached for 5 seconds, without checking downstream services. Intended for liveness probes and load balancers.
-
-### Detailed health check
-
-```http
-GET /health/details
-Authorization: Bearer <token>
-```
-
-Each component check with its status and duration, cached for 60 seconds. Requires a token:
-
-```json
-{
-  "status": "Healthy",
-  "timestamp": "2025-05-03T10:30:00Z",
-  "cache_expires_in": "60 seconds",
-  "version": "1.0.0",
-  "checks": [
-    {
-      "name": "Diskspace",
-      "status": "Healthy",
-      "description": "Disk space: 65% remaining",
-      "duration": "2.45ms",
-      "tags": ["storage", "system"]
-    },
-    {
-      "name": "ProxyEndpoints",
-      "status": "Healthy",
-      "description": "All proxy services are responding",
-      "duration": "145.32ms",
-      "tags": ["proxies", "external", "readiness"]
-    }
-  ],
-  "totalDuration": "147.77ms"
-}
-```
+Response format, component checks and probe configuration: [Health Checks](/reference/health-checks).
 
 ## Request traffic logging
 
@@ -93,12 +40,10 @@ Traffic logging records per-request metadata (path, status, duration, user, clie
 }
 ```
 
-### Configuration options
-
 All fields, including SQLite storage and retention: [Audit and traffic logging](/reference/audit#configuration).
 
 :::warning
-With `IncludeRequestBodies` and `IncludeResponseBodies`, bodies are logged unfiltered. Authorization headers are always redacted.
+With `IncludeRequestBodies` and `IncludeResponseBodies`, bodies are logged unfiltered. `Authorization`, cookies and the headers and query parameters of an environment's `Authentication.Methods` are redacted.
 :::
 
 ### Log entry format
@@ -125,7 +70,7 @@ With `IncludeRequestBodies` and `IncludeResponseBodies`, bodies are logged unfil
 
 ### SQLite storage
 
-SQLite storage makes the traffic log queryable:
+SQLite storage:
 
 ```json
 {
@@ -146,23 +91,6 @@ WHERE Timestamp > datetime('now', '-1 hour')
 GROUP BY EndpointName
 ORDER BY RequestCount DESC
 LIMIT 10;
-
--- Average response time by endpoint
-SELECT EndpointName, AVG(DurationMs) AS AvgDuration
-FROM TrafficLogs
-WHERE Timestamp > datetime('now', '-1 hour')
-GROUP BY EndpointName
-ORDER BY AvgDuration DESC;
-
--- Error rate by environment (last 24 hours)
-SELECT
-    Environment,
-    COUNT(*) AS TotalRequests,
-    SUM(CASE WHEN StatusCode >= 400 THEN 1 ELSE 0 END) AS Errors,
-    CAST(SUM(CASE WHEN StatusCode >= 400 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100 AS ErrorRate
-FROM TrafficLogs
-WHERE Timestamp > datetime('now', '-24 hours')
-GROUP BY Environment;
 
 -- Slowest requests
 SELECT Path, QueryString, DurationMs, StatusCode
@@ -216,7 +144,7 @@ Metrics for Prometheus and OTLP: [Telemetry](/guide/telemetry).
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 # Check disk space
 Get-PSDrive -PSProvider FileSystem
 
@@ -224,7 +152,7 @@ Get-PSDrive -PSProvider FileSystem
 Select-String -Path ".\log\*.log" -Pattern "\[ERR\]" | Select-Object -Last 50
 ```
 
-```bash [Bash]
+```bash [Linux]
 # Check disk space
 df -h
 

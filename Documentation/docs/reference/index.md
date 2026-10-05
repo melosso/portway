@@ -5,8 +5,6 @@ description: "Routes, endpoint types, authentication, response codes, and query 
 
 # API Reference
 
-Routes, endpoint types, response codes and query options of the Portway API.
-
 URL pattern:
 
 ```
@@ -15,39 +13,18 @@ URL pattern:
 
 The environment segment selects a folder under `environments/`; the endpoint segment is the endpoint name, or `{namespace}/{endpoint}` for namespaced endpoints.
 
-## Request flow
-
-```mermaid
-graph TD
-    A[Client] -->|HTTP Request| B[Portway Gateway]
-    B -->|Auth Check| C[Token Service]
-    B -->|Route| D{Endpoint Type}
-    D -->|SQL| E[SQL Endpoints]
-    D -->|Proxy| F[Proxy Endpoints]
-    D -->|Static| M[Static Endpoints]
-    D -->|Composite| G[Composite Endpoints]
-    D -->|Webhook| H[Webhook Endpoints]
-    D -->|Files| K[Files Endpoints]
-    E -->|Query| I[SQL Database]
-    F -->|Forward| J[Internal Services]
-    M -->|Serve| N[Content Files]
-    G -->|Orchestrate| F
-    H -->|Store| I
-    K -->|Upload/Download| L[File Storage]
-```
-
 ## Endpoint types
 
-Namespaced URL patterns (the namespace segment is optional):
+The namespace segment is optional.
 
 | Type | URL Pattern | Description |
 |------|-------------|-------------|
-| SQL | `/api/{env}/{namespace}/{endpoint}` | OData-queryable access to database tables, views, or stored procedures |
-| Proxy | `/api/{env}/{namespace}/{endpoint}` | Forwards requests to internal web services |
-| Static | `/api/{env}/{namespace}/{endpoint}` | Serves pre-defined content files |
-| Composite | `/api/{env}/{namespace}/{endpoint}` | Orchestrates multiple proxy operations in a single request |
-| Webhook | `/api/{env}/{namespace}/{name}/{id}` | Receives and stores external webhook payloads |
-| Files | `/api/{env}/files/{name}` | Handles file upload, download, and listing |
+| SQL | `/api/{env}/{namespace}/{endpoint}` | Tables, views, stored procedures and table-valued functions with OData queries |
+| Proxy | `/api/{env}/{namespace}/{endpoint}` | Forwards requests to internal HTTP services |
+| Static | `/api/{env}/{namespace}/{endpoint}` | Serves a content file |
+| Composite | `/api/{env}/{namespace}/{endpoint}` | Calls several proxy endpoints in sequence |
+| Webhook | `/api/{env}/{namespace}/{name}/{id}` | Stores POST payloads in a SQL table |
+| Files | `/api/{env}/files/{namespace}/{name}` | File upload, download, delete and listing |
 
 ## Authentication
 
@@ -57,7 +34,7 @@ Bearer token on every request:
 Authorization: Bearer your_token_here
 ```
 
-Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path. Token scopes: [Authentication](/reference/api-auth).
+Unauthenticated paths: `/health`, `/health/live` and the Prometheus scrape path. `/health/details` requires a token ([Health checks](/reference/health-checks)). Token scopes: [Authentication](/reference/api-auth).
 
 ## Response codes
 
@@ -109,8 +86,6 @@ A `500` adds `traceId`, which identifies the matching server log entry:
 
 ## Status codes by endpoint type
 
-Status codes documented per operation:
-
 | Endpoint type | Success | Error codes |
 |---------------|---------|-------------|
 | SQL (read) | `200` | `400` `401` `403` `404` `500` `503` |
@@ -145,10 +120,6 @@ Options: [OData syntax](/reference/odata). Operators: [Filter operations](/refer
 ## Rate limiting
 
 Requests are limited per IP address and per token. Responses include `X-RateLimit-*` headers; `429` responses include `Retry-After`. Configuration: [Rate limiting](/guide/rate-limiting). Headers: [HTTP headers](/reference/headers).
-
-## Health endpoints
-
-The paths `/health` and `/health/live` are unauthenticated; `/health/details` requires a token. Details: [Health checks](/reference/health-checks).
 
 ## Next steps
 

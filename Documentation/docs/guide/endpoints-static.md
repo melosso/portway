@@ -5,7 +5,7 @@ description: "Serve pre-defined JSON, XML, or CSV files with optional OData filt
 
 # Static Endpoints
 
-Static endpoints return the contents of a file stored next to the endpoint configuration. With `EnableFiltering`, they accept the same OData query options as SQL endpoints. Typical uses are mock data, reference datasets and read-only configuration.
+Static endpoints return the contents of a file stored next to the endpoint configuration.
 
 ## Configuration
 
@@ -34,8 +34,6 @@ Contents of `entity.json`:
   }
 }
 ```
-
-### Configuration properties
 
 All properties, types and defaults: [Entity configuration](/reference/entity-config#static).
 

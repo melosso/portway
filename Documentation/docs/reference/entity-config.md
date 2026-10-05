@@ -184,10 +184,9 @@ Steps call Proxy endpoints and use their `FallbackUrls` and `Retry`; their `Resp
 
 | Variable | Value |
 |---|---|
-| `$guid` | New GUID |
-| `$requestid` | Request id |
+| `$guid` | GUID generated once per request, the same in every step |
+| `$requestid` | Composite request id (GUID) |
 | `$prev.{step}.{path}` | Value from an earlier step result |
-| `$context.{name}` | Context variable |
 
 ## Webhook
 

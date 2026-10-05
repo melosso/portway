@@ -5,7 +5,7 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 # Deploying with Docker
 
-Portway with Docker Compose, from a first container to production settings. Requires [Docker](https://www.docker.com/get-started). Windows Server: [Deploying on Windows Server](/guide/deployment-windows).
+Requires [Docker](https://www.docker.com/get-started). Windows Server: [Deploying on Windows Server](/guide/deployment-windows).
 
 ## Quick start
 
@@ -36,12 +36,11 @@ services:
       - PORTWAY_PATH_BASE=
 
       # Web UI settings
-      - WebUi__Enabled=true
-      - WebUi__PublicOrigins__0=https://example.com
-      - WebUi__PublicOrigins__1=https://api.example.com
+      - PORTWAY_WEBUI_ENABLED=true
+      - PORTWAY_PUBLIC_ORIGINS=https://example.com,https://api.example.com
       - PORTWAY_SECURE_COOKIES=false
-      - WebUi__Customization__PromoText=
-      - WebUi__Customization__LoginFooter=If you don't have an account, please contact your [administrator](mailto:support@democompany.local).
+      - PORTWAY_PROMO_TEXT=
+      - PORTWAY_LOGIN_FOOTER=No account? Contact your [administrator](mailto:support@democompany.local).
     
       # Proxy settings for Kerberos/NTLM
       # - PORTWAY_PROXY_USERNAME=serviceaccount
@@ -84,19 +83,13 @@ The setting `PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `K
 
 | Variable | Description | Default Value | Legacy name |
 |----------|-------------|---------------|-------------|
-| `WebUi__Enabled` | Enables the console | (none) | — |
-| `PORTWAY_ADMIN_KEY` | Legacy; enables the console when `WebUi__Enabled` is unset, not used for sign-in | (none) | `WebUi__AdminApiKey` |
-| `WebUi__SeedPassword` | Fixed password for the first account; demo instances only | (none) | — |
-| `WebUi__PublicOrigins` | Origins allowed to reach the console from outside the local network (array) | (empty) | — |
-| `PORTWAY_SECURE_COOKIES` | HTTPS-only console cookies | `true` | `WebUi__SecureCookies` |
-| `WebUi__Customization__PromoText` | Banner text | (none) | — |
-| `WebUi__Customization__LoginFooter` | Text below the sign-in form | (none) | — |
-
-Multiple origins use index notation:
-```yaml
-- WebUi__PublicOrigins__0=https://example.com
-- WebUi__PublicOrigins__1=https://api.example.com
-```
+| `PORTWAY_WEBUI_ENABLED` | Enables the console | (none) | `WebUi__Enabled` |
+| `PORTWAY_ADMIN_KEY` | Legacy; enables the console when `PORTWAY_WEBUI_ENABLED` is unset, not used for sign-in | (none) | `WebUi__AdminApiKey` |
+| `PORTWAY_SEED_PASSWORD` | Fixed password for the first account; demo instances only | (none) | `WebUi__SeedPassword` |
+| `PORTWAY_PUBLIC_ORIGINS` | Origins allowed to reach the console from outside the local network, comma-separated | (empty) | `WebUi__PublicOrigins__0`, `__1`, ... |
+| `PORTWAY_SECURE_COOKIES` | HTTPS-only console cookies | `false` | `WebUi__SecureCookies` |
+| `PORTWAY_PROMO_TEXT` | Banner text | (none) | `WebUi__Customization__PromoText` |
+| `PORTWAY_LOGIN_FOOTER` | Text below the sign-in form | (none) | `WebUi__Customization__LoginFooter` |
 
 ### Proxy configuration
 
@@ -114,8 +107,6 @@ NTLM requires all three variables, including `PORTWAY_PROXY_DOMAIN`.
 
 ### Azure Key Vault (optional)
 
-Azure Key Vault variables:
-
 | Variable | Description | Legacy name |
 |----------|-------------|-------------|
 | `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
@@ -126,17 +117,6 @@ Azure Key Vault variables:
 The `AZURE_*` variables are read by the Azure SDK's `DefaultAzureCredential`.
 
 ## Data persistence
-
-Volume mounts:
-
-```yaml
-volumes:
-  - ./environments:/app/environments
-  - ./endpoints:/app/endpoints
-  - ./tokens:/app/tokens
-  - ./log:/app/log
-  - ./data:/app/data
-```
 
 | Data | Location |
 |---|---|
@@ -154,7 +134,7 @@ docker compose restart
 
 ## Managing tokens
 
-Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` under **Access Tokens**, with `WebUi__Enabled=true`.
+Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` under **Access Tokens**, with `PORTWAY_WEBUI_ENABLED=true`.
 
 ## Going to production
 
@@ -162,19 +142,29 @@ Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` 
 
 The `PORTWAY_ENCRYPTION_KEY` value encrypts secrets in environment settings. Keep it out of the compose file, e.g. in a `.env` file or a secrets manager:
 
-```bash
+::: code-group
+
+```bash [Linux]
 openssl rand -base64 48
 ```
+
+```powershell [Windows]
+$bytes = New-Object byte[] 48
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+:::
 
 ### Terminate TLS in front of the container
 
 The container serves plain HTTP. TLS terminates at a reverse proxy (nginx, Traefik, Caddy) or ingress.
 
-### Back up your state
+### Backups
 
 Back up the bind mounts and the `portway_app` volume ([Data persistence](#data-persistence)).
 
-### Watch it
+### Monitoring
 
 Health endpoints: [Health and Logs](/guide/monitoring). Metrics: [Telemetry](/guide/telemetry). Upgrades: [Upgrading Portway](/guide/upgrading).
 

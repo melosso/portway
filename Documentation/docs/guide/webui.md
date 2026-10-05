@@ -11,23 +11,16 @@ The console at `/ui` manages endpoints, environments, tokens, users and settings
 
 ```yaml
 environment:
-  - WebUi__Enabled=true
-  - WebUi__PublicOrigins__0=https://example.com
+  - PORTWAY_WEBUI_ENABLED=true
+  - PORTWAY_PUBLIC_ORIGINS=https://example.com
   - PORTWAY_SECURE_COOKIES=true
 ```
 
-Setting `WebUi__Enabled=true` enables the console. It is reachable from the local network only; `WebUi__PublicOrigins` allows external origins; `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `WebUi` settings: [Application settings](/reference/app-settings#webui).
+`PORTWAY_WEBUI_ENABLED=true` enables the console, reachable from the local network; `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins; `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `WebUi` settings: [Application settings](/reference/app-settings#webui).
 
 ## Accounts
 
-The first start creates an administrator account with a random one-time password, logged once and changed at first sign-in; its name is logged with it. `WebUi__SeedPassword` sets a fixed password for demo instances. Further accounts are created under **Users** or from the shell:
-
-```bash
-portway accounts create <username> <password>
-portway accounts password <username> <new-password>
-```
-
-Shell recovery for bare-metal and Docker installs: [Recovering an account](/guide/accounts#recovering-an-account). Roles: [Account roles](/guide/accounts#account-roles). OpenID Connect sign-in: [Single sign-on](/guide/sso).
+Accounts are created under **Users** or from the shell. First account, shell recovery and Docker commands: [Console Accounts](/guide/accounts). Roles: [Account roles](/guide/accounts#account-roles). OpenID Connect sign-in: [Single sign-on](/guide/sso).
 
 ## Sessions
 
@@ -87,7 +80,7 @@ One row per environment, endpoint, version and method, with requests, success ra
 
 ### Retention and clearing
 
-Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /ui/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters, including those set by selecting a breakdown row.
+Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /ui/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
 
 ## API
 

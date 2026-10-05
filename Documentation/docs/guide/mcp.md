@@ -16,7 +16,6 @@ Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Pat
   "Enabled": true,
   "Path": "/mcp",
   "RequireAuthentication": true,
-  "AppsEnabled": true,
   "ChatEnabled": true
 }
 ```
@@ -26,7 +25,6 @@ Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Pat
 | `Enabled` | Yes | bool | Enables the MCP server (default `false`) |
 | `Path` | No | string | Server path (default `/mcp`) |
 | `RequireAuthentication` | No | bool | Requires a Portway Bearer token (default `true`) |
-| `AppsEnabled` | No | bool | Registers embedded UI resources as MCP resource URIs (default `true`) |
 | `ChatEnabled` | No | bool | Enables the Chat UI and `/ui/api/mcp/chat`; provider credentials are set in the setup wizard (default `false`) |
 
 :::warning
@@ -76,18 +74,14 @@ Configuration: [Namespaces](/reference/namespaces).
 
 ## Built-in server tools
 
-Available in every session with `Mcp:Enabled: true`:
 
 | Tool | Description |
 |---|---|
 | `ListEndpoints` | Returns all registered tools grouped by namespace |
 | `GetEndpointInfo` | Returns URL, methods, environments and tenant headers of an endpoint |
-| `ListUiEnabledEndpoints` | Returns endpoints with an embedded UI resource |
 | `CallEndpoint` | Calls an endpoint with an environment, OData query, JSON body and tenant values |
 
 ## Connect an MCP client
-
-MCP-over-HTTP endpoint:
 
 ```
 http(s)://{host}{Mcp:Path}

@@ -5,7 +5,7 @@ description: "Deploy Portway as an IIS website on Windows Server with HTTPS and 
 
 # Deploying on Windows Server
 
-Portway on Windows Server behind IIS. Container deployment: [Deploying with Docker](/guide/deployment-docker).
+Container deployment: [Deploying with Docker](/guide/deployment-docker).
 
 ## Prerequisites
 
@@ -65,7 +65,7 @@ The first start creates `tokens/`, `log/` and `auth.db`. Checks:
 
 ## Initial configuration
 
-Access token and environments: [Getting Started](/guide/getting-started). The Application Pool identity needs read access to `tokens/` and `environments/` under the site root.
+Access token and environments: [Getting Started](/guide/getting-started). Folder permissions: [Folders and Routes](/guide/layout#folder-permissions).
 
 ## Troubleshooting
 
@@ -96,7 +96,7 @@ Startup errors outside the application log are captured with stdout logging in `
 - Restrict client addresses in IIS Manager (IP Address and Domain Restrictions)
 - Use a dedicated domain service account with minimum SQL permissions
 
-Security configuration: [Security](/guide/security).
+Details: [Security](/guide/security).
 
 ## Backup
 

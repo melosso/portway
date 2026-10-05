@@ -9,41 +9,7 @@ A namespace groups endpoints (e.g. `CRM`, `Finance`, `Account`). It is the folde
 
 ## Directory structure
 
-```
-/endpoints/
-  ├── SQL/
-  │   ├── [Namespace]/
-  │   │   └── [EntityName]/
-  │   │       └── entity.json
-  │   └── [EntityName]/              # without namespace
-  │       └── entity.json
-  ├── Proxy/
-  │   ├── [Namespace]/
-  │   │   └── [EntityName]/
-  │   │       └── entity.json
-  │   └── [EntityName]/
-  │       └── entity.json
-  ├── Static/
-  │   ├── [Namespace]/
-  │   │   └── [EntityName]/
-  │   │       ├── entity.json
-  │   │       └── [content-file]
-  │   └── [EntityName]/
-  │       ├── entity.json
-  │       └── [content-file]
-  ├── Files/
-  │   ├── [Namespace]/
-  │   │   └── [EntityName]/
-  │   │       └── entity.json
-  │   └── [EntityName]/
-  │       └── entity.json
-  └── Webhooks/                      # namespace required
-      └── [Namespace]/
-          └── [EntityName]/
-              └── entity.json
-```
-
-Composite endpoints are stored under `Proxy/` with `"Type": "Composite"`.
+Folder layout per endpoint type: [Entity configuration](/reference/entity-config). Composite endpoints are stored under `Proxy/` with `"Type": "Composite"`.
 
 ## Namespace resolution
 
@@ -131,9 +97,9 @@ The OpenAPI document lists every version under the endpoint's tag, with the vers
 
 The console's **New version** action copies `entity.json` and its sibling files into the next `v{n}` folder. A base endpoint with versions is deleted after its versions; a version is renamed through its base endpoint.
 
-## Examples
+## Example
 
-SQL, `/endpoints/SQL/Company/Employees/entity.json`:
+`/endpoints/SQL/Company/Employees/entity.json`:
 
 ```json
 {
@@ -148,76 +114,7 @@ SQL, `/endpoints/SQL/Company/Employees/entity.json`:
 }
 ```
 
-Proxy, `/endpoints/Proxy/Account/Contacts/entity.json`:
-
-```json
-{
-  "Url": "http://crm-service:8080/api/contacts",
-  "Methods": ["GET", "POST", "PUT", "DELETE"],
-  "Namespace": "Account",
-  "NamespaceDisplayName": "Account Management",
-  "DisplayName": "Contact Management",
-  "AllowedEnvironments": ["dev", "test", "prod"],
-  "Documentation": {
-    "TagDescription": "**Contact Management**\n\nManage customer and vendor contact information.",
-    "MethodDescriptions": {
-      "GET": "Retrieve contact records",
-      "POST": "Create new contact",
-      "PUT": "Update existing contact",
-      "DELETE": "Remove contact"
-    }
-  }
-}
-```
-
-Static, `/endpoints/Static/Reports/SalesReport/entity.json`:
-
-```json
-{
-  "ContentType": "application/json",
-  "ContentFile": "sales-data.json",
-  "EnableFiltering": true,
-  "Namespace": "Reports",
-  "NamespaceDisplayName": "Business Reports",
-  "DisplayName": "Monthly Sales Report",
-  "AllowedEnvironments": ["dev", "test", "prod"]
-}
-```
-
-File, `/endpoints/Files/Archive/Documents/entity.json`, served at `/api/{env}/files/Archive/Documents`:
-
-```json
-{
-  "StorageType": "Local",
-  "BaseDirectory": "documents",
-  "AllowedExtensions": [".pdf", ".docx", ".txt"],
-  "Namespace": "Archive",
-  "NamespaceDisplayName": "Document Archive",
-  "AllowedEnvironments": ["dev", "test", "prod"]
-}
-```
-
-Composite, `/endpoints/Proxy/Sales/OrderProcessing/entity.json`:
-
-```json
-{
-  "Url": "http://order-service:8080",
-  "Methods": ["POST"],
-  "Type": "Composite",
-  "Namespace": "Sales",
-  "NamespaceDisplayName": "Sales Operations",
-  "DisplayName": "Order Processing Workflow",
-  "CompositeConfig": {
-    "Name": "OrderProcessing",
-    "Description": "Complete order processing workflow",
-    "Steps": [
-      { "Name": "ValidateCustomer", "Endpoint": "Account/Customers", "Method": "GET" },
-      { "Name": "CreateOrder", "Endpoint": "Sales/Orders", "Method": "POST" }
-    ]
-  },
-  "AllowedEnvironments": ["test", "prod"]
-}
-```
+A composite step names a namespaced endpoint by its path, e.g. `"Endpoint": "Account/Customers"`.
 
 ## Naming rules
 
@@ -233,7 +130,7 @@ Reserved names: `api`, `docs`, `openapi`, `health`, `admin`, `system`, `composit
 
 ## OpenAPI tags
 
-Endpoint tags are named by the route below `/api/{env}`: `{namespace}/{endpoint}` for a namespaced endpoint, `{endpoint}` without a namespace, `files/{endpoint}` for a file endpoint. Group tags are named `ns:{namespace}` and carry `kind: nav`; endpoint tags never do. Each endpoint tag sets `parent` to its group, and a nested group sets `parent` to the group one segment up, so `/docs` lists `CRM` with `Accounts` and `Suppliers` beneath it. The `ns:` prefix keeps a group from sharing a name with an endpoint, so an endpoint named `CRM` and a namespace `CRM` stay apart. Labels set the sidebar title (`summary`) and never change a tag name.
+Endpoint tags are named by the route below `/api/{env}`: `{namespace}/{endpoint}` for a namespaced endpoint, `{endpoint}` without a namespace, `files/{endpoint}` for a file endpoint. Group tags are named `ns:{namespace}` and have `kind: nav`. Endpoint tags have no `kind`. Each endpoint tag sets `parent` to its group, and a nested group sets `parent` to the group one segment up. The `ns:` prefix separates a group from an endpoint of the same name. Labels set the sidebar title (`summary`) and never change a tag name.
 
 An endpoint without a namespace is placed in the `ns:{DefaultGroup}` group (`OpenApi:DefaultGroup`, default `General`), a file endpoint without a namespace in `ns:Files`. With an empty `DefaultGroup` an endpoint without a namespace has no `parent`. With `OpenApi:ShowNamespaces` set to `false` no group tags are declared and no tag has a `parent`.
 

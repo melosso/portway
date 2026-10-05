@@ -38,7 +38,7 @@ The global file `environments/settings.json` lists the routable environments:
 }
 ```
 
-The global `ServerName` is the default server name in forwarded headers; `AllowedEnvironments` lists the routable environment names. Property reference: [Environment settings](/reference/environment-settings#global-settings).
+`ServerName` is the default server name in forwarded headers. Property reference: [Environment settings](/reference/environment-settings#global-settings).
 
 :::warning
 An environment folder is routed only when its name is listed in `AllowedEnvironments`.
@@ -67,14 +67,7 @@ Per-environment `settings.json`:
 
 ## SQL provider detection
 
-The SQL provider is detected from the connection string:
-
-| Provider | Detection signal |
-|---|---|
-| SQL Server | `TrustServerCertificate=`, `Integrated Security=`, `MultiSubnetFailover=` |
-| PostgreSQL | `Host=`, `Port=5432` URI schemes |
-| MySQL / MariaDB | `Server=...;Uid=`, `SslMode=` |
-| SQLite | `Data Source=...db` file path |
+The SQL provider is detected from the connection string. Detection rules and provider differences: [SQL Providers](/reference/sql-providers).
 
 :::tip
 An SQLite environment needs no database server:
@@ -82,8 +75,6 @@ An SQLite environment needs no database server:
 { "ConnectionString": "Data Source=environments/demo/demo.db;" }
 ```
 :::
-
-Detection priority and provider differences: [SQL Providers](/reference/sql-providers).
 
 ## Configuration examples
 
@@ -120,15 +111,6 @@ MySQL:
 {
   "ServerName": "mysql-host",
   "ConnectionString": "Server=mysql-host;Port=3306;Database=mydb;Uid=portway;Pwd=your-password;SslMode=Preferred;"
-}
-```
-
-SQLite:
-
-```json
-{
-  "ServerName": "localhost",
-  "ConnectionString": "Data Source=environments/demo/demo.db;"
 }
 ```
 
@@ -220,11 +202,11 @@ Connection strings and other secrets can be read from Azure Key Vault instead of
 
    ::: code-group
 
-   ```powershell [PowerShell]
+   ```powershell [Windows]
    $env:PORTWAY_KEYVAULT_URI = "https://your-keyvault.vault.azure.net/"
    ```
 
-   ```bash [Bash]
+   ```bash [Linux]
    export PORTWAY_KEYVAULT_URI="https://your-keyvault.vault.azure.net/"
    ```
 
@@ -237,23 +219,9 @@ Connection strings and other secrets can be read from Azure Key Vault instead of
 
 The secrets are read at startup and used like file-based values.
 
-## Environment headers
-
-Headers in `settings.json` are added to every proxy request in that environment and replace client headers of the same name.
-
-```json
-{
-  "Headers": {
-    "DatabaseName": "prod",
-    "X-Environment": "Production",
-    "Origin": "Portway"
-  }
-}
-```
-
 ## Network access policy
 
-The file `environments/network-access-policy.json` lists the upstream hosts proxy endpoints may call (SSRF protection). It is created at first start with restrictive defaults.
+The file `environments/network-access-policy.json` lists the upstream hosts proxy endpoints may call (SSRF protection). It is created at first start.
 
 ```json
 {
@@ -275,7 +243,7 @@ The file `environments/network-access-policy.json` lists the upstream hosts prox
 | Field | Description |
 |---|---|
 | `allowedHosts` | Hosts proxy endpoints may call; `*` matches one label (e.g. `*.corp`) |
-| `blockedIpRanges` | CIDR ranges refused after DNS resolution, also for allowed hosts |
+| `blockedIpRanges` | CIDR ranges refused after DNS resolution |
 
 A proxy request is allowed when the target host matches `allowedHosts` and no resolved address is in `blockedIpRanges`.
 

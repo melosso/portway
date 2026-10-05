@@ -26,11 +26,6 @@ Ascending is the default; fields are applied in the listed order, before paging.
 | `$top` | `10` | Maximum rows; limited to the endpoint's `MaxPageSize` when set |
 | `$skip` | `0` | Rows skipped before the first returned row |
 
-```
-$skip = (pageNumber - 1) * pageSize
-$top  = pageSize
-```
-
 ```http
 GET /api/prod/Orders?$top=25&$skip=25&$orderby=OrderDate desc
 ```
@@ -43,16 +38,7 @@ GET /api/prod/Products?$orderby=Price desc,ItemCode&$top=20&$skip=0
 
 ## nextLink
 
-When more rows exist, the response includes `nextLink` with the next page URL; the last page has `"nextLink": null`:
-
-```json
-{
-  "success": true,
-  "count": 10,
-  "value": [ "..." ],
-  "nextLink": "/api/prod/Products?$orderby=Category,Price desc&$top=10&$skip=10"
-}
-```
+When more rows exist, the response includes `nextLink` with the next page URL; the last page has `"nextLink": null`. Response format: [OData](/reference/odata#response-format).
 
 The total number of matching rows is returned with `$count=true` ([OData](/reference/odata#count)).
 
@@ -67,8 +53,6 @@ GET /api/prod/Products?$orderby=ItemCode&$top=20&$skip=10000
 # Keyset
 GET /api/prod/Products?$filter=ItemCode gt 'PROD10000'&$orderby=ItemCode&$top=20
 ```
-
-Sorting on indexed columns avoids sorts over the full table.
 
 ## Errors
 

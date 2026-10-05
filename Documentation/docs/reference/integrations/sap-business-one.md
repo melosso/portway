@@ -18,7 +18,7 @@ The SAP Business One [Service Layer](https://help.sap.com/doc/fc2f5477516c404c8b
 }
 ```
 
-Paths after the endpoint name are appended to `Url`, so one endpoint serves `Login`, `Items`, `Orders` and the other Service Layer resources. Each integration uses its own SAP B1 user with minimal authorizations.
+Paths after the endpoint name are appended to `Url`. One endpoint serves `Login`, `Items`, `Orders` and the other Service Layer resources. Each integration uses its own SAP B1 user with minimal authorizations.
 
 ## Requests
 

@@ -5,7 +5,7 @@ description: "Each subfolder under endpoints/ corresponds to an endpoint type"
 
 # Folders and Routes
 
-Routes are derived from the `endpoints/` folder tree: the first level is the endpoint type, the folder names below it form the namespace and endpoint name. Changes are reloaded without a restart. `Namespace` in `entity.json` overrides the folder namespace ([Namespaces](/reference/namespaces)).
+Routes are derived from the `endpoints/` folder tree: the first level is the endpoint type, the folder names below it form the namespace and endpoint name. `Namespace` in `entity.json` overrides the folder namespace ([Namespaces](/reference/namespaces)).
 
 ## Directory layout
 
@@ -65,15 +65,26 @@ Segments in square brackets are optional; a namespace folder adds its name to th
 
 ## Folder permissions
 
-Application Pool identity access to the deployment directory:
+Write access for the service account on the deployment directory:
 
-```powershell
+::: code-group
+
+```bash [Linux]
+sudo chown -R portway:portway /opt/portway
+sudo chmod -R u+rwX,go-rwx /opt/portway
+```
+
+```powershell [Windows]
 # ApplicationPoolIdentity
-icacls "C:\Apps\Portway" /grant "IIS AppPool\PortwayAppPool:(F)" /T /C
+icacls "C:\Apps\Portway" /grant "IIS AppPool\PortwayAppPool:(OI)(CI)M" /T /C
 
 # Custom service account
-icacls "C:\Apps\Portway" /grant "DOMAIN\SVC_PORTWAY:(F)" /T /C
+icacls "C:\Apps\Portway" /grant "DOMAIN\SVC_PORTWAY:(OI)(CI)M" /T /C
 ```
+
+:::
+
+Docker containers run as the image user; bind-mounted folders need write access for that user.
 
 | Folder | Minimum permission | Reason |
 |---|---|---|

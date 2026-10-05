@@ -9,32 +9,6 @@ Request traffic logging records per-request metadata (timing, status, user, clie
 
 ## Configuration
 
-### Basic settings
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Enabled": false,
-    "QueueCapacity": 10000,
-    "StorageType": "file",
-    "SqlitePath": "log/traffic_logs.db",
-    "LogDirectory": "log/traffic",
-    "MaxFileSizeMB": 50,
-    "MaxFileCount": 5,
-    "FilePrefix": "proxy_traffic_",
-    "BatchSize": 100,
-    "FlushIntervalMs": 1000,
-    "IncludeRequestBodies": false,
-    "IncludeResponseBodies": false,
-    "MaxBodyCaptureSizeBytes": 4096,
-    "CaptureHeaders": true,
-    "EnableInfoLogging": true
-  }
-}
-```
-
-### Configuration options
-
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `Enabled` | Enables traffic logging | `false` |
@@ -101,8 +75,6 @@ CREATE INDEX idx_timestamp ON TrafficLogs (Timestamp);
 
 ## Log entry format
 
-Example entry:
-
 ```json
 {
   "Id": 12345,
@@ -130,28 +102,7 @@ Example entry:
 }
 ```
 
-## Field descriptions
-
-| Field | Description |
-|-------|-------------|
-| `Id` | Unique identifier (SQLite only) |
-| `Timestamp` | UTC timestamp of request |
-| `Method` | HTTP method (GET, POST, etc.) |
-| `Path` | Request path |
-| `QueryString` | Query parameters |
-| `Environment` | Target environment (e.g., "prod") |
-| `EndpointName` | Name of the endpoint |
-| `TargetUrl` | Proxied URL (for proxy requests) |
-| `StatusCode` | HTTP response status |
-| `RequestSize` | Size of request body in bytes |
-| `ResponseSize` | Size of response body in bytes |
-| `DurationMs` | Request duration in milliseconds |
-| `Username` | Authenticated user |
-| `ClientIp` | Client IP address |
-| `TraceId` | Unique request identifier |
-| `RequestHeaders` | Request headers (sensitive values redacted) |
-| `RequestBody` | Request body (if enabled) |
-| `ResponseBody` | Response body (if enabled) |
+`Id` is present in SQLite storage only. `TargetUrl` is set for proxy requests. Body fields are `null` unless body capture is enabled.
 
 ## Security features
 
@@ -185,7 +136,7 @@ Entries are queued and written in background batches. Tuning for high volume:
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 # Find slow requests
 Get-Content "log/traffic/proxy_traffic_*.json" | 
     ConvertFrom-Json | 
@@ -206,7 +157,7 @@ Get-Content "log/traffic/proxy_traffic_*.json" |
     Select-Object Timestamp, Path, StatusCode
 ```
 
-```bash [Bash]
+```bash [Linux]
 # Find slow requests
 cat log/traffic/proxy_traffic_*.json |
     jq 'select(.DurationMs > 1000) | {Timestamp, Method, Path, DurationMs}'
@@ -245,27 +196,6 @@ SELECT
 FROM TrafficLogs
 GROUP BY EndpointName
 ORDER BY RequestCount DESC;
-
--- Error rate by hour
-SELECT 
-    strftime('%Y-%m-%d %H:00', Timestamp) as Hour,
-    COUNT(*) as TotalRequests,
-    SUM(CASE WHEN StatusCode >= 400 THEN 1 ELSE 0 END) as Errors,
-    ROUND(CAST(SUM(CASE WHEN StatusCode >= 400 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) * 100, 2) as ErrorRate
-FROM TrafficLogs
-GROUP BY Hour
-ORDER BY Hour DESC;
-
--- User activity summary
-SELECT 
-    Username,
-    COUNT(*) as RequestCount,
-    COUNT(DISTINCT EndpointName) as UniqueEndpoints,
-    AVG(DurationMs) as AvgDuration
-FROM TrafficLogs
-WHERE Username IS NOT NULL
-GROUP BY Username
-ORDER BY RequestCount DESC;
 ```
 
 ## Troubleshooting
@@ -277,31 +207,3 @@ ORDER BY RequestCount DESC;
 | High performance impact | Disable body capture; increase `BatchSize` and `FlushIntervalMs`; switch to file storage |
 | Disk filling up | Reduce `MaxFileCount`; reduce `MaxBodyCaptureSizeBytes`; disable body capture |
 | SQLite errors | Check file permissions; ensure path directory exists; validate with `sqlite3 log/traffic_logs.db .tables` |
-
-### Diagnostic commands
-
-::: code-group
-
-```powershell [PowerShell]
-# Check if logging is enabled
-Get-Content "appsettings.json" | ConvertFrom-Json | Select-Object -ExpandProperty RequestTrafficLogging
-
-# Monitor log directory size
-Get-ChildItem "log/traffic" -Recurse | Measure-Object -Property Length -Sum
-
-# View recent traffic logs
-Get-Content "log/traffic/proxy_traffic_$(Get-Date -Format 'yyyyMMdd')*.json" | Select-Object -Last 10 | ConvertFrom-Json
-```
-
-```bash [Bash]
-# Check if logging is enabled
-cat appsettings.json | jq .RequestTrafficLogging
-
-# Monitor log directory size
-du -sh log/traffic
-
-# View recent traffic logs
-tail -n 10 log/traffic/proxy_traffic_$(date +%Y%m%d)*.json | jq .
-```
-
-:::

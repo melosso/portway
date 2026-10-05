@@ -47,8 +47,10 @@ Outside Development, Portway refuses to start without `PORTWAY_ENCRYPTION_KEY`.
 [System.Environment]::SetEnvironmentVariable('PORTWAY_ENCRYPTION_KEY', 'your-secure-key', 'Machine')
 ```
 
-```bash [Docker .env]
-PORTWAY_ENCRYPTION_KEY=your-secure-key
+```bash [Linux]
+export PORTWAY_ENCRYPTION_KEY=your-secure-key
+# or in .env in the working directory:
+# PORTWAY_ENCRYPTION_KEY=your-secure-key
 ```
 
 :::

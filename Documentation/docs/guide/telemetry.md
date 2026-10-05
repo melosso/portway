@@ -9,8 +9,6 @@ Portway exports request traces and metrics through one provider, selected with `
 
 ## Choosing a provider
 
-One provider is active at a time:
-
 | Provider | Style | Output |
 |---|---|---|
 | `None` | (default) | No export |
@@ -36,17 +34,28 @@ Observability platforms (Grafana Alloy, Jaeger, Datadog) use `Otlp`; a standalon
 
 | Key | Default | Description |
 |---|---|---|
-| `ServiceName` | `Portway.Api` | Service name on every span and metric |
+| `Provider` (`PORTWAY_TELEMETRY_PROVIDER`) | `None` | `None`, `Otlp` or `Prometheus` |
+| `ServiceName` (`PORTWAY_SERVICE_NAME`) | `Portway.Api` | Service name on every span and metric |
 | `ResourceAttributes` | none | Comma-separated `key=value` pairs added to every span and metric |
-| `Otlp:Endpoint` | `http://localhost:4317` | Collector gRPC address |
+| `Otlp:Endpoint` (`PORTWAY_OTLP_ENDPOINT`) | `http://localhost:4317` | Collector gRPC address |
 
-Each key is also read from environment variables with the .NET double-underscore convention:
+Environment variables:
 
-```bash
-Telemetry__Provider=Otlp
-Telemetry__Otlp__Endpoint=http://otel-collector:4317
-Telemetry__ServiceName=portway-prod
+::: code-group
+
+```bash [Linux]
+export PORTWAY_TELEMETRY_PROVIDER=Otlp
+export PORTWAY_OTLP_ENDPOINT=http://otel-collector:4317
+export PORTWAY_SERVICE_NAME=portway-prod
 ```
+
+```powershell [Windows]
+$env:PORTWAY_TELEMETRY_PROVIDER = "Otlp"
+$env:PORTWAY_OTLP_ENDPOINT = "http://otel-collector:4317"
+$env:PORTWAY_SERVICE_NAME = "portway-prod"
+```
+
+:::
 
 ## Using the Prometheus provider
 
@@ -68,14 +77,14 @@ scrape_configs:
   - job_name: portway
     scrape_interval: 15s
     static_configs:
-      - targets: ["portway.internal:5000"]
+      - targets: ["portway.internal:8080"]
 ```
 
 ::: info
 The scrape endpoint is mapped only with the `Prometheus` provider. It is unauthenticated and rate-limit exempt, like `/health`, and exposes aggregate counters and histograms only. Restrict the path at the firewall or reverse proxy when the gateway is reachable from untrusted networks.
 :::
 
-The Prometheus provider exports no traces. Traces with Prometheus metrics require the OTLP provider and a collector.
+The Prometheus provider exports no traces.
 
 ## What Portway exports
 
@@ -106,13 +115,13 @@ A gateway pushing to a collector that re-exposes metrics to Prometheus and forwa
 ```yaml
 services:
   portway:
-    image: melosso/portway:latest
+    image: ghcr.io/melosso/portway:latest
     environment:
-      Telemetry__Provider: Otlp
-      Telemetry__Otlp__Endpoint: http://otel-collector:4317
-      Telemetry__ServiceName: portway-prod
+      PORTWAY_TELEMETRY_PROVIDER: Otlp
+      PORTWAY_OTLP_ENDPOINT: http://otel-collector:4317
+      PORTWAY_SERVICE_NAME: portway-prod
     ports:
-      - "5000:5000"
+      - "8080:8080"
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
@@ -148,15 +157,15 @@ service:
       exporters: [prometheus]
 ```
 
-With `Telemetry__Provider: Prometheus` the collector service is not needed; Prometheus scrapes the `portway` container.
+With `PORTWAY_TELEMETRY_PROVIDER: Prometheus` the collector service is not needed; Prometheus scrapes the `portway` container.
 
 :::tip
-For Grafana Alloy or the Grafana Agent, set `Telemetry__Otlp__Endpoint` to its OTLP receiver. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through one pipeline.
+For Grafana Alloy or the Grafana Agent, set `PORTWAY_OTLP_ENDPOINT` to its OTLP receiver. Traces (Tempo) and metrics (Mimir/Prometheus) are sent through one pipeline.
 :::
 
 ## Windows Server and IIS
 
-The `Telemetry` section is read from `appsettings.json`. Collector addresses belong in an environment-specific override file:
+`appsettings.Production.json` overrides `appsettings.json`:
 
 ```json [appsettings.Production.json]
 {
@@ -176,17 +185,13 @@ Under IIS, `<environmentVariables>` in `web.config` override `appsettings.json`:
   <system.webServer>
     <aspNetCore processPath="dotnet" arguments=".\PortwayApi.dll" stdoutLogEnabled="false">
       <environmentVariables>
-        <environmentVariable name="Telemetry__Provider" value="Otlp" />
-        <environmentVariable name="Telemetry__Otlp__Endpoint" value="http://otel-collector.internal:4317" />
+        <environmentVariable name="PORTWAY_TELEMETRY_PROVIDER" value="Otlp" />
+        <environmentVariable name="PORTWAY_OTLP_ENDPOINT" value="http://otel-collector.internal:4317" />
       </environmentVariables>
     </aspNetCore>
   </system.webServer>
 </configuration>
 ```
-
-:::info
-IIS worker processes do not inherit system environment variables. Use `appsettings.json` or `web.config` `<environmentVariables>`; system environment variables and application pool settings are unreliable across IIS resets.
-:::
 
 ## Upgrading from earlier versions
 

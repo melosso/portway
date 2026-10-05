@@ -28,17 +28,7 @@ Client headers are forwarded to proxy upstreams, except:
 | Environment `Headers` and endpoint `HttpMethodAppendHeaders` | Configured value replaces the client value |
 | Tenant headers | Inbound header removed; the upstream header is set to the tenant value |
 
-Environment headers are defined in `environments/{env}/settings.json`:
-
-```json
-{
-  "Headers": {
-    "DatabaseName": "prod",
-    "ServerName": "YOUR-APP-SERVER",
-    "Origin": "Portway"
-  }
-}
-```
+Environment headers: [Environments](/guide/environments#environment-settings).
 
 The proxy response's `Server`, `X-Powered-By`, `X-AspNet-Version` and `X-AspNetMvc-Version` headers are removed.
 

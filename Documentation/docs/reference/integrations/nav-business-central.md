@@ -50,4 +50,3 @@ Sales orders with lines and journal entries are created in one request with a [c
 
 - OData field names contain underscores (e.g. `Sell_to_Customer_No`) and are used as-is in `$filter` and `$select`.
 - The `Company` value is URL-encoded.
-- A NAV/BC test company is the target for initial testing.

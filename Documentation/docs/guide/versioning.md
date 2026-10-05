@@ -5,7 +5,7 @@ description: "Run multiple Portway versions side by side behind Nginx, Caddy or 
 
 # Versioning
 
-Multiple Portway versions run side by side as separate instances, each under its own path (e.g. `/v1`, `/v2`, `/dev`). A reverse proxy routes each path to its instance and redirects the root URL to the default version.
+Multiple Portway versions run side by side as separate instances, each under its own path (e.g. `/v1`, `/v2`, `/dev`). A reverse proxy routes each path to its instance and redirects the root URL to the default version. Versions of one endpoint within an instance: [Namespaces](/reference/namespaces#versions).
 
 ```mermaid
 graph TD
@@ -31,7 +31,7 @@ The proxy forwards the full path including the prefix; Portway removes it throug
 
 ## Linux
 
-Each instance runs as its own systemd service or container with the settings above. The proxy configuration for `/v1` and `/v2`, with `/v1` as the default:
+Proxy configuration for `/v1` and `/v2`, with `/v1` as the default:
 
 ::: code-group
 
@@ -81,7 +81,7 @@ api.example.com {
 
 The forwarded request keeps the `/v1` prefix: Nginx `proxy_pass` has no trailing path, and Caddy uses `handle`, not `handle_path`. Caddy sets `X-Forwarded-For` and `X-Forwarded-Proto` and obtains the certificate itself.
 
-With Docker, each container publishes its own host port (e.g. `127.0.0.1:5001:8080`) and sets `PORTWAY_PATH_BASE`. Requests from a host proxy arrive from the Docker bridge, so `ForwardedHeaders:KnownNetworks` lists the bridge range (e.g. `172.16.0.0/12`).
+With Docker, each container publishes its own host port (e.g. `127.0.0.1:5001:8080`) and sets `PORTWAY_PATH_BASE`. Requests from a host proxy originate from the Docker bridge. `ForwardedHeaders:KnownNetworks` lists the bridge range (e.g. `172.16.0.0/12`).
 
 ## Windows (IIS)
 
@@ -100,86 +100,28 @@ Files in the site root (e.g. `C:\path\to\your\PortwayApi`):
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <system.webServer>
-	<rewrite>
-	  <rules>
-
-		<!-- Allow all versioned paths (v1, v2, dev) to pass through unchanged -->
-		<rule name="Allow versioned paths" stopProcessing="true">
-		  <match url="^(v1|v2|dev)(/.*)?$" />
-		  <action type="None" />
-		</rule>
-
-		<!-- Redirect root (/) to the default version -->
-		<rule name="Redirect root to default version" stopProcessing="true">
-		  <match url="^$" />
-		  <action type="Redirect" url="v1/" redirectType="Permanent" />
-		</rule>
-
-		<!-- Redirect index.html to the default version -->
-		<rule name="Redirect index.html to default version" stopProcessing="true">
-		  <match url="^index\.html$" />
-		  <action type="Redirect" url="v1/" redirectType="Permanent" />
-		</rule>
-
-		<!-- Redirect any non-versioned request to the default version -->
-		<rule name="Redirect non-versioned requests to default version" stopProcessing="true">
-		  <match url="^(?!v1/|v2/|dev/).*" />
-		  <action type="Redirect" url="v1/" redirectType="Permanent" />
-		</rule>
-
-	  </rules>
-	</rewrite>
-
-    <!-- Serve index.html as the default document -->
-    <defaultDocument>
-      <files>
-        <clear />
-        <add value="index.html" />
-      </files>
-    </defaultDocument>
-	
+    <rewrite>
+      <rules>
+        <rule name="Allow versioned paths" stopProcessing="true">
+          <match url="^(v1|v2|dev)(/.*)?$" />
+          <action type="None" />
+        </rule>
+        <rule name="Redirect to default version" stopProcessing="true">
+          <match url=".*" />
+          <action type="Redirect" url="v1/" redirectType="Permanent" />
+        </rule>
+      </rules>
+    </rewrite>
     <httpProtocol>
       <customHeaders>
         <remove name="X-Powered-By" />
-        <remove name="X-Content-Type-Options" />
-        <remove name="X-Frame-Options" />
-        <remove name="Strict-Transport-Security" />
-        <remove name="Referrer-Policy" />
-        <remove name="Permissions-Policy" />
-
-        <add name="X-Content-Type-Options" value="nosniff" />
-        <add name="X-Frame-Options" value="DENY" />
-        <add name="Strict-Transport-Security" value="max-age=31536000; includeSubDomains; preload" />
-        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
-        <add name="Permissions-Policy" value="geolocation=(), camera=(), microphone=(), payment=()" />
       </customHeaders>
     </httpProtocol>
-
   </system.webServer>
 </configuration>
 ```
 
-Portway sets `Content-Security-Policy` itself, `/docs` included. `web.config` omits the header, so each response has a single policy.
-
-#### `index.html`
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0;url=v1/">
-    <title>Redirecting...</title>
-</head>
-<body>
-</body>
-</html>
-```
-
-::: tip
-Adjust the redirect rules to the versions in use.
-:::
+The first rule lists the version paths in use and passes them through. The second redirects every other path, the root included, to the default version. Portway sets the security headers (`Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options` and others). Headers added in `web.config` duplicate them.
 
 ### 3. Path base
 
@@ -192,11 +134,6 @@ Each version's `appsettings.json` sets `PathBase` to its folder name, e.g. for `
 ### 4. Application pools
 
 Each version needs its own application pool (e.g. `PortwayApi_v1`, `PortwayApi_v2`).
-
-### 5. Verification
-
-- The root URL redirects to the default version (e.g. `/v1/`).
-- Each version path (e.g. `/v2/`) serves its instance.
 
 ## Related topics
 
