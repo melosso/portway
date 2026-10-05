@@ -28,6 +28,8 @@ public class McpConfigDbContext : DbContext
             {
                 Log.Debug("McpConfig table verified in mcp.db");
             }
+            // the internal fallback token was removed, a stored copy is an unused credential
+            Database.GetDbConnection().Execute("DELETE FROM McpConfig WHERE Key = 'InternalApiToken'");
         }
         catch (Exception ex)
         {
@@ -73,7 +75,7 @@ public class McpConfigDbContext : DbContext
 }
 
 /// <summary>
-/// A single key-value configuration entry. Sensitive entries (ApiKey, InternalApiToken) are encrypted at rest using <see cref="PortwayApi.Helpers.SettingsEncryptionHelper"/> before being stored
+/// A single key-value configuration entry. Sensitive entries (ApiKey) are encrypted at rest using <see cref="PortwayApi.Helpers.SettingsEncryptionHelper"/> before being stored
 /// </summary>
 public class McpConfigEntry
 {

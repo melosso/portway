@@ -270,20 +270,19 @@ public static partial class WebUiEndpointExtensions
             var provider = body?["provider"]?.GetValue<string>();
             var model = body?["model"]?.GetValue<string>();
             var apiKey = body?["apiKey"]?.GetValue<string>();
-            var internalApiToken = body?["internalApiToken"]?.GetValue<string>();
 
             if (provider is not null && string.IsNullOrWhiteSpace(provider))
                 return Results.BadRequest(new { error = "provider cannot be blank" });
             if (apiKey is not null && string.IsNullOrWhiteSpace(apiKey))
                 return Results.BadRequest(new { error = "apiKey cannot be blank" });
 
-            await mcpConfig.SaveConfigAsync(provider, model, apiKey, internalApiToken);
+            await mcpConfig.SaveConfigAsync(provider, model, apiKey);
             Audit(request.HttpContext, "update", "mcp-config", "chat configuration",
                 provider is not null ? $"provider={provider}" : null);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        // clears provider, model, key and token
+        // clears provider, model and key
         app.MapDelete("/ui/api/mcp/config", async (
             HttpContext context,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig,

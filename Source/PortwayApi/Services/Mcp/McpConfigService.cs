@@ -28,8 +28,7 @@ public sealed class McpConfigService
     public sealed record ConfigSnapshot(
         string Provider,
         string Model,
-        string? ApiKey,
-        string? InternalApiToken
+        string? ApiKey
     )
     {
         /// <summary>
@@ -72,8 +71,7 @@ public sealed class McpConfigService
         var snapshot = new ConfigSnapshot(
             Provider: Resolve("Provider"),
             Model: Resolve("Model"),
-            ApiKey: apiKey,
-            InternalApiToken: Resolve("InternalApiToken").NullIfEmpty()
+            ApiKey: apiKey
         );
 
         _cache = snapshot;
@@ -81,13 +79,12 @@ public sealed class McpConfigService
     }
 
     /// <summary>
-    /// Persists chat configuration to the DB. <para>ApiKey and InternalApiToken are encrypted before storage.</para> Pass <c>null</c> to leave a value unchanged
+    /// Persists chat configuration to the DB. <para>ApiKey is encrypted before storage.</para> Pass <c>null</c> to leave a value unchanged
     /// </summary>
     public async Task SaveConfigAsync(
         string? provider,
         string? model,
         string? apiKey,
-        string? internalApiToken,
         CancellationToken ct = default)
     {
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
@@ -100,15 +97,6 @@ public sealed class McpConfigService
 
         if (apiKey is not null)
             await UpsertAsync(db, "ApiKey", SettingsEncryptionHelper.Encrypt(apiKey), encrypt: true, ct);
-
-        if (internalApiToken is not null)
-        {
-            // Empty string = explicitly clearing the token (no tool-call auth)
-            var valueToStore = internalApiToken.Length == 0
-                ? string.Empty
-                : SettingsEncryptionHelper.Encrypt(internalApiToken);
-            await UpsertAsync(db, "InternalApiToken", valueToStore, encrypt: internalApiToken.Length > 0, ct);
-        }
 
         _cache = null; // invalidate cache — next GetConfigAsync reads from DB
         Log.Information("McpConfig: configuration saved");
@@ -138,7 +126,6 @@ public sealed class McpConfigService
             provider = cfg.Provider,
             model = cfg.Model,
             has_api_key = !string.IsNullOrWhiteSpace(cfg.ApiKey),
-            has_internal_token = !string.IsNullOrWhiteSpace(cfg.InternalApiToken),
             api_key_source = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(ApiKeyEnvVar))
                                ? "environment"
                                : (string.IsNullOrWhiteSpace(cfg.ApiKey) ? "none" : "database")
