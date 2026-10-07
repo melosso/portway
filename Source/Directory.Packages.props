@@ -47,7 +47,7 @@
     <PackageVersion Include="Dapper" Version="2.1.89" />
     <PackageVersion Include="SqlKata" Version="4.0.1" />
     <PackageVersion Include="SqlKata.Execution" Version="4.0.1" />
-    <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.1" />
+    <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.2" />
   </ItemGroup>
   <ItemGroup Label="Serilog">
     <PackageVersion Include="Serilog" Version="$(SerilogVersion)" />
