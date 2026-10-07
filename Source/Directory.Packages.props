@@ -71,7 +71,7 @@
   </ItemGroup>
   <ItemGroup Label="Other">
     <PackageVersion Include="StackExchange.Redis" Version="3.3.1" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.11" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.14" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup Label="Test Dependencies">
