@@ -39,7 +39,8 @@ public static partial class WebUiEndpointExtensions
                 target_type = e.TargetType,
                 target = e.Target,
                 details = e.Details,
-                restorable = e.BackupPath != null && File.Exists(e.BackupPath)
+                restorable = e.BackupPath != null && File.Exists(e.BackupPath),
+                actor = e.Actor
             });
             return Results.Json(new { entries });
         }).ExcludeFromDescription();

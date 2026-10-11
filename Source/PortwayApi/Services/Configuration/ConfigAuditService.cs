@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Serilog;
 
@@ -10,10 +11,12 @@ public class ConfigAuditService
 {
     private readonly string _connectionString;
     private readonly object _initLock = new();
+    private readonly IHttpContextAccessor? _httpContext;
     private bool _initialized;
 
-    public ConfigAuditService()
+    public ConfigAuditService(IHttpContextAccessor? httpContext = null)
     {
+        _httpContext = httpContext;
         var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "auth.db");
         _connectionString = $"Data Source={dbPath}";
     }
@@ -36,11 +39,19 @@ public class ConfigAuditService
                     TargetType TEXT NOT NULL,
                     Target TEXT NOT NULL,
                     Details TEXT,
-                    BackupPath TEXT
+                    BackupPath TEXT,
+                    Actor TEXT
                 );
                 CREATE INDEX IF NOT EXISTS IX_ConfigAudits_Timestamp ON ConfigAudits (Timestamp DESC);
                 """;
             cmd.ExecuteNonQuery();
+
+            cmd.CommandText = "SELECT COUNT(*) FROM pragma_table_info('ConfigAudits') WHERE name = 'Actor'";
+            if (Convert.ToInt64(cmd.ExecuteScalar()) == 0)
+            {
+                cmd.CommandText = "ALTER TABLE ConfigAudits ADD COLUMN Actor TEXT";
+                cmd.ExecuteNonQuery();
+            }
             _initialized = true;
         }
     }
@@ -57,8 +68,8 @@ public class ConfigAuditService
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO ConfigAudits (Timestamp, ClientIp, Action, TargetType, Target, Details, BackupPath)
-                VALUES ($ts, $ip, $action, $type, $target, $details, $backup)
+                INSERT INTO ConfigAudits (Timestamp, ClientIp, Action, TargetType, Target, Details, BackupPath, Actor)
+                VALUES ($ts, $ip, $action, $type, $target, $details, $backup, $actor)
                 """;
             cmd.Parameters.AddWithValue("$ts", DateTime.UtcNow.ToString("o"));
             cmd.Parameters.AddWithValue("$ip", (object?)clientIp ?? DBNull.Value);
@@ -67,6 +78,7 @@ public class ConfigAuditService
             cmd.Parameters.AddWithValue("$target", target);
             cmd.Parameters.AddWithValue("$details", (object?)details ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$backup", (object?)backupPath ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$actor", (object?)CurrentActor() ?? DBNull.Value);
             cmd.ExecuteNonQuery();
         }
         catch (Exception ex)
@@ -87,7 +99,7 @@ public class ConfigAuditService
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, Timestamp, ClientIp, Action, TargetType, Target, Details, BackupPath FROM ConfigAudits ORDER BY Id DESC LIMIT $limit";
+            cmd.CommandText = "SELECT Id, Timestamp, ClientIp, Action, TargetType, Target, Details, BackupPath, Actor FROM ConfigAudits ORDER BY Id DESC LIMIT $limit";
             cmd.Parameters.AddWithValue("$limit", Math.Clamp(limit, 1, 500));
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
@@ -100,7 +112,8 @@ public class ConfigAuditService
                     reader.GetString(4),
                     reader.GetString(5),
                     reader.IsDBNull(6) ? null : reader.GetString(6),
-                    reader.IsDBNull(7) ? null : reader.GetString(7)));
+                    reader.IsDBNull(7) ? null : reader.GetString(7),
+                    reader.IsDBNull(8) ? null : reader.GetString(8)));
             }
         }
         catch (Exception ex)
@@ -121,7 +134,7 @@ public class ConfigAuditService
             using var conn = new SqliteConnection(_connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, Timestamp, ClientIp, Action, TargetType, Target, Details, BackupPath FROM ConfigAudits WHERE Id = $id";
+            cmd.CommandText = "SELECT Id, Timestamp, ClientIp, Action, TargetType, Target, Details, BackupPath, Actor FROM ConfigAudits WHERE Id = $id";
             cmd.Parameters.AddWithValue("$id", id);
             using var reader = cmd.ExecuteReader();
             if (reader.Read())
@@ -134,7 +147,8 @@ public class ConfigAuditService
                     reader.GetString(4),
                     reader.GetString(5),
                     reader.IsDBNull(6) ? null : reader.GetString(6),
-                    reader.IsDBNull(7) ? null : reader.GetString(7));
+                    reader.IsDBNull(7) ? null : reader.GetString(7),
+                    reader.IsDBNull(8) ? null : reader.GetString(8));
             }
         }
         catch (Exception ex)
@@ -143,4 +157,8 @@ public class ConfigAuditService
         }
         return null;
     }
+
+    // console account of the current request, null for scheduled work and api key sessions
+    private string? CurrentActor() =>
+        _httpContext?.HttpContext?.Items[PortwayApi.Endpoints.WebUiEndpointExtensions.SignedInUsernameKey] as string;
 }

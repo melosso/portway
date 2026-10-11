@@ -347,10 +347,17 @@ function mountDocsButton() {
     actions.prepend(btn);
 }
 
+// repaints the signed-in account after a change to it
+function refreshAccount() {
+    return api('/ui/api/users/me', { silent: true })
+        .then(paintAccount)
+        .catch(() => {});
+}
+
 function paintAccount(me) {
     if (!me?.signed_in) return;
 
-    const name = me.username ?? 'Portway';
+    const name = me.display_name || me.username || 'Portway';
     const nameEl = document.getElementById('sidebarAccountName');
     if (nameEl) {
         nameEl.textContent = name;
@@ -365,7 +372,7 @@ function paintAccount(me) {
 
     const avatar = document.getElementById('sidebarAvatar');
     if (!avatar) return;
-    avatar.innerHTML = me.avatar ? `<img src="${me.avatar}" alt="" width="32" height="32">` : '';
+    avatar.innerHTML = me.avatar ? `<img src="${esc(me.avatar)}" alt="" width="32" height="32">` : '';
     if (!me.avatar) avatar.textContent = name.charAt(0).toUpperCase();
 }
 

@@ -36,6 +36,16 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
         }
 
+        app.MapGet("/ui/api/avatars/candidates", (HttpRequest request, PortwayApi.Services.Avatars.AvatarService avatars) =>
+        {
+            var count = int.TryParse(request.Query["count"], out var c) ? Math.Clamp(c, 1, 24) : 12;
+            var candidates = Enumerable.Range(0, count)
+                .Select(_ => PortwayApi.Services.Avatars.AvatarService.Random())
+                .Select(a => new { style = a.Style, seed = a.Seed, avatar = avatars.Render(a.Style, a.Seed) })
+                .Where(a => a.avatar is not null);
+            return Results.Json(new { candidates });
+        }).ExcludeFromDescription();
+
         app.MapGet("/ui/api/users", async (
             HttpContext ctx,
             AdminUserService users,
@@ -50,12 +60,15 @@ public static partial class WebUiEndpointExtensions
                     id = u.Id,
                     username = u.Username,
                     email = u.Email,
+                    display_name = u.DisplayName,
                     role = u.Role,
                     provider = u.Provider,
                     is_active = u.IsActive,
                     created_at = u.CreatedAt,
                     last_login_at = u.LastLoginAt,
-                    avatar = avatars.DataUriFor(u.Username)
+                    avatar_style = u.AvatarStyle,
+                    avatar_seed = u.AvatarSeed,
+                    avatar = avatars.For(u)
                 })
             });
         }).ExcludeFromDescription();
@@ -78,10 +91,11 @@ public static partial class WebUiEndpointExtensions
                 id = me.Id,
                 username = me.Username,
                 email = me.Email,
+                display_name = me.DisplayName,
                 role = me.Role,
                 provider = me.Provider,
                 has_password = me.PasswordHash.Length > 0,
-                avatar = avatars.DataUriFor(me.Username)
+                avatar = avatars.For(me)
             });
         }).ExcludeFromDescription();
 
@@ -108,8 +122,18 @@ public static partial class WebUiEndpointExtensions
             if (await users.FindAsync(username!) is not null)
                 return Results.Json(new { error = "That username is already taken", field = "username" }, statusCode: 409);
 
+            var (displayName, displayError) = AdminUserService.NormalizeDisplayName(
+                body.TryGetProperty("display_name", out var dn) ? dn.GetString() : null);
+            if (displayError is not null)
+                return Results.Json(new { error = displayError, field = "display_name" }, statusCode: 400);
+
+            var (avatar, avatarError) = ReadAvatar(body);
+            if (avatarError is not null)
+                return Results.Json(new { error = avatarError, field = "avatar" }, statusCode: 400);
+            var (avatarStyle, avatarSeed) = avatar ?? PortwayApi.Services.Avatars.AvatarService.Random();
+
             var email = body.TryGetProperty("email", out var e) ? e.GetString() ?? "" : "";
-            var created = await users.CreateAsync(username!, password!, role, email);
+            var created = await users.CreateAsync(username!, password!, role, email, displayName, avatarStyle, avatarSeed);
             WebUiAuthState.Enabled = true;
 
             Audit(ctx, "create", username!, $"role {role}");
@@ -144,8 +168,20 @@ public static partial class WebUiEndpointExtensions
             if (losingAdmin && target.Role == AdminUserRoles.Administrator && await users.IsLastAdministratorAsync(id))
                 return Results.Json(new { error = "This is the last active administrator" }, statusCode: 409);
 
+            string? displayName = null;
+            if (body.TryGetProperty("display_name", out var dn))
+            {
+                (displayName, var displayError) = AdminUserService.NormalizeDisplayName(dn.GetString());
+                if (displayError is not null)
+                    return Results.Json(new { error = displayError, field = "display_name" }, statusCode: 400);
+            }
+
+            var (avatar, avatarError) = ReadAvatar(body);
+            if (avatarError is not null)
+                return Results.Json(new { error = avatarError, field = "avatar" }, statusCode: 400);
+
             string? email = body.TryGetProperty("email", out var e) ? e.GetString() : null;
-            await users.UpdateAsync(id, password, role, isActive, email);
+            await users.UpdateAsync(id, password, role, isActive, email, displayName, avatar);
 
             Audit(ctx, "update", target.Username, string.Join(", ",
                 new[] { password is not null ? "password" : null, role is not null ? $"role {role}" : null,
@@ -180,5 +216,19 @@ public static partial class WebUiEndpointExtensions
 
             return Results.Json(new { ok = true });
         }).ExcludeFromDescription();
+    }
+
+    // absent leaves the avatar unset, an empty style removes it, anything else must be an offered style and a safe seed
+    private static ((string Style, string? Seed)? Avatar, string? Error) ReadAvatar(JsonElement body)
+    {
+        if (!body.TryGetProperty("avatar_style", out var styleElement)) return (null, null);
+        var style = styleElement.ValueKind == JsonValueKind.String ? styleElement.GetString() : null;
+        if (string.IsNullOrEmpty(style)) return (("", null), null);
+
+        var seed = body.TryGetProperty("avatar_seed", out var seedElement) && seedElement.ValueKind == JsonValueKind.String
+            ? seedElement.GetString() : null;
+        if (!PortwayApi.Services.Avatars.AvatarService.IsKnownStyle(style) || !PortwayApi.Services.Avatars.AvatarService.IsValidSeed(seed))
+            return (null, "Unknown avatar");
+        return ((style, seed), null);
     }
 }

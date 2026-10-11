@@ -8,10 +8,14 @@ class ChartPeriodSelector {
 
         const wrap = document.createElement('div');
         wrap.className = 'segmented';
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', 'Period');
 
         this._buttons = periods.map((p) => {
             const btn = document.createElement('button');
+            btn.type = 'button';
             btn.className = 'seg-btn' + (p === this._active ? ' seg-btn--active' : '');
+            btn.setAttribute('aria-pressed', String(p === this._active));
             btn.textContent = p.toUpperCase();
             btn.addEventListener('click', () => this._select(p));
             wrap.appendChild(btn);
@@ -26,6 +30,7 @@ class ChartPeriodSelector {
         this._active = period;
         for (const [p, btn] of this._buttons) {
             btn.classList.toggle('seg-btn--active', p === period);
+            btn.setAttribute('aria-pressed', String(p === period));
         }
         this._onChange(period);
     }

@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
+using PortwayApi.Helpers;
 using PortwayApi.Services.Configuration;
 using Serilog;
 
@@ -13,12 +15,13 @@ public class DatabaseMaintenanceService : BackgroundService
     private readonly IOptionsMonitor<DatabaseMaintenanceOptions> _options;
     private readonly IConfiguration _configuration;
     private readonly ConfigAuditService _audit;
+    private readonly string _statePath;
 
     // one pass at a time, scheduled or started from the console
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     /// <summary>
-    /// Results of the most recent run; empty until the first run completes
+    /// Results of the most recent run, kept across restarts; empty until the first run completes
     /// </summary>
     public IReadOnlyList<DatabaseMaintenanceResult> LastRunResults { get; private set; } = [];
     public DateTime? LastRunUtc { get; private set; }
@@ -26,11 +29,47 @@ public class DatabaseMaintenanceService : BackgroundService
     public DatabaseMaintenanceService(
         IOptionsMonitor<DatabaseMaintenanceOptions> options,
         IConfiguration configuration,
-        ConfigAuditService audit)
+        ConfigAuditService audit,
+        string? stateDirectory = null)
     {
         _options = options;
         _configuration = configuration;
         _audit = audit;
+        _statePath = Path.Combine(stateDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), ".core"), "maintenance.json");
+        LoadState();
+    }
+
+    private sealed record MaintenanceState(DateTime LastRunUtc, List<DatabaseMaintenanceResult> Results);
+
+    private void LoadState()
+    {
+        try
+        {
+            if (!File.Exists(_statePath)) return;
+            var state = JsonSerializer.Deserialize<MaintenanceState>(File.ReadAllText(_statePath));
+            if (state is null) return;
+            LastRunUtc = state.LastRunUtc;
+            LastRunResults = state.Results;
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        {
+            Log.Warning(ex, "Could not read the last maintenance run from {Path}", _statePath);
+        }
+    }
+
+    private void SaveState()
+    {
+        try
+        {
+            HiddenDirectoryHelper.Ensure(Path.GetDirectoryName(_statePath)!);
+            var temp = _statePath + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(new MaintenanceState(LastRunUtc!.Value, [.. LastRunResults])));
+            File.Move(temp, _statePath, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Warning(ex, "Could not save the last maintenance run to {Path}", _statePath);
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -88,12 +127,19 @@ public class DatabaseMaintenanceService : BackgroundService
     /// <summary>
     /// Runs one maintenance pass over all Portway SQLite databases that exist on disk
     /// </summary>
-    public async Task<List<DatabaseMaintenanceResult>> RunOnceAsync(CancellationToken ct = default)
+    public Task<List<DatabaseMaintenanceResult>> RunOnceAsync(CancellationToken ct = default) => RunGatedAsync(false, ct);
+
+    /// <summary>
+    /// Runs one pass on operator request and compacts every database regardless of the free page threshold
+    /// </summary>
+    public Task<List<DatabaseMaintenanceResult>> RunNowAsync(CancellationToken ct = default) => RunGatedAsync(true, ct);
+
+    private async Task<List<DatabaseMaintenanceResult>> RunGatedAsync(bool alwaysVacuum, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);
         try
         {
-            return await RunPassAsync(ct);
+            return await RunPassAsync(alwaysVacuum, ct);
         }
         finally
         {
@@ -120,7 +166,7 @@ public class DatabaseMaintenanceService : BackgroundService
         }
     }
 
-    private async Task<List<DatabaseMaintenanceResult>> RunPassAsync(CancellationToken ct)
+    private async Task<List<DatabaseMaintenanceResult>> RunPassAsync(bool alwaysVacuum, CancellationToken ct)
     {
         var results = new List<DatabaseMaintenanceResult>();
 
@@ -155,7 +201,7 @@ public class DatabaseMaintenanceService : BackgroundService
                 var pages = await ScalarAsync(conn, "PRAGMA page_count", ct);
                 var ratio = pages > 0 ? (double)freelist / pages : 0;
 
-                if (ratio < _options.CurrentValue.FreePageRatioThreshold)
+                if (!alwaysVacuum && ratio < _options.CurrentValue.FreePageRatioThreshold)
                 {
                     skipReason = $"free page ratio {ratio:P0} below threshold";
                 }
@@ -196,6 +242,7 @@ public class DatabaseMaintenanceService : BackgroundService
 
         LastRunResults = results;
         LastRunUtc = DateTime.UtcNow;
+        SaveState();
 
         var reclaimed = results.Sum(r => r.BytesBefore - r.BytesAfter);
         _audit.Record("maintenance", "database", string.Join(", ", results.Select(r => r.Database)),

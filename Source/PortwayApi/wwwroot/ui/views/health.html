@@ -172,6 +172,7 @@ async function loadHealth() {
     if (el.value) params.set(key, el.value);
   }
   document.getElementById('healthClearFiltersBtn').hidden = params.size === 1;
+  history.replaceState(null, '', `${location.pathname}?${params}`);
   try {
     const d = await api(`/ui/api/metrics/health?${params}`, { silent: true });
     renderHealthFilters(d.options ?? {});
@@ -307,13 +308,25 @@ function purgeHealth() {
 
 function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0); }
 
+// Filters and period from the query string, so other pages can deep-link
+function applyQueryFilters() {
+  const q = new URLSearchParams(location.search);
+  if (['1h', '24h', '7d', '30d'].includes(q.get('period'))) _healthPeriod = q.get('period');
+  for (const [id, key] of HEALTH_FILTERS) {
+    const value = q.get(key);
+    if (!value) continue;
+    document.getElementById(id).innerHTML = `<option value="${esc(value)}" selected>${esc(value)}</option>`;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  applyQueryFilters();
   _latencyChart = new LatencyChart(document.getElementById('latencyChart'));
   new ChartPeriodSelector(
     document.getElementById('healthPeriodSel'),
     ['1h','24h','7d','30d'],
     p => { _healthPeriod = p; loadHealth(); },
-    '24h'
+    _healthPeriod
   );
   new ChartPeriodSelector(
     document.getElementById('healthPercentileSel'),

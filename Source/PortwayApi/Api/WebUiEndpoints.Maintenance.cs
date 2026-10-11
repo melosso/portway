@@ -9,7 +9,7 @@ public static partial class WebUiEndpointExtensions
     {
         app.MapPost("/ui/api/maintenance/run", async (DatabaseMaintenanceService maintenance, CancellationToken ct) =>
         {
-            var results = await maintenance.RunOnceAsync(ct);
+            var results = await maintenance.RunNowAsync(ct);
             return Results.Json(new { results = results.Select(MaintenanceResultDto) });
         }).ExcludeFromDescription();
 

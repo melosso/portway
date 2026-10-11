@@ -18,7 +18,7 @@ public static class ConsoleSectionAlias
         IsUnder(key, LegacySection) ? Section + key[LegacySection.Length..] : key;
 
     /// <summary>
-    /// Adds the alias provider; it answers Console keys from the highest source holding either name
+    /// Adds the provider that resolves Console keys from the highest source holding either name
     /// </summary>
     public static ConfigurationManager AddConsoleSectionAlias(this ConfigurationManager config)
     {

@@ -197,6 +197,9 @@ public class AuthDbContext : DbContext
                     Role TEXT NOT NULL DEFAULT 'administrator',
                     IsActive INTEGER NOT NULL DEFAULT 1,
                     MustChangePassword INTEGER NOT NULL DEFAULT 0,
+                    DisplayName TEXT NOT NULL DEFAULT '',
+                    AvatarStyle TEXT NULL,
+                    AvatarSeed TEXT NULL,
                     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                     LastLoginAt DATETIME NULL
                 )");
@@ -221,6 +224,9 @@ public class AuthDbContext : DbContext
             {
                 ("MustChangePassword", "INTEGER NOT NULL DEFAULT 0"),
                 ("Email", "TEXT NOT NULL DEFAULT ''"),
+                ("DisplayName", "TEXT NOT NULL DEFAULT ''"),
+                ("AvatarStyle", "TEXT NULL"),
+                ("AvatarSeed", "TEXT NULL"),
             })
             {
                 var present = OpenConnection().ExecuteScalar<int>(

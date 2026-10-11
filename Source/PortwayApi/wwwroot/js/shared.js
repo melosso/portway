@@ -40,6 +40,18 @@ function esc(s) {
         .replace(/'/g, '&#39;');
 }
 
+const STATUS_ICON_PATHS = {
+    ok: '<path d="M20 6 9 17l-5-5"/>',
+    warn: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    bad: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+    unknown: '<circle cx="12" cy="12" r="9"/>'
+};
+
+// status icon whose shape and colour follow the state; the tooltip renders html, so the label is escaped twice
+function statusIcon(state, label, side = 'top') {
+    return `<span class="status-icon ${state}" role="img" tabindex="0" aria-label="${esc(label)}" data-tooltip="${esc(esc(label))}" data-tooltip-side="${side}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${STATUS_ICON_PATHS[state] ?? STATUS_ICON_PATHS.unknown}</svg></span>`;
+}
+
 async function api(url, options = {}) {
     const { method = 'GET', body, success, failure = 'Something went wrong.', silent = false } = options;
     const init = { method };

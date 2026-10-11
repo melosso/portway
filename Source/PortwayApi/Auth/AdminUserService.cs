@@ -65,6 +65,17 @@ public class AdminUserService
         return null;
     }
 
+    /// <summary>
+    /// Trimmed display name, or an error for one that is too long or contains control characters
+    /// </summary>
+    public static (string Value, string? Error) NormalizeDisplayName(string? displayName)
+    {
+        var value = (displayName ?? "").Trim();
+        if (value.Length > 80) return (value, "Display name is at most 80 characters");
+        if (value.Any(char.IsControl)) return (value, "Display name contains control characters");
+        return (value, null);
+    }
+
     public static string? ValidatePassword(string? password)
     {
         if (string.IsNullOrEmpty(password)) return "A password is required";
@@ -110,13 +121,17 @@ public class AdminUserService
         return user;
     }
 
-    public async Task<AdminUser> CreateAsync(string username, string password, string role, string email = "")
+    public async Task<AdminUser> CreateAsync(string username, string password, string role, string email = "",
+        string displayName = "", string? avatarStyle = null, string? avatarSeed = null)
     {
         var user = new AdminUser
         {
             Username = username,
             PasswordHash = HashPassword(password),
             Email = email.Trim(),
+            DisplayName = displayName,
+            AvatarStyle = avatarStyle,
+            AvatarSeed = avatarSeed,
             Role = role,
             Provider = AdminUserProviders.Local,
         };
@@ -125,7 +140,8 @@ public class AdminUserService
         return user;
     }
 
-    public async Task<bool> UpdateAsync(int id, string? password, string? role, bool? isActive, string? email = null)
+    public async Task<bool> UpdateAsync(int id, string? password, string? role, bool? isActive, string? email = null,
+        string? displayName = null, (string Style, string? Seed)? avatar = null)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return false;
@@ -134,6 +150,8 @@ public class AdminUserService
         if (role is not null) user.Role = role;
         if (isActive is not null) user.IsActive = isActive.Value;
         if (email is not null) user.Email = email.Trim();
+        if (displayName is not null) user.DisplayName = displayName;
+        if (avatar is { } a) (user.AvatarStyle, user.AvatarSeed) = (a.Style, a.Seed);
 
         await _db.SaveChangesAsync();
         return true;

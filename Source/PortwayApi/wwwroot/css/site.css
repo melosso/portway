@@ -623,6 +623,62 @@ body.sidebar-expanding main {
     display: block;
 }
 
+.avatar-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.avatar-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.avatar-tile {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: 999px;
+    overflow: hidden;
+    background: hsl(var(--muted));
+    display: grid;
+    place-items: center;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: hsl(var(--muted-foreground));
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.avatar-tile img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.avatar-tile:hover {
+    border-color: hsl(var(--foreground) / 0.3);
+}
+
+.avatar-tile[aria-checked='true'] {
+    border-color: transparent;
+    outline: 2px solid hsl(var(--brand));
+    outline-offset: 2px;
+}
+
+.avatar-tile:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+}
+
+.avatar-tile.is-loading {
+    cursor: default;
+    border-style: dashed;
+}
+
 .account-meta {
     flex: 1;
     min-width: 0;
@@ -1690,6 +1746,28 @@ input[type='radio'] {
 
 /* Health status dot */
 
+.status-icon {
+    display: inline-flex;
+    vertical-align: middle;
+    cursor: default;
+}
+
+.status-icon.ok {
+    color: hsl(var(--success));
+}
+
+.status-icon.warn {
+    color: hsl(var(--warning));
+}
+
+.status-icon.bad {
+    color: hsl(var(--destructive));
+}
+
+.status-icon.unknown {
+    color: hsl(var(--muted-foreground));
+}
+
 .status-dot {
     display: inline-block;
     width: 7px;
@@ -2219,7 +2297,12 @@ a {
     color: hsl(var(--destructive));
 }
 
-.btn-destructive:hover {
+.btn-destructive:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-destructive:hover:not(:disabled) {
     background: hsl(var(--destructive) / 0.08);
     border-color: hsl(var(--destructive));
 }

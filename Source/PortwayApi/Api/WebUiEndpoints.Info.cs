@@ -62,6 +62,25 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
+        app.MapGet("/ui/api/health/checks", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
+        {
+            var report = await healthService.CheckHealthAsync(ct);
+            return Results.Json(new
+            {
+                status = report.Status.ToString(),
+                checked_at = DateTime.UtcNow,
+                uptime_seconds = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds,
+                version = appVersion,
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    duration_ms = Math.Round(e.Value.Duration.TotalMilliseconds, 1)
+                })
+            });
+        }).ExcludeFromDescription();
+
         app.MapGet("/ui/api/endpoints", () =>
         {
             var sqlEps = EndpointHandler.GetSqlEndpoints();

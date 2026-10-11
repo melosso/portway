@@ -1,4 +1,4 @@
-// Alert dialog, AlertDialog.show({ title, description, actionLabel, onConfirm, onCancel, variant })
+// Alert dialog, AlertDialog.show({ title, description, actionLabel, onConfirm, onCancel, variant, confirmDelaySeconds })
 (function (global) {
     'use strict';
 
@@ -20,7 +20,8 @@
         variant: 'default',
         extraHtml: '',
         showCancel: true,
-        showCloseButton: true
+        showCloseButton: true,
+        confirmDelaySeconds: 0
     };
 
     let _currentConfirmCallback = null;
@@ -78,7 +79,8 @@
                 }
                 this.hide();
             });
-            document.getElementById('alertDialogAction')?.addEventListener('click', () => {
+            document.getElementById('alertDialogAction')?.addEventListener('click', (e) => {
+                if (e.currentTarget.disabled) return;
                 if (_currentConfirmCallback) {
                     _currentConfirmCallback();
                 }
@@ -94,10 +96,19 @@
                 }
             });
 
-            // Focus trap
             const actionBtn = document.getElementById('alertDialogAction');
-            if (actionBtn) {
-                setTimeout(() => actionBtn.focus(), 100);
+            clearTimeout(this._delayTimer);
+            if (actionBtn && opts.confirmDelaySeconds > 0) {
+                actionBtn.disabled = true;
+                this._delayTimer = setTimeout(() => {
+                    actionBtn.disabled = false;
+                }, opts.confirmDelaySeconds * 1000);
+            }
+
+            const focusTarget =
+                actionBtn && !actionBtn.disabled ? actionBtn : document.getElementById('alertDialogCancel');
+            if (focusTarget) {
+                setTimeout(() => focusTarget.focus(), 100);
             }
 
             // ESC key handler
@@ -124,6 +135,8 @@
                     _currentCancelCallback = null;
                 }, 200);
             }
+
+            clearTimeout(this._delayTimer);
 
             if (this._escHandler) {
                 document.removeEventListener('keydown', this._escHandler);

@@ -159,11 +159,6 @@
     .setting-bad {
         color: hsl(var(--destructive));
     }
-    .setting-status {
-        display: inline-flex;
-        vertical-align: middle;
-        cursor: default;
-    }
     .setting-warn {
         color: hsl(var(--warning, var(--destructive)));
         font-weight: 600;
@@ -476,18 +471,9 @@ function settingItemRaw(label, valueHtml, desc, key) {
   </div>`;
 }
 
-const STATUS_ICONS = {
-  ok: ['setting-on', '<path d="M20 6 9 17l-5-5"/>'],
-  warn: ['setting-warn', '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'],
-  bad: ['setting-bad', '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>']
-};
-
-// status icon with the status text as tooltip; the tooltip renders html, so the text is escaped twice
+// setting row with a status icon and the status text as tooltip
 function statusItem(label, state, status, desc) {
-  const [cls, paths] = STATUS_ICONS[state];
-  return settingItemRaw(label,
-    `<span class="setting-status ${cls}" role="img" tabindex="0" aria-label="${esc(status)}" data-tooltip="${esc(esc(status))}" data-tooltip-side="left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg></span>`,
-    desc);
+  return settingItemRaw(label, statusIcon(state, status, 'left'), desc);
 }
 
 function riskItem(label, ok, okText, badText, desc) {
@@ -605,11 +591,25 @@ function cardFooter(bodyId, actionsHtml = '') {
   e.target.closest?.('[data-setting]')?.closest('.card')?.querySelector('.card-save')?.removeAttribute('disabled');
 }));
 
+function fmtKb(bytes) { return `${Math.max(0, Math.round(bytes / 1024))} KB`; }
+
+function maintenanceSummary(r) {
+  if (r.integrity && r.integrity !== 'ok') return r.integrity;
+  if (!r.integrity) return r.skip_reason ? `Not checked: ${r.skip_reason}.` : 'Not checked in the last run.';
+  if (r.vacuumed) return `Checked and compacted. ${fmtKb(r.reclaimed_bytes)} freed.`;
+  return r.skip_reason ? `Checked. Not compacted: ${r.skip_reason}.` : 'Checked.';
+}
+
 async function runMaintenance(btn) {
   btn.classList.add('is-loading');
   btn.disabled = true;
   try {
-    await api('/ui/api/maintenance/run', { method: 'POST', success: 'Maintenance finished', failure: 'Maintenance failed' });
+    const { results = [] } = await api('/ui/api/maintenance/run', { method: 'POST', failure: 'Maintenance failed' });
+    const failed = results.filter(r => r.integrity !== 'ok').length;
+    const compacted = results.filter(r => r.vacuumed).length;
+    const freed = results.reduce((n, r) => n + Math.max(0, r.reclaimed_bytes ?? 0), 0);
+    if (failed) toast(`Maintenance finished. ${failed} of ${results.length} databases need attention.`, 'error');
+    else toast(`Maintenance finished. ${compacted} of ${results.length} databases compacted, ${fmtKb(freed)} freed.`, 'success');
     await load();
   } catch (e) {
   } finally {
@@ -658,6 +658,7 @@ function restoreBackup(name) {
     description: `${name} replaces auth.db, mcp.db, environments and endpoints at the next start. The current files are kept as a pre-restore copy.`,
     actionLabel: 'Restore',
     variant:     'destructive',
+    confirmDelaySeconds: 10,
     onConfirm:   async () => {
       try {
         await api(`/ui/api/backups/${encodeURIComponent(name)}/restore`, {
@@ -783,7 +784,7 @@ async function load() {
         'Local network only', 'Reachable from configured origins',
         sec.console_public
           ? 'The sign-in page is reachable from the configured origins. Origin matching does not restrict access.'
-          : 'The console answers loopback and local addresses only.'),
+          : 'The console accepts requests from loopback and local addresses only.'),
       riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
         'Scheme of this request. Behind a TLS proxy, add the proxy under Trusted proxies.'),
       riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
@@ -860,7 +861,7 @@ async function load() {
       ...(dbm.last_results ?? []).map(r => statusItem(esc(r.database),
         r.integrity === 'ok' ? 'ok' : r.integrity ? 'bad' : 'warn',
         r.integrity === 'ok' ? 'Healthy' : r.integrity ? 'Check failed' : 'Not checked',
-        r.integrity && r.integrity !== 'ok' ? r.integrity : 'Integrity check of the last run.')),
+        maintenanceSummary(r))),
     ].join('') + cardFooter('maintenanceBody', '<button class="btn btn-outline" onclick="runMaintenance(this)">Run now</button>');
 
     document.getElementById('backupBody').innerHTML = [
@@ -924,6 +925,8 @@ async function load() {
       switchRow('Mcp:ChatEnabled', 'Enabled', d.chat?.enabled ?? false, 'Enables the chat console.'),
     ].join('') + cardFooter('chatBody');
 
+    loadUsageRows(m.enabled);
+
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
     ['rateLimitBody','telemetryBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','backupBody','openApiBody','docsBody','footerBody','chatBody','customizationBody','deploymentBody'].forEach(id => {
@@ -933,6 +936,22 @@ async function load() {
   }
 
   loadAudit();
+}
+
+// Live usage rows shown above the card footer
+
+async function loadUsageRows(mcpEnabled) {
+  const addRow = (bodyId, html) => document.querySelector(`#${bodyId} .card-footer`)?.insertAdjacentHTML('beforebegin', html);
+  try {
+    const c = (await api('/ui/api/metrics?period=24h', { silent: true })).cache ?? {};
+    const rate = c.hit_rate != null ? `${Math.round(c.hit_rate * 100)}%` : '—';
+    addRow('cachingBody', settingItem('Hit rate, last 24 hours', rate, `${c.hits ?? 0} hits, ${c.misses ?? 0} misses.`));
+  } catch (e) {}
+  if (!mcpEnabled) return;
+  try {
+    const t = await api('/ui/api/mcp/tools', { silent: true });
+    addRow('mcpBody', settingItem('Exposed endpoints', t.count ?? 0, 'Endpoints with MCP turned on.'));
+  } catch (e) {}
 }
 
 // Recent configuration changes with restore of pre-change backups
@@ -954,7 +973,7 @@ async function loadAudit() {
       return `<div class="settings-item">
         <div>
           <div class="settings-item-label">${esc(e.action)} · ${esc(e.target_type)} · ${esc(e.target)}</div>
-          <div class="settings-item-desc">${esc(when)}${e.client_ip ? ' · ' + esc(e.client_ip) : ''}${e.details ? ' · ' + esc(e.details) : ''}</div>
+          <div class="settings-item-desc">${e.actor ? `${esc(e.actor)} · ` : ''}${esc(when)}${e.client_ip ? ' · ' + esc(e.client_ip) : ''}${e.details ? ' · ' + esc(e.details) : ''}</div>
         </div>
         <span class="settings-item-value">${restore}</span>
       </div>`;
@@ -969,6 +988,7 @@ function restoreChange(id) {
     title: 'Restore this configuration?',
     description: 'Restores the file to its state before this change. The current file is backed up first.',
     actionLabel: 'Restore',
+    confirmDelaySeconds: 10,
     onConfirm: () => doRestoreChange(id)
   });
 }
