@@ -15,7 +15,7 @@ A minimal `docker-compose.yml` is in [Getting Started](/guide/getting-started). 
 
 ### Environment variables
 
-Compose file with the common environment variables:
+Compose file with the environment variables:
 
 ```yaml
 services:
@@ -32,26 +32,8 @@ services:
       - ./data:/app/data
     environment:
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - PORTWAY_ALLOWED_HOSTS=*
-      - PORTWAY_PATH_BASE=
-
-      # Web UI settings
-      - PORTWAY_WEBUI_ENABLED=true
       - PORTWAY_PUBLIC_ORIGINS=https://example.com,https://api.example.com
-      - PORTWAY_SECURE_COOKIES=false
-      - PORTWAY_PROMO_TEXT=
-      - PORTWAY_LOGIN_FOOTER=No account? Contact your [administrator](mailto:support@democompany.local).
-    
-      # Proxy settings for Kerberos/NTLM
-      # - PORTWAY_PROXY_USERNAME=serviceaccount
-      # - PORTWAY_PROXY_PASSWORD=password
-      # - PORTWAY_PROXY_DOMAIN=YOURDOMAIN
-
-      # Azure credentials
-      # - PORTWAY_KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
-      # - AZURE_CLIENT_ID=your-client-id
-      # - AZURE_TENANT_ID=your-tenant-id
-      # - AZURE_CLIENT_SECRET=your-client-secret
+      - PORTWAY_SECURE_COOKIES=false # true behind TLS
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
@@ -83,13 +65,12 @@ The setting `PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `K
 
 | Variable | Description | Default Value | Legacy name |
 |----------|-------------|---------------|-------------|
-| `PORTWAY_WEBUI_ENABLED` | Enables the console | (none) | `WebUi__Enabled` |
-| `PORTWAY_ADMIN_KEY` | Legacy; enables the console when `PORTWAY_WEBUI_ENABLED` is unset, not used for sign-in | (none) | `WebUi__AdminApiKey` |
+| `PORTWAY_WEBUI_ENABLED` | Serves the console; `false` turns it off | `true` | `WebUi__Enabled` |
 | `PORTWAY_SEED_PASSWORD` | Fixed password for the first account; demo instances only | (none) | `WebUi__SeedPassword` |
 | `PORTWAY_PUBLIC_ORIGINS` | Origins allowed to reach the console from outside the local network, comma-separated | (empty) | `WebUi__PublicOrigins__0`, `__1`, ... |
-| `PORTWAY_SECURE_COOKIES` | HTTPS-only console cookies | `false` | `WebUi__SecureCookies` |
-| `PORTWAY_PROMO_TEXT` | Banner text | (none) | `WebUi__Customization__PromoText` |
-| `PORTWAY_LOGIN_FOOTER` | Text below the sign-in form | (none) | `WebUi__Customization__LoginFooter` |
+| `PORTWAY_SECURE_COOKIES` | HTTPS-only console cookies; set `true` when TLS terminates in front of the container | `false` | `WebUi__SecureCookies` |
+
+Banner and sign-in footer settings are set under **Settings** in the console. [Environment variables](/reference/app-settings#environment-variables) lists every `PORTWAY_*` name. A setting with a set environment variable is read-only in the console.
 
 ### Proxy configuration
 
@@ -105,6 +86,13 @@ Credentials for outbound requests through an authenticating (NTLM) corporate pro
 NTLM requires all three variables, including `PORTWAY_PROXY_DOMAIN`.
 :::
 
+```yaml
+    environment:
+      - PORTWAY_PROXY_USERNAME=serviceaccount
+      - PORTWAY_PROXY_PASSWORD=password
+      - PORTWAY_PROXY_DOMAIN=YOURDOMAIN
+```
+
 ### Azure Key Vault (optional)
 
 | Variable | Description | Legacy name |
@@ -116,6 +104,14 @@ NTLM requires all three variables, including `PORTWAY_PROXY_DOMAIN`.
 
 The `AZURE_*` variables are read by the Azure SDK's `DefaultAzureCredential`.
 
+```yaml
+    environment:
+      - PORTWAY_KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
+      - AZURE_CLIENT_ID=your-client-id
+      - AZURE_TENANT_ID=your-tenant-id
+      - AZURE_CLIENT_SECRET=your-client-secret
+```
+
 ## Data persistence
 
 | Data | Location |
@@ -123,6 +119,11 @@ The `AZURE_*` variables are read by the Azure SDK's `DefaultAzureCredential`.
 | `environments/`, `endpoints/`, `tokens/` | Bind mounts, editable on the host |
 | Application and traffic logs (`log/traffic_logs.db`) | `./log` |
 | `auth.db`, `metrics.db`, `mcp.db`, `portway.key` | Application root, in the `portway_app` volume |
+| `appsettings.overrides.json` (settings saved in the console) | Application root, in the `portway_app` volume |
+
+An environment variable overrides the same setting in `appsettings.overrides.json`. The console displays that setting as read-only. Leave a variable unset to manage the setting from the console.
+
+`appsettings.overrides.json` can also be bind-mounted as a single file. Create the file with the content `{}` before the first start. Docker creates a directory for a missing bind-mount source.
 
 ## Customizing the setup
 
@@ -134,7 +135,7 @@ docker compose restart
 
 ## Managing tokens
 
-Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` under **Access Tokens**, with `PORTWAY_WEBUI_ENABLED=true`.
+Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` under **Access Tokens**.
 
 ## Going to production
 
@@ -162,7 +163,7 @@ The container serves plain HTTP. TLS terminates at a reverse proxy (nginx, Traef
 
 ### Backups
 
-Back up the bind mounts and the `portway_app` volume ([Data persistence](#data-persistence)).
+Back up the bind mounts and the `portway_app` volume ([Data persistence](#data-persistence)). Portway also writes a daily snapshot of its databases and configuration to `.backups/snapshots/` ([DatabaseMaintenance](/reference/app-settings#databasemaintenance)).
 
 ### Monitoring
 

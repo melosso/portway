@@ -16,8 +16,8 @@ public static partial class WebUiEndpointExtensions
         {
             return Results.Json(new
             {
-                promo_text = config.GetValue<string>("WebUi:Customization:PromoText"),
-                promo_login = config.GetValue<bool>("WebUi:Customization:PromoLogin", false)
+                promo_text = config.GetValue<string>("Console:Customization:PromoText"),
+                promo_login = config.GetValue<bool>("Console:Customization:PromoLogin", false)
             });
         }).ExcludeFromDescription();
 
@@ -32,8 +32,8 @@ public static partial class WebUiEndpointExtensions
             var proxyCount = proxyEps.Count(e => e.Value.Type.ToString() != "Composite");
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var uptime = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds;
-            var promoText = app.Configuration.GetValue<string>("WebUi:Customization:PromoText");
-            var promoLogin = app.Configuration.GetValue<bool>("WebUi:Customization:PromoLogin", false);
+            var promoText = app.Configuration.GetValue<string>("Console:Customization:PromoText");
+            var promoLogin = app.Configuration.GetValue<bool>("Console:Customization:PromoLogin", false);
 
             return Results.Json(new
             {

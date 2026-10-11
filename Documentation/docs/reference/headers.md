@@ -75,7 +75,7 @@ Responses are compressed with Brotli (`br`) or Gzip (`gzip`) according to `Accep
 
 ## CORS
 
-Outside Development, cross-origin requests are allowed only from `WebUi:CorsOrigins`, with any method and header and with credentials. Without configured origins, cross-origin requests are refused. In Development, any origin is allowed.
+Outside Development, cross-origin requests are allowed only from `Console:CorsOrigins`, with any method and header and with credentials. Without configured origins, cross-origin requests are refused. In Development, any origin is allowed.
 
 ## Related topics
 

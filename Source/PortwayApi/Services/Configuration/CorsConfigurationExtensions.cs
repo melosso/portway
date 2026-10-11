@@ -1,7 +1,7 @@
 namespace PortwayApi.Services.Configuration;
 
 /// <summary>
-/// CORS policy wiring; never AllowAnyOrigin in production, operators configure WebUi:CorsOrigins
+/// CORS policy wiring; never AllowAnyOrigin in production, operators configure Console:CorsOrigins
 /// </summary>
 public static class CorsConfigurationExtensions
 {
@@ -9,7 +9,7 @@ public static class CorsConfigurationExtensions
 
     public static WebApplicationBuilder AddPortwayCors(this WebApplicationBuilder builder)
     {
-        var corsOrigins = builder.Configuration.GetSection("WebUi:CorsOrigins").Get<string[]>() ?? [];
+        var corsOrigins = builder.Configuration.GetSection("Console:CorsOrigins").Get<string[]>() ?? [];
         if (!builder.Environment.IsDevelopment())
         {
             builder.Services.AddCors(options =>

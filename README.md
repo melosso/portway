@@ -65,13 +65,8 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
-      # Set your encryption secret here (e.g. use openssl rand -hex 32)
+      # openssl rand -hex 32
       - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-
-      # Configure CORS, prefix and access token
-      - PORTWAY_ALLOWED_HOSTS=*
-      - PORTWAY_PATH_BASE=
-      - PORTWAY_ADMIN_KEY=INSECURE-CHANGE-ME-admin-api-key
 
 volumes:
   portway_app:

@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using Serilog;
 
 /// <summary>
-/// Session cookie signing key from portway.key, independent of WebUi:AdminApiKey
+/// Session cookie signing key from portway.key, independent of Console:AdminApiKey
 /// </summary>
 public static class SessionKeyProvider
 {

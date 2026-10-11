@@ -11,7 +11,7 @@ public readonly record struct AdminSeedKey(string? Value)
 }
 
 /// <summary>
-/// Validates <c>WebUi:AdminApiKey</c> startup configuration.
+/// Validates <c>Console:AdminApiKey</c> startup configuration.
 /// </summary>
 public static class AdminApiKeyValidator
 {
@@ -22,16 +22,16 @@ public static class AdminApiKeyValidator
     /// </summary>
     public static AdminSeedKey Resolve(IConfiguration configuration, IWebHostEnvironment environment)
     {
-        var adminApiKey = configuration.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
+        var adminApiKey = configuration.GetValue<string>("Console:AdminApiKey", "") ?? "";
 
         if (adminApiKey == PlaceholderKey && !environment.IsDevelopment())
         {
-            Log.Error("WebUi:AdminApiKey cannot be the default placeholder value; a strong, unique key (32+ chars) is required");
+            Log.Error("Console:AdminApiKey cannot be the default placeholder value; a strong, unique key (32+ chars) is required");
             adminApiKey = "";
         }
         else if (!string.IsNullOrEmpty(adminApiKey) && adminApiKey.Length < 32 && !environment.IsDevelopment())
         {
-            Log.Warning("WebUi:AdminApiKey is shorter than 32 characters; use a longer, randomly generated key");
+            Log.Warning("Console:AdminApiKey is shorter than 32 characters; use a longer, randomly generated key");
         }
 
         return new AdminSeedKey(adminApiKey);
@@ -41,5 +41,5 @@ public static class AdminApiKeyValidator
     /// Determines if Web UI features are enabled via explicit setting or configured seed key.
     /// </summary>
     public static bool IsEnabled(IConfiguration configuration, AdminSeedKey adminKey)
-        => configuration.GetValue<bool?>("WebUi:Enabled") ?? adminKey.IsConfigured;
+        => configuration.GetValue<bool?>("Console:Enabled") ?? adminKey.IsConfigured;
 }

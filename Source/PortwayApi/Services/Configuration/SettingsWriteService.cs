@@ -66,16 +66,18 @@ public sealed class SettingsWriteService
 
             ["DatabaseMaintenance:Enabled"] = new("DatabaseMaintenance:Enabled", "bool", true),
             ["DatabaseMaintenance:Schedule"] = new("DatabaseMaintenance:Schedule", "time", true),
+            ["DatabaseMaintenance:Backup:Enabled"] = new("DatabaseMaintenance:Backup:Enabled", "bool", false),
+            ["DatabaseMaintenance:Backup:Retention"] = new("DatabaseMaintenance:Backup:Retention", "int", false, 1, 100),
 
             ["Mcp:Enabled"] = new("Mcp:Enabled", "bool", true),
             ["Mcp:RequireAuthentication"] = new("Mcp:RequireAuthentication", "bool", true),
             ["Mcp:ChatEnabled"] = new("Mcp:ChatEnabled", "bool", true),
 
-            ["WebUi:SecureCookies"] = new("WebUi:SecureCookies", "bool", true),
-            ["WebUi:Customization:EnableLandingPage"] = new("WebUi:Customization:EnableLandingPage", "bool", true),
-            ["WebUi:Customization:PromoText"] = new("WebUi:Customization:PromoText", "text", false, Max: 2_000),
-            ["WebUi:Customization:PromoLogin"] = new("WebUi:Customization:PromoLogin", "bool", false),
-            ["WebUi:Customization:LoginFooter"] = new("WebUi:Customization:LoginFooter", "text", false, Max: 2_000),
+            ["Console:SecureCookies"] = new("Console:SecureCookies", "bool", true),
+            ["Console:Customization:EnableLandingPage"] = new("Console:Customization:EnableLandingPage", "bool", true),
+            ["Console:Customization:PromoText"] = new("Console:Customization:PromoText", "text", false, Max: 2_000),
+            ["Console:Customization:PromoLogin"] = new("Console:Customization:PromoLogin", "bool", false),
+            ["Console:Customization:LoginFooter"] = new("Console:Customization:LoginFooter", "text", false, Max: 2_000),
 
             ["Oidc:Enabled"] = new("Oidc:Enabled", "bool", false),
             ["OpenApi:Enabled"] = new("OpenApi:Enabled", "bool", true),
@@ -105,19 +107,41 @@ public sealed class SettingsWriteService
             ["OpenApi:ScalarHideTestRequestButton"] = new("OpenApi:ScalarHideTestRequestButton", "bool", false),
             ["RequestTrafficLogging:Enabled"] = new("RequestTrafficLogging:Enabled", "bool", true),
 
+            ["Telemetry:Provider"] = new("Telemetry:Provider", "choice", true, Choices: ["None", "Otlp", "Prometheus"]),
+            ["Telemetry:Otlp:Endpoint"] = new("Telemetry:Otlp:Endpoint", "weburl", true),
+            ["Telemetry:ServiceName"] = new("Telemetry:ServiceName", "name", true),
+
             ["FileStorage:MaxFileSizeBytes"] = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
 
             // Deployment shape; the endpoint refuses changes that lock the caller out
-            ["WebUi:PublicOrigins"] = new("WebUi:PublicOrigins", "originlist", true, Max: 50),
+            ["Console:PublicOrigins"] = new("Console:PublicOrigins", "originlist", true, Max: 50),
             ["ForwardedHeaders:KnownProxies"] = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
             ["ForwardedHeaders:KnownNetworks"] = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
 
             // Write-only in the safe direction: the seeding key can be cleared, never set
-            ["WebUi:AdminApiKey"] = new("WebUi:AdminApiKey", "clear", true),
-            ["WebUi:Enabled"] = new("WebUi:Enabled", "bool", true),
+            ["Console:AdminApiKey"] = new("Console:AdminApiKey", "clear", true),
+            ["Console:Enabled"] = new("Console:Enabled", "bool", true),
         };
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);
+
+    private readonly IReadOnlyList<string> _envNames;
+
+    private readonly IConfigurationRoot? _root;
+
+    public SettingsWriteService(IConfiguration configuration)
+        : this([.. Environment.GetEnvironmentVariables().Keys.Cast<string>()], configuration as IConfigurationRoot) { }
+
+    internal SettingsWriteService(IReadOnlyList<string> envNames, IConfigurationRoot? root = null)
+    {
+        _envNames = envNames;
+        _root = root;
+    }
+
+    /// <summary>
+    /// Returns the name of the environment variable that sets the key, or null
+    /// </summary>
+    public string? LockedBy(string key) => PortwayApi.Helpers.EnvAliases.EnvNameFor(key, _envNames);
 
     public static IReadOnlyCollection<WritableSetting> Schema => Allowed.Values;
 
@@ -154,12 +178,23 @@ public sealed class SettingsWriteService
             if (!Allowed.TryGetValue(key, out var spec))
                 return new SettingsWriteResult(false, $"'{key}' is not a writable setting", key);
 
+            if (LockedBy(spec.Key) is { } envName)
+                return new SettingsWriteResult(false, $"'{spec.Key}' is set by {envName}", spec.Key);
+
             var (node, error) = Coerce(spec, raw);
             if (error is not null)
                 return new SettingsWriteResult(false, error, key);
 
             parsed[spec.Key] = node;
             restart |= spec.RequiresRestart;
+        }
+
+        // the legacy Enabled switch selects Otlp when no provider is set
+        if (parsed.ContainsKey("Telemetry:Provider"))
+        {
+            if (LockedBy("Telemetry:Enabled") is { } legacyEnv)
+                return new SettingsWriteResult(false, $"'Telemetry:Provider' is set by {legacyEnv}", "Telemetry:Provider");
+            parsed["Telemetry:Enabled"] = JsonValue.Create(false);
         }
 
         if (CrossCheck(parsed) is { } crossError)
@@ -171,6 +206,8 @@ public sealed class SettingsWriteService
             var root = await ReadOverridesAsync();
             foreach (var (key, node) in parsed) SetPath(root, key, node);
             await WriteOverridesAsync(root);
+            // file watchers miss in-place writes on a single-file bind mount
+            _root?.Reload();
         }
         catch (Exception ex)
         {
@@ -361,10 +398,18 @@ public sealed class SettingsWriteService
 
         var json = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
         var temp = OverridesPath + ".tmp";
-        await File.WriteAllTextAsync(temp, json);
-
-        if (File.Exists(OverridesPath)) File.Replace(temp, OverridesPath, null);
-        else File.Move(temp, OverridesPath);
+        try
+        {
+            await File.WriteAllTextAsync(temp, json);
+            if (File.Exists(OverridesPath)) File.Replace(temp, OverridesPath, null);
+            else File.Move(temp, OverridesPath);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && File.Exists(OverridesPath))
+        {
+            // single-file bind mounts reject rename with EBUSY
+            File.Delete(temp);
+            await File.WriteAllTextAsync(OverridesPath, json);
+        }
     }
 
     /// <summary>

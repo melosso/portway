@@ -11,12 +11,11 @@ The console at `/ui` manages endpoints, environments, tokens, users and settings
 
 ```yaml
 environment:
-  - PORTWAY_WEBUI_ENABLED=true
   - PORTWAY_PUBLIC_ORIGINS=https://example.com
   - PORTWAY_SECURE_COOKIES=true
 ```
 
-`PORTWAY_WEBUI_ENABLED=true` enables the console, reachable from the local network; `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins; `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `WebUi` settings: [Application settings](/reference/app-settings#webui).
+The console is enabled by default and reachable from the local network. `PORTWAY_WEBUI_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. The first start logs the account name and a one-time password. The sign-in page requires a new password at first sign-in. All `Console` settings: [Application settings](/reference/app-settings#console).
 
 ## Accounts
 
@@ -28,7 +27,7 @@ Session cookies are HMAC-SHA256 signed with `portway.key` (next to `auth.db`) an
 
 ## Settings changes
 
-Settings saved in the console are written to `appsettings.overrides.json`, layered over `appsettings.json`. A save applies all submitted keys or none, and the response states whether a restart is required.
+Settings saved in the console are written to `appsettings.overrides.json`. Values in that file override `appsettings.json`. Environment variables override that file. A key set by an environment variable is read-only in the console and displays the variable name. A save applies all submitted keys or none, and the response states whether a restart is required.
 
 The section **Settings → Security → Deployment & Access** sets trusted proxies, trusted proxy networks and public console origins. A change that would exclude the current request returns `400`.
 

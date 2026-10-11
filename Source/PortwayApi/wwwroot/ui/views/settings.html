@@ -85,7 +85,6 @@
         display: flex;
         flex-direction: column;
         gap: 2rem;
-        max-width: 46rem;
     }
 
     /* Markdown fields need the full card width, not the 22rem control column */
@@ -100,6 +99,55 @@
         line-height: 1.5;
     }
 
+    .setting-env {
+        font-family: ui-monospace, monospace;
+        font-size: 0.75rem;
+    }
+    .setting-unit {
+        position: relative;
+    }
+    .setting-unit .input {
+        width: 100%;
+        padding-right: 3.5rem;
+    }
+    .setting-unit span {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.8125rem;
+        color: hsl(var(--muted-foreground));
+        pointer-events: none;
+    }
+    .setting-label label {
+        display: inline;
+    }
+    .setting-link {
+        margin-left: 0.25rem;
+        color: hsl(var(--muted-foreground));
+    }
+    .setting-link:hover {
+        color: hsl(var(--foreground));
+    }
+    .card-footer-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .setting-value .card-footer-actions {
+        justify-content: flex-end;
+    }
+    .card-doc {
+        align-self: center;
+        width: 1rem;
+        height: 1rem;
+        background-color: hsl(var(--muted-foreground));
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E") center / contain no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z'/%3E%3Cpath d='M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'/%3E%3C/svg%3E") center / contain no-repeat;
+    }
+    .card-doc:hover {
+        background-color: hsl(var(--foreground));
+    }
+
     /* Setting value variants */
     .setting-on {
         color: hsl(var(--success));
@@ -107,6 +155,14 @@
     }
     .setting-off {
         color: hsl(var(--muted-foreground));
+    }
+    .setting-bad {
+        color: hsl(var(--destructive));
+    }
+    .setting-status {
+        display: inline-flex;
+        vertical-align: middle;
+        cursor: default;
     }
     .setting-warn {
         color: hsl(var(--warning, var(--destructive)));
@@ -126,7 +182,7 @@
         <div class="page-title">
             <div class="page-heading">
                 <h1 class="select-none">Settings</h1>
-                <p class="page-sub">Console, security, performance, storage, integrations, OpenAPI and AI.</p>
+                <p class="page-sub">Console, security, OpenAPI, AI, telemetry, performance, system, maintenance and backups.</p>
             </div>
         </div>
         <div class="page-actions">
@@ -156,6 +212,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Console Customization</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#console" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="customizationBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -169,6 +226,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Security Posture</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/guide/security" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="securityBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -178,6 +236,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Deployment &amp; Access</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#forwardedheaders" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="deploymentBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -187,6 +246,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Recent Configuration Changes</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/guide/webui#settings-changes" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="auditBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -200,6 +260,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Rate Limiting</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/guide/rate-limiting" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="rateLimitBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -209,6 +270,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Caching</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/caching" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="cachingBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -218,6 +280,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">SQL Connection Pooling</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#sqlconnectionpooling" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="sqlBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -228,24 +291,22 @@
 
         <div class="settings-section" id="section-storage">
             <div class="settings-pane">
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Database Maintenance</h2>
-                    </div>
-                    <div class="card-body" id="maintenanceBody">
-                        <span class="muted" style="font-size:0.8rem">Loading…</span>
-                    </div>
-                </div>
 
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">File Storage</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">File Storage</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#filestorage" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="fileBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">Logging</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">Logging</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/logging" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="loggingBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
@@ -254,8 +315,37 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Endpoint Reloading</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#endpointreloading" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="reloadBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section" id="section-maintenance">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Database Maintenance</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#databasemaintenance" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
+                    <div class="card-body" id="maintenanceBody">
+                        <span class="muted" style="font-size:0.8rem">Loading…</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section" id="section-backups">
+            <div class="settings-pane">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Backups</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#databasemaintenance" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
+                    <div class="card-body" id="backupBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
                 </div>
@@ -265,7 +355,10 @@
         <div class="settings-section" id="section-integrations">
             <div class="settings-pane">
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">Telemetry</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">Telemetry</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/guide/telemetry" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="telemetryBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
@@ -276,21 +369,30 @@
         <div class="settings-section" id="section-openapi">
             <div class="settings-pane">
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">OpenAPI</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">OpenAPI</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/openapi-settings" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="openApiBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">API Reference</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">API Reference</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/openapi-settings" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="docsBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
                 </div>
 
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">Reference Footer</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">Reference Footer</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/reference/openapi-settings" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="footerBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
@@ -303,6 +405,7 @@
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">MCP (Model Context Protocol)</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/guide/mcp" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="mcpBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
@@ -310,7 +413,10 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header"><h2 class="card-title">Chat</h2></div>
+                    <div class="card-header">
+                        <h2 class="card-title">Chat</h2>
+                        <a class="card-doc" href="https://melosso.github.io/portway/guide/mcp-chat" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                    </div>
                     <div class="card-body" id="chatBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
@@ -335,50 +441,77 @@
 
 let _writable = {};
 
-function labelBlock(label, desc, forId) {
+// pages a setting serves, relative to the base href
+const SETTING_LINKS = {
+  'OpenApi:Enabled': 'docs',
+  'OpenApi:MarkdownEnabled': 'docs/openapi.md',
+  'Console:Customization:EnableLandingPage': './'
+};
+
+const EXTERNAL_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+
+function labelBlock(label, desc, forId, key) {
+  const env = key ? _writable[key]?.env : null;
+  const href = key ? SETTING_LINKS[key] : null;
+  const link = href != null
+    ? ` <a class="setting-link" href="${href}" target="_blank" rel="noopener noreferrer" aria-label="Open" title="Open">${EXTERNAL_SVG}</a>`
+    : '';
+  const note = env
+    ? `<p>Set by <code class="setting-env">${esc(env)}</code>. Read-only.</p>`
+    : desc ? `<p>${esc(desc)}</p>` : '';
   return `<div class="setting-label">
-      <label${forId ? ` for="${forId}"` : ''}>${label}</label>
-      ${desc ? `<p>${esc(desc)}</p>` : ''}
+      <label${forId ? ` for="${forId}"` : ''}>${label}</label>${link}
+      ${note}
     </div>`;
 }
 
-function settingItem(label, value, desc) {
-  return `<div class="setting-row">
-    ${labelBlock(label, desc)}
-    <span class="setting-value">${esc(String(value ?? '—'))}</span>
-  </div>`;
+function settingItem(label, value, desc, key) {
+  return settingItemRaw(label, esc(String(value ?? '—')), desc, key);
 }
 
-function settingItemRaw(label, valueHtml, desc) {
+function settingItemRaw(label, valueHtml, desc, key) {
   return `<div class="setting-row">
-    ${labelBlock(label, desc)}
+    ${labelBlock(label, desc, null, key)}
     <span class="setting-value">${valueHtml}</span>
   </div>`;
 }
 
-// A posture row that reads as a verdict: green when correct, amber when it needs attention
-function riskItem(label, ok, okText, badText, desc) {
+const STATUS_ICONS = {
+  ok: ['setting-on', '<path d="M20 6 9 17l-5-5"/>'],
+  warn: ['setting-warn', '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'],
+  bad: ['setting-bad', '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>']
+};
+
+// status icon with the status text as tooltip; the tooltip renders html, so the text is escaped twice
+function statusItem(label, state, status, desc) {
+  const [cls, paths] = STATUS_ICONS[state];
   return settingItemRaw(label,
-    ok ? `<span class="setting-on">${esc(okText)}</span>`
-       : `<span class="setting-warn">${esc(badText)}</span>`,
+    `<span class="setting-status ${cls}" role="img" tabindex="0" aria-label="${esc(status)}" data-tooltip="${esc(esc(status))}" data-tooltip-side="left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg></span>`,
     desc);
 }
 
-function boolItem(label, value, desc) {
+function riskItem(label, ok, okText, badText, desc) {
+  return statusItem(label, ok ? 'ok' : 'warn', ok ? okText : badText, desc);
+}
+
+function boolItem(label, value, desc, key) {
   const html = value
     ? '<span class="setting-on">Enabled</span>'
     : '<span class="setting-off">Disabled</span>';
-  return settingItemRaw(label, html, desc);
+  return settingItemRaw(label, html, desc, key);
 }
 
-// Editable rows; each falls back to a read-only row when the server does not list the key as writable
+function editable(key) {
+  const spec = _writable[key];
+  return spec && !spec.env ? spec : null;
+}
 
 function switchRow(key, label, value, desc) {
-  const spec = _writable[key];
-  if (!spec) return boolItem(label, value, desc);
+  const spec = editable(key);
+  if (!spec) return boolItem(label, value, desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   return `<div class="setting-row">
-    ${labelBlock(label, desc, id)}
+    ${labelBlock(label, desc, id, key)}
     <label class="switch">
       <input type="checkbox" id="${id}" data-setting="${key}" data-kind="bool" ${value ? 'checked' : ''}>
       <span class="slider"></span>
@@ -386,91 +519,188 @@ function switchRow(key, label, value, desc) {
   </div>`;
 }
 
-function numberRow(key, label, value, desc, unit) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value != null ? `${value}${unit ?? ''}` : '—', desc);
+// scale converts the stored value into the displayed unit, e.g. bytes shown as MB
+function numberRow(key, label, value, desc, unit, scale = 1) {
+  const spec = editable(key);
+  const shown = value != null ? Math.round((value / scale) * 100) / 100 : null;
+  if (!spec) return settingItem(label, shown != null ? `${shown} ${unit ?? ''}`.trim() : '—', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
-  const min = spec.min != null ? ` min="${spec.min}"` : '';
-  const max = spec.max != null ? ` max="${spec.max}"` : '';
+  const min = spec.min != null ? ` min="${spec.min / scale}"` : '';
+  const max = spec.max != null ? ` max="${spec.max / scale}"` : '';
+  const step = scale !== 1 ? ' step="any"' : '';
+  const input = `<input type="number" class="input" id="${id}" data-setting="${key}" data-kind="int" data-scale="${scale}"${min}${max}${step} value="${shown ?? ''}">`;
   return `<div class="setting-row">
-    ${labelBlock(label, desc, id)}
-    <input type="number" class="input" id="${id}" data-setting="${key}" data-kind="int"${min}${max} value="${value ?? ''}">
+    ${labelBlock(label, desc, id, key)}
+    ${unit ? `<div class="setting-unit">${input}<span>${esc(unit)}</span></div>` : input}
   </div>`;
 }
 
 function choiceRow(key, label, value, desc) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value, desc);
+  const spec = editable(key);
+  if (!spec) return settingItem(label, value, desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const opts = (spec.choices ?? []).map(c =>
     `<option value="${esc(c)}"${c.toLowerCase() === String(value ?? '').toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('');
   return `<div class="setting-row">
-    ${labelBlock(label, desc, id)}
+    ${labelBlock(label, desc, id, key)}
     <select class="input" id="${id}" data-setting="${key}" data-kind="choice">${opts}</select>
   </div>`;
 }
 
 function timeRow(key, label, value, desc) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value, desc);
+  const spec = editable(key);
+  if (!spec) return settingItem(label, value, desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   return `<div class="setting-row">
-    ${labelBlock(label, desc, id)}
+    ${labelBlock(label, desc, id, key)}
     <input type="time" class="input" id="${id}" data-setting="${key}" data-kind="time" value="${esc(value ?? '')}">
   </div>`;
 }
 
 function inputRow(key, label, value, desc, placeholder) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value || '—', desc);
+  const spec = editable(key);
+  if (!spec) return settingItem(label, value || '—', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
   return `<div class="setting-row">
-    ${labelBlock(label, desc, id)}
+    ${labelBlock(label, desc, id, key)}
     <input type="text" class="input" id="${id}" data-setting="${key}" data-kind="text"${max} spellcheck="false" placeholder="${esc(placeholder ?? '')}" value="${esc(value ?? '')}">
   </div>`;
 }
 
 function textRow(key, label, value, desc, placeholder) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value || '—', desc);
+  const spec = editable(key);
+  if (!spec) return settingItem(label, value || '—', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
   return `<div class="setting-row setting-row-stacked">
-    ${labelBlock(label, desc, id)}
+    ${labelBlock(label, desc, id, key)}
     <textarea class="input" rows="2" id="${id}" data-setting="${key}" data-kind="text"${max} placeholder="${esc(placeholder ?? '')}">${esc(value ?? '')}</textarea>
   </div>`;
 }
 
 function listRow(key, label, values, desc, placeholder) {
-  const spec = _writable[key];
+  const spec = editable(key);
   const shown = (values ?? []).join('\n');
-  if (!spec) return settingItem(label, (values ?? []).join(', ') || 'None', desc);
+  if (!spec) return settingItem(label, (values ?? []).join(', ') || 'None', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   return `<div class="setting-row setting-row-stacked">
-    ${labelBlock(label, desc, id)}
+    ${labelBlock(label, desc, id, key)}
     <textarea class="input" rows="3" id="${id}" data-setting="${key}" data-kind="list" spellcheck="false" placeholder="${esc(placeholder ?? '')}">${esc(shown)}</textarea>
   </div>`;
 }
 
-function cardFooter(bodyId) {
+function cardFooter(bodyId, actionsHtml = '') {
   return `<div class="card-footer">
     <span class="restart-note" id="${bodyId}-note"></span>
-    <button class="btn btn-primary" onclick="saveCard('${bodyId}', this)">Save</button>
+    <div class="card-footer-actions">
+      ${actionsHtml}
+      <button class="btn btn-primary card-save" disabled onclick="saveCard('${bodyId}', this)">Save</button>
+    </div>
   </div>`;
 }
 
-// Clears the seeding key and sets WebUi:Enabled, applied on restart
+// a card's save button enables on its first edit
+['input', 'change'].forEach(type => document.addEventListener(type, e => {
+  e.target.closest?.('[data-setting]')?.closest('.card')?.querySelector('.card-save')?.removeAttribute('disabled');
+}));
+
+async function runMaintenance(btn) {
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    await api('/ui/api/maintenance/run', { method: 'POST', success: 'Maintenance finished', failure: 'Maintenance failed' });
+    await load();
+  } catch (e) {
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+async function createBackup(btn) {
+  btn.classList.add('is-loading');
+  btn.disabled = true;
+  try {
+    await api('/ui/api/backups', { method: 'POST', success: 'Backup created', failure: 'Backup failed' });
+    await loadBackups();
+  } catch (e) {
+  } finally {
+    btn.classList.remove('is-loading');
+    btn.disabled = false;
+  }
+}
+
+async function loadBackups() {
+  const el = document.getElementById('backupList');
+  if (!el) return;
+  try {
+    const d = await api('/ui/api/backups', { silent: true });
+    const pending = d.pending_restore
+      ? settingItemRaw('Restore pending', '<button class="btn btn-outline btn-sm" onclick="cancelRestore()">Cancel</button>',
+          `${d.pending_restore} replaces the databases and configuration at the next start. Restart Portway to apply.`)
+      : '';
+    el.innerHTML = pending + ((d.backups ?? []).map(b => settingItemRaw(esc(b.name),
+      `<div class="card-footer-actions">
+        <button class="btn btn-outline btn-sm" onclick="downloadBackup('${esc(b.name)}')">Download</button>
+        <button class="btn btn-outline btn-sm" onclick="restoreBackup('${esc(b.name)}')">Restore</button>
+      </div>`,
+      `${new Date(b.created_utc).toLocaleString()} · ${Math.max(1, Math.round(b.bytes / 1024))} KB`)).join('')
+      || settingItem('Snapshots', 'None yet', 'Create backup writes the first snapshot.'));
+  } catch (e) {
+    el.innerHTML = '';
+  }
+}
+
+function restoreBackup(name) {
+  AlertDialog.show({
+    title:       'Restore this backup?',
+    description: `${name} replaces auth.db, mcp.db, environments and endpoints at the next start. The current files are kept as a pre-restore copy.`,
+    actionLabel: 'Restore',
+    variant:     'destructive',
+    onConfirm:   async () => {
+      try {
+        await api(`/ui/api/backups/${encodeURIComponent(name)}/restore`, {
+          method: 'POST', success: 'Restore staged. Restart Portway to apply.', failure: 'Restore failed'
+        });
+        await loadBackups();
+      } catch (e) {}
+    }
+  });
+}
+
+async function cancelRestore() {
+  try {
+    await api('/ui/api/backups/restore', { method: 'DELETE', success: 'Restore cancelled', failure: 'Cancel failed' });
+    await loadBackups();
+  } catch (e) {}
+}
+
+// shows a refused download as a toast
+async function downloadBackup(name) {
+  const res = await fetch('/ui/api/backups/' + encodeURIComponent(name));
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    toast(d.error || 'Download failed', 'error');
+    return;
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Clears the seeding key and sets Console:Enabled, applied on restart
 function clearAdminKey() {
   AlertDialog.show({
     title:       'Remove the seeding key?',
-    description: 'WebUi:AdminApiKey seeds the first account. Accounts and active sessions are unchanged. Restart to apply.',
+    description: 'The deprecated console key is not used for sign-in. Accounts and sessions are unchanged. Restart to apply.',
     actionLabel: 'Remove',
     variant:     'destructive',
     onConfirm:   async () => {
       try {
         await api('/ui/api/settings', {
-          method: 'PUT', body: { 'WebUi:AdminApiKey': '', 'WebUi:Enabled': true },
+          method: 'PUT', body: { 'Console:AdminApiKey': '', 'Console:Enabled': true },
           success: 'Seeding key removed', failure: 'Failed to remove the key'
         });
         await load();
@@ -488,7 +718,7 @@ async function saveCard(bodyId, btn) {
     const key = el.dataset.setting;
     el.classList.remove('input-invalid');
     if (el.dataset.kind === 'bool') changes[key] = el.checked;
-    else if (el.dataset.kind === 'int') changes[key] = Number(el.value);
+    else if (el.dataset.kind === 'int') changes[key] = Math.round(Number(el.value) * (Number(el.dataset.scale) || 1));
     else if (el.dataset.kind === 'list') changes[key] = el.value.split('\n').map(v => v.trim()).filter(Boolean);
     else changes[key] = el.value;
   });
@@ -500,9 +730,9 @@ async function saveCard(bodyId, btn) {
     const r = await api('/ui/api/settings', {
       method: 'PUT', body: changes, success: 'Settings saved', failure: 'Failed to save settings'
     });
+    await load();
     const note = document.getElementById(bodyId + '-note');
     if (note) note.textContent = r.restart_required ? 'Saved. Restart Portway to apply.' : '';
-    await load();
   } catch(e) {
     if (e.field) {
       const el = body.querySelector(`[data-setting="${e.field}"]`);
@@ -539,166 +769,164 @@ async function load() {
 
     const accounts = sec.admin_accounts ?? 0;
     document.getElementById('securityBody').innerHTML = [
-      settingItemRaw('Sign-in required',
-        sec.webui_auth_enabled
-          ? '<span class="setting-on">Yes</span>'
-          : '<span class="setting-off">No, console is unauthenticated</span>',
-        'Enforced if an account exists'),
-      settingItemRaw('Accounts',
-        `<span class="${accounts > 0 ? 'setting-on' : 'setting-off'}">${accounts}</span>`,
-        'Managed on the Users page'),
+      statusItem('Sign-in required', sec.webui_auth_enabled ? 'ok' : 'bad',
+        sec.webui_auth_enabled ? 'Required' : 'Not required. The console is unauthenticated.',
+        'Console requests require a signed-in account.'),
+      statusItem('Accounts', accounts > 0 ? 'ok' : 'warn', `${accounts} account${accounts === 1 ? '' : 's'}`,
+        'Console accounts, managed on the Users page.'),
       riskItem('Client addresses', !sec.forwarded_ignored,
         sec.client_ip || 'Direct', 'Untrusted proxy',
         sec.forwarded_ignored
-          ? `Proxy not trusted. Every client resolves to ${sec.client_ip || 'one address'}. The console gate, per-IP rate limits and login lockout use this address. Add the proxy to Trusted proxies.`
-          : `Client address for this request${sec.behind_proxy ? ', from the trusted proxy chain' : ''}`),
+          ? `The proxy is not trusted. Every client appears as ${sec.client_ip || 'one address'}. The console gate, rate limits and sign-in lockout use this address. Add the proxy under Trusted proxies.`
+          : `Address of this request${sec.behind_proxy ? ', read from the trusted proxy' : ''}.`),
       riskItem('Console reach', !sec.console_public,
         'Local network only', 'Reachable from configured origins',
         sec.console_public
-          ? 'Exposes the sign-in page. Origin matching is not access control.'
-          : '/ui limited to loopback and local addresses'),
+          ? 'The sign-in page is reachable from the configured origins. Origin matching does not restrict access.'
+          : 'The console answers loopback and local addresses only.'),
       riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
-        'Scheme of this request. HSTS requires HTTPS. A TLS-terminating proxy must be trusted'),
+        'Scheme of this request. Behind a TLS proxy, add the proxy under Trusted proxies.'),
       riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
         sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
-        'Session cookie is a bearer credential; set Secure under TLS'),
-      boolItem('CSRF Protection', sec.csrf_protection),
-      boolItem('Administrator-only writes', true, 'Viewers have read access and manage their own sign-in'),
-      settingItem('CORS Allowed Origins', sec.cors_origins_count ?? 0),
+        'Sends the session cookie over HTTPS only.'),
+      statusItem('CSRF protection', sec.csrf_protection ? 'ok' : 'bad', sec.csrf_protection ? 'Enabled' : 'Disabled', 'Console writes require a CSRF token.'),
+      statusItem('Administrator-only writes', 'ok', 'Enabled', 'Viewers can read settings and change their own sign-in.'),
+      statusItem('CORS origins', 'ok', `${sec.cors_origins_count ?? 0} origin${sec.cors_origins_count === 1 ? '' : 's'}`, 'Browser origins allowed by CORS.'),
     ].join('');
 
     const dep = d.deployment ?? {};
     document.getElementById('deploymentBody').innerHTML = [
       listRow('ForwardedHeaders:KnownProxies', 'Trusted proxies', dep.known_proxies,
-        'One IP per line. Forwarded client addresses are accepted only from these.',
+        'Proxies whose forwarded client address is accepted. One IP per line.',
         sec.behind_proxy && sec.client_ip ? sec.client_ip : '10.0.0.8'),
       listRow('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', dep.known_networks,
-        'One CIDR range per line, for proxies without a fixed address', '172.18.0.0/16'),
-      listRow('WebUi:PublicOrigins', 'Public console origins', dep.public_origins,
-        'One origin per line. Empty limits /ui to the local network. Matched on the client-set Origin header.',
+        'Networks of proxies without a fixed address. One CIDR range per line.', '172.18.0.0/16'),
+      listRow('Console:PublicOrigins', 'Public console origins', dep.public_origins,
+        'Origins that may open the console from outside the local network. One per line.',
         'https://portway.example.com'),
       switchRow('Oidc:Enabled', 'Single sign-on', feat.oidc,
-        feat.oidc_providers ? `${feat.oidc_providers} provider(s) enabled. Off hides all providers and rejects callbacks`
-                            : 'No providers configured. Off rejects callbacks'),
-      ...(sec.legacy_admin_key ? [settingItemRaw('Seeding key',
+        feat.oidc_providers ? `Sign-in through ${feat.oidc_providers} configured provider(s).`
+                            : 'Sign-in through an identity provider. No providers configured.'),
+      ...(sec.legacy_admin_key && editable('Console:AdminApiKey') ? [settingItemRaw('Seeding key',
         '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
-        'WebUi:AdminApiKey seeds the first account. Safe to remove after first sign-in.')] : []),
+        'Deprecated console key. Not used for sign-in.')] : []),
     ].join('') + cardFooter('deploymentBody');
 
     document.getElementById('openApiBody').innerHTML = [
-      switchRow('OpenApi:Enabled', 'Enabled', feat.openapi, 'Serves the spec and the reference at /docs'),
-      inputRow('OpenApi:Title', 'Title', oa.title),
-      inputRow('OpenApi:Version', 'Document version', oa.version, 'Label in the OpenAPI document. Endpoint versions are v2, v3 folders per endpoint'),
-      textRow('OpenApi:Description', 'Description', oa.description, 'Markdown, shown above the reference'),
-      inputRow('OpenApi:Contact:Name', 'Contact name', oa.contact_name),
-      inputRow('OpenApi:Contact:Email', 'Contact e-mail', oa.contact_email),
-      switchRow('OpenApi:ForceHttpsInProduction', 'Force HTTPS', oa.force_https, 'HTTPS server URL outside Development'),
-      switchRow('OpenApi:MarkdownEnabled', 'Markdown', oa.markdown_enabled, 'Serves /docs/openapi.md for LLMs'),
-      inputRow('OpenApi:ExternalDocs:Url', 'Guide link', oa.external_docs_url, 'Your own API guide, http or https', 'https://example.com/guide'),
-      inputRow('OpenApi:ExternalDocs:Description', 'Guide label', oa.external_docs_description),
-      textRow('OpenApi:SecurityDefinition:Description', 'Authentication note', oa.security_description, 'Shown with the bearer token field'),
+      switchRow('OpenApi:Enabled', 'Enabled', feat.openapi, 'Serves the OpenAPI document and the API reference.'),
+      inputRow('OpenApi:Title', 'Title', oa.title, 'Title of the document and the reference page.'),
+      inputRow('OpenApi:Version', 'Document version', oa.version, 'Version label of the OpenAPI document.'),
+      textRow('OpenApi:Description', 'Description', oa.description, 'Markdown shown above the reference.'),
+      inputRow('OpenApi:Contact:Name', 'Contact name', oa.contact_name, 'Contact listed in the document.'),
+      inputRow('OpenApi:Contact:Email', 'Contact e-mail', oa.contact_email, 'Contact address listed in the document.'),
+      switchRow('OpenApi:ForceHttpsInProduction', 'Force HTTPS', oa.force_https, 'Uses an HTTPS server URL outside Development.'),
+      switchRow('OpenApi:MarkdownEnabled', 'Markdown export', oa.markdown_enabled, 'Serves the reference as Markdown for LLMs.'),
+      inputRow('OpenApi:ExternalDocs:Url', 'Guide link', oa.external_docs_url, 'Link to your own API guide.', 'https://example.com/guide'),
+      inputRow('OpenApi:ExternalDocs:Description', 'Guide label', oa.external_docs_description, 'Text of the guide link.'),
+      textRow('OpenApi:SecurityDefinition:Description', 'Authentication note', oa.security_description, 'Shown next to the bearer token field.'),
     ].join('') + cardFooter('openApiBody');
 
     document.getElementById('docsBody').innerHTML = [
-      switchRow('OpenApi:ShowNamespaces', 'Show namespaces', oa.show_namespaces, 'Group endpoints by namespace in the sidebar'),
-      inputRow('OpenApi:DefaultGroup', 'Default group', oa.default_group, 'Group for endpoints without a namespace. Empty lists them ungrouped', 'General'),
-      switchRow('OpenApi:ShowBadges', 'Badges', oa.show_badges, 'Marks MCP and OData operations'),
-      choiceRow('OpenApi:ScalarTheme', 'Theme', oa.theme),
-      choiceRow('OpenApi:ScalarLayout', 'Layout', oa.layout),
-      switchRow('OpenApi:ScalarShowSidebar', 'Sidebar', oa.show_sidebar),
-      switchRow('OpenApi:ScalarHideDownloadButton', 'Hide download', oa.hide_download, 'Hides the spec download'),
-      switchRow('OpenApi:ScalarHideModels', 'Hide models', oa.hide_models, 'Hides the schema section'),
-      switchRow('OpenApi:ScalarHideClientButton', 'Hide client generation', oa.hide_client),
-      switchRow('OpenApi:ScalarHideTestRequestButton', 'Hide test requests', oa.hide_test_request),
+      switchRow('OpenApi:ShowNamespaces', 'Group by namespace', oa.show_namespaces, 'Groups endpoints by namespace in the sidebar.'),
+      inputRow('OpenApi:DefaultGroup', 'Default group', oa.default_group, 'Group for endpoints without a namespace.', 'General'),
+      switchRow('OpenApi:ShowBadges', 'MCP and OData badges', oa.show_badges, 'Labels operations that support MCP or OData.'),
+      choiceRow('OpenApi:ScalarTheme', 'Theme', oa.theme, 'Color theme of the reference.'),
+      choiceRow('OpenApi:ScalarLayout', 'Layout', oa.layout, 'Page layout of the reference.'),
+      switchRow('OpenApi:ScalarShowSidebar', 'Sidebar', oa.show_sidebar, 'Shows the operation sidebar.'),
+      switchRow('OpenApi:ScalarHideDownloadButton', 'Hide download', oa.hide_download, 'Hides the document download button.'),
+      switchRow('OpenApi:ScalarHideModels', 'Hide models', oa.hide_models, 'Hides the schema section.'),
+      switchRow('OpenApi:ScalarHideClientButton', 'Hide client generation', oa.hide_client, 'Hides the client code generator.'),
+      switchRow('OpenApi:ScalarHideTestRequestButton', 'Hide test requests', oa.hide_test_request, 'Hides the request runner.'),
     ].join('') + cardFooter('docsBody');
 
     document.getElementById('footerBody').innerHTML = [
-      inputRow('OpenApi:Footer:Text', 'Text', oa.footer_text),
-      inputRow('OpenApi:Footer:Url', 'Link', oa.footer_url, 'http, https or mailto, or #', 'https://example.com'),
-      choiceRow('OpenApi:Footer:Target', 'Opens in', oa.footer_target),
-      switchRow('OpenApi:Footer:ShowSourceIcon', 'Source icon', oa.footer_source_icon, 'Shows the GitHub link'),
+      inputRow('OpenApi:Footer:Text', 'Text', oa.footer_text, 'Footer text of the reference.'),
+      inputRow('OpenApi:Footer:Url', 'Link', oa.footer_url, 'Footer link. http, https or mailto.', 'https://example.com'),
+      choiceRow('OpenApi:Footer:Target', 'Opens in', oa.footer_target, 'Window the footer link opens in.'),
+      switchRow('OpenApi:Footer:ShowSourceIcon', 'GitHub icon', oa.footer_source_icon, 'Shows the Portway source link.'),
     ].join('') + cardFooter('footerBody');
 
     document.getElementById('customizationBody').innerHTML = [
-      switchRow('WebUi:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serve the public page at the root path'),
-      textRow('WebUi:Customization:PromoText', 'Promo banner', cus.promo_text,
-        'Shown across the console. Supports **bold**, *italic* and [links](https://example.com)', 'Empty hides the banner'),
-      switchRow('WebUi:Customization:PromoLogin', 'Show on sign-in', cus.promo_login, 'Banner shown on the sign-in page'),
-      textRow('WebUi:Customization:LoginFooter', 'Sign-in footer', cus.login_footer,
-        'Markdown below the sign-in form, e.g. a contact address', 'Contact your [administrator](mailto:...)'),
+      switchRow('Console:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serves the public landing page.'),
+      textRow('Console:Customization:PromoText', 'Promo banner', cus.promo_text, 'Markdown banner across the console.', 'Empty hides the banner'),
+      switchRow('Console:Customization:PromoLogin', 'Banner on sign-in', cus.promo_login, 'Shows the banner on the sign-in page.'),
+      textRow('Console:Customization:LoginFooter', 'Sign-in footer', cus.login_footer, 'Markdown below the sign-in form.', 'Contact your [administrator](mailto:...)'),
     ].join('') + cardFooter('customizationBody');
 
     document.getElementById('maintenanceBody').innerHTML = [
-      switchRow('DatabaseMaintenance:Enabled', 'Enabled', dbm.enabled, 'Nightly SQLite ANALYZE and conditional VACUUM'),
-      timeRow('DatabaseMaintenance:Schedule', 'Run at', dbm.schedule, 'Server local time, 24-hour clock'),
-      settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet'),
-    ].join('') + cardFooter('maintenanceBody');
+      switchRow('DatabaseMaintenance:Enabled', 'Enabled', dbm.enabled, 'Checks, analyzes and compacts the SQLite databases daily.'),
+      timeRow('DatabaseMaintenance:Schedule', 'Run at', dbm.schedule, 'Server local time of the daily run.'),
+      settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet', 'Most recent completed run.'),
+      ...(dbm.last_results ?? []).map(r => statusItem(esc(r.database),
+        r.integrity === 'ok' ? 'ok' : r.integrity ? 'bad' : 'warn',
+        r.integrity === 'ok' ? 'Healthy' : r.integrity ? 'Check failed' : 'Not checked',
+        r.integrity && r.integrity !== 'ok' ? r.integrity : 'Integrity check of the last run.')),
+    ].join('') + cardFooter('maintenanceBody', '<button class="btn btn-outline" onclick="runMaintenance(this)">Run now</button>');
+
+    document.getElementById('backupBody').innerHTML = [
+      switchRow('DatabaseMaintenance:Backup:Enabled', 'Scheduled backup', dbm.backup_enabled, 'Writes a snapshot at the maintenance time.'),
+      numberRow('DatabaseMaintenance:Backup:Retention', 'Keep', dbm.backup_retention, 'Snapshots kept. Older ones are deleted.', 'backups'),
+    ].join('') + '<div id="backupList"></div>' + cardFooter('backupBody', '<button class="btn btn-outline" onclick="createBackup(this)">Create backup</button>');
+    loadBackups();
 
     document.getElementById('rateLimitBody').innerHTML = [
-      switchRow('RateLimiting:Enabled', 'Enabled', rl.enabled),
-      settingItem('Store', rl.store ?? 'Memory', 'Memory or Redis, chosen at startup'),
-      numberRow('RateLimiting:IpLimit',      'Requests per IP',    rl.ip_limit,           'Requests allowed from one address per window'),
-      numberRow('RateLimiting:IpWindow',     'IP window',          rl.ip_window_seconds,  'Length of the window in seconds', 's'),
-      numberRow('RateLimiting:TokenLimit',   'Requests per token', rl.token_limit,        'Default for tokens without their own limit'),
-      numberRow('RateLimiting:TokenWindow',  'Token window',       rl.token_window_seconds, 'Length of the window in seconds', 's'),
+      switchRow('RateLimiting:Enabled', 'Enabled', rl.enabled, 'Limits requests per client address and per token.'),
+      settingItem('Store', rl.store ?? 'Memory', 'Memory or Redis, set at startup.'),
+      numberRow('RateLimiting:IpLimit', 'Requests per IP', rl.ip_limit, 'Requests allowed from one address per window.'),
+      numberRow('RateLimiting:IpWindow', 'IP window', rl.ip_window_seconds, 'Length of the address window.', 's'),
+      numberRow('RateLimiting:TokenLimit', 'Requests per token', rl.token_limit, 'Default for tokens without their own limit.'),
+      numberRow('RateLimiting:TokenWindow', 'Token window', rl.token_window_seconds, 'Length of the token window.', 's'),
     ].join('') + cardFooter('rateLimitBody');
 
     document.getElementById('cachingBody').innerHTML = [
-      switchRow('Caching:Enabled', 'Enabled', c.enabled),
-      settingItem('Provider', c.provider ?? '—', 'Memory or Redis, chosen at startup'),
-      numberRow('Caching:DefaultCacheDurationSeconds', 'Default duration', c.default_duration_seconds, 'How long a cached response stays fresh, in seconds', 's'),
-      numberRow('Caching:MemoryCacheSizeLimitMB',      'Memory budget',    c.max_size_mb,              'Upper bound for the in-memory cache', ' MB'),
+      switchRow('Caching:Enabled', 'Enabled', c.enabled, 'Caches responses of endpoints with caching enabled.'),
+      settingItem('Provider', c.provider ?? '—', 'Memory or Redis, set at startup.'),
+      numberRow('Caching:DefaultCacheDurationSeconds', 'Default duration', c.default_duration_seconds, 'Time a cached response stays valid.', 's'),
+      numberRow('Caching:MemoryCacheSizeLimitMB', 'Memory budget', c.max_size_mb, 'Upper limit of the in-memory cache.', 'MB'),
     ].join('') + cardFooter('cachingBody');
 
     document.getElementById('sqlBody').innerHTML = [
-      switchRow('SqlConnectionPooling:Enabled', 'Enabled', sql.enabled),
-      numberRow('SqlConnectionPooling:MinPoolSize',       'Minimum pool size',  sql.min_pool_size,      'Connections kept open per connection string'),
-      numberRow('SqlConnectionPooling:MaxPoolSize',       'Maximum pool size',  sql.max_pool_size,      'Upper bound before requests queue'),
-      numberRow('SqlConnectionPooling:ConnectionTimeout', 'Connection timeout', sql.connection_timeout, 'Seconds to wait when opening a connection', 's'),
-      numberRow('SqlConnectionPooling:CommandTimeout',    'Command timeout',    sql.command_timeout,    'Seconds to wait for a statement to finish', 's'),
+      switchRow('SqlConnectionPooling:Enabled', 'Enabled', sql.enabled, 'Reuses database connections between requests.'),
+      numberRow('SqlConnectionPooling:MinPoolSize', 'Minimum pool size', sql.min_pool_size, 'Connections kept open per connection string.'),
+      numberRow('SqlConnectionPooling:MaxPoolSize', 'Maximum pool size', sql.max_pool_size, 'Upper limit before requests wait for a connection.'),
+      numberRow('SqlConnectionPooling:ConnectionTimeout', 'Connection timeout', sql.connection_timeout, 'Wait time to open a connection.', 's'),
+      numberRow('SqlConnectionPooling:CommandTimeout', 'Command timeout', sql.command_timeout, 'Wait time for a statement to finish.', 's'),
     ].join('') + cardFooter('sqlBody');
 
     document.getElementById('fileBody').innerHTML = [
-      settingItem('Storage Directory', f.directory        || '—'),
-      numberRow('FileStorage:MaxFileSizeBytes', 'Max file size', f.max_file_size_bytes, 'Largest upload accepted, in bytes', ' bytes'),
+      settingItem('Storage directory', f.directory || '—', 'Folder for uploaded files, set at startup.'),
+      numberRow('FileStorage:MaxFileSizeBytes', 'Max file size', f.max_file_size_bytes, 'Largest accepted upload.', 'MB', 1048576),
     ].join('') + cardFooter('fileBody');
 
     document.getElementById('loggingBody').innerHTML = [
-      choiceRow('Serilog:MinimumLevel:Default', 'Minimum level', log.min_level, 'Events below this level are not written'),
-      switchRow('RequestTrafficLogging:Enabled', 'Request traffic logging', feat.traffic_logging, 'Records proxied requests to file or SQLite'),
-      settingItem('Sinks', (log.sinks ?? []).join(', ') || '—'),
+      choiceRow('Serilog:MinimumLevel:Default', 'Minimum level', log.min_level, 'Events below this level are not written.'),
+      switchRow('RequestTrafficLogging:Enabled', 'Request traffic logging', feat.traffic_logging, 'Records proxied requests to file or SQLite.'),
     ].join('') + cardFooter('loggingBody');
 
     document.getElementById('reloadBody').innerHTML = [
-      switchRow('EndpointReloading:Enabled', 'Enabled', ep.enabled, 'Watch endpoints and environments for edits'),
-      numberRow('EndpointReloading:DebounceMs', 'Debounce', ep.debounce_ms, 'Milliseconds to wait after a change before reloading', 'ms'),
+      switchRow('EndpointReloading:Enabled', 'Enabled', ep.enabled, 'Reloads endpoints and environments after a file change.'),
+      numberRow('EndpointReloading:DebounceMs', 'Debounce', ep.debounce_ms, 'Wait time after a change before reloading.', 'ms'),
     ].join('') + cardFooter('reloadBody');
 
-    const telActive = tel.provider && tel.provider !== 'None';
     document.getElementById('telemetryBody').innerHTML = [
-      settingItemRaw('Provider',
-        telActive
-          ? `<span class="setting-on">${esc(tel.provider)}</span>`
-          : '<span class="setting-off">Off</span>',
-        'Telemetry:Provider is read at startup'),
-      settingItem('Service Name', tel.service_name ?? '—'),
-      ...(tel.otlp_endpoint   ? [settingItem('OTLP Endpoint',   tel.otlp_endpoint)]   : []),
-      ...(tel.prometheus_path ? [settingItem('Scrape Path',     tel.prometheus_path)] : []),
-    ].join('');
+      choiceRow('Telemetry:Provider', 'Provider', tel.provider, 'Exporter for traces and metrics.'),
+      inputRow('Telemetry:ServiceName', 'Service name', tel.service_name, 'Service name on every span and metric.', 'Portway.Api'),
+      inputRow('Telemetry:Otlp:Endpoint', 'OTLP endpoint', tel.otlp_endpoint, 'Collector address for the Otlp provider.', 'http://localhost:4317'),
+      ...(tel.prometheus_path ? [settingItem('Scrape path', tel.prometheus_path, 'Path Prometheus scrapes metrics from.')] : []),
+    ].join('') + cardFooter('telemetryBody');
 
     document.getElementById('mcpBody').innerHTML = [
-      switchRow('Mcp:Enabled',               'Enabled',       m.enabled),
-      settingItem('Path', m.path ?? '—'),
-      switchRow('Mcp:RequireAuthentication', 'Require a token', m.require_authentication, 'Reject MCP calls without a bearer token'),
+      switchRow('Mcp:Enabled', 'Enabled', m.enabled, 'Serves the MCP server for AI clients.'),
+      switchRow('Mcp:RequireAuthentication', 'Require a token', m.require_authentication, 'Rejects MCP calls without a bearer token.'),
     ].join('') + cardFooter('mcpBody');
 
     document.getElementById('chatBody').innerHTML = [
-      switchRow('Mcp:ChatEnabled', 'Enabled', d.chat?.enabled ?? false, 'Enable the chat console'),
+      switchRow('Mcp:ChatEnabled', 'Enabled', d.chat?.enabled ?? false, 'Enables the chat console.'),
     ].join('') + cardFooter('chatBody');
 
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','openApiBody','docsBody','footerBody','chatBody','customizationBody','deploymentBody'].forEach(id => {
+    ['rateLimitBody','telemetryBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','backupBody','openApiBody','docsBody','footerBody','chatBody','customizationBody','deploymentBody'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = msg;
     });
@@ -777,18 +1005,16 @@ async function loadAiConfig() {
     if (!cfg.has_api_key) {
       apiKeyHtml = `<span style="color:hsl(var(--destructive))">Not set</span>`;
     } else if (cfg.api_key_source === 'environment') {
-      apiKeyHtml = `Stored <span class="badge" style="margin-left:0.35rem;color:hsl(var(--warning));border-color:hsl(var(--warning));background:transparent;font-size:0.7rem;">.env override</span>`;
+      apiKeyHtml = 'Environment variable';
     } else {
       apiKeyHtml = `Saved`;
     }
 
-    const envDesc = cfg.api_key_source === 'environment'
-      ? 'PORTWAY_CHAT_API_KEY environment variable overrides the stored value.'
-      : null;
+    const envDesc = cfg.api_key_source === 'environment' ? 'Read from PORTWAY_CHAT_API_KEY. Overrides the stored key.' : null;
 
     aiBody.innerHTML = [
-      settingItemRaw('Provider', providerLabel),
-      settingItemRaw('Model',    esc(cfg.model || '—')),
+      settingItemRaw('Provider', providerLabel, 'AI provider for the chat console.'),
+      settingItemRaw('Model', esc(cfg.model || '—'), 'Model used for chat.'),
       settingItemRaw('API Key',  apiKeyHtml, envDesc)
     ].join('') + `<div class="ai-clear-row">
       <button class="btn btn-ghost btn-sm" style="color:hsl(var(--destructive))" onclick="confirmClearAiConfig()">Clear configuration</button>

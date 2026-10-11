@@ -9,9 +9,9 @@ Console accounts sign in to the [Web UI](/guide/webui).
 
 ## First account
 
-Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `WebUi:SeedPassword` or the legacy `WebUi:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `WebUi:SeedPassword` sets a fixed password without a forced change, for demo instances only.
+Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `Console:SeedPassword` or the legacy `Console:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `Console:SeedPassword` sets a fixed password without a forced change, for demo instances only.
 
-The legacy `WebUi:AdminApiKey` is not used for sign-in. It enables the console like `WebUi:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
+The legacy `Console:AdminApiKey` is not used for sign-in. It enables the console like `Console:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
 
 ## Account roles
 

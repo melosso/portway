@@ -31,7 +31,7 @@ public static partial class WebUiEndpointExtensions
     /// </summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, bool webUiEnabled)
     {
-        var publicOrigins = app.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
+        var publicOrigins = app.Configuration.GetSection("Console:PublicOrigins").Get<string[]>() ?? [];
 
         app.Use(async (context, next) =>
         {
@@ -39,7 +39,7 @@ public static partial class WebUiEndpointExtensions
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
             if (!webUiEnabled)
             {
-                Log.Warning("Web UI request to {Path} rejected: neither WebUi:Enabled nor WebUi:AdminApiKey is configured", path);
+                Log.Warning("Web UI request to {Path} rejected: neither Console:Enabled nor Console:AdminApiKey is configured", path);
                 context.Response.StatusCode = 503;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new { error = "Web UI is disabled" });
@@ -181,7 +181,7 @@ public static partial class WebUiEndpointExtensions
         var appVersion = typeof(WebUiEndpointExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0";
-        var secureCookies = app.Configuration.GetValue<bool>("WebUi:SecureCookies", false);
+        var secureCookies = app.Configuration.GetValue<bool>("Console:SecureCookies", false);
 
         // audit every config change and back up files before ui writes
         var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
@@ -199,6 +199,7 @@ public static partial class WebUiEndpointExtensions
         MapEventRoutes(app);
         MapEndpointCrudRoutes(app, configAudit);
         MapDiagnosticsRoutes(app);
+        MapMaintenanceRoutes(app, configAudit);
 
         return app;
     }
@@ -312,7 +313,7 @@ public static partial class WebUiEndpointExtensions
         var html = File.ReadAllText(filePath);
         if (filePath.EndsWith("login.html") && config != null)
         {
-            var footerMd = config.GetValue<string>("WebUi:Customization:LoginFooter");
+            var footerMd = config.GetValue<string>("Console:Customization:LoginFooter");
             if (!string.IsNullOrEmpty(footerMd))
             {
                 var footerHtml = ParseMarkdownToHtml(footerMd);

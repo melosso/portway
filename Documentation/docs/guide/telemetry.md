@@ -7,6 +7,8 @@ description: "Publish Portway's traces and metrics to an OTLP collector, or let 
 
 Portway exports request traces and metrics through one provider, selected with `Telemetry:Provider`. The built-in dashboard is independent of the provider.
 
+**Settings → Telemetry** edits these settings. A restart applies them. A setting with a set environment variable is read-only in the console.
+
 ## Choosing a provider
 
 | Provider | Style | Output |

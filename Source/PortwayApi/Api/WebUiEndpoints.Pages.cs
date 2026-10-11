@@ -9,6 +9,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,12 @@ public static partial class WebUiEndpointExtensions
             .ExcludeFromDescription();
 
         // CSRF token endpoint
-        app.MapGet("/ui/api/auth/csrf", () => Results.Json(new { csrf = WebUiAuthHelper.GenerateCsrfToken() }))
+        app.MapGet("/ui/api/auth/csrf", async (PortwayApi.Auth.AuthDbContext db) => Results.Json(new
+        {
+            csrf = WebUiAuthHelper.GenerateCsrfToken(),
+            // no account has a permanent password yet
+            setup_pending = await db.AdminUsers.AnyAsync() && !await db.AdminUsers.AnyAsync(u => !u.MustChangePassword)
+        }))
             .ExcludeFromDescription();
 
         // Auth endpoints

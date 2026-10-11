@@ -160,14 +160,14 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Provisions the first console account. Uses a one-time password requiring reset, unless WebUi:SeedPassword is set, in which case that fixed password is used with no reset required, for demo/non-production instances.
+    /// Provisions the first console account. Uses a one-time password requiring reset, unless Console:SeedPassword is set, in which case that fixed password is used with no reset required, for demo/non-production instances.
     /// </summary>
     public async Task SeedFirstAccountAsync(PortwayApi.Helpers.AdminSeedKey adminApiKey, string? seedPassword = null)
     {
         if (await _db.AdminUsers.AnyAsync())
         {
             if (adminApiKey.IsConfigured)
-                Log.Warning("WebUi:AdminApiKey is set but no longer used for sign-in; console accounts have replaced it and the setting can be removed");
+                Log.Warning("Console:AdminApiKey is set but no longer used for sign-in; console accounts have replaced it and the setting can be removed");
             return;
         }
 
@@ -189,13 +189,13 @@ public class AdminUserService
 
         if (seeding)
         {
-            Log.Warning("Created console account {Username} with the fixed password from WebUi:SeedPassword; do not set this outside demo/non-production instances", username);
+            Log.Warning("Created console account {Username} with the fixed password from Console:SeedPassword; do not set this outside demo/non-production instances", username);
         }
         else
         {
             Log.Warning("Created console account {Username} with one-time password {Password}; sign in to set a permanent password", username, password);
             if (migrating)
-                Log.Warning("WebUi:AdminApiKey was not used as the password; remove the setting once you have signed in");
+                Log.Warning("Console:AdminApiKey was not used as the password; remove the setting once you have signed in");
         }
     }
 

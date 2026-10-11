@@ -14,6 +14,9 @@ public class DatabaseMaintenanceService : BackgroundService
     private readonly IConfiguration _configuration;
     private readonly ConfigAuditService _audit;
 
+    // one pass at a time, scheduled or started from the console
+    private readonly SemaphoreSlim _gate = new(1, 1);
+
     /// <summary>
     /// Results of the most recent run; empty until the first run completes
     /// </summary>
@@ -44,8 +47,7 @@ public class DatabaseMaintenanceService : BackgroundService
             var delay = DelayUntilNextRun(_options.CurrentValue.Schedule);
             await Task.Delay(delay, stoppingToken);
 
-            if (_options.CurrentValue.Enabled)
-                await SafeRunOnceAsync(stoppingToken);
+            await SafeRunOnceAsync(stoppingToken);
         }
     }
 
@@ -54,7 +56,10 @@ public class DatabaseMaintenanceService : BackgroundService
     {
         try
         {
-            await RunOnceAsync(ct);
+            if (_options.CurrentValue.Enabled)
+                await RunOnceAsync(ct);
+            if (_options.CurrentValue.Backup.Enabled)
+                await CreateBackupAsync(ct);
         }
         catch (OperationCanceledException)
         {
@@ -85,6 +90,38 @@ public class DatabaseMaintenanceService : BackgroundService
     /// </summary>
     public async Task<List<DatabaseMaintenanceResult>> RunOnceAsync(CancellationToken ct = default)
     {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            return await RunPassAsync(ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Writes a snapshot archive and applies the retention setting
+    /// </summary>
+    public async Task<string> CreateBackupAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var name = await BackupArchive.CreateAsync(Directory.GetCurrentDirectory(), _options.CurrentValue.Backup.Retention, ct);
+            _audit.Record("backup", "database", name);
+            Log.Information("Backup {Name} written to .backups/snapshots", name);
+            return name;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    private async Task<List<DatabaseMaintenanceResult>> RunPassAsync(CancellationToken ct)
+    {
         var results = new List<DatabaseMaintenanceResult>();
 
         foreach (var dbPath in ResolveDatabasePaths())
@@ -96,7 +133,7 @@ public class DatabaseMaintenanceService : BackgroundService
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             var sizeBefore = new FileInfo(dbPath).Length;
             bool analyzed = false, vacuumed = false;
-            string? skipReason = null;
+            string? skipReason = null, integrity = null;
 
             try
             {
@@ -106,6 +143,10 @@ public class DatabaseMaintenanceService : BackgroundService
 
                 // Flush the WAL so page counts reflect the main database file
                 await ExecAsync(conn, "PRAGMA wal_checkpoint(TRUNCATE)", ct);
+
+                integrity = await QuickCheckAsync(conn, ct);
+                if (integrity != "ok")
+                    throw new InvalidOperationException($"integrity check failed: {integrity}");
 
                 await ExecAsync(conn, "ANALYZE", ct);
                 analyzed = true;
@@ -137,13 +178,14 @@ public class DatabaseMaintenanceService : BackgroundService
             }
             catch (Exception ex)
             {
+                integrity ??= ex.Message;
                 skipReason = $"error: {ex.Message}";
                 Log.Error(ex, "Database maintenance failed for {Database}", name);
             }
 
             var sizeAfter = File.Exists(dbPath) ? new FileInfo(dbPath).Length : sizeBefore;
             var duration = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-            results.Add(new DatabaseMaintenanceResult(name, analyzed, vacuumed, skipReason, sizeBefore, sizeAfter, duration));
+            results.Add(new DatabaseMaintenanceResult(name, analyzed, vacuumed, skipReason, sizeBefore, sizeAfter, duration, integrity));
 
             if (vacuumed)
                 Log.Information("Database maintenance: {Database} vacuumed, {Reclaimed} bytes reclaimed in {Duration:F0}ms",
@@ -196,6 +238,17 @@ public class DatabaseMaintenanceService : BackgroundService
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    // first rows of PRAGMA quick_check, a single "ok" when the database is intact
+    private static async Task<string> QuickCheckAsync(SqliteConnection conn, CancellationToken ct)
+    {
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "PRAGMA quick_check(5)";
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var rows = new List<string>();
+        while (await reader.ReadAsync(ct)) rows.Add(reader.GetString(0));
+        return string.Join("; ", rows);
     }
 
     private static async Task<long> ScalarAsync(SqliteConnection conn, string sql, CancellationToken ct)

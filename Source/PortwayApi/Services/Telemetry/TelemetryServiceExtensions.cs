@@ -24,7 +24,7 @@ public static class TelemetryServiceExtensions
         if (provider == TelemetryProvider.None)
             return services;
 
-        var serviceName = options.ServiceName ?? PortwayTelemetry.ServiceName;
+        var serviceName = options.EffectiveServiceName;
 
         var otel = services.AddOpenTelemetry()
             .ConfigureResource(r =>

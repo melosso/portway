@@ -106,6 +106,38 @@ public class DatabaseMaintenanceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task RunOnce_ReportsIntegrityOfAHealthyDatabase()
+    {
+        var dbPath = Path.Combine(_dir, "traffic_logs.db");
+        CreateBloatedDb(dbPath);
+
+        var service = CreateService(new DatabaseMaintenanceOptions(), dbPath);
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", Assert.Single(results, r => r.Database == "traffic_logs.db").Integrity);
+    }
+
+    [Fact]
+    public async Task RunOnce_ReportsACorruptDatabase()
+    {
+        var dbPath = Path.Combine(_dir, "traffic_logs.db");
+        CreateBloatedDb(dbPath);
+        using (var stream = new FileStream(dbPath, FileMode.Open, FileAccess.Write))
+        {
+            // overwrite the btree pages behind the header with garbage
+            stream.Position = 4096 * 2;
+            stream.Write(Enumerable.Repeat((byte)0x5A, 4096 * 3).ToArray());
+        }
+
+        var service = CreateService(new DatabaseMaintenanceOptions(), dbPath);
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        var integrity = Assert.Single(results, r => r.Database == "traffic_logs.db").Integrity;
+        Assert.NotNull(integrity);
+        Assert.NotEqual("ok", integrity);
+    }
+
+    [Fact]
     public async Task RunOnce_IgnoresMissingDatabases()
     {
         var service = CreateService(new DatabaseMaintenanceOptions(), Path.Combine(_dir, "missing.db"));

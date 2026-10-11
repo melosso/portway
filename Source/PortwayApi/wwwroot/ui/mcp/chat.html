@@ -69,7 +69,6 @@
 
 <script>
 // State
-const base = window.PortwayBase || '';
 let history         = [];
 let streaming       = false;
 let abortController = null;
@@ -227,7 +226,7 @@ async function confirmAuthDialog() {
   const firstEnv = (envRes.allowed_environments || [])[0];
   if (firstEnv) {
     try {
-      const testResp = await fetch(base + '/api/' + encodeURIComponent(firstEnv) + '/ping', {
+      const testResp = await fetch('/api/' + encodeURIComponent(firstEnv) + '/ping', {
         method: 'HEAD',
         headers: { Authorization: 'Bearer ' + token }
       });
@@ -485,7 +484,7 @@ async function send(retryMessage) {
   showTyping();
 
   try {
-    const resp = await fetch(base + '/ui/api/mcp/chat', {
+    const resp = await fetch('/ui/api/mcp/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

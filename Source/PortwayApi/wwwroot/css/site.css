@@ -929,7 +929,8 @@ h1 {
 .btn-outline:hover:not(:disabled) {
     background: hsl(var(--muted));
 }
-.btn-outline:disabled {
+.btn-outline:disabled,
+.btn-primary:disabled:not(.is-loading) {
     opacity: 0.4;
     cursor: not-allowed;
 }
@@ -1076,6 +1077,17 @@ h1 {
     gap: 1rem;
     padding-top: 0.75rem;
     margin-top: 0.5rem;
+}
+
+.input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.input[type='number']::-webkit-inner-spin-button,
+.input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .setting-row {
@@ -2978,18 +2990,28 @@ th.sortable.sort-desc .sort-icon {
 
 /* Key-value editor (headers etc.) */
 
-.ep-kv-row {
+.kv-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.ep-kv-row,
+.kv-row {
     display: flex;
     gap: 0.375rem;
     align-items: center;
 }
 
-.ep-kv-row .input {
+.ep-kv-row .input,
+.kv-row .input {
     flex: 1;
     min-width: 0;
 }
 
-.ep-kv-row .btn-icon {
+.ep-kv-row .btn-icon,
+.kv-row .btn-icon {
     flex-shrink: 0;
     width: 1.75rem;
     height: 1.75rem;
