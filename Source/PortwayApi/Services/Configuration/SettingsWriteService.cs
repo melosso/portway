@@ -91,7 +91,7 @@ public sealed class SettingsWriteService
             ["OpenApi:ShowNamespaces"] = new("OpenApi:ShowNamespaces", "bool", false),
             ["OpenApi:DefaultGroup"] = new("OpenApi:DefaultGroup", "name", false),
             ["OpenApi:ShowBadges"] = new("OpenApi:ShowBadges", "bool", false),
-            ["OpenApi:MarkdownEnabled"] = new("OpenApi:MarkdownEnabled", "bool", false),
+            ["OpenApi:ServeMarkdown"] = new("OpenApi:ServeMarkdown", "bool", false),
             ["OpenApi:ExternalDocs:Url"] = new("OpenApi:ExternalDocs:Url", "weburl", false),
             ["OpenApi:ExternalDocs:Description"] = new("OpenApi:ExternalDocs:Description", "text", false, Max: 200),
             ["OpenApi:SecurityDefinition:Description"] = new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),

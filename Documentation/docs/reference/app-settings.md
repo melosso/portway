@@ -213,7 +213,7 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | `PORTWAY_WEBUI_ENABLED` | `Console:Enabled` | `WebUi__Enabled` |
 | `PORTWAY_ADMIN_KEY` | `Console:AdminApiKey` | `WebUi__AdminApiKey` |
 | `PORTWAY_SECURE_COOKIES` | `Console:SecureCookies` | `WebUi__SecureCookies` |
-| `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:MarkdownEnabled` | `OpenApi__MarkdownEnabled` |
+| `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:ServeMarkdown` | `OpenApi__ServeMarkdown` |
 | `PORTWAY_PUBLIC_ORIGINS` | `Console:PublicOrigins` (list) | `WebUi__PublicOrigins__0` |
 | `PORTWAY_SEED_PASSWORD` | `Console:SeedPassword` | `WebUi__SeedPassword` |
 | `PORTWAY_PROMO_TEXT` | `Console:Customization:PromoText` | `WebUi__Customization__PromoText` |

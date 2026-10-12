@@ -238,7 +238,7 @@ public static class OpenApiConfiguration
         // markdown for llms, opt in and read per request so the console switch applies on save
         app.MapGet("/docs/openapi.md", async (HttpContext context) =>
         {
-            if (!openApiMonitor.CurrentValue.MarkdownEnabled)
+            if (!openApiMonitor.CurrentValue.ServeMarkdown)
             {
                 return Results.Json(ErrorResponse.Of("Not found"), statusCode: StatusCodes.Status404NotFound);
             }

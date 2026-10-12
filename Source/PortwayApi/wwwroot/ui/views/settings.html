@@ -439,7 +439,7 @@ let _writable = {};
 // pages a setting serves, relative to the base href
 const SETTING_LINKS = {
   'OpenApi:Enabled': 'docs',
-  'OpenApi:MarkdownEnabled': 'docs/openapi.md',
+  'OpenApi:ServeMarkdown': 'docs/openapi.md',
   'Console:Customization:EnableLandingPage': './'
 };
 
@@ -821,7 +821,7 @@ async function load() {
       inputRow('OpenApi:Contact:Name', 'Contact name', oa.contact_name, 'Contact listed in the document.'),
       inputRow('OpenApi:Contact:Email', 'Contact e-mail', oa.contact_email, 'Contact address listed in the document.'),
       switchRow('OpenApi:ForceHttpsInProduction', 'Force HTTPS', oa.force_https, 'Uses an HTTPS server URL outside Development.'),
-      switchRow('OpenApi:MarkdownEnabled', 'Markdown export', oa.markdown_enabled, 'Serves the reference as Markdown for LLMs.'),
+      switchRow('OpenApi:ServeMarkdown', 'Markdown export', oa.serve_markdown, 'Serves the reference as Markdown for LLMs.'),
       inputRow('OpenApi:ExternalDocs:Url', 'Guide link', oa.external_docs_url, 'Link to your own API guide.', 'https://example.com/guide'),
       inputRow('OpenApi:ExternalDocs:Description', 'Guide label', oa.external_docs_description, 'Text of the guide link.'),
       textRow('OpenApi:SecurityDefinition:Description', 'Authentication note', oa.security_description, 'Shown next to the bearer token field.'),

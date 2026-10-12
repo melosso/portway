@@ -586,7 +586,7 @@ public class WebUiSecurityTests : IDisposable
         }
 
         var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
-            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:ScalarTheme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:MarkdownEnabled"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
+            new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:ScalarTheme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:ServeMarkdown"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
     }
 

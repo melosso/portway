@@ -13,7 +13,7 @@ public static class EnvAliases
         ("PORTWAY_ALLOWED_HOSTS", "AllowedHosts", "AllowedHosts"),
         ("PORTWAY_PATH_BASE", "PathBase", "PathBase"),
         ("PORTWAY_SECURE_COOKIES", "WebUi__SecureCookies", "Console:SecureCookies"),
-        ("PORTWAY_OPENAPI_MARKDOWN", "OpenApi__MarkdownEnabled", "OpenApi:MarkdownEnabled"),
+        ("PORTWAY_OPENAPI_MARKDOWN", "OpenApi__ServeMarkdown", "OpenApi:ServeMarkdown"),
         ("PORTWAY_PUBLIC_ORIGINS", "WebUi__PublicOrigins__0", "Console:PublicOrigins[]"),
         ("PORTWAY_SEED_PASSWORD", "WebUi__SeedPassword", "Console:SeedPassword"),
         ("PORTWAY_PROMO_TEXT", "WebUi__Customization__PromoText", "Console:Customization:PromoText"),

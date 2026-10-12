@@ -107,7 +107,7 @@ public static partial class WebUiEndpointExtensions
                     show_namespaces = openApi.ShowNamespaces,
                     default_group = openApi.DefaultGroup,
                     show_badges = openApi.ShowBadges,
-                    markdown_enabled = openApi.MarkdownEnabled,
+                    serve_markdown = openApi.ServeMarkdown,
                     external_docs_url = openApi.ExternalDocs.Url,
                     external_docs_description = openApi.ExternalDocs.Description,
                     security_description = openApi.SecurityDefinition.Description,

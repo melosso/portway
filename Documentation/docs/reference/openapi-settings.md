@@ -91,7 +91,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
 | `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
 | `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`) |
-| `MarkdownEnabled` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `false`, `PORTWAY_OPENAPI_MARKDOWN`) |
+| `ServeMarkdown` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `true`, `PORTWAY_OPENAPI_MARKDOWN`) |
 | `ExternalDocs.Url` | string | Link to an external API guide, shown with the document description; empty omits it |
 | `ExternalDocs.Description` | string | Label for that link |
 | `ScalarTheme` | string | Scalar theme; `portway` applies the console colours |

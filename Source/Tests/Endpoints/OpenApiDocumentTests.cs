@@ -416,13 +416,13 @@ public class OpenApiDocumentTests : ApiTestBase
         Assert.Equal("/docs/openapi.json", named.Headers.Location?.OriginalString);
     }
 
-    // markdown for llms is opt in, and off it answers like any missing document
+    // disabled markdown returns 404 like any missing document
     [Fact]
-    public async Task MarkdownDocument_IsOptIn()
+    public async Task MarkdownDocument_CanBeDisabled()
     {
         using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["OpenApi:MarkdownEnabled"] = "false"
+            ["OpenApi:ServeMarkdown"] = "false"
         })));
         var client = factory.CreateClient();
 
@@ -439,7 +439,6 @@ public class OpenApiDocumentTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
         using var factory = _factory.WithWebHostBuilder(b => b.ConfigureAppConfiguration(c => c.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["OpenApi:MarkdownEnabled"] = "true",
             ["OpenApi:Title"] = "Gateway Reference"
         })));
         var client = factory.CreateClient();
