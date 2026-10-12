@@ -67,7 +67,7 @@
   </ItemGroup>
   <ItemGroup Label="Azure">
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.1" />
+    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.2" />
   </ItemGroup>
   <ItemGroup Label="Other">
     <PackageVersion Include="StackExchange.Redis" Version="3.3.1" />
