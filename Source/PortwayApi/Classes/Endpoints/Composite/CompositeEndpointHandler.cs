@@ -14,18 +14,16 @@ public class CompositeEndpointHandler
     private static readonly JsonSerializerOptions CaseInsensitiveIndentedOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly Dictionary<string, ProxyEndpointInfo> _endpointMap;
+    private static readonly string ProxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
     private readonly string _serverName;
     private readonly Helpers.UrlValidator _urlValidator;
 
     public CompositeEndpointHandler(
         IHttpClientFactory httpClientFactory,
-        Dictionary<string, ProxyEndpointInfo> endpointMap,
         string serverName,
         Helpers.UrlValidator urlValidator)
     {
         _httpClientFactory = httpClientFactory;
-        _endpointMap = endpointMap;
         _serverName = serverName;
         _urlValidator = urlValidator;
     }
@@ -44,8 +42,9 @@ public class CompositeEndpointHandler
             Log.Debug("Processing composite endpoint: {Endpoint} for environment: {Environment}",
                 endpointName, env);
 
-            // Load composite definitions based on the endpoint map
-            var compositeDefinitions = EndpointHandler.GetCompositeDefinitions(_endpointMap);
+            // one snapshot per request so a reload applies from the next call
+            var endpointMap = EndpointHandler.GetEndpoints(ProxyEndpointsDirectory);
+            var compositeDefinitions = EndpointHandler.GetCompositeDefinitions(endpointMap);
 
             // Check if composite endpoint exists
             if (!compositeDefinitions.TryGetValue(endpointName, out var compositeDefinition))
@@ -103,7 +102,7 @@ public class CompositeEndpointHandler
 
                 try
                 {
-                    var stepResult = await ExecuteStepAsync(step, requestData, result.StepResults, executionContext, env, context.RequestAborted);
+                    var stepResult = await ExecuteStepAsync(endpointMap, step, requestData, result.StepResults, executionContext, env, context.RequestAborted);
                     result.StepResults[step.Name] = stepResult;
                     completedSteps.Add(step.Name);
                 }
@@ -116,10 +115,11 @@ public class CompositeEndpointHandler
                     result.ErrorDetail = ex.ErrorDetail;
                     result.StatusCode = ex.StatusCode;
 
-                    Log.Error("Error executing step {StepName} for composite endpoint {Endpoint}: {ErrorMessage}",
-                        ex.StepName, endpointName, ex.Message);
-                    Log.Error("Step {StepName} failed with status code {StatusCode}: {ErrorDetail}",
-                        ex.StepName, ex.StatusCode, ex.ErrorDetail);
+                    // 4xx means a request or step configuration error
+                    Log.Write(ex.StatusCode is >= 400 and < 500 ? Serilog.Events.LogEventLevel.Warning : Serilog.Events.LogEventLevel.Error,
+                        "Composite endpoint {Endpoint} step {StepName} failed with status {StatusCode}: {ErrorMessage}",
+                        endpointName, ex.StepName, ex.StatusCode, ex.Message);
+                    Log.Debug("Composite step {StepName} error detail: {ErrorDetail}", ex.StepName, ex.ErrorDetail);
 
                     int statusCode = ex.StatusCode >= 400 && ex.StatusCode < 600 ? ex.StatusCode : 500;
 
@@ -158,10 +158,10 @@ public class CompositeEndpointHandler
             }
 
             // Process the result to rewrite URLs before returning
-            RewriteUrlsInResult(result, context, env, endpointName);
+            RewriteUrlsInResult(endpointMap, result, context, env, endpointName);
 
             // Shape the final payload with each step's endpoint transforms; step-to-step data stayed untouched
-            ApplyResponseTransformsToResult(result, compositeDefinition);
+            ApplyResponseTransformsToResult(endpointMap, result, compositeDefinition);
 
             Log.Information("Successfully executed composite endpoint: {Endpoint}", endpointName);
             return Results.Ok(result);
@@ -179,6 +179,7 @@ public class CompositeEndpointHandler
     /// Execute a single step in a composite endpoint
     /// </summary>
     private async Task<object> ExecuteStepAsync(
+        Dictionary<string, ProxyEndpointInfo> endpointMap,
         CompositeStep step,
         JsonNode requestData,
         Dictionary<string, object> previousResults,
@@ -187,7 +188,7 @@ public class CompositeEndpointHandler
         CancellationToken ct = default)
     {
         // Find the target endpoint for this step
-        if (!_endpointMap.TryGetValue(step.Endpoint, out var endpoint))
+        if (!endpointMap.TryGetValue(step.Endpoint, out var endpoint))
         {
             throw new CompositeStepException(
                 $"Target endpoint '{step.Endpoint}' not found for step '{step.Name}'",
@@ -507,14 +508,14 @@ public class CompositeEndpointHandler
     /// <summary>
     /// Applies referenced endpoint transforms to final step results only, after all steps ran
     /// </summary>
-    private void ApplyResponseTransformsToResult(CompositeResult result, CompositeDefinition composite)
+    private static void ApplyResponseTransformsToResult(Dictionary<string, ProxyEndpointInfo> endpointMap, CompositeResult result, CompositeDefinition composite)
     {
         foreach (var step in composite.Steps)
         {
             if (!result.StepResults.TryGetValue(step.Name, out var stepResult))
                 continue;
 
-            if (!_endpointMap.TryGetValue(step.Endpoint, out var endpointInfo) ||
+            if (!endpointMap.TryGetValue(step.Endpoint, out var endpointInfo) ||
                 endpointInfo.ResponseTransforms is not { HasRules: true } transforms)
                 continue;
 
@@ -530,7 +531,7 @@ public class CompositeEndpointHandler
         }
     }
 
-    private void RewriteUrlsInResult(CompositeResult result, HttpContext context, string env, string endpointName)
+    private void RewriteUrlsInResult(Dictionary<string, ProxyEndpointInfo> endpointMap, CompositeResult result, HttpContext context, string env, string endpointName)
     {
         try
         {
@@ -543,7 +544,7 @@ public class CompositeEndpointHandler
                 string jsonString = JsonSerializer.Serialize(stepResult);
 
                 // Find all the endpoints used in this composite process
-                foreach (var endpoint in _endpointMap)
+                foreach (var endpoint in endpointMap)
                 {
                     // Skip endpoints that are not relevant to this step
                     if (jsonString.IndexOf(endpoint.Value.Url, StringComparison.OrdinalIgnoreCase) < 0)

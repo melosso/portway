@@ -61,6 +61,23 @@ public sealed class TokenTenantTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ScopeAndEnvironmentUpdatesTakeEffectImmediately()
+    {
+        var token = await _tokens.GenerateTokenAsync($"t-{Guid.NewGuid():N}", allowedScopes: "Orders,Items", allowedEnvironments: "prod,dev", ct: TestContext.Current.CancellationToken);
+        var details = (await _tokens.GetTokenDetailsByTokenAsync(token))!;
+        var expiry = DateTime.UtcNow.AddDays(1);
+
+        await _tokens.UpdateTokenScopesAsync(details.Id, "Orders", TestContext.Current.CancellationToken);
+        Assert.Equal("Orders", (await _tokens.GetTokenDetailsByTokenAsync(token))!.AllowedScopes);
+
+        await _tokens.UpdateTokenEnvironmentsAsync(details.Id, "dev", TestContext.Current.CancellationToken);
+        Assert.Equal("dev", (await _tokens.GetTokenDetailsByTokenAsync(token))!.AllowedEnvironments);
+
+        await _tokens.SetTokenExpirationAsync(details.Id, expiry, TestContext.Current.CancellationToken);
+        Assert.Equal(expiry, (await _tokens.GetTokenDetailsByTokenAsync(token))!.ExpiresAt);
+    }
+
+    [Fact]
     public void OldDatabaseGetsColumn()
     {
         var path = Path.Combine(Path.GetTempPath(), $"portway_oldauth_{Guid.NewGuid():N}.db");

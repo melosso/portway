@@ -111,15 +111,9 @@ try
     // Initialize endpoints directories
     DirectoryHelper.EnsureDirectoryStructure();
 
-    // Load Proxy endpoints
-    var proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
-    var proxyEndpointMap = EndpointHandler.GetEndpoints(proxyEndpointsDirectory);
-
-    // Register CompositeEndpointHandler with loaded endpoints
     builder.Services.AddSingleton<CompositeEndpointHandler>(provider =>
         new CompositeEndpointHandler(
             provider.GetRequiredService<IHttpClientFactory>(),
-            proxyEndpointMap,
             serverName,
             provider.GetRequiredService<UrlValidator>()
         )
@@ -228,6 +222,7 @@ try
     var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
     var fileEndpoints = EndpointHandler.GetFileEndpoints();
     var staticEndpoints = EndpointHandler.GetStaticEndpoints();
+    var proxyEndpointMap = EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
 
     EndpointSummaryHelper.LogEndpointSummary(sqlEndpointList, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 

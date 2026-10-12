@@ -67,12 +67,8 @@ public class EndpointFileWatcher : FileWatchPump
             // Reload endpoint definitions
             EndpointHandler.ReloadEndpointType(endpointType.Value);
 
-            // Invalidate SQL metadata cache if it's a SQL endpoint
             if (endpointType == EndpointType.SQL)
-            {
-                _sqlMetadataService.ClearEndpointMetadata(endpointName);
-                Log.Debug("SQL metadata cleared for endpoint '{Endpoint}'", endpointName);
-            }
+                _sqlMetadataService.QueueRefresh();
 
             var ns = ExtractNamespace(filePath);
             if (ns != null)

@@ -71,7 +71,7 @@ public static partial class WebUiEndpointExtensions
             if (entry.TargetType == "endpoint" && entry.Target.IndexOf('/') is var s && s > 0)
             {
                 var epType = TypeStringToEndpointType(entry.Target[..s]);
-                if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+                ReloadEndpoints(app.Services, epType);
             }
             else
             {

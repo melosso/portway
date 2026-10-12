@@ -76,6 +76,22 @@ public partial class EndpointController
         return PortwayResults.ServerError(HttpContext, "Error processing. Please check the logs for more details.");
     }
 
+    private sealed record ResolvedIdentity(string Path, (EndpointType Type, string Namespace, string Name, int NameIndex)? Value);
+
+    /// <summary>
+    /// Resolves once per request so the scope check and dispatch use the same answer during a concurrent reload
+    /// </summary>
+    internal static (EndpointType Type, string Namespace, string Name, int NameIndex)? ResolveEndpointIdentity(HttpContext context, string[] segments)
+    {
+        var path = string.Join('/', segments);
+        if (context.Items[typeof(ResolvedIdentity)] is ResolvedIdentity cached && cached.Path == path)
+            return cached.Value;
+
+        var value = ResolveEndpointIdentity(segments);
+        context.Items[typeof(ResolvedIdentity)] = new ResolvedIdentity(path, value);
+        return value;
+    }
+
     /// <summary>
     /// Longest match first, so Sales/EMEA/Orders wins over Sales/EMEA. Checked against every endpoint type. Token scope checks resolve the same URL through this, so they cannot disagree with dispatch about which endpoint it names
     /// </summary>
@@ -121,7 +137,7 @@ public partial class EndpointController
 
         Log.Debug("Parsing endpoint: Segments=[{Segments}]", string.Join(", ", segments));
 
-        if (ResolveEndpointIdentity(segments) is { } resolved)
+        if (ResolveEndpointIdentity(HttpContext, segments) is { } resolved)
         {
             var (endpointType, potentialNamespace, potentialEndpoint, nameIndex) = resolved;
             var potentialEndpointRaw = segments[nameIndex];

@@ -16,6 +16,7 @@ public sealed class McpConfigService
 
     // Volatile reference; assignment is atomic on 64-bit .NET, safe without locks for this pattern
     private volatile ConfigSnapshot? _cache;
+    private long _generation;
 
     public McpConfigService(IDbContextFactory<McpConfigDbContext> dbFactory)
     {
@@ -44,6 +45,7 @@ public sealed class McpConfigService
     public async Task<ConfigSnapshot> GetConfigAsync(CancellationToken ct = default)
     {
         if (_cache is { } cached) return cached;
+        var generation = Interlocked.Read(ref _generation);
 
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         var entries = await db.Config.ToListAsync(ct);
@@ -74,7 +76,13 @@ public sealed class McpConfigService
             ApiKey: apiKey
         );
 
-        _cache = snapshot;
+        // a save or clear during the read must not leave the old values cached
+        if (Interlocked.Read(ref _generation) == generation)
+        {
+            _cache = snapshot;
+            if (Interlocked.Read(ref _generation) != generation)
+                _cache = null;
+        }
         return snapshot;
     }
 
@@ -98,7 +106,7 @@ public sealed class McpConfigService
         if (apiKey is not null)
             await UpsertAsync(db, "ApiKey", SettingsEncryptionHelper.Encrypt(apiKey), encrypt: true, ct);
 
-        _cache = null; // invalidate cache — next GetConfigAsync reads from DB
+        Invalidate();
         Log.Information("McpConfig: configuration saved");
     }
 
@@ -110,8 +118,14 @@ public sealed class McpConfigService
         await using var db = await _dbFactory.CreateDbContextAsync(ct);
         db.Config.RemoveRange(db.Config);
         await db.SaveChangesAsync(ct);
-        _cache = null;
+        Invalidate();
         Log.Information("McpConfig: configuration cleared");
+    }
+
+    private void Invalidate()
+    {
+        Interlocked.Increment(ref _generation);
+        _cache = null;
     }
 
     /// <summary>

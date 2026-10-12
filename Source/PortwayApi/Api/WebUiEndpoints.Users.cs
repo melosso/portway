@@ -21,7 +21,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.CheckAccess(clientIp) is { } blocked)
+            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             var confirm = body.TryGetProperty("current_password", out var c) ? c.GetString() ?? "" : "";
@@ -31,7 +31,6 @@ public static partial class WebUiEndpointExtensions
                 return null;
             }
 
-            WebUiAuthHelper.RecordFailedAttempt(clientIp);
             Log.Warning("Account change refused: the password for the signed-in account was wrong, from {ClientIp}", clientIp);
             return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
         }

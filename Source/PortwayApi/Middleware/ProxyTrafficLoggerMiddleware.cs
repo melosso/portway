@@ -165,8 +165,7 @@ public class ProxyTrafficLoggerMiddleware
                 logEntry.RequestSize = context.Request.ContentLength ?? 0;
             }
 
-            // Extract username from the token in the Authorization header
-            await ExtractUsernameFromTokenAsync(context, logEntry);
+            ExtractUsername(context, logEntry);
 
             // Call the next middleware in the pipeline
             await _next(context);
@@ -308,59 +307,11 @@ public class ProxyTrafficLoggerMiddleware
         }
     }
 
-    private async Task ExtractUsernameFromTokenAsync(HttpContext context, ProxyTrafficLogEntry logEntry)
-    {
-        try
-        {
-            // Try to get from User Identity first
-            logEntry.Username = context.User?.Identity?.Name;
-
-            // If not available, check Authorization header
-            if (string.IsNullOrEmpty(logEntry.Username) &&
-                context.Request.Headers.TryGetValue("Authorization", out var authHeader))
-            {
-                string token = authHeader.ToString();
-                if (token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Extract the actual token value
-                    token = token["Bearer ".Length..].Trim();
-
-                    // Use the token service to get the username for this token
-                    using var scope = _serviceProvider.CreateScope();
-                    var tokenService = scope.ServiceProvider.GetService<Auth.TokenService>();
-
-                    if (tokenService != null)
-                    {
-                        // Get active tokens
-                        var tokens = await tokenService.GetActiveTokensAsync();
-
-                        // Check each token - we need to use VerifyTokenAsync because the token is hashed
-                        foreach (var activeToken in tokens)
-                        {
-                            // Verify if this token belongs to this user
-                            bool isValid = await tokenService.VerifyTokenAsync(token, activeToken.Username);
-                            if (isValid)
-                            {
-                                logEntry.Username = activeToken.Username;
-                                break;
-                            }
-                        }
-
-                        // If we couldn't find a username but the token is valid, use a generic name
-                        if (string.IsNullOrEmpty(logEntry.Username) && await tokenService.VerifyTokenAsync(token))
-                        {
-                            logEntry.Username = "authenticated-user";
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, $"[Trace: {logEntry.TraceId}] Error extracting username from token");
-            logEntry.Username = "error-extracting-user";
-        }
-    }
+    // the token middleware already verified the bearer token, re-hashing it here would cost one PBKDF2 per active token
+    private static void ExtractUsername(HttpContext context, ProxyTrafficLogEntry logEntry) =>
+        logEntry.Username = context.User?.Identity?.Name is { Length: > 0 } name
+            ? name
+            : context.Features.Get<Auth.AuthToken>()?.Username;
 
     private void CaptureRequestHeaders(HttpContext context, ProxyTrafficLogEntry logEntry, ISet<string> extraSensitiveHeaderNames)
     {

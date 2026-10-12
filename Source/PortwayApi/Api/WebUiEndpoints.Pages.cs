@@ -48,7 +48,7 @@ public static partial class WebUiEndpointExtensions
         {
             // Rate limiting and lockout check
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var blockReason = WebUiAuthHelper.CheckAccess(clientIp);
+            var blockReason = WebUiAuthHelper.BeginAttempt(clientIp);
             if (blockReason != null)
             {
                 return Results.Json(new { error = blockReason }, statusCode: 429);
@@ -60,7 +60,6 @@ public static partial class WebUiEndpointExtensions
             var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
             if (!WebUiAuthHelper.ValidateCsrfToken(csrfToken))
             {
-                WebUiAuthHelper.RecordFailedAttempt(clientIp);
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
 
@@ -71,7 +70,6 @@ public static partial class WebUiEndpointExtensions
             var account = await users.AuthenticateAsync(username, password);
             if (account is null)
             {
-                WebUiAuthHelper.RecordFailedAttempt(clientIp);
                 Log.Warning("Failed console sign-in for {Username} from {ClientIp}", username, clientIp);
                 return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
             }
@@ -93,32 +91,31 @@ public static partial class WebUiEndpointExtensions
         // Completes a first sign-in: verifies the old password again and issues the session only once the new one is set
         app.MapPost("/ui/api/auth/password", async (HttpContext context) =>
         {
-            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.CheckAccess(clientIp) is { } blocked)
-                return Results.Json(new { error = blocked }, statusCode: 429);
-
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
-
-            var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
-            if (!WebUiAuthHelper.ValidateCsrfToken(csrf))
-            {
-                WebUiAuthHelper.RecordFailedAttempt(clientIp);
-                return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
-            }
 
             var username = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
             var current = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
             var next = body.TryGetProperty("newPassword", out var n) ? n.GetString() ?? "" : "";
 
+            // policy errors reveal nothing about the account and do not count toward the lockout
             if (AdminUserService.ValidatePassword(next) is { } problem)
                 return Results.Json(new { error = problem, field = "newPassword" }, statusCode: 400);
             if (next == current)
                 return Results.Json(new { error = "Choose a password you have not used here before", field = "newPassword" }, statusCode: 400);
 
+            var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
+                return Results.Json(new { error = blocked }, statusCode: 429);
+
+            var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
+            if (!WebUiAuthHelper.ValidateCsrfToken(csrf))
+            {
+                return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
+            }
+
             var users = context.RequestServices.GetRequiredService<AdminUserService>();
             if (!await users.ChangePasswordAsync(username, current, next))
             {
-                WebUiAuthHelper.RecordFailedAttempt(clientIp);
                 return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
             }
 

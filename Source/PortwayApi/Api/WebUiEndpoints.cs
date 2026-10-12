@@ -288,6 +288,23 @@ public static partial class WebUiEndpointExtensions
         _ => null
     };
 
+    /// <summary>
+    /// Reloads endpoints after a console write; MCP and SQL metadata are refreshed here when the file watcher is off
+    /// </summary>
+    private static void ReloadEndpoints(IServiceProvider services, EndpointType? type)
+    {
+        if (type is null)
+            return;
+
+        EndpointHandler.ReloadEndpointType(type.Value);
+        if (services.GetRequiredService<IOptionsMonitor<Services.Configuration.EndpointReloadingOptions>>().CurrentValue.Enabled)
+            return;
+
+        services.GetService<Services.Mcp.McpEndpointRegistry>()?.Refresh();
+        if (type == EndpointType.SQL)
+            services.GetRequiredService<SqlMetadataService>().QueueRefresh();
+    }
+
     internal const string SignedInUserKey = "portway.user";
     internal const string SignedInUsernameKey = "portway.username";
 

@@ -375,10 +375,11 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 9: Execute query
+            var aborted = context.RequestAborted;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(aborted);
 
-            var results = await connection.QueryAsync(query, parameters);
+            var results = await connection.QueryAsync(new CommandDefinition(query, parameters, cancellationToken: aborted));
             var resultList = results.ToList();
 
             // Step 10: Transform results to use aliases, but onlyy if column mappings exist
@@ -457,7 +458,7 @@ public sealed partial class SqlRequestHandler
                 var (countQuery, countParameters) = tenantPredicates.Count > 0
                     ? _oDataToSqlConverter.ConvertToCountSQL($"{schema}.{objectName}", odataParams, detectedProviderType, tenantPredicates)
                     : _oDataToSqlConverter.ConvertToCountSQL($"{schema}.{objectName}", odataParams, detectedProviderType);
-                totalCount = await connection.ExecuteScalarAsync<long>(countQuery, countParameters);
+                totalCount = await connection.ExecuteScalarAsync<long>(new CommandDefinition(countQuery, countParameters, cancellationToken: aborted));
             }
 
             var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip);
@@ -474,6 +475,12 @@ public sealed partial class SqlRequestHandler
             }
 
             return new OkObjectResult(response);
+        }
+        catch (Exception) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // client disconnected, providers report the cancelled command as a DbException
+            Log.Debug("SQL query for {EndpointName} cancelled by client disconnect", endpointName);
+            return new StatusCodeResult(499);
         }
         catch (DbException dbEx)
         {

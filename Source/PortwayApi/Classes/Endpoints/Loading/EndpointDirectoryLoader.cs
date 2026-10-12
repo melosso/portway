@@ -9,7 +9,10 @@ namespace PortwayApi.Classes;
 /// </summary>
 internal static class EndpointDirectoryLoader
 {
-    public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec)
+    /// <summary>
+    /// Scans the folder; a file that is not valid JSON keeps its definition from previous so a save in progress keeps the endpoint live
+    /// </summary>
+    public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
 
@@ -53,7 +56,11 @@ internal static class EndpointDirectoryLoader
                 }
                 catch (JsonException ex)
                 {
-                    Log.Warning($"Invalid JSON in {spec.LowerLabel} endpoint {{File}}: {{Message}}", file, ex.Message);
+                    var directory = Path.GetDirectoryName(file);
+                    var kept = previous?.Where(kv => kv.Value.ConfigDirectory == directory).ToList() ?? [];
+                    foreach (var (key, definition) in kept)
+                        endpoints[key] = definition;
+                    Log.Warning($"Invalid JSON in {spec.LowerLabel} endpoint {{File}}: {{Message}}. Last valid definition kept: {{Kept}}", file, ex.Message, kept.Count > 0);
                 }
                 catch (Exception ex)
                 {

@@ -8,6 +8,7 @@ namespace PortwayApi.Tests.Services;
 /// <summary>
 /// The console write path refuses a key set by an environment variable
 /// </summary>
+[Collection("Integration")]
 public sealed class SettingsWriteLockTests
 {
     private static Dictionary<string, JsonElement> Changes(string json) =>

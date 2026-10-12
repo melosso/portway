@@ -73,7 +73,7 @@ public static partial class WebUiEndpointExtensions
             catch (Exception ex) { Log.Warning(ex, "Renamed endpoint to {NewName} but could not clear doubled Namespace from entity.json", newName); }
 
             var epType = TypeStringToEndpointType(type);
-            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+            ReloadEndpoints(app.Services, epType);
 
             Audit(context, "rename", "endpoint", $"{type}/{name} -> {type}/{actualName}");
             return Results.Ok(new { ok = true, name = actualName });
@@ -146,7 +146,7 @@ public static partial class WebUiEndpointExtensions
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
             var epType = TypeStringToEndpointType(type);
-            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+            ReloadEndpoints(app.Services, epType);
 
             Audit(context, "update", "endpoint", $"{type}/{name}", null, backupPath);
             return Results.Ok(new { ok = true, last_modified = lastMod });
@@ -185,7 +185,7 @@ public static partial class WebUiEndpointExtensions
             await File.WriteAllTextAsync(filePath!, rawContent);
 
             var epType = TypeStringToEndpointType(type);
-            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+            ReloadEndpoints(app.Services, epType);
 
             Audit(context, "create", "endpoint", $"{type}/{name}");
             return Results.Json(new { ok = true, name }, statusCode: 201);
@@ -211,7 +211,7 @@ public static partial class WebUiEndpointExtensions
                 File.Delete(filePath!);
 
             var epType = TypeStringToEndpointType(type);
-            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+            ReloadEndpoints(app.Services, epType);
 
             Audit(context, "delete", "endpoint", $"{type}/{name}", null, backupPath);
             return Results.Ok(new { ok = true });
@@ -241,7 +241,7 @@ public static partial class WebUiEndpointExtensions
             File.WriteAllText(copied, WithoutLifecycle(File.ReadAllText(copied)));
 
             var epType = TypeStringToEndpointType(type);
-            if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+            ReloadEndpoints(app.Services, epType);
 
             var versionName = $"{baseName}/v{next}";
             Audit(context, "create", "endpoint", $"{type}/{versionName}", $"new version of {name}");

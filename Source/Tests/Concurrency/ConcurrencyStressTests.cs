@@ -134,6 +134,28 @@ public class ConcurrencyStressTests
         Assert.True(errors.IsEmpty, $"endpoint readers threw while a reload was in flight:\n{Describe(errors)}");
     }
 
+    // A truncate-then-write or two saves sharing one temp file left readers with an empty settings file
+    [Fact]
+    public void AtomicFile_RewriteUnderLoad_ReadersNeverSeePartialContent()
+    {
+        using var temp = new TempDirectory("atomic_stress");
+        var path = temp.Combine("settings.json");
+        var content = JsonSerializer.Serialize(new { ServerName = "s", Headers = Enumerable.Range(0, 500).ToDictionary(i => $"h{i}", i => new string('v', 40)) });
+        PortwayApi.Helpers.AtomicFile.WriteAllText(path, content);
+
+        var errors = Hammer(
+            reader: () =>
+            {
+                var read = File.ReadAllText(path);
+                if (read.Length != content.Length)
+                    throw new InvalidDataException($"read {read.Length} of {content.Length} bytes");
+            },
+            writer: () => Parallel.Invoke(() => PortwayApi.Helpers.AtomicFile.WriteAllText(path, content), () => PortwayApi.Helpers.AtomicFile.WriteAllText(path, content)),
+            readerCount: Readers);
+
+        Assert.True(errors.IsEmpty, $"readers saw a partial settings file:\n{Describe(errors)}");
+    }
+
     // Non-atomic memory counter drifted and disabled MaxTotalMemoryCacheMB
     [Fact]
     public async Task FileHandlerService_ConcurrentUploadsAndDeletes_CounterMatchesCacheContents()

@@ -44,4 +44,17 @@ public class TokenVerificationCacheTests
         Assert.False(cache.TryGet(key, out _));
         Assert.True(cache.IsKnownMiss(key));
     }
+
+    [Fact]
+    public void SetAfterInvalidate_DoesNotRecacheStaleToken()
+    {
+        var cache = CreateCache();
+        var key = TokenVerificationCache.BuildKey("revoked-token");
+        var generation = cache.Generation;
+
+        cache.Invalidate(7);
+        cache.Set(key, new AuthToken { Id = 7, Username = "u", TokenHash = "h", TokenSalt = "s" }, 7, generation);
+
+        Assert.False(cache.TryGet(key, out _));
+    }
 }

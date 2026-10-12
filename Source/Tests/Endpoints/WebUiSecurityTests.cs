@@ -268,6 +268,36 @@ public class WebUiSecurityTests : IDisposable
             e.GetProperty("target_type").GetString() == "environment-settings");
     }
 
+    [Fact]
+    public async Task ParallelEnvironmentCreates_AllKept()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+        var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
+        var before = File.ReadAllText(globalPath);
+        var names = Enumerable.Range(0, 8).Select(i => $"race{i}{Guid.NewGuid():N}"[..12]).ToList();
+        try
+        {
+            var responses = await Task.WhenAll(names.Select(name => client.SendAsync(
+                AuthedRequest(HttpMethod.Post, "/ui/api/environments", authCookie, csrfCookie, new { name }),
+                TestContext.Current.CancellationToken)));
+            Assert.All(responses, r => Assert.Equal(HttpStatusCode.Created, r.StatusCode));
+
+            var allowed = _factory.Services.GetRequiredService<PortwayApi.Classes.EnvironmentSettings>().AllowedEnvironments;
+            Assert.All(names, name => Assert.Contains(name, allowed));
+        }
+        finally
+        {
+            File.WriteAllText(globalPath, before);
+            _factory.Services.GetRequiredService<PortwayApi.Classes.EnvironmentSettings>().Reload();
+            foreach (var name in names)
+            {
+                var dir = Path.Combine(Directory.GetCurrentDirectory(), "environments", name);
+                if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
     [Theory]
     [InlineData("sql", """{"DatabaseObjectName":"Items","DatabaseSchema":"dbo"}""", true)]
     [InlineData("sql", """{"DatabaseSchema":"dbo"}""", false)]

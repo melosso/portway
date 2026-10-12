@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
@@ -396,20 +397,7 @@ public sealed class SettingsWriteService
     {
         ConfigBackupService.Backup(OverridesPath);
 
-        var json = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        var temp = OverridesPath + ".tmp";
-        try
-        {
-            await File.WriteAllTextAsync(temp, json);
-            if (File.Exists(OverridesPath)) File.Replace(temp, OverridesPath, null);
-            else File.Move(temp, OverridesPath);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && File.Exists(OverridesPath))
-        {
-            // single-file bind mounts reject rename with EBUSY
-            File.Delete(temp);
-            await File.WriteAllTextAsync(OverridesPath, json);
-        }
+        await AtomicFile.WriteAllTextAsync(OverridesPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
     /// <summary>

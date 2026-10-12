@@ -194,6 +194,8 @@ public class TokenService
             return null;
         }
 
+        var generation = _tokenCache.Generation;
+
         // Cache miss; load from DB with no tracking overhead (entities are never modified here)
         var tokens = await _dbContext.Tokens
             .AsNoTracking()
@@ -210,7 +212,7 @@ public class TokenService
             {
                 Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
                 await RecordLastUseAsync(storedToken);
-                _tokenCache.Set(cacheKey, storedToken, storedToken.Id);
+                _tokenCache.Set(cacheKey, storedToken, storedToken.Id, generation);
                 return storedToken;
             }
         }
@@ -426,6 +428,7 @@ public class TokenService
 
         token.ExpiresAt = expirationDate;
         await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(tokenId);
 
         return true;
     }
@@ -483,6 +486,7 @@ public class TokenService
         string old = token.AllowedEnvironments;
         token.AllowedEnvironments = environments;
         await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(tokenId);
         await LogAuditAsync(token.Id, token.Username, "EnvironmentsUpdated", null, null,
             JsonSerializer.Serialize(new
             {
@@ -510,6 +514,7 @@ public class TokenService
         string oldScopes = token.AllowedScopes;
         token.AllowedScopes = scopes;
         await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(tokenId);
 
         // Log the token scope update in audit trail
         await LogAuditAsync(token.Id, token.Username, "ScopesUpdated", null, null,

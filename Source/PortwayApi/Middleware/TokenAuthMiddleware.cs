@@ -100,7 +100,7 @@ public class TokenAuthMiddleware
         }
 
         // Extract endpoint name from request path
-        string? endpointName = ExtractEndpointName(context.Request.Path);
+        string? endpointName = ExtractEndpointName(context);
 
         // Verify token and retrieve details in a single cache-backed call
         var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
@@ -211,8 +211,9 @@ public class TokenAuthMiddleware
     /// <summary>
     /// Extract the endpoint name from the request path
     /// </summary>
-    private string? ExtractEndpointName(PathString path)
+    private string? ExtractEndpointName(HttpContext context)
     {
+        var path = context.Request.Path;
         // Parses /api/{env}/[{namespace}/]{name}[/{id}], /api/{env}/composite/{name} and /webhook/{env}/{id}
 
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -233,7 +234,7 @@ public class TokenAuthMiddleware
             }
 
             // Same longest match resolver as the controller; keeps scope checks and dispatch aligned.
-            if (Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { } resolved)
+            if (Api.EndpointController.ResolveEndpointIdentity(context, segments[2..]) is { } resolved)
             {
                 return resolved.Namespace.Length > 0 ? $"{resolved.Namespace}/{resolved.Name}" : resolved.Name;
             }
