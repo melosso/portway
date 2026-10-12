@@ -19,6 +19,9 @@ public class AdminUserService
 
     private const string ReadableAlphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+    // constant-time stand-in for a missing or password-less account
+    private static readonly string DummyHash = HashPassword(RandomNumberGenerator.GetString(ReadableAlphabet, 32));
+
     private readonly AuthDbContext _db;
 
     public AdminUserService(AuthDbContext db) => _db = db;
@@ -62,6 +65,17 @@ public class AdminUserService
         return null;
     }
 
+    /// <summary>
+    /// Trimmed display name, or an error for one that is too long or contains control characters
+    /// </summary>
+    public static (string Value, string? Error) NormalizeDisplayName(string? displayName)
+    {
+        var value = (displayName ?? "").Trim();
+        if (value.Length > 80) return (value, "Display name is at most 80 characters");
+        if (value.Any(char.IsControl)) return (value, "Display name contains control characters");
+        return (value, null);
+    }
+
     public static string? ValidatePassword(string? password)
     {
         if (string.IsNullOrEmpty(password)) return "A password is required";
@@ -97,7 +111,7 @@ public class AdminUserService
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);
 
-        var stored = user?.PasswordHash ?? HashPassword("no-such-account");
+        var stored = user?.PasswordHash is { Length: > 0 } hash ? hash : DummyHash;
         var ok = VerifyPassword(password, stored);
 
         if (user is null || !ok || !user.IsActive) return null;
@@ -107,13 +121,17 @@ public class AdminUserService
         return user;
     }
 
-    public async Task<AdminUser> CreateAsync(string username, string password, string role, string email = "")
+    public async Task<AdminUser> CreateAsync(string username, string password, string role, string email = "",
+        string displayName = "", string? avatarStyle = null, string? avatarSeed = null)
     {
         var user = new AdminUser
         {
             Username = username,
             PasswordHash = HashPassword(password),
             Email = email.Trim(),
+            DisplayName = displayName,
+            AvatarStyle = avatarStyle,
+            AvatarSeed = avatarSeed,
             Role = role,
             Provider = AdminUserProviders.Local,
         };
@@ -122,7 +140,8 @@ public class AdminUserService
         return user;
     }
 
-    public async Task<bool> UpdateAsync(int id, string? password, string? role, bool? isActive, string? email = null)
+    public async Task<bool> UpdateAsync(int id, string? password, string? role, bool? isActive, string? email = null,
+        string? displayName = null, (string Style, string? Seed)? avatar = null)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return false;
@@ -131,6 +150,8 @@ public class AdminUserService
         if (role is not null) user.Role = role;
         if (isActive is not null) user.IsActive = isActive.Value;
         if (email is not null) user.Email = email.Trim();
+        if (displayName is not null) user.DisplayName = displayName;
+        if (avatar is { } a) (user.AvatarStyle, user.AvatarSeed) = (a.Style, a.Seed);
 
         await _db.SaveChangesAsync();
         return true;
@@ -157,14 +178,14 @@ public class AdminUserService
     }
 
     /// <summary>
-    /// Provisions the first console account. Uses a one-time password requiring reset, unless WebUi:SeedPassword is set, in which case that fixed password is used with no reset required, for demo/non-production instances.
+    /// Provisions the first console account. Uses a one-time password requiring reset, unless Console:SeedPassword is set, in which case that fixed password is used with no reset required, for demo/non-production instances.
     /// </summary>
     public async Task SeedFirstAccountAsync(PortwayApi.Helpers.AdminSeedKey adminApiKey, string? seedPassword = null)
     {
         if (await _db.AdminUsers.AnyAsync())
         {
             if (adminApiKey.IsConfigured)
-                Log.Warning("WebUi:AdminApiKey is set but no longer used for sign-in; console accounts have replaced it and the setting can be removed");
+                Log.Warning("Console:AdminApiKey is set but no longer used for sign-in; console accounts have replaced it and the setting can be removed");
             return;
         }
 
@@ -186,13 +207,13 @@ public class AdminUserService
 
         if (seeding)
         {
-            Log.Warning("Created console account {Username} with the fixed password from WebUi:SeedPassword; do not set this outside demo/non-production instances", username);
+            Log.Warning("Created console account {Username} with the fixed password from Console:SeedPassword; do not set this outside demo/non-production instances", username);
         }
         else
         {
             Log.Warning("Created console account {Username} with one-time password {Password}; sign in to set a permanent password", username, password);
             if (migrating)
-                Log.Warning("WebUi:AdminApiKey was not used as the password; remove the setting once you have signed in");
+                Log.Warning("Console:AdminApiKey was not used as the password; remove the setting once you have signed in");
         }
     }
 
@@ -202,11 +223,11 @@ public class AdminUserService
     public async Task<bool> ConfirmPasswordAsync(int userId, string password)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user is null || !user.IsActive) return false;
 
-        if (user.PasswordHash.Length == 0) return false;
+        var stored = user?.PasswordHash is { Length: > 0 } hash ? hash : DummyHash;
+        var ok = VerifyPassword(password, stored);
 
-        return VerifyPassword(password, user.PasswordHash);
+        return user is { IsActive: true } && ok;
     }
 
     /// <summary>
@@ -215,7 +236,11 @@ public class AdminUserService
     public async Task<bool> ChangePasswordAsync(string username, string currentPassword, string newPassword)
     {
         var user = await _db.AdminUsers.FirstOrDefaultAsync(u => u.Username == username);
-        if (user is null || !user.IsActive || !VerifyPassword(currentPassword, user.PasswordHash)) return false;
+
+        var stored = user?.PasswordHash is { Length: > 0 } hash ? hash : DummyHash;
+        var ok = VerifyPassword(currentPassword, stored);
+
+        if (user is null || !user.IsActive || !ok) return false;
 
         user.PasswordHash = HashPassword(newPassword);
         user.MustChangePassword = false;

@@ -9,7 +9,10 @@ namespace PortwayApi.Classes;
 /// </summary>
 internal static class EndpointDirectoryLoader
 {
-    public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec)
+    /// <summary>
+    /// Scans the folder; a file that is not valid JSON keeps its definition from previous so a save in progress keeps the endpoint live
+    /// </summary>
+    public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
 
@@ -47,12 +50,17 @@ internal static class EndpointDirectoryLoader
                         : BuildFlatKey(file, definition);
                     if (key == null) continue;
 
+                    definition.ConfigDirectory = Path.GetDirectoryName(file);
                     endpoints[key] = definition;
                     spec.LogLoaded(key, definition);
                 }
                 catch (JsonException ex)
                 {
-                    Log.Warning($"Invalid JSON in {spec.LowerLabel} endpoint {{File}}: {{Message}}", file, ex.Message);
+                    var directory = Path.GetDirectoryName(file);
+                    var kept = previous?.Where(kv => kv.Value.ConfigDirectory == directory).ToList() ?? [];
+                    foreach (var (key, definition) in kept)
+                        endpoints[key] = definition;
+                    Log.Warning($"Invalid JSON in {spec.LowerLabel} endpoint {{File}}: {{Message}}. Last valid definition kept: {{Kept}}", file, ex.Message, kept.Count > 0);
                 }
                 catch (Exception ex)
                 {
@@ -76,6 +84,18 @@ internal static class EndpointDirectoryLoader
     private static string? BuildNamespacedKey(string file, string endpointsDirectory, EndpointDefinition definition)
     {
         var (inferredNamespace, endpointName) = DirectoryHelper.ExtractNamespaceAndEndpoint(file, endpointsDirectory);
+
+        if (inferredNamespace is not null && EndpointVersion.TryParse(endpointName, out var version))
+        {
+            definition.Version = version;
+            var cut = inferredNamespace.LastIndexOf('/');
+            endpointName = inferredNamespace[(cut + 1)..];
+            inferredNamespace = cut < 0 ? null : inferredNamespace[..cut];
+        }
+        else if (ShadowedByV1Folder(file))
+        {
+            return null;
+        }
 
         // Inferred namespace is a fallback; entity.json Namespace takes precedence
         definition.InferredNamespace = inferredNamespace;
@@ -122,10 +142,24 @@ internal static class EndpointDirectoryLoader
             return null;
         }
 
-        var effectiveNamespace = definition.EffectiveNamespace;
-        return !string.IsNullOrEmpty(effectiveNamespace)
-            ? $"{effectiveNamespace}/{endpointName}"
-            : endpointName;
+        if (EndpointVersion.TryParse(definition.EffectiveNamespace?.Split('/')[0], out _))
+        {
+            Log.Warning("Endpoint {EndpointName}: namespace '{Namespace}' starts with a version segment; a versioned endpoint with the same path takes precedence", endpointName, definition.EffectiveNamespace);
+        }
+
+        return definition.Identity;
+    }
+
+    // a v1 folder holds the v1 endpoint and takes precedence over the entity.json beside it
+    private static bool ShadowedByV1Folder(string file)
+    {
+        if (!File.Exists(Path.Combine(Path.GetDirectoryName(file)!, EndpointVersion.Default, "entity.json")))
+        {
+            return false;
+        }
+
+        Log.Warning("Skipped {File}: the v1 folder beside it defines this endpoint", file);
+        return true;
     }
 
     /// <summary>
@@ -133,13 +167,25 @@ internal static class EndpointDirectoryLoader
     /// </summary>
     private static string? BuildFlatKey(string file, EndpointDefinition definition)
     {
-        var endpointName = Path.GetFileName(Path.GetDirectoryName(file)) ?? "";
+        var directory = Path.GetDirectoryName(file);
+        var endpointName = Path.GetFileName(directory) ?? "";
+        if (EndpointVersion.TryParse(endpointName, out var version))
+        {
+            definition.Version = version;
+            endpointName = Path.GetFileName(Path.GetDirectoryName(directory)) ?? "";
+        }
+
+        else if (ShadowedByV1Folder(file))
+        {
+            return null;
+        }
+
         if (string.IsNullOrWhiteSpace(endpointName))
         {
             Log.Warning("Could not determine endpoint name for {File}", file);
             return null;
         }
         definition.FolderName = endpointName;
-        return endpointName;
+        return endpointName + EndpointVersion.Suffix(definition.Version);
     }
 }

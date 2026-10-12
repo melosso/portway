@@ -174,8 +174,8 @@ public class RateLimiter
             }
             else
             {
-                // No longer blocked, remove from dictionary
-                _state.BlockedIps.TryRemove(clientIp, out _);
+                // removes the entry if it still holds the expired block
+                _state.BlockedIps.TryRemove(KeyValuePair.Create(clientIp, blockInfo));
                 Log.Information("Rate limit for IP {IP} has expired, allowing traffic", clientIp);
             }
         }
@@ -230,7 +230,7 @@ public class RateLimiter
                 else
                 {
                     // Block expired, remove from blocked tokens
-                    _state.BlockedTokens.TryRemove(tokenKey, out _);
+                    _state.BlockedTokens.TryRemove(KeyValuePair.Create(tokenKey, currentBlockInfo));
                 }
             }
 

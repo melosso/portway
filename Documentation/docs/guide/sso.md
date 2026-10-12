@@ -25,8 +25,6 @@ Providers are added under **Users → Sign-in providers → Add provider**.
 
 ## Redirect URI
 
-Redirect URI to register at the provider:
-
 ```
 https://your-host/ui/api/auth/oidc/{key}/callback
 ```
@@ -35,13 +33,12 @@ The console provider list shows the exact URI per key, including the path base.
 
 ## How an identity finds its account
 
-Account matching order at sign-in:
+Matching order at sign-in:
 
-1. An account already bound to this provider by subject.
-2. An account whose username equals the username claim.
-3. An account whose email equals the email claim, only when the provider marks the address verified.
+1. An account bound to this provider by subject.
+2. An account whose email equals the email claim, if the provider marks the address verified. Password accounts and accounts of this provider are eligible.
 
-Steps 2 and 3 consider only password accounts and accounts of this provider. The first match is bound to the subject.
+The username claim never matches an existing account. A match in step 2 is bound to the subject.
 
 Without a match and with **Create accounts** off, the sign-in is refused and the subject is logged with the reason. The subject can be linked under **Users**.
 

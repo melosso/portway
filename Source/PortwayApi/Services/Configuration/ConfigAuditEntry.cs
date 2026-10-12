@@ -11,4 +11,5 @@ public sealed record ConfigAuditEntry(
     string TargetType,
     string Target,
     string? Details,
-    string? BackupPath);
+    string? BackupPath,
+    string? Actor = null);

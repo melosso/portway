@@ -70,7 +70,11 @@ public partial class EndpointController : ControllerBase
             return (false, PortwayResults.BadRequest($"Environment '{env}' is not allowed for this endpoint."));
         }
 
-        // Environment is allowed
+        if (endpoint is not null)
+        {
+            EndpointLifecycleHeaders.Apply(Response, endpoint, env);
+        }
+
         return (true, null);
     }
     public EndpointController(

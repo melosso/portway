@@ -91,4 +91,17 @@ public class ProxyTrafficLoggerMiddlewareRedactionTests
         Assert.True(reader.TryRead(out var entry));
         Assert.Equal("?top=10", entry!.QueryString);
     }
+
+    [Fact]
+    public async Task Username_ComesFromVerifiedToken()
+    {
+        var (middleware, reader) = BuildMiddleware(null);
+        var ctx = BuildContext("/api/prod/orders", headerName: "Authorization", headerValue: "Bearer raw-token");
+        ctx.Features.Set(new PortwayApi.Auth.AuthToken { Username = "alice", TokenHash = "h", TokenSalt = "s" });
+
+        await middleware.InvokeAsync(ctx);
+
+        Assert.True(reader.TryRead(out var entry));
+        Assert.Equal("alice", entry!.Username);
+    }
 }

@@ -27,7 +27,9 @@ public sealed record TelemetryOptions
     public TelemetryProvider EffectiveProvider =>
         Provider == TelemetryProvider.None && Enabled ? TelemetryProvider.Otlp : Provider;
 
-    public string EffectiveOtlpEndpoint => Otlp.Endpoint ?? OtlpEndpoint;
+    public string EffectiveOtlpEndpoint => string.IsNullOrWhiteSpace(Otlp.Endpoint) ? OtlpEndpoint : Otlp.Endpoint;
+
+    public string EffectiveServiceName => string.IsNullOrWhiteSpace(ServiceName) ? PortwayTelemetry.ServiceName : ServiceName;
 
     /// <summary>
     /// Scrape path when the Prometheus provider is active, otherwise null

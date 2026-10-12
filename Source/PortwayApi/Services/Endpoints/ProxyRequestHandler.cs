@@ -724,7 +724,7 @@ public sealed class ProxyRequestHandler
 
             // Proxy path = /api/{env}/{endpoint}
             var proxyHost = $"{context.Request.Scheme}://{context.Request.Host}";
-            var proxyPath = $"/api/{env}/{endpointName}";
+            var proxyPath = $"/api/{env}/{EndpointVersion.RoutePath(endpointName)}";
 
             // Apply URL rewriting
             rewrittenContent = UrlRewriter.RewriteUrl(

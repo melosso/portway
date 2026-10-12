@@ -6,12 +6,12 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Demo composite endpoint Financial/SalesInvoice (endpoints/Proxy/Financial/SalesInvoice/entity.json)
+/// Demo composite endpoint Sales/Invoices (endpoints/Proxy/Sales/Invoices/entity.json)
 /// </summary>
 public class DemoCompositeEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";
-    private const string EndpointPath = "Financial/SalesInvoice";
+    private const string EndpointPath = "Sales/Invoices";
     private const string ApiPath = $"/api/{ValidEnv}/{EndpointPath}";
 
     private static readonly StringContent ValidInvoiceBody = new(
@@ -56,7 +56,7 @@ public class DemoCompositeEndpointTests : ApiTestBase
     [Fact]
     public async Task PostSalesInvoice_EnvironmentNotInAllowedList_ReturnsBadRequest()
     {
-        // Arrange: Synergy is globally allowed but Financial/SalesInvoice only permits 500, 700
+        // Arrange: Synergy is globally allowed but Sales/Invoices only permits 500, 700
         SetAllowedEnvironments("500", "700", "Synergy");
 
         // Act

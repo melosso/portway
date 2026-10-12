@@ -13,7 +13,7 @@ public class ProxyQueryDocumentationTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json");
+        var response = await _client.GetAsync("/docs/openapi.json");
         var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return doc.RootElement.GetProperty("paths").GetProperty(path).GetProperty("get").Clone();
     }
@@ -27,7 +27,7 @@ public class ProxyQueryDocumentationTests : ApiTestBase
     [Fact]
     public async Task ODataProxy_AdvertisesNamedParameters()
     {
-        var operation = await GetOperationAsync("/api/{env}/Account/Accounts");
+        var operation = await GetOperationAsync("/api/{env}/CRM/Accounts");
 
         var names = ParameterNames(operation);
         Assert.Contains("$select", names);
@@ -39,7 +39,7 @@ public class ProxyQueryDocumentationTests : ApiTestBase
     [Fact]
     public async Task NonODataProxy_DoesNotInventODataParameters()
     {
-        var operation = await GetOperationAsync("/api/{env}/Shipments");
+        var operation = await GetOperationAsync("/api/{env}/WMS/Shipments");
 
         var names = ParameterNames(operation);
         Assert.DoesNotContain("$select", names);
@@ -51,7 +51,7 @@ public class ProxyQueryDocumentationTests : ApiTestBase
     [Fact]
     public async Task NonODataProxy_DocumentsPassthrough()
     {
-        var operation = await GetOperationAsync("/api/{env}/Shipments");
+        var operation = await GetOperationAsync("/api/{env}/WMS/Shipments");
 
         var passthrough = operation.GetProperty("parameters").EnumerateArray()
             .Single(p => p.GetProperty("in").GetString() == "querystring");
@@ -66,7 +66,7 @@ public class ProxyQueryDocumentationTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700", "Synergy", "WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var offenders = new List<string>();

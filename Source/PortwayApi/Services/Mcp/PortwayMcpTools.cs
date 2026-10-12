@@ -32,8 +32,7 @@ public static class PortwayMcpTools
     /// <summary>
     /// Same key TokenAuthMiddleware checks scope against, so listings match what the token can actually call
     /// </summary>
-    private static string ScopeKey(McpToolDescriptor tool) =>
-        string.IsNullOrEmpty(tool.Namespace) ? tool.EndpointName : $"{tool.Namespace}/{tool.EndpointName}";
+    private static string ScopeKey(McpToolDescriptor tool) => tool.Identity;
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Browse available Portway endpoints with an interactive UI")]
     public static async Task<string> ListEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
@@ -58,8 +57,6 @@ public static class PortwayMcpTools
             foreach (var (invokeName, tool) in group)
             {
                 sb.AppendLine($"- **{invokeName}**: {tool.Description}");
-                if (!string.IsNullOrEmpty(tool.UiResourceUri))
-                    sb.AppendLine($"  - Has UI: {tool.UiResourceUri}");
             }
             sb.AppendLine();
         }
@@ -91,29 +88,8 @@ public static class PortwayMcpTools
             Method = tool.Method,
             Url = tool.Url,
             AllowedEnvironments = tool.AllowedEnvironments ?? [],
-            TenantHeaders = tool.TenantHeaders,
-            HasUi = !string.IsNullOrEmpty(tool.UiResourceUri),
-            UiUri = tool.UiResourceUri
+            TenantHeaders = tool.TenantHeaders
         };
-    }
-
-    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("List endpoints that have MCP Apps UI support")]
-    public static async Task<UiEnabledEndpointsResult> ListUiEnabledEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
-    {
-        if (_registry is null)
-            return new UiEnabledEndpointsResult(0, []);
-
-        var caller = await ResolveCallerTokenAsync(httpContextAccessor, tokenService);
-        if (caller is null)
-            return new UiEnabledEndpointsResult(0, []);
-
-        var endpoints = _registry.Tools
-            .Where(t => !string.IsNullOrEmpty(t.UiResourceUri) && caller.HasAccessToEndpoint(ScopeKey(t)))
-            .GroupBy(t => t.EndpointName)
-            .Select(g => new UiEndpointItem(g.Key, g.First().UiResourceUri))
-            .ToList();
-
-        return new UiEnabledEndpointsResult(endpoints.Count, endpoints);
     }
 
     [McpServerTool(Destructive = true, OpenWorld = false),

@@ -13,14 +13,21 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 |---|---|
 | `QUERY` | Native `query` operation |
 | `MERGE` | Under `additionalOperations` |
-| Namespaces | Tag groups; each endpoint is a tag under its namespace |
-| `Deprecated: true` | Operations marked deprecated |
+| Namespaces | Tag groups; each endpoint is a tag under its namespace ([OpenAPI tags](/reference/namespaces#openapi-tags)) |
+| `Deprecated: true` | Operations marked deprecated; `2xx` responses declare the `Deprecation`, `Sunset` and `Link` headers the endpoint sends |
 | `Enabled: false` | Operations marked deprecated with a `[Disabled]` summary prefix |
 | File uploads | `multipart/form-data` with part media types from `AllowedExtensions` (otherwise `application/octet-stream`) |
-| Errors | `ErrorResponse` and `ValidationErrorResponse` (`422`) components |
+| Errors | One shared response per status code under `components/responses` (`BadRequest`, `Unauthorized`, ...), each with the `ErrorResponse` schema (`ValidationErrorResponse` for `422`); `Unauthorized` declares `WWW-Authenticate` |
+| Security | Bearer requirement declared once on the document root |
+| `operationId` | `{method}_{namespace}_{endpoint}` (`get_WMS_Bins`, `merge_WMS_Bins`); `_byId` for `GET {endpoint}({id})`; composites `composite_...`, files `uploadFile_...`, `listFiles_...`, `downloadFile_...`, `deleteFile_...`. Derived from the route. Adding an endpoint changes no other id |
+| SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET` |
 | Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
 | Table-valued function parameters | Query and header parameters from `FunctionParameters` |
 | `Hidden: true` | Endpoint omitted |
+| `Mcp.Exposed: true` | `MCP` badge (`x-badges`) on the endpoint's operations |
+| OData parameters | `OData` badge on operations that accept `$filter` |
+| `ExternalDocs` | Document-level `externalDocs` |
+| Endpoint versions | `/api/{env}/v{n}/...` paths under the endpoint's tag; `(v{n})` summary and `operationId` suffix ([Versions](/reference/namespaces#versions)) |
 | Stored procedure names | Never included |
 
 ## Global configuration
@@ -31,7 +38,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
     "Enabled": true,
     "Title": "Portway: API Gateway",
     "Version": "v1",
-    "Description": "This is Portway. A lightweight API gateway that connects your platforms to your data sources and services, with a simple and fast setup.",
+    "Description": "Integration API for ERP and warehouse data.",
     "Contact": {
       "Name": "Your Name",
       "Email": "support@yourcompany.com"
@@ -48,6 +55,11 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
       "Type": "Http",
       "Scheme": "Bearer"
     },
+    "ShowBadges": true,
+    "ExternalDocs": {
+      "Url": "https://example.com/api-guide",
+      "Description": "Integration guide"
+    },
     "ScalarTheme": "default",
     "ScalarLayout": "modern",
     "ScalarShowSidebar": true,
@@ -63,7 +75,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 |---|---|---|
 | `Enabled` | boolean | Generates the document and `/docs` |
 | `Title` | string | Document title |
-| `Version` | string | Document version |
+| `Version` | string | Document version label (`info.version`); not part of any URL and unrelated to [endpoint versions](/reference/namespaces#versions) |
 | `Description` | string | Document description (Markdown) |
 | `Contact.Name` | string | Contact name |
 | `Contact.Email` | string | Contact e-mail |
@@ -76,13 +88,25 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `SecurityDefinition.Type` | string | `ApiKey`, `Http`, `OAuth2`, `OpenIdConnect` |
 | `SecurityDefinition.Scheme` | string | HTTP scheme, e.g. `Bearer` |
 | `ForceHttpsInProduction` | boolean | HTTPS server URLs in production (default `true`) |
-| `ScalarTheme` | string | Scalar theme |
+| `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
+| `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
+| `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`) |
+| `ServeMarkdown` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `true`, `PORTWAY_OPENAPI_MARKDOWN`) |
+| `ExternalDocs.Url` | string | Link to an external API guide, shown with the document description; empty omits it |
+| `ExternalDocs.Description` | string | Label for that link |
+| `ScalarTheme` | string | Scalar theme; `portway` applies the console colours |
 | `ScalarLayout` | string | `modern` or `classic` |
 | `ScalarShowSidebar` | boolean | Sidebar |
 | `ScalarHideDownloadButton` | boolean | Hides the document download |
 | `ScalarHideModels` | boolean | Hides the schema section |
 | `ScalarHideClientButton` | boolean | Hides client generation |
 | `ScalarHideTestRequestButton` | boolean | Hides test requests |
+
+The console edits these properties under **Settings → OpenAPI** (`/ui/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
+
+The document is served at `/docs/openapi.json`; `/docs/openapi/v{n}/openapi.json` holds the operations of one endpoint version. Other names under `/docs/openapi/{name}/openapi.json` redirect to `/docs/openapi.json`.
+
+Every operation has a shareable URL under `/docs` (for example `/docs/tag/...`). Code samples cover curl (default), C#, JavaScript, Python and PowerShell.
 
 ## Endpoint documentation
 
@@ -119,7 +143,7 @@ Descriptions support GitHub-flavoured Markdown, `<br>` and `<p>`, and Scalar ale
 
 ## Deprecated and disabled endpoints
 
-With `Deprecated: true`, the endpoint's operations are marked deprecated; requests are served unchanged.
+With `Deprecated: true`, the endpoint's operations are marked deprecated and requests are served. `DeprecatedSince` and `Sunset` add response headers ([Retiring a version](/reference/namespaces#retiring-a-version)).
 
 ```json
 {
@@ -137,10 +161,6 @@ With `Enabled: false`, requests return `503` with `Retry-After`, the operations 
   "error": "This endpoint is temporarily disabled for scheduled maintenance."
 }
 ```
-
-## Nested tags
-
-Every namespaced endpoint is tagged by its route path (`WMS/Inbound/StagingBins`) with `parent` set to the tag one segment up and `kind: nav` on every group. Missing parent tags are generated. `summary` holds the `DisplayName` or `NamespaceDisplayName`, else the last segment. The `/docs` sidebar nests tags by `parent` and labels them with `summary`. See [Namespaces](/reference/namespaces#openapi-tags).
 
 ## Schema discovery
 

@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
@@ -34,6 +35,11 @@ public sealed class SettingsWriteService
 
     private static readonly Regex ScheduleFormat = new(@"^([01]\d|2[0-3]):[0-5]\d$", RegexOptions.Compiled);
 
+    private static readonly Regex NameFormat = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$", RegexOptions.Compiled);
+
+    private static readonly string[] ScalarThemes =
+        ["portway", "default", "alternate", "moon", "purple", "solarized", "bluePlanet", "saturn", "kepler", "mars", "deepSpace", "elysiajs", "fastify", "laserwave", "none"];
+
     // Writable keys; anything else is refused by name
     private static readonly Dictionary<string, WritableSetting> Allowed =
         new(StringComparer.OrdinalIgnoreCase)
@@ -61,35 +67,82 @@ public sealed class SettingsWriteService
 
             ["DatabaseMaintenance:Enabled"] = new("DatabaseMaintenance:Enabled", "bool", true),
             ["DatabaseMaintenance:Schedule"] = new("DatabaseMaintenance:Schedule", "time", true),
+            ["DatabaseMaintenance:Backup:Enabled"] = new("DatabaseMaintenance:Backup:Enabled", "bool", false),
+            ["DatabaseMaintenance:Backup:Retention"] = new("DatabaseMaintenance:Backup:Retention", "int", false, 1, 100),
 
             ["Mcp:Enabled"] = new("Mcp:Enabled", "bool", true),
             ["Mcp:RequireAuthentication"] = new("Mcp:RequireAuthentication", "bool", true),
-            ["Mcp:AppsEnabled"] = new("Mcp:AppsEnabled", "bool", true),
             ["Mcp:ChatEnabled"] = new("Mcp:ChatEnabled", "bool", true),
 
-            ["WebUi:SecureCookies"] = new("WebUi:SecureCookies", "bool", true),
-            ["WebUi:Customization:EnableLandingPage"] = new("WebUi:Customization:EnableLandingPage", "bool", true),
-            ["WebUi:Customization:PromoText"] = new("WebUi:Customization:PromoText", "text", false, Max: 2_000),
-            ["WebUi:Customization:PromoLogin"] = new("WebUi:Customization:PromoLogin", "bool", false),
-            ["WebUi:Customization:LoginFooter"] = new("WebUi:Customization:LoginFooter", "text", false, Max: 2_000),
+            ["Console:SecureCookies"] = new("Console:SecureCookies", "bool", true),
+            ["Console:Customization:EnableLandingPage"] = new("Console:Customization:EnableLandingPage", "bool", true),
+            ["Console:Customization:PromoText"] = new("Console:Customization:PromoText", "text", false, Max: 2_000),
+            ["Console:Customization:PromoLogin"] = new("Console:Customization:PromoLogin", "bool", false),
+            ["Console:Customization:LoginFooter"] = new("Console:Customization:LoginFooter", "text", false, Max: 2_000),
 
             ["Oidc:Enabled"] = new("Oidc:Enabled", "bool", false),
             ["OpenApi:Enabled"] = new("OpenApi:Enabled", "bool", true),
+            ["OpenApi:Title"] = new("OpenApi:Title", "text", false, Max: 200),
+            ["OpenApi:Version"] = new("OpenApi:Version", "name", false),
+            ["OpenApi:Description"] = new("OpenApi:Description", "text", false, Max: 4_000),
+            ["OpenApi:Contact:Name"] = new("OpenApi:Contact:Name", "text", false, Max: 200),
+            ["OpenApi:Contact:Email"] = new("OpenApi:Contact:Email", "email", false),
+            ["OpenApi:ForceHttpsInProduction"] = new("OpenApi:ForceHttpsInProduction", "bool", false),
+            ["OpenApi:ShowNamespaces"] = new("OpenApi:ShowNamespaces", "bool", false),
+            ["OpenApi:DefaultGroup"] = new("OpenApi:DefaultGroup", "name", false),
+            ["OpenApi:ShowBadges"] = new("OpenApi:ShowBadges", "bool", false),
+            ["OpenApi:ServeMarkdown"] = new("OpenApi:ServeMarkdown", "bool", false),
+            ["OpenApi:ExternalDocs:Url"] = new("OpenApi:ExternalDocs:Url", "weburl", false),
+            ["OpenApi:ExternalDocs:Description"] = new("OpenApi:ExternalDocs:Description", "text", false, Max: 200),
+            ["OpenApi:SecurityDefinition:Description"] = new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),
+            ["OpenApi:Footer:Text"] = new("OpenApi:Footer:Text", "text", false, Max: 200),
+            ["OpenApi:Footer:Url"] = new("OpenApi:Footer:Url", "link", false),
+            ["OpenApi:Footer:Target"] = new("OpenApi:Footer:Target", "choice", false, Choices: ["_blank", "_self"]),
+            ["OpenApi:Footer:ShowSourceIcon"] = new("OpenApi:Footer:ShowSourceIcon", "bool", false),
+            ["OpenApi:ScalarTheme"] = new("OpenApi:ScalarTheme", "choice", false, Choices: ScalarThemes),
+            ["OpenApi:ScalarLayout"] = new("OpenApi:ScalarLayout", "choice", false, Choices: ["modern", "classic"]),
+            ["OpenApi:ScalarShowSidebar"] = new("OpenApi:ScalarShowSidebar", "bool", false),
+            ["OpenApi:ScalarHideDownloadButton"] = new("OpenApi:ScalarHideDownloadButton", "bool", false),
+            ["OpenApi:ScalarHideModels"] = new("OpenApi:ScalarHideModels", "bool", false),
+            ["OpenApi:ScalarHideClientButton"] = new("OpenApi:ScalarHideClientButton", "bool", false),
+            ["OpenApi:ScalarHideTestRequestButton"] = new("OpenApi:ScalarHideTestRequestButton", "bool", false),
             ["RequestTrafficLogging:Enabled"] = new("RequestTrafficLogging:Enabled", "bool", true),
+
+            ["Telemetry:Provider"] = new("Telemetry:Provider", "choice", true, Choices: ["None", "Otlp", "Prometheus"]),
+            ["Telemetry:Otlp:Endpoint"] = new("Telemetry:Otlp:Endpoint", "weburl", true),
+            ["Telemetry:ServiceName"] = new("Telemetry:ServiceName", "name", true),
 
             ["FileStorage:MaxFileSizeBytes"] = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
 
             // Deployment shape; the endpoint refuses changes that lock the caller out
-            ["WebUi:PublicOrigins"] = new("WebUi:PublicOrigins", "originlist", true, Max: 50),
+            ["Console:PublicOrigins"] = new("Console:PublicOrigins", "originlist", true, Max: 50),
             ["ForwardedHeaders:KnownProxies"] = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
             ["ForwardedHeaders:KnownNetworks"] = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
 
             // Write-only in the safe direction: the seeding key can be cleared, never set
-            ["WebUi:AdminApiKey"] = new("WebUi:AdminApiKey", "clear", true),
-            ["WebUi:Enabled"] = new("WebUi:Enabled", "bool", true),
+            ["Console:AdminApiKey"] = new("Console:AdminApiKey", "clear", true),
+            ["Console:Enabled"] = new("Console:Enabled", "bool", true),
         };
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);
+
+    private readonly IReadOnlyList<string> _envNames;
+
+    private readonly IConfigurationRoot? _root;
+
+    public SettingsWriteService(IConfiguration configuration)
+        : this([.. Environment.GetEnvironmentVariables().Keys.Cast<string>()], configuration as IConfigurationRoot) { }
+
+    internal SettingsWriteService(IReadOnlyList<string> envNames, IConfigurationRoot? root = null)
+    {
+        _envNames = envNames;
+        _root = root;
+    }
+
+    /// <summary>
+    /// Returns the name of the environment variable that sets the key, or null
+    /// </summary>
+    public string? LockedBy(string key) => PortwayApi.Helpers.EnvAliases.EnvNameFor(key, _envNames);
 
     public static IReadOnlyCollection<WritableSetting> Schema => Allowed.Values;
 
@@ -126,12 +179,23 @@ public sealed class SettingsWriteService
             if (!Allowed.TryGetValue(key, out var spec))
                 return new SettingsWriteResult(false, $"'{key}' is not a writable setting", key);
 
+            if (LockedBy(spec.Key) is { } envName)
+                return new SettingsWriteResult(false, $"'{spec.Key}' is set by {envName}", spec.Key);
+
             var (node, error) = Coerce(spec, raw);
             if (error is not null)
                 return new SettingsWriteResult(false, error, key);
 
             parsed[spec.Key] = node;
             restart |= spec.RequiresRestart;
+        }
+
+        // the legacy Enabled switch selects Otlp when no provider is set
+        if (parsed.ContainsKey("Telemetry:Provider"))
+        {
+            if (LockedBy("Telemetry:Enabled") is { } legacyEnv)
+                return new SettingsWriteResult(false, $"'Telemetry:Provider' is set by {legacyEnv}", "Telemetry:Provider");
+            parsed["Telemetry:Enabled"] = JsonValue.Create(false);
         }
 
         if (CrossCheck(parsed) is { } crossError)
@@ -143,6 +207,8 @@ public sealed class SettingsWriteService
             var root = await ReadOverridesAsync();
             foreach (var (key, node) in parsed) SetPath(root, key, node);
             await WriteOverridesAsync(root);
+            // file watchers miss in-place writes on a single-file bind mount
+            _root?.Reload();
         }
         catch (Exception ex)
         {
@@ -182,6 +248,23 @@ public sealed class SettingsWriteService
             ? (JsonValue.Create(""), null)
             : (null, $"'{spec.Key}' can only be cleared from here, not set"),
 
+        // identifiers that land in routes, tag names and the docs page; empty restores the default
+        "name" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || NameFormat.IsMatch(raw.GetString()!))
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' allows letters, digits, dots, dashes and underscores only"),
+
+        "link" => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' must be an http, https or mailto link, or #"),
+
+        "weburl" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || Uri.TryCreate(raw.GetString(), UriKind.Absolute, out var web) && web.Scheme is "http" or "https")
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' must be an http or https link, or empty"),
+
+        "email" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || IsEmail(raw.GetString()!))
+            ? (JsonValue.Create(raw.GetString()), null)
+            : (null, $"'{spec.Key}' must be an e-mail address"),
+
         "time" => raw.ValueKind == JsonValueKind.String && ScheduleFormat.IsMatch(raw.GetString() ?? "")
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be a 24-hour time such as 03:00"),
@@ -219,6 +302,16 @@ public sealed class SettingsWriteService
         return (items, null);
     }
 
+    /// <summary>
+    /// Link targets a page may render: http, https, mailto or a bare fragment
+    /// </summary>
+    public static bool IsSafeLink(string value) =>
+        value == "#" ||
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" or "mailto";
+
+    private static bool IsEmail(string value) =>
+        value.Length <= 254 && !value.Any(char.IsWhiteSpace) && System.Net.Mail.MailAddress.TryCreate(value, out var address) && address.Address == value;
+
     private static string? ParseIp(string value) =>
         IPAddress.TryParse(value, out _) ? null : $"'{value}' is not an IP address";
 
@@ -227,7 +320,7 @@ public sealed class SettingsWriteService
         if (!IPNetwork.TryParse(value, out var network))
             return $"'{value}' is not a network in CIDR form, such as 10.0.0.0/8";
 
-        // ponytail: refuses only a zero-length prefix, wide private ranges are the operator's call
+        // refuses only a zero-length prefix, wide private ranges are the operator's call
         if (network.PrefixLength == 0)
             return $"'{value}' covers every address; name the proxy's network instead";
 
@@ -304,12 +397,7 @@ public sealed class SettingsWriteService
     {
         ConfigBackupService.Backup(OverridesPath);
 
-        var json = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-        var temp = OverridesPath + ".tmp";
-        await File.WriteAllTextAsync(temp, json);
-
-        if (File.Exists(OverridesPath)) File.Replace(temp, OverridesPath, null);
-        else File.Move(temp, OverridesPath);
+        await AtomicFile.WriteAllTextAsync(OverridesPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
     /// <summary>

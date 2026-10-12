@@ -735,7 +735,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             };
 
             var json = JsonSerializer.Serialize(config, jsonOptions);
-            File.WriteAllText(settingsPath, json);
+            AtomicFile.WriteAllText(settingsPath, json);
             Log.Debug("Successfully saved encrypted configuration to {Path}", settingsPath);
         }
         catch (UnauthorizedAccessException ex)

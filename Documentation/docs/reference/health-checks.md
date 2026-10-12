@@ -109,38 +109,11 @@ Each component check, cached for 60 seconds. Requires a token.
 
 ### Database check
 
-SQL connectivity per environment:
-
-```json
-{
-  "name": "Database",
-  "status": "Healthy",
-  "description": "Database connection successful",
-  "duration": "45.23ms",
-  "data": {
-    "connectionString": "Configured",
-    "responseTime": "12ms"
-  }
-}
-```
-
-Reports connection availability, response time and authentication result.
+SQL connectivity per environment. Reports connection availability, response time and authentication result.
 
 ### Disk space check
 
 Free disk space:
-
-```json
-{
-  "name": "Diskspace",
-  "status": "Degraded",
-  "description": "Low disk space: 15% remaining",
-  "duration": "2.15ms",
-  "data": {
-    "percentFree": "15%"
-  }
-}
-```
 
 | Free space | Status |
 |---|---|
@@ -150,111 +123,20 @@ Free disk space:
 
 ### Proxy endpoints check
 
-Upstream reachability of proxy endpoints:
+Upstream reachability of proxy endpoints. All public proxy endpoints with GET are checked in parallel, with a 10-second timeout per endpoint. An upstream `401` counts as reachable.
 
-```json
-{
-  "name": "ProxyEndpoints",
-  "status": "Healthy",
-  "description": "All proxy services are responding",
-  "duration": "234.56ms",
-  "data": {
-    "Account": {
-      "Status": "Healthy",
-      "StatusCode": 200
-    },
-    "Products": {
-      "Status": "Unhealthy",
-      "Error": "Connection timeout"
-    }
-  }
-}
-```
+## Response headers
 
-All public proxy endpoints with GET are checked in parallel, with a 10-second timeout per endpoint. An upstream `401` counts as reachable.
-
-## Implementation details
-
-### Caching strategy
-
-Cache durations:
-
-| Endpoint | Cache duration |
-|----------|---------------|
-| `/health` | 15 seconds |
-| `/health/live` | 5 seconds |
-| `/health/details` | 60 seconds |
-
-### Response headers
-
-```http
-Cache-Control: public, max-age=15
-Expires: Sun, 20 Jan 2024 10:30:15 GMT
-```
-
-### Failure examples
-
-Database failure:
-
-```json
-{
-  "name": "Database",
-  "status": "Unhealthy",
-  "description": "Connection failed: Timeout",
-  "duration": "5000ms",
-  "data": {
-    "error": "SqlException: Connection timeout"
-  }
-}
-```
-
-Proxy failure:
-
-```json
-{
-  "name": "ProxyEndpoints",
-  "status": "Degraded",
-  "description": "Some services unavailable",
-  "data": {
-    "Account": {
-      "Status": "Healthy"
-    },
-    "Products": {
-      "Status": "Unhealthy",
-      "Error": "HTTP 503 Service Unavailable"
-    }
-  }
-}
-```
+Responses include `Cache-Control: public, max-age={cache duration}` and a matching `Expires` header.
 
 ## Load balancer configuration
 
-### IIS ARR
-
-```xml
-<configuration>
-  <system.webServer>
-    <rewrite>
-      <rules>
-        <rule name="Health Check">
-          <match url="^health/live$" />
-          <action type="Rewrite" url="http://backend/health/live" />
-        </rule>
-      </rules>
-    </rewrite>
-    <applicationRequestRouting>
-      <health checkUrl="http://backend/health/live" />
-    </applicationRequestRouting>
-  </system.webServer>
-</configuration>
-```
-
-### NGINX
+### NGINX Plus
 
 ```nginx
 upstream portway_api {
-    server backend1:5000;
-    server backend2:5000;
+    server backend1:8080;
+    server backend2:8080;
     
     # Health check configuration
     health_check uri=/health/live interval=5s;
@@ -275,8 +157,8 @@ backend portway_api
     option httpchk GET /health/live
     http-check expect status 200
     
-    server api1 10.0.1.10:5000 check inter 5s
-    server api2 10.0.1.11:5000 check inter 5s
+    server api1 10.0.1.10:8080 check inter 5s
+    server api2 10.0.1.11:8080 check inter 5s
 ```
 
 ## Kubernetes integration
@@ -296,7 +178,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /health/live
-            port: 5000
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
@@ -308,7 +190,7 @@ spec:
 readinessProbe:
   httpGet:
     path: /health
-    port: 5000
+    port: 8080
   initialDelaySeconds: 15
   periodSeconds: 20
   timeoutSeconds: 10
@@ -320,7 +202,7 @@ readinessProbe:
 startupProbe:
   httpGet:
     path: /health/live
-    port: 5000
+    port: 8080
   failureThreshold: 30
   periodSeconds: 10
 ```
@@ -331,28 +213,28 @@ startupProbe:
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 # Test basic health
-Invoke-WebRequest -Uri "http://localhost:5000/health"
+Invoke-WebRequest -Uri "http://localhost:8080/health"
 
 # Check liveness
-Invoke-WebRequest -Uri "http://localhost:5000/health/live"
+Invoke-WebRequest -Uri "http://localhost:8080/health/live"
 
 # Get detailed status
-$response = Invoke-WebRequest -Uri "http://localhost:5000/health/details" `
+$response = Invoke-WebRequest -Uri "http://localhost:8080/health/details" `
   -Headers @{"Authorization"="Bearer $token"}
 $response.Content | ConvertFrom-Json | Format-List
 ```
 
-```bash [Bash]
+```bash [Linux]
 # Test basic health
-curl http://localhost:5000/health
+curl http://localhost:8080/health
 
 # Check liveness
-curl http://localhost:5000/health/live
+curl http://localhost:8080/health/live
 
 # Get detailed status
-curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/health/details | jq .
+curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/health/details | jq .
 ```
 
 :::

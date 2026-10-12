@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Create necessary directories
-RUN mkdir -p /app/endpoints/SQL/Product && \
+RUN mkdir -p /app/endpoints && \
     mkdir -p /app/tokens && \
     mkdir -p /app/log && \
     mkdir -p /app/environments/prod
@@ -61,9 +61,6 @@ RUN sed -i 's/500/prod/g' /app/environments/prod/settings.json && \
     sed -i 's/500/prod/g' /app/environments/settings.json && \
     sed -i 's/, "700"//g' /app/environments/settings.json && \
     sed -i 's/, "Synergy"//g' /app/environments/settings.json
-
-# Add only SQL Product endpoint definitions
-COPY Source/PortwayApi/endpoints/SQL/Product/** /app/endpoints/SQL/Product/
 
 # Set proper permissions
 RUN chmod -R 755 /app

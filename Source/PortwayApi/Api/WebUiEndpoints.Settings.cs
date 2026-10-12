@@ -28,7 +28,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, HttpContext ctx) =>
+        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Configuration.SettingsWriteService writer, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, IOptionsMonitor<PortwayApi.Classes.OpenApi.OpenApiSettings> openApiMonitor, HttpContext ctx) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -40,16 +40,17 @@ public static partial class WebUiEndpointExtensions
                 }
             }
 
-            var adminKey = config.GetValue<string>("WebUi:AdminApiKey", "") ?? "";
+            var adminKey = config.GetValue<string>("Console:AdminApiKey", "") ?? "";
             var accountCount = await users.CountAsync();
-            var corsOriginsCount = config.GetSection("WebUi:CorsOrigins").Get<string[]>()?.Length ?? 0;
-            var publicOrigins = config.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
+            var corsOriginsCount = config.GetSection("Console:CorsOrigins").Get<string[]>()?.Length ?? 0;
+            var publicOrigins = config.GetSection("Console:PublicOrigins").Get<string[]>() ?? [];
             var knownProxies = config.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
             var knownNetworks = config.GetSection("ForwardedHeaders:KnownNetworks").Get<string[]>() ?? [];
             var trustedProxyCount = knownProxies.Length + knownNetworks.Length;
             var peerIp = ctx.Connection.RemoteIpAddress;
             var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy = !string.IsNullOrEmpty(forwardedFor);
+            var openApi = openApiMonitor.CurrentValue;
 
             return Results.Json(new
             {
@@ -58,13 +59,9 @@ public static partial class WebUiEndpointExtensions
                     enabled = config.GetValue<bool>("DatabaseMaintenance:Enabled", true),
                     schedule = config.GetValue<string>("DatabaseMaintenance:Schedule") ?? "03:00",
                     last_run_utc = dbMaintenance?.LastRunUtc,
-                    last_results = dbMaintenance?.LastRunResults.Select(r => new
-                    {
-                        database = r.Database,
-                        vacuumed = r.Vacuumed,
-                        reclaimed_bytes = r.BytesBefore - r.BytesAfter,
-                        skip_reason = r.SkipReason
-                    })
+                    last_results = dbMaintenance?.LastRunResults.Select(MaintenanceResultDto),
+                    backup_enabled = config.GetValue("DatabaseMaintenance:Backup:Enabled", true),
+                    backup_retention = config.GetValue("DatabaseMaintenance:Backup:Retention", 7)
                 },
                 security = new
                 {
@@ -73,7 +70,7 @@ public static partial class WebUiEndpointExtensions
                     // seeding key has no use after the first account
                     legacy_admin_key = !string.IsNullOrEmpty(adminKey),
                     https_enabled = ctx.Request.IsHttps,
-                    secure_cookies = config.GetValue<bool>("WebUi:SecureCookies", false),
+                    secure_cookies = config.GetValue<bool>("Console:SecureCookies", false),
                     cors_origins_count = corsOriginsCount,
                     public_origins_count = publicOrigins.Length,
                     trusted_proxies_configured = trustedProxyCount > 0,
@@ -96,14 +93,41 @@ public static partial class WebUiEndpointExtensions
                     oidc = config.GetValue("Oidc:Enabled", true),
                     openapi = config.GetValue("OpenApi:Enabled", true),
                     traffic_logging = config.GetValue("RequestTrafficLogging:Enabled", false),
-                    landing_page = config.GetValue("WebUi:Customization:EnableLandingPage", true),
+                    landing_page = config.GetValue("Console:Customization:EnableLandingPage", true),
                     oidc_providers = await db.OidcProviders.CountAsync(p => p.IsEnabled)
+                },
+                openapi = new
+                {
+                    title = openApi.Title,
+                    version = openApi.Version,
+                    description = openApi.Description,
+                    contact_name = openApi.Contact.Name,
+                    contact_email = openApi.Contact.Email,
+                    force_https = openApi.ForceHttpsInProduction,
+                    show_namespaces = openApi.ShowNamespaces,
+                    default_group = openApi.DefaultGroup,
+                    show_badges = openApi.ShowBadges,
+                    serve_markdown = openApi.ServeMarkdown,
+                    external_docs_url = openApi.ExternalDocs.Url,
+                    external_docs_description = openApi.ExternalDocs.Description,
+                    security_description = openApi.SecurityDefinition.Description,
+                    footer_text = openApi.Footer.Text,
+                    footer_url = openApi.Footer.Url,
+                    footer_target = openApi.Footer.Target,
+                    footer_source_icon = openApi.Footer.ShowSourceIcon,
+                    theme = openApi.ScalarTheme,
+                    layout = openApi.ScalarLayout,
+                    show_sidebar = openApi.ScalarShowSidebar,
+                    hide_download = openApi.ScalarHideDownloadButton,
+                    hide_models = openApi.ScalarHideModels,
+                    hide_client = openApi.ScalarHideClientButton,
+                    hide_test_request = openApi.ScalarHideTestRequestButton
                 },
                 customization = new
                 {
-                    promo_text = config.GetValue<string>("WebUi:Customization:PromoText") ?? "",
-                    promo_login = config.GetValue("WebUi:Customization:PromoLogin", false),
-                    login_footer = config.GetValue<string>("WebUi:Customization:LoginFooter") ?? ""
+                    promo_text = config.GetValue<string>("Console:Customization:PromoText") ?? "",
+                    promo_login = config.GetValue("Console:Customization:PromoLogin", false),
+                    login_footer = config.GetValue<string>("Console:Customization:LoginFooter") ?? ""
                 },
                 rate_limiting = new
                 {
@@ -150,19 +174,16 @@ public static partial class WebUiEndpointExtensions
                 },
                 telemetry = new
                 {
-                    provider = telemetry.EffectiveProvider.ToString(),
-                    service_name = telemetry.ServiceName ?? Services.Telemetry.PortwayTelemetry.ServiceName,
-                    otlp_endpoint = telemetry.EffectiveProvider == Services.Telemetry.TelemetryProvider.Otlp
-                                    ? telemetry.EffectiveOtlpEndpoint : null,
+                    provider = config["Telemetry:Provider"] is { Length: > 0 } provider ? provider : telemetry.EffectiveProvider.ToString(),
+                    service_name = config["Telemetry:ServiceName"] ?? "",
+                    otlp_endpoint = config["Telemetry:Otlp:Endpoint"] ?? "",
                     prometheus_path = telemetry.ActiveMetricsPath
                 },
                 mcp = new
                 {
                     enabled = config.GetValue<bool>("Mcp:Enabled"),
                     path = config.GetValue<string>("Mcp:Path") ?? "/mcp",
-                    require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication"),
-                    apps_enabled = config.GetValue<bool>("Mcp:AppsEnabled", true),
-                    apps_path = "/mcp/apps"
+                    require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication")
                 },
                 chat = new
                 {
@@ -179,7 +200,8 @@ public static partial class WebUiEndpointExtensions
                     requires_restart = w.RequiresRestart,
                     min = w.Min,
                     max = w.Max,
-                    choices = w.Choices
+                    choices = w.Choices,
+                    env = writer.LockedBy(w.Key)
                 })
             });
         }).ExcludeFromDescription();
@@ -208,6 +230,10 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Too many settings in one request" }, statusCode: 400);
 
             // refuse a change that would lock the caller out of the console
+            // older clients send WebUi keys
+            changes = changes.GroupBy(c => PortwayApi.Services.Configuration.ConsoleSectionAlias.Canonical(c.Key), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
+
             if (WouldLockCallerOut(ctx, config, urlValidator, changes) is { } lockout)
                 return Results.Json(new { error = lockout.Message, field = lockout.Field }, statusCode: 400);
 
@@ -244,20 +270,19 @@ public static partial class WebUiEndpointExtensions
             var provider = body?["provider"]?.GetValue<string>();
             var model = body?["model"]?.GetValue<string>();
             var apiKey = body?["apiKey"]?.GetValue<string>();
-            var internalApiToken = body?["internalApiToken"]?.GetValue<string>();
 
             if (provider is not null && string.IsNullOrWhiteSpace(provider))
                 return Results.BadRequest(new { error = "provider cannot be blank" });
             if (apiKey is not null && string.IsNullOrWhiteSpace(apiKey))
                 return Results.BadRequest(new { error = "apiKey cannot be blank" });
 
-            await mcpConfig.SaveConfigAsync(provider, model, apiKey, internalApiToken);
+            await mcpConfig.SaveConfigAsync(provider, model, apiKey);
             Audit(request.HttpContext, "update", "mcp-config", "chat configuration",
                 provider is not null ? $"provider={provider}" : null);
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        // clears provider, model, key and token
+        // clears provider, model and key
         app.MapDelete("/ui/api/mcp/config", async (
             HttpContext context,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig,
@@ -289,13 +314,13 @@ public static partial class WebUiEndpointExtensions
                      .ToArray()
                 : current;
 
-        var touchesOrigins = changes.ContainsKey("WebUi:PublicOrigins");
+        var touchesOrigins = changes.ContainsKey("Console:PublicOrigins");
         var touchesProxies = changes.ContainsKey("ForwardedHeaders:KnownProxies")
                           || changes.ContainsKey("ForwardedHeaders:KnownNetworks");
         if (!touchesOrigins && !touchesProxies) return null;
 
-        var origins = Strings("WebUi:PublicOrigins",
-            config.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? []);
+        var origins = Strings("Console:PublicOrigins",
+            config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
 
         if (origins.Length > 0 && IsPublicOriginAllowed(ctx.Request, origins))
             return null;
@@ -304,7 +329,7 @@ public static partial class WebUiEndpointExtensions
         if (clientIp is not null && urlValidator.IsClientIpAllowed(clientIp))
             return null;
 
-        var field = touchesOrigins ? "WebUi:PublicOrigins" : "ForwardedHeaders:KnownProxies";
+        var field = touchesOrigins ? "Console:PublicOrigins" : "ForwardedHeaders:KnownProxies";
         return ($"This change would refuse your own requests to the console (seen as {clientIp?.ToString() ?? "an unknown address"}). " +
                 "Keep an entry that covers you.", field);
     }
@@ -335,7 +360,7 @@ public static partial class WebUiEndpointExtensions
 
         if (!trusted) return peer;
 
-        // ponytail: first hop only, wrong for partially trusted multi-proxy chains
+        // first hop only, wrong for partially trusted multi-proxy chains
         var forwarded = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault();
         if (string.IsNullOrEmpty(forwarded)) return peer;
 

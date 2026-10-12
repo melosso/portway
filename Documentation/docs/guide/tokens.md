@@ -13,7 +13,7 @@ The first start writes a full-access token (`*` scopes, `*` environments) to `to
 
 ## Creating a token
 
-The create drawer opens from **Access Tokens → New Token**:
+Fields in **Access Tokens → New token**:
 
 | Field | Required | Description |
 |---|---|---|
@@ -41,7 +41,11 @@ A token reaches an endpoint when the endpoint matches its scopes and the environ
 | `Product*` | Endpoints starting with `Product` |
 | `Company/Employees` | Namespaced endpoint |
 | `Company/*` | All endpoints in the `Company` namespace |
-| `GET:Products` | `Products`, GET only |
+| `Inventory/Products@v2` | Version 2 of `Inventory/Products` ([Versions](/reference/namespaces#versions)) |
+| `Inventory/Products*` | Every version of `Inventory/Products` |
+| `files/Images` | File endpoint `Images`; `files` grants every file endpoint |
+
+Scopes are validated on create and update: `*`, or an endpoint key of letters, digits, `_`, `.` and `-` segments, with an optional `@v{n}` version and a trailing `*`.
 
 ### Environment scopes
 
@@ -54,17 +58,16 @@ A token reaches an endpoint when the endpoint matches its scopes and the environ
 
 ### Tenant scopes
 
-The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. The token drawer lists one row per header with comma-separated values. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/tenant-headers).
+The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/tenant-headers).
 
 ### Common configurations
 
 | Scenario | Scopes | Environments |
 |---|---|---|
 | Full access | `*` | `*` |
-| Read-only reporting | `GET:*` | `prod` |
 | Single integration (Globe+) | `Company/*` | `500,700` |
 | Development | `*` | `dev,test` |
-| Webhook ingestion | `webhooks/*` | `*` |
+| Webhook ingestion | `Webhooks/*` | `*` |
 
 ## Rotating a token
 

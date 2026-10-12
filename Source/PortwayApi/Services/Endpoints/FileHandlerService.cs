@@ -14,13 +14,14 @@ public class FileHandlerService : IDisposable
 {
     private readonly IOptionsMonitor<FileStorageOptions> _optionsMonitor;
     private readonly CacheManager _cacheManager;
-    private readonly ConcurrentDictionary<string, MemoryStream> _memoryCache = new();
+    private readonly ConcurrentDictionary<string, byte[]> _memoryCache = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastAccessTimes = new();
     private readonly Timer _evictTimer;
     private readonly Timer _indexRefreshTimer;
     private readonly FileSystemIndex _fileSystemIndex;
     private readonly Serilog.ILogger _logger;
     private long _currentMemoryUsage = 0;
+    private long _writeGeneration;
     private int _evictRunning;
     private int _refreshRunning;
     private bool _disposed = false;
@@ -33,7 +34,7 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Bytes actually resident in the memory cache, used to assert the counter has not drifted
     /// </summary>
-    internal long MeasuredMemoryUsage => _memoryCache.Values.Sum(s => s.Length);
+    internal long MeasuredMemoryUsage => _memoryCache.Values.Sum(b => (long)b.Length);
 
     public FileHandlerService(IOptionsMonitor<FileStorageOptions> optionsMonitor, CacheManager cacheManager, Serilog.ILogger logger)
     {
@@ -103,7 +104,7 @@ public class FileHandlerService : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
 
         await WriteDurablyAsync(filePath, fileStream, overwrite, safeFilename);
-        await EvictAsync(fileId);
+        InvalidateCached(fileId);
 
         Log.Debug("File {Filename} written to {FilePath}", safeFilename, filePath);
 
@@ -135,21 +136,14 @@ public class FileHandlerService : IDisposable
         fileId = GenerateFileId(environment, filename);
 
         // Check if file exists in memory cache
-        if (_memoryCache.TryGetValue(fileId, out var cachedStream))
+        if (_memoryCache.TryGetValue(fileId, out var cached))
         {
-            // Update last access time
             _lastAccessTimes[fileId] = DateTime.UtcNow;
-
-            // Return a copy of the stream to avoid modification of the cached stream
-            var streamCopy = new MemoryStream();
-            cachedStream.Position = 0;
-            await cachedStream.CopyToAsync(streamCopy);
-            streamCopy.Position = 0;
-
             Log.Debug("File {Filename} retrieved from memory cache with ID {FileId}", filename, fileId);
-
-            return (streamCopy, filename, GetContentType(filename));
+            return (new MemoryStream(cached, writable: false), filename, GetContentType(filename));
         }
+
+        var generation = Interlocked.Read(ref _writeGeneration);
 
         string filePath = DiskPath(environment, filename);
 
@@ -168,7 +162,7 @@ public class FileHandlerService : IDisposable
         fileStream.Position = 0;
 
         if (_optionsMonitor.CurrentValue.UseMemoryCache && fileStream.Length <= _optionsMonitor.CurrentValue.MaxFileSizeBytes)
-            await CacheAsync(fileId, fileStream.ToArray());
+            Cache(fileId, fileStream.ToArray(), generation);
 
         Log.Debug("File {Filename} retrieved from disk with ID {FileId}", filename, fileId);
 
@@ -189,8 +183,6 @@ public class FileHandlerService : IDisposable
         var (environment, filename) = ResolveFileId(fileId, expectedEnvironment, folder);
         fileId = GenerateFileId(environment, filename);
 
-        await EvictAsync(fileId);
-
         string filePath = DiskPath(environment, filename);
 
         if (File.Exists(filePath))
@@ -198,6 +190,8 @@ public class FileHandlerService : IDisposable
             File.Delete(filePath);
             Log.Debug("File {Filename} deleted from disk at {FilePath}", filename, filePath);
         }
+
+        InvalidateCached(fileId);
 
         if (!Path.IsPathRooted(filename))
             await _fileSystemIndex.UpdateIndexAsync(environment, filename, isDeleted: true);
@@ -279,7 +273,7 @@ public class FileHandlerService : IDisposable
 
         await WriteDurablyAsync(fullPath, fileStream, overwrite, sanitizedFileName);
         string fileId = GenerateFileId(environment, fullPath);
-        await EvictAsync(fileId);
+        InvalidateCached(fileId);
 
         Log.Debug("File saved to absolute path: {Path}", fullPath);
         return fileId;
@@ -323,7 +317,7 @@ public class FileHandlerService : IDisposable
                 .Select(kv => kv.Key)
                 .ToList();
             foreach (var fileId in expired)
-                await EvictAsync(fileId);
+                Evict(fileId);
         }
         catch (Exception ex)
         {
@@ -338,34 +332,39 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Evicts least recently read files until at least bytesToFree bytes are released
     /// </summary>
-    private async Task EvictOldestAsync(long bytesToFree)
+    private void EvictOldest(long bytesToFree)
     {
         var freed = 0L;
         foreach (var fileId in _lastAccessTimes.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToList())
         {
             if (freed >= bytesToFree)
                 break;
-            if (_memoryCache.TryGetValue(fileId, out var stream))
-                freed += stream.Length;
-            await EvictAsync(fileId);
+            if (_memoryCache.TryGetValue(fileId, out var content))
+                freed += content.Length;
+            Evict(fileId);
         }
     }
 
     /// <summary>
-    /// Adds a file to the memory cache when no copy is cached
+    /// Adds a file read at the given write generation; skipped when an upload or delete ran during the read
     /// </summary>
-    private async Task CacheAsync(string fileId, byte[] content)
+    private void Cache(string fileId, byte[] content, long generation)
     {
+        if (Interlocked.Read(ref _writeGeneration) != generation)
+            return;
+
         var memoryBudget = _optionsMonitor.CurrentValue.MaxTotalMemoryCacheMB * 1024L * 1024L;
         var projectedUsage = CurrentMemoryUsage + content.Length;
         if (projectedUsage > memoryBudget)
-            await EvictOldestAsync(projectedUsage - memoryBudget);
+            EvictOldest(projectedUsage - memoryBudget);
 
-        var stream = new MemoryStream(content, writable: false);
-        if (_memoryCache.TryAdd(fileId, stream))
+        if (_memoryCache.TryAdd(fileId, content))
         {
-            Interlocked.Add(ref _currentMemoryUsage, stream.Length);
+            Interlocked.Add(ref _currentMemoryUsage, content.Length);
             _lastAccessTimes[fileId] = DateTime.UtcNow;
+            // a write between the generation check and the add would otherwise leave stale bytes cached
+            if (Interlocked.Read(ref _writeGeneration) != generation)
+                Evict(fileId);
         }
     }
 
@@ -460,14 +459,21 @@ public class FileHandlerService : IDisposable
     /// <summary>
     /// Removes the cached copy of a file
     /// </summary>
-    private async Task EvictAsync(string fileId)
+    private void Evict(string fileId)
     {
         _lastAccessTimes.TryRemove(fileId, out _);
-        if (_memoryCache.TryRemove(fileId, out var stream))
-        {
-            Interlocked.Add(ref _currentMemoryUsage, -stream.Length);
-            await stream.DisposeAsync();
-        }
+        if (_memoryCache.TryRemove(fileId, out var content))
+            Interlocked.Add(ref _currentMemoryUsage, -content.Length);
+    }
+
+    /// <summary>
+    /// Drops the cached copy after a write on disk and stops in-flight reads from caching older bytes
+    /// </summary>
+    private void InvalidateCached(string fileId)
+    {
+        // ponytail: one global generation, a write anywhere skips caching for reads in flight, per-file counters if write-heavy
+        Interlocked.Increment(ref _writeGeneration);
+        Evict(fileId);
     }
 
     /// <summary>
@@ -676,12 +682,6 @@ public class FileHandlerService : IDisposable
         {
             _evictTimer?.Dispose();
             _indexRefreshTimer?.Dispose();
-
-            // Dispose all memory streams
-            foreach (var stream in _memoryCache.Values)
-            {
-                stream.Dispose();
-            }
 
             _memoryCache.Clear();
             _lastAccessTimes.Clear();

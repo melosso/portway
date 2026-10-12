@@ -147,6 +147,23 @@ public sealed class TenancyEndpointTests : ApiTestBase, IDisposable
     private static StringContent Json(object value) => new(JsonSerializer.Serialize(value), Encoding.UTF8, "application/json");
 
     [Fact]
+    public async Task ClientDisconnect_CancelsQuery()
+    {
+        using var aborted = new CancellationTokenSource();
+        await aborted.CancelAsync();
+
+        var context = await _factory.Server.SendAsync(ctx =>
+        {
+            ctx.Request.Method = "GET";
+            ctx.Request.Path = Orders;
+            ctx.Request.Headers.Authorization = "Bearer acme-token";
+            ctx.RequestAborted = aborted.Token;
+        }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(499, context.Response.StatusCode);
+    }
+
+    [Fact]
     public async Task TokenWithoutTenantsRefused() =>
         Assert.Equal(HttpStatusCode.Forbidden, (await Send(HttpMethod.Get, Orders, "test-token", "ACME")).StatusCode);
 
@@ -298,7 +315,7 @@ public sealed class TenancyEndpointTests : ApiTestBase, IDisposable
     [Fact]
     public async Task DocumentListsTenantHeader()
     {
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var paths = json.RootElement.GetProperty("paths");

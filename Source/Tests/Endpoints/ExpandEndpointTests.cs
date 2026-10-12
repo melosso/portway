@@ -42,7 +42,7 @@ public class ExpandEndpointTests : ApiTestBase
     public async Task Proxy_Expand_PassesThrough_NotBadRequest()
     {
         // Proxy $expand belongs to the upstream; anything but 400 passes
-        var response = await _client.GetAsync("/api/500/Account/Accounts?$expand=Lines", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/api/500/CRM/Accounts?$expand=Lines", TestContext.Current.CancellationToken);
 
         Assert.NotEqual(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);

@@ -7,7 +7,7 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// MERGE partial updates against WMS/Bins, WMS/Warehouses and Account/Accounts
+/// MERGE partial updates against WMS/Bins, WMS/Warehouses and CRM/Accounts
 /// </summary>
 public class MergeEndpointTests : ApiTestBase
 {
@@ -47,7 +47,7 @@ public class MergeEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.SendAsync(Merge("/api/500/Account/Accounts"), TestContext.Current.CancellationToken);
+        var response = await _client.SendAsync(Merge("/api/500/CRM/Accounts"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
@@ -58,7 +58,7 @@ public class MergeEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("WMS");
 
-        var response = await _client.GetAsync("/docs/openapi/v1/openapi.json", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/docs/openapi.json", TestContext.Current.CancellationToken);
         using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         var pathItem = doc.RootElement.GetProperty("paths").GetProperty("/api/{env}/WMS/Bins");

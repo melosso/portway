@@ -27,49 +27,21 @@ A `401` means the token could not be verified. The header format:
 Authorization: Bearer YOUR_TOKEN
 ```
 
-Check under **Access Tokens** that the token exists and is neither expired nor archived. Failures from one integration point to an outdated token in that deployment; failures across many clients point to a gateway change.
+Check under **Access Tokens** that the token exists and is neither expired nor archived. Failures from one integration indicate an outdated token in that deployment. Failures across many clients indicate a gateway change.
 
-A `403` means the token is valid but its scopes, environments or tenants exclude the request. The token file (present until the token is archived) lists its scopes and environments:
-
-::: code-group
-
-```powershell [PowerShell]
-Get-Content ".\tokens\username.txt" | ConvertFrom-Json | Format-List
-```
-
-```bash [Bash]
-cat ./tokens/username.txt | jq .
-```
-
-:::
-
-Compare them with the endpoint's `AllowedEnvironments` and the token scope patterns in [Access Tokens](/guide/tokens#scoping-tokens).
+A `403` means the token is valid but its scopes, environments or tenants exclude the request. Compare the token's scopes and environments under **Access Tokens** with the endpoint's `AllowedEnvironments` and the [scope patterns](/guide/tokens#scoping-tokens).
 
 ## Rate limiting
-
-Current limits:
-
-```json
-{
-  "RateLimiting": {
-    "Enabled": true,
-    "IpLimit": 100,
-    "IpWindow": 60,
-    "TokenLimit": 1000,
-    "TokenWindow": 60
-  }
-}
-```
 
 Rate limit events in the log:
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 Select-String -Path ".\log\*.log" -Pattern "Rate limit" | Select-Object -Last 20
 ```
 
-```bash [Bash]
+```bash [Linux]
 grep -h "Rate limit" ./log/*.log | tail -n 20
 ```
 
@@ -79,11 +51,15 @@ A single client or IP address hitting the limit needs backoff in its retry logic
 
 ::: code-group
 
+```bash [Linux]
+sudo systemctl restart portway
+```
+
 ```bash [Docker]
 docker compose restart portway
 ```
 
-```powershell [IIS]
+```powershell [Windows]
 Restart-WebAppPool -Name "PortwayAppPool"
 ```
 
@@ -91,19 +67,13 @@ Restart-WebAppPool -Name "PortwayAppPool"
 
 ## Database connections
 
-SQL endpoints return `500` when the database is unreachable. Connection string example:
-
-```json
-{
-  "ConnectionString": "Server=YOUR_SERVER;Database=500;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;"
-}
-```
+SQL endpoints return `500` when the database is unreachable.
 
 Connectivity test from the gateway host:
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 $conn = New-Object System.Data.SqlClient.SqlConnection
 $conn.ConnectionString = "Server=YOUR_SERVER;Database=500;Trusted_Connection=True;"
 try {
@@ -116,7 +86,7 @@ try {
 }
 ```
 
-```bash [Bash]
+```bash [Linux]
 sqlcmd -S YOUR_SERVER -d 500 -Q "SELECT 1" && echo "Connection successful"
 ```
 
@@ -130,11 +100,11 @@ Unreachable upstreams return timeouts, "Error processing endpoint" or `503`. Dir
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 Invoke-WebRequest -Uri "http://localhost:8020/services/Exact.Entity.REST.EG/Account" -UseDefaultCredentials
 ```
 
-```bash [Bash]
+```bash [Linux]
 curl -I http://localhost:8020/services/Exact.Entity.REST.EG/Account
 ```
 
@@ -152,14 +122,14 @@ Low disk space reports `Unhealthy` and eventually stops log writes:
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 Get-PSDrive -PSProvider FileSystem
 Get-ChildItem ".\log" -Recurse -File |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item -Force
 ```
 
-```bash [Bash]
+```bash [Linux]
 df -h
 find ./log -type f -mtime +30 -delete
 ```
@@ -179,7 +149,7 @@ Traffic log rotation:
 
 ## Performance
 
-Durations above `1000ms` point to the database, the network or the host. With SQLite traffic logging:
+Durations above `1000ms` indicate a database, network or host problem. With SQLite traffic logging:
 
 ```sql
 SELECT Path, QueryString, DurationMs, StatusCode
@@ -187,20 +157,6 @@ FROM TrafficLogs
 WHERE DurationMs > 1000
 ORDER BY DurationMs DESC
 LIMIT 20;
-```
-
-Error rate per endpoint:
-
-```sql
-SELECT EndpointName,
-       COUNT(CASE WHEN StatusCode >= 400 THEN 1 END) AS Errors,
-       COUNT(*) AS TotalRequests,
-       ROUND(CAST(COUNT(CASE WHEN StatusCode >= 400 THEN 1 END) AS FLOAT) / COUNT(*) * 100, 2) AS ErrorRate
-FROM TrafficLogs
-WHERE Timestamp > datetime('now', '-24 hours')
-GROUP BY EndpointName
-HAVING Errors > 0
-ORDER BY ErrorRate DESC;
 ```
 
 ## Logs
@@ -212,76 +168,29 @@ ORDER BY ErrorRate DESC;
 | Traffic (SQLite) | `./log/traffic_logs.db` | Queryable per-request metadata |
 | Authentication | `./auth.db` | Tokens, accounts and audits |
 
-Recent errors, most frequent errors and a live tail:
+Recent errors and a live tail:
 
 ::: code-group
 
-```powershell [PowerShell]
-Get-ChildItem ".\log\*.log" |
-    Where-Object { $_.LastWriteTime -gt (Get-Date).AddHours(-1) } |
-    Select-String -Pattern "ERROR|EXCEPTION"
-
-Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" |
-    Select-String -Pattern "ERROR.*?:" |
-    Group-Object -Property Line |
-    Sort-Object Count -Descending |
-    Select-Object Count, Name -First 10
-
+```powershell [Windows]
+Select-String -Path ".\log\*.log" -Pattern "\[ERR\]|\[FTL\]" | Select-Object -Last 50
 Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" -Wait -Tail 50
 ```
 
-```bash [Bash]
-find ./log -name "*.log" -mmin -60 -exec grep -HnE "ERROR|EXCEPTION" {} +
-
-grep -oE "ERROR[^:]*:" "./log/portwayapi-$(date +%Y%m%d).log" |
-    sort | uniq -c | sort -rn | head -n 10
-
+```bash [Linux]
+grep -hE "\[ERR\]|\[FTL\]" ./log/*.log | tail -n 50
 tail -n 50 -f "./log/portwayapi-$(date +%Y%m%d).log"
 ```
 
 :::
 
-Active tokens in `auth.db`:
-
-```sql
-SELECT Id, Username, CreatedAt, ExpiresAt, AllowedScopes, AllowedEnvironments, AllowedTenants
-FROM Tokens
-WHERE RevokedAt IS NULL
-ORDER BY CreatedAt DESC;
-```
-
 Log message patterns:
 
 ```text
-[INF] Rate limit enforced for {Identifier}
-[WRN] Tokens detected in the tokens directory. Relocate them to a secure location
-[ERR] Error processing endpoint {EndpointName}
+[WRN] Rate limit enforced for {Identifier}, retry after {Seconds}s (at {Time})
+[WRN] Tokens detected in the tokens directory; relocate them to a secure location
 [DBG] SQL Query Request: {Url}
 ```
-
-## Network checks
-
-::: code-group
-
-```powershell [PowerShell]
-Test-NetConnection -ComputerName "YOUR_SERVER" -Port 1433
-
-Invoke-WebRequest -Uri "http://localhost:8020/services/Exact.Entity.REST.EG/Account" `
-    -UseDefaultCredentials -Method Head
-
-Get-NetTCPConnection -State Listen |
-    Where-Object { $_.LocalPort -in @(80, 443, 8080) }
-```
-
-```bash [Bash]
-nc -zv YOUR_SERVER 1433
-
-curl -I http://localhost:8020/services/Exact.Entity.REST.EG/Account
-
-ss -tlnp | grep -E ':(80|443|8080)\b'
-```
-
-:::
 
 ## Application not starting
 
@@ -289,15 +198,19 @@ Host state and startup output:
 
 ::: code-group
 
+```bash [Linux]
+systemctl status portway
+journalctl -u portway -n 100
+```
+
 ```bash [Docker]
 docker compose ps
 docker compose logs --tail=100 portway
 ```
 
-```powershell [IIS]
+```powershell [Windows]
 Get-EventLog -LogName Application -Source "IIS*" -Newest 20
 Get-WebAppPoolState -Name "PortwayAppPool"
-Restart-WebAppPool -Name "PortwayAppPool"
 ```
 
 :::
@@ -306,61 +219,12 @@ Startup errors in the application log:
 
 ::: code-group
 
-```bash [Docker]
-grep -E "Application start|FATAL|ERROR" ./log/portwayapi-*.log | head -50
+```bash [Linux]
+grep -hE "\[ERR\]|\[FTL\]" ./log/portwayapi-*.log | head -50
 ```
 
-```powershell [IIS]
-Get-Content ".\log\portwayapi-$(Get-Date -Format 'yyyyMMdd').log" |
-    Select-String -Pattern "Application start|FATAL|ERROR" |
-    Select-Object -First 50
-```
-
-:::
-
-## Resetting application state
-
-::: danger
-Back up first. A reset clears all logs.
-:::
-
-Backup:
-
-::: code-group
-
-```bash [Docker]
-backup="./backup_$(date +%Y%m%d_%H%M%S)"
-mkdir -p "$backup"
-cp -r ./tokens ./environments ./endpoints ./log "$backup"/
-docker compose cp portway:/app/auth.db "$backup"/
-```
-
-```powershell [IIS]
-$backupDir = ".\backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-New-Item -ItemType Directory -Path $backupDir
-
-Copy-Item ".\tokens\*" "$backupDir\tokens\" -Recurse
-Copy-Item ".\auth.db" "$backupDir\"
-Copy-Item ".\environments\*" "$backupDir\environments\" -Recurse
-Copy-Item ".\endpoints\*" "$backupDir\endpoints\" -Recurse
-```
-
-:::
-
-Reset:
-
-::: code-group
-
-```bash [Docker]
-docker compose stop portway
-rm -rf ./log/*
-docker compose start portway
-```
-
-```powershell [IIS]
-iisreset /stop
-Remove-Item ".\log\*" -Recurse -Force
-iisreset /start
+```powershell [Windows]
+Select-String -Path ".\log\portwayapi-*.log" -Pattern "\[ERR\]|\[FTL\]" | Select-Object -First 50
 ```
 
 :::

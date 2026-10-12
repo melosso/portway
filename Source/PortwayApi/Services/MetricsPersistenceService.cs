@@ -14,7 +14,8 @@ public sealed class MetricsPersistenceService : BackgroundService
     private readonly string _connectionString;
 
     // Dapper row shape for hydration, SQLite INTEGER surfaces as Int64 so StatusCode is long
-    private sealed record MetricRow(string Timestamp, long StatusCode, string Method, string? Source, string? Endpoint);
+    private sealed record MetricRow(string Timestamp, long StatusCode, string Method, string? Source, string? Endpoint,
+        string? Environment, string? Version, long? DurationMs);
 
     private const int BatchSize = 50;
     private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(2);
@@ -70,6 +71,9 @@ public sealed class MetricsPersistenceService : BackgroundService
         {
             ("Source", "ALTER TABLE RequestMetrics ADD COLUMN Source TEXT NOT NULL DEFAULT 'api'"),
             ("Endpoint", "ALTER TABLE RequestMetrics ADD COLUMN Endpoint TEXT NOT NULL DEFAULT ''"),
+            ("Environment", "ALTER TABLE RequestMetrics ADD COLUMN Environment TEXT NOT NULL DEFAULT ''"),
+            ("Version", "ALTER TABLE RequestMetrics ADD COLUMN Version TEXT NOT NULL DEFAULT ''"),
+            ("DurationMs", "ALTER TABLE RequestMetrics ADD COLUMN DurationMs INTEGER NULL"),
         };
 
         foreach (var (column, alterSql) in migrations)
@@ -95,14 +99,15 @@ public sealed class MetricsPersistenceService : BackgroundService
         await conn.OpenAsync(ct);
 
         var rows = await conn.QueryAsync<MetricRow>(new CommandDefinition(
-            "SELECT Timestamp, StatusCode, Method, Source, Endpoint FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp",
+            "SELECT Timestamp, StatusCode, Method, Source, Endpoint, Environment, Version, DurationMs FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp",
             new { cutoff }, cancellationToken: ct));
 
         foreach (var row in rows)
         {
             if (DateTime.TryParse(row.Timestamp, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ts))
                 entries.Add(new MetricsService.RequestEntry(
-                    ts, (int)row.StatusCode, row.Method, row.Source ?? "api", row.Endpoint ?? ""));
+                    ts, (int)row.StatusCode, row.Method, row.Source ?? "api", row.Endpoint ?? "",
+                    row.Environment ?? "", row.Version ?? "", (int?)row.DurationMs));
         }
 
         if (entries.Count > 0)
@@ -152,14 +157,17 @@ public sealed class MetricsPersistenceService : BackgroundService
 
             // Dapper executes the insert once per element of the sequence
             await conn.ExecuteAsync(new CommandDefinition(
-                "INSERT INTO RequestMetrics (Timestamp, StatusCode, Method, Source, Endpoint) VALUES (@ts, @sc, @m, @src, @ep)",
-                batch.Select(e => new
+                "INSERT INTO RequestMetrics (Timestamp, StatusCode, Method, Source, Endpoint, Environment, Version, DurationMs) VALUES (@ts, @sc, @m, @src, @ep, @env, @ver, @ms)",
+                batch.Where(e => e.Timestamp >= _metrics.ClearedAt).Select(e => new
                 {
-                    ts = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ssZ"),
+                    ts = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ"),
                     sc = e.StatusCode,
                     m = e.Method,
                     src = e.Source,
-                    ep = e.Endpoint
+                    ep = e.Endpoint,
+                    env = e.Environment,
+                    ver = e.Version,
+                    ms = e.DurationMs
                 }),
                 transaction: tx, cancellationToken: ct));
 
@@ -169,6 +177,14 @@ public sealed class MetricsPersistenceService : BackgroundService
         {
             Log.Error(ex, "MetricsPersistenceService: error writing batch of {Count}", batch.Count);
         }
+    }
+
+    public async Task ClearAsync(DateTime before, CancellationToken ct = default)
+    {
+        await using var conn = new SqliteConnection(_connectionString);
+        await conn.OpenAsync(ct);
+        await conn.ExecuteAsync(new CommandDefinition("DELETE FROM RequestMetrics WHERE Timestamp < @before",
+            new { before = before.ToString("yyyy-MM-ddTHH:mm:ss.fffffffZ") }, cancellationToken: ct));
     }
 
     private async Task PruneOldRowsAsync(CancellationToken ct = default)

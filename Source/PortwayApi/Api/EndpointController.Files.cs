@@ -30,11 +30,13 @@ public partial class EndpointController
     /// Handle file uploads
     /// </summary>
     [HttpPost("{env}/files/{**catchall}")]
+    [HttpPost("{env}/{version:apiversion}/files/{**catchall}")]
     public async Task<IActionResult> UploadFileAsync(
         string env,
         string catchall,
         [FromForm] IFormFile file,
-        [FromQuery] bool overwrite = false)
+        [FromQuery] bool overwrite = false,
+        string? version = null)
     {
         try
         {
@@ -81,6 +83,8 @@ public partial class EndpointController
             {
                 endpointName = segments[0];
             }
+
+            endpointName += EndpointVersion.Suffix(version);
 
             // Check if this endpoint exists
             if (TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint) is { } resolveError)
@@ -164,7 +168,7 @@ public partial class EndpointController
 
             // Return success with file info; preserve namespace in the download URL so it round-trips
             var fileEndpointPath = !string.IsNullOrEmpty(namespaceName) ? $"{namespaceName}/{endpointName}" : endpointName;
-            var fileUrl = $"/api/{env}/files/{fileEndpointPath}/{fileId}";
+            var fileUrl = $"/api/{env}/{EndpointVersion.FileRoutePath(fileEndpointPath)}/{fileId}";
             return PortwayResults.FileCreate(fileUrl, fileId, filename, file.ContentType, file.Length, fileUrl);
         }
         catch (ArgumentException ex)
@@ -185,14 +189,17 @@ public partial class EndpointController
     /// Handle file downloads
     /// </summary>
     [HttpGet("{env}/files/{**catchall}")]
+    [HttpGet("{env}/{version:apiversion}/files/{**catchall}")]
     public async Task<IActionResult> DownloadFileAsync(
         string env,
-        string catchall)
+        string catchall,
+        string? version = null)
     {
         try
         {
             // Extract the namespace, endpoint name, and file ID from the catchall
             var (namespaceName, endpointName, fileId) = ParseFileEndpointPath(catchall);
+            endpointName += EndpointVersion.Suffix(version);
             if (string.IsNullOrEmpty(endpointName) || string.IsNullOrEmpty(fileId))
             {
                 return PortwayResults.BadRequest("Missing endpoint name or file ID in the URL path");
@@ -249,14 +256,17 @@ public partial class EndpointController
     /// Handle file deletions
     /// </summary>
     [HttpDelete("{env}/files/{**catchall}")]
+    [HttpDelete("{env}/{version:apiversion}/files/{**catchall}")]
     public async Task<IActionResult> DeleteFileAsync(
         string env,
-        string catchall)
+        string catchall,
+        string? version = null)
     {
         try
         {
             // Extract the namespace, endpoint name, and file ID from the catchall
             var (namespaceName, endpointName, fileId) = ParseFileEndpointPath(catchall);
+            endpointName += EndpointVersion.Suffix(version);
             if (string.IsNullOrEmpty(endpointName) || string.IsNullOrEmpty(fileId))
             {
                 return PortwayResults.BadRequest("Missing endpoint name or file ID in the URL path");
@@ -301,11 +311,13 @@ public partial class EndpointController
     /// List files in an endpoint
     /// </summary>
     [HttpGet("{env}/files/{endpointName}/list")]
+    [HttpGet("{env}/{version:apiversion}/files/{endpointName}/list")]
     public async Task<IActionResult> ListFilesAsync(
         string env,
         string endpointName,
-        [FromQuery] string? prefix = null)
-        => await ListFilesCore(env, null, endpointName, prefix);
+        [FromQuery] string? prefix = null,
+        string? version = null)
+        => await ListFilesCore(env, null, endpointName + EndpointVersion.Suffix(version), prefix);
 
     /// <summary>
     /// Lists files for a (possibly namespaced) file endpoint
@@ -342,7 +354,7 @@ public partial class EndpointController
                 contentType = f.ContentType,
                 size = f.Size,
                 lastModified = f.LastModified,
-                url = $"/api/{env}/files/{endpointPath}/{f.FileId}",
+                url = $"/api/{env}/{EndpointVersion.FileRoutePath(endpointPath)}/{f.FileId}",
                 isInMemoryOnly = f.IsInMemoryOnly
             }).ToList();
 

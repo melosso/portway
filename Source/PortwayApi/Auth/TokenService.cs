@@ -194,6 +194,8 @@ public class TokenService
             return null;
         }
 
+        var generation = _tokenCache.Generation;
+
         // Cache miss; load from DB with no tracking overhead (entities are never modified here)
         var tokens = await _dbContext.Tokens
             .AsNoTracking()
@@ -209,7 +211,8 @@ public class TokenService
                     Convert.FromBase64String(storedToken.TokenHash)))
             {
                 Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
-                _tokenCache.Set(cacheKey, storedToken, storedToken.Id);
+                await RecordLastUseAsync(storedToken);
+                _tokenCache.Set(cacheKey, storedToken, storedToken.Id, generation);
                 return storedToken;
             }
         }
@@ -221,6 +224,26 @@ public class TokenService
         _tokenCache.SetMiss(cacheKey);
 
         return null;
+    }
+
+    /// <summary>
+    /// Stores the verification time; runs only on a cache miss, so at most once per token per cache window
+    /// </summary>
+    private async Task RecordLastUseAsync(AuthToken token)
+    {
+        var now = DateTime.UtcNow;
+        try
+        {
+            await _dbContext.Tokens
+                .Where(t => t.Id == token.Id)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.LastUsedAt, now));
+            token.LastUsedAt = now;
+        }
+        catch (Exception ex)
+        {
+            // a busy auth.db must not fail the request
+            Log.Warning(ex, "Could not record last use of token {TokenId}", token.Id);
+        }
     }
 
     /// <summary>
@@ -405,6 +428,7 @@ public class TokenService
 
         token.ExpiresAt = expirationDate;
         await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(tokenId);
 
         return true;
     }
@@ -462,6 +486,7 @@ public class TokenService
         string old = token.AllowedEnvironments;
         token.AllowedEnvironments = environments;
         await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(tokenId);
         await LogAuditAsync(token.Id, token.Username, "EnvironmentsUpdated", null, null,
             JsonSerializer.Serialize(new
             {
@@ -489,6 +514,7 @@ public class TokenService
         string oldScopes = token.AllowedScopes;
         token.AllowedScopes = scopes;
         await _dbContext.SaveChangesAsync(ct);
+        _tokenCache.Invalidate(tokenId);
 
         // Log the token scope update in audit trail
         await LogAuditAsync(token.Id, token.Username, "ScopesUpdated", null, null,

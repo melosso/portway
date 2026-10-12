@@ -24,14 +24,16 @@ echo "Cleaning up generated logs..."
 rm -f log/*
 
 echo "Resetting configuration and database from main repository..."
+rm -rf config/endpoints
 files=(
     "config/environments/settings.json"
     "config/environments/WMS/settings.json"
     "config/environments/network-access-policy.json"
-    "config/endpoints/Proxy/Accounts/entity.json"
-    "config/endpoints/Proxy/Company/entity.json"
-    "config/endpoints/Proxy/Products/entity.json"
-    "config/endpoints/Proxy/Production/entity.json"
+    "config/endpoints/Proxy/CRM/Accounts/entity.json"
+    "config/endpoints/Proxy/Company/Companies/entity.json"
+    "config/endpoints/Proxy/Inventory/Products/entity.json"
+    "config/endpoints/Proxy/Inventory/Products/v2/entity.json"
+    "config/endpoints/Proxy/Production/Orders/entity.json"
     "config/endpoints/SQL/WMS/Warehouses/entity.json"
     "config/endpoints/SQL/WMS/CountryWarehouses/entity.json"
     "data/demo.db"
@@ -41,7 +43,7 @@ files=(
 for file in "${files[@]}"; do
     echo "Downloading $file..."
     mkdir -p "$(dirname "$file")"
-    curl -sSL "$REPO_RAW_URL/$file" -o "$file"
+    curl -fsSL "$REPO_RAW_URL/$file" -o "$file" || echo "Failed to download $file"
 done
 
 echo "Starting Portway Demo..."

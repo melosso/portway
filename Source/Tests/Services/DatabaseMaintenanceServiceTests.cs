@@ -19,13 +19,18 @@ public class DatabaseMaintenanceServiceTests : IDisposable
 
     private DatabaseMaintenanceService CreateService(DatabaseMaintenanceOptions options, string trafficPath)
     {
+        return CreateService(options, trafficPath, Path.Combine(_dir, ".core"));
+    }
+
+    private DatabaseMaintenanceService CreateService(DatabaseMaintenanceOptions options, string trafficPath, string stateDirectory)
+    {
         var monitor = new Mock<IOptionsMonitor<DatabaseMaintenanceOptions>>();
         monitor.Setup(m => m.CurrentValue).Returns(options);
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["RequestTrafficLogging:SqlitePath"] = trafficPath
         }).Build();
-        return new DatabaseMaintenanceService(monitor.Object, config, new ConfigAuditService());
+        return new DatabaseMaintenanceService(monitor.Object, config, new ConfigAuditService(), stateDirectory);
     }
 
     private static void CreateBloatedDb(string path)
@@ -103,6 +108,91 @@ public class DatabaseMaintenanceServiceTests : IDisposable
         Assert.True(result.Analyzed);
         Assert.False(result.Vacuumed);
         Assert.Contains("threshold", result.SkipReason);
+    }
+
+    [Fact]
+    public async Task LastRun_SurvivesARestart()
+    {
+        var dbPath = Path.Combine(_dir, "traffic_logs.db");
+        CreateBloatedDb(dbPath);
+        var options = new DatabaseMaintenanceOptions { FreePageRatioThreshold = 0.25 };
+
+        var first = CreateService(options, dbPath);
+        await first.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        // a new instance stands in for the next process start
+        var restarted = CreateService(options, dbPath);
+        Assert.Equal(first.LastRunUtc, restarted.LastRunUtc);
+        var result = Assert.Single(restarted.LastRunResults, r => r.Database == "traffic_logs.db");
+        Assert.Equal("ok", result.Integrity);
+        Assert.True(result.Vacuumed);
+    }
+
+    [Fact]
+    public void LastRun_IsEmptyWhenTheStateFileIsUnreadable()
+    {
+        var core = Path.Combine(_dir, ".core");
+        Directory.CreateDirectory(core);
+        File.WriteAllText(Path.Combine(core, "maintenance.json"), "{ not json");
+
+        var service = CreateService(new DatabaseMaintenanceOptions(), Path.Combine(_dir, "traffic_logs.db"));
+        Assert.Null(service.LastRunUtc);
+        Assert.Empty(service.LastRunResults);
+    }
+
+    [Fact]
+    public async Task RunNow_CompactsBelowThreshold()
+    {
+        var dbPath = Path.Combine(_dir, "traffic_logs.db");
+        using (var conn = new SqliteConnection($"Data Source={dbPath}"))
+        {
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "CREATE TABLE t (id INTEGER PRIMARY KEY); INSERT INTO t (id) VALUES (1)";
+            cmd.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+
+        // Manual execution overrides the threshold; thresholds are only enforced for nightly runs.
+        var service = CreateService(new DatabaseMaintenanceOptions { FreePageRatioThreshold = 0.25 }, dbPath);
+        var results = await service.RunNowAsync(TestContext.Current.CancellationToken);
+
+        var result = Assert.Single(results, r => r.Database == "traffic_logs.db");
+        Assert.Equal("ok", result.Integrity);
+        Assert.True(result.Vacuumed);
+        Assert.Null(result.SkipReason);
+    }
+
+    [Fact]
+    public async Task RunOnce_ReportsIntegrityOfAHealthyDatabase()
+    {
+        var dbPath = Path.Combine(_dir, "traffic_logs.db");
+        CreateBloatedDb(dbPath);
+
+        var service = CreateService(new DatabaseMaintenanceOptions(), dbPath);
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", Assert.Single(results, r => r.Database == "traffic_logs.db").Integrity);
+    }
+
+    [Fact]
+    public async Task RunOnce_ReportsACorruptDatabase()
+    {
+        var dbPath = Path.Combine(_dir, "traffic_logs.db");
+        CreateBloatedDb(dbPath);
+        using (var stream = new FileStream(dbPath, FileMode.Open, FileAccess.Write))
+        {
+            // Overwrite the btree pages behind the header with garbage data.
+            stream.Position = 4096 * 2;
+            stream.Write(Enumerable.Repeat((byte)0x5A, 4096 * 3).ToArray());
+        }
+
+        var service = CreateService(new DatabaseMaintenanceOptions(), dbPath);
+        var results = await service.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        var integrity = Assert.Single(results, r => r.Database == "traffic_logs.db").Integrity;
+        Assert.NotNull(integrity);
+        Assert.NotEqual("ok", integrity);
     }
 
     [Fact]

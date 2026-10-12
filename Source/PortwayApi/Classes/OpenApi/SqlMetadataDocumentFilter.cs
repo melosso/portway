@@ -9,7 +9,7 @@ namespace PortwayApi.Classes.OpenApi;
 /// <summary>
 /// Document filter that enriches SQL endpoint documentation with database column metadata
 /// </summary>
-public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
+public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly Services.SqlMetadataService _metadataService;
 
@@ -63,6 +63,12 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             if (pathItem.Operations.TryGetValue(HttpMethod.Get, out var getOperation))
             {
                 EnrichGetOperationWithObjectMetadata(getOperation, endpointName, definition);
+            }
+
+            if (document.Paths.TryGetValue(path + "({id})", out var byIdItem) &&
+                byIdItem.Operations?.TryGetValue(HttpMethod.Get, out var byIdOperation) == true)
+            {
+                EnrichGetByIdOperationWithObjectMetadata(byIdOperation, endpointName, definition);
             }
 
             // Enrich POST operation with procedure metadata
@@ -147,7 +153,8 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
                         Type = JsonSchemaType.String | JsonSchemaType.Null,
                         Description = "URL for pagination (null if no more pages)",
                         Examples = null
-                    }
+                    },
+                    ["totalCount"] = DynamicEndpointDocumentFilter.TotalCountSchema()
                 },
                 Required = new HashSet<string> { "success", "count", "value" }
             };
@@ -163,6 +170,26 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         Log.Debug("Enriched GET operation for {EndpointName} with {ColumnCount} columns",
             endpointName, metadata.Count);
+    }
+
+    private void EnrichGetByIdOperationWithObjectMetadata(
+        OpenApiOperation operation,
+        string endpointName,
+        EndpointDefinition definition)
+    {
+        var metadata = _metadataService.GetObjectMetadata(endpointName);
+        if (metadata is not { Count: > 0 } ||
+            operation.Responses is null ||
+            !operation.Responses.TryGetValue("200", out var response) ||
+            response.Content is not { } content)
+        {
+            return;
+        }
+
+        content["application/json"] = new OpenApiMediaType
+        {
+            Schema = CreateSchemaFromObjectMetadata(metadata, excludePrimaryKey: false, endpoint: definition)
+        };
     }
 
     /// <summary>
@@ -249,12 +276,6 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
             };
         }
 
-        // Add 422 response for validation errors
-        if (operation.Responses != null && !operation.Responses.ContainsKey("422"))
-        {
-            operation.Responses["422"] = CreateValidationErrorResponse();
-        }
-
         Log.Debug("Enriched {Method} operation for {EndpointName} with {ParameterCount} parameters",
             method, endpointName, parameters.Count);
     }
@@ -323,7 +344,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             var idField = idFields.First();
             operation.Description = (operation.Description ?? "") +
-                $"\n\n**Primary Key:** `{idField.ColumnName}` ({idField.DataType})";
+                $"\n\n**Primary Key:** `{idField.ColumnName}`";
         }
     }
 
@@ -443,7 +464,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
         {
             Type = JsonSchemaType.Object,
             Properties = properties,
-            Description = GetSchemaDescription(method, parameters.Count)
+            Description = GetSchemaDescription(method)
         };
 
         // For PATCH, no required fields (all optional)
@@ -572,13 +593,11 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Builds a descriptive text for a column
     /// </summary>
-    private string BuildColumnDescription(
+    internal static string BuildColumnDescription(
         ColumnMetadata column,
         EndpointDefinition? endpoint = null)
     {
         var parts = new List<string>();
-
-        parts.Add($"SQL Type: {column.DataType}");
 
         if (column.MaxLength.HasValue && column.MaxLength.Value > 0 && column.MaxLength.Value != -1)
         {
@@ -612,12 +631,9 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Builds a descriptive text for a procedure parameter
     /// </summary>
-    private string BuildParameterDescription(ParameterMetadata parameter)
+    internal static string BuildParameterDescription(ParameterMetadata parameter)
     {
         var parts = new List<string>();
-
-        parts.Add($"SQL Type: {parameter.DataType}");
-        parts.Add($"Position: {parameter.Position}");
 
         if (parameter.MaxLength.HasValue && parameter.MaxLength.Value > 0 && parameter.MaxLength.Value != -1)
         {
@@ -636,7 +652,7 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
 
         if (parameter.IsOutput)
         {
-            parts.Add("**Output Parameter**");
+            parts.Add("**Output**");
         }
 
         if (parameter.HasDefaultValue)
@@ -669,54 +685,17 @@ public class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Gets the schema description based on method
     /// </summary>
-    private string GetSchemaDescription(string method, int parameterCount)
+    internal static string GetSchemaDescription(string method)
     {
         return method switch
         {
-            "POST" => $"Stored procedure parameters for creating a new record ({parameterCount} parameters)",
-            "PUT" => $"Stored procedure parameters for updating a record ({parameterCount} parameters)",
-            "PATCH" => $"Stored procedure parameters for partial update ({parameterCount} parameters, all optional)",
-            _ => $"Stored procedure parameters ({parameterCount} parameters)"
+            "POST" => "Fields for creating a record",
+            "PUT" => "Fields for updating a record",
+            "PATCH" => "Fields for a partial update, all optional",
+            _ => "Record fields"
         };
     }
 
-    /// <summary>
-    /// Creates a validation error response schema
-    /// </summary>
-    private OpenApiResponse CreateValidationErrorResponse()
-    {
-        return new OpenApiResponse
-        {
-            Description = "Validation failed - Required fields missing or regex pattern mismatch",
-            Content = new Dictionary<string, IOpenApiMediaType>
-            {
-                ["application/json"] = new OpenApiMediaType
-                {
-                    Schema = new OpenApiSchema
-                    {
-                        Type = JsonSchemaType.Object,
-                        Properties = new Dictionary<string, IOpenApiSchema>
-                        {
-                            ["error"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                            ["details"] = new OpenApiSchema
-                            {
-                                Type = JsonSchemaType.Array,
-                                Items = new OpenApiSchema
-                                {
-                                    Type = JsonSchemaType.Object,
-                                    Properties = new Dictionary<string, IOpenApiSchema>
-                                    {
-                                        ["field"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                        ["message"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-    }
 
     /// <summary>
     /// Creates an example object from procedure parameters

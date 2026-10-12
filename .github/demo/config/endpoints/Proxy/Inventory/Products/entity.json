@@ -1,0 +1,20 @@
+{
+    "Url": "http://nginx/api/products",
+    "Deprecated": true,
+    "DeprecatedSince": "2026-10-01T00:00:00Z",
+    "Sunset": "2027-04-01T00:00:00Z",
+    "Methods": ["GET", "POST", "PUT", "DELETE"],
+    "Documentation": {
+        "TagDescription": "Manage your product catalog and inventory SKUs.",
+        "MethodDescriptions": {
+            "GET": "Browse products",
+            "POST": "Add a new product",
+            "PUT": "Update product details",
+            "DELETE": "Remove a product"
+        }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    }
+}

@@ -21,8 +21,6 @@ Each endpoint is defined in `endpoints/Files/{EndpointName}/entity.json`:
 }
 ```
 
-### Configuration properties
-
 All properties, types and defaults: [Entity configuration](/reference/entity-config#file).
 
 ### Base directory placeholders
@@ -76,11 +74,23 @@ Content-Type: multipart/form-data
 file=@report.pdf
 ```
 
-```bash
+::: code-group
+
+```bash [Linux]
 curl -X POST "https://your-api/api/500/files/Documents" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -F "file=@report.pdf"
 ```
+
+```powershell [Windows]
+Invoke-RestMethod -Method Post -Uri "https://your-api/api/500/files/Documents" `
+  -Headers @{ Authorization = "Bearer YOUR_TOKEN" } `
+  -Form @{ file = Get-Item ".\report.pdf" }
+```
+
+:::
+
+`-Form` requires PowerShell 7.
 
 ### List files
 
@@ -117,11 +127,21 @@ GET /api/{env}/files/{EndpointName}/{fileId}
 Authorization: Bearer YOUR_TOKEN
 ```
 
-```bash
-curl -X GET "https://your-api/api/500/files/Documents/abc123fileId" \
+::: code-group
+
+```bash [Linux]
+curl "https://your-api/api/500/files/Documents/abc123fileId" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -o "downloaded-report.pdf"
 ```
+
+```powershell [Windows]
+Invoke-WebRequest -Uri "https://your-api/api/500/files/Documents/abc123fileId" `
+  -Headers @{ Authorization = "Bearer YOUR_TOKEN" } `
+  -OutFile ".\downloaded-report.pdf"
+```
+
+:::
 
 ## File type restrictions
 
@@ -129,33 +149,8 @@ Only extensions in `AllowedExtensions` are accepted. The following extensions ar
 
 The default maximum file size is 50MB (`FileStorage:MaxFileSizeBytes`).
 
-## JavaScript integration
-
-```javascript
-// List files
-const listResponse = await fetch('/api/500/files/Documents/list', {
-  headers: { 'Authorization': 'Bearer ' + token }
-});
-const data = await listResponse.json();
-
-// Download a file by ID
-const fileId = data.value[0].fileId;
-const fileResponse = await fetch(`/api/500/files/Documents/${fileId}`, {
-  headers: { 'Authorization': 'Bearer ' + token }
-});
-const blob = await fileResponse.blob();
-
-// Trigger browser download
-const url = window.URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = data.value[0].fileName;
-a.click();
-window.URL.revokeObjectURL(url);
-```
-
 :::info
-File endpoints require the `Authorization` header, so `<img src>` and `<embed src>` cannot load files directly.
+File endpoints require the `Authorization` header. `<img src>` and `<embed src>` cannot load files directly; a browser client downloads with `fetch` and an `Authorization` header.
 :::
 
 ## Troubleshooting

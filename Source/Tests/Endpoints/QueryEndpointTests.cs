@@ -59,7 +59,7 @@ public class QueryEndpointTests : ApiTestBase
     {
         SetAllowedEnvironments("500", "700");
 
-        var response = await _client.SendAsync(Query("/api/500/Account/Accounts"), TestContext.Current.CancellationToken);
+        var response = await _client.SendAsync(Query("/api/500/CRM/Accounts"), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }

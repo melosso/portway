@@ -63,7 +63,7 @@
   <form class="signin-panel" onsubmit="event.preventDefault();signIn()">
     <header class="signin-header">
       <h1>Sign in</h1>
-      <p>Sign in to continue.</p>
+      <p id="signinIntro">Sign in to continue.</p>
     </header>
 
     <div class="field">
@@ -110,18 +110,20 @@
       if (r.ok) {
         const d = await r.json();
         csrfToken = d.csrf;
+        if (d.setup_pending)
+          document.getElementById('signinIntro').textContent = 'Find the account name and one-time password in the startup log.';
       }
     } catch(e) {
       console.error('Failed to fetch CSRF token:', e);
     }
   }
-  initCsrf();
+  let csrfReady = initCsrf();
 
   async function initProviders() {
     const base = window.PortwayBase || '';
     let providers = [];
     try {
-      const r = await fetch(base + '/ui/api/auth/providers');
+      const r = await fetch('/ui/api/auth/providers');
       if (!r.ok) return;
       providers = (await r.json()).providers || [];
     } catch(e) {
@@ -169,6 +171,8 @@
     btn.classList.add('is-loading');
     btn.disabled = true;
     try {
+      // a cold start answers the token request after the first submit
+      await csrfReady;
       const r = await fetch(_changing ? '/ui/api/auth/password' : '/ui/api/auth', {
         method: 'POST',
         credentials: 'include',
@@ -198,7 +202,7 @@
         btn.classList.remove('is-loading');
         btn.disabled = false;
         document.getElementById('passwordInput').focus();
-        initCsrf();
+        csrfReady = initCsrf();
       }
     } catch(e) {
       toast('Connection error. Server unreachable.', 'error');

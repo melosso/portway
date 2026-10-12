@@ -9,12 +9,16 @@ using PortwayApi.Classes;
 /// </summary>
 internal static class OpenApiEndpointCatalog
 {
-    public static string BasePath(EndpointDefinition definition) => $"/api/{{env}}/{definition.FullPath}";
+    public static string BasePath(EndpointDefinition definition) => $"/api/{{env}}/{definition.RoutePath}";
 
     /// <summary>
     /// File operations are served under a fixed /files segment keyed by the endpoint key
     /// </summary>
-    public static string FileBasePath(string endpointKey) => $"/api/{{env}}/files/{endpointKey}";
+    public static string FileBasePath(string endpointKey)
+    {
+        var (name, version) = EndpointVersion.Split(endpointKey);
+        return $"/api/{{env}}/{EndpointVersion.RoutePrefix(version)}files/{name}";
+    }
 
     public static IEnumerable<(string BasePath, EndpointDefinition Definition)> All()
     {
@@ -33,6 +37,12 @@ internal static class OpenApiEndpointCatalog
         foreach (var kv in EndpointHandler.GetFileEndpoints())
             yield return (FileBasePath(kv.Key), kv.Value);
     }
+
+    /// <summary>
+    /// Stable operation id from the action and the route, so adding an endpoint never renames another; versions are suffixed by EndpointVersionDocumentFilter
+    /// </summary>
+    public static string OperationId(string action, EndpointDefinition definition)
+        => $"{action.ToLowerInvariant()}_{definition.FullPath}".Replace(' ', '_').Replace('/', '_');
 
     /// <summary>
     /// Whether an endpoint belongs in the document; disabled ones stay in, marked by EndpointStateDocumentFilter

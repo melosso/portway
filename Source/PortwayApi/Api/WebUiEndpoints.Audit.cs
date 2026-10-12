@@ -39,7 +39,8 @@ public static partial class WebUiEndpointExtensions
                 target_type = e.TargetType,
                 target = e.Target,
                 details = e.Details,
-                restorable = e.BackupPath != null && File.Exists(e.BackupPath)
+                restorable = e.BackupPath != null && File.Exists(e.BackupPath),
+                actor = e.Actor
             });
             return Results.Json(new { entries });
         }).ExcludeFromDescription();
@@ -70,7 +71,7 @@ public static partial class WebUiEndpointExtensions
             if (entry.TargetType == "endpoint" && entry.Target.IndexOf('/') is var s && s > 0)
             {
                 var epType = TypeStringToEndpointType(entry.Target[..s]);
-                if (epType.HasValue) EndpointHandler.ReloadEndpointType(epType.Value);
+                ReloadEndpoints(app.Services, epType);
             }
             else
             {

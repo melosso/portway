@@ -31,6 +31,7 @@ public sealed partial class SqlRequestHandler
     private async Task<IActionResult> ExecuteTableWriteAsync(
         DbConnection connection,
         string connectionString,
+        string env,
         EndpointDefinition endpoint,
         string endpointName,
         TableWriteKind kind,
@@ -83,7 +84,7 @@ public sealed partial class SqlRequestHandler
                         created = (await connection.QueryAsync(select.Sql, select.Parameters)).FirstOrDefault();
                     }
                     Log.Debug("Table INSERT on {Endpoint} succeeded", endpointName);
-                    return PortwayResults.Create($"/api/{endpointName}", "Record created successfully", created);
+                    return PortwayResults.Create($"/api/{env}/{EndpointVersion.RoutePath(endpointName)}", "Record created successfully", created);
                 }
 
             case TableWriteKind.Update:

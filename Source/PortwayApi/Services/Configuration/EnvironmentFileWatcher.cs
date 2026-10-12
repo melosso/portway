@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Serilog;
+using PortwayApi.Classes;
 using PortwayApi.Interfaces;
 using PortwayApi.Services;
 
@@ -13,14 +14,17 @@ public class EnvironmentFileWatcher : FileWatchPump
     private readonly IEnvironmentSettingsProvider _environmentSettingsProvider;
     private readonly SseBroadcaster? _broadcaster;
     private readonly ReloadTracker _reloadTracker;
+    private readonly EnvironmentSettings _environmentSettings;
 
     public EnvironmentFileWatcher(
         IEnvironmentSettingsProvider environmentSettingsProvider,
         ReloadTracker reloadTracker,
+        EnvironmentSettings environmentSettings,
         SseBroadcaster? broadcaster = null)
         : base(Path.Combine(Directory.GetCurrentDirectory(), "environments"), "Environment")
     {
         _environmentSettingsProvider = environmentSettingsProvider;
+        _environmentSettings = environmentSettings;
         _reloadTracker = reloadTracker;
         _broadcaster = broadcaster;
     }
@@ -29,6 +33,18 @@ public class EnvironmentFileWatcher : FileWatchPump
     {
         try
         {
+            if (IsGlobalSettings(filePath))
+            {
+                // a delete is skipped because Reload would recreate the file with default environments
+                if (changeType != WatcherChangeTypes.Deleted)
+                {
+                    _environmentSettings.Reload();
+                    _reloadTracker.RecordEnvironmentReload();
+                    _broadcaster?.Broadcast("reload", JsonSerializer.Serialize(new { type = "environments" }));
+                }
+                return Task.CompletedTask;
+            }
+
             // Extract environment name from path
             var environmentName = ExtractEnvironmentName(filePath);
             if (string.IsNullOrEmpty(environmentName))
@@ -54,6 +70,9 @@ public class EnvironmentFileWatcher : FileWatchPump
 
         return Task.CompletedTask;
     }
+
+    private bool IsGlobalSettings(string filePath) =>
+        Path.GetRelativePath(WatchPath, filePath).Equals("settings.json", StringComparison.OrdinalIgnoreCase);
 
     private string? ExtractEnvironmentName(string filePath)
     {

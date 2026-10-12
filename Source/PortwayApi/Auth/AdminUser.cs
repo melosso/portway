@@ -29,6 +29,18 @@ public class AdminUser
     /// </summary>
     public string Email { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional name shown in place of the username
+    /// </summary>
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// DiceBear style key; null keeps the username identicon, empty means no avatar
+    /// </summary>
+    public string? AvatarStyle { get; set; }
+
+    public string? AvatarSeed { get; set; }
+
     public string Role { get; set; } = AdminUserRoles.Administrator;
 
     public bool IsActive { get; set; } = true;

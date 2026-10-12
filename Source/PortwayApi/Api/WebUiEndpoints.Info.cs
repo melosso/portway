@@ -16,8 +16,8 @@ public static partial class WebUiEndpointExtensions
         {
             return Results.Json(new
             {
-                promo_text = config.GetValue<string>("WebUi:Customization:PromoText"),
-                promo_login = config.GetValue<bool>("WebUi:Customization:PromoLogin", false)
+                promo_text = config.GetValue<string>("Console:Customization:PromoText"),
+                promo_login = config.GetValue<bool>("Console:Customization:PromoLogin", false)
             });
         }).ExcludeFromDescription();
 
@@ -32,8 +32,8 @@ public static partial class WebUiEndpointExtensions
             var proxyCount = proxyEps.Count(e => e.Value.Type.ToString() != "Composite");
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var uptime = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds;
-            var promoText = app.Configuration.GetValue<string>("WebUi:Customization:PromoText");
-            var promoLogin = app.Configuration.GetValue<bool>("WebUi:Customization:PromoLogin", false);
+            var promoText = app.Configuration.GetValue<string>("Console:Customization:PromoText");
+            var promoLogin = app.Configuration.GetValue<bool>("Console:Customization:PromoLogin", false);
 
             return Results.Json(new
             {
@@ -53,7 +53,31 @@ public static partial class WebUiEndpointExtensions
                                 + fileEps.Count + staticEps.Count + webhookEps.Count
                 },
                 environments = envSettings.AllowedEnvironments.Count,
+                api_version = "v" + PortwayApi.Classes.OpenApi.OpenApiEndpointCatalog.All()
+                    .Where(e => e.Definition.Enabled)
+                    .Select(e => EndpointVersion.Number(e.Definition.Version))
+                    .DefaultIfEmpty(1)
+                    .Max(),
                 openapi_enabled = openApiMonitor.CurrentValue.Enabled
+            });
+        }).ExcludeFromDescription();
+
+        app.MapGet("/ui/api/health/checks", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
+        {
+            var report = await healthService.CheckHealthAsync(ct);
+            return Results.Json(new
+            {
+                status = report.Status.ToString(),
+                checked_at = DateTime.UtcNow,
+                uptime_seconds = (long)(DateTime.UtcNow - ProcessStartTime).TotalSeconds,
+                version = appVersion,
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    duration_ms = Math.Round(e.Value.Duration.TotalMilliseconds, 1)
+                })
             });
         }).ExcludeFromDescription();
 
@@ -69,11 +93,14 @@ public static partial class WebUiEndpointExtensions
             {
                 sql = sqlEps.Select(e => new
                 {
-                    name = e.Key,
+                    name = ConsoleName(e.Key, e.Value),
+                    version = e.Value.Version,
+                    scope = e.Key,
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
+                    sunset = e.Value.Sunset,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     tenancy = e.Value.Tenancy?.Keys,
                     @namespace = e.Value.Namespace,
@@ -83,60 +110,85 @@ public static partial class WebUiEndpointExtensions
                 }).OrderBy(e => e.name),
                 proxy = proxyEps.Where(e => e.Value.Type.ToString() != "Composite").Select(e => new
                 {
-                    name = e.Key,
+                    name = ConsoleName(e.Key, e.Value),
+                    version = e.Value.Version,
+                    scope = e.Key,
                     url = e.Value.Url,
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
+                    sunset = e.Value.Sunset,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     tenancy = e.Value.Tenancy?.Keys,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 composite = proxyEps.Where(e => e.Value.Type.ToString() == "Composite").Select(e => new
                 {
-                    name = e.Key,
+                    name = ConsoleName(e.Key, e.Value),
+                    version = e.Value.Version,
+                    scope = e.Key,
                     url = e.Value.Url,
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
+                    sunset = e.Value.Sunset,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 file = fileEps.Select(e => new
                 {
-                    name = e.Key,
+                    name = ConsoleName(e.Key, e.Value),
+                    version = e.Value.Version,
+                    scope = "files/" + e.Key,
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
+                    sunset = e.Value.Sunset,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     tenancy = e.Value.Tenancy?.Keys,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 @static = staticEps.Select(e => new
                 {
-                    name = e.Key,
+                    name = ConsoleName(e.Key, e.Value),
+                    version = e.Value.Version,
+                    scope = e.Key,
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
+                    sunset = e.Value.Sunset,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name),
                 webhook = webhookEps.Select(e => new
                 {
-                    name = e.Key,
+                    name = ConsoleName(e.Key, e.Value),
+                    version = e.Value.Version,
+                    scope = e.Key,
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
                     deprecated = e.Value.Deprecated,
+                    sunset = e.Value.Sunset,
                     is_mcp_exposed = e.Value.IsMcpExposed,
                     @namespace = e.Value.Namespace
                 }).OrderBy(e => e.name)
             });
         }).ExcludeFromDescription();
 
+    }
+
+    // path of the folder the endpoint loaded from, below its endpoint type folder
+    private static string ConsoleName(string key, EndpointDefinition definition)
+    {
+        if (definition.ConfigDirectory is not { } directory)
+            return EndpointVersion.FolderPath(key);
+
+        var relative = Path.GetRelativePath(Path.Combine(Directory.GetCurrentDirectory(), "endpoints"), directory).Replace('\\', '/');
+        return relative[(relative.IndexOf('/') + 1)..];
     }
 }

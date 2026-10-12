@@ -22,6 +22,22 @@ using PortwayApi.Services;
 
 public static partial class WebUiEndpointExtensions
 {
+    private static readonly SemaphoreSlim EnvironmentListLock = new(1, 1);
+
+    // environment list edits read AllowedEnvironments and rewrite environments/settings.json, so two at once lose one
+    private static async ValueTask<object?> SerializeEnvironmentListEdit(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        await EnvironmentListLock.WaitAsync(context.HttpContext.RequestAborted);
+        try
+        {
+            return await next(context);
+        }
+        finally
+        {
+            EnvironmentListLock.Release();
+        }
+    }
+
     private static void MapEnvironmentRoutes(WebApplication app, PortwayApi.Services.Configuration.ConfigAuditService configAudit)
     {
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
@@ -57,11 +73,11 @@ public static partial class WebUiEndpointExtensions
 
             var backupPath = Services.Configuration.ConfigBackupService.Backup(globalPath);
             var model = new { Environment = new { ServerName = serverName, AllowedEnvironments = allowedEnvs } };
-            await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }));
+            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(model, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
             Audit(context, "update", "environment-settings", "environments/settings.json", null, backupPath);
             return Results.Ok(new { ok = true });
-        }).ExcludeFromDescription();
+        }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
         app.MapGet("/ui/api/environments/{name}", (string name) =>
         {
@@ -181,7 +197,7 @@ public static partial class WebUiEndpointExtensions
             var envPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", name, "settings.json");
             Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(envPath);
-            await File.WriteAllTextAsync(envPath, raw);
+            await AtomicFile.WriteAllTextAsync(envPath, raw);
             Audit(context, "update-raw", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envPath), TimeSpan.Zero).ToUnixTimeSeconds();
             return Results.Ok(new { ok = true, last_modified = lastMod });
@@ -249,18 +265,18 @@ public static partial class WebUiEndpointExtensions
             var encryptedCs = !string.IsNullOrEmpty(connStr)
                 ? SettingsEncryptionHelper.Encrypt(connStr) : "";
             var envModel = new { ConnectionString = encryptedCs, ServerName = serverName, Headers = headers };
-            await File.WriteAllTextAsync(envSettingsPath,
+            await AtomicFile.WriteAllTextAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
 
             var newAllowed = envSettings.AllowedEnvironments;
             newAllowed.Add(name);
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await File.WriteAllTextAsync(globalPath,
+            await AtomicFile.WriteAllTextAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
             Audit(context, "create", "environment", name);
             return Results.Json(new { ok = true, name }, statusCode: 201);
-        }).ExcludeFromDescription();
+        }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
         app.MapPut("/ui/api/environments/{name}", async (string name, HttpContext context) =>
         {
@@ -313,7 +329,7 @@ public static partial class WebUiEndpointExtensions
             if (encryptOptOut)
                 envModel["Encrypt"] = false;
 
-            await File.WriteAllTextAsync(envSettingsPath,
+            await AtomicFile.WriteAllTextAsync(envSettingsPath,
                 JsonSerializer.Serialize(envModel, new JsonSerializerOptions { WriteIndented = true }));
             Audit(context, "update", "environment", name, null, backupPath);
             var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(envSettingsPath), TimeSpan.Zero).ToUnixTimeSeconds();
@@ -345,12 +361,12 @@ public static partial class WebUiEndpointExtensions
             var newAllowed = envSettings.AllowedEnvironments
                 .Select(e => e.Equals(name, StringComparison.OrdinalIgnoreCase) ? newName : e).ToList();
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await File.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
+            await AtomicFile.WriteAllTextAsync(globalPath, JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
 
             Audit(context, "rename", "environment", $"{name} -> {newName}");
             return Results.Ok(new { ok = true, name = newName });
-        }).ExcludeFromDescription();
+        }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
         app.MapDelete("/ui/api/environments/{name}", async (string name, HttpRequest request) =>
         {
@@ -365,14 +381,14 @@ public static partial class WebUiEndpointExtensions
                 .Where(e => !e.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
             var backupPath = Services.Configuration.ConfigBackupService.Backup(Path.Combine(envDir, "settings.json"));
             var globalModel = new { Environment = new { ServerName = envSettings.ServerName, AllowedEnvironments = newAllowed } };
-            await File.WriteAllTextAsync(globalPath,
+            await AtomicFile.WriteAllTextAsync(globalPath,
                 JsonSerializer.Serialize(globalModel, new JsonSerializerOptions { WriteIndented = true }));
             envSettings.Reload();
             if (deleteFiles && Directory.Exists(envDir))
                 Directory.Delete(envDir, true);
             Audit(request.HttpContext, "delete", "environment", name, deleteFiles ? "files deleted" : "files kept", backupPath);
             return Results.Ok(new { ok = true });
-        }).ExcludeFromDescription();
+        }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
     }
 }

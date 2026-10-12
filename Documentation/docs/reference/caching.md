@@ -7,63 +7,6 @@ description: "Configuration reference for Portway's in-memory and Redis caching"
 
 Successful GET responses from SQL and proxy endpoints are cached in memory or Redis. Only `2xx` responses with a cacheable content type are stored.
 
-## Cache flow
-
-```mermaid
-flowchart TD
-    A[Client Request] --> B{Cache Enabled?}
-    B -->|No| G[Execute Request]
-    B -->|Yes| C{GET Request?}
-
-    C -->|No| G
-    C -->|Yes| D{Cache Hit?}
-
-    D -->|Yes| E[Return Cached Response]
-    D -->|No| F[Execute Request]
-
-    F --> H{Successful Response?}
-    H -->|No| K[Return Response]
-    H -->|Yes| I{Cacheable Content?}
-
-    I -->|No| K
-    I -->|Yes| J[Store in Cache]
-    J --> K
-
-    K --> L{{Select Cache Provider}}
-
-    subgraph "Cache Provider Selection"
-        direction TB
-        L --> L1{Provider Type?}
-        L1 -->|Memory| M[In-Memory Cache]
-        L1 -->|Redis| N[Redis Cache]
-
-        N --> O{Redis OK?}
-        O -->|Yes| NOK[Use Redis]
-        O -->|No & Fallback| M
-        O -->|No & No Fallback| P[No Caching]
-    end
-
-    M & NOK --> Q[Build Cache Key]
-
-    subgraph "Cache Key Generation"
-        direction TB
-        Q --> R[Start: URL + Query]
-        R --> S[+ Env + Endpoint]
-        S --> T[+ Auth Context Hash]
-        T --> U[+ Accept-Language]
-    end
-
-    U --> V{Cache-Control Header?}
-
-    subgraph "Cache Duration Determination"
-        direction TB
-        V -->|Yes| W[Use max-age]
-        V -->|No| X{Endpoint Rule?}
-        X -->|Yes| Y[Use Endpoint TTL]
-        X -->|No| Z[Use Default TTL]
-    end
-```
-
 ## Providers
 
 | Provider | Use case |
@@ -152,17 +95,7 @@ Entries expire after their TTL. A non-GET request to an endpoint invalidates its
 
 ## Cache durations
 
-The TTL is `DefaultCacheDurationSeconds`; `EndpointCacheDurations` overrides it per endpoint:
-
-```json
-"EndpointCacheDurations": {
-  "Products": 600,
-  "Categories": 3600,
-  "Customers": 300
-}
-```
-
-A response with `Cache-Control: max-age=N` uses that value.
+The TTL is `DefaultCacheDurationSeconds`; `EndpointCacheDurations` overrides it per endpoint. A response with `Cache-Control: max-age=N` uses that value.
 
 ## High-Availability Redis
 
@@ -197,8 +130,7 @@ The detailed health check (`GET /health/details`) includes item count, hit and m
 ```
 redis-cli ping
 redis-cli info memory
-redis-cli keys "Portway:*"
-redis-cli ttl "Portway:proxy:600:Products::"
+redis-cli --scan --pattern "Portway:*"
 ```
 
 ### Common issues

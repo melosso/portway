@@ -7,20 +7,23 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using PortwayApi.Classes;
 
 namespace PortwayApi.Classes.OpenApi;
 
-public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
+public sealed class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<FileEndpointDocumentFilter> _logger;
     private readonly EnvironmentSettings _environmentSettings;
+    private readonly IOptionsMonitor<OpenApiSettings> _openApiSettings;
 
-    public FileEndpointDocumentFilter(ILogger<FileEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings)
+    public FileEndpointDocumentFilter(ILogger<FileEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings, IOptionsMonitor<OpenApiSettings> openApiSettings)
     {
         _logger = logger;
         _environmentSettings = environmentSettings;
+        _openApiSettings = openApiSettings;
     }
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
@@ -46,10 +49,10 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 var effectiveEnvironments = GetEffectiveEnvironments(endpoint);
 
                 // flat file endpoints nest under the files group
-                string mainTag = OpenApiTags.Declare(document, endpoint, endpoint.HasNamespace ? null : $"{OpenApiTags.FilesGroup}/{endpoint.FullPath}");
-                if (!endpoint.HasNamespace)
+                string mainTag = OpenApiTags.Declare(document, endpoint, $"files/{EndpointVersion.Split(endpointName).Key}", _openApiSettings.CurrentValue, OpenApiTags.FilesGroup);
+                if (!endpoint.HasNamespace && _openApiSettings.CurrentValue.ShowNamespaces)
                 {
-                    OpenApiTags.Ensure(document, OpenApiTags.FilesGroup, "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
+                    OpenApiTags.Ensure(document, OpenApiTags.GroupName(OpenApiTags.FilesGroup), "**File Management**\n\nComprehensive file storage and retrieval system. Upload, download, list, and delete files across different storage categories with support for various file types and access controls.");
                 }
 
                 // Add file upload operation
@@ -122,7 +125,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["contentType"] = new OpenApiSchema { Type = JsonSchemaType.String },
                 ["size"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
                 ["lastModified"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" },
-                ["environment"] = new OpenApiSchema { Type = JsonSchemaType.String },
+                ["url"] = new OpenApiSchema { Type = JsonSchemaType.String },
                 ["isInMemoryOnly"] = new OpenApiSchema { Type = JsonSchemaType.Boolean }
             },
             Required = new HashSet<string> { "fileId", "fileName", "contentType" }
@@ -155,7 +158,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 ["value"] = new OpenApiSchema
                 {
                     Type = JsonSchemaType.Array,
-                    Items = new OpenApiSchemaReference("FileInfo")
+                    Items = new OpenApiSchemaReference("FileInfo", document)
                 },
                 ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null }
             },
@@ -255,48 +258,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["fileId"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["filename"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["contentType"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                ["size"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
-                                ["url"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        }
-                    }
-                }
-            },
-            ["400"] = new OpenApiResponse { Description = "Bad request - invalid file or request" },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["403"] = new OpenApiResponse { Description = "Forbidden - file type not allowed" },
-            ["409"] = new OpenApiResponse { Description = "Conflict - file already exists (when overwrite is false)" },
-            ["413"] = new OpenApiResponse { Description = "Payload Too Large - file exceeds size limit" },
-            ["500"] = new OpenApiResponse
-            {
-                Description = "Internal Server Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
-                        Example = new JsonObject
-                        {
-                            ["success"] = false,
-                            ["error"] = "An error occurred while uploading the file"
-                        }
+                        Schema = new OpenApiSchemaReference("FileUploadResponse", document)
                     }
                 }
             }
@@ -368,33 +330,6 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         {
                             Type = JsonSchemaType.String,
                             Format = "binary"
-                        }
-                    }
-                }
-            },
-            ["400"] = new OpenApiResponse { Description = "Bad request - invalid file ID" },
-            ["401"] = new OpenApiResponse { Description = "Unauthorized" },
-            ["404"] = new OpenApiResponse { Description = "File not found" },
-            ["500"] = new OpenApiResponse
-            {
-                Description = "Internal Server Error",
-                Content = new Dictionary<string, IOpenApiMediaType>
-                {
-                    ["application/json"] = new OpenApiMediaType
-                    {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["error"] = new OpenApiSchema { Type = JsonSchemaType.String }
-                            }
-                        },
-                        Example = new JsonObject
-                        {
-                            ["success"] = false,
-                            ["error"] = "An error occurred while downloading the file"
                         }
                     }
                 }
@@ -542,7 +477,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 {
                     ["X-Total-Count"] = new OpenApiHeader
                     {
-                        Description = "Total number of files available (when $count=true)",
+                        Description = "Total number of matching files",
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
                     },
                     ["X-Returned-Count"] = new OpenApiHeader
@@ -550,7 +485,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                         Description = "Number of files returned in this response",
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Integer }
                     },
-                    ["X-Has-More-Results"] = new OpenApiHeader
+                    ["X-Has-More"] = new OpenApiHeader
                     {
                         Description = "Indicates if more files are available (true/false)",
                         Schema = new OpenApiSchema { Type = JsonSchemaType.Boolean }
@@ -560,34 +495,7 @@ public class FileEndpointDocumentFilter : IOpenApiDocumentTransformer
                 {
                     ["application/json"] = new OpenApiMediaType
                     {
-                        Schema = new OpenApiSchema
-                        {
-                            Type = JsonSchemaType.Object,
-                            Properties = new Dictionary<string, IOpenApiSchema>
-                            {
-                                ["success"] = new OpenApiSchema { Type = JsonSchemaType.Boolean },
-                                ["count"] = new OpenApiSchema { Type = JsonSchemaType.Integer },
-                                ["value"] = new OpenApiSchema
-                                {
-                                    Type = JsonSchemaType.Array,
-                                    Items = new OpenApiSchema
-                                    {
-                                        Type = JsonSchemaType.Object,
-                                        Properties = new Dictionary<string, IOpenApiSchema>
-                                        {
-                                            ["fileId"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["fileName"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["contentType"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["size"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64" },
-                                            ["lastModified"] = new OpenApiSchema { Type = JsonSchemaType.String, Format = "date-time" },
-                                            ["url"] = new OpenApiSchema { Type = JsonSchemaType.String },
-                                            ["isInMemoryOnly"] = new OpenApiSchema { Type = JsonSchemaType.Boolean }
-                                        }
-                                    }
-                                },
-                                ["nextLink"] = new OpenApiSchema { Type = JsonSchemaType.String | JsonSchemaType.Null }
-                            }
-                        }
+                        Schema = new OpenApiSchemaReference("FileListResponse", document)
                     }
                 }
             }

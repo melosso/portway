@@ -1,19 +1,27 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 namespace PortwayApi.Classes.OpenApi;
 
-public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
+public sealed partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
 {
     private readonly ILogger<DynamicEndpointDocumentFilter> _logger;
     private readonly EnvironmentSettings _environmentSettings;
+    private readonly IOptionsMonitor<OpenApiSettings> _openApiSettings;
 
-    public DynamicEndpointDocumentFilter(ILogger<DynamicEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings)
+    public DynamicEndpointDocumentFilter(ILogger<DynamicEndpointDocumentFilter> logger, EnvironmentSettings environmentSettings, IOptionsMonitor<OpenApiSettings> openApiSettings)
     {
         _logger = logger;
         _environmentSettings = environmentSettings;
+        _openApiSettings = openApiSettings;
     }
+
+    private static string TagFor(EndpointDefinition definition) => OpenApiTags.NameFor(definition);
+
+    private string DeclareTag(OpenApiDocument document, EndpointDefinition definition, string? fallbackDescription = null) =>
+        OpenApiTags.Declare(document, definition, TagFor(definition), _openApiSettings.CurrentValue, fallbackDescription: fallbackDescription);
 
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
@@ -24,14 +32,11 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
             // Remove any controller-discovered paths that we'll be replacing
             RemoveConflictingPaths(document);
 
-            // Generate unique operation IDs
-            int operationIdCounter = 1;
-
             // Add documentation for each endpoint type
-            AddSqlEndpoints(document, ref operationIdCounter);
-            AddProxyEndpoints(document, ref operationIdCounter);
-            AddWebhookEndpoints(document, ref operationIdCounter);
-            AddStaticEndpoints(document, ref operationIdCounter);
+            AddSqlEndpoints(document);
+            AddProxyEndpoints(document);
+            AddWebhookEndpoints(document);
+            AddStaticEndpoints(document);
 
 
             // Ensure application/json is added automatically to all operations with request bodies
@@ -133,7 +138,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
     /// <summary>
     /// Gets the operation description, using custom description if available or default format
     /// </summary>
-    private string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
+    internal static string GetOperationDescription(string method, string endpointName, EndpointDefinition definition)
     {
         // Check if there's a custom detailed description for this method in MethodDocumentation
         if (definition.Documentation?.MethodDocumentation?.TryGetValue(method.ToUpper(), out var customDocumentation) == true
@@ -151,7 +156,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         // Return default description based on endpoint type
         if (definition.IsSql)
         {
-            return $"{method} operation for entity {definition.DatabaseObjectName}";
+            return $"{method} {endpointName} records.";
         }
         else if (definition.Type == EndpointType.Files)
         {
@@ -164,7 +169,7 @@ public partial class DynamicEndpointDocumentFilter : IOpenApiDocumentTransformer
         }
         else
         {
-            return $"Proxies {method} requests to an internal webservice.";
+            return $"{method} {endpointName} resource.";
         }
     }
 

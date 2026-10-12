@@ -9,10 +9,7 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class WebUiAuthHelper
 {
-    // Rate limiting: max attempts per window
-    private const int MaxAttemptsPerWindow = 10;
-
-    // Account lockout: lock after max failures, duration
+    // Account lockout: attempts before lockout, cleared on success, and lockout duration
     private const int MaxFailuresBeforeLockout = 10;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(30);
 
@@ -32,54 +29,31 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Error message when rate limited or locked out, null when allowed
+    /// Counts an attempt before the password is checked; returns the block reason, or null when allowed. Call ClearFailedAttempts on success
     /// </summary>
-    public static string? CheckAccess(string clientIp)
-    {
-        if (_failedAttempts.TryGetValue(clientIp, out var attempt))
-        {
-            // Check if currently locked out
-            if (attempt.LockedUntil.HasValue && attempt.LockedUntil.Value > DateTime.UtcNow)
-            {
-                var remaining = attempt.LockedUntil.Value - DateTime.UtcNow;
-                return $"Too many failed attempts. Try again in {(int)remaining.TotalMinutes} minutes.";
-            }
-
-            // Check if over rate limit
-            if (attempt.Failures >= MaxAttemptsPerWindow)
-            {
-                return "Too many attempts. Please wait before trying again.";
-            }
-        }
-
-        return null; // Allowed
-    }
-
-    /// <summary>
-    /// Records a failed authentication attempt
-    /// </summary>
-    public static void RecordFailedAttempt(string clientIp)
+    public static string? BeginAttempt(string clientIp)
     {
         var now = DateTime.UtcNow;
+        string? reason = null;
 
+        // counted up front so parallel requests cannot all pass before the first failure is recorded
         _failedAttempts.AddOrUpdate(
             clientIp,
-            // New entry
             _ => (1, null),
-            // Existing entry
             (_, existing) =>
             {
-                var failures = existing.LockedUntil.HasValue && existing.LockedUntil.Value < now
-                    ? 1 // Reset after lockout expired
-                    : existing.Failures + 1;
+                reason = null;
+                if (existing.LockedUntil > now)
+                {
+                    reason = $"Too many failed attempts. Try again in {(int)(existing.LockedUntil.Value - now).TotalMinutes} minutes.";
+                    return existing;
+                }
 
-                // Lock out if too many failures
-                DateTime? lockedUntil = failures >= MaxFailuresBeforeLockout
-                    ? now.Add(LockoutDuration)
-                    : null;
-
-                return (failures, lockedUntil);
+                var attempts = existing.LockedUntil.HasValue ? 1 : existing.Failures + 1;
+                return (attempts, attempts >= MaxFailuresBeforeLockout ? now.Add(LockoutDuration) : null);
             });
+
+        return reason;
     }
 
     /// <summary>

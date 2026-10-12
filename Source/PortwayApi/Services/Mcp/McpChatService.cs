@@ -166,17 +166,18 @@ public sealed partial class McpChatService
     /// </summary>
     public IReadOnlyList<ToolDefinition> GetToolDefinitions()
     {
-        // Fast path: return cached list if the registry hasn't been re-populated since last call
-        if (_registry.CachedToolDefinitions is IReadOnlyList<ToolDefinition> cached)
+        // a reload swaps the snapshot, so a list built from an old one is never served again
+        var snapshot = _registry.Current;
+        if (snapshot.CachedToolDefinitions is IReadOnlyList<ToolDefinition> cached)
             return cached;
 
-        var tools = BuildToolDefinitions();
-        _registry.CachedToolDefinitions = tools;
+        var tools = BuildToolDefinitions(snapshot.Tools);
+        snapshot.CachedToolDefinitions = tools;
         return tools;
     }
 
-    private IReadOnlyList<ToolDefinition> BuildToolDefinitions() =>
-        _registry.Tools
+    private IReadOnlyList<ToolDefinition> BuildToolDefinitions(ImmutableList<McpToolDescriptor> registered) =>
+        registered
             .GroupBy(t => (t.Namespace, t.EndpointName))
             .Select(g =>
             {
@@ -438,11 +439,7 @@ public sealed partial class McpChatService
             query = $"$top={_mcpOptions.DefaultPageSize}";
         }
 
-        // Build the endpoint path, including namespace if present
-        var endpointPath = string.IsNullOrEmpty(tool.Namespace)
-            ? tool.EndpointName
-            : $"{tool.Namespace}/{tool.EndpointName}";
-
+        var endpointPath = tool.RoutePath;
         var url = $"{baseUrl}/api/{environment}/{endpointPath}";
         if (!string.IsNullOrEmpty(query))
             url += $"?{query.TrimStart('?')}";

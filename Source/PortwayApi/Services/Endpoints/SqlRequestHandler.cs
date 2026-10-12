@@ -375,10 +375,11 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 9: Execute query
+            var aborted = context.RequestAborted;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(aborted);
 
-            var results = await connection.QueryAsync(query, parameters);
+            var results = await connection.QueryAsync(new CommandDefinition(query, parameters, cancellationToken: aborted));
             var resultList = results.ToList();
 
             // Step 10: Transform results to use aliases, but onlyy if column mappings exist
@@ -457,7 +458,7 @@ public sealed partial class SqlRequestHandler
                 var (countQuery, countParameters) = tenantPredicates.Count > 0
                     ? _oDataToSqlConverter.ConvertToCountSQL($"{schema}.{objectName}", odataParams, detectedProviderType, tenantPredicates)
                     : _oDataToSqlConverter.ConvertToCountSQL($"{schema}.{objectName}", odataParams, detectedProviderType);
-                totalCount = await connection.ExecuteScalarAsync<long>(countQuery, countParameters);
+                totalCount = await connection.ExecuteScalarAsync<long>(new CommandDefinition(countQuery, countParameters, cancellationToken: aborted));
             }
 
             var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip);
@@ -474,6 +475,12 @@ public sealed partial class SqlRequestHandler
             }
 
             return new OkObjectResult(response);
+        }
+        catch (Exception) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // client disconnected, providers report the cancelled command as a DbException
+            Log.Debug("SQL query for {EndpointName} cancelled by client disconnect", endpointName);
+            return new StatusCodeResult(499);
         }
         catch (DbException dbEx)
         {
@@ -549,7 +556,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Insert, data, null, tenantPredicates);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Insert, data, null, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -588,7 +595,7 @@ public sealed partial class SqlRequestHandler
 
                 Log.Debug("Successfully executed INSERT procedure for {Endpoint}", endpointName);
 
-                return PortwayResults.Create($"/api/{env}/{endpointName}", "Record created successfully", resultList.FirstOrDefault());
+                return PortwayResults.Create($"/api/{env}/{EndpointVersion.RoutePath(endpointName)}", "Record created successfully", resultList.FirstOrDefault());
             }
             catch (DbException dbEx) when (SqlErrorClassifier.IsIntentionalUserError(dbEx))
             {
@@ -673,7 +680,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -800,7 +807,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -912,7 +919,7 @@ public sealed partial class SqlRequestHandler
             {
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
-                return await ExecuteTableWriteAsync(tableConnection, connectionString, endpoint, endpointName, TableWriteKind.Delete, null, id, tenantPredicates);
+                return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Delete, null, id, tenantPredicates);
             }
 
             if (endpoint.Procedure is not { Length: > 0 } procedure)
@@ -1002,7 +1009,7 @@ public sealed partial class SqlRequestHandler
         int top,
         int skip)
     {
-        var nextLink = $"/api/{env}/{endpointPath}?$top={top}&$skip={skip + top}";
+        var nextLink = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}?$top={top}&$skip={skip + top}";
 
         if (!string.IsNullOrWhiteSpace(select))
             nextLink += $"&$select={Uri.EscapeDataString(select)}";

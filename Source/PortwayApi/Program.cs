@@ -27,18 +27,18 @@ if (args.Length > 0 && args[0] == "accounts")
 // Create log directory
 Directory.CreateDirectory("log");
 
+// bootstrap logger for startup errors
+Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateLogger();
+
 // Spawn the main application
 try
 {
     var builder = WebApplication.CreateBuilder(args);
     EnvAliases.ApplyConfigAliases(builder.Configuration);
 
-    // Settings the Web UI writes land here, layered over appsettings.json so that file stays the operator's
     PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
-    builder.Configuration.AddJsonFile(
-        PortwayApi.Services.Configuration.SettingsWriteService.OverridesFileName,
-        optional: true,
-        reloadOnChange: true);
+    builder.Configuration.AddConsoleOverrides();
+    builder.Configuration.AddConsoleSectionAlias();
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -50,7 +50,12 @@ try
 
     builder.Host.UseSerilog();
 
+    // before any database or endpoint file is opened
+    if (PortwayApi.Services.Database.BackupArchive.ApplyPendingRestore(Directory.GetCurrentDirectory()) is { } restored)
+        Log.Warning("Restored backup {Backup}; the replaced files are in .backups/pre-restore-*", restored);
+
     EnvAliases.WarnOnLegacyUsage();
+    ConsoleSectionAlias.WarnOnLegacySection(builder.Configuration);
 
     builder.Services.Configure<HostOptions>(opts =>
         {
@@ -69,13 +74,14 @@ try
 
     // Add services
     builder.Services.AddControllers();
+    builder.Services.AddEndpointVersioning();
 
     // Add caching services (Redis and/or memory cache)
     builder.Services.AddCachingServices(builder.Configuration);
     builder.Services.AddRequestTrafficLogging(builder.Configuration);
     builder.Services.AddHttpContextAccessor();
 
-    // CORS allowlist from WebUi:CorsOrigins; never AllowAnyOrigin in production
+    // CORS allowlist from Console:CorsOrigins; never AllowAnyOrigin in production
     builder.AddPortwayCors();
 
     builder.Services.AddPortwayTelemetry(builder.Configuration, assemblyVersion);
@@ -105,15 +111,9 @@ try
     // Initialize endpoints directories
     DirectoryHelper.EnsureDirectoryStructure();
 
-    // Load Proxy endpoints
-    var proxyEndpointsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy");
-    var proxyEndpointMap = EndpointHandler.GetEndpoints(proxyEndpointsDirectory);
-
-    // Register CompositeEndpointHandler with loaded endpoints
     builder.Services.AddSingleton<CompositeEndpointHandler>(provider =>
         new CompositeEndpointHandler(
             provider.GetRequiredService<IHttpClientFactory>(),
-            proxyEndpointMap,
             serverName,
             provider.GetRequiredService<UrlValidator>()
         )
@@ -144,18 +144,18 @@ try
     if (!StartupLogHelper.TryReservePorts(app, builder.Configuration))
         return 1;
 
-    // Web UI admin key; placeholder rejected in production, empty disables Web UI auth unless WebUi:Enabled overrides it
+    // legacy seed key, Console:Enabled takes precedence
     var adminApiKey = AdminApiKeyValidator.Resolve(builder.Configuration, app.Environment);
     var webUiEnabled = AdminApiKeyValidator.IsEnabled(builder.Configuration, adminApiKey);
 
     // Fixed password for the seeded admin account; demo/non-production instances only, never required
-    var seedPassword = builder.Configuration.GetValue<string>("WebUi:SeedPassword");
+    var seedPassword = builder.Configuration.GetValue<string>("Console:SeedPassword");
 
     // Refuse to start outside Development without a proper encryption key
     SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
 
-    var publicOrigins = builder.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
-    var enableLandingPage = builder.Configuration.GetValue<bool>("WebUi:Customization:EnableLandingPage", true);
+    var publicOrigins = builder.Configuration.GetSection("Console:PublicOrigins").Get<string[]>() ?? [];
+    var enableLandingPage = builder.Configuration.GetValue<bool>("Console:Customization:EnableLandingPage", true);
 
     // Path base from ASPNETCORE_PATHBASE or PathBase config
     app.UsePortwayPathBase();
@@ -222,6 +222,7 @@ try
     var webhookEndpoints = EndpointHandler.GetSqlWebhookEndpoints();
     var fileEndpoints = EndpointHandler.GetFileEndpoints();
     var staticEndpoints = EndpointHandler.GetStaticEndpoints();
+    var proxyEndpointMap = EndpointHandler.GetEndpoints(Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Proxy"));
 
     EndpointSummaryHelper.LogEndpointSummary(sqlEndpointList, proxyEndpointMap, webhookEndpoints, fileEndpoints, staticEndpoints);
 

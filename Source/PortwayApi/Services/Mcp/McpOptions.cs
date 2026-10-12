@@ -5,7 +5,6 @@ public sealed record McpOptions
     public bool Enabled { get; init; } = false;
     public string Path { get; init; } = "/mcp";
     public bool RequireAuthentication { get; init; } = true;
-    public bool AppsEnabled { get; init; } = true;
     /// <summary>
     /// Enables the chat/AI feature; credentials are configured via the setup wizard
     /// </summary>

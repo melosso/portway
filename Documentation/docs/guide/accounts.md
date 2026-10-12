@@ -9,9 +9,9 @@ Console accounts sign in to the [Web UI](/guide/webui).
 
 ## First account
 
-Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `WebUi:SeedPassword` or the legacy `WebUi:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `WebUi:SeedPassword` sets a fixed password without a forced change, for demo instances only.
+Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `Console:SeedPassword` or the legacy `Console:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `Console:SeedPassword` sets a fixed password without a forced change, for demo instances only.
 
-The legacy `WebUi:AdminApiKey` is not used for sign-in. It enables the console like `WebUi:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
+The legacy `Console:AdminApiKey` is not used for sign-in. It enables the console like `Console:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
 
 ## Account roles
 
@@ -32,19 +32,27 @@ Sessions are signed with `portway.key`, created next to `auth.db`. Deleting it e
 
 Account recovery runs from the shell, in the directory that contains `auth.db`:
 
-```bash
-portway accounts list
-portway accounts password <username> <new-password>
-portway accounts create <username> <password> [administrator|viewer]
+::: code-group
+
+```bash [Linux]
+./PortwayApi accounts list
+./PortwayApi accounts password <username> <new-password>
+./PortwayApi accounts create <username> <password> [administrator|viewer]
 ```
 
-Docker (the image has no `portway` binary):
+```powershell [Windows]
+.\PortwayApi.exe accounts list
+.\PortwayApi.exe accounts password <username> <new-password>
+.\PortwayApi.exe accounts create <username> <password> [administrator|viewer]
+```
 
-```bash
+```bash [Docker]
 docker exec <container> dotnet /app/PortwayApi.dll accounts list
 docker exec <container> dotnet /app/PortwayApi.dll accounts password <username> <new-password>
 docker exec <container> dotnet /app/PortwayApi.dll accounts create <username> <password> [administrator|viewer]
 ```
+
+:::
 
 Further subcommands: `promote`, `demote`, `enable`, `disable`, `delete`. A command that would leave no active administrator is refused.
 

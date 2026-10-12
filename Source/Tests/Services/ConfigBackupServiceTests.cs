@@ -44,6 +44,17 @@ public class ConfigBackupServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Backup_ConcurrentSaves_AllSucceed()
+    {
+        for (var round = 0; round < 20; round++)
+        {
+            WriteConfig($$"""{"round":{{round}}}""");
+            var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() => ConfigBackupService.Backup(_configPath))));
+            Assert.All(results, Assert.NotNull);
+        }
+    }
+
+    [Fact]
     public void Backup_ChangedContent_AddsAnEntry()
     {
         WriteConfig("""{"a":1}""");

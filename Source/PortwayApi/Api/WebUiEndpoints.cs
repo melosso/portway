@@ -31,7 +31,7 @@ public static partial class WebUiEndpointExtensions
     /// </summary>
     public static WebApplication UseWebUiAuth(this WebApplication app, bool webUiEnabled)
     {
-        var publicOrigins = app.Configuration.GetSection("WebUi:PublicOrigins").Get<string[]>() ?? [];
+        var publicOrigins = app.Configuration.GetSection("Console:PublicOrigins").Get<string[]>() ?? [];
 
         app.Use(async (context, next) =>
         {
@@ -39,7 +39,7 @@ public static partial class WebUiEndpointExtensions
             if (!path.StartsWithSegments("/ui")) { await next(); return; }
             if (!webUiEnabled)
             {
-                Log.Warning("Web UI request to {Path} rejected: neither WebUi:Enabled nor WebUi:AdminApiKey is configured", path);
+                Log.Warning("Web UI request to {Path} rejected: neither Console:Enabled nor Console:AdminApiKey is configured", path);
                 context.Response.StatusCode = 503;
                 context.Response.ContentType = "application/json";
                 await context.Response.WriteAsJsonAsync(new { error = "Web UI is disabled" });
@@ -97,6 +97,7 @@ public static partial class WebUiEndpointExtensions
                     context.Response.Redirect($"{context.Request.PathBase}/ui/login");
                     return;
                 }
+                context.Items[SignedInUsernameKey] = account.Username;
 
                 // csrf double submit on mutations, client-error uses sendBeacon and is exempt
                 if (path.StartsWithSegments("/ui/api") &&
@@ -181,7 +182,7 @@ public static partial class WebUiEndpointExtensions
         var appVersion = typeof(WebUiEndpointExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0";
-        var secureCookies = app.Configuration.GetValue<bool>("WebUi:SecureCookies", false);
+        var secureCookies = app.Configuration.GetValue<bool>("Console:SecureCookies", false);
 
         // audit every config change and back up files before ui writes
         var configAudit = app.Services.GetRequiredService<PortwayApi.Services.Configuration.ConfigAuditService>();
@@ -199,6 +200,7 @@ public static partial class WebUiEndpointExtensions
         MapEventRoutes(app);
         MapEndpointCrudRoutes(app, configAudit);
         MapDiagnosticsRoutes(app);
+        MapMaintenanceRoutes(app, configAudit);
 
         return app;
     }
@@ -263,7 +265,7 @@ public static partial class WebUiEndpointExtensions
             return (null, "Invalid path");
 
         // fall back to the leaf folder for namespaced names
-        if (!isFixed && !File.Exists(filePath) && name.Contains('/'))
+        if (!isFixed && !File.Exists(filePath) && name.Contains('/') && !EndpointVersion.TryParse(name.Split('/')[^1], out _))
         {
             var leafName = name.Split('/')[^1];
             var fallbackPath = Path.GetFullPath(Path.Combine(baseDir, typeDir, leafName, "entity.json"));
@@ -286,7 +288,25 @@ public static partial class WebUiEndpointExtensions
         _ => null
     };
 
+    /// <summary>
+    /// Reloads endpoints after a console write; MCP and SQL metadata are refreshed here when the file watcher is off
+    /// </summary>
+    private static void ReloadEndpoints(IServiceProvider services, EndpointType? type)
+    {
+        if (type is null)
+            return;
+
+        EndpointHandler.ReloadEndpointType(type.Value);
+        if (services.GetRequiredService<IOptionsMonitor<Services.Configuration.EndpointReloadingOptions>>().CurrentValue.Enabled)
+            return;
+
+        services.GetService<Services.Mcp.McpEndpointRegistry>()?.Refresh();
+        if (type == EndpointType.SQL)
+            services.GetRequiredService<SqlMetadataService>().QueueRefresh();
+    }
+
     internal const string SignedInUserKey = "portway.user";
+    internal const string SignedInUsernameKey = "portway.username";
 
     /// <summary>
     /// Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing
@@ -312,7 +332,7 @@ public static partial class WebUiEndpointExtensions
         var html = File.ReadAllText(filePath);
         if (filePath.EndsWith("login.html") && config != null)
         {
-            var footerMd = config.GetValue<string>("WebUi:Customization:LoginFooter");
+            var footerMd = config.GetValue<string>("Console:Customization:LoginFooter");
             if (!string.IsNullOrEmpty(footerMd))
             {
                 var footerHtml = ParseMarkdownToHtml(footerMd);

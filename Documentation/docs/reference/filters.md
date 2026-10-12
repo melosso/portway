@@ -79,10 +79,7 @@ Filters use the public names from `AllowedColumns` (aliases included). Tenant re
 
 ## Errors
 
-| Response | Cause |
-|---|---|
-| `400` "Invalid OData query. Check $filter, $select, $orderby and $expand syntax." | Malformed expression, unknown function or type mismatch |
-| `400` "Selected columns not allowed: …" | `$select` names a column outside `AllowedColumns` |
+A malformed expression, unknown function or type mismatch returns `400` ([OData errors](/reference/odata#errors)).
 
 ## Unsupported
 

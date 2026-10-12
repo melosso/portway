@@ -5,14 +5,27 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class EnvAliases
 {
-    // (new PORTWAY_ name, old name, config key the new name should land under, or null for a direct-read var)
+    // (new PORTWAY_ name, old name, config key the new name should land under, or null for a direct-read var); a key ending in [] takes a comma-separated list
     private static readonly (string NewName, string OldName, string? ConfigKey)[] Map =
     [
-        ("PORTWAY_ADMIN_KEY", "WebUi__AdminApiKey", "WebUi:AdminApiKey"),
-        ("PORTWAY_WEBUI_ENABLED", "WebUi__Enabled", "WebUi:Enabled"),
+        ("PORTWAY_ADMIN_KEY", "WebUi__AdminApiKey", "Console:AdminApiKey"),
+        ("PORTWAY_WEBUI_ENABLED", "WebUi__Enabled", "Console:Enabled"),
         ("PORTWAY_ALLOWED_HOSTS", "AllowedHosts", "AllowedHosts"),
         ("PORTWAY_PATH_BASE", "PathBase", "PathBase"),
-        ("PORTWAY_SECURE_COOKIES", "WebUi__SecureCookies", "WebUi:SecureCookies"),
+        ("PORTWAY_SECURE_COOKIES", "WebUi__SecureCookies", "Console:SecureCookies"),
+        ("PORTWAY_OPENAPI_MARKDOWN", "OpenApi__ServeMarkdown", "OpenApi:ServeMarkdown"),
+        ("PORTWAY_PUBLIC_ORIGINS", "WebUi__PublicOrigins__0", "Console:PublicOrigins[]"),
+        ("PORTWAY_SEED_PASSWORD", "WebUi__SeedPassword", "Console:SeedPassword"),
+        ("PORTWAY_PROMO_TEXT", "WebUi__Customization__PromoText", "Console:Customization:PromoText"),
+        ("PORTWAY_LOGIN_FOOTER", "WebUi__Customization__LoginFooter", "Console:Customization:LoginFooter"),
+        ("PORTWAY_KNOWN_PROXIES", "ForwardedHeaders__KnownProxies__0", "ForwardedHeaders:KnownProxies[]"),
+        ("PORTWAY_KNOWN_NETWORKS", "ForwardedHeaders__KnownNetworks__0", "ForwardedHeaders:KnownNetworks[]"),
+        ("PORTWAY_OIDC_ENABLED", "Oidc__Enabled", "Oidc:Enabled"),
+        ("PORTWAY_MCP_ENABLED", "Mcp__Enabled", "Mcp:Enabled"),
+        ("PORTWAY_CHAT_ENABLED", "Mcp__ChatEnabled", "Mcp:ChatEnabled"),
+        ("PORTWAY_TELEMETRY_PROVIDER", "Telemetry__Provider", "Telemetry:Provider"),
+        ("PORTWAY_OTLP_ENDPOINT", "Telemetry__Otlp__Endpoint", "Telemetry:Otlp:Endpoint"),
+        ("PORTWAY_SERVICE_NAME", "Telemetry__ServiceName", "Telemetry:ServiceName"),
         ("PORTWAY_USE_HTTPS", "Use_HTTPS", null),
         ("PORTWAY_PROXY_USERNAME", "PROXY_USERNAME", null),
         ("PORTWAY_PROXY_PASSWORD", "PROXY_PASSWORD", null),
@@ -23,27 +36,74 @@ public static class EnvAliases
     /// Injects PORTWAY_-prefixed values under their canonical config key. Call before builder.Build().
     public static void ApplyConfigAliases(IConfigurationBuilder config)
     {
-        var overrides = new Dictionary<string, string?>();
-        foreach (var (newName, _, configKey) in Map)
-        {
-            if (configKey is null) continue;
-            var value = Environment.GetEnvironmentVariable(newName);
-            if (value is not null) overrides[configKey] = value;
-        }
+        var overrides = Resolve(Environment.GetEnvironmentVariable);
         if (overrides.Count > 0)
             config.AddInMemoryCollection(overrides);
     }
 
-    /// Reads a direct (non-config-bound) env var, preferring its PORTWAY_ alias over the legacy name.
-    public static string? GetDirect(string newName)
+    internal static Dictionary<string, string?> Resolve(Func<string, string?> readEnv)
     {
-        var value = Environment.GetEnvironmentVariable(newName);
+        var overrides = new Dictionary<string, string?>();
+        foreach (var (newName, _, configKey) in Map)
+        {
+            if (configKey is null || readEnv(newName) is not { } value) continue;
+            if (!configKey.EndsWith("[]", StringComparison.Ordinal))
+            {
+                overrides[configKey] = value;
+                continue;
+            }
+
+            // legacy indexed entries past the list length still merge in so set one form only
+            var items = value.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            for (var i = 0; i < items.Length; i++)
+                overrides[$"{configKey[..^2]}:{i}"] = items[i];
+        }
+        return overrides;
+    }
+
+    /// <summary>
+    /// Returns the name of the environment variable that sets the config key, or null
+    /// </summary>
+    public static string? EnvNameFor(string configKey, IEnumerable<string> envNames)
+    {
+        var alias = Array.Find(Map, m => m.ConfigKey is { } k && k.TrimEnd('[', ']').Equals(configKey, StringComparison.OrdinalIgnoreCase)).NewName;
+        string? native = null;
+        foreach (var name in envNames)
+        {
+            if (name == alias) return name;
+            if (native is null && (IsNativeNameFor(name, configKey) || IsNativeNameFor(name, LegacyKey(configKey)))) native = name;
+        }
+        return native;
+    }
+
+    // WebUi is the deprecated name of the Console section
+    private static string LegacyKey(string configKey) =>
+        configKey.StartsWith("Console:", StringComparison.OrdinalIgnoreCase) ? "WebUi" + configKey["Console".Length..] : configKey;
+
+    // list entries end in a numeric index
+    private static bool IsNativeNameFor(string name, string configKey)
+    {
+        var key = name.Replace("__", ":");
+        if (key.Equals(configKey, StringComparison.OrdinalIgnoreCase)) return true;
+        return key.Length > configKey.Length + 1
+            && key.StartsWith(configKey + ":", StringComparison.OrdinalIgnoreCase)
+            && key.AsSpan(configKey.Length + 1).ContainsAnyExceptInRange('0', '9') is false;
+    }
+
+    /// Reads a direct (non-config-bound) env var, preferring its PORTWAY_ alias over the legacy name.
+    public static string? GetDirect(string newName) => GetDirect(newName, Environment.GetEnvironmentVariable);
+
+    internal static string? GetDirect(string newName, Func<string, string?> readEnv)
+    {
+        var value = readEnv(newName);
         if (value is not null)
             return value;
 
         var oldName = Array.Find(Map, m => m.NewName == newName).OldName;
-        return oldName is not null ? Environment.GetEnvironmentVariable(oldName) : null;
+        return oldName is not null ? readEnv(oldName) : null;
     }
+
+    internal static IReadOnlyList<(string NewName, string OldName, string? ConfigKey)> Entries => Map;
 
     /// Logs one warning per legacy var still in use without its PORTWAY_ replacement. Call once Serilog is up.
     public static void WarnOnLegacyUsage()

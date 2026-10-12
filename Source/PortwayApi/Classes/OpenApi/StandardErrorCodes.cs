@@ -31,6 +31,11 @@ public static class StandardErrorCodes
         }.ToFrozenDictionary();
 
     /// <summary>
+    /// Every error code some operation kind documents
+    /// </summary>
+    public static IEnumerable<int> All => Baseline.Concat(Additional.Values.SelectMany(codes => codes)).Distinct();
+
+    /// <summary>
     /// Documented status codes, ascending
     /// </summary>
     public static int[] For(ApiOperationKind kind)

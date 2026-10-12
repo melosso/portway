@@ -25,6 +25,22 @@ public class EndpointDefinition
     /// Marks the endpoint's operations as deprecated in the OpenAPI document
     /// </summary>
     public bool Deprecated { get; set; } = false;
+
+    /// <summary>
+    /// Sent as the Deprecation header when Deprecated is true
+    /// </summary>
+    public DateTimeOffset? DeprecatedSince { get; set; }
+
+    /// <summary>
+    /// Sent as the Sunset header
+    /// </summary>
+    public DateTimeOffset? Sunset { get; set; }
+
+    /// <summary>
+    /// Version from a v{n} folder below the endpoint folder, null for the unversioned endpoint
+    /// </summary>
+    public string? Version { get; set; }
+
     public McpSettings? Mcp { get; set; }
     /// <summary>
     /// Computed from Mcp.Exposed for backward compatibility with tuple consumers.
@@ -116,9 +132,19 @@ public class EndpointDefinition
     public string? NamespaceDisplayName { get; set; }
 
     /// <summary>
+    /// Markdown description of the namespace group in the OpenAPI document
+    /// </summary>
+    public string? NamespaceDescription { get; set; }
+
+    /// <summary>
     /// Folder name where the endpoint definition is located
     /// </summary>
     public string? FolderName { get; set; }
+
+    /// <summary>
+    /// Folder holding this endpoint's entity.json, set by the loader
+    /// </summary>
+    public string? ConfigDirectory { get; set; }
 
     /// <summary>
     /// Namespace inferred from folder structure (for internal use)
@@ -154,9 +180,14 @@ public class EndpointDefinition
     public string FullPath => HasNamespace ? $"{EffectiveNamespace}/{EndpointName}" : EndpointName;
 
     /// <summary>
-    /// OpenAPI tag name, the route path so namespaced endpoints nest under their namespace
+    /// Routing and scope key: FullPath plus @v{n} for a versioned endpoint
     /// </summary>
-    public string DocumentationTag => FullPath;
+    public string Identity => FullPath + EndpointVersion.Suffix(Version);
+
+    /// <summary>
+    /// Path below /api/{env}: v{n}/ plus FullPath for a versioned endpoint
+    /// </summary>
+    public string RoutePath => EndpointVersion.RoutePrefix(Version) + FullPath;
 
     /// <summary>
     /// Creates URL patterns for routing (supports both namespaced and non-namespaced)

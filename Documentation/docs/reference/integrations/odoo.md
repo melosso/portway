@@ -5,7 +5,7 @@ description: "Proxy endpoint for the Odoo JSON-RPC API"
 
 # Odoo Integration
 
-Odoo's external API is JSON-RPC, with the database, user and API key in the request body. Portway does not modify request bodies, so clients send their own Odoo credentials; Portway controls which clients reach Odoo.
+Odoo's external API is JSON-RPC, with the database, user and API key in the request body. Portway does not modify request bodies. Clients send their own Odoo credentials. Portway controls which clients reach Odoo.
 
 ## Endpoint
 

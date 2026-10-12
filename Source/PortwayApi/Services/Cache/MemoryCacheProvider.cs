@@ -192,7 +192,7 @@ public class MemoryCacheProvider : ICacheProvider
         }
     }
 
-    // ponytail: pruning can hand out a lock twice, reference count if duplicate fetches matter
+    // pruning can hand out a lock twice, reference count if duplicate fetches matter
     private void PruneUnheldLocks()
     {
         foreach (var pair in _locks)

@@ -66,14 +66,13 @@ public static partial class WebUiEndpointExtensions
             if (provider is null) return Results.NotFound();
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.CheckAccess(clientIp) is { } blocked)
+            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             // Require the current password so a hijacked session cannot attach a new sign-in method to the account
             var confirm = body.TryGetProperty("current_password", out var c) ? c.GetString() ?? "" : "";
             if (!await users.ConfirmPasswordAsync(me, confirm))
             {
-                WebUiAuthHelper.RecordFailedAttempt(clientIp);
                 return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
             }
             WebUiAuthHelper.ClearFailedAttempts(clientIp);

@@ -28,17 +28,7 @@ Client headers are forwarded to proxy upstreams, except:
 | Environment `Headers` and endpoint `HttpMethodAppendHeaders` | Configured value replaces the client value |
 | Tenant headers | Inbound header removed; the upstream header is set to the tenant value |
 
-Environment headers are defined in `environments/{env}/settings.json`:
-
-```json
-{
-  "Headers": {
-    "DatabaseName": "prod",
-    "ServerName": "YOUR-APP-SERVER",
-    "Origin": "Portway"
-  }
-}
-```
+Environment headers: [Environments](/guide/environments#environment-settings).
 
 The proxy response's `Server`, `X-Powered-By`, `X-AspNet-Version` and `X-AspNetMvc-Version` headers are removed.
 
@@ -85,7 +75,7 @@ Responses are compressed with Brotli (`br`) or Gzip (`gzip`) according to `Accep
 
 ## CORS
 
-Outside Development, cross-origin requests are allowed only from `WebUi:CorsOrigins`, with any method and header and with credentials. Without configured origins, cross-origin requests are refused. In Development, any origin is allowed.
+Outside Development, cross-origin requests are allowed only from `Console:CorsOrigins`, with any method and header and with credentials. Without configured origins, cross-origin requests are refused. In Development, any origin is allowed.
 
 ## Related topics
 

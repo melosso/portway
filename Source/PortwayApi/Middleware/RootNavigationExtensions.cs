@@ -95,7 +95,7 @@ public static class RootNavigationExtensions
                 if (!isHtmlRequest)
                 {
                     // Non-browser requests always get the OpenAPI JSON
-                    var redirectPath = $"{pathBase}/docs/openapi/v1/openapi.json";
+                    var redirectPath = $"{pathBase}/docs/openapi.json";
                     Log.Debug("API root request, redirecting to {Path}", redirectPath);
                     context.Response.Redirect(redirectPath, permanent: false);
                     return;

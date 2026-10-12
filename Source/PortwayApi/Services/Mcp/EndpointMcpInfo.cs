@@ -4,6 +4,7 @@ public sealed record EndpointMcpInfo
 {
     public string Name { get; init; } = string.Empty;
     public string? Namespace { get; init; }
+    public string? Version { get; init; }
     public string Url { get; init; } = string.Empty;
     public IReadOnlyList<string> Methods { get; init; } = [];
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
@@ -21,7 +22,6 @@ public sealed record EndpointMcpInfo
     /// Usage instruction appended to the tool description (from Mcp.Instruction)
     /// </summary>
     public string? Instruction { get; init; }
-    public bool UiEnabled { get; init; } = false;
     /// <summary>
     /// MIME type for Static endpoints (e.g. "text/csv"); null for SQL/Proxy
     /// </summary>

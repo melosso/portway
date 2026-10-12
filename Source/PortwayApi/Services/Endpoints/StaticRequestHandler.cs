@@ -41,19 +41,7 @@ public sealed class StaticRequestHandler
         Log.Debug("Static Content Request: {Url}", url);
 
         {
-            // Build path to content file - handle namespaced endpoints
-            string endpointPath;
-            if (endpoint.HasNamespace)
-            {
-                // For namespaced endpoints, use the full namespace/endpoint structure
-                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static",
-                    endpoint.EffectiveNamespace!, endpoint.FolderName ?? endpointName);
-            }
-            else
-            {
-                // For non-namespaced endpoints, use just the endpoint name
-                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
-            }
+            var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
 
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
             var contentFilePath = Path.Combine(endpointPath, contentFile);

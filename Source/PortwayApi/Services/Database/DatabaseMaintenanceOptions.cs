@@ -18,4 +18,19 @@ public class DatabaseMaintenanceOptions
     /// Run maintenance once shortly after startup in addition to the schedule
     /// </summary>
     public bool RunOnStartup { get; set; } = false;
+
+    public DatabaseBackupOptions Backup { get; set; } = new();
+}
+
+/// <summary>
+/// Snapshot archive written at the maintenance schedule
+/// </summary>
+public class DatabaseBackupOptions
+{
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>
+    /// Number of archives kept in .backups/snapshots
+    /// </summary>
+    public int Retention { get; set; } = 7;
 }

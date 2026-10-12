@@ -30,7 +30,7 @@ Teable's REST API uses a personal access token (prefix `teable_`) in the `Author
 }
 ```
 
-The `OverrideGlobalToken` setting replaces bearer token authentication for the whole environment, so Teable uses a dedicated environment. The environment `Authorization` header replaces a client header of the same name. Methods: [Environment Authentication](/reference/environment-auth).
+The `OverrideGlobalToken` setting replaces bearer token authentication for the whole environment. Teable requires a dedicated environment. The environment `Authorization` header replaces a client header of the same name. Methods: [Environment Authentication](/reference/environment-auth).
 
 ## Endpoints
 

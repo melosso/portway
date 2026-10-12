@@ -6,12 +6,12 @@ using Xunit;
 namespace PortwayApi.Tests.Endpoints;
 
 /// <summary>
-/// Demo proxy endpoint Account/Accounts (endpoints/Proxy/Account/Accounts/entity.json)
+/// Demo proxy endpoint CRM/Accounts (endpoints/Proxy/CRM/Accounts/entity.json)
 /// </summary>
 public class DemoProxyEndpointTests : ApiTestBase
 {
     private const string ValidEnv = "500";
-    private const string EndpointPath = "Account/Accounts";
+    private const string EndpointPath = "CRM/Accounts";
     private const string ApiPath = $"/api/{ValidEnv}/{EndpointPath}";
 
     public DemoProxyEndpointTests()
@@ -34,7 +34,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     public async Task GetAccounts_GloballyDisallowedEnvironment_ReturnsBadRequest()
     {
         // Act
-        var response = await _client.GetAsync("/api/invalid/Account/Accounts", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/api/invalid/CRM/Accounts", TestContext.Current.CancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -111,7 +111,7 @@ public class DemoProxyEndpointTests : ApiTestBase
     [Fact]
     public async Task GetAccounts_AltValidEnvironment_NotUnauthorizedOrBadRequest()
     {
-        // Arrange: Account/Accounts has no AllowedEnvironments restriction, so 700 is valid; Act
+        // Arrange: CRM/Accounts has no AllowedEnvironments restriction, so 700 is valid; Act
         var response = await _client.GetAsync($"/api/700/{EndpointPath}", TestContext.Current.CancellationToken);
 
         // Assert

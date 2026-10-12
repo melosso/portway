@@ -1,11 +1,9 @@
 {
-  "Namespace": "Production",
-  "DisplayName": "Machine Details",
+  "DisplayName": "Machine details",
   "NamespaceDisplayName": "Production",
   "ContentType": "application/xml",
   "ContentFile": "summary.xml",
   "EnableFiltering": true,
-  "Hidden": false,
   "Enabled": false,
   "AllowedEnvironments": [
     "500",

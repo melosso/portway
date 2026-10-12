@@ -4,15 +4,24 @@ using System.Collections.Immutable;
 
 public class McpEndpointRegistry
 {
-    // ImmutableList allows lock-free reads; replaced atomically on each RegisterEndpoints call
-    private volatile ImmutableList<McpToolDescriptor> _tools = ImmutableList<McpToolDescriptor>.Empty;
+    /// <summary>
+    /// Tools, name index and the chat tool-definition cache, swapped as one reference so readers never mix two registrations
+    /// </summary>
+    internal sealed class Snapshot(ImmutableList<McpToolDescriptor> tools, ImmutableDictionary<string, McpToolDescriptor> byName)
+    {
+        public ImmutableList<McpToolDescriptor> Tools { get; } = tools;
+        public ImmutableDictionary<string, McpToolDescriptor> ByName { get; } = byName;
 
-    // Pre-built O(1) lookup from sanitized tool name to descriptor; rebuilt atomically alongside _tools
-    private volatile ImmutableDictionary<string, McpToolDescriptor> _toolByName =
-        ImmutableDictionary<string, McpToolDescriptor>.Empty;
+        // built by McpChatService; stored as object to avoid a circular dependency
+        public volatile object? CachedToolDefinitions;
+    }
 
-    // Cached tool definitions built by McpChatService; stored as object to avoid a circular dependency, invalidated on RegisterEndpoints
-    internal volatile object? CachedToolDefinitions;
+    private volatile Snapshot _current = Empty();
+
+    private static Snapshot Empty() =>
+        new(ImmutableList<McpToolDescriptor>.Empty, ImmutableDictionary<string, McpToolDescriptor>.Empty);
+
+    internal Snapshot Current => _current;
 
     /// <summary>
     /// Set during startup to re-build and register all MCP endpoints from disk; invoked via <see cref="Refresh"/> after hot-reload
@@ -27,16 +36,16 @@ public class McpEndpointRegistry
     /// <summary>
     /// Lock-free snapshot of all registered tool descriptors
     /// </summary>
-    public ImmutableList<McpToolDescriptor> Tools => _tools;
+    public ImmutableList<McpToolDescriptor> Tools => _current.Tools;
 
     /// <summary>
     /// O(1) lookup by sanitized tool name; returns null if not found
     /// </summary>
     public McpToolDescriptor? FindByName(string sanitizedName) =>
-        _toolByName.TryGetValue(sanitizedName, out var t) ? t : null;
+        _current.ByName.TryGetValue(sanitizedName, out var t) ? t : null;
 
     // same map findbyname uses
-    public ImmutableDictionary<string, McpToolDescriptor> ToolsByInvokeName => _toolByName;
+    public ImmutableDictionary<string, McpToolDescriptor> ToolsByInvokeName => _current.ByName;
 
     public void RegisterEndpoints(IEnumerable<EndpointMcpInfo> endpoints)
     {
@@ -62,17 +71,17 @@ public class McpEndpointRegistry
 
                 var descriptor = new McpToolDescriptor
                 {
-                    Name = $"{ep.Namespace}_{ep.Name}_{method}".Trim('_'),
+                    Name = $"{ep.Namespace}_{ep.Name}_{ep.Version}_{method}".Replace("__", "_").Trim('_'),
                     Description = llmDescription,
                     DisplayDescription = humanSummary,
                     EndpointName = ep.Name,
                     Namespace = ep.Namespace,
+                    Version = ep.Version,
                     Method = method,
                     AllowedEnvironments = ep.AllowedEnvironments,
                     TenantHeaders = ep.TenantHeaders,
                     AvailableFields = ep.AvailableFields,
                     Url = ep.Url,
-                    UiResourceUri = ep.UiEnabled ? $"ui://endpoints/{ep.Name}" : null,
                     ContentType = ep.ContentType,
                     EndpointKind = ep.EndpointKind,
                     Instruction = ep.Instruction
@@ -81,24 +90,19 @@ public class McpEndpointRegistry
                 builder.Add(descriptor);
 
                 // Index by sanitized name; first method variant wins for lookup purposes
-                var key = SanitiseName(string.IsNullOrEmpty(ep.Namespace)
+                var key = SanitiseName((string.IsNullOrEmpty(ep.Namespace)
                     ? ep.Name
-                    : $"{ep.Namespace}_{ep.Name}");
+                    : $"{ep.Namespace}_{ep.Name}") + (ep.Version is null ? "" : $"_{ep.Version}"));
                 dictBuilder.TryAdd(key, descriptor);
             }
         }
 
-        // Atomic swap; readers see either the old or new snapshot, never a partial state
-        _tools = builder.ToImmutable();
-        _toolByName = dictBuilder.ToImmutable();
-        CachedToolDefinitions = null; // invalidate cached ToolDefinition list
+        _current = new Snapshot(builder.ToImmutable(), dictBuilder.ToImmutable());
     }
 
     public void Clear()
     {
-        _tools = ImmutableList<McpToolDescriptor>.Empty;
-        _toolByName = ImmutableDictionary<string, McpToolDescriptor>.Empty;
-        CachedToolDefinitions = null;
+        _current = Empty();
     }
 
     private static string SanitiseName(string name) =>

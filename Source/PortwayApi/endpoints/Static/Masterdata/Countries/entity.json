@@ -2,7 +2,6 @@
   "ContentType": "application/json",
   "ContentFile": "countries-2025.json",
   "EnableFiltering": true,
-  "Namespace": "Masterdata",
   "NamespaceDisplayName": "Masterdata",
   "AllowedEnvironments": [
     "500",

@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Threading.Channels;
 using Serilog;
 
@@ -16,7 +15,6 @@ public abstract class FileWatchPump : IHostedService, IDisposable
             SingleReader = true
         });
 
-    private readonly ConcurrentDictionary<string, DateTime> _lastReloadTimes = new();
     private FileSystemWatcher? _fileWatcher;
     private Task? _consumerTask;
     private CancellationTokenSource? _consumerCts;
@@ -39,7 +37,7 @@ public abstract class FileWatchPump : IHostedService, IDisposable
     protected string Description { get; }
 
     /// <summary>
-    /// How long to ignore repeat events for the same file; re-read per event so config changes take effect
+    /// Quiet period after the first event before changes are handled; re-read per batch so config changes take effect
     /// </summary>
     protected virtual TimeSpan DebounceTime => TimeSpan.FromSeconds(2);
 
@@ -112,33 +110,28 @@ public abstract class FileWatchPump : IHostedService, IDisposable
 
     private async Task ConsumeEventsAsync(CancellationToken ct)
     {
-        await foreach (var (path, type) in _eventChannel.Reader.ReadAllAsync(ct))
+        var reader = _eventChannel.Reader;
+        while (await reader.WaitToReadAsync(ct))
         {
-            if (IsDebounced(path))
-                continue;
+            // trailing edge so an in-place save is read after its last write
+            await Task.Delay(DebounceTime, ct);
 
-            try
+            var pending = new Dictionary<string, WatcherChangeTypes>();
+            while (reader.TryRead(out var change))
+                pending[change.Path] = change.Type;
+
+            foreach (var (path, type) in pending)
             {
-                await HandleFileChangeAsync(path, type);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Unhandled error processing {Description} file change for {Path}", Description, path);
+                try
+                {
+                    await HandleFileChangeAsync(path, type);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Unhandled error processing {Description} file change for {Path}", Description, path);
+                }
             }
         }
-    }
-
-    private bool IsDebounced(string filePath)
-    {
-        var now = DateTime.UtcNow;
-        if (_lastReloadTimes.TryGetValue(filePath, out var lastReload) && now - lastReload < DebounceTime)
-        {
-            Log.Debug("Ignoring duplicate file change event for {Path} (debounced)", filePath);
-            return true;
-        }
-
-        _lastReloadTimes[filePath] = now;
-        return false;
     }
 
     private void StartPollingFallback()

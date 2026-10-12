@@ -1,118 +1,237 @@
-  <script src="js/components/drawer.js"></script>
-  <script src="js/kv-editor.js"></script>
-  <style>
-    main { display: flex; flex-direction: column; }
-  </style>
+<script src="js/components/drawer.js"></script>
+<script src="js/kv-editor.js"></script>
+<style>
+    main {
+        display: flex;
+        flex-direction: column;
+    }
+</style>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Environments</h1>
-        <p class="page-sub">Servers, credentials and headers per environment.</p>
-      </div>
-    </div>
-    <div class="page-actions">
-      <button class="btn btn-outline" onclick="refreshAll()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-      <button class="btn btn-primary" onclick="openCreateDrawer()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New environment
-      </button>
-    </div>
-  </div>
-
-  <div class="main-content-fill">
-    <div class="filter-bar">
-      <div class="filter-btns" id="envTabs" role="group" aria-label="Filter"></div>
-      <div class="search-wrap">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="input" id="envSearchInput" placeholder="Search..." oninput="filterEnvList()">
-      </div>
-    </div>
-    <div class="ep-split">
-
-      <!-- Left: list -->
-      <div class="ep-list">
-        <div class="ep-list-scroll" id="envListScroll">
-          <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Environments</h1>
+                <p class="page-sub">Servers, credentials and headers per environment.</p>
+            </div>
         </div>
-        <div class="ep-list-footer">
-          <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Environment
-          </button>
+        <div class="page-actions">
+            <button class="btn btn-outline" onclick="refreshAll()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+            <button class="btn btn-primary" onclick="openCreateDrawer()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                New environment
+            </button>
         </div>
-      </div>
-
-      <!-- Right: detail -->
-      <div class="ep-detail" id="envDetail">
-        <div class="ep-empty">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="1"/></svg>
-          Loading…
-        </div>
-      </div>
-
     </div>
-  </div>
+
+    <div class="main-content-fill">
+        <div class="filter-bar">
+            <div class="filter-btns" id="envTabs" role="group" aria-label="Filter"></div>
+            <div class="search-wrap">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                    type="text"
+                    class="input"
+                    id="envSearchInput"
+                    placeholder="Search..."
+                    oninput="filterEnvList()"
+                />
+            </div>
+        </div>
+        <div class="ep-split">
+            <div class="ep-list">
+                <div class="ep-list-scroll" id="envListScroll">
+                    <div class="ep-empty" style="padding:1.5rem;font-size:0.8rem">Loading…</div>
+                </div>
+                <div class="ep-list-footer">
+                    <button class="btn btn-outline" style="width:100%;font-size:0.8rem" onclick="openCreateDrawer()">
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Environment
+                    </button>
+                </div>
+            </div>
+
+            <div class="ep-detail" id="envDetail">
+                <div class="ep-empty">
+                    <svg
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+                        <circle cx="12" cy="12" r="1" />
+                    </svg>
+                    Loading…
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
-<!-- Create Environment Drawer -->
 <div class="drawer-backdrop" id="createBackdrop" data-drawer-backdrop="createDrawer"></div>
 <div class="drawer" id="createDrawer">
-  <div class="drawer-header">
-    <span class="drawer-title">Add Environment</span>
-    <button class="btn-icon" data-drawer-close="createDrawer">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-body">
-    <div class="field">
-      <label class="field-label">Name <span style="color:hsl(var(--destructive))">*</span></label>
-      <input type="text" id="createName" placeholder="e.g. prod, staging" class="input"
-        oninput="validateCreateName(this); syncDatabaseNameFromEnvName(this.value)">
-      <div id="createNameErr" style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;display:none"></div>
-    </div>
-    <div class="field">
-      <label class="field-label">Server Name</label>
-      <div class="field-help" style="margin-bottom:0.375rem">SQL server address for this environment. Overrides the global server name.</div>
-      <input type="text" id="createServerName" placeholder="localhost" class="input">
-    </div>
-    <div class="field">
-      <label class="field-label">Connection String</label>
-      <div style="position:relative;">
-        <input type="password" id="createConnStr" placeholder="Server=...;Database=...;User Id=...;Password=...;" class="input input-secret">
-        <button type="button" onclick="togglePasswordVis('createConnStr', this)"
-          style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;" title="Show / hide">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <div class="drawer-header">
+        <span class="drawer-title">Add Environment</span>
+        <button class="btn-icon" data-drawer-close="createDrawer">
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
         </button>
-      </div>
-      <div class="field-help">Optional. Required only for SQL endpoints.</div>
     </div>
-    <div class="field">
-      <label class="field-label">Headers</label>
-      <div class="field-help" style="margin-bottom:0.375rem">HTTP headers forwarded with every request for this environment.</div>
-      <div class="kv-editor" id="createHeaders"></div>
-      <button class="ep-add-row" onclick="addCreateHeader()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add header
-      </button>
+    <div class="drawer-body">
+        <div class="field">
+            <label class="field-label">Name <span style="color:hsl(var(--destructive))">*</span></label>
+            <input
+                type="text"
+                id="createName"
+                placeholder="e.g. prod, staging"
+                class="input"
+                oninput="validateCreateName(this); syncDatabaseNameFromEnvName(this.value)"
+            />
+            <div
+                id="createNameErr"
+                style="font-size:0.75rem;color:hsl(var(--destructive));margin-top:0.25rem;display:none"
+            ></div>
+        </div>
+        <div class="field">
+            <label class="field-label">Server Name</label>
+            <div class="field-help" style="margin-bottom:0.375rem">
+                SQL server address for this environment. Overrides the global server name.
+            </div>
+            <input type="text" id="createServerName" placeholder="localhost" class="input" />
+        </div>
+        <div class="field">
+            <label class="field-label">Connection String</label>
+            <div style="position:relative;">
+                <input
+                    type="password"
+                    id="createConnStr"
+                    placeholder="Server=...;Database=...;User Id=...;Password=...;"
+                    class="input input-secret"
+                />
+                <button
+                    type="button"
+                    onclick="togglePasswordVis('createConnStr', this)"
+                    style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;"
+                    title="Show / hide"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                </button>
+            </div>
+            <div class="field-help">Required for SQL endpoints.</div>
+        </div>
+        <div class="field">
+            <label class="field-label">Headers</label>
+            <div class="field-help" style="margin-bottom:0.375rem">
+                HTTP headers forwarded with every request for this environment.
+            </div>
+            <div class="kv-editor" id="createHeaders"></div>
+            <button class="ep-add-row" onclick="addCreateHeader()">
+                <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add header
+            </button>
+        </div>
+        <div id="createAuthContainer"></div>
     </div>
-    <div id="createAuthContainer"></div>
-  </div>
-  <div class="drawer-footer">
-    <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
-    <button class="btn btn-primary" onclick="submitCreate()" style="margin-left:auto">
-      <span class="btn-label">Create</span>
-      <span class="btn-spinner"></span>
-    </button>
-  </div>
+    <div class="drawer-footer">
+        <button class="btn btn-outline" data-drawer-close="createDrawer">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCreate()" style="margin-left:auto">
+            <span class="btn-label">Create</span>
+            <span class="btn-spinner"></span>
+        </button>
+    </div>
 </div>
-
-<!-- Toast container -->
-
 
 <script>
 // State 
@@ -136,7 +255,7 @@ function confirmNavigate(onConfirm) {
   
   AlertDialog.show({
     title: 'Discard changes?',
-    description: 'Unsaved changes will be lost.',
+    description: 'Unsaved changes are discarded.',
     actionLabel: 'Leave anyway',
     cancelLabel: 'Stay here',
     onConfirm: () => {
@@ -416,7 +535,7 @@ function buildFormView(name, d, headersHtml) {
   return `
     ${notExists ? `<div style="padding:0.5rem 0.75rem;background:hsl(43 96% 56% / 0.1);border:1px solid hsl(43 96% 56% / 0.3);border-radius:var(--nav-radius);font-size:0.8rem;color:hsl(43 85% 45%);display:flex;align-items:center;gap:0.5rem">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      No settings.json found, saving will create it.
+      No settings.json. Saving creates it.
     </div>` : ''}
     <div class="card">
       <div class="card-header"><h2 class="card-title">Server</h2></div>
@@ -443,13 +562,13 @@ function buildFormView(name, d, headersHtml) {
            <div id="testResult" style="display:none;font-size:0.78rem;margin-bottom:0.375rem;"></div>
            <div id="replaceCs" style="display:none;">
              <div style="position:relative;">
-               <input type="password" id="editConnStr" placeholder="New plaintext connection string, will be encrypted on save" class="input input-secret" oninput="markDirty()">
+               <input type="password" id="editConnStr" placeholder="New connection string, encrypted on save" class="input input-secret" oninput="markDirty()">
                <button type="button" onclick="togglePasswordVis('editConnStr', this)"
                  style="position:absolute;right:0.375rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:hsl(var(--muted-foreground));padding:0.2rem;">
                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                </button>
              </div>
-             <div class="field-help" style="margin-top:0.25rem">Will be encrypted before saving.</div>
+             <div class="field-help" style="margin-top:0.25rem">Encrypted on save.</div>
            </div>`
         : `<div style="position:relative;">
              <input type="password" id="editConnStr" value="${esc(d.connection_string ?? '')}" placeholder="Server=...;Database=...;" class="input input-secret" oninput="markDirty()">
@@ -458,7 +577,7 @@ function buildFormView(name, d, headersHtml) {
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
              </button>
            </div>
-           <div class="field-help" style="margin-top:0.25rem">Optional. Required only for SQL endpoints.</div>`
+           <div class="field-help" style="margin-top:0.25rem">Required for SQL endpoints.</div>`
       }
     </div>
     ${buildAuthSection(d.authentication)}
@@ -487,7 +606,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthEnabled" ${auth.enabled ? 'checked' : ''} onchange="toggleAuthUI('${prefix}'); markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Enable custom authentication<span class="tooltip tooltip-above">Add auth methods (API key, Bearer, Basic, JWT, HMAC) applied to all requests for this environment.</span></span>
+          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Enable custom authentication<span class="tooltip tooltip-above">Accepts API key, Bearer, Basic, JWT or HMAC credentials on every request to this environment.</span></span>
         </div>
 
         <div id="${prefix}AuthOverrideContainer" style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;${auth.enabled ? '' : 'opacity:0.5;pointer-events:none'}"
@@ -496,7 +615,7 @@ function buildAuthSection(auth, prefix = 'edit') {
             <input type="checkbox" id="${prefix}AuthOverride" ${auth.override_global_token ? 'checked' : ''} onchange="markDirty()">
             <span class="slider"></span>
           </label>
-          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">Rejects the Portway bearer token. Only the methods above are accepted.</span></span>
+          <span class="tooltip-wrapper" style="font-size:0.8125rem;font-weight:500;">Override global token<span class="tooltip tooltip-above">Rejects the Portway bearer token. Accepts the methods above.</span></span>
         </div>
       </div>
 
@@ -880,14 +999,14 @@ function confirmAlertDialog() {
 function startRemove(name) {
   showAlertDialog({
     title: `Remove "${name}"?`,
-    description: 'Removes the environment from the allowed list. The configuration file is kept unless deleted.',
+    description: 'Removes the environment from the allowed list.',
     actionLabel: 'Remove',
     extraHtml: `<div style="display:flex;align-items:center;gap:0.625rem;cursor:pointer;margin-top:0.5rem;" onclick="document.getElementById('deleteFilesSwitch').click()">
       <label class="switch" onclick="event.stopPropagation()">
         <input type="checkbox" id="deleteFilesSwitch">
         <span class="slider"></span>
       </label>
-      <span style="font-size:0.8125rem;font-weight:500;">Also delete environment files</span>
+      <span style="font-size:0.8125rem;font-weight:500;">Delete environment files</span>
     </div>`,
     onConfirm: () => doRemove(name)
   });
@@ -932,7 +1051,7 @@ async function confirmEnvRename(oldName) {
   }
   try {
     await api(`/ui/api/environments/${encodeURIComponent(oldName)}`, {
-      method: 'PATCH', body: { new_name: newName }, success: 'Renamed successfully'
+      method: 'PATCH', body: { new_name: newName }, success: 'Renamed', silent: true
     });
     _envRenaming = false;
     state.selected = newName;
@@ -984,7 +1103,7 @@ function addCreateHeader() {
 function validateCreateName(input) {
   const err = document.getElementById('createNameErr');
   const ok  = /^[a-zA-Z0-9_-]*$/.test(input.value);
-  err.textContent   = ok ? '' : 'Only letters, numbers, hyphens, and underscores allowed.';
+  err.textContent   = ok ? '' : 'Letters, numbers, hyphens and underscores.';
   err.style.display = ok ? 'none' : 'block';
 }
 

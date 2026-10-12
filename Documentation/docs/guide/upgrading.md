@@ -5,7 +5,7 @@ description: "Replace application files and restore configuration to move to a n
 
 # Upgrading Portway
 
-An upgrade replaces the application files and keeps configuration and databases. Releases can change the application, configuration and database schema.
+An upgrade replaces the application files and keeps configuration and databases.
 
 ::: important Breaking changes
 Before `v1.0.0`, releases can include breaking changes. Read the release notes before every upgrade.
@@ -13,7 +13,7 @@ Before `v1.0.0`, releases can include breaking changes. Read the release notes b
 
 ## Find your current version
 
-The installed version is recorded in `.version.txt` in the deployment directory. Update it after an upgrade; bug reports reference it.
+Windows and Linux releases include `.version.txt` with the release version. Bug reports reference it.
 
 ## Steps
 
@@ -34,7 +34,11 @@ The [GitHub release notes](https://github.com/melosso/portway/releases/) list br
 
 ::: code-group
 
-```powershell [IIS]
+```bash [Linux]
+sudo systemctl stop portway
+```
+
+```powershell [Windows]
 Stop-WebAppPool -Name "PortwayAppPool"
 ```
 
@@ -48,7 +52,7 @@ Stopping resets the in-memory cache and rate limit state.
 
 ### 4. Replace the application files
 
-IIS: extract the release over the existing directory without overwriting `appsettings.json`, `environments/` and `endpoints/`.
+Linux and IIS: extract the release over the existing directory without overwriting `appsettings.json`, `environments/` and `endpoints/`.
 
 Docker:
 
@@ -64,7 +68,3 @@ Apply the configuration changes from the release notes to `appsettings.json` and
 
 - `GET /health/live` returns `Alive`
 - Endpoints respond in a test environment
-
-:::tip
-Validate major upgrades in a non-production environment first.
-:::

@@ -1,273 +1,589 @@
-  <script src="js/components/chart-period-selector.js"></script>
-  <script src="js/components/area-chart.js"></script>
-  <script src="js/components/error-chart.js"></script>
-  <script src="js/components/setup-guide.js"></script>
-  <style>
-    /* Stacked-chart legend */
-    .chart-legend { display:flex; gap:1rem; align-items:center; }
-    .chart-legend-item { display:flex; align-items:center; gap:0.35rem; font-size:0.72rem; color:hsl(var(--muted-foreground)); }
-    .chart-legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+<script src="js/components/chart-period-selector.js"></script>
+<script src="js/components/area-chart.js"></script>
+<script src="js/components/error-chart.js"></script>
+<script src="js/components/setup-guide.js"></script>
+<style>
+    .dash-updated {
+        font-size: 0.75rem;
+        color: hsl(var(--muted-foreground));
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .dash-note {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: hsl(var(--muted-foreground));
+    }
+    .dash-alert {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: hsl(var(--destructive));
+    }
+    .dash-foot {
+        margin: 0.875rem 0 0;
+        font-size: 0.75rem;
+        color: hsl(var(--muted-foreground));
+        font-variant-numeric: tabular-nums;
+    }
+    .trio-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1.25rem;
+        align-items: stretch;
+    }
+    @media (max-width: 900px) {
+        .trio-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .card-header-end {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
 
-    /* Cache card */
-    .cache-layout { display:flex; align-items:center; gap:1.25rem; }
-    .cache-ring   { flex-shrink:0; }
-    .cache-stats  { display:flex; flex-direction:column; gap:0.6rem; flex:1; min-width:0; }
-    .cache-row    { display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; gap:0.5rem; }
-    .cache-row-key{ color:hsl(var(--muted-foreground)); }
-    .cache-row-val{ font-variant-numeric:tabular-nums; font-weight:600; color:hsl(var(--foreground)); }
+    /* Rows shared by backends and recent changes */
+    .dash-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .dash-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.125rem 0.625rem;
+        align-items: baseline;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid hsl(var(--border));
+    }
+    .dash-row:first-child {
+        padding-top: 0;
+    }
+    .dash-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    .dash-row .status-icon {
+        align-self: center;
+    }
+    .dash-row-name {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .dash-row-desc {
+        grid-column: 2 / -1;
+        font-size: 0.75rem;
+        color: hsl(var(--muted-foreground));
+        overflow-wrap: anywhere;
+    }
+    .dash-row-actor {
+        font-weight: 500;
+        color: hsl(var(--foreground));
+    }
+    .dash-row-end {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.75rem;
+        color: hsl(var(--muted-foreground));
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .dash-list-plain .dash-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .dash-list-plain .dash-row-desc {
+        grid-column: 1 / -1;
+    }
+
+    /* Chart legend */
+    .chart-legend {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    .chart-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+        color: hsl(var(--muted-foreground));
+    }
+    .chart-legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .chart-legend-dot.api {
+        background: hsl(var(--info));
+    }
+    .chart-legend-dot.ui {
+        background: hsl(var(--muted-foreground) / 0.5);
+    }
+    .chart-box {
+        height: 180px;
+    }
+    .chart-body {
+        padding-bottom: 1.25rem;
+    }
 
     /* Top endpoints */
-    .top-ep-list  { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:0.6rem 1.25rem; }
-    .top-ep-item  { display:grid; grid-template-columns:1.2rem 1fr auto; grid-template-rows:auto auto; gap:0.2rem 0.6rem; align-items:center; }
-    .top-ep-rank  { font-size:0.7rem; font-variant-numeric:tabular-nums; color:hsl(var(--muted-foreground)); text-align:right; }
-    .top-ep-name  { font-size:0.8rem; color:hsl(var(--foreground)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .top-ep-count { font-size:0.72rem; font-variant-numeric:tabular-nums; color:hsl(var(--muted-foreground)); white-space:nowrap; }
-    .top-ep-bar-track { grid-column:2/-1; height:4px; background:hsl(var(--muted)); border-radius:999px; overflow:hidden; }
-    .top-ep-bar-fill  { height:100%; width:100%; background:hsl(var(--info)); border-radius:999px; transform-origin:left; transition:transform .3s; }
-  </style>
+    .top-ep-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.625rem;
+    }
+    .top-ep-item {
+        display: grid;
+        grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+        gap: 0.25rem 0.625rem;
+        align-items: center;
+    }
+    .top-ep-rank {
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+        color: hsl(var(--muted-foreground));
+        text-align: right;
+    }
+    .top-ep-name {
+        font-size: 0.8125rem;
+        color: inherit;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .top-ep-name:hover {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    .top-ep-name:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+        border-radius: var(--nav-radius);
+    }
+    .top-ep-count {
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+        color: hsl(var(--muted-foreground));
+        white-space: nowrap;
+    }
+    .top-ep-bar-track {
+        grid-column: 2 / -1;
+        height: 4px;
+        background: hsl(var(--muted));
+        border-radius: 999px;
+        overflow: hidden;
+    }
+    .top-ep-bar-fill {
+        height: 100%;
+        width: 100%;
+        background: hsl(var(--muted-foreground) / 0.55);
+        border-radius: 999px;
+        transform-origin: left;
+        transition: transform 0.3s;
+    }
+
+    .kv-total {
+        border-top: 1px solid hsl(var(--border));
+        padding-top: 0.5rem;
+        font-weight: 600;
+        color: hsl(var(--foreground));
+    }
+
+    a.summary-card {
+        color: inherit;
+        text-decoration: none;
+        transition:
+            border-color 0.15s,
+            background 0.15s;
+    }
+    a.summary-card:hover {
+        border-color: hsl(var(--foreground) / 0.25);
+    }
+    a.summary-card:focus-visible {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+    }
+    .health-strip .summary-value.is-good {
+        color: hsl(var(--success));
+    }
+    .health-strip .summary-value.is-warn {
+        color: hsl(var(--warning));
+    }
+    .health-strip .summary-value.is-bad {
+        color: hsl(var(--destructive));
+    }
+</style>
 
 <main>
-  <div class="page-header">
-    <div class="page-title">
-      <div class="page-heading">
-        <h1 class="select-none">Dashboard</h1>
-        <p class="page-sub">Live traffic, health and endpoint counts.</p>
-      </div>
-    </div>
-    <div class="page-actions">
-      <button id="refreshBtn" class="btn btn-outline" onclick="load()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-    </div>
-  </div>
-
-  <div class="main-content">
-
-    <div id="setupGuide"></div>
-
-    <div class="summary-cards">
-      <div class="summary-card">
-        <div class="summary-value" id="statSql">—</div>
-        <div class="summary-label">SQL Endpoints</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-value" id="statProxy">—</div>
-        <div class="summary-label">Proxy Endpoints</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-value" id="statFile">—</div>
-        <div class="summary-label">File / Static</div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-value" id="statEnvs">—</div>
-        <div class="summary-label">Environments</div>
-      </div>
-    </div>
-
-    <!-- Row 2: equal-height pair via stretch -->
-    <div class="pair-grid">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Service Health</span>
-          <span class="badge badge-muted" id="healthBadge">—</span>
-        </div>
-        <div class="card-body" style="flex:1">
-          <div class="kv-grid">
-            <span class="kv-key">Status</span><span class="kv-val" id="healthStatus">—</span>
-            <span class="kv-key">Uptime</span><span class="kv-val" id="healthUptime">—</span>
-            <span class="kv-key">Version</span><span class="kv-val" id="healthVersion">—</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header"><span class="card-title">Endpoint Breakdown</span></div>
-        <div class="card-body" id="breakdownBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 3: traffic (stacked API/UI) + errors -->
-    <div class="pair-grid pair-grid-wide" style="align-items:start">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Request Traffic</span>
-          <div style="display:flex;align-items:center;gap:1rem">
-            <div class="chart-legend">
-              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:hsl(var(--info))"></span>API</span>
-              <span class="chart-legend-item"><span class="chart-legend-dot" style="background:hsl(var(--muted-foreground)/.5)"></span>UI</span>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Dashboard</h1>
+                <p class="page-sub">Backend health, recent changes and API traffic.</p>
             </div>
-            <div id="trafficPeriodSel"></div>
-          </div>
         </div>
-        <div class="card-body" style="padding-bottom:1.25rem">
-          <div id="trafficChart" style="height:180px"></div>
+        <div class="page-actions">
+            <span class="dash-updated" id="updatedAt"></span>
+            <div id="periodSel"></div>
+            <button id="refreshBtn" class="btn btn-outline" type="button" onclick="refreshAll()" data-tooltip="Refresh (R)">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">HTTP Errors</span>
-          <div id="errorPeriodSel"></div>
-        </div>
-        <div class="card-body" style="padding-bottom:1.25rem">
-          <div id="errorChart" style="height:180px"></div>
-        </div>
-      </div>
     </div>
 
-    <!-- Row 4: cache + top endpoints — equal height -->
-    <div class="pair-grid">
+    <div class="main-content">
+        <div id="setupGuide"></div>
 
-      <div class="card">
-        <div class="card-header"><span class="card-title">Cache</span></div>
-        <div class="card-body" id="cacheBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
+        <div class="pair-grid">
+            <section class="card" aria-labelledby="backendsTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="backendsTitle">Backends</h2>
+                    <span class="badge badge-muted" id="healthBadge" role="status" aria-live="polite">—</span>
+                </div>
+                <div class="card-body" id="checksBody">
+                    <p class="dash-note">Loading…</p>
+                </div>
+            </section>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Top Endpoints</span>
-          <span class="badge badge-muted" style="font-size:0.68rem" id="topEpPeriodLabel"></span>
+            <section class="card" aria-labelledby="changesTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="changesTitle">Recent changes</h2>
+                    <a class="btn-icon" href="ui/settings#security" aria-label="All changes" data-tooltip="All changes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+                </div>
+                <div class="card-body" id="changesBody">
+                    <p class="dash-note">Loading…</p>
+                </div>
+            </section>
         </div>
-        <div class="card-body" id="topEndpointsBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
 
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Rate Limiting</span>
-          <span class="badge badge-muted" id="rlBadge">—</span>
+        <div class="summary-cards health-strip">
+            <a class="summary-card" href="ui/health" data-health-link>
+                <div class="summary-value" id="hsSuccess">—</div>
+                <div class="summary-label">Success rate</div>
+                <div class="summary-sub" data-period-sub="API requests">—</div>
+            </a>
+            <a class="summary-card" href="ui/health" data-health-link>
+                <div class="summary-value" id="hsFailures">—</div>
+                <div class="summary-label">Failures (5xx)</div>
+                <div class="summary-sub" id="hsClientErrors">—</div>
+            </a>
+            <a class="summary-card" href="ui/health" data-health-link>
+                <div class="summary-value" id="hsP95">—</div>
+                <div class="summary-label">p95 latency</div>
+                <div class="summary-sub" id="hsP99">—</div>
+            </a>
+            <a class="summary-card" href="ui/health" data-health-link>
+                <div class="summary-value" id="hsTotal">—</div>
+                <div class="summary-label">API requests</div>
+                <div class="summary-sub" data-period-sub="Total">—</div>
+            </a>
         </div>
-        <div class="card-body" id="rateLimitBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
 
-      <div class="card" id="mcpCard" hidden>
-        <div class="card-header">
-          <span class="card-title">MCP (Model Context Protocol)</span>
-          <span class="badge badge-muted" id="mcpBadge">—</span>
-        </div>
-        <div class="card-body" id="mcpBody" style="flex:1">
-          <span class="muted" style="font-size:0.8rem">Loading…</span>
-        </div>
-      </div>
+        <p class="dash-alert" id="metricsError" role="alert" hidden>Traffic metrics unavailable. Select Refresh to retry.</p>
 
+        <div class="pair-grid pair-grid-wide">
+            <section class="card" aria-labelledby="trafficTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="trafficTitle">Request traffic</h2>
+                    <div class="card-header-end">
+                        <div class="chart-legend" aria-hidden="true">
+                            <span class="chart-legend-item"><span class="chart-legend-dot api"></span>API</span>
+                            <span class="chart-legend-item"><span class="chart-legend-dot ui"></span>Console</span>
+                        </div>
+                        <span class="badge badge-muted" data-period-badge></span>
+                    </div>
+                </div>
+                <div class="card-body chart-body">
+                    <div id="trafficChart" class="chart-box" role="img" aria-label="Request traffic chart"></div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="errorsTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="errorsTitle">HTTP errors</h2>
+                    <span class="badge badge-muted" data-period-badge></span>
+                </div>
+                <div class="card-body chart-body">
+                    <div id="errorChart" class="chart-box" role="img" aria-label="HTTP errors by status code"></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="trio-grid">
+            <section class="card" aria-labelledby="topTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="topTitle">Top endpoints</h2>
+                    <span class="badge badge-muted" data-period-badge></span>
+                </div>
+                <div class="card-body" id="topEndpointsBody">
+                    <p class="dash-note">Loading…</p>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="rlTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="rlTitle">Rate limiting</h2>
+                    <span class="badge badge-muted" id="rlBadge">—</span>
+                </div>
+                <div class="card-body" id="rateLimitBody">
+                    <p class="dash-note">Loading…</p>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="epTitle">
+                <div class="card-header">
+                    <h2 class="card-title" id="epTitle">Endpoints</h2>
+                    <a class="btn-icon" href="ui/endpoints" aria-label="Manage endpoints" data-tooltip="Manage endpoints"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+                </div>
+                <div class="card-body" id="breakdownBody">
+                    <p class="dash-note">Loading…</p>
+                </div>
+            </section>
+        </div>
     </div>
-
-  </div>
 </main>
 
 <script>
-// Overview
-async function load() {
-  const btn = document.getElementById('refreshBtn');
-  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+const PERIOD_LABELS = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days' };
+let _period = '24h';
+let _trafficChart, _errorChart;
+
+function note(text) { return `<p class="dash-note">${esc(text)}</p>`; }
+function alertNote(text) { return `<p class="dash-alert">${esc(text)}</p>`; }
+function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0); }
+function fmtMs(ms) { return ms == null ? '—' : ms < 1 ? '<1 ms' : ms >= 1000 ? `${+(ms/1000).toFixed(1)} s` : `${Math.round(ms)} ms`; }
+
+function fmtDuration(secs) {
+  const d = Math.floor(secs / 86400), h = Math.floor(secs % 86400 / 3600), m = Math.floor(secs % 3600 / 60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : m ? `${m}m` : `${secs}s`;
+}
+
+function fmtAgo(iso) {
+  const secs = Math.max(0, Math.round((Date.now() - new Date(iso)) / 1000));
+  if (secs < 60) return 'just now';
+  if (secs < 3600) return `${Math.floor(secs/60)} min ago`;
+  if (secs < 86400) return `${Math.floor(secs/3600)} h ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function healthTone(status) {
+  const s = (status ?? '').toLowerCase();
+  return s === 'healthy' ? ['ok', 'badge-success'] : s === 'degraded' ? ['warn', 'badge-warning']
+    : s === 'unhealthy' ? ['bad', 'badge-error'] : ['unknown', 'badge-muted'];
+}
+
+const CHECK_NAMES = { Diskspace: 'Disk space', ProxyEndpoints: 'Proxy endpoints', SqlConnectivity: 'SQL connectivity' };
+function checkName(n) { return CHECK_NAMES[n] ?? n.replace(/([a-z])([A-Z])/g, '$1 $2'); }
+
+// Backends
+function applyHealth(status) {
+  const badge = document.getElementById('healthBadge');
+  badge.textContent = status || 'Unknown';
+  badge.className = `badge ${healthTone(status)[1]}`;
+}
+
+async function loadChecks() {
+  const el = document.getElementById('checksBody');
   try {
-    const d = await api('/ui/api/overview', { failure: 'Failed to load overview' });
-    const ep = d.endpoints ?? {};
-    animateCounter(document.getElementById('statSql'),   ep.sql ?? '0');
-    animateCounter(document.getElementById('statProxy'), (ep.proxy ?? 0) + (ep.composite ? ` (+${ep.composite})` : ''));
-    animateCounter(document.getElementById('statFile'),  ((ep.file ?? 0) + (ep.static ?? 0)) || '0');
-    animateCounter(document.getElementById('statEnvs'),  d.environments ?? '0');
-
-    document.getElementById('healthVersion').textContent = (d.version ?? '').split('+')[0] || '—';
-    document.getElementById('healthUptime').textContent  = d.uptime ?? '—';
-
-    // Fetch health directly in case the SSE push is delayed
-    api('/health', { silent: true }).then(applyHealth).catch(() => {});
-
-    const rows = [
-      ['SQL', ep.sql ?? 0], ['Proxy', ep.proxy ?? 0], ['Composite', ep.composite ?? 0],
-      ['File', ep.file ?? 0], ['Static', ep.static ?? 0], ['Webhook', ep.webhook ?? 0],
-    ].filter(([,n]) => n > 0);
-
-    document.getElementById('breakdownBody').innerHTML = rows.length
-      ? '<div class="kv-grid">' + rows.map(([k,v]) =>
-          `<span class="kv-key">${esc(k)}</span><span class="kv-val">${v}</span>`
-        ).join('') +
-        `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Total</span>
-         <span class="kv-val"  style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">${ep.total ?? 0}</span>` +
-        '</div>'
-      : '<span class="muted" style="font-size:0.8rem">No endpoints configured</span>';
-  } catch(e) {}
-
-  // MCP Status
-  try {
-    const settings = await api('/ui/api/settings', { silent: true });
-    const mcp = settings.mcp ?? {};
-    const mcpCard = document.getElementById('mcpCard');
-    const mcpBadge = document.getElementById('mcpBadge');
-    const mcpBody = document.getElementById('mcpBody');
-
-    if (mcp.enabled) {
-      mcpCard.hidden = false;
-      mcpBadge.textContent = 'Active';
-      mcpBadge.className = 'badge badge-success';
-      
-      const toolsRes = await api('/ui/api/mcp/tools', { silent: true }).catch(() => ({ count: 0 }));
-      const mcpCount = toolsRes.count ?? 0;
-      
-      mcpBody.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:0.75rem;">
-          <div class="kv-grid">
-            <span class="kv-key">Path</span><span class="kv-val">${esc(mcp.path || '/mcp')}</span>
-            <span class="kv-key">MCP Apps</span><span class="kv-val">${mcp.apps_enabled ? 'Enabled' : 'Disabled'}</span>
-            <span class="kv-key">Exposed Endpoints</span><span class="kv-val">${mcpCount}</span>
-          </div>
-        </div>`;
-    } else {
-      mcpCard.hidden = true;
-    }
-  } catch(e) {
-    document.getElementById('mcpCard').hidden = true;
+    const d = await api('/ui/api/health/checks', { silent: true });
+    applyHealth(d.status);
+    const checks = d.checks ?? [];
+    const rows = checks.map(c => {
+      const desc = (c.description ?? '').replace(/^Health check status:\s*/i, '');
+      return `<li class="dash-row">
+        ${statusIcon(healthTone(c.status)[0], c.status || 'Unknown')}
+        <span class="dash-row-name">${esc(checkName(c.name))}</span>
+        <span class="dash-row-end">${esc(fmtMs(c.duration_ms))}</span>
+        ${desc ? `<span class="dash-row-desc">${esc(desc)}</span>` : ''}
+      </li>`;
+    }).join('');
+    const version = (d.version ?? '').split('+')[0];
+    el.innerHTML = (rows ? `<ul class="dash-list">${rows}</ul>` : note('No health checks registered'))
+      + `<p class="dash-foot">${version ? `Portway ${esc(version)} · ` : ''}up ${esc(fmtDuration(d.uptime_seconds ?? 0))}</p>`;
+  } catch (e) {
+    applyHealth('');
+    el.innerHTML = alertNote('Health checks unavailable. Select Refresh to retry.');
   }
 }
 
-// Rate limiter live state
+// Recent changes
+async function loadChanges() {
+  const el = document.getElementById('changesBody');
+  try {
+    const entries = (await api('/ui/api/audit?limit=5', { silent: true })).entries ?? [];
+    if (!entries.length) { el.innerHTML = note('No configuration changes recorded'); return; }
+    el.innerHTML = '<ul class="dash-list dash-list-plain">' + entries.map(e => `
+      <li class="dash-row">
+        <span class="dash-row-name" tabindex="0" data-tooltip="${esc(esc(e.target))}">${esc(e.target)}</span>
+        <time class="dash-row-end" tabindex="0" datetime="${esc(e.timestamp)}" data-tooltip="${esc(esc(new Date(e.timestamp).toLocaleString()))}">${esc(fmtAgo(e.timestamp))}</time>
+        <span class="dash-row-desc">${e.actor ? `<strong class="dash-row-actor">${esc(e.actor)}</strong> · ` : ''}${esc(e.action)} · ${esc(e.target_type)}${e.restorable ? ' · backup available' : ''}</span>
+      </li>`).join('') + '</ul>';
+  } catch (e) {
+    el.innerHTML = alertNote('Change history unavailable. Select Refresh to retry.');
+  }
+}
+
+// Endpoint counts
+async function loadOverview() {
+  const el = document.getElementById('breakdownBody');
+  try {
+    const d = await api('/ui/api/overview', { silent: true });
+    const ep = d.endpoints ?? {};
+    const rows = [
+      ['SQL', ep.sql], ['Proxy', ep.proxy], ['Composite', ep.composite],
+      ['File', ep.file], ['Static', ep.static], ['Webhook', ep.webhook],
+    ].filter(([, n]) => n > 0);
+    el.innerHTML = rows.length
+      ? '<div class="kv-grid">'
+        + rows.map(([k, v]) => `<span class="kv-key">${esc(k)}</span><span class="kv-val">${v}</span>`).join('')
+        + `<span class="kv-key kv-total">Total</span><span class="kv-val kv-total">${ep.total ?? 0}</span>`
+        + `<span class="kv-key">Environments</span><span class="kv-val">${d.environments ?? 0}</span>`
+        + '</div>'
+      : note('No endpoints configured');
+  } catch (e) {
+    el.innerHTML = alertNote('Endpoint counts unavailable.');
+  }
+}
+
+// Rate limiting
 async function loadRateLimits() {
   const badge = document.getElementById('rlBadge');
   const el = document.getElementById('rateLimitBody');
   try {
     const d = await api('/ui/api/ratelimits', { silent: true });
-
     const blocks = (d.blocked_ips?.length ?? 0) + (d.blocked_tokens?.length ?? 0);
-    badge.textContent = !d.enabled ? 'Disabled' : blocks ? `${blocks} blocked` : 'Quiet';
+    badge.textContent = !d.enabled ? 'Off' : blocks ? `${blocks} blocked` : 'No blocks';
     badge.className = `badge ${!d.enabled ? 'badge-muted' : blocks ? 'badge-warning' : 'badge-success'}`;
-
-    if (!d.enabled) {
-      el.innerHTML = '<span class="muted" style="font-size:0.8rem">Rate limiting is disabled</span>';
-      return;
-    }
+    if (!d.enabled) { el.innerHTML = note('Rate limiting is off. Turn it on in Settings.'); return; }
 
     const blockRows = [
-      ...(d.blocked_ips ?? []).map(b => ({ id: b.ip, secs: b.remaining_seconds })),
-      ...(d.blocked_tokens ?? []).map(b => ({ id: b.token, secs: b.remaining_seconds }))
+      ...(d.blocked_ips ?? []).map(b => ({ id: b.ip, kind: 'IP', secs: b.remaining_seconds })),
+      ...(d.blocked_tokens ?? []).map(b => ({ id: b.token, kind: 'Token (hashed)', secs: b.remaining_seconds }))
     ].slice(0, 5).map(b => `
-      <span class="kv-key" style="font-size:0.72rem">${esc(b.id)}</span>
-      <span class="kv-val" style="color:hsl(var(--warning))">${b.secs}s left</span>`).join('');
+      <span class="kv-key" tabindex="0" data-tooltip="${esc(esc(b.kind))}">${esc(b.id)}</span>
+      <span class="kv-val">${esc(b.kind)} · ${b.secs}s left</span>`).join('');
 
-    el.innerHTML = `
-      <div class="kv-grid">
-        <span class="kv-key">Store</span><span class="kv-val">${esc(d.store ?? 'Memory')}</span>
-        <span class="kv-key">IP limit</span><span class="kv-val">${d.ip_limit}/${d.ip_window_seconds}s</span>
-        <span class="kv-key">Token limit</span><span class="kv-val">${d.token_limit}/${d.token_window_seconds}s</span>
-        ${d.bucket_count != null ? `<span class="kv-key">Active buckets</span><span class="kv-val">${d.bucket_count}</span>` : ''}
-        ${blockRows ? `<span class="kv-key" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem;font-weight:600;color:hsl(var(--foreground))">Blocked</span>
-          <span class="kv-val" style="border-top:1px solid hsl(var(--border));padding-top:0.5rem"></span>${blockRows}` : ''}
+    el.innerHTML = `<div class="kv-grid">
+        <span class="kv-key">Per IP</span><span class="kv-val">${d.ip_limit} per ${d.ip_window_seconds}s</span>
+        <span class="kv-key">Per token</span><span class="kv-val">${d.token_limit} per ${d.token_window_seconds}s</span>
+        ${d.bucket_count != null ? `<span class="kv-key">Clients tracked</span><span class="kv-val">${d.bucket_count}</span>` : ''}
+        ${blockRows ? `<span class="kv-key kv-total">Blocked now</span><span class="kv-val kv-total"></span>${blockRows}` : ''}
       </div>`;
-  } catch(e) {
+  } catch (e) {
     badge.textContent = '—';
-    el.innerHTML = '<span class="muted" style="font-size:0.8rem">No data</span>';
+    badge.className = 'badge badge-muted';
+    el.innerHTML = alertNote('Rate limit state unavailable.');
   }
 }
 
-// SSE
+// KPI strip
+async function loadHealthStrip() {
+  const tone = (el, t) => { el.classList.remove('is-good', 'is-warn', 'is-bad'); if (t) el.classList.add(t); };
+  const success = document.getElementById('hsSuccess');
+  const failures = document.getElementById('hsFailures');
+  const p95 = document.getElementById('hsP95');
+  try {
+    const s = (await api(`/ui/api/metrics/health?period=${_period}`, { silent: true })).summary ?? {};
+    success.textContent = s.success_rate == null ? '—' : `${(s.success_rate * 100).toFixed(s.success_rate >= 0.999 && s.success_rate < 1 ? 2 : 1)}%`;
+    tone(success, s.success_rate == null ? null : s.success_rate >= 0.999 ? 'is-good' : s.success_rate >= 0.95 ? 'is-warn' : 'is-bad');
+    failures.textContent = s.total ? fmtN(s.failures ?? 0) : '—';
+    tone(failures, s.failures ? 'is-bad' : null);
+    document.getElementById('hsClientErrors').textContent = `${fmtN(s.client_errors ?? 0)} client errors (4xx)`;
+    p95.textContent = fmtMs(s.p95);
+    tone(p95, s.p95 != null && s.p95 > 300 ? 'is-warn' : null);
+    document.getElementById('hsP99').textContent = `p99 ${fmtMs(s.p99)}`;
+    document.getElementById('hsTotal').textContent = fmtN(s.total ?? 0);
+  } catch (e) {
+    for (const el of [success, failures, p95, document.getElementById('hsTotal')]) { el.textContent = '—'; tone(el, null); }
+    throw e;
+  }
+}
+
+// Charts, top endpoints
+async function loadMetrics() {
+  const d = await api(`/ui/api/metrics?period=${_period}`, { silent: true });
+  const hasData = d.api_traffic?.some(b => b.count > 0) || d.ui_traffic?.some(b => b.count > 0);
+  if (hasData) {
+    _trafficChart.setData(d.api_traffic, d.ui_traffic);
+  } else {
+    _trafficChart.setEmpty(`No traffic yet · collecting for ${fmtDuration(d.collecting_for_secs ?? 0)}`);
+  }
+  _errorChart.setData(d.errors ?? {}, d.total ?? 0);
+  const errorCount = Object.values(d.errors ?? {}).reduce((a, n) => a + n, 0);
+  document.getElementById('trafficChart').setAttribute('aria-label',
+    `Request traffic, ${PERIOD_LABELS[_period]}: ${d.api_requests ?? 0} API and ${d.ui_requests ?? 0} console requests`);
+  document.getElementById('errorChart').setAttribute('aria-label',
+    `HTTP errors, ${PERIOD_LABELS[_period]}: ${errorCount} responses with an error status`);
+  renderTopEndpoints(d.top_endpoints ?? []);
+}
+
+function renderTopEndpoints(eps) {
+  const el = document.getElementById('topEndpointsBody');
+  if (!eps.length) { el.innerHTML = note('No API requests in this period'); return; }
+  const max = eps[0].count;
+  el.innerHTML = `<ol class="top-ep-list dash-list">${eps.map((ep, i) => `
+    <li class="top-ep-item">
+      <span class="top-ep-rank">${i + 1}</span>
+      <a class="top-ep-name" href="ui/health?${new URLSearchParams({ period: _period, endpoint: ep.name })}" data-tooltip="${esc(esc(`Health of ${ep.name}`))}">${esc(ep.name)}</a>
+      <span class="top-ep-count">${fmtN(ep.count)} req</span>
+      <div class="top-ep-bar-track" aria-hidden="true"><div class="top-ep-bar-fill" style="transform:scaleX(${(ep.count / max).toFixed(3)})"></div></div>
+    </li>`).join('')}</ol>`;
+}
+
+async function loadPeriodData() {
+  const label = PERIOD_LABELS[_period];
+  document.querySelectorAll('[data-period-badge]').forEach(b => b.textContent = _period);
+  document.querySelectorAll('[data-health-link]').forEach(a => a.href = `ui/health?period=${_period}`);
+  document.querySelectorAll('[data-period-sub]').forEach(s => s.textContent = `${s.dataset.periodSub}, ${label}`);
+  const results = await Promise.allSettled([loadHealthStrip(), loadMetrics()]);
+  document.getElementById('metricsError').hidden = results.every(r => r.status === 'fulfilled');
+}
+
+function markUpdated() {
+  const el = document.getElementById('updatedAt');
+  const now = new Date();
+  el.textContent = `Updated ${now.toLocaleTimeString()}`;
+  el.dataset.tooltip = esc(now.toLocaleString());
+}
+
+async function refreshAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('is-refreshing');
+  btn.disabled = true;
+  await Promise.allSettled([loadChecks(), loadChanges(), loadOverview(), loadRateLimits(), loadPeriodData()]);
+  btn.classList.remove('is-refreshing');
+  btn.disabled = false;
+  markUpdated();
+}
+
+async function refreshLive() {
+  await Promise.allSettled([loadChecks(), loadRateLimits(), loadHealthStrip()]);
+  markUpdated();
+}
+
+// Server-sent events
 let _sseAbort = null, _sseDelay = 1000;
 
 function connectSSE() {
@@ -286,9 +602,9 @@ function connectSSE() {
           const lines = buffer.split('\n'); buffer = lines.pop();
           let type = '', data = '';
           for (const line of lines) {
-            if (line.startsWith('event: '))      type = line.slice(7).trim();
-            else if (line.startsWith('data: '))  data = line.slice(6);
-            else if (line === '' && type && data) { handleSSE(type, data); type = ''; data = ''; }
+            if (line.startsWith('event: ')) type = line.slice(7).trim();
+            else if (line.startsWith('data: ')) data = line.slice(6);
+            else if (line === '' && type && data) { handleSSE(type); type = ''; data = ''; }
           }
           read();
         }).catch(err => { if (err.name !== 'AbortError') scheduleSSEReconnect(); });
@@ -304,132 +620,28 @@ function scheduleSSEReconnect() {
   _sseDelay = Math.min(_sseDelay * 2, 30000);
 }
 
-function handleSSE(type, data) {
-  try {
-    const d = JSON.parse(data);
-    if (type === 'health') applyHealth(d);
-    else if (type === 'reload') load();
-  } catch {}
+function handleSSE(type) {
+  if (type === 'health') loadChecks();
+  else if (type === 'reload') { loadOverview(); loadChanges(); }
 }
 
-function applyHealth(d) {
-  const status = d.status ?? '', ok = status.toLowerCase() === 'healthy';
-  document.getElementById('healthStatus').textContent = status || '—';
-  const badge = document.getElementById('healthBadge');
-  badge.textContent = status || 'unknown';
-  badge.className   = `badge ${ok ? 'badge-success' : status ? 'badge-warning' : 'badge-muted'}`;
-}
-
-load();
-loadRateLimits();
-setInterval(loadRateLimits, 30000);
-connectSSE();
-SetupGuide.init('setupGuide');
-
-// Charts
-let _trafficChart, _errorChart;
-let _trafficPeriod = '24h', _errorPeriod = '24h';
-
-async function loadMetrics(period, target) {
-  try {
-    const d = await api(`/ui/api/metrics?period=${period}`, { silent: true });
-    if (target === 'traffic') {
-      const hasData = d.api_traffic?.some(b => b.count > 0) || d.ui_traffic?.some(b => b.count > 0);
-      if (hasData) {
-        _trafficChart.setData(d.api_traffic, d.ui_traffic);
-      } else {
-        const secs = d.collecting_for_secs ?? 0;
-        const ago  = secs < 120 ? `${secs}s` : secs < 3600 ? `${Math.round(secs/60)}m` : `${Math.round(secs/3600)}h`;
-        _trafficChart.setEmpty(`No traffic yet · collecting for ${ago}`);
-      }
-      renderTopEndpoints(d);
-      renderCache(d);
-    } else {
-      _errorChart.setData(d.errors ?? {}, d.total ?? 0);
-    }
-  } catch(e) {}
-}
-
-// Cache ring
-function renderCache(d) {
-  const c  = d.cache;
-  const el = document.getElementById('cacheBody');
-  if (!c) { el.innerHTML = '<span class="muted" style="font-size:0.8rem">No data</span>'; return; }
-
-  const total = (c.hits ?? 0) + (c.misses ?? 0);
-  const pct   = c.hit_rate != null ? Math.round(c.hit_rate * 100) : null;
-  const r     = 22, circ = +(2 * Math.PI * r).toFixed(1);
-  const dash  = pct != null ? +((pct / 100) * circ).toFixed(1) : 0;
-  const ringColor = pct == null ? 'hsl(var(--muted-foreground)/.35)'
-    : pct >= 80 ? 'hsl(var(--success))' : pct >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
-  const rateLabel = pct != null ? `${pct}%` : 'N/A';
-
-  el.innerHTML = `
-    <div class="cache-layout">
-      <svg class="cache-ring" width="60" height="60" viewBox="0 0 60 60">
-        <circle cx="30" cy="30" r="${r}" fill="none" stroke="hsl(var(--muted))" stroke-width="5"/>
-        <circle cx="30" cy="30" r="${r}" fill="none" stroke="${ringColor}" stroke-width="5"
-          stroke-dasharray="${dash} ${circ}" stroke-linecap="round" transform="rotate(-90 30 30)"/>
-        <text x="30" y="34" text-anchor="middle" font-size="11" font-weight="700"
-          fill="hsl(var(--foreground))" font-family="var(--app-font)">${rateLabel}</text>
-      </svg>
-      <div class="cache-stats">
-        <div class="cache-row">
-          <span class="cache-row-key">Hits</span>
-          <span class="cache-row-val" style="color:hsl(var(--success))">${fmtN(c.hits)}</span>
-        </div>
-        <div class="cache-row">
-          <span class="cache-row-key">Misses</span>
-          <span class="cache-row-val">${fmtN(c.misses)}</span>
-        </div>
-        <div class="cache-row" style="padding-top:0.35rem;border-top:1px solid hsl(var(--border))">
-          <span class="cache-row-key">Total</span>
-          <span class="cache-row-val" style="color:hsl(var(--muted-foreground))">${fmtN(total)}</span>
-        </div>
-      </div>
-    </div>`;
-}
-
-// Top endpoints
-function renderTopEndpoints(d) {
-  const eps = d.top_endpoints ?? [];
-  // Remove 'ping' from the list since it's not a user-defined endpoint and would typically dominate the top endpoints list, overshadowing other endpoints that are more relevant for users to see here.
-  const filteredEps = eps.filter(ep => ep.name.toLowerCase() !== 'ping');
-  document.getElementById('topEpPeriodLabel').textContent = d.period ?? '24h';
-  const el = document.getElementById('topEndpointsBody');
-  if (filteredEps.length === 0) {
-    el.innerHTML = '<span class="muted" style="font-size:0.8rem">No API requests yet</span>';
-    return;
-  }
-  const max = filteredEps[0].count;
-  el.innerHTML = `<div class="top-ep-list">${filteredEps.map((ep, i) => `
-    <div class="top-ep-item">
-      <span class="top-ep-rank">${i+1}</span>
-      <span class="top-ep-name" title="${esc(ep.name)}">${esc(ep.name)}</span>
-      <span class="top-ep-count">${fmtN(ep.count)} req</span>
-      <div class="top-ep-bar-track"><div class="top-ep-bar-fill" style="transform:scaleX(${(ep.count/max).toFixed(3)})"></div></div>
-    </div>`).join('')}
-  </div>`;
-}
-
-function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0); }
+document.addEventListener('keydown', e => {
+  if (e.key !== 'r' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  e.preventDefault();
+  refreshAll();
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   _trafficChart = new AreaChart(document.getElementById('trafficChart'));
-  _errorChart   = new ErrorChart(document.getElementById('errorChart'));
-
-  new ChartPeriodSelector(
-    document.getElementById('trafficPeriodSel'),
-    ['24h','7d','30d'],
-    p => { _trafficPeriod = p; loadMetrics(p, 'traffic'); }
-  );
-  new ChartPeriodSelector(
-    document.getElementById('errorPeriodSel'),
-    ['24h','7d','30d'],
-    p => { _errorPeriod = p; loadMetrics(p, 'error'); }
-  );
-
-  loadMetrics('24h', 'traffic');
-  loadMetrics('24h', 'error');
+  _errorChart = new ErrorChart(document.getElementById('errorChart'));
+  new ChartPeriodSelector(document.getElementById('periodSel'), ['24h', '7d', '30d'], p => {
+    _period = p;
+    loadPeriodData().then(markUpdated);
+  });
+  refreshAll();
+  setInterval(refreshLive, 30000);
+  connectSSE();
+  SetupGuide.init('setupGuide');
 });
 </script>

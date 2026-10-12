@@ -10,4 +10,5 @@ public sealed record DatabaseMaintenanceResult(
     string? SkipReason,
     long BytesBefore,
     long BytesAfter,
-    double DurationMs);
+    double DurationMs,
+    string? Integrity = null);

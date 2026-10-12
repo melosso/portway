@@ -3,6 +3,7 @@ namespace PortwayApi.Middleware;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
@@ -72,9 +73,7 @@ public class TokenAuthMiddleware
                 if (config.Authentication.OverrideGlobalToken)
                 {
                     Log.Warning("Custom environment authentication failed for '{Env}' and OverrideGlobalToken is enabled", env);
-                    context.Response.StatusCode = 401;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(new { error = "Environment authentication failed", success = false });
+                    await WriteErrorAsync(context, 401, "Environment authentication failed", EnvironmentChallenges(config.Authentication.Methods));
                     return;
                 }
 
@@ -88,14 +87,7 @@ public class TokenAuthMiddleware
         {
             Log.Debug("Authorization header missing for {Path}", context.Request.Path);
 
-            // Omit clientIp and requestedPath
-            context.Response.StatusCode = 401;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                error = "Authentication required",
-                success = false
-            });
+            await WriteErrorAsync(context, 401, "Authentication required", BearerChallenge);
             return;
         }
 
@@ -108,7 +100,7 @@ public class TokenAuthMiddleware
         }
 
         // Extract endpoint name from request path
-        string? endpointName = ExtractEndpointName(context.Request.Path);
+        string? endpointName = ExtractEndpointName(context);
 
         // Verify token and retrieve details in a single cache-backed call
         var tokenDetails = await tokenService.GetTokenDetailsByTokenAsync(tokenString);
@@ -121,9 +113,7 @@ public class TokenAuthMiddleware
             // Log failed authentication attempt in audit trail
             await LogFailedAuthAttemptAsync(dbContext, tokenString, context);
 
-            context.Response.StatusCode = 401;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new { error = "Invalid or expired token", success = false });
+            await WriteErrorAsync(context, 401, "Invalid or expired token", InvalidTokenChallenge);
             return;
         }
 
@@ -140,15 +130,7 @@ public class TokenAuthMiddleware
                 // Log authorization failure in audit trail
                 await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Environment", env);
 
-                context.Response.StatusCode = 403;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    error = $"Access denied to environment '{env}'",
-                    availableEnvironments = tokenDetails.AllowedEnvironments,
-                    requestedEnvironment = env,
-                    success = false
-                });
+                await WriteErrorAsync(context, 403, "Access denied to environment");
                 return;
             }
         }
@@ -156,7 +138,9 @@ public class TokenAuthMiddleware
         // Check endpoint permissions if endpoint name was successfully extracted
         if (!string.IsNullOrEmpty(endpointName))
         {
-            bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName);
+            // legacy files scope grants every file endpoint
+            bool hasEndpointAccess = tokenDetails.HasAccessToEndpoint(endpointName)
+                || (endpointName.StartsWith(FileScopePrefix, StringComparison.OrdinalIgnoreCase) && tokenDetails.HasAccessToEndpoint("files"));
 
             if (!hasEndpointAccess)
             {
@@ -166,15 +150,8 @@ public class TokenAuthMiddleware
                 // Log authorization failure in audit trail
                 await LogAuthorizationFailureAsync(dbContext, tokenDetails, context, "Endpoint", endpointName);
 
-                context.Response.StatusCode = 403;
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    error = $"Access denied to endpoint '{endpointName}'",
-                    availableScopes = tokenDetails.AllowedScopes,
-                    requestedEndpoint = endpointName,
-                    success = false
-                });
+                // constant message so an out of scope endpoint reads like a missing one
+                await WriteErrorAsync(context, 403, "Access denied to endpoint");
                 return;
             }
         }
@@ -186,11 +163,57 @@ public class TokenAuthMiddleware
         await _next(context);
     }
 
+    private const string FileScopePrefix = "files/";
+    private const string BearerChallenge = "Bearer realm=\"portway\"";
+    private const string InvalidTokenChallenge = "Bearer realm=\"portway\", error=\"invalid_token\"";
+
+    private static Task WriteErrorAsync(HttpContext context, int status, string error, StringValues challenge = default)
+    {
+        if (!StringValues.IsNullOrEmpty(challenge))
+        {
+            context.Response.Headers.WWWAuthenticate = challenge;
+        }
+
+        context.Response.StatusCode = status;
+        return context.Response.WriteAsJsonAsync(ErrorResponse.Of(error));
+    }
+
+    /// <summary>
+    /// Basic when the environment accepts it, Bearer for every other method
+    /// </summary>
+    internal static StringValues EnvironmentChallenges(IEnumerable<AuthenticationMethod>? methods)
+    {
+        var basic = methods?.Any(m => m.Type.Equals("basic", StringComparison.OrdinalIgnoreCase)) == true;
+        var other = methods?.Any(m => !m.Type.Equals("basic", StringComparison.OrdinalIgnoreCase)) != false;
+        return (basic, other) switch
+        {
+            (true, true) => new StringValues(["Basic realm=\"portway\"", BearerChallenge]),
+            (true, false) => "Basic realm=\"portway\"",
+            _ => BearerChallenge
+        };
+    }
+
+    /// <summary>
+    /// Scope identity of a file route, files/{name} with @v{n} when the route includes a version
+    /// </summary>
+    internal static string? FileEndpointIdentity(string[] segments)
+    {
+        var start = segments.Length > 2 && EndpointVersion.TryParse(segments[0], out _) ? 1 : 0;
+        if (segments.Length < start + 2 || !segments[start].Equals("files", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        EndpointVersion.TryParse(segments[0], out var version);
+        return FileScopePrefix + segments[start + 1] + EndpointVersion.Suffix(start == 1 ? version : null);
+    }
+
     /// <summary>
     /// Extract the endpoint name from the request path
     /// </summary>
-    private string? ExtractEndpointName(PathString path)
+    private string? ExtractEndpointName(HttpContext context)
     {
+        var path = context.Request.Path;
         // Parses /api/{env}/[{namespace}/]{name}[/{id}], /api/{env}/composite/{name} and /webhook/{env}/{id}
 
         var segments = path.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -205,10 +228,15 @@ public class TokenAuthMiddleware
                 return $"composite/{segments[3]}";
             }
 
-            // Same longest match resolver as the controller; keeps scope checks and dispatch aligned.
-            if (Api.EndpointController.ResolveEndpointIdentity(segments[2..]) is { } resolved)
+            if (FileEndpointIdentity(segments[2..]) is { } file)
             {
-                return $"{resolved.Namespace}/{resolved.Name}";
+                return file;
+            }
+
+            // Same longest match resolver as the controller; keeps scope checks and dispatch aligned.
+            if (Api.EndpointController.ResolveEndpointIdentity(context, segments[2..]) is { } resolved)
+            {
+                return resolved.Namespace.Length > 0 ? $"{resolved.Namespace}/{resolved.Name}" : resolved.Name;
             }
 
             // Fall back to non-namespaced format: /api/{env}/{endpointName}

@@ -13,10 +13,19 @@ public static class ConfigBackupService
 
     private static string BackupRoot => Path.Combine(Directory.GetCurrentDirectory(), ".backups");
 
+    private static readonly object BackupLock = new();
+
     /// <summary>
     /// Copies the file into .backups; identical content reuses the existing backup
     /// </summary>
     public static string? Backup(string filePath)
+    {
+        // concurrent saves would otherwise pick the same unique name and prune each other's backups
+        lock (BackupLock)
+            return BackupUnlocked(filePath);
+    }
+
+    private static string? BackupUnlocked(string filePath)
     {
         try
         {

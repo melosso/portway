@@ -54,8 +54,8 @@ File: `/environments/[EnvironmentName]/settings.json`
 
 | Property | Type | Required | Description |
 |---|---|---|---|
-| `ServerName` | string | Yes | Server name for display and health checks |
-| `ConnectionString` | string | Yes | Database connection string; also selects the SQL provider |
+| `ServerName` | string | No | Server name for display and health checks; defaults to the global `ServerName` |
+| `ConnectionString` | string | For SQL and webhook endpoints | Database connection string; also selects the SQL provider |
 | `Headers` | object | No | Headers added to proxy requests; they replace client headers of the same name |
 | `Authentication` | object | No | Environment authentication ([Environment Authentication](/reference/environment-auth)) |
 | `Encrypt` | boolean | No | `false` keeps secrets plaintext (default `true`) |
@@ -85,36 +85,6 @@ File: `/environments/network-access-policy.json`
 |---|---|---|
 | `allowedHosts` | array | Host names proxy endpoints may call |
 | `blockedIpRanges` | array | CIDR ranges refused after DNS resolution |
-
-## Examples
-
-Production, `/environments/prod/settings.json`:
-
-```json
-{
-  "ServerName": "SQLPROD01",
-  "ConnectionString": "Server=SQLPROD01;Database=ProductionDB;User Id=svc_portway;Password=your-password;Connection Timeout=30;TrustServerCertificate=false;Encrypt=true;",
-  "Headers": {
-    "DatabaseName": "ProductionDB",
-    "ServerName": "SQLPROD01",
-    "Environment": "Production"
-  }
-}
-```
-
-Development, `/environments/dev/settings.json`:
-
-```json
-{
-  "ServerName": "SQLDEV01",
-  "ConnectionString": "Server=SQLDEV01;Database=DevelopmentDB;Trusted_Connection=True;Connection Timeout=15;TrustServerCertificate=true;",
-  "Headers": {
-    "DatabaseName": "DevelopmentDB",
-    "ServerName": "SQLDEV01",
-    "Environment": "Development"
-  }
-}
-```
 
 ## Connection strings
 

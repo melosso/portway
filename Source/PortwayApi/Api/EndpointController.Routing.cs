@@ -217,7 +217,7 @@ public partial class EndpointController
         if (q.Top.HasValue) parts.Add($"$top={q.Top.Value}");
         if (q.Skip.HasValue) parts.Add($"$skip={q.Skip.Value}");
 
-        var url = $"/api/{env}/{endpointPath}";
+        var url = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}";
         if (parts.Count > 0) url += "?" + string.Join('&', parts);
         Response.Headers["Content-Location"] = url;
     }
@@ -257,19 +257,7 @@ public partial class EndpointController
                 return NotFound();
             }
 
-            // Build path to content file - handle namespaced endpoints
-            string endpointPath;
-            if (endpoint.HasNamespace)
-            {
-                // For namespaced endpoints, use the full namespace/endpoint structure
-                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static",
-                    endpoint.EffectiveNamespace!, endpoint.FolderName ?? endpointName);
-            }
-            else
-            {
-                // For non-namespaced endpoints, use just the endpoint name
-                endpointPath = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
-            }
+            var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);
 
             var contentFile = endpoint.Properties!["ContentFile"].ToString()!;
             var contentFilePath = Path.Combine(endpointPath, contentFile);

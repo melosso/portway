@@ -45,7 +45,7 @@
                 const discard = await new Promise((resolve) => {
                     AlertDialog.show({
                         title: 'Discard unsaved changes?',
-                        description: 'Unsaved changes will be lost.',
+                        description: 'Unsaved changes are discarded.',
                         actionLabel: 'Discard changes',
                         variant: 'destructive',
                         onConfirm: () => resolve(true),

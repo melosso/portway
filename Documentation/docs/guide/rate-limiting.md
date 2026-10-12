@@ -7,18 +7,7 @@ description: "Control request volume per IP address and per authentication token
 
 Rate limiting is enabled by default and applies two limits in sequence: per IP address on all traffic, then per token on requests with a Bearer token. Both use a token bucket with continuous refill: each request takes one token from the client's bucket, and bursts are accepted while the average rate stays within the limit.
 
-```mermaid
-graph TD
-    A[Incoming Request] --> B{IP limit check}
-    B -->|Limit exceeded| C[429 Too Many Requests]
-    B -->|Within limit| D{Bearer token present?}
-    D -->|No| G[Continue to authentication]
-    D -->|Yes| E{Token limit check}
-    E -->|Limit exceeded| F[429 Too Many Requests]
-    E -->|Within limit| G
-```
-
-Rate limiting runs before token authentication; invalid tokens also consume from their bucket, which keeps floods of bad credentials away from token verification.
+Rate limiting runs before token authentication. Invalid tokens consume from their bucket; floods of bad credentials do not reach token verification.
 
 ## Configuration
 
@@ -49,7 +38,7 @@ The `Memory` store keeps bucket state in process memory; behind a load balancer,
 
 ## Per-token limits
 
-A token can have its own limit instead of `TokenLimit`, e.g. `5000` per `60` seconds for a bulk integration or `10` per minute for a third party. The limit is set in the token create or edit drawer under **Access Tokens**; an empty field uses the global limit. Changes apply within about 30 seconds without a restart and are recorded in the token's audit log.
+A per-token limit overrides `TokenLimit`, e.g. `5000` per `60` seconds for a bulk integration or `10` per minute for a third party. The limit is set in the token create or edit drawer under **Access Tokens**; an empty field uses the global limit. Changes apply within about 30 seconds without a restart and are recorded in the token's audit log.
 
 Token API fields:
 
@@ -78,7 +67,6 @@ An empty `RedisConnectionString` reuses the [caching](/reference/caching) connec
 
 ## Rate limit response
 
-Response when a limit is exceeded:
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -95,44 +83,9 @@ X-RateLimit-Resource: token
 }
 ```
 
-The `Retry-After` header is the wait in seconds; `retrytime` is the same moment as an ISO timestamp. Successful responses also include the `X-RateLimit-*` headers. Header reference: [Headers](/reference/headers).
+`Retry-After` is the wait in seconds; `retrytime` is the same moment as an ISO timestamp. Clients retry after `Retry-After`. Successful responses also include the `X-RateLimit-*` headers. Header reference: [Headers](/reference/headers).
 
 An IP address that exceeds its bucket is blocked for the full window. For a token, the block duration doubles with each consecutive violation after the third, up to one hour.
-
-## Tuning for burst traffic
-
-Shorter windows suit bursty traffic:
-
-```json
-{
-  "RateLimiting": {
-    "IpLimit": 200,
-    "IpWindow": 30,
-    "TokenLimit": 2000,
-    "TokenWindow": 30
-  }
-}
-```
-
-## Client retry logic
-
-Retry after `Retry-After` on `429`:
-
-```javascript
-async function request(url, options) {
-  const response = await fetch(url, options);
-
-  if (response.status === 429) {
-    const retryAfter = parseInt(response.headers.get('Retry-After') || '60');
-    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-    return request(url, options);
-  }
-
-  return response;
-}
-```
-
-Production clients add exponential backoff, jitter and a retry limit.
 
 ## Observing the limiter
 

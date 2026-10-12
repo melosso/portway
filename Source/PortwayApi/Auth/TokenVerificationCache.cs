@@ -10,7 +10,11 @@ using Microsoft.Extensions.Caching.Memory;
 public interface ITokenVerificationCache
 {
     bool TryGet(string cacheKey, [NotNullWhen(true)] out AuthToken? token);
-    void Set(string cacheKey, AuthToken token, int tokenId);
+    /// <summary>
+    /// Bumped on every invalidation; capture before reading the database and pass to Set
+    /// </summary>
+    long Generation { get; }
+    void Set(string cacheKey, AuthToken token, int tokenId, long generation);
     void Invalidate(int tokenId);
     bool IsKnownMiss(string cacheKey);
     void SetMiss(string cacheKey);
@@ -26,6 +30,9 @@ public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificat
     private static readonly TimeSpan MissTtl = TimeSpan.FromSeconds(10);
     // Maps tokenId → cache key to enable invalidation when a token is revoked by ID
     private readonly ConcurrentDictionary<int, string> _idToKey = new();
+    private long _generation;
+
+    public long Generation => Interlocked.Read(ref _generation);
 
     /// <summary>
     /// Builds a stable, fixed-length cache key from the raw bearer token using SHA-256. The raw token is never stored; only its hash is used as the key. Uses a stack buffer for tokens ≤256 UTF-8 bytes, ArrayPool otherwise
@@ -57,14 +64,20 @@ public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificat
     public bool TryGet(string cacheKey, [NotNullWhen(true)] out AuthToken? token) =>
         cache.TryGetValue(cacheKey, out token);
 
-    public void Set(string cacheKey, AuthToken token, int tokenId)
+    public void Set(string cacheKey, AuthToken token, int tokenId, long generation)
     {
-        cache.Set(cacheKey, token, Ttl);
         _idToKey[tokenId] = cacheKey;
+        if (Generation != generation)
+            return;
+        cache.Set(cacheKey, token, Ttl);
+        // an invalidation between the check and the write must not leave the old token cached
+        if (Generation != generation)
+            cache.Remove(cacheKey);
     }
 
     public void Invalidate(int tokenId)
     {
+        Interlocked.Increment(ref _generation);
         if (_idToKey.TryRemove(tokenId, out var key))
             cache.Remove(key);
     }

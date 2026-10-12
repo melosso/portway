@@ -59,13 +59,11 @@ Fields are validated as identifiers at load. An unresolved `Target` is logged as
 
 ## Making a request
 
-Request:
-
 ```http
 GET /api/prod/Products?$expand=Category&$filter=AssortmentID eq 10
 ```
 
-The `Assortments` navigation is joined on `Assortment = AssortmentID` and nested under the navigation name:
+The `Category` navigation joins `Assortments` on `Assortment = AssortmentID`; the related row is nested under `Category`:
 
 ```json
 {
@@ -83,7 +81,7 @@ Only the target's `AllowedColumns` are returned. Filters, selection, ordering an
 
 ## Join behavior
 
-::: danger Your target column needs to be unique
+::: danger The target column must be unique
 `TargetColumn` is not checked for uniqueness. A repeated value returns one copy of the base record per match. Use the primary key, or check another column:
 
 ```sql [Verify your configuration:]

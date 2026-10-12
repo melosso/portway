@@ -37,6 +37,22 @@ public class TelemetryConfigurationTests
         Assert.Equal("http://otel-collector.internal:4317", options.EffectiveOtlpEndpoint);
     }
 
+    [Fact]
+    public void TelemetryOptions_EmptyConsoleValuesFallBackToDefaults()
+    {
+        var config = BuildConfig(new()
+        {
+            ["Telemetry:Provider"] = "Otlp",
+            ["Telemetry:Otlp:Endpoint"] = "",
+            ["Telemetry:ServiceName"] = ""
+        });
+
+        var options = config.GetSection("Telemetry").Get<TelemetryOptions>()!;
+
+        Assert.Equal("http://localhost:4317", options.EffectiveOtlpEndpoint);
+        Assert.Equal(PortwayTelemetry.ServiceName, options.EffectiveServiceName);
+    }
+
     // Legacy flat Enabled and OtlpEndpoint keys still work
 
     [Fact]

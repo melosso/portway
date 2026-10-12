@@ -63,6 +63,40 @@ public sealed class FileDurabilityTests : IDisposable
     }
 
     [Fact]
+    public async Task ParallelCachedDownloads_ReturnFullBody()
+    {
+        var body = new string('x', 64 * 1024);
+        var fileId = await _handler.UploadFileAsync("prod", "big.csv", Body(body));
+        (await _handler.DownloadFileAsync(fileId, "prod")).FileStream.Dispose();
+
+        var reads = await Task.WhenAll(Enumerable.Range(0, 64).Select(_ => Task.Run(async () =>
+        {
+            var (stream, _, _) = await _handler.DownloadFileAsync(fileId, "prod");
+            using var reader = new StreamReader(stream);
+            return (await reader.ReadToEndAsync()).Length;
+        })));
+
+        Assert.All(reads, length => Assert.Equal(body.Length, length));
+    }
+
+    [Fact]
+    public async Task OverwritesDuringDownloads_LeaveLatestCached()
+    {
+        var fileId = await _handler.UploadFileAsync("prod", "race.csv", Body("v0"));
+        var readers = Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
+        {
+            for (var i = 0; i < 200; i++)
+                (await _handler.DownloadFileAsync(fileId, "prod")).FileStream.Dispose();
+        })).ToList();
+        for (var v = 1; v <= 50; v++)
+            await _handler.UploadFileAsync("prod", "race.csv", Body($"v{v}"), overwrite: true);
+        await Task.WhenAll(readers);
+
+        var (latest, _, _) = await _handler.DownloadFileAsync(fileId, "prod");
+        Assert.Equal("v50", new StreamReader(latest).ReadToEnd());
+    }
+
+    [Fact]
     public async Task NoPartialFilesRemain()
     {
         await _handler.UploadFileAsync("prod", "a.csv", Body("x"));

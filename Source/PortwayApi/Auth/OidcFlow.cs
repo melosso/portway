@@ -30,7 +30,7 @@ public static class OidcFlow
     /// </summary>
     public static readonly TimeSpan FlowLifetime = TimeSpan.FromMinutes(10);
 
-    // ponytail: per process state, needs a shared store or sticky sessions for multiple instances
+    // per process state, needs a shared store or sticky sessions for multiple instances
     private static readonly ConcurrentDictionary<string, PendingFlow> Pending = new(StringComparer.Ordinal);
 
     // Keyed on the authority too, so editing a provider's URL drops the document cached for the old one

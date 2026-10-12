@@ -57,8 +57,8 @@ public class ResponseShapeTests : ApiTestBase
     {
         SetAllowedEnvironments("500");
 
-        // GET to the demo composite endpoint (Financial/SalesInvoice only supports POST)
-        var response = await _client.GetAsync("/api/500/Financial/SalesInvoice", TestContext.Current.CancellationToken);
+        // GET to the demo composite endpoint (Sales/Invoices only supports POST)
+        var response = await _client.GetAsync("/api/500/Sales/Invoices", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
 
@@ -146,6 +146,33 @@ public class ResponseShapeTests : ApiTestBase
 
         // Uppercase variants must be absent
         Assert.False(root.TryGetProperty("Success", out _));
+    }
+
+    // The document promises the record itself for a key lookup, so the collection envelope must be absent
+    [Fact]
+    public async Task SqlGetById_ReturnsTheRecordWithoutEnvelope()
+    {
+        Assert.True(WmsDemoDbAvailable, $"WMS demo database missing at {WmsDemoDbPath}");
+
+        SetAllowedEnvironments("WMS");
+
+        _mockODataToSqlConverter
+            .Setup(c => c.ConvertToSQL(
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>(),
+                It.IsAny<SqlProviderType>(),
+                It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
+            .Returns(("SELECT Id, Code, Name, City, Country, Region, CapacityM2, IsActive FROM Warehouses LIMIT 2",
+                new Dictionary<string, object>()));
+
+        var response = await _client.GetAsync("/api/WMS/WMS/Warehouses(1)", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var root = (await ParseBody(response)).RootElement;
+        Assert.Equal(JsonValueKind.Object, root.ValueKind);
+        Assert.False(root.TryGetProperty("value", out _));
+        Assert.False(root.TryGetProperty("success", out _));
+        Assert.True(root.TryGetProperty("Code", out _) || root.TryGetProperty("code", out _));
     }
 
     // Mutation shape tests
@@ -294,7 +321,7 @@ public class ResponseShapeTests : ApiTestBase
         SetAllowedEnvironments("500", "700");
 
         // No SQL server is reachable from the test host, so this endpoint fails on connect
-        var response = await _client.GetAsync("/api/500/Product/Products", TestContext.Current.CancellationToken);
+        var response = await _client.GetAsync("/api/500/Inventory/Products", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
 

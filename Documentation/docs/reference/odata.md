@@ -37,25 +37,9 @@ $filter=field operator value
 
 Operators, functions and literals: [Filter operations](/reference/filters).
 
-## $orderby
+## $orderby, $top and $skip
 
-```
-$orderby=field [asc|desc][,field [asc|desc]]
-```
-
-```http
-GET /api/prod/Products?$orderby=Category asc,Price desc,Name asc
-```
-
-Ascending is the default.
-
-## $top and $skip
-
-```http
-GET /api/prod/Products?$top=10&$skip=10
-```
-
-Paging requires a stable `$orderby`. Responses with more rows include `nextLink`. Details: [Sorting & Pagination](/reference/sorting-pagination).
+Sort syntax, paging defaults and `nextLink`: [Sorting & Pagination](/reference/sorting-pagination).
 
 ## $count
 

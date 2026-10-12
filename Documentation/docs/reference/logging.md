@@ -79,7 +79,7 @@ Secrets, tokens and environment authentication values are not written to logs; r
 
 ::: code-group
 
-```powershell [PowerShell]
+```powershell [Windows]
 # Errors in today's log
 Get-Content "log/portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | Select-String "ERR"
 
@@ -87,7 +87,7 @@ Get-Content "log/portwayapi-$(Get-Date -Format 'yyyyMMdd').log" | Select-String 
 Get-ChildItem "log" -Filter "*.log" | Sort-Object LastWriteTime -Descending | Select-Object Name, Length
 ```
 
-```bash [Bash]
+```bash [Linux]
 # Errors in today's log
 grep "ERR" "log/portwayapi-$(date +%Y%m%d).log"
 
