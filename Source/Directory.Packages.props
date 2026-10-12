@@ -21,9 +21,9 @@
     <PackageVersion Include="Microsoft.OpenApi" Version="3.10.2" />
     <PackageVersion Include="MinVer" Version="8.0.0" />
     <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
-    <PackageVersion Include="Testcontainers.MsSql" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.MySql" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core">
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0-rc.1.26425.128" />
@@ -47,7 +47,7 @@
     <PackageVersion Include="Dapper" Version="2.1.89" />
     <PackageVersion Include="SqlKata" Version="4.0.1" />
     <PackageVersion Include="SqlKata.Execution" Version="4.0.1" />
-    <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.1" />
+    <PackageVersion Include="Melosso.DynamicODataToSQL" Version="1.0.2" />
   </ItemGroup>
   <ItemGroup Label="Serilog">
     <PackageVersion Include="Serilog" Version="$(SerilogVersion)" />
@@ -71,13 +71,13 @@
   </ItemGroup>
   <ItemGroup Label="Other">
     <PackageVersion Include="StackExchange.Redis" Version="3.3.1" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.17.11" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.18.0" />
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup Label="Test Dependencies">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
-    <PackageVersion Include="xunit.v3" Version="4.0.1" />
-    <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.4.1" />
+    <PackageVersion Include="xunit.v3" Version="4.0.2" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.TrxReport" Version="2.5.1" />
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
   </ItemGroup>
