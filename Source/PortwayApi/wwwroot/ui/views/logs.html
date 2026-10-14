@@ -3,7 +3,6 @@
         <div class="page-title">
             <div class="page-heading">
                 <h1 class="select-none">Logs</h1>
-                <p class="page-sub" id="fileLabel"></p>
             </div>
         </div>
         <div class="page-actions">
@@ -112,7 +111,6 @@ async function load(append = false) {
 
   try {
     const d = await api(`/ui/api/logs?${params}`, { failure: 'Failed to load logs' });
-    document.getElementById('fileLabel').textContent = d.file ?? '';
     
     const newLogs = d.lines ?? [];
     currentLogs = append ? [...currentLogs, ...newLogs] : newLogs;

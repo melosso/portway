@@ -153,6 +153,35 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task Logs_ReadOlderFile_WhenNewestFileIsLarge()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var logDir = Directory.CreateDirectory(Path.Combine(Directory.GetCurrentDirectory(), "log")).FullName;
+        var newest = Path.Combine(logDir, "portwayapi-20991231.log");
+        var older = Path.Combine(logDir, "portwayapi-20991230.log");
+        try
+        {
+            await File.WriteAllLinesAsync(newest, Enumerable.Range(0, 1500)
+                .Select(i => $"2099-12-31 00:{i / 60:00}:{i % 60:00}.000 +00:00 [INF] filler {i}"), ct);
+            await File.WriteAllTextAsync(older, "2099-12-30 12:00:00.000 +00:00 [ERR] older-file-marker\n", ct);
+            File.SetLastWriteTimeUtc(newest, DateTime.UtcNow.AddDays(2));
+            File.SetLastWriteTimeUtc(older, DateTime.UtcNow.AddDays(1));
+
+            var client = CreateClient();
+            var (authCookie, _) = await LoginAsync(client);
+            var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/logs?level=ERR&limit=200", authCookie), ct);
+
+            var body = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
+            Assert.Equal("older-file-marker", body.GetProperty("lines")[0].GetProperty("message").GetString());
+        }
+        finally
+        {
+            File.Delete(newest);
+            File.Delete(older);
+        }
+    }
+
+    [Fact]
     public async Task UnauthenticatedUiApiRequest_RedirectsToLogin()
     {
         var client = CreateClient();

@@ -51,7 +51,7 @@ public static partial class WebUiEndpointExtensions
             {
                 var logDir = Path.Combine(Directory.GetCurrentDirectory(), "log");
                 if (!Directory.Exists(logDir))
-                    return Results.Json(new { file = "", lines = Array.Empty<object>(), total = 0, has_more = false });
+                    return Results.Json(new { lines = Array.Empty<object>(), total = 0, has_more = false });
 
                 var logFiles = Directory.GetFiles(logDir, "portwayapi-*.log")
                     .OrderByDescending(f => new FileInfo(f).LastWriteTime)
@@ -59,53 +59,9 @@ public static partial class WebUiEndpointExtensions
                     .ToList();
 
                 if (logFiles.Count == 0)
-                    return Results.Json(new { file = "", lines = Array.Empty<object>(), total = 0, has_more = false });
+                    return Results.Json(new { lines = Array.Empty<object>(), total = 0, has_more = false });
 
-                // Serilog default file template {Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}
-                var logPattern = new System.Text.RegularExpressions.Regex(
-                    @"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) \[(\w{3,})\] (.*)$");
-
-                var allEntries = new List<(string Timestamp, string Level, string Message)>();
-                string? latestFile = null;
-
-                foreach (var file in logFiles)
-                {
-                    try
-                    {
-                        string content;
-                        // FileShare.ReadWrite so reads succeed while Serilog has the file open (buffered sink)
-                        using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                        using (var sr = new StreamReader(stream))
-                            content = await sr.ReadToEndAsync();
-
-                        var rawLines = content.Split('\n');
-                        string? ts = null, lvl = null;
-                        var msgParts = new List<string>();
-
-                        foreach (var rawLine in rawLines)
-                        {
-                            var m = logPattern.Match(rawLine);
-                            if (m.Success)
-                            {
-                                if (ts != null)
-                                    allEntries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
-                                ts = m.Groups[1].Value;
-                                lvl = m.Groups[2].Value.ToUpperInvariant();
-                                msgParts = [m.Groups[3].Value];
-                            }
-                            else if (ts != null && !string.IsNullOrWhiteSpace(rawLine))
-                            {
-                                msgParts.Add(rawLine.TrimEnd());
-                            }
-                        }
-                        if (ts != null)
-                            allEntries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
-
-                        latestFile ??= file;
-                        if (allEntries.Count >= limit * 5) break;
-                    }
-                    catch (Exception ex) { Log.Debug(ex, "Skipping inaccessible log file: {File}", file); }
-                }
+                var allEntries = await ReadLogEntriesAsync(logFiles);
 
                 // Newest first, sort by timestamp string (ISO format is lexicographically comparable)
                 allEntries.Sort((a, b) => string.CompareOrdinal(b.Timestamp, a.Timestamp));
@@ -120,13 +76,12 @@ public static partial class WebUiEndpointExtensions
                 var paged = filtered.Skip(offset).Take(limit)
                     .Select(e => new { timestamp = e.Timestamp, level = e.Level, message = e.Message });
 
-                return Results.Json(new { file = latestFile != null ? Path.GetFileName(latestFile) : "", lines = paged, total = filtered.Count, has_more = hasMore });
+                return Results.Json(new { lines = paged, total = filtered.Count, has_more = hasMore });
             }
             catch (Exception ex)
             {
                 return Results.Json(new
                 {
-                    file = "",
                     lines = new[] { new { timestamp = "", level = "ERR", message = ex.Message } },
                     total = 0,
                     has_more = false
@@ -215,5 +170,46 @@ public static partial class WebUiEndpointExtensions
             configAudit.Record("clear", "metrics", "request metrics", context.Connection.RemoteIpAddress?.ToString());
             return Results.Json(new { success = true });
         }).ExcludeFromDescription();
+    }
+
+    // serilog file template {Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}
+    private static readonly Regex LogLinePattern = new(
+        @"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) \[(\w{3,})\] (.*)$", RegexOptions.Compiled);
+
+    /// <summary>Parses every entry in the given Serilog files, multi-line messages joined.</summary>
+    public static async Task<List<(string Timestamp, string Level, string Message)>> ReadLogEntriesAsync(IEnumerable<string> files)
+    {
+        var entries = new List<(string Timestamp, string Level, string Message)>();
+        foreach (var file in files)
+        {
+            try
+            {
+                using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(stream);
+                string? ts = null, lvl = null;
+                var msgParts = new List<string>();
+
+                while (await reader.ReadLineAsync() is { } rawLine)
+                {
+                    var m = LogLinePattern.Match(rawLine);
+                    if (m.Success)
+                    {
+                        if (ts != null)
+                            entries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
+                        ts = m.Groups[1].Value;
+                        lvl = m.Groups[2].Value.ToUpperInvariant();
+                        msgParts = [m.Groups[3].Value];
+                    }
+                    else if (ts != null && !string.IsNullOrWhiteSpace(rawLine))
+                    {
+                        msgParts.Add(rawLine.TrimEnd());
+                    }
+                }
+                if (ts != null)
+                    entries.Add((ts, lvl ?? "INF", string.Join("\n", msgParts).TrimEnd()));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Log.Debug(ex, "Skipping inaccessible log file: {File}", file); }
+        }
+        return entries;
     }
 }
