@@ -28,6 +28,9 @@ public class EndpointEntity : EndpointEntityBase
     public string? Url { get; set; }
     public List<string>? Methods { get; set; }
     public List<DeletePattern>? DeletePatterns { get; set; }
+    public List<string>? FallbackUrls { get; set; }
+    public ProxyRetryOptions? Retry { get; set; }
+    public ProxyResponseTransforms? ResponseTransforms { get; set; }
 
     /// <summary>
     /// Set when the proxied service understands OData query parameters, so the documentation can advertise them

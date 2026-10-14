@@ -108,7 +108,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Parses a proxy endpoint definition from JSON, handling both legacy and extended formats
     /// </summary>
-    private static EndpointDefinition? ParseProxyEndpointDefinition(string json)
+    internal static EndpointDefinition? ParseProxyEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
             return null;
@@ -126,7 +126,10 @@ public static partial class EndpointHandler
             CompositeConfig = entity.CompositeConfig,
             CustomProperties = entity.CustomProperties,
             DeletePatterns = entity.DeletePatterns,
-            SupportsOData = entity.SupportsOData
+            SupportsOData = entity.SupportsOData,
+            FallbackUrls = entity.FallbackUrls,
+            Retry = entity.Retry,
+            ResponseTransforms = entity.ResponseTransforms
         };
 
         entity.ApplyTo(definition);
@@ -136,7 +139,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Parses a SQL endpoint definition from JSON
     /// </summary>
-    private static EndpointDefinition? ParseSqlEndpointDefinition(string json)
+    internal static EndpointDefinition? ParseSqlEndpointDefinition(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
             return null;
@@ -169,7 +172,8 @@ public static partial class EndpointHandler
             FunctionParameters = entity.FunctionParameters,
             Relationships = entity.Relationships,
             Methods = allowedMethods,
-            Properties = entity.Properties
+            Properties = entity.Properties,
+            ResponseTransforms = entity.ResponseTransforms
         };
 
         entity.ApplyTo(definition);
