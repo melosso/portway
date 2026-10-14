@@ -239,7 +239,7 @@ public sealed class ProxyRequestHandler
                     context.Response.StatusCode = cacheEntry.StatusCode;
 
                     // Write cached content
-                    await context.Response.WriteAsync(cacheEntry.Content);
+                    await WriteBodyAsync(context.Response, cacheEntry.Content);
 
                     return new EmptyResult(); // Response already written
                 }
@@ -272,7 +272,7 @@ public sealed class ProxyRequestHandler
                         context.Response.StatusCode = cacheEntry.StatusCode;
 
                         // Write cached content
-                        await context.Response.WriteAsync(cacheEntry.Content);
+                        await WriteBodyAsync(context.Response, cacheEntry.Content);
 
                         return new EmptyResult(); // Response already written
                     }
@@ -743,7 +743,7 @@ public sealed class ProxyRequestHandler
         }
 
         // Write the content to the response
-        await context.Response.WriteAsync(rewrittenContent);
+        await WriteBodyAsync(context.Response, rewrittenContent);
 
         Log.Debug("Proxy request completed: {Method} {Path} -> {StatusCode}",
             method, context.Request.Path, response.StatusCode);
@@ -778,4 +778,10 @@ public sealed class ProxyRequestHandler
             Description = "Delete by ID in path (default)"
         };
     }
+
+    // kestrel rejects any body write on 204 and 304
+    private static Task WriteBodyAsync(HttpResponse response, string content) =>
+        response.StatusCode is StatusCodes.Status204NoContent or StatusCodes.Status304NotModified
+            ? Task.CompletedTask
+            : response.WriteAsync(content, response.HttpContext.RequestAborted);
 }

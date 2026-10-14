@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using Moq;
@@ -29,6 +30,8 @@ internal sealed class UpstreamCapture : IDisposable
     /// </summary>
     public Dictionary<string, string> ResponseHeaders { get; } = new();
 
+    public int? ResponseStatus { get; set; }
+
     public UpstreamCapture(int port)
     {
         var builder = WebApplication.CreateSlimBuilder();
@@ -53,6 +56,12 @@ internal sealed class UpstreamCapture : IDisposable
 
         foreach (var (k, v) in ResponseHeaders)
             ctx.Response.Headers.Append(k, v);
+
+        if (ResponseStatus is { } status)
+        {
+            ctx.Response.StatusCode = status;
+            return;
+        }
 
         ctx.Response.ContentType = "application/json";
         await ctx.Response.WriteAsync("""{"ok":true}""");
@@ -118,6 +127,26 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(xml, _upstream.Body);
         Assert.Contains("application/xml", _upstream.ContentType);
+    }
+
+    [Fact]
+    public async Task NoContentUpstream_Returns204WithoutBody()
+    {
+        _upstream.ResponseStatus = 204;
+        // testserver accepts a body on 204, kestrel rejects it
+        using var kestrel = _factory.WithWebHostBuilder(_ => { });
+        kestrel.UseKestrel(0);
+        using var client = kestrel.CreateClient();
+        client.DefaultRequestHeaders.Authorization = _client.DefaultRequestHeaders.Authorization;
+        var metrics = kestrel.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+        long ServerErrors() => metrics.GetSnapshot("24h").Errors.GetValueOrDefault("500");
+        var serverErrorsBefore = ServerErrors();
+
+        var response = await client.DeleteAsync(ApiPath + "/1", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Empty(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(serverErrorsBefore, ServerErrors());
     }
 
     // Query string passthrough
