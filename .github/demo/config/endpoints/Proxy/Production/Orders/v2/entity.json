@@ -1,8 +1,8 @@
 {
-    "Url": "http://nginx/api/production",
+    "Url": "http://nginx/api/v2/production",
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Documentation": {
-        "TagDescription": "Monitor and manage production orders.",
+        "TagDescription": "Monitor and manage production orders. Version 2 returns `orderNumber` and status codes such as `in_progress`.",
         "MethodDescriptions": {
             "GET": "List production orders",
             "POST": "Create a new production order",

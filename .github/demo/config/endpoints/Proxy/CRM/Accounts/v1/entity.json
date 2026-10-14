@@ -1,4 +1,7 @@
 {
+    "Deprecated": true,
+    "DeprecatedSince": "2026-10-01T00:00:00Z",
+    "Sunset": "2027-04-01T00:00:00Z",
     "Url": "http://nginx/api/accounts",
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Documentation": {

@@ -1,0 +1,17 @@
+{
+    "Url": "http://nginx/api/v2/accounts",
+    "Methods": ["GET", "POST", "PATCH", "DELETE"],
+    "Documentation": {
+        "TagDescription": "Manage customer and vendor accounts. Version 2 updates with `PATCH` and returns `204` on delete.",
+        "MethodDescriptions": {
+            "GET": "List all accounts",
+            "POST": "Create a new account",
+            "PATCH": "Update account fields",
+            "DELETE": "Delete an account"
+        }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    }
+}

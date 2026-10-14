@@ -1,0 +1,20 @@
+{
+    "Deprecated": true,
+    "DeprecatedSince": "2026-10-01T00:00:00Z",
+    "Sunset": "2027-04-01T00:00:00Z",
+    "Url": "http://nginx/api/production",
+    "Methods": ["GET", "POST", "PUT", "DELETE"],
+    "Documentation": {
+        "TagDescription": "Monitor and manage production orders.",
+        "MethodDescriptions": {
+            "GET": "List production orders",
+            "POST": "Create a new production order",
+            "PUT": "Update production order status",
+            "DELETE": "Cancel/Delete production order"
+        }
+    },
+    "Mcp": {
+        "Exposed": true,
+        "Instruction": ""
+    }
+}

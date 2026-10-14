@@ -1,8 +1,8 @@
 {
-    "Url": "http://nginx/api/company",
+    "Url": "http://nginx/api/v2/company",
     "Methods": ["GET", "POST", "PUT", "DELETE"],
     "Documentation": {
-        "TagDescription": "Manage your company and its branch locations.",
+        "TagDescription": "Manage your company and its branch locations. Version 2 returns a `count` and `value` collection.",
         "MethodDescriptions": {
             "GET": "List companies",
             "POST": "Create a company",

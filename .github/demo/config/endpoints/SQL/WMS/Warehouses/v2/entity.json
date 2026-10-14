@@ -5,14 +5,14 @@
   "AllowedEnvironments": ["WMS"],
   "AllowedMethods": ["GET"],
   "AllowedColumns": [
-    "Id",
-    "Code",
-    "Name",
-    "City",
-    "Country",
-    "Region",
-    "CapacityM2",
-    "IsActive"
+    "Id;id",
+    "Code;code",
+    "Name;name",
+    "City;city",
+    "Country;country",
+    "Region;region",
+    "CapacityM2;capacityM2",
+    "IsActive;isActive"
   ],
   "Properties": {
     "CacheEnabled": false,
@@ -25,7 +25,7 @@
       "GET": "Retrieve warehouse locations"
     },
     "MethodDocumentation": {
-      "GET": "Browse warehouse location reference data stored in a local SQLite database (`demo.db`). Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip`."
+      "GET": "Version 2 returns camelCase field names, matching the proxy endpoints. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip` on the same names."
     }
   },
   "Mcp": {
