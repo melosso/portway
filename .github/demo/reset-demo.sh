@@ -80,8 +80,8 @@ for path in CRM/Accounts v2/CRM/Accounts Company/Companies v2/Company/Companies 
         curl -s -o /dev/null -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/WMS/$path"
     done
 done
-curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"name":"New Account"}' http://localhost:8080/api/WMS/v2/CRM/Accounts
-curl -s -o /dev/null -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"name":"Global Solutions"}' http://localhost:8080/api/WMS/v2/CRM/Accounts/01JNH6R020RJKTTWA0V4PC549M
+curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"name":"Jansen Agri B.V.","country":"NL"}' http://localhost:8080/api/WMS/v2/CRM/Accounts
+curl -s -o /dev/null -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"email":"inkoop@brouwerzonen.example"}' http://localhost:8080/api/WMS/v2/CRM/Accounts/01JNH6R020RJKTTWA0V4PC549M
 curl -s -o /dev/null http://localhost:8080/api/WMS/v2/CRM/Accounts
 
 echo "Demo reset successfully!"
