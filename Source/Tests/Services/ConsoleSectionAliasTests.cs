@@ -49,7 +49,7 @@ public sealed class ConsoleSectionAliasTests
     {
         var config = Build(new Dictionary<string, string?> { ["WebUi:PublicOrigins:0"] = "https://a.example.com", ["WebUi:PublicOrigins:1"] = "https://b.example.com" });
 
-        Assert.Equal(["https://a.example.com", "https://b.example.com"], config.GetSection("Console:PublicOrigins").Get<string[]>());
+        Assert.Equal(["https://a.example.com", "https://b.example.com"], config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
         Assert.True(config.GetSection("Console").Exists());
     }
 
