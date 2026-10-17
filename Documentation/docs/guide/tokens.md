@@ -45,7 +45,7 @@ A token reaches an endpoint when the endpoint matches its scopes and the environ
 | `Inventory/Products*` | Every version of `Inventory/Products` |
 | `files/Images` | File endpoint `Images`; `files` grants every file endpoint |
 
-Scopes are validated on create and update: `*`, or an endpoint key of letters, digits, `_`, `.` and `-` segments, with an optional `@v{n}` version and a trailing `*`.
+Scopes are validated on create and update: `*`, or an endpoint key of letters, digits, `_`, `.` and `-` segments, with an optional `@v{n}` version and a trailing `*`. `@v1` is rejected: version 1 is the unversioned endpoint key.
 
 ### Environment scopes
 
@@ -71,7 +71,11 @@ The `AllowedTenants` field maps each tenant header to its permitted values, e.g.
 
 ## Rotating a token
 
-Rotation issues a new token value with the same name, scopes, environments, tenants and rate limit, and revokes the old value. Expiration keeps the remaining days. Rotate on a schedule and after any exposure.
+Rotation issues a new token value with the same name, scopes, environments, tenants and rate limit, and revokes the old value. Expiration keeps the remaining days. **Rotate** is in the edit panel of an active token. Rotate on a schedule and after any exposure.
+
+## Last use
+
+The token list displays the last use of each token. The value is recorded on token verification and is accurate to 30 seconds.
 
 ## Archiving a token
 

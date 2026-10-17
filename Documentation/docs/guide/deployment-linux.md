@@ -5,7 +5,13 @@ description: "Deploy Portway on Linux from a .deb or .rpm package, or from a rel
 
 # Deploying on Linux
 
-Container deployment: [Deploying with Docker](/guide/deployment-docker). Windows Server: [Deploying on Windows Server](/guide/deployment-windows).
+## Prerequisites
+
+- x64 or arm64 Linux with systemd
+- Debian or Ubuntu for `.deb` packages; RHEL, Fedora, Rocky Linux or AlmaLinux for `.rpm` packages
+- Root or `sudo` access
+- [ASP.NET Core Runtime 11](https://get.dot.net/11) for archive installation; packages include the runtime
+- A reverse proxy for HTTPS, e.g. Nginx or Caddy ([Instances](/guide/instances#linux))
 
 ## Release files
 
@@ -19,8 +25,6 @@ The [Releases page](https://github.com/melosso/portway/releases/) contains these
 | `portway-<version>-1.aarch64.rpm` | arm64 | Included |
 | `<tag>-Linux_x64.zip` | x64 | [ASP.NET Core Runtime 11](https://get.dot.net/11) required |
 | `<tag>-Linux_arm64.zip` | arm64 | [ASP.NET Core Runtime 11](https://get.dot.net/11) required |
-
-The `.deb` packages target Debian and Ubuntu. The `.rpm` packages target RHEL, Fedora, Rocky Linux and AlmaLinux.
 
 `SHA256SUMS` contains the SHA-256 checksum of each release file. Verification of the downloaded files:
 
@@ -94,7 +98,7 @@ Environment=ASPNETCORE_URLS=http://0.0.0.0:8080
 sudo systemctl restart portway
 ```
 
-HTTPS requires a reverse proxy. Nginx and Caddy configuration: [Versioning](/guide/versioning#linux).
+HTTPS requires a reverse proxy. Nginx and Caddy configuration: [Instances](/guide/instances#linux).
 
 ## Package upgrades
 
@@ -192,7 +196,16 @@ sudo journalctl -u portway -e
 
 ## Backup
 
-Back up `auth.db`, `mcp.db`, `portway.key`, `.env`, `.core/`, `appsettings.overrides.json`, `environments/`, `endpoints/` and the file storage directory in `/opt/portway/`. Upgrades: [Upgrading Portway](/guide/upgrading).
+Files to back up in `/opt/portway/`: [Upgrading Portway](/guide/upgrading#back-up-the-installation)..
+
+## Other installation methods
+
+::: cards 2
+- [Deploying with Docker](/guide/deployment-docker)
+  Docker Compose, from a first container to production.
+- [Deploying on Windows Server](/guide/deployment-windows)
+  IIS website with HTTPS and a dedicated Application Pool.
+:::
 
 ## Next steps
 

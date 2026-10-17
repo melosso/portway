@@ -5,75 +5,20 @@ description: "Install Portway and make your first authenticated API call"
 
 # Getting Started
 
-Portway is an ASP.NET Core application. It runs as a Docker container, on Windows Server behind IIS, or standalone on Kestrel.
-
-## Prerequisites
-
-### Docker
-
-- Docker Engine with Compose support
-
-### Windows Server / IIS
-
-- Windows Server (or Windows 11 for development)
-- [.NET 11 ASP.NET Core Hosting Bundle](https://get.dot.net/11)
-- Internet Information Services (IIS)
-
-:::warning
-Install the Hosting Bundle, not the x64 runtime. Only the Hosting Bundle includes the IIS integration module.
-:::
+Portway ships as a container image, as `.deb` and `.rpm` packages, and as Linux and Windows archives. Each release targets x64 and arm64.
 
 ## Installation
 
-### Docker Compose
+Install Portway with one of the deployment guides, then continue with [Initial configuration](#initial-configuration).
 
-Minimal compose file:
-
-```yaml
-services:
-  portway:
-    image: ghcr.io/melosso/portway:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - portway_app:/app
-      - ./environments:/app/environments
-      - ./endpoints:/app/endpoints
-      - ./tokens:/app/tokens
-      - ./log:/app/log
-      - ./data:/app/data
-    environment:
-      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-
-volumes:
-  portway_app:
-```
-
-Start:
-
-```sh
-docker compose pull && docker compose up -d
-```
-
-Portway listens on port 8080. Configuration options: [Deploying with Docker](/guide/deployment-docker).
-
-### Linux
-
-1. Download the `.deb` or `.rpm` package for your architecture from the [Releases page](https://github.com/melosso/portway/releases/).
-2. Install the package with `apt install` or `dnf install`.
-3. Set `PORTWAY_ENCRYPTION_KEY` in `/opt/portway/.env`.
-4. Start the service with `sudo systemctl enable --now portway`.
-
-Package contents, archive installation and the listen address: [Deploying on Linux](/guide/deployment-linux).
-
-### Windows Server (IIS)
-
-1. Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).
-2. Install the .NET 11 ASP.NET Core Hosting Bundle.
-3. Set a machine-level `PORTWAY_ENCRYPTION_KEY`.
-4. Create an IIS site for the extracted folder with an application pool set to **No Managed Code**.
-
-Key generation, application pool settings, NTLM pass-through and backups: [Deploying on Windows Server](/guide/deployment-windows).
+::: cards 3
+- [Deploying with Docker](/guide/deployment-docker)
+  Docker Compose, from a first container to production.
+- [Deploying on Linux](/guide/deployment-linux)
+  `.deb` or `.rpm` package, or release archive, as a systemd service.
+- [Deploying on Windows Server](/guide/deployment-windows)
+  IIS website with HTTPS and a dedicated Application Pool.
+:::
 
 ## Initial configuration
 
@@ -169,6 +114,8 @@ The API reference at `https://localhost/docs` accepts the Bearer token for test 
 GET /api/prod/Products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
+
+What's your next step? You can read more below:
 
 ## Next steps
 

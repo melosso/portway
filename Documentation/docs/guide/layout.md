@@ -5,14 +5,12 @@ description: "Each subfolder under endpoints/ corresponds to an endpoint type"
 
 # Folders and Routes
 
-Routes are derived from the `endpoints/` folder tree: the first level is the endpoint type, the folder names below it form the namespace and endpoint name. `Namespace` in `entity.json` overrides the folder namespace ([Namespaces](/reference/namespaces)).
+At its core, Portway will derive paths and routes based on files saved in the `endpoints/` folder tree. The first level is the endpoint type, the folder names below it form the namespace, endpoint name, and its [version](/guide/endpoint-versions/). `Namespace` in `entity.json` overrides the folder [namespace](/reference/namespaces).
 
 ## Directory layout
 
 ```
-PortwayApi/
-├── appsettings.json
-├── web.config
+<portway>/
 ├── *.db
 ├── log/
 ├── tokens/

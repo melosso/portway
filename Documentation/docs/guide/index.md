@@ -39,4 +39,3 @@ Endpoints and environments are JSON files on disk. Changes are reloaded without 
 - [Getting Started](/guide/getting-started)
 - [Deployment](/guide/deployment)
 - [Security](/guide/security)
-- [Issues](https://github.com/melosso/portway/issues) and [Discussions](https://github.com/melosso/portway/discussions)

@@ -2,3 +2,30 @@ badge[type="info"] {
   background-color: color-mix(in srgb, var(--accent) 14%, var(--code-bg));
   color: var(--accent);
 }
+
+.bark-hero-image img {
+  max-width: 100%;
+  max-height: 260px;
+}
+
+@media (min-width: 769px) {
+  .bark-hero--split .bark-hero-image img {
+    width: 100%;
+    max-height: 420px;
+  }
+}
+
+.bark-hero-action.brand {
+  border-radius: 8px;
+}
+
+.sidebar-tree > .sidebar-group + .sidebar-link {
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 769px) {
+  .bark-hero-name,
+  .bark-hero-text {
+    font-size: 2.75rem;
+  }
+}

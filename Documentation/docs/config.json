@@ -1,11 +1,354 @@
 {
   "title": "Portway",
+  "titleTemplate": ":title · :siteName",
   "description": "A fully-featured fast, file-configured .NET API gateway",
   "lang": "en",
+  "versions": {
+    "items": [
+      {
+        "text": "v0.10",
+        "link": "/"
+      },
+      {
+        "text": "v0.7",
+        "link": "/v0.7/",
+        "sidebar": {
+          "/guide/": [
+            {
+              "title": "Introduction",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "What is Portway?",
+                  "path": "guide/"
+                },
+                {
+                  "title": "Getting Started",
+                  "path": "guide/getting-started"
+                },
+                {
+                  "title": "Folders and Routes",
+                  "path": "guide/layout"
+                }
+              ]
+            },
+            {
+              "title": "Deployment",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Overview",
+                  "path": "guide/deployment"
+                },
+                {
+                  "title": "Instances",
+                  "path": "guide/instances"
+                },
+                {
+                  "title": "Upgrading",
+                  "path": "guide/upgrading"
+                }
+              ]
+            },
+            {
+              "title": "Endpoints",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "SQL",
+                  "path": "guide/endpoints-sql"
+                },
+                {
+                  "title": "Proxy",
+                  "path": "guide/endpoints-proxy"
+                },
+                {
+                  "title": "Static",
+                  "path": "guide/endpoints-static"
+                },
+                {
+                  "title": "Composite",
+                  "path": "guide/endpoints-composite"
+                },
+                {
+                  "title": "Files",
+                  "path": "guide/endpoints-file"
+                },
+                {
+                  "title": "Webhook",
+                  "path": "guide/endpoints-webhook"
+                }
+              ]
+            },
+            {
+              "title": "Access",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Environments",
+                  "path": "guide/environments"
+                },
+                {
+                  "title": "Access Tokens",
+                  "path": "guide/tokens"
+                },
+                {
+                  "title": "Tenant Headers",
+                  "path": "guide/tenant-headers"
+                },
+                {
+                  "title": "Rate Limiting",
+                  "path": "guide/rate-limiting"
+                },
+                {
+                  "title": "Security",
+                  "path": "guide/security"
+                }
+              ]
+            },
+            {
+              "title": "Console",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Web UI",
+                  "path": "guide/webui"
+                },
+                {
+                  "title": "Console Accounts",
+                  "path": "guide/accounts"
+                },
+                {
+                  "title": "Single Sign-On",
+                  "path": "guide/sso"
+                }
+              ]
+            },
+            {
+              "title": "MCP",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Server",
+                  "path": "guide/mcp"
+                },
+                {
+                  "title": "Built-in Chat",
+                  "path": "guide/mcp-chat"
+                }
+              ]
+            },
+            {
+              "title": "Operations",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Health and Logs",
+                  "path": "guide/monitoring"
+                },
+                {
+                  "title": "Telemetry",
+                  "path": "guide/telemetry"
+                },
+                {
+                  "title": "Troubleshooting",
+                  "path": "guide/troubleshooting"
+                }
+              ]
+            },
+            {
+              "title": "Contributing",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Bugs",
+                  "path": "https://github.com/melosso/portway/issues/"
+                },
+                {
+                  "title": "Suggestions",
+                  "path": "https://github.com/melosso/portway/issues/"
+                }
+              ]
+            },
+            {
+              "title": "Reference",
+              "path": "reference/"
+            }
+          ],
+          "/reference/": [
+            {
+              "title": "API Reference",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Overview",
+                  "path": "reference/"
+                },
+                {
+                  "title": "API Authentication",
+                  "path": "reference/api-auth"
+                },
+                {
+                  "title": "HTTP Headers",
+                  "path": "reference/headers"
+                },
+                {
+                  "title": "Console API",
+                  "path": "reference/console-api"
+                }
+              ]
+            },
+            {
+              "title": "Configuration",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Entity",
+                  "path": "reference/entity-config"
+                },
+                {
+                  "title": "HTTP Methods",
+                  "path": "reference/http-methods"
+                },
+                {
+                  "title": "Environment",
+                  "path": "reference/environment-settings"
+                },
+                {
+                  "title": "SQL Providers",
+                  "path": "reference/sql-providers"
+                },
+                {
+                  "title": "Authentication",
+                  "path": "reference/environment-auth"
+                },
+                {
+                  "title": "Namespaces",
+                  "path": "reference/namespaces"
+                }
+              ]
+            },
+            {
+              "title": "Settings",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Application",
+                  "path": "reference/app-settings"
+                },
+                {
+                  "title": "OpenAPI",
+                  "path": "reference/openapi-settings"
+                }
+              ]
+            },
+            {
+              "title": "Query Language",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "OData Syntax",
+                  "path": "reference/odata"
+                },
+                {
+                  "title": "Filter Operations",
+                  "path": "reference/filters"
+                },
+                {
+                  "title": "Sorting & Pagination",
+                  "path": "reference/sorting-pagination"
+                },
+                {
+                  "title": "Expanding Related Data",
+                  "path": "reference/expand"
+                }
+              ]
+            },
+            {
+              "title": "Tools & Options",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Token Audit Log",
+                  "path": "reference/token-audit"
+                },
+                {
+                  "title": "Secret Encryption",
+                  "path": "reference/secrets"
+                },
+                {
+                  "title": "Health Checks",
+                  "path": "reference/health-checks"
+                },
+                {
+                  "title": "Caching",
+                  "path": "reference/caching"
+                },
+                {
+                  "title": "Logging",
+                  "path": "reference/logging"
+                },
+                {
+                  "title": "Audit",
+                  "path": "reference/audit"
+                }
+              ]
+            },
+            {
+              "title": "Integrations",
+              "collapsed": false,
+              "items": [
+                {
+                  "title": "Overview",
+                  "path": "reference/integrations/"
+                },
+                {
+                  "title": "Exact Globe+",
+                  "path": "reference/integrations/exact-globe"
+                },
+                {
+                  "title": "Exact Synergy",
+                  "path": "reference/integrations/exact-synergy"
+                },
+                {
+                  "title": "NAV Business Central",
+                  "path": "reference/integrations/nav-business-central"
+                },
+                {
+                  "title": "AFAS Profit",
+                  "path": "reference/integrations/afas-profit"
+                },
+                {
+                  "title": "Odoo",
+                  "path": "reference/integrations/odoo"
+                },
+                {
+                  "title": "SAP Business One",
+                  "path": "reference/integrations/sap-business-one"
+                },
+                {
+                  "title": "NocoDB",
+                  "path": "reference/integrations/nocodb"
+                },
+                {
+                  "title": "Teable",
+                  "path": "reference/integrations/teable"
+                },
+                {
+                  "title": "Pimcore",
+                  "path": "reference/integrations/pimcore"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
   "theme": "default",
   "brand": "Portway",
   "brandImage": "/assets/brand-image.webp",
-  "favicon": "🌊",
+  "favicon": "/favicon.ico",
   "lastUpdated": true,
   "promo": "**Announcement!** Version 0.10 is out now! Check out the [release notes](https://github.com/melosso/portway/releases).",
   "footer": "© {year} Melosso.com · Licensed under [EUPL 1.2](LICENSE). Built with [Bark](https://github.com/hawkinslabdev/bark/).",
@@ -70,8 +413,8 @@
             "path": "guide/deployment"
           },
           {
-            "title": "Versioning",
-            "path": "guide/versioning"
+            "title": "Instances",
+            "path": "guide/instances"
           },
           {
             "title": "Upgrading",
@@ -106,6 +449,10 @@
           {
             "title": "Webhook",
             "path": "guide/endpoints-webhook"
+          },
+          {
+            "title": "Versions",
+            "path": "guide/endpoint-versions"
           }
         ]
       },
@@ -190,11 +537,7 @@
         "collapsed": false,
         "items": [
           {
-            "title": "Bugs",
-            "path": "https://github.com/melosso/portway/issues"
-          },
-          {
-            "title": "Suggestions",
+            "title": "Issues",
             "path": "https://github.com/melosso/portway/issues/"
           }
         ]

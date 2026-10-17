@@ -17,5 +17,6 @@ The site becomes available at `http://localhost:5991`.
 | `docs/config.json` | Site configuration: navigation, sidebar, branding, edit links |
 | `docs/guide/` | Task-oriented guides (getting started, endpoints, security, operations) |
 | `docs/reference/` | Configuration and API reference pages |
+| `docs/v0.7/` | Documentation for v0.7, listed under `versions` in `docs/config.json` |
 | `docs/assets/` | Static assets referenced by pages |
 | `wwwroot/` | Bark theme, custom CSS, and shared icons |

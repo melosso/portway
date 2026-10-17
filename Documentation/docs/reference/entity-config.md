@@ -24,10 +24,11 @@ endpoints/
 | `Enabled` | boolean | `true` | `false` returns `503` and removes the endpoint from MCP |
 | `Hidden` | boolean | `false` | Omits the endpoint from the OpenAPI document; requests are served |
 | `Deprecated` | boolean | `false` | Marks the operations deprecated in the OpenAPI document |
-| `DeprecatedSince` | date | | `Deprecation` response header when `Deprecated` is `true` |
+| `DeprecatedSince` | date | | `Deprecation` response header. Requires `Deprecated: true`. A console save of a deprecated endpoint sets the current date if the key is absent. |
 | `Sunset` | date | | `Sunset` response header |
 | `Namespace` | string | Folder | [Namespaces](/reference/namespaces) |
 | `NamespaceDisplayName` | string | | Namespace label in the documentation |
+| `NamespaceDescription` | string | | Namespace group description in the OpenAPI document ([OpenAPI tags](/reference/namespaces#openapi-tags)) |
 | `DisplayName` | string | | Endpoint label |
 | `Documentation` | object | | [OpenAPI settings](/reference/openapi-settings#endpoint-documentation) |
 | `Mcp` | object | | [MCP exposure](/guide/mcp) |
@@ -61,7 +62,7 @@ endpoints/
 | `ColumnValidation` | object | | Validation rules per column |
 | `Relationships` | array | | To-one navigations for [`$expand`](/reference/expand) |
 | `FunctionParameters` | array | | Table-valued function parameters |
-| `ResponseTransforms` | object | | `Remove`, `Rename` and `Mask` rules on result fields |
+| `ResponseTransforms` | object | | `Remove`, `Rename` and `Mask` rules on result rows, including `/{id}` and table-valued function results. Field names are public names (aliases). Rules: [Proxy](#proxy) |
 | `Properties` | object | | `MaxPageSize` (upper limit for `$top`), `DefaultSort` (`$orderby` when none is given), `CacheEnabled` (`false` bypasses the response cache) |
 
 Writes, validation and table-valued functions: [SQL Endpoints](/guide/endpoints-sql).
@@ -109,7 +110,9 @@ Table-valued functions are read-only and use no `PrimaryKey`.
 | `DeletePatterns` | array | `PathParameter` | Id format on `DELETE` |
 | `CustomProperties` | object | | Method translation and content type |
 
-A connection failure, timeout, `502`, `503` or `504` moves to the next attempt. Transforms apply to top-level fields of objects, array elements and items in a `value` wrapper; `Remove` wins over other rules, masked values return `***`, non-JSON responses are unchanged, and cached responses are stored after transformation.
+A connection failure, timeout, `502`, `503` or `504` moves to the next attempt. Other status codes return to the client. Every method retries, including `POST`: a retried write can run twice upstream. A fallback URL receives the request path after the `Url` base. Each fallback host must be allowed in `environments/network-access-policy.json` ([Network access policy](/guide/environments#network-access-policy)). A blocked fallback is skipped and logged.
+
+Transforms apply in the order `Remove`, `Mask`, `Rename`. They apply to top-level fields of objects, array elements and items in a `value` wrapper. Masked values return `***`. `Rename` skips a field whose target name exists. Non-JSON responses are unchanged. Cached responses are stored after transformation.
 
 | `DeletePatterns` style | Upstream URL |
 |---|---|

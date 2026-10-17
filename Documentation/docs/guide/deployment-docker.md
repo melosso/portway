@@ -5,11 +5,41 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 # Deploying with Docker
 
-Requires [Docker](https://www.docker.com/get-started). Linux: [Deploying on Linux](/guide/deployment-linux). Windows Server: [Deploying on Windows Server](/guide/deployment-windows). The image supports `linux/amd64` and `linux/arm64`.
+## Prerequisites
+
+- [Docker Engine](https://www.docker.com/get-started) with Compose support
 
 ## Quick start
 
-A minimal `docker-compose.yml` is in [Getting Started](/guide/getting-started). The API listens on `http://localhost:8080`.
+Minimal `docker-compose.yml`:
+
+```yaml
+services:
+  portway:
+    image: ghcr.io/melosso/portway:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - portway_app:/app
+      - ./environments:/app/environments
+      - ./endpoints:/app/endpoints
+      - ./tokens:/app/tokens
+      - ./log:/app/log
+      - ./data:/app/data
+    environment:
+      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
+
+volumes:
+  portway_app:
+```
+
+Start:
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+The API listens on `http://localhost:8080`. Access token and first environment: [Initial configuration](/guide/getting-started#initial-configuration).
 
 ## Configuration
 
@@ -133,10 +163,6 @@ Endpoint and environment files in the mounted directories are reloaded on change
 docker compose restart
 ```
 
-## Managing tokens
-
-Tokens are managed in the [console](/guide/webui) at `http://localhost:8080/ui` under **Access Tokens**.
-
 ## Going to production
 
 ### Set the encryption key
@@ -165,13 +191,18 @@ The container serves plain HTTP. TLS terminates at a reverse proxy (nginx, Traef
 
 Back up the bind mounts and the `portway_app` volume ([Data persistence](#data-persistence)). Portway also writes a daily snapshot of its databases and configuration to `.backups/snapshots/` ([DatabaseMaintenance](/reference/app-settings#databasemaintenance)).
 
-### Monitoring
+## Other installation methods
 
-Health endpoints: [Health and Logs](/guide/monitoring). Metrics: [Telemetry](/guide/telemetry). Upgrades: [Upgrading Portway](/guide/upgrading).
+::: cards 2
+- [Deploying on Linux](/guide/deployment-linux)
+  `.deb` or `.rpm` package, or release archive, as a systemd service.
+- [Deploying on Windows Server](/guide/deployment-windows)
+  IIS website with HTTPS and a dedicated Application Pool.
+:::
 
 ## Next steps
 
-- [Getting Started](/guide/getting-started)
-- [SQL Endpoints](/guide/endpoints-sql)
+- [Configure Environments](/guide/environments)
+- [Configure Endpoints](/guide/endpoints-sql)
 - [Security](/guide/security)
 - [Health and Logs](/guide/monitoring)

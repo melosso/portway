@@ -5,12 +5,13 @@ hero:
   name: Portway
   text: Bridge your infrastructure to AI and REST.
   tagline: Expose SQL databases, internal services and files as MCP tools and OData endpoints.
+  image: /assets/brand-image.svg
   actions:
     - theme: brand
       text: Get Started
       link: /guide/
-    - theme: alt
-      text: GitHub
+    - theme: minimal
+      text: View on GitHub
       link: https://github.com/melosso/portway
 
 features:
@@ -33,17 +34,17 @@ features:
 <span class="platforms-title">Available For</span>
 
 <div class="platforms-list">
-  <a href="guide/getting-started" class="platform-logo">
-    <img src="icons/platforms/microsoft-windows.svg" alt="Windows" loading="lazy">
+  <a href="guide/deployment-windows" class="platform-logo">
+    <img src="icons/platforms/microsoft-windows.svg" alt="" loading="lazy"><span>Windows</span>
   </a>
   <a href="guide/deployment" class="platform-logo">
-    <img src="icons/platforms/linux.svg" alt="Linux" loading="lazy">
+    <img src="icons/platforms/linux.svg" alt="" loading="lazy"><span>Linux</span>
   </a>
   <a href="guide/deployment-docker" class="platform-logo">
-    <img src="icons/platforms/docker.svg" alt="Docker" loading="lazy">
+    <img src="icons/platforms/docker.svg" alt="" loading="lazy"><span>Docker</span>
   </a>
   <a href="guide/deployment" class="platform-logo">
-    <img src="icons/platforms/podman.svg" alt="Podman" loading="lazy">
+    <img src="icons/platforms/podman.svg" alt="" loading="lazy"><span>Podman</span>
   </a>
 </div>
 
@@ -56,74 +57,70 @@ features:
 <style>
 
 .home-platforms {
-  margin-top: 48px;
-  padding: 32px;
+  margin: 48px 0 32px;
   text-align: center;
 }
 
 .platforms-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  margin-bottom: 24px;
-  color: var(--text-muted);
   display: block;
+  margin-bottom: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 .platforms-list {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 32px;
   flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
 }
 
 .platform-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 16px 24px;
-  background: var(--sidebar-bg);
+  gap: 8px;
+  padding: 8px 14px 8px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.platform-logo:hover {
-  border-color: var(--accent-light);
-  transform: translateY(-2px);
-}
-
-.platform-logo img {
-  width: 32px;
-  height: 32px;
-  opacity: 0.8;
-}
-
-.platform-logo:hover img {
-  opacity: 1;
-}
-
-.more-button-wrapper {
-  margin-top: 24px;
-  margin-bottom: 32px;
-}
-
-
-.more-button {
-  display: inline-block;
-  padding: 8px 20px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--primary-color);
+  background: var(--bg-color);
+  color: var(--text-color);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.platform-logo:hover {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.platform-logo:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.platform-logo img {
+  width: 20px;
+  height: 20px;
+}
+
+.more-button-wrapper {
+  margin-top: 20px;
+}
+
+.more-button {
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
 }
 
 .more-button:hover {
-  border-color: var(--primary-color);
-  background: var(--accent-light);
+  text-decoration: underline;
 }
 
 </style>

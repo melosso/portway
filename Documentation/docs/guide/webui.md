@@ -15,7 +15,7 @@ environment:
   - PORTWAY_SECURE_COOKIES=true
 ```
 
-The console is enabled by default and reachable from the local network. `PORTWAY_WEBUI_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. The first start logs the account name and a one-time password. The sign-in page requires a new password at first sign-in. All `Console` settings: [Application settings](/reference/app-settings#console).
+The console is enabled by default and accepts client addresses from loopback and `allowedHosts` in `environments/network-access-policy.json`. If `allowedHosts` has two or fewer entries, the IP addresses of the host are added. `PORTWAY_WEBUI_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. The first start logs the account name and a one-time password. The sign-in page requires a new password at first sign-in. All `Console` settings: [Application settings](/reference/app-settings#console).
 
 ## Accounts
 
@@ -80,6 +80,14 @@ One row per environment, endpoint, version and method, with requests, success ra
 ### Retention and clearing
 
 Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /ui/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
+
+## Logs
+
+**Logs** displays entries from the three newest `log/portwayapi-*.log` files, newest first. The level filter (`INF`, `WRN`, `ERR`, `DBG`) and page size (100, 200, 500, 1000) apply to all three files. File settings: [Logging](/reference/logging).
+
+## Users
+
+**Users** lists console accounts. The table sorts by name, role, provider, status and last sign-in. The account menu displays the e-mail address of the signed-in account.
 
 ## API
 
