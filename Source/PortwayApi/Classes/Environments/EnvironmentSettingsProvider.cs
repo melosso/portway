@@ -17,6 +17,9 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     private readonly string? _privateKeyPem;
     private readonly string _certsPath;
 
+    // Parsed and decrypted per file; the stamp check keeps edits live without paying RSA on every request
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Stamp, long Length, EnvironmentConfig Config)> _jsonCache = new();
+
     public EnvironmentSettingsProvider()
     {
         // Support both lowercase and uppercase folder names for cross-platform compatibility
@@ -409,11 +412,15 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
         var settingsPath = Path.Combine(_basePath, env, "settings.json");
         Log.Debug("Attempting to load from file: {FilePath}", settingsPath);
 
-        if (!File.Exists(settingsPath))
+        var file = new FileInfo(settingsPath);
+        if (!file.Exists)
         {
             Log.Error("settings.json not found for environment: {Environment}, path: {FilePath}", env, settingsPath);
             throw new FileNotFoundException($"settings.json not found for environment: {env}", settingsPath);
         }
+
+        if (_jsonCache.TryGetValue(settingsPath, out var cached) && cached.Stamp == file.LastWriteTimeUtc && cached.Length == file.Length)
+            return cached.Config;
 
         try
         {
@@ -441,6 +448,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
             if (!config.Headers.ContainsKey("ServerName"))
                 config.Headers["ServerName"] = config.ServerName ?? Environment.MachineName;
 
+            _jsonCache[settingsPath] = (file.LastWriteTimeUtc, file.Length, config);
             return config;
         }
         catch (Exception ex) when (ex is not FileNotFoundException && ex is not InvalidOperationException)
