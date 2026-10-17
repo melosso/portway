@@ -5,8 +5,6 @@ description: "Deploy Portway as an IIS website on Windows Server with HTTPS and 
 
 # Deploying on Windows Server
 
-Container deployment: [Deploying with Docker](/guide/deployment-docker). Linux: [Deploying on Linux](/guide/deployment-linux).
-
 ## Prerequisites
 
 - Windows Server with IIS installed and running
@@ -100,7 +98,16 @@ Details: [Security](/guide/security).
 
 ## Backup
 
-Back up `auth.db`, `mcp.db`, `portway.key`, `.core/`, `appsettings.overrides.json`, `environments/`, `endpoints/` and the file storage directory. Upgrades: [Upgrading Portway](/guide/upgrading).
+Files to back up: [Upgrading Portway](/guide/upgrading#back-up-the-installation).
+
+## Other installation methods
+
+::: cards 2
+- [Deploying with Docker](/guide/deployment-docker)
+  Docker Compose, from a first container to production.
+- [Deploying on Linux](/guide/deployment-linux)
+  `.deb` or `.rpm` package, or release archive, as a systemd service.
+:::
 
 ## Next steps
 

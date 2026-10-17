@@ -79,7 +79,7 @@ Console pages at `/ui` also send `Cross-Origin-Opener-Policy` and `Cross-Origin-
 
 ### Automatic encryption
 
-Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. `appsettings.json` is not rewritten; values there (e.g. `WebUi:AdminApiKey`) remain plaintext.
+Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. `appsettings.json` is not rewritten; values there (e.g. `Console:AdminApiKey`) remain plaintext.
 
 ### Azure Key Vault
 

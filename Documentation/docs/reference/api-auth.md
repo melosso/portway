@@ -57,9 +57,12 @@ A JSON object of tenant header to permitted values, e.g. `{"X-Company-Id": ["ACM
 |---|---|---|
 | 401 | `Authentication required` | No `Authorization` header |
 | 401 | `Invalid or expired token` | Unknown, expired or archived token |
+| 401 | `Environment authentication failed` | Credentials required by the environment's `Authentication` are missing or invalid and `OverrideGlobalToken` is `true` ([Authentication](/reference/environment-auth)) |
 | 403 | `Access denied to endpoint` | Endpoint outside `allowedScopes` |
 | 403 | `Access denied to environment` | Environment outside `allowedEnvironments` |
 | 400, 403 | Tenant errors | Missing, malformed or unpermitted tenant header |
+
+The body contains `success` and `error`. A `401` includes a `WWW-Authenticate` header: `Bearer` for token errors, and `Bearer`, `Basic` or both for `Environment authentication failed`, per the environment's authentication methods. A `403` for an endpoint outside the token scope is identical for existing and missing endpoints.
 
 The `Bearer` prefix is required:
 

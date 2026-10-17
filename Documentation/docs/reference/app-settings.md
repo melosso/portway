@@ -172,6 +172,8 @@ Portway honors `X-Forwarded-For` only from a listed proxy. With both lists empty
 |---|---|---|---|
 | `Enabled` | boolean | `true` | Runs `PRAGMA quick_check`, `ANALYZE` and, for a bloated file, `VACUUM` on `auth.db`, `mcp.db`, `metrics.db` and the traffic log database |
 | `Schedule` | string | `03:00` | Local time of the daily run, `HH:mm` |
+| `FreePageRatioThreshold` | number | `0.25` | `VACUUM` runs when free pages reach this fraction of the file |
+| `RunOnStartup` | boolean | `false` | Adds one run shortly after start |
 | `Backup.Enabled` | boolean | `true` | Writes a snapshot archive at the same time |
 | `Backup.Retention` | integer | `7` | Number of archives kept, 1 to 100 |
 
@@ -211,7 +213,7 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | `PORTWAY_ENCRYPTION_KEY` | Encryption key for secrets at rest; required outside Development | |
 | `PORTWAY_CHAT_API_KEY` | AI provider key for MCP chat; takes precedence over the stored key | |
 | `PORTWAY_WEBUI_ENABLED` | `Console:Enabled` | `WebUi__Enabled` |
-| `PORTWAY_ADMIN_KEY` | `Console:AdminApiKey` | `WebUi__AdminApiKey` |
+| `PORTWAY_ADMIN_KEY` | `Console:AdminApiKey` (deprecated, no effect while `Console:Enabled` is set) | `WebUi__AdminApiKey` |
 | `PORTWAY_SECURE_COOKIES` | `Console:SecureCookies` | `WebUi__SecureCookies` |
 | `PORTWAY_OPENAPI_MARKDOWN` | `OpenApi:ServeMarkdown` | `OpenApi__ServeMarkdown` |
 | `PORTWAY_PUBLIC_ORIGINS` | `Console:PublicOrigins` (list) | `WebUi__PublicOrigins__0` |

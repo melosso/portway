@@ -33,7 +33,7 @@ Write requests (`POST`, `PUT`, `PATCH`, `DELETE`) send the `portway_csrf` cookie
 | `DELETE` | `/ui/api/metrics` | Deletes all recorded request metrics |
 | `GET` | `/ui/api/metrics/health` | Success rate, failures and latency percentiles (`period`: `1h`, `24h`, `7d`, `30d`; `env`, `endpoint`, `version`, `method`) |
 | `GET` | `/ui/api/events` | Server-sent events |
-| `GET` | `/ui/api/logs` | Application log entries (`limit`, `offset`, `level`) |
+| `GET` | `/ui/api/logs` | Entries from the three newest `log/portwayapi-*.log` files, newest first (`limit` default `200`, maximum `2000`; `offset`; `level` `ALL`, `INF`, `WRN`, `ERR`, `DBG`) |
 | `GET` | `/ui/api/audit` | Configuration change history |
 | `POST` | `/ui/api/audit/{id}/restore` | Restores a saved configuration version |
 | `GET` | `/ui/api/endpoints` | Endpoints by type |

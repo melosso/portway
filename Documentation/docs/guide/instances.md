@@ -1,11 +1,15 @@
 ---
-title: Versioning
+title: Instances
 description: "Run multiple Portway versions side by side behind Nginx, Caddy or IIS, each under its own path"
 ---
 
-# Versioning
+# Instances
 
-Multiple Portway versions run side by side as separate instances, each under its own path (e.g. `/v1`, `/v2`, `/dev`). A reverse proxy routes each path to its instance and redirects the root URL to the default version. Versions of one endpoint within an instance: [Namespaces](/reference/namespaces#versions).
+Multiple Portway versions run side by side as separate instances, each under its own path (e.g. `/v1`, `/v2`, `/dev`). A reverse proxy routes each path to its instance and redirects the root URL to the default version. 
+
+::: Note
+Do not confuse this with versioning individual endpoints inside a single instance. Learn more about single-instance versioning in [Endpoint Versions](/guide/endpoint-versions).
+:::
 
 ```mermaid
 graph TD
@@ -17,6 +21,7 @@ graph TD
     V2 --> DB2[(Production)]
     Dev --> DBDev[(Development)]
 ```
+<br>
 
 Each instance has:
 
@@ -25,7 +30,7 @@ Each instance has:
 | Working directory | Its own folder; `auth.db`, `endpoints/`, `environments/` and `tokens/` are per instance |
 | `PathBase` (`PORTWAY_PATH_BASE`) | Its path, e.g. `/v1` |
 | Port | Its own, e.g. `5001` (`ASPNETCORE_URLS=http://127.0.0.1:5001`) |
-| `ForwardedHeaders:KnownProxies` | The reverse proxy address ([Application Settings](/reference/app-settings#forwardedheaders)) |
+| `ForwardedHeaders:KnownProxies` (`PORTWAY_KNOWN_PROXIES`) | The reverse proxy address ([Application Settings](/reference/app-settings#forwardedheaders)) |
 
 The proxy forwards the full path including the prefix; Portway removes it through `PathBase`. Shared data sources use a distinct name per instance (e.g. Redis `InstanceName`, SQL `ApplicationName`).
 
@@ -81,7 +86,7 @@ api.example.com {
 
 The forwarded request keeps the `/v1` prefix: Nginx `proxy_pass` has no trailing path, and Caddy uses `handle`, not `handle_path`. Caddy sets `X-Forwarded-For` and `X-Forwarded-Proto` and obtains the certificate itself.
 
-With Docker, each container publishes its own host port (e.g. `127.0.0.1:5001:8080`) and sets `PORTWAY_PATH_BASE`. Requests from a host proxy originate from the Docker bridge. `ForwardedHeaders:KnownNetworks` lists the bridge range (e.g. `172.16.0.0/12`).
+With Docker, each container publishes its own host port (e.g. `127.0.0.1:5001:8080`) and sets `PORTWAY_PATH_BASE`. Requests from a host proxy originate from the Docker bridge. `ForwardedHeaders:KnownNetworks` (`PORTWAY_KNOWN_NETWORKS`) lists the bridge range (e.g. `172.16.0.0/12`).
 
 ## Windows (IIS)
 
