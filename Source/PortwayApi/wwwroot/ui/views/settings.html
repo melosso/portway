@@ -99,10 +99,6 @@
         line-height: 1.5;
     }
 
-    .setting-env {
-        font-family: ui-monospace, monospace;
-        font-size: 0.75rem;
-    }
     .setting-unit {
         position: relative;
     }
@@ -436,6 +432,9 @@
 
 let _writable = {};
 
+// display labels for raw choice values
+const CHOICE_LABELS = { _blank: 'New tab', _self: 'Same tab' };
+
 // pages a setting serves, relative to the base href
 const SETTING_LINKS = {
   'OpenApi:Enabled': 'docs',
@@ -452,7 +451,7 @@ function labelBlock(label, desc, forId, key) {
     ? ` <a class="setting-link" href="${href}" target="_blank" rel="noopener noreferrer" aria-label="Open" title="Open">${EXTERNAL_SVG}</a>`
     : '';
   const note = env
-    ? `<p>Set by <code class="setting-env">${esc(env)}</code>. Read-only.</p>`
+    ? `<p title="${esc(env)}">Managed by environment variable</p>`
     : desc ? `<p>${esc(desc)}</p>` : '';
   return `<div class="setting-label">
       <label${forId ? ` for="${forId}"` : ''}>${label}</label>${link}
@@ -492,14 +491,17 @@ function editable(key) {
   return spec && !spec.env ? spec : null;
 }
 
+// env-set values render as disabled controls, skipped on save
+function locked(key) { return _writable[key]?.env ? ' disabled' : ''; }
+
 function switchRow(key, label, value, desc) {
-  const spec = editable(key);
+  const spec = _writable[key];
   if (!spec) return boolItem(label, value, desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   return `<div class="setting-row">
     ${labelBlock(label, desc, id, key)}
-    <label class="switch">
-      <input type="checkbox" id="${id}" data-setting="${key}" data-kind="bool" ${value ? 'checked' : ''}>
+    <label class="switch${locked(key)}">
+      <input${locked(key)} type="checkbox" id="${id}" data-setting="${key}" data-kind="bool" ${value ? 'checked' : ''}>
       <span class="slider"></span>
     </label>
   </div>`;
@@ -507,14 +509,14 @@ function switchRow(key, label, value, desc) {
 
 // scale converts the stored value into the displayed unit, e.g. bytes shown as MB
 function numberRow(key, label, value, desc, unit, scale = 1) {
-  const spec = editable(key);
+  const spec = _writable[key];
   const shown = value != null ? Math.round((value / scale) * 100) / 100 : null;
   if (!spec) return settingItem(label, shown != null ? `${shown} ${unit ?? ''}`.trim() : '—', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const min = spec.min != null ? ` min="${spec.min / scale}"` : '';
   const max = spec.max != null ? ` max="${spec.max / scale}"` : '';
   const step = scale !== 1 ? ' step="any"' : '';
-  const input = `<input type="number" class="input" id="${id}" data-setting="${key}" data-kind="int" data-scale="${scale}"${min}${max}${step} value="${shown ?? ''}">`;
+  const input = `<input${locked(key)} type="number" class="input" id="${id}" data-setting="${key}" data-kind="int" data-scale="${scale}"${min}${max}${step} value="${shown ?? ''}">`;
   return `<div class="setting-row">
     ${labelBlock(label, desc, id, key)}
     ${unit ? `<div class="setting-unit">${input}<span>${esc(unit)}</span></div>` : input}
@@ -522,57 +524,57 @@ function numberRow(key, label, value, desc, unit, scale = 1) {
 }
 
 function choiceRow(key, label, value, desc) {
-  const spec = editable(key);
-  if (!spec) return settingItem(label, value, desc, key);
+  const spec = _writable[key];
+  if (!spec) return settingItem(label, CHOICE_LABELS[value] ?? value, desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const opts = (spec.choices ?? []).map(c =>
-    `<option value="${esc(c)}"${c.toLowerCase() === String(value ?? '').toLowerCase() ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    `<option value="${esc(c)}"${c.toLowerCase() === String(value ?? '').toLowerCase() ? ' selected' : ''}>${esc(CHOICE_LABELS[c] ?? c)}</option>`).join('');
   return `<div class="setting-row">
     ${labelBlock(label, desc, id, key)}
-    <select class="input" id="${id}" data-setting="${key}" data-kind="choice">${opts}</select>
+    <select${locked(key)} class="input" id="${id}" data-setting="${key}" data-kind="choice">${opts}</select>
   </div>`;
 }
 
 function timeRow(key, label, value, desc) {
-  const spec = editable(key);
+  const spec = _writable[key];
   if (!spec) return settingItem(label, value, desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   return `<div class="setting-row">
     ${labelBlock(label, desc, id, key)}
-    <input type="time" class="input" id="${id}" data-setting="${key}" data-kind="time" value="${esc(value ?? '')}">
+    <input${locked(key)} type="time" class="input" id="${id}" data-setting="${key}" data-kind="time" value="${esc(value ?? '')}">
   </div>`;
 }
 
 function inputRow(key, label, value, desc, placeholder) {
-  const spec = editable(key);
+  const spec = _writable[key];
   if (!spec) return settingItem(label, value || '—', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
   return `<div class="setting-row">
     ${labelBlock(label, desc, id, key)}
-    <input type="text" class="input" id="${id}" data-setting="${key}" data-kind="text"${max} spellcheck="false" placeholder="${esc(placeholder ?? '')}" value="${esc(value ?? '')}">
+    <input${locked(key)} type="text" class="input" id="${id}" data-setting="${key}" data-kind="text"${max} spellcheck="false" placeholder="${esc(placeholder ?? '')}" value="${esc(value ?? '')}">
   </div>`;
 }
 
 function textRow(key, label, value, desc, placeholder) {
-  const spec = editable(key);
+  const spec = _writable[key];
   if (!spec) return settingItem(label, value || '—', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
   return `<div class="setting-row setting-row-stacked">
     ${labelBlock(label, desc, id, key)}
-    <textarea class="input" rows="2" id="${id}" data-setting="${key}" data-kind="text"${max} placeholder="${esc(placeholder ?? '')}">${esc(value ?? '')}</textarea>
+    <textarea${locked(key)} class="input" rows="2" id="${id}" data-setting="${key}" data-kind="text"${max} placeholder="${esc(placeholder ?? '')}">${esc(value ?? '')}</textarea>
   </div>`;
 }
 
 function listRow(key, label, values, desc, placeholder) {
-  const spec = editable(key);
+  const spec = _writable[key];
   const shown = (values ?? []).join('\n');
   if (!spec) return settingItem(label, (values ?? []).join(', ') || 'None', desc, key);
   const id = 'set-' + key.replace(/[:.]/g, '-');
   return `<div class="setting-row setting-row-stacked">
     ${labelBlock(label, desc, id, key)}
-    <textarea class="input" rows="3" id="${id}" data-setting="${key}" data-kind="list" spellcheck="false" placeholder="${esc(placeholder ?? '')}">${esc(shown)}</textarea>
+    <textarea${locked(key)} class="input" rows="3" id="${id}" data-setting="${key}" data-kind="list" spellcheck="false" placeholder="${esc(placeholder ?? '')}">${esc(shown)}</textarea>
   </div>`;
 }
 
@@ -715,7 +717,7 @@ async function saveCard(bodyId, btn) {
   const body = document.getElementById(bodyId);
   if (!body) return;
   const changes = {};
-  body.querySelectorAll('[data-setting]').forEach(el => {
+  body.querySelectorAll('[data-setting]:not(:disabled)').forEach(el => {
     const key = el.dataset.setting;
     el.classList.remove('input-invalid');
     if (el.dataset.kind === 'bool') changes[key] = el.checked;
