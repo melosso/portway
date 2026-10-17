@@ -9,7 +9,7 @@ using Serilog;
 /// </summary>
 public static partial class UrlRewriter
 {
-    // Source generated; interpreted this pattern costs ~5ms per 30KB body
+    // Interpreted mode costs ~5 ms per 30 KB body
     [GeneratedRegex(@"(\"")?(?:https?:\/\/[^\""\s]*?)?\/?[^\""\s]*?Exact\.Entity\.REST\.(?:svc|EG)\/([^\""\s]+)\(([^)]+)\)(\""|[\s,}])")]
     private static partial Regex SvcEntityUrl();
 
@@ -43,7 +43,7 @@ public static partial class UrlRewriter
             var fullNewUrl = $"{newBaseUrl}{newPath}";
 
             // 1. Replace full URLs (with scheme, host, port, path)
-            // Literal guard skips the interpreted scan when the URL is absent, which is ~0.7ms per 30KB
+            // Interpreted scan costs ~0.7 ms per 30 KB
             var fullUrlPattern = @"(\"")?(" + Regex.Escape(fullOriginalUrl) + @"(\/[^\""\s]*)?)(\""|[\s,}])";
             if (content.Contains(fullOriginalUrl, StringComparison.Ordinal))
             {

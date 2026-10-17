@@ -20,7 +20,7 @@ public static class HeaderPolicy
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Hop-by-hop, framing and backend-identifying headers never relayed from an upstream response; Kestrel owns the framing
+    /// Hop-by-hop, framing and backend-identifying headers removed from upstream responses; Kestrel sets response framing
     /// </summary>
     public static readonly FrozenSet<string> StrippedFromUpstream = new[]
     {

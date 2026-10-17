@@ -17,7 +17,7 @@ public class EnvironmentSettingsProvider : IEnvironmentSettingsProvider
     private readonly string? _privateKeyPem;
     private readonly string _certsPath;
 
-    // Parsed and decrypted per file; the stamp check keeps edits live without paying RSA on every request
+    // RSA decryption costs ~2 ms per field; file stamp invalidates entries
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime Stamp, long Length, EnvironmentConfig Config)> _jsonCache = new();
 
     public EnvironmentSettingsProvider()
