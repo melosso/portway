@@ -2,7 +2,6 @@ namespace PortwayApi.Classes.OpenApi;
 
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using PortwayApi.Classes;
 using PortwayApi.Helpers;
 
 /// <summary>

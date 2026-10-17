@@ -1,13 +1,7 @@
-using System;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Common;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using PortwayApi.Services.Providers;
 using Serilog;
 

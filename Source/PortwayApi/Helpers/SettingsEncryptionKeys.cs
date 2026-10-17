@@ -1,5 +1,3 @@
-using System.IO;
-
 // This file contains the public key for settings encryption. Replace the value with the generated key
 namespace PortwayApi.Helpers
 {

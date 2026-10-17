@@ -3,10 +3,8 @@ using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Serilog;
 using PortwayApi.Interfaces;
-using System.Security;
 using System.Security.Cryptography;
 using PortwayApi.Helpers;
-using System.Text;
 
 namespace PortwayApi.Classes;
 

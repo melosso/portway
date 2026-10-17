@@ -1,6 +1,5 @@
 namespace PortwayApi.Interfaces;
 
-using DynamicODataToSQL;
 using PortwayApi.Services.Providers;
 
 /// <summary>

@@ -1,6 +1,5 @@
 namespace PortwayApi.Middleware;
 
-using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Serilog;

@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using PortwayApi.Services.Telemetry;
 using Serilog;

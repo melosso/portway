@@ -1,5 +1,3 @@
-using PortwayApi.Services.Providers;
-
 namespace PortwayApi.Services.Providers;
 
 public interface ISqlProviderFactory
