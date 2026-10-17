@@ -11,10 +11,14 @@ public sealed class MetricsService
     internal readonly record struct RequestEntry(DateTime Timestamp, int StatusCode, string Method, string Source, string Endpoint,
         string Environment = "", string Version = "", int? DurationMs = null);
 
-    private const int MaxEntries = 500_000;
+    internal const int MaxEntries = 500_000;
     private static readonly TimeSpan MaxAge = TimeSpan.FromDays(31);
 
     private readonly ConcurrentQueue<RequestEntry> _entries = new();
+
+    // Labels repeat per entry; one shared instance per value reduces buffer memory
+    private const int MaxLabels = 4096;
+    private readonly ConcurrentDictionary<string, string> _labels = new();
     private int _count;
     private long _cacheHits;
     private long _cacheMisses;
@@ -32,15 +36,9 @@ public sealed class MetricsService
         string environment = "", string version = "", int? durationMs = null)
     {
         var now = DateTime.UtcNow;
-        var entry = new RequestEntry(now, statusCode, method, source, endpoint, environment, version, durationMs);
-        _entries.Enqueue(entry);
+        var entry = Shared(new RequestEntry(now, statusCode, method, source, endpoint, environment, version, durationMs));
+        Enqueue(entry);
         PersistenceChannel.Writer.TryWrite(entry);
-
-        if (Interlocked.Increment(ref _count) > MaxEntries)
-        {
-            if (_entries.TryDequeue(out _))
-                Interlocked.Decrement(ref _count);
-        }
 
         while (_entries.TryPeek(out var oldest) && now - oldest.Timestamp > MaxAge)
         {
@@ -61,14 +59,30 @@ public sealed class MetricsService
         return clearedAt;
     }
 
+    // Expects ascending timestamps; Enqueue trims to MaxEntries
     internal void Hydrate(IEnumerable<RequestEntry> entries)
     {
         foreach (var entry in entries)
-        {
-            _entries.Enqueue(entry);
-            Interlocked.Increment(ref _count);
-        }
+            Enqueue(Shared(entry));
     }
+
+    private void Enqueue(RequestEntry entry)
+    {
+        _entries.Enqueue(entry);
+        if (Interlocked.Increment(ref _count) > MaxEntries && _entries.TryDequeue(out _))
+            Interlocked.Decrement(ref _count);
+    }
+
+    private RequestEntry Shared(RequestEntry e) => e with
+    {
+        Method = Label(e.Method), Source = Label(e.Source), Endpoint = Label(e.Endpoint),
+        Environment = Label(e.Environment), Version = Label(e.Version)
+    };
+
+    private string Label(string value) =>
+        _labels.TryGetValue(value, out var shared) ? shared
+        : _labels.Count < MaxLabels ? _labels.GetOrAdd(value, value)
+        : value;
 
     public MetricsSnapshot GetSnapshot(string period)
     {

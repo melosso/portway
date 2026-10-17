@@ -111,4 +111,19 @@ public class MetricsHealthTests
         Assert.Equal(2, summary.Total);
         Assert.Equal(40, summary.P99);
     }
+
+    [Fact]
+    public void Hydrate_KeepsOnlyTheNewestEntriesUpToTheCap()
+    {
+        var metrics = new MetricsService();
+        var start = DateTime.UtcNow.AddMinutes(-30);
+        var total = MetricsService.MaxEntries + 10;
+        metrics.Hydrate(Enumerable.Range(0, total).Select(i =>
+            new MetricsService.RequestEntry(start.AddTicks(i), 200, "GET", "api", "Orders", "500", "", i < 10 ? 999 : 1)));
+
+        var summary = metrics.GetHealth(TimeSpan.FromHours(1), new HealthFilter()).Summary;
+
+        Assert.Equal(MetricsService.MaxEntries, summary.Total);
+        Assert.Equal(1, summary.P99);
+    }
 }

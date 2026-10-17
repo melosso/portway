@@ -22,9 +22,13 @@ public sealed class MetricsPersistenceService : BackgroundService
     private const int PruneEveryNFlushes = 200;
 
     public MetricsPersistenceService(MetricsService metrics)
+        : this(metrics, Path.Combine(Directory.GetCurrentDirectory(), "metrics.db"))
+    {
+    }
+
+    internal MetricsPersistenceService(MetricsService metrics, string dbPath)
     {
         _metrics = metrics;
-        var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "metrics.db");
         _connectionString = $"Data Source={dbPath};Cache=Shared";
     }
 
@@ -93,16 +97,22 @@ public sealed class MetricsPersistenceService : BackgroundService
     private async Task HydrateAsync(CancellationToken ct = default)
     {
         var cutoff = DateTime.UtcNow.AddDays(-31).ToString("yyyy-MM-ddTHH:mm:ssZ");
-        var entries = new List<MetricsService.RequestEntry>();
 
         await using var conn = new SqliteConnection(_connectionString);
         await conn.OpenAsync(ct);
 
-        var rows = await conn.QueryAsync<MetricRow>(new CommandDefinition(
-            "SELECT Timestamp, StatusCode, Method, Source, Endpoint, Environment, Version, DurationMs FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp",
-            new { cutoff }, cancellationToken: ct));
+        // Row limit matches the in-memory cap; streaming avoids buffering the full result
+        var entries = new List<MetricsService.RequestEntry>();
+        var rows = conn.QueryUnbufferedAsync<MetricRow>(
+            """
+            SELECT * FROM (
+                SELECT Timestamp, StatusCode, Method, Source, Endpoint, Environment, Version, DurationMs
+                FROM RequestMetrics WHERE Timestamp > @cutoff ORDER BY Timestamp DESC LIMIT @max)
+            ORDER BY Timestamp
+            """,
+            new { cutoff, max = MetricsService.MaxEntries });
 
-        foreach (var row in rows)
+        await foreach (var row in rows.WithCancellation(ct))
         {
             if (DateTime.TryParse(row.Timestamp, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ts))
                 entries.Add(new MetricsService.RequestEntry(
