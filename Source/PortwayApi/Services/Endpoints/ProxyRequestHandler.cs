@@ -640,11 +640,7 @@ public sealed class ProxyRequestHandler
         // Store response headers for cache and apply to current response
         var responseHeaders = new Dictionary<string, string>();
 
-        // Do not echo backend-identifying headers to the client
-        var responseHeadersToStrip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "Content-Length", "Server", "X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version"
-        };
+        var responseHeadersToStrip = HeaderPolicy.StrippedFromUpstream;
 
         // Copy response headers
         foreach (var header in response.Headers)
@@ -661,7 +657,7 @@ public sealed class ProxyRequestHandler
         {
             foreach (var header in response.Content.Headers)
             {
-                if (!header.Key.Equals("Content-Length", StringComparison.OrdinalIgnoreCase))
+                if (!responseHeadersToStrip.Contains(header.Key))
                 {
                     context.Response.Headers[header.Key] = header.Value.ToArray();
                     responseHeaders[header.Key] = string.Join(",", header.Value);
