@@ -3,7 +3,8 @@
 
 # Stage 1: Build the application
 # pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
-FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2 AS build
+# Build on the runner arch; the publish output is RID-agnostic
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2 AS build
 WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies

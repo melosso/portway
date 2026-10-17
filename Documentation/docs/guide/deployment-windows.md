@@ -5,7 +5,7 @@ description: "Deploy Portway as an IIS website on Windows Server with HTTPS and 
 
 # Deploying on Windows Server
 
-Container deployment: [Deploying with Docker](/guide/deployment-docker).
+Container deployment: [Deploying with Docker](/guide/deployment-docker). Linux: [Deploying on Linux](/guide/deployment-linux).
 
 ## Prerequisites
 
@@ -32,7 +32,7 @@ $bytes = New-Object byte[] 48
 
 ### 2. Deploy application files
 
-Extract the release to the target directory (e.g. `C:\Apps\Portway`).
+Extract the release (`<tag>-Windows_x64.zip` or `<tag>-Windows_arm64.zip`) to the target directory (e.g. `C:\Apps\Portway`).
 
 ### 3. Configure IIS
 

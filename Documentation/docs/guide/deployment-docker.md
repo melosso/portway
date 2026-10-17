@@ -5,7 +5,7 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 # Deploying with Docker
 
-Requires [Docker](https://www.docker.com/get-started). Windows Server: [Deploying on Windows Server](/guide/deployment-windows).
+Requires [Docker](https://www.docker.com/get-started). Linux: [Deploying on Linux](/guide/deployment-linux). Windows Server: [Deploying on Windows Server](/guide/deployment-windows). The image supports `linux/amd64` and `linux/arm64`.
 
 ## Quick start
 

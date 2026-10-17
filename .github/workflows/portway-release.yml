@@ -23,30 +23,34 @@ jobs:
         dotnet-version: '11.0.x'
         dotnet-quality: 'preview'
 
-    - name: Publish PortwayApi (Windows x64)
-      run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r win-x64 --self-contained false -o ${{ github.workspace }}/publish_win
-
-    - name: Publish PortwayApi (Linux x64)
-      run: dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r linux-x64 --self-contained false -o ${{ github.workspace }}/publish_lin
+    - name: Publish PortwayApi
+      run: |
+        for rid in win-x64 win-arm64 linux-x64 linux-arm64; do
+          dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r $rid --self-contained false -o ${{ github.workspace }}/publish_$rid
+        done
+        # Packages are self-contained, distro repos do not carry the .NET 11 runtime
+        for rid in linux-x64 linux-arm64; do
+          dotnet publish Source/PortwayApi/PortwayApi.csproj -c Release -r $rid --self-contained true -o ${{ github.workspace }}/publish_pkg-$rid
+        done
 
     - name: Remove Debug Files
       run: |
         echo "Removing debug files..."
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           find ${{ github.workspace }}/$dir -type f -name "*.pdb" -delete
         done
 
     - name: Remove Language Files
       run: |
         echo "Removing language resource files..."
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           rm -rf ${{ github.workspace }}/$dir/{cs,de,es,fr,it,ja,ko,pl,pt-BR,ru,tr,zh-Hans,zh-Hant}
         done
 
     - name: Prune Endpoints
       run: |
         echo "Pruning endpoints..."
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           ENDPOINTS=${{ github.workspace }}/$dir/endpoints
           # Keep only SQL and Static at the top level
           find $ENDPOINTS -mindepth 1 -maxdepth 1 -type d ! -name 'SQL' ! -name 'Static' -exec rm -rf {} +
@@ -61,20 +65,20 @@ jobs:
     - name: Prune Environments
       run: |
         echo "Pruning environments..."
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           rm -rf ${{ github.workspace }}/$dir/environments/{500,700,Synergy}
         done
 
     - name: Remove Meta Files
       run: |
         echo "Removing .gitignore files..."
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           find ${{ github.workspace }}/$dir -type f -name ".gitignore" -delete
         done
 
     - name: Create Prod Environment
       run: |
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           mkdir -p ${{ github.workspace }}/$dir/environments/prod
           echo '{
             "ServerName": "prod-server",
@@ -90,7 +94,7 @@ jobs:
     - name: Update AllowedEnvironments Globally
       run: |
         echo "Updating AllowedEnvironments in all json files to [\"prod\"]"
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           find ${{ github.workspace }}/$dir -type f -name "*.json" -print0 | while IFS= read -r -d $'\0' file; do
             if jq -e '.AllowedEnvironments' "$file" > /dev/null; then
               jq '.AllowedEnvironments = ["prod"]' "$file" > tmp.json && mv tmp.json "$file"
@@ -104,7 +108,7 @@ jobs:
 
     - name: Configure Example Endpoint
       run: |
-        for dir in publish_win publish_lin; do
+        for dir in publish_*; do
           MASTERDATA=${{ github.workspace }}/$dir/endpoints/Static/Masterdata
           # Rename Countries to Example
           mv $MASTERDATA/Countries $MASTERDATA/Example
@@ -115,7 +119,7 @@ jobs:
 
     - name: Add web.config (Windows only)
       run: |
-        cat > ${{ github.workspace }}/publish_win/web.config <<'XML'
+        cat > web.config <<'XML'
         <?xml version="1.0" encoding="utf-8"?>
         <configuration>
           <location path="." inheritInChildApplications="false">
@@ -148,20 +152,95 @@ jobs:
           </system.webServer>
         </configuration>
         XML
+        for dir in publish_win-*; do cp web.config $dir/; done
 
     - name: Create Release Artifacts
       run: |
         TAG=${{ github.event.inputs.tag_name }}
-        echo "$TAG" > ${{ github.workspace }}/publish_win/.version.txt
-        echo "$TAG" > ${{ github.workspace }}/publish_lin/.version.txt
-        cd ${{ github.workspace }}/publish_win && zip -r ../$TAG-Windows_x64.zip .
-        cd ${{ github.workspace }}/publish_lin && zip -r ../$TAG-Linux_x64.zip .
+        for dir in publish_*; do echo "$TAG" > $dir/.version.txt; done
+        zip_as() { (cd publish_$1 && zip -qr ../$TAG-$2.zip .); }
+        zip_as win-x64 Windows_x64
+        zip_as win-arm64 Windows_arm64
+        zip_as linux-x64 Linux_x64
+        zip_as linux-arm64 Linux_arm64
+
+    - name: Install nfpm
+      run: |
+        echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | sudo tee /etc/apt/sources.list.d/goreleaser.list
+        sudo apt-get update -q && sudo apt-get install -yq nfpm
+
+    - name: Build .deb and .rpm Packages
+      run: |
+        TAG=${{ github.event.inputs.tag_name }}
+        mkdir -p pkg
+        cat > pkg/portway.service <<'UNIT'
+        [Unit]
+        Description=Portway API gateway
+        After=network-online.target
+        Wants=network-online.target
+
+        [Service]
+        User=portway
+        WorkingDirectory=/opt/portway
+        ExecStart=/opt/portway/PortwayApi
+        Restart=on-failure
+
+        [Install]
+        WantedBy=multi-user.target
+        UNIT
+        cat > pkg/postinstall.sh <<'SH'
+        #!/bin/sh
+        id portway >/dev/null 2>&1 || useradd --system --home-dir /opt/portway --shell /usr/sbin/nologin portway
+        chown -R portway:portway /opt/portway
+        systemctl daemon-reload >/dev/null 2>&1 || true
+        systemctl try-restart portway >/dev/null 2>&1 || true
+        SH
+        # deb passes "remove", rpm passes "0" on erase; upgrades keep the service running
+        cat > pkg/preremove.sh <<'SH'
+        #!/bin/sh
+        case "$1" in remove|0) systemctl disable --now portway >/dev/null 2>&1 || true ;; esac
+        SH
+        for arch in x64:amd64 arm64:arm64; do
+          src=publish_pkg-linux-${arch%%:*}
+          {
+            echo "name: portway"
+            echo "arch: ${arch##*:}"
+            echo "version: ${TAG#v}"
+            echo "maintainer: Melosso"
+            echo "description: Lightweight API gateway for SQL, proxy, static, file and webhook endpoints"
+            echo "homepage: https://github.com/melosso/portway"
+            echo "license: EUPL-1.2"
+            echo "scripts:"
+            echo "  postinstall: pkg/postinstall.sh"
+            echo "  preremove: pkg/preremove.sh"
+            echo "contents:"
+            echo "  - src: pkg/portway.service"
+            echo "    dst: /usr/lib/systemd/system/portway.service"
+            # User config must survive upgrades
+            (cd $src && find . -type f -printf '%P\n') | while IFS= read -r f; do
+              echo "  - src: '$src/$f'"
+              echo "    dst: '/opt/portway/$f'"
+              case "$f" in
+                appsettings*.json|endpoints/*|environments/*) echo "    type: config|noreplace" ;;
+              esac
+            done
+          } > pkg/nfpm-${arch##*:}.yaml
+          for fmt in deb rpm; do
+            nfpm package -f pkg/nfpm-${arch##*:}.yaml -p $fmt -t .
+          done
+        done
+        ls -1 *.deb *.rpm
+
+    - name: Create Checksums
+      run: sha256sum ${{ github.event.inputs.tag_name }}-*.zip *.deb *.rpm > SHA256SUMS
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v3
       with:
         tag_name: ${{ github.event.inputs.tag_name }}
         files: |
-          ${{ github.event.inputs.tag_name }}-Windows_x64.zip
-          ${{ github.event.inputs.tag_name }}-Linux_x64.zip
+          ${{ github.event.inputs.tag_name }}-*.zip
+          *.deb
+          *.rpm
+          SHA256SUMS
         generate_release_notes: true

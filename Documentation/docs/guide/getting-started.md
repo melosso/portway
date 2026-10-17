@@ -57,6 +57,15 @@ docker compose pull && docker compose up -d
 
 Portway listens on port 8080. Configuration options: [Deploying with Docker](/guide/deployment-docker).
 
+### Linux
+
+1. Download the `.deb` or `.rpm` package for your architecture from the [Releases page](https://github.com/melosso/portway/releases/).
+2. Install the package with `apt install` or `dnf install`.
+3. Set `PORTWAY_ENCRYPTION_KEY` in `/opt/portway/.env`.
+4. Start the service with `sudo systemctl enable --now portway`.
+
+Package contents, archive installation and the listen address: [Deploying on Linux](/guide/deployment-linux).
+
 ### Windows Server (IIS)
 
 1. Download the latest release from the [Releases page](https://github.com/melosso/portway/releases/).

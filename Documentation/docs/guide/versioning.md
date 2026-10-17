@@ -139,5 +139,6 @@ Each version needs its own application pool (e.g. `PortwayApi_v1`, `PortwayApi_v
 
 - [Deployment](/guide/deployment)
 - [Deploying with Docker](/guide/deployment-docker)
+- [Deploying on Linux](/guide/deployment-linux)
 - [Deploying on Windows Server](/guide/deployment-windows)
 - [Upgrading](/guide/upgrading)

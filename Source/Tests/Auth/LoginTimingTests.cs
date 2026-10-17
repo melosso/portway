@@ -31,16 +31,28 @@ public sealed class LoginTimingTests : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
-    private static async Task<double> MedianMillisAsync(Func<Task> action)
+    // Interleaved so CPU contention from parallel tests lands on both medians alike
+    private static async Task<(double Real, double Missing)> MedianMillisAsync(Func<Task> real, Func<Task> missing)
     {
-        var samples = new List<double>();
+        var realSamples = new List<double>();
+        var missingSamples = new List<double>();
         for (var i = 0; i < 7; i++)
         {
-            var sw = Stopwatch.StartNew();
-            await action();
-            sw.Stop();
-            samples.Add(sw.Elapsed.TotalMilliseconds);
+            realSamples.Add(await TimeAsync(real));
+            missingSamples.Add(await TimeAsync(missing));
         }
+        return (Median(realSamples), Median(missingSamples));
+    }
+
+    private static async Task<double> TimeAsync(Func<Task> action)
+    {
+        var sw = Stopwatch.StartNew();
+        await action();
+        return sw.Elapsed.TotalMilliseconds;
+    }
+
+    private static double Median(List<double> samples)
+    {
         samples.Sort();
         return samples[samples.Count / 2];
     }
@@ -48,8 +60,9 @@ public sealed class LoginTimingTests : IAsyncLifetime
     [Fact]
     public async Task MissingUsernameTakesAsLongAsWrongPassword()
     {
-        var real = await MedianMillisAsync(() => _users.AuthenticateAsync("real-user", "wrong-password"));
-        var missing = await MedianMillisAsync(() => _users.AuthenticateAsync("no-such-user", "wrong-password"));
+        var (real, missing) = await MedianMillisAsync(
+            () => _users.AuthenticateAsync("real-user", "wrong-password"),
+            () => _users.AuthenticateAsync("no-such-user", "wrong-password"));
 
         Assert.True(missing >= real * 0.5,
             $"missing-user auth ({missing:F1}ms) short-circuits the hash of a real-user auth ({real:F1}ms); timing reveals valid usernames");
@@ -58,10 +71,9 @@ public sealed class LoginTimingTests : IAsyncLifetime
     [Fact]
     public async Task PasswordChangeWithMissingUsernameTakesAsLongAsWrongPassword()
     {
-        var real = await MedianMillisAsync(async () =>
-            await _users.ChangePasswordAsync("real-user", "wrong-password", "another-strong-pass"));
-        var missing = await MedianMillisAsync(async () =>
-            await _users.ChangePasswordAsync("no-such-user", "wrong-password", "another-strong-pass"));
+        var (real, missing) = await MedianMillisAsync(
+            () => _users.ChangePasswordAsync("real-user", "wrong-password", "another-strong-pass"),
+            () => _users.ChangePasswordAsync("no-such-user", "wrong-password", "another-strong-pass"));
 
         Assert.True(missing >= real * 0.5,
             $"missing-user change ({missing:F1}ms) short-circuits the hash of a real-user change ({real:F1}ms); timing reveals valid usernames");

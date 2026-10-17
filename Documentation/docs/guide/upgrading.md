@@ -52,7 +52,9 @@ Stopping resets the in-memory cache and rate limit state.
 
 ### 4. Replace the application files
 
-Linux and IIS: extract the release over the existing directory without overwriting `appsettings.json`, `environments/` and `endpoints/`.
+Linux package: install the newer `.deb` or `.rpm` package. Configuration file handling: [Package upgrades](/guide/deployment-linux#package-upgrades).
+
+Linux archive and IIS: extract the release over the existing directory without overwriting `appsettings.json`, `environments/` and `endpoints/`.
 
 Docker:
 
