@@ -75,8 +75,11 @@ public sealed class MetricsService
 
     private RequestEntry Shared(RequestEntry e) => e with
     {
-        Method = Label(e.Method), Source = Label(e.Source), Endpoint = Label(e.Endpoint),
-        Environment = Label(e.Environment), Version = Label(e.Version)
+        Method = Label(e.Method),
+        Source = Label(e.Source),
+        Endpoint = Label(e.Endpoint),
+        Environment = Label(e.Environment),
+        Version = Label(e.Version)
     };
 
     private string Label(string value) =>
