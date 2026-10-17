@@ -1,6 +1,7 @@
 namespace PortwayApi.Helpers;
 
 using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
@@ -171,6 +172,10 @@ public class UrlValidator
                 return false;
             }
 
+            // Direct connections are validated in ConnectAsync; proxied connections are validated here
+            if (HttpClient.DefaultProxy.GetProxy(uri) is null)
+                return true;
+
             var addresses = Dns.GetHostAddresses(host);
             Log.Debug("Resolved Addresses: {Addresses}",
                 string.Join(", ", addresses.Select(a => a.ToString())));
@@ -206,6 +211,34 @@ public class UrlValidator
         {
             Log.Error(ex, "URL Validation Error for {Url}", url);
             return false;
+        }
+    }
+
+    /// <summary>
+    /// ConnectCallback for proxy traffic; resolves once, rejects blocked addresses, connects to the validated addresses
+    /// </summary>
+    public async ValueTask<Stream> ConnectAsync(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+    {
+        var endPoint = context.DnsEndPoint;
+        var addresses = await Dns.GetHostAddressesAsync(endPoint.Host, cancellationToken);
+
+        // Proxy hosts may be in a blocked range; IsUrlSafe validates proxied targets
+        var proxy = context.InitialRequestMessage.RequestUri is { } target ? HttpClient.DefaultProxy.GetProxy(target) : null;
+        var dialsProxy = proxy is not null && string.Equals(proxy.IdnHost, endPoint.Host, StringComparison.OrdinalIgnoreCase);
+
+        if (!dialsProxy && addresses.FirstOrDefault(ip => !IsIpAllowed(ip)) is { } blocked)
+            throw new UnauthorizedAccessException($"Connection to {endPoint.Host} ({blocked}) is blocked by the network access policy");
+
+        var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+        try
+        {
+            await socket.ConnectAsync(addresses, endPoint.Port, cancellationToken);
+            return new NetworkStream(socket, ownsSocket: true);
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
         }
     }
 

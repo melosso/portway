@@ -324,6 +324,11 @@ public sealed class ProxyRequestHandler
                 return new EmptyResult(); // Response already written
             }
         }
+        catch (HttpRequestException ex) when (ex.InnerException is UnauthorizedAccessException blocked)
+        {
+            Log.Warning("Blocked proxy connection for {EndpointName}: {Reason}", endpointName, blocked.Message);
+            return new ObjectResult(ErrorResponse.Of("Request blocked due to security restrictions")) { StatusCode = 403 };
+        }
         catch (Exception ex)
         {
             Log.Error(ex, "Error during proxy request: {EndpointName}", endpointName);
