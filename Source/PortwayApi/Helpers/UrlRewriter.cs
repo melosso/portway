@@ -7,8 +7,12 @@ using Serilog;
 /// <summary>
 /// Helper class for rewriting URLs in API responses
 /// </summary>
-public static class UrlRewriter
+public static partial class UrlRewriter
 {
+    // Source generated; interpreted this pattern costs ~5ms per 30KB body
+    [GeneratedRegex(@"(\"")?(?:https?:\/\/[^\""\s]*?)?\/?[^\""\s]*?Exact\.Entity\.REST\.(?:svc|EG)\/([^\""\s]+)\(([^)]+)\)(\""|[\s,}])")]
+    private static partial Regex SvcEntityUrl();
+
     /// <summary>
     /// Rewrites upstream URLs in content to proxy URLs
     /// </summary>
@@ -39,26 +43,33 @@ public static class UrlRewriter
             var fullNewUrl = $"{newBaseUrl}{newPath}";
 
             // 1. Replace full URLs (with scheme, host, port, path)
+            // Literal guard skips the interpreted scan when the URL is absent, which is ~0.7ms per 30KB
             var fullUrlPattern = @"(\"")?(" + Regex.Escape(fullOriginalUrl) + @"(\/[^\""\s]*)?)(\""|[\s,}])";
-            content = Regex.Replace(content, fullUrlPattern, m =>
+            if (content.Contains(fullOriginalUrl, StringComparison.Ordinal))
             {
-                var hasQuotes = m.Groups[1].Success;
-                var path = m.Groups[3].Value;
-                var end = m.Groups[4].Value;
+                content = Regex.Replace(content, fullUrlPattern, m =>
+                {
+                    var hasQuotes = m.Groups[1].Success;
+                    var path = m.Groups[3].Value;
+                    var end = m.Groups[4].Value;
 
-                return (hasQuotes ? "\"" : "") + fullNewUrl + path + end;
-            });
+                    return (hasQuotes ? "\"" : "") + fullNewUrl + path + end;
+                });
+            }
 
             // 2. Replace base URL only (when paths might be dynamic)
             var baseUrlPattern = @"(\"")?(" + Regex.Escape(originalBaseUrl) + @")(\/[^\""\s]*)(\""|[\s,}])";
-            content = Regex.Replace(content, baseUrlPattern, m =>
+            if (content.Contains(originalBaseUrl, StringComparison.Ordinal))
             {
-                var hasQuotes = m.Groups[1].Success;
-                var path = m.Groups[3].Value;
-                var end = m.Groups[4].Value;
+                content = Regex.Replace(content, baseUrlPattern, m =>
+                {
+                    var hasQuotes = m.Groups[1].Success;
+                    var path = m.Groups[3].Value;
+                    var end = m.Groups[4].Value;
 
-                return (hasQuotes ? "\"" : "") + newBaseUrl + newPath + path + end;
-            });
+                    return (hasQuotes ? "\"" : "") + newBaseUrl + newPath + path + end;
+                });
+            }
 
             // 3. Replace domain references (for relative URL handling)
             try
@@ -86,8 +97,7 @@ public static class UrlRewriter
             }
 
             // 4. Rewrite all Exact.Entity.REST.svc URLs regardless of domain/path
-            var svcEntityPattern = @"(\"")?(?:https?:\/\/[^\""\s]*?)?\/?[^\""\s]*?Exact\.Entity\.REST\.(?:svc|EG)\/([^\""\s]+)\(([^)]+)\)(\""|[\s,}])";
-            content = Regex.Replace(content, svcEntityPattern, m =>
+            content = SvcEntityUrl().Replace(content, m =>
             {
                 var hasQuotes = m.Groups[1].Success;
                 var entityName = m.Groups[2].Value; // e.g., Request, Classification  
