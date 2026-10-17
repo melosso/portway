@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using Microsoft.AspNetCore.Http;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 

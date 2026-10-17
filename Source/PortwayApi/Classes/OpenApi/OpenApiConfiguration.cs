@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 using PortwayApi.Helpers;
-using Scalar.AspNetCore;
 using Serilog;
 
 namespace PortwayApi.Classes.OpenApi;

@@ -27,22 +27,24 @@ public static class ProxyHttpClientExtensions
             Log.Information("Configuring proxy with explicit credentials for user: {Username}@{Domain}",
                 proxyUsername, proxyDomain);
             services.AddHttpClient("ProxyClient")
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                .ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
                 {
                     Credentials = new NetworkCredential(proxyUsername, proxyPassword, proxyDomain),
                     PreAuthenticate = true,
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+                    ConnectCallback = sp.GetRequiredService<UrlValidator>().ConnectAsync
                 });
         }
         else
         {
             services.AddHttpClient("ProxyClient")
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                .ConfigurePrimaryHttpMessageHandler(sp => new SocketsHttpHandler
                 {
                     UseProxy = false,
                     Credentials = CredentialCache.DefaultNetworkCredentials,
                     PreAuthenticate = true,
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(10),
+                    ConnectCallback = sp.GetRequiredService<UrlValidator>().ConnectAsync
                 });
         }
 

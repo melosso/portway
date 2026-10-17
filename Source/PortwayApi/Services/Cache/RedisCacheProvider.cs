@@ -1,11 +1,7 @@
-using System;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 using Serilog;
-using System.Text;
-using System.Threading;
 using System.Net.Sockets;
 
 namespace PortwayApi.Services.Caching;

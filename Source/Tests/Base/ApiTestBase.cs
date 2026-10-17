@@ -79,8 +79,9 @@ public class ApiTestBase : IDisposable
         _mockTokenService.Setup(s => s.VerifyTokenAsync("test-token"))
             .ReturnsAsync(true);
 
+        // A non-empty list will skip onboarding/token creation at startup; GenerateTokenAsync is not mockable
         _mockTokenService.Setup(s => s.GetActiveTokensAsync())
-            .ReturnsAsync(new List<AuthToken>());
+            .ReturnsAsync(new List<AuthToken> { new() { Username = "test-user", TokenHash = "hash", TokenSalt = "salt" } });
 
         _mockTokenService.Setup(s => s.GetTokenDetailsByTokenAsync("test-token"))
             .ReturnsAsync(new AuthToken

@@ -19,6 +19,15 @@ public static class HeaderPolicy
         "Content-Length",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Hop-by-hop, framing and backend-identifying headers removed from upstream responses; Kestrel sets response framing
+    /// </summary>
+    public static readonly FrozenSet<string> StrippedFromUpstream = new[]
+    {
+        "Connection", "Keep-Alive", "Proxy-Authenticate", "TE", "Trailer", "Transfer-Encoding", "Upgrade",
+        "Content-Length", "Server", "X-Powered-By", "X-AspNet-Version", "X-AspNetMvc-Version",
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     private static readonly FrozenSet<string> Reserved = new[]
     {
         "Authorization", "Cookie", "Expect", "Origin", "Accept", "Accept-Encoding", "If-None-Match", "If-Match",

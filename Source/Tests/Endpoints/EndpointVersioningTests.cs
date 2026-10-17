@@ -360,7 +360,7 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
                 EndpointHandler.ReloadAllEndpoints();
                 await Task.Delay(5);
             }
-        });
+        }, TestContext.Current.CancellationToken);
 
         var failures = new System.Collections.Concurrent.ConcurrentBag<string>();
         await Parallel.ForEachAsync(Enumerable.Range(0, 400), new ParallelOptions { MaxDegreeOfParallelism = 16 }, async (i, ct) =>

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
-using PortwayApi.Services;
 
 namespace PortwayApi.Api;
 

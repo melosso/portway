@@ -1,8 +1,4 @@
 namespace PortwayApi.Services.Mcp;
-
-using ModelContextProtocol.Server;
-using System.ComponentModel;
-
 // Named response types; avoid returning untyped object from MCP tool methods
 public sealed record EndpointInfoResult
 {

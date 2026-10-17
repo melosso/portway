@@ -1,9 +1,7 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Dapper;
 using Serilog;
-using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Services.Providers;
 

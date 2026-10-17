@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Hosting;
 using PortwayApi.Classes;
 using PortwayApi.Interfaces;
 using Serilog;

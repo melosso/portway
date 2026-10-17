@@ -1,6 +1,4 @@
 // Helper for encryption detection and decryption
-using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Serilog;

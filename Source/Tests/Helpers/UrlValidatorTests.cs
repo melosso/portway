@@ -1,6 +1,10 @@
 using System.IO;
+using System.Net.Sockets;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Helpers;
+using PortwayApi.Middleware;
 using Xunit;
 
 namespace PortwayApi.Tests.Helpers;
@@ -16,7 +20,7 @@ public class UrlValidatorTests : IDisposable
 
     public void Dispose() => File.Delete(_configPath);
 
-    private UrlValidator CreateValidator(string[] allowedHosts)
+    private UrlValidator CreateValidator(string[] allowedHosts, string[]? blockedRanges = null)
     {
         // Provide 3+ hosts so DiscoverAllowedHosts() is skipped (the condition is <= 2)
         var hosts = allowedHosts.Length >= 3
@@ -26,7 +30,7 @@ public class UrlValidatorTests : IDisposable
         File.WriteAllText(_configPath, JsonSerializer.Serialize(new
         {
             AllowedHosts = hosts,
-            BlockedIpRanges = Array.Empty<string>()
+            BlockedIpRanges = blockedRanges ?? Array.Empty<string>()
         }));
 
         return new UrlValidator(_configPath);
@@ -80,5 +84,40 @@ public class UrlValidatorTests : IDisposable
         Assert.True(validator.IsHostAllowed("svc-a.internal.test"));
         Assert.True(validator.IsHostAllowed("svc-b.internal.test"));
         Assert.True(validator.IsHostAllowed("api.internal.test"));
+    }
+
+    [Fact]
+    public void IsUrlSafe_AllowedHost_PassesWithoutResolvingDns()
+    {
+        var validator = CreateValidator(["svc.invalid", "_noop1_", "_noop2_"]);
+        Assert.True(validator.IsUrlSafe("http://svc.invalid/api"));
+    }
+
+    [Fact]
+    public async Task ProxyClient_RefusesToConnectToBlockedAddress()
+    {
+        var client = ProxyClient(CreateValidator(["127.0.0.1", "_noop1_", "_noop2_"], ["127.0.0.0/8"]));
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/", TestContext.Current.CancellationToken));
+
+        Assert.IsType<UnauthorizedAccessException>(ex.InnerException);
+    }
+
+    [Fact]
+    public async Task ProxyClient_DialsAllowedAddress()
+    {
+        var client = ProxyClient(CreateValidator(["127.0.0.1", "_noop1_", "_noop2_"], ["10.0.0.0/8"]));
+
+        // Port 1 has no listener: a refused connection confirms the dial
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/", TestContext.Current.CancellationToken));
+
+        Assert.IsType<SocketException>(ex.InnerException);
+    }
+
+    private static HttpClient ProxyClient(UrlValidator validator)
+    {
+        var services = new ServiceCollection().AddSingleton(validator);
+        services.AddPortwayProxyHttpClient(new ConfigurationBuilder().Build());
+        return services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("ProxyClient");
     }
 }

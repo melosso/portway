@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Http;
 using Serilog;
 using PortwayApi.Classes;
 

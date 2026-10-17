@@ -1,8 +1,5 @@
 namespace PortwayApi.Services;
 
-using System.Collections.Concurrent;
-using System.Threading.Channels;
-
 public sealed record MetricsSnapshot(
     string Period,
     List<TrafficBucket> ApiTraffic,

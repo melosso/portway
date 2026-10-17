@@ -2,7 +2,6 @@ namespace PortwayApi.Endpoints;
 
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
 using PortwayApi.Helpers;
 using Serilog;

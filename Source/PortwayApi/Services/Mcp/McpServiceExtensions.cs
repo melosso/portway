@@ -1,7 +1,6 @@
 namespace PortwayApi.Services.Mcp;
 
 using Microsoft.EntityFrameworkCore;
-using ModelContextProtocol.Server;
 
 public static class McpServiceExtensions
 {

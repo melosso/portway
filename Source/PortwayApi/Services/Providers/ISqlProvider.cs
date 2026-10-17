@@ -1,4 +1,3 @@
-using PortwayApi.Services.Database;
 using System.Data;
 using System.Data.Common;
 using SqlKata.Compilers;

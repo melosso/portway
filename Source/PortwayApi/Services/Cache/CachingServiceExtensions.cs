@@ -1,7 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using PortwayApi.Services.Caching;
 using PortwayApi.Services.Health;
 using Serilog;
 
