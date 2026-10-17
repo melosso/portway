@@ -98,7 +98,7 @@ public class UrlValidatorTests : IDisposable
     {
         var client = ProxyClient(CreateValidator(["127.0.0.1", "_noop1_", "_noop2_"], ["127.0.0.0/8"]));
 
-        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/"));
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/", TestContext.Current.CancellationToken));
 
         Assert.IsType<UnauthorizedAccessException>(ex.InnerException);
     }
@@ -109,7 +109,7 @@ public class UrlValidatorTests : IDisposable
         var client = ProxyClient(CreateValidator(["127.0.0.1", "_noop1_", "_noop2_"], ["10.0.0.0/8"]));
 
         // Port 1 has no listener: a refused connection confirms the dial
-        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/"));
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(() => client.GetAsync("http://127.0.0.1:1/", TestContext.Current.CancellationToken));
 
         Assert.IsType<SocketException>(ex.InnerException);
     }
