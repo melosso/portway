@@ -310,8 +310,8 @@ public sealed class ProxyRequestHandler
                 }
                 else
                 {
-                    // If we couldn't acquire a lock, just execute the request without caching
-                    Log.Warning("Could not acquire lock for caching: {Endpoint}", endpointName);
+                    // Null when caching is disabled; providers log real lock timeouts themselves
+                    Log.Debug("Could not acquire lock for caching: {Endpoint}", endpointName);
                     await ExecuteProxyRequest(context, translatedMethod, fullUrl, env, endpointConfig, endpointName, originalMethod: originalMethod, endpointDefinition: endpointDefinition, tenants: tenants);
                 }
 
