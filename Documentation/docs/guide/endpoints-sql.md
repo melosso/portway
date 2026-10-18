@@ -22,9 +22,9 @@ Portway restricts columns through `AllowedColumns` only. Columns outside the lis
 
 ## Configuration
 
-Each endpoint is defined in `endpoints/SQL/{EndpointName}/entity.json`:
+Each endpoint is defined in its own `entity.json`:
 
-```json
+```json [endpoints/SQL/{EndpointName}/entity.json]
 {
   "DatabaseObjectName": "Products",
   "DatabaseSchema": "dbo",

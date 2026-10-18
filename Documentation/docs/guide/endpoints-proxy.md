@@ -9,9 +9,9 @@ Proxy endpoints forward requests to an internal service and return its responses
 
 ## Configuration
 
-Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
+Each endpoint is defined in its own `entity.json`:
 
-```json
+```json [endpoints/Proxy/{EndpointName}/entity.json]
 {
   "Url": "http://internal-service:8080/api/resource",
   "Methods": ["GET", "POST", "PUT", "DELETE"],

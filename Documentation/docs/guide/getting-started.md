@@ -24,7 +24,7 @@ Each installation guide ends at a running instance. The steps below apply to eve
 
 The first start generates a full-access token and writes it to `tokens/{SERVER_NAME}.txt`:
 
-```json
+```json [tokens/{SERVER_NAME}.txt]
 {
   "Username": "SERVER-NAME",
   "Token": "your-bearer-token-here",
@@ -46,9 +46,13 @@ The first start logs an account name (`admin-` plus eight characters) and a one-
 
 ## 4. Add an environment
 
-`environments/settings.json` lists the routable environments:
+Environments and endpoints are configured in the console or in files. The console writes the same files. File changes are loaded without a restart.
 
-```json
+**Console**: **Environments → Add Environment**. The form sets the name (e.g. `prod`), server name and connection string, and adds the name to the routable environments.
+
+**Files**: the global file lists the routable environments:
+
+```json [environments/settings.json]
 {
   "Environment": {
     "ServerName": "localhost",
@@ -57,9 +61,9 @@ The first start logs an account name (`admin-` plus eight characters) and a one-
 }
 ```
 
-`environments/prod/settings.json` contains the connection string of the `prod` environment:
+The environment file contains the connection string of `prod`:
 
-```json
+```json [environments/prod/settings.json]
 {
   "ServerName": "SQLSERVER01",
   "ConnectionString": "Server=SQLSERVER01;Database=ProductionDB;Trusted_Connection=True;TrustServerCertificate=true;"
@@ -70,9 +74,11 @@ Provider detection, headers and authentication: [Environments](/guide/environmen
 
 ## 5. Add an endpoint
 
-`endpoints/SQL/Products/entity.json` exposes the `dbo.Products` table:
+**Console**: **Endpoints → Add Endpoint → SQL**. The form sets the name (`Products`), schema (`dbo`), object name (`Products`), allowed columns and environments.
 
-```json
+**Files**: one `entity.json` per endpoint, here for the `dbo.Products` table:
+
+```json [endpoints/SQL/Products/entity.json]
 {
   "DatabaseObjectName": "Products",
   "DatabaseSchema": "dbo",
@@ -82,7 +88,7 @@ Provider detection, headers and authentication: [Environments](/guide/environmen
 }
 ```
 
-New and changed endpoint files are loaded without a restart. Folder layout and routes: [Folders and Routes](/guide/layout).
+Folder layout and routes: [Folders and Routes](/guide/layout).
 
 ## 6. Call the API
 

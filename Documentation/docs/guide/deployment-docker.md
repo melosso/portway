@@ -11,9 +11,7 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 ## Compose file
 
-`docker-compose.yml`:
-
-```yaml
+```yaml [docker-compose.yml]
 services:
   portway:
     image: ghcr.io/melosso/portway:latest

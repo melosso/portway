@@ -17,9 +17,9 @@ Each step references an existing proxy endpoint by name. A step cannot target an
 
 ## Configuration
 
-Create `endpoints/Proxy/{CompositeName}/entity.json`:
+A composite endpoint is a proxy endpoint with `Type: Composite`:
 
-```json
+```json [endpoints/Proxy/{CompositeName}/entity.json]
 {
   "Type": "Composite",
   "Url": "http://internal-service/api",

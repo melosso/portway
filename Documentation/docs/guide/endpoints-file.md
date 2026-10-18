@@ -9,9 +9,9 @@ File endpoints expose a storage directory as a REST API: multipart upload, downl
 
 ## Configuration
 
-Each endpoint is defined in `endpoints/Files/{EndpointName}/entity.json`:
+Each endpoint is defined in its own `entity.json`:
 
-```json
+```json [endpoints/Files/{EndpointName}/entity.json]
 {
   "StorageType": "Local",
   "BaseDirectory": "documents",

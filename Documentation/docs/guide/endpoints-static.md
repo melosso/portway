@@ -17,9 +17,7 @@ endpoints/Static/ProductionMachine/
 └── summary.xml
 ```
 
-Contents of `entity.json`:
-
-```json
+```json [endpoints/Static/ProductionMachine/entity.json]
 {
   "ContentType": "application/xml",
   "ContentFile": "summary.xml",

@@ -27,9 +27,9 @@ Environment names are free-form (e.g. `dev`, `prod`, `WMS`, `500`). The folder n
 
 ### Global settings
 
-The global file `environments/settings.json` lists the routable environments:
+The global file lists the routable environments:
 
-```json
+```json [environments/settings.json]
 {
   "Environment": {
     "ServerName": "SERVERNAME",
@@ -46,9 +46,9 @@ An environment folder is routed only when its name is listed in `AllowedEnvironm
 
 ### Environment settings
 
-Per-environment `settings.json`:
+Each environment folder contains its own `settings.json`:
 
-```json
+```json [environments/prod/settings.json]
 {
   "ServerName": "PROD-SQL-CLUSTER",
   "ConnectionString": "Server=PROD-SQL-CLUSTER;Database=ProductionDB;Integrated Security=True;TrustServerCertificate=true;",

@@ -14,9 +14,9 @@ This guide releases a breaking change to an endpoint as `v2`, keeps `v1` running
 
 ## 1. Start from the current endpoint
 
-`endpoints/SQL/Inventory/Products/entity.json` is the current endpoint. Without a version folder, this file is `v1`:
+Without a version folder, the current endpoint file is `v1`:
 
-```json
+```json [endpoints/SQL/Inventory/Products/entity.json]
 {
   "DatabaseObjectName": "Products",
   "DatabaseSchema": "dbo",
@@ -38,7 +38,7 @@ endpoints/SQL/Inventory/Products/
     └── entity.json
 ```
 
-```json
+```json [endpoints/SQL/Inventory/Products/v2/entity.json]
 {
   "DatabaseObjectName": "Products",
   "DatabaseSchema": "dbo",
@@ -75,9 +75,9 @@ Edit the scope under **Tokens** in the console. The change applies to the next r
 
 ## 5. Announce the end of v1
 
-Add the lifecycle keys to the `v1` file, `endpoints/SQL/Inventory/Products/entity.json`:
+Add the lifecycle keys to the `v1` file:
 
-```json
+```json [endpoints/SQL/Inventory/Products/entity.json]
 {
   "DatabaseObjectName": "Products",
   "DatabaseSchema": "dbo",

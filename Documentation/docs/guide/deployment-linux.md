@@ -148,9 +148,9 @@ Identical to step 2 of [Package installation](#package-installation).
 
 ### 3. Create the systemd unit
 
-`/etc/systemd/system/portway.service`:
+systemd unit:
 
-```ini
+```ini [/etc/systemd/system/portway.service]
 [Unit]
 Description=Portway API gateway
 After=network-online.target

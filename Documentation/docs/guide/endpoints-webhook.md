@@ -67,9 +67,9 @@ ALTER TABLE WebhookData ADD
 
 ## Configuration
 
-Example `endpoints/Webhooks/Webhooks/Incoming/entity.json`, with namespace `Webhooks` and endpoint name `Incoming`:
+Example with namespace `Webhooks` and endpoint name `Incoming`:
 
-```json
+```json [endpoints/Webhooks/Webhooks/Incoming/entity.json]
 {
   "DatabaseObjectName": "WebhookData",
   "DatabaseSchema": "dbo",
