@@ -17,14 +17,6 @@ Authorization: Bearer your-token-here
 
 Tokens are cryptographically random values, stored hashed in `auth.db`, and bound to a username for auditing.
 
-### First-run token
-
-The first start generates a token and writes it to `tokens/YOUR_SERVER_NAME.txt`. File format: [Token Audit Log](/reference/token-audit).
-
-::: warning
-This file contains a token with full scope and environment access. Delete it after recording the token.
-:::
-
 ### Console accounts
 
 Roles, recovery and session keys: [Console Accounts](/guide/accounts).
@@ -53,7 +45,7 @@ Endpoints define their own environments and methods:
 
 `Hidden` removes an endpoint from the OpenAPI document and does not restrict access.
 
-A request must pass both the token and the endpoint restrictions. Matrix: [Environments, access control](/guide/environments#access-control).
+A request must pass both the token and the endpoint restrictions. Matrix: [Access Tokens](/guide/tokens#scoping-tokens).
 
 ## Network security
 
@@ -77,13 +69,7 @@ Console pages at `/ui` also send `Cross-Origin-Opener-Policy` and `Cross-Origin-
 
 ## Secrets management
 
-### Automatic encryption
-
-Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. `appsettings.json` is not rewritten; values there (e.g. `Console:AdminApiKey`) remain plaintext.
-
-### Azure Key Vault
-
-Connection strings, server names and headers can be read from Azure Key Vault: [Environments, Azure Key Vault](/guide/environments#azure-key-vault).
+Plaintext connection strings and authentication values in environment `settings.json` files are encrypted at the next start (`PWENC:...`). The chat API key in `mcp.db` is encrypted. `appsettings.json` is not rewritten: values there remain plaintext. Keys and replacement: [Secret Encryption](/reference/secrets). Azure Key Vault as a secret source: [Environments](/guide/environments#azure-key-vault).
 
 ## SQL Server permissions
 
@@ -115,31 +101,12 @@ Grant only the roles the endpoints use; read-only deployments need only `db_data
 
 ## Logging and auditing
 
-Security events are logged at `Warning` or `Debug`:
-
-```
-[DBG] Invalid token: {masked}
-[WRN] IP {IP} has exceeded rate limit, blocking for {period}
-```
-
-Traffic logging with headers and bodies:
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Enabled": true,
-    "CaptureHeaders": true,
-    "IncludeRequestBodies": true
-  }
-}
-```
-
-Configuration: [Health and Logs](/guide/monitoring).
+Invalid tokens are logged at `Debug`, rate limit blocks at `Warning`. Per-request traffic logging with headers and bodies: [Health and Logs](/guide/monitoring#request-traffic-logging). Token changes are recorded in the [token audit log](/guide/tokens#token-audit-log).
 
 ## Pre-deployment checklist
 
-- [ ] HTTPS binding configured in IIS
-- [ ] IIS Application Pool using minimum-privilege identity
+- [ ] HTTPS terminated at IIS or a reverse proxy
+- [ ] Service account or Application Pool identity with minimum privileges
 - [ ] Console account with a strong password; legacy `PORTWAY_ADMIN_KEY` removed
 - [ ] `PORTWAY_KNOWN_PROXIES` set to the reverse proxy (client addresses for rate limiting, sign-in lockout and the console network gate)
 - [ ] Read-only console users hold `viewer`
@@ -153,22 +120,7 @@ Configuration: [Health and Logs](/guide/monitoring).
 
 ## Compromised token
 
-Please make sure to take these actions if a token may be compromised.
-
 1. Under **Access Tokens**, rotate the affected token; rotation revokes the old value and issues a replacement.
 2. Update the applications that use the token.
-3. Enable traffic logging to monitor further use:
-   ```json
-   {
-     "RequestTrafficLogging": { "Enabled": true, "CaptureHeaders": true }
-   }
-   ```
-4. Monitor the traffic for any indicators of compromise.
-5. Record the incident.
-
-## Next steps
-
-- [Rate Limiting](/guide/rate-limiting)
-- [Environments, authentication](/guide/environments#per-environment-authentication)
-- [Health and Logs](/guide/monitoring)
-- [Deployment](/guide/deployment)
+3. Enable [traffic logging](/guide/monitoring#request-traffic-logging) and review requests with the old token value.
+4. Record the incident.

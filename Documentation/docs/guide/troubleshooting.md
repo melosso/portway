@@ -47,23 +47,7 @@ grep -h "Rate limit" ./log/*.log | tail -n 20
 
 :::
 
-A single client or IP address hitting the limit needs backoff in its retry logic or its own token limit; general growth needs higher limits. A restart resets all counters of the `Memory` store:
-
-::: code-group
-
-```bash [Linux]
-sudo systemctl restart portway
-```
-
-```bash [Docker]
-docker compose restart portway
-```
-
-```powershell [Windows]
-Restart-WebAppPool -Name "PortwayAppPool"
-```
-
-:::
+A single client hitting the limit requires backoff in its retry logic or its own token limit. Limits and stores: [Rate Limiting](/guide/rate-limiting#troubleshooting).
 
 ## Database connections
 
@@ -136,28 +120,11 @@ find ./log -type f -mtime +30 -delete
 
 :::
 
-Traffic log rotation:
-
-```json
-{
-  "RequestTrafficLogging": {
-    "MaxFileSizeMB": 50,
-    "MaxFileCount": 5
-  }
-}
-```
+Traffic log rotation is set by `RequestTrafficLogging:MaxFileSizeMB` and `MaxFileCount` ([Auditing](/reference/audit#configuration)).
 
 ## Performance
 
-Durations above `1000ms` indicate a database, network or host problem. With SQLite traffic logging:
-
-```sql
-SELECT Path, QueryString, DurationMs, StatusCode
-FROM TrafficLogs
-WHERE DurationMs > 1000
-ORDER BY DurationMs DESC
-LIMIT 20;
-```
+Durations above `1000ms` indicate a database, network or host problem. Slow request queries: [SQLite storage](/guide/monitoring#sqlite-storage).
 
 ## Logs
 
@@ -184,13 +151,7 @@ tail -n 50 -f "./log/portwayapi-$(date +%Y%m%d).log"
 
 :::
 
-Log message patterns:
-
-```text
-[WRN] Rate limit enforced for {Identifier}, retry after {Seconds}s (at {Time})
-[WRN] Tokens detected in the tokens directory; relocate them to a secure location
-[DBG] SQL Query Request: {Url}
-```
+Log levels: [Health and Logs](/guide/monitoring#log-levels).
 
 ## Application not starting
 
@@ -228,10 +189,3 @@ Select-String -Path ".\log\portwayapi-*.log" -Pattern "\[ERR\]|\[FTL\]" | Select
 ```
 
 :::
-
-## Related topics
-
-- [Health and Logs](/guide/monitoring)
-- [Security](/guide/security)
-- [Deployment](/guide/deployment)
-- [SQL Endpoints](/guide/endpoints-sql)

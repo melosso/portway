@@ -55,4 +55,3 @@ Deleting a provider unbinds its accounts; accounts without a password can no lon
 ## Turning it off
 
 Setting `Oidc:Enabled: false` (**Settings → Security → Deployment & Access**) disables all providers: no provider buttons, `404` on the start route, and callbacks redirect to the sign-in page with an error. The setting is read per request; provider records are kept.
-

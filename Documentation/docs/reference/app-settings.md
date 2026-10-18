@@ -236,6 +236,8 @@ Any key is set with `__` as separator (e.g. `RateLimiting__IpLimit`). Portway-sp
 | `PORTWAY_PROXY_DOMAIN` | Outbound proxy domain | `PROXY_DOMAIN` |
 | `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
 
+NTLM authentication at an outbound corporate proxy requires all three `PORTWAY_PROXY_*` variables. `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_CLIENT_SECRET` authenticate to Azure Key Vault ([Azure Key Vault](/guide/environments#azure-key-vault)).
+
 A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins when both are set. For a list, set either the `PORTWAY_` name or the indexed legacy names: indexed entries beyond the list length are kept.
 
 :::warning
@@ -246,5 +248,5 @@ A legacy name logs a deprecation warning at startup; the `PORTWAY_` name wins wh
 
 - [Environment Settings](/reference/environment-settings)
 - [Security](/guide/security)
-- [Deployment](/guide/deployment)
+- [Getting Started](/guide/getting-started)
 - [Logging](/reference/logging)

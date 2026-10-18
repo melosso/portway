@@ -163,8 +163,3 @@ File endpoints require the `Authorization` header. `<img src>` and `<embed src>`
 | "File not found" on download | Use the `fileId` from a list response, the same environment, and a file that still exists. |
 
 Upload and download events are logged in `log/portwayapi-[date].log`.
-
-## Next steps
-
-- [Environments](/guide/environments)
-- [Security](/guide/security)

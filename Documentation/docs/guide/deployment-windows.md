@@ -61,10 +61,6 @@ The first start creates `tokens/`, `log/` and `auth.db`. Checks:
 - `https://localhost/health/live` returns `Alive`
 - `https://localhost/docs` serves the API reference
 
-## Initial configuration
-
-Access token and environments: [Getting Started](/guide/getting-started). Folder permissions: [Folders and Routes](/guide/layout#folder-permissions).
-
 ## Troubleshooting
 
 | Error | Likely cause | Resolution |
@@ -73,7 +69,6 @@ Access token and environments: [Getting Started](/guide/getting-started). Folder
 | HTTP 500 | Application startup error | Check `log/portwayapi-*.log` and Windows Event Viewer |
 | HTTP 403 | Directory permissions | Run `icacls` to grant the Application Pool identity access |
 | Blank screen | No HTTPS binding or missing certificate | Bind a certificate to the site in IIS Manager |
-| Database errors | Invalid connection string | Verify the connection string and SQL Server network access |
 
 Startup errors outside the application log are captured with stdout logging in `web.config`:
 
@@ -91,6 +86,7 @@ Startup errors outside the application log are captured with stdout logging in `
 
 - Enforce HTTPS using URL Rewrite rules ([IIS Rewrite Module](https://www.iis.net/downloads/microsoft/url-rewrite))
 - Restrict `tokens/` read access to the Application Pool identity
+- Disable directory browsing in `web.config`
 - Restrict client addresses in IIS Manager (IP Address and Domain Restrictions)
 - Use a dedicated domain service account with minimum SQL permissions
 
@@ -98,20 +94,6 @@ Details: [Security](/guide/security).
 
 ## Backup
 
-Files to back up: [Upgrading Portway](/guide/upgrading#back-up-the-installation).
+Files to back up: [Upgrading Portway](/guide/upgrading#2-back-up-the-installation).
 
-## Other installation methods
-
-::: cards 2
-- [Deploying with Docker](/guide/deployment-docker)
-  Docker Compose, from a first container to production.
-- [Deploying on Linux](/guide/deployment-linux)
-  `.deb` or `.rpm` package, or release archive, as a systemd service.
-:::
-
-## Next steps
-
-- [Configure Environments](/guide/environments)
-- [Configure Endpoints](/guide/endpoints-sql)
-- [Security](/guide/security)
-- [Health and Logs](/guide/monitoring)
+Next: [Record the access token](/guide/getting-started#2-record-the-access-token).

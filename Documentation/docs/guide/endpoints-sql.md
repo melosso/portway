@@ -17,7 +17,7 @@ Supported providers are:
 The provider is detected from the connection string in the environment's `settings.json`; endpoint configuration is the same for every provider. Provider differences: [SQL Providers](/reference/sql-providers#capabilities).
 
 ::: tip
-Review the database permissions of the connection account and the data in each exposed object. Portway restricts columns only through `AllowedColumns`.
+Portway restricts columns through `AllowedColumns` only. Columns outside the list are not returned and not accepted in request bodies. Leave credentials, personal identifiers and internal system fields out of the list, and grant the connection account only the permissions the endpoints use ([SQL Server permissions](/guide/security#sql-server-permissions)).
 :::
 
 ## Configuration
@@ -66,18 +66,7 @@ GET /api/prod/Items?$select=ProductNumber,ProductName&$filter=Category eq 'Elect
 
 ## Querying with OData
 
-GET requests accept these OData query options:
-
-| Parameter | Description | Example |
-|---|---|---|
-| `$select` | Return specific columns | `$select=ProductName,Price` |
-| `$filter` | Filter rows | `$filter=Price gt 100` |
-| `$orderby` | Sort results | `$orderby=ProductName desc` |
-| `$top` | Limit row count | `$top=50` |
-| `$skip` | Skip rows (for pagination) | `$skip=20` |
-| `$count` | Add the total matching count as `totalCount` | `$count=true` |
-
-Filter operators: `eq`, `ne`, `gt`, `lt`, `ge`, `le`, `and`, `or`, `not`, `contains()`, `startswith()`, `endswith()`.
+GET requests accept `$select`, `$filter`, `$orderby`, `$top`, `$skip`, `$count` and `$expand`. Column names are the public names from `AllowedColumns`. Syntax: [OData](/reference/odata), [Filter operations](/reference/filters).
 
 ```http
 GET /api/prod/Products?$filter=Price gt 100 and InStock eq true&$orderby=Price desc&$top=25
@@ -264,10 +253,6 @@ GET /api/dev/Departments?UserCount=50&$top=20&$orderby=FirstName
 Table-valued function endpoints ignore `PrimaryKey`.
 :::
 
-## Column-level access control
-
-Columns missing from `AllowedColumns` are not returned by GET and not accepted in POST or PUT bodies. Leave credentials, personal identifiers, financial data and internal system fields out of `AllowedColumns`.
-
 ## Troubleshooting
 
 | Symptom | Resolution |
@@ -277,21 +262,4 @@ Columns missing from `AllowedColumns` are not returned by GET and not accepted i
 | No results | Check the filter, the data in the target environment and the connection account's permissions. |
 | Slow queries | Index columns used in `$filter` and `$orderby`; limit with `$top`. |
 
-Debug logging:
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Debug"
-    }
-  }
-}
-```
-
-## Next steps
-
-- [Proxy Endpoints](/guide/endpoints-proxy)
-- [Composite Endpoints](/guide/endpoints-composite)
-- [Environments](/guide/environments)
-- [Security](/guide/security)
+Debug logging: [Log levels](/guide/monitoring#log-levels).

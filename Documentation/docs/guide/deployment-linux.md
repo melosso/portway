@@ -187,7 +187,6 @@ sudo journalctl -u portway -e
 | `Permission denied` on `auth.db` or `log/` | Files not owned by `portway` | `sudo chown -R portway:portway /opt/portway` |
 | `Address already in use` | Port taken by another process | Set a different `ASPNETCORE_URLS` ([Listen address](#listen-address)) |
 | `You must install or update .NET` | Archive installation without the runtime | Install the [ASP.NET Core Runtime 11](https://get.dot.net/11) |
-| Database errors | Invalid connection string | Verify the connection string and SQL Server network access |
 
 | Log | Location |
 |---|---|
@@ -196,20 +195,6 @@ sudo journalctl -u portway -e
 
 ## Backup
 
-Files to back up in `/opt/portway/`: [Upgrading Portway](/guide/upgrading#back-up-the-installation)..
+Files to back up in `/opt/portway/`: [Upgrading Portway](/guide/upgrading#2-back-up-the-installation).
 
-## Other installation methods
-
-::: cards 2
-- [Deploying with Docker](/guide/deployment-docker)
-  Docker Compose, from a first container to production.
-- [Deploying on Windows Server](/guide/deployment-windows)
-  IIS website with HTTPS and a dedicated Application Pool.
-:::
-
-## Next steps
-
-- [Configure Environments](/guide/environments)
-- [Configure Endpoints](/guide/endpoints-sql)
-- [Security](/guide/security)
-- [Health and Logs](/guide/monitoring)
+Next: [Record the access token](/guide/getting-started#2-record-the-access-token).

@@ -46,21 +46,7 @@ ORDER BY Timestamp DESC;
 
 ## First-run token file
 
-The first start creates a token named after the machine and saves it to `tokens/{MACHINE_NAME}.txt`:
-
-```json
-{
-  "Username": "SERVER-NAME",
-  "Token": "...",
-  "AllowedScopes": "*",
-  "AllowedEnvironments": "*",
-  "AllowedTenants": {},
-  "ExpiresAt": "Never",
-  "CreatedAt": "2026-01-01 00:00:00"
-}
-```
-
-Copy the token value and delete the file.
+The first start writes a full-access token to `tokens/{SERVER_NAME}.txt`. File format: [Getting Started](/guide/getting-started#2-record-the-access-token).
 
 ## Related topics
 

@@ -61,8 +61,3 @@ Filtered responses include these headers:
 - `X-Filtering-Status: Applied`
 - `X-Total-Count`: item count before filtering
 - `X-Returned-Count`: item count after filtering
-
-## Next steps
-
-- [SQL Endpoints](/guide/endpoints-sql)
-- [Environments](/guide/environments)

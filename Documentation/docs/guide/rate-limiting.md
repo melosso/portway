@@ -106,19 +106,4 @@ Token rate limit exceeded for abcd...wxyz - Attempt 2
 IP 192.168.1.100 has exceeded rate limit, blocking for 60s
 ```
 
-Debug logging:
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Debug"
-    }
-  }
-}
-```
-
-## Next steps
-
-- [Security](/guide/security)
-- [Health and Logs](/guide/monitoring)
+Debug logging: [Log levels](/guide/monitoring#log-levels).

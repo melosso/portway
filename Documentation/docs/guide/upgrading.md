@@ -7,7 +7,7 @@ description: "Replace application files and restore configuration to move to a n
 
 An upgrade replaces the application files and keeps configuration and databases.
 
-::: important Breaking changes
+::: warning Breaking changes
 Before `v1.0.0`, releases can include breaking changes. Read the release notes before every upgrade.
 :::
 

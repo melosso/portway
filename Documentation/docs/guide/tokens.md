@@ -7,9 +7,7 @@ description: "Create, scope, rotate, and archive the Bearer tokens that control 
 
 API requests authenticate with a Bearer token ([RFC 6750](https://datatracker.ietf.org/doc/html/rfc6750)). Tokens are managed in the console under **Access Tokens**.
 
-:::warning
-The first start writes a full-access token (`*` scopes, `*` environments) to `tokens/{SERVER_NAME}.txt`. Delete the file after recording the value.
-:::
+The first start writes a full-access token to `tokens/{SERVER_NAME}.txt` ([Getting Started](/guide/getting-started#2-record-the-access-token)).
 
 ## Creating a token
 
@@ -56,6 +54,16 @@ Scopes are validated on create and update: `*`, or an endpoint key of letters, d
 | `dev,test` | Both environments |
 | `dev*` | Environments starting with `dev` |
 
+The request environment must also be listed in the endpoint's `AllowedEnvironments`:
+
+| Token environments | Endpoint `AllowedEnvironments` | Request environment | Result |
+|---|---|---|---|
+| `*` | _(not set)_ | Any | Allowed |
+| `*` | `["prod"]` | `prod` | Allowed |
+| `*` | `["prod"]` | `dev` | Blocked |
+| `prod,dev` | _(not set)_ | `test` | Blocked |
+| `prod,dev` | `["prod"]` | `dev` | Blocked |
+
 ### Tenant scopes
 
 The `AllowedTenants` field maps each tenant header to its permitted values, e.g. `{"X-Company-Id": ["ACME", "GLOBEX"]}`. With one value per header the request header is optional; with several values it is required. Endpoint configuration: [Tenant headers](/guide/tenant-headers).
@@ -84,9 +92,3 @@ Archiving revokes a token; requests with it return `401`, and its plaintext toke
 ## Token audit log
 
 Each token records its operations (created, scopes, environments and tenants changed, rotated, archived). The log opens from the token's edit drawer under **Audit Log**. API: `GET /ui/api/tokens/{id}/audit` ([Console API](/reference/console-api)).
-
-## Related
-
-- [Authentication reference](/reference/api-auth)
-- [Security](/guide/security)
-- [Web UI](/guide/webui)

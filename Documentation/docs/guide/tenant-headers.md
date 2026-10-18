@@ -43,9 +43,3 @@ The `Tenancy` value depends on the endpoint type:
 | File | Ignored | `BaseDirectory` contains a `{Header}` placeholder per tenant header. Uploads, downloads, deletes and listings are restricted to the resolved directory. |
 
 Tenancy is not supported on static, webhook or composite endpoints, on composite step targets or on `$expand` targets. Endpoints with invalid `Tenancy` are not loaded and cannot be saved in the console. The OpenAPI document lists tenant headers as optional header parameters; MCP tools accept them in the `tenants` argument.
-
-## Related topics
-
-- [Access Tokens](/guide/tokens)
-- [Security](/guide/security)
-- [Entity Configuration](/reference/entity-config)

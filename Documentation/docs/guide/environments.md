@@ -65,90 +65,19 @@ Per-environment `settings.json`:
 | `ConnectionString` | No | Database connection string. Required for SQL and Webhook endpoints |
 | `Headers` | No | Headers added to forwarded proxy requests; they replace client headers of the same name |
 
-## SQL provider detection
+## Connection strings
 
-The SQL provider is detected from the connection string. Detection rules and provider differences: [SQL Providers](/reference/sql-providers).
+The SQL provider (SQL Server, PostgreSQL, MySQL/MariaDB or SQLite) is detected from the connection string. Per-provider examples and detection rules: [SQL Providers](/reference/sql-providers#connection-strings).
 
-:::tip
-An SQLite environment needs no database server:
+An SQLite environment requires no database server:
+
 ```json
 { "ConnectionString": "Data Source=environments/demo/demo.db;" }
-```
-:::
-
-## Configuration examples
-
-SQL Server with Windows Authentication:
-
-```json
-{
-  "ServerName": "PROD-SQL-CLUSTER",
-  "ConnectionString": "Server=PROD-SQL-CLUSTER;Database=ProductionDB;Integrated Security=True;MultiSubnetFailover=True;TrustServerCertificate=true;"
-}
-```
-
-SQL Server with SQL authentication:
-
-```json
-{
-  "ServerName": "DEV-SQL-01",
-  "ConnectionString": "Server=DEV-SQL-01;Database=DevelopmentDB;User Id=dev_user;Password=dev_password;TrustServerCertificate=true;"
-}
-```
-
-PostgreSQL:
-
-```json
-{
-  "ServerName": "pg-host",
-  "ConnectionString": "Host=pg-host;Port=5432;Database=mydb;Username=portway;Password=your-password;"
-}
-```
-
-MySQL:
-
-```json
-{
-  "ServerName": "mysql-host",
-  "ConnectionString": "Server=mysql-host;Port=3306;Database=mydb;Uid=portway;Pwd=your-password;SslMode=Preferred;"
-}
 ```
 
 ## Access control
 
-A request must pass both the token and the endpoint environment restrictions.
-
-### Token-level restrictions
-
-A token lists its environments: `*` for all, a comma-separated list, or a prefix pattern such as `pro*`:
-```json
-{
-  "Username": "api-user",
-  "Token": "your-token-here",
-  "AllowedEnvironments": "prod,dev"
-}
-```
-
-### Endpoint-level restrictions
-
-An endpoint lists the environments it serves:
-
-```json
-{
-  "DatabaseObjectName": "ServiceRequests",
-  "AllowedEnvironments": ["prod"]
-}
-```
-
-| Token environments | Endpoint `AllowedEnvironments` | Request environment | Result |
-|---|---|---|---|
-| `*` | _(not set)_ | Any | Allowed |
-| `*` | `["prod"]` | `prod` | Allowed |
-| `*` | `["prod"]` | `dev` | Blocked |
-| `prod,dev` | _(not set)_ | `prod` | Allowed |
-| `prod,dev` | _(not set)_ | `test` | Blocked |
-| `prod,dev` | `["prod"]` | `prod` | Allowed |
-| `prod,dev` | `["prod"]` | `dev` | Blocked |
+A request must pass the token's environments and the endpoint's `AllowedEnvironments`. Matrix: [Access Tokens](/guide/tokens#scoping-tokens).
 
 ## Per-environment authentication
 
@@ -172,27 +101,9 @@ An `Authentication` block in the environment's `settings.json` adds API key, Bas
 }
 ```
 
-| Field | Required | Type | Description |
-|---|---|---|---|
-| `Enabled` | Yes | boolean | Enables the methods; `false` ignores the block |
-| `OverrideGlobalToken` | No | boolean | `true` rejects Portway bearer tokens and accepts only these methods (default `false`) |
-| `Methods` | Yes (when enabled) | array | Authentication method definitions |
+`OverrideGlobalToken: true` rejects Portway bearer tokens and accepts only the configured methods. Requests authenticated by these methods have no Portway token and are refused on endpoints with `Tenancy`. Method fields for `ApiKey`, `Basic`, `Bearer`, `JWT` and `HMAC`: [Environment Authentication](/reference/environment-auth).
 
-| Method `Type` | Key fields |
-|---|---|
-| `ApiKey` | `Name`, `Value`, `In` (`Header` or `Query`) |
-| `Basic` | `Name`, `Value` |
-| `Bearer` | `Value` |
-| `JWT` | `Issuer`, `Secret`, `PublicKey` |
-| `HMAC` | `Name`, `Secret` |
-
-:::tip
-Plaintext secrets in `settings.json` are encrypted at the next start (`PWENC:...`). The keys are stored in `.core/` next to the installation; back it up and keep it while encrypted environments exist.
-:::
-
-With `"Encrypt": false` in its `settings.json`, an environment stays plaintext; use it for non-production credentials only.
-
-Requests authenticated by these methods have no Portway token and are refused on endpoints with `Tenancy`. JWT and HMAC configuration: [Environment Authentication](/reference/environment-auth).
+Plaintext secrets in `settings.json` are encrypted at the next start (`PWENC:...`). `"Encrypt": false` keeps an environment plaintext, for non-production credentials only. Keys and backup: [Secret Encryption](/reference/secrets).
 
 ## Azure Key Vault
 
@@ -217,7 +128,7 @@ Connection strings and other secrets can be read from Azure Key Vault instead of
    - `{environment}-ServerName`
    - `{environment}-Headers` (JSON string)
 
-The secrets are read at startup and used like file-based values.
+The secrets are read at startup and used like file-based values. Authentication uses the Azure SDK `DefaultAzureCredential`, which reads `AZURE_CLIENT_ID`, `AZURE_TENANT_ID` and `AZURE_CLIENT_SECRET`.
 
 ## Network access policy
 
@@ -273,21 +184,4 @@ The `ASPNETCORE_DOMAIN` environment variable adds a host name to the allowed lis
 | Proxy blocked, IP in blocked range | The host resolves to an address in `blockedIpRanges`; change the range only for a trusted target. |
 | Unexpected SQL syntax errors | The connection string does not identify the provider; required keywords: [SQL Providers](/reference/sql-providers). |
 
-Debug logging:
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Debug"
-    }
-  }
-}
-```
-
-## Next steps
-
-- [Configure SQL Endpoints](/guide/endpoints-sql)
-- [Set up Proxy Endpoints](/guide/endpoints-proxy)
-- [Access token management](/guide/tokens)
-- [Deploy to production](/guide/deployment)
+Debug logging: [Log levels](/guide/monitoring#log-levels).

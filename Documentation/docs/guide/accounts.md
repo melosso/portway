@@ -26,7 +26,9 @@ The role is read from `auth.db` on every request, not from the session cookie; a
 Earlier builds did not enforce the `viewer` role. Review the accounts under **Users** after upgrading.
 :::
 
-Sessions are signed with `portway.key`, created next to `auth.db`. Deleting it ends all sessions.
+## Sessions
+
+Session cookies are HMAC-SHA256 signed with `portway.key`, created next to `auth.db`, and expire after 12 hours. Deleting `portway.key` ends all sessions.
 
 ## Recovering an account
 
@@ -55,9 +57,3 @@ docker exec <container> dotnet /app/PortwayApi.dll accounts create <username> <p
 :::
 
 Further subcommands: `promote`, `demote`, `enable`, `disable`, `delete`. A command that would leave no active administrator is refused.
-
-## Related topics
-
-- [Web UI](/guide/webui)
-- [Single Sign-On](/guide/sso)
-- [Security](/guide/security)

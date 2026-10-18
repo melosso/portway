@@ -37,19 +37,19 @@ features:
   <a href="guide/deployment-windows" class="platform-logo">
     <img src="icons/platforms/microsoft-windows.svg" alt="" loading="lazy"><span>Windows</span>
   </a>
-  <a href="guide/deployment" class="platform-logo">
+  <a href="guide/deployment-linux" class="platform-logo">
     <img src="icons/platforms/linux.svg" alt="" loading="lazy"><span>Linux</span>
   </a>
   <a href="guide/deployment-docker" class="platform-logo">
     <img src="icons/platforms/docker.svg" alt="" loading="lazy"><span>Docker</span>
   </a>
-  <a href="guide/deployment" class="platform-logo">
+  <a href="guide/deployment-docker" class="platform-logo">
     <img src="icons/platforms/podman.svg" alt="" loading="lazy"><span>Podman</span>
   </a>
 </div>
 
 <div class="more-button-wrapper">
-  <a class="more-button" href="guide/deployment">All deployment options →</a>
+  <a class="more-button" href="guide/getting-started">All deployment options →</a>
 </div>
 
 </div>

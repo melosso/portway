@@ -81,15 +81,7 @@ Example `endpoints/Webhooks/Webhooks/Incoming/entity.json`, with namespace `Webh
 }
 ```
 
-### Configuration properties
-
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `DatabaseObjectName` | Yes | string | Table for webhook payloads |
-| `DatabaseSchema` | No | string | Database schema (default `dbo`) |
-| `AllowedColumns` | No | array | Accepted webhook ids; other ids return `404` |
-
-The webhook id is stored in the `WebhookId` column.
+`AllowedColumns` lists the accepted webhook ids; other ids return `404`. The id is stored in the `WebhookId` column. All properties: [Entity configuration](/reference/entity-config#webhook).
 
 ## Sending webhooks
 
@@ -160,20 +152,4 @@ ORDER BY ReceivedAt DESC;
 | Database errors | Check the table definition and the connection account's INSERT permission. |
 | `401` or `403` | Check the token and its access to the environment. |
 
-Debug logging:
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Debug"
-    }
-  }
-}
-```
-
-## Next steps
-
-- [SQL Endpoints](/guide/endpoints-sql)
-- [Security](/guide/security)
-- [Health and Logs](/guide/monitoring)
+Debug logging: [Log levels](/guide/monitoring#log-levels).

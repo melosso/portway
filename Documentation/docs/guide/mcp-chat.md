@@ -68,9 +68,3 @@ Each chat turn runs up to five tool rounds:
 ## Environment selector
 
 The environment selector lists the environments from `GET /ui/api/environments`. A tool call uses the environment the model passes, or the selected environment. An environment outside the endpoint's `AllowedEnvironments` is replaced by the endpoint's first allowed environment.
-
-## Next steps
-
-- [MCP Server](/guide/mcp)
-- [Secret Encryption](/reference/secrets)
-- [Access Tokens](/guide/tokens)

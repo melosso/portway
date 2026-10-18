@@ -15,7 +15,7 @@ Monitoring sources: health check endpoints, optional per-request traffic logging
 | `/health/live` | None | 5 s | `Alive`, without downstream checks; for liveness probes and load balancers |
 | `/health/details` | Token | 60 s | Each component check with status and duration |
 
-Response format, component checks and probe configuration: [Health Checks](/reference/health-checks).
+Response format, component checks and probe configuration: [Health Checks](/reference/health-checks). Request success rate and latency per endpoint: console [Health](/guide/webui#health) page.
 
 ## Request traffic logging
 
@@ -139,31 +139,5 @@ Metrics for Prometheus and OTLP: [Telemetry](/guide/telemetry).
 | Symptom | Resolution |
 |---|---|
 | No traffic logs | Check `Enabled: true`, write access to the log directory and `QueueCapacity`. |
-| Health check degraded | `GET /health/details` names the failing check; common causes are disk space and proxy targets. |
+| Health check degraded | `GET /health/details` names the failing check; common causes are [disk space](/guide/troubleshooting#disk-space) and proxy targets. |
 | High response times | Log traffic to SQLite and query `DurationMs` per endpoint. |
-
-::: code-group
-
-```powershell [Windows]
-# Check disk space
-Get-PSDrive -PSProvider FileSystem
-
-# Review recent errors in application log
-Select-String -Path ".\log\*.log" -Pattern "\[ERR\]" | Select-Object -Last 50
-```
-
-```bash [Linux]
-# Check disk space
-df -h
-
-# Review recent errors in application log
-grep -h "\[ERR\]" ./log/*.log | tail -n 50
-```
-
-:::
-
-## Next steps
-
-- [Rate Limiting](/guide/rate-limiting)
-- [Security](/guide/security)
-- [Deployment](/guide/deployment)

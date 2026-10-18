@@ -1,15 +1,13 @@
 ---
 title: Getting Started
-description: "Install Portway and make your first authenticated API call"
+description: "Install Portway, sign in to the console and make the first authenticated API call"
 ---
 
 # Getting Started
 
-Portway ships as a container image, as `.deb` and `.rpm` packages, and as Linux and Windows archives. Each release targets x64 and arm64.
+Portway ships as a container image, as `.deb` and `.rpm` packages, and as Linux and Windows archives. Each release targets x64 and arm64. Endpoint and environment configuration is identical for every installation method.
 
-## Installation
-
-Install Portway with one of the deployment guides, then continue with [Initial configuration](#initial-configuration).
+## 1. Install
 
 ::: cards 3
 - [Deploying with Docker](/guide/deployment-docker)
@@ -20,17 +18,11 @@ Install Portway with one of the deployment guides, then continue with [Initial c
   IIS website with HTTPS and a dedicated Application Pool.
 :::
 
-## Initial configuration
+Each installation guide ends at a running instance. The steps below apply to every method.
 
-### Retrieve your access token
+## 2. Record the access token
 
-The first start generates an access token and writes it to:
-
-```
-tokens/YOUR_SERVER_NAME.txt
-```
-
-File contents:
+The first start generates a full-access token and writes it to `tokens/{SERVER_NAME}.txt`:
 
 ```json
 {
@@ -38,88 +30,65 @@ File contents:
   "Token": "your-bearer-token-here",
   "AllowedScopes": "*",
   "AllowedEnvironments": "*",
+  "AllowedTenants": {},
   "ExpiresAt": "Never",
-  "CreatedAt": "2025-01-01 00:00:00"
+  "CreatedAt": "2026-01-01 00:00:00"
 }
 ```
 
 :::warning
-This file contains a plaintext token with full access. Delete it after recording the token.
+The file contains a plaintext token with full access. Record the token value and delete the file.
 :::
 
-### Configure environments
+## 3. Sign in to the console
 
-Routable environments are listed in `environments/settings.json`:
+The first start logs an account name (`admin-` plus eight characters) and a one-time password. The console at `/ui` requires a new password at first sign-in. Accounts and recovery: [Console Accounts](/guide/accounts).
+
+## 4. Add an environment
+
+`environments/settings.json` lists the routable environments:
 
 ```json
 {
   "Environment": {
     "ServerName": "localhost",
-    "AllowedEnvironments": ["dev", "test", "prod"]
+    "AllowedEnvironments": ["prod"]
   }
 }
 ```
 
-Each environment has a folder with its own `settings.json`:
-
-```
-environments/
-  ├── settings.json
-  ├── dev/
-  │   └── settings.json
-  ├── test/
-  │   └── settings.json
-  └── prod/
-      └── settings.json
-```
-
-Example `environments/prod/settings.json`:
+`environments/prod/settings.json` contains the connection string of the `prod` environment:
 
 ```json
 {
   "ServerName": "SQLSERVER01",
-  "ConnectionString": "Server=SQLSERVER01;Database=ProductionDB;Trusted_Connection=True;TrustServerCertificate=true;",
-  "Headers": {
-    "Origin": "Portway"
-  }
+  "ConnectionString": "Server=SQLSERVER01;Database=ProductionDB;Trusted_Connection=True;TrustServerCertificate=true;"
 }
 ```
 
-### Create your first endpoint
+Provider detection, headers and authentication: [Environments](/guide/environments).
 
-An endpoint is a JSON file, e.g. `endpoints/SQL/Products/entity.json`:
+## 5. Add an endpoint
+
+`endpoints/SQL/Products/entity.json` exposes the `dbo.Products` table:
 
 ```json
 {
   "DatabaseObjectName": "Products",
   "DatabaseSchema": "dbo",
   "PrimaryKey": "ProductId",
-  "AllowedColumns": [
-    "ProductId",
-    "ProductName",
-    "Price",
-    "Stock"
-  ],
-  "AllowedEnvironments": ["dev", "test", "prod"]
+  "AllowedColumns": ["ProductId", "ProductName", "Price", "Stock"],
+  "AllowedEnvironments": ["prod"]
 }
 ```
 
-New and changed endpoint files are loaded without a restart.
+New and changed endpoint files are loaded without a restart. Folder layout and routes: [Folders and Routes](/guide/layout).
 
-### Test your API
-
-The API reference at `https://localhost/docs` accepts the Bearer token for test calls:
+## 6. Call the API
 
 ```http
 GET /api/prod/Products
 Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
-What's your next step? You can read more below:
-
-## Next steps
-
-- [Configure SQL Endpoints](/guide/endpoints-sql)
-- [Set up Proxy Endpoints](/guide/endpoints-proxy)
-- [Manage Environments](/guide/environments)
-- [Configure Security](/guide/security)
+The API reference at `/docs` lists the endpoint and accepts the token for test calls.

@@ -15,15 +15,11 @@ environment:
   - PORTWAY_SECURE_COOKIES=true
 ```
 
-The console is enabled by default and accepts client addresses from loopback and `allowedHosts` in `environments/network-access-policy.json`. If `allowedHosts` has two or fewer entries, the IP addresses of the host are added. `PORTWAY_WEBUI_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. The first start logs the account name and a one-time password. The sign-in page requires a new password at first sign-in. All `Console` settings: [Application settings](/reference/app-settings#console).
+The console is enabled by default and accepts client addresses from loopback and `allowedHosts` in `environments/network-access-policy.json`. If `allowedHosts` has two or fewer entries, the IP addresses of the host are added. `PORTWAY_WEBUI_ENABLED=false` turns it off. `PORTWAY_PUBLIC_ORIGINS` (comma-separated) allows external origins. `PORTWAY_SECURE_COOKIES` restricts cookies to HTTPS. All `Console` settings: [Application settings](/reference/app-settings#console).
 
 ## Accounts
 
-Accounts are created under **Users** or from the shell. First account, shell recovery and Docker commands: [Console Accounts](/guide/accounts). Roles: [Account roles](/guide/accounts#account-roles). OpenID Connect sign-in: [Single sign-on](/guide/sso).
-
-## Sessions
-
-Session cookies are HMAC-SHA256 signed with `portway.key` (next to `auth.db`) and expire after 12 hours. Deleting `portway.key` ends all sessions.
+Accounts are created under **Users** or from the shell. First account, roles, sessions and recovery: [Console Accounts](/guide/accounts). OpenID Connect sign-in: [Single sign-on](/guide/sso).
 
 ## Settings changes
 

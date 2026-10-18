@@ -9,43 +9,9 @@ description: "Deploy Portway with Docker Compose, from a first container through
 
 - [Docker Engine](https://www.docker.com/get-started) with Compose support
 
-## Quick start
+## Compose file
 
-Minimal `docker-compose.yml`:
-
-```yaml
-services:
-  portway:
-    image: ghcr.io/melosso/portway:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - portway_app:/app
-      - ./environments:/app/environments
-      - ./endpoints:/app/endpoints
-      - ./tokens:/app/tokens
-      - ./log:/app/log
-      - ./data:/app/data
-    environment:
-      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-
-volumes:
-  portway_app:
-```
-
-Start:
-
-```sh
-docker compose pull && docker compose up -d
-```
-
-The API listens on `http://localhost:8080`. Access token and first environment: [Initial configuration](/guide/getting-started#initial-configuration).
-
-## Configuration
-
-### Environment variables
-
-Compose file with the environment variables:
+`docker-compose.yml`:
 
 ```yaml
 services:
@@ -61,9 +27,9 @@ services:
       - ./log:/app/log
       - ./data:/app/data
     environment:
-      - PORTWAY_ENCRYPTION_KEY=YourEncryptionKeyHere
-      - PORTWAY_PUBLIC_ORIGINS=https://example.com,https://api.example.com
-      - PORTWAY_SECURE_COOKIES=false # true behind TLS
+      - PORTWAY_ENCRYPTION_KEY=${PORTWAY_ENCRYPTION_KEY}
+      - PORTWAY_PUBLIC_ORIGINS=https://api.example.com
+      - PORTWAY_SECURE_COOKIES=true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
@@ -71,138 +37,63 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-      
+
 volumes:
   portway_app:
 ```
 
-### Core settings
+`PORTWAY_PUBLIC_ORIGINS` allows console access from external origins. `PORTWAY_SECURE_COOKIES=true` requires TLS in front of the container. Every `PORTWAY_*` variable: [Environment variables](/reference/app-settings#environment-variables).
 
-| Variable | Description | Default Value | Legacy name |
-|----------|-------------|---------------|-------------|
-| `PORTWAY_ENCRYPTION_KEY` | Encryption key for secrets at rest; required outside Development | (none) | — |
-| `PORTWAY_USE_HTTPS` | Kestrel serves HTTPS directly | `false` | `Use_HTTPS` |
-| `PORTWAY_ALLOWED_HOSTS` | Allowed host names | `*` | `AllowedHosts` |
-| `PORTWAY_PATH_BASE` | Base path for the application | (empty) | `PathBase` |
+## Encryption key
 
-Legacy names remain supported with a deprecation warning at startup; the `PORTWAY_*` name takes precedence.
+`PORTWAY_ENCRYPTION_KEY` encrypts secrets in environment settings and is required. The compose file reads it from `.env` next to `docker-compose.yml`:
 
-:::warning
-The setting `PORTWAY_USE_HTTPS=true` requires a certificate for Kestrel (e.g. `Kestrel__Certificates__Default__Path`); without one the container fails to start with `BackgroundService failed / Hosting failed to start`. Behind a TLS-terminating reverse proxy (nginx, Caddy, Cloudflare Tunnel), keep `false`.
-:::
+::: code-group
 
-### Web UI settings
-
-| Variable | Description | Default Value | Legacy name |
-|----------|-------------|---------------|-------------|
-| `PORTWAY_WEBUI_ENABLED` | Serves the console; `false` turns it off | `true` | `WebUi__Enabled` |
-| `PORTWAY_SEED_PASSWORD` | Fixed password for the first account; demo instances only | (none) | `WebUi__SeedPassword` |
-| `PORTWAY_PUBLIC_ORIGINS` | Origins allowed to reach the console from outside the local network, comma-separated | (empty) | `WebUi__PublicOrigins__0`, `__1`, ... |
-| `PORTWAY_SECURE_COOKIES` | HTTPS-only console cookies; set `true` when TLS terminates in front of the container | `false` | `WebUi__SecureCookies` |
-
-Banner and sign-in footer settings are set under **Settings** in the console. [Environment variables](/reference/app-settings#environment-variables) lists every `PORTWAY_*` name. A setting with a set environment variable is read-only in the console.
-
-### Proxy configuration
-
-Credentials for outbound requests through an authenticating (NTLM) corporate proxy:
-
-| Variable | Description | Example | Legacy name |
-|----------|-------------|---------|-------------|
-| `PORTWAY_PROXY_USERNAME` | Proxy username | `serviceaccount` | `PROXY_USERNAME` |
-| `PORTWAY_PROXY_PASSWORD` | Proxy password | `password` | `PROXY_PASSWORD` |
-| `PORTWAY_PROXY_DOMAIN` | Domain for proxy authentication (NTLM) | `YOURDOMAIN` | `PROXY_DOMAIN` |
-
-:::note
-NTLM requires all three variables, including `PORTWAY_PROXY_DOMAIN`.
-:::
-
-```yaml
-    environment:
-      - PORTWAY_PROXY_USERNAME=serviceaccount
-      - PORTWAY_PROXY_PASSWORD=password
-      - PORTWAY_PROXY_DOMAIN=YOURDOMAIN
+```bash [Linux]
+echo "PORTWAY_ENCRYPTION_KEY=$(openssl rand -base64 48)" > .env
 ```
 
-### Azure Key Vault (optional)
-
-| Variable | Description | Legacy name |
-|----------|-------------|-------------|
-| `PORTWAY_KEYVAULT_URI` | Azure Key Vault URI | `KEYVAULT_URI` |
-| `AZURE_CLIENT_ID` | Azure application client ID | — |
-| `AZURE_TENANT_ID` | Azure tenant ID | — |
-| `AZURE_CLIENT_SECRET` | Azure client secret | — |
-
-The `AZURE_*` variables are read by the Azure SDK's `DefaultAzureCredential`.
-
-```yaml
-    environment:
-      - PORTWAY_KEYVAULT_URI=https://your-keyvault-name.vault.azure.net/
-      - AZURE_CLIENT_ID=your-client-id
-      - AZURE_TENANT_ID=your-tenant-id
-      - AZURE_CLIENT_SECRET=your-client-secret
+```powershell [Windows]
+$bytes = New-Object byte[] 48
+[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+"PORTWAY_ENCRYPTION_KEY=$([Convert]::ToBase64String($bytes))" | Out-File .env -Encoding ascii
 ```
+
+:::
+
+## Start
+
+```sh
+docker compose pull && docker compose up -d
+```
+
+The API listens on `http://localhost:8080`. Checks:
+
+- `curl http://localhost:8080/health/live` returns `Alive`
+- `http://localhost:8080/docs` serves the API reference
 
 ## Data persistence
 
 | Data | Location |
 |---|---|
 | `environments/`, `endpoints/`, `tokens/` | Bind mounts, editable on the host |
-| Application and traffic logs (`log/traffic_logs.db`) | `./log` |
-| `auth.db`, `metrics.db`, `mcp.db`, `portway.key` | Application root, in the `portway_app` volume |
-| `appsettings.overrides.json` (settings saved in the console) | Application root, in the `portway_app` volume |
+| Application and traffic logs | `./log` |
+| `auth.db`, `metrics.db`, `mcp.db`, `portway.key` | `portway_app` volume |
+| `appsettings.overrides.json` (settings saved in the console) | `portway_app` volume |
 
-An environment variable overrides the same setting in `appsettings.overrides.json`. The console displays that setting as read-only. Leave a variable unset to manage the setting from the console.
+Endpoint and environment files are reloaded on change. Other configuration changes require `docker compose restart`.
 
-`appsettings.overrides.json` can also be bind-mounted as a single file. Create the file with the content `{}` before the first start. Docker creates a directory for a missing bind-mount source.
+An environment variable overrides the same setting in `appsettings.overrides.json`, and the console displays that setting as read-only. `appsettings.overrides.json` can be bind-mounted as a single file: create it with the content `{}` before the first start, because Docker creates a directory for a missing bind-mount source.
 
-## Customizing the setup
+## TLS
 
-Endpoint and environment files in the mounted directories are reloaded on change. Other configuration changes apply after a restart:
+The container serves plain HTTP. TLS terminates at a reverse proxy (nginx, Traefik, Caddy) or ingress. `PORTWAY_KNOWN_PROXIES` or `PORTWAY_KNOWN_NETWORKS` lists the proxy ([ForwardedHeaders](/reference/app-settings#forwardedheaders)).
 
-```bash
-docker compose restart
-```
+`PORTWAY_USE_HTTPS=true` requires a Kestrel certificate (`Kestrel__Certificates__Default__Path`). Without a certificate, the container fails to start with `Hosting failed to start`.
 
-## Going to production
+## Backups
 
-### Set the encryption key
+Back up the bind mounts and the `portway_app` volume. Portway writes a daily snapshot of its databases and configuration to `.backups/snapshots/` ([DatabaseMaintenance](/reference/app-settings#databasemaintenance)).
 
-The `PORTWAY_ENCRYPTION_KEY` value encrypts secrets in environment settings. Keep it out of the compose file, e.g. in a `.env` file or a secrets manager:
-
-::: code-group
-
-```bash [Linux]
-openssl rand -base64 48
-```
-
-```powershell [Windows]
-$bytes = New-Object byte[] 48
-[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-[Convert]::ToBase64String($bytes)
-```
-
-:::
-
-### Terminate TLS in front of the container
-
-The container serves plain HTTP. TLS terminates at a reverse proxy (nginx, Traefik, Caddy) or ingress.
-
-### Backups
-
-Back up the bind mounts and the `portway_app` volume ([Data persistence](#data-persistence)). Portway also writes a daily snapshot of its databases and configuration to `.backups/snapshots/` ([DatabaseMaintenance](/reference/app-settings#databasemaintenance)).
-
-## Other installation methods
-
-::: cards 2
-- [Deploying on Linux](/guide/deployment-linux)
-  `.deb` or `.rpm` package, or release archive, as a systemd service.
-- [Deploying on Windows Server](/guide/deployment-windows)
-  IIS website with HTTPS and a dedicated Application Pool.
-:::
-
-## Next steps
-
-- [Configure Environments](/guide/environments)
-- [Configure Endpoints](/guide/endpoints-sql)
-- [Security](/guide/security)
-- [Health and Logs](/guide/monitoring)
+Next: [Record the access token](/guide/getting-started#2-record-the-access-token).

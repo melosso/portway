@@ -5,7 +5,7 @@ description: "Each subfolder under endpoints/ corresponds to an endpoint type"
 
 # Folders and Routes
 
-At its core, Portway will derive paths and routes based on files saved in the `endpoints/` folder tree. The first level is the endpoint type, the folder names below it form the namespace, endpoint name, and its [version](/guide/endpoint-versions/). `Namespace` in `entity.json` overrides the folder [namespace](/reference/namespaces).
+Routes are derived from the `endpoints/` folder tree. The first level is the endpoint type. The folder names below it form the namespace, the endpoint name and the [version](/guide/endpoint-versions). `Namespace` in `entity.json` overrides the folder [namespace](/reference/namespaces).
 
 ## Directory layout
 
@@ -63,26 +63,7 @@ Segments in square brackets are optional; a namespace folder adds its name to th
 
 ## Folder permissions
 
-Write access for the service account on the deployment directory:
-
-::: code-group
-
-```bash [Linux]
-sudo chown -R portway:portway /opt/portway
-sudo chmod -R u+rwX,go-rwx /opt/portway
-```
-
-```powershell [Windows]
-# ApplicationPoolIdentity
-icacls "C:\Apps\Portway" /grant "IIS AppPool\PortwayAppPool:(OI)(CI)M" /T /C
-
-# Custom service account
-icacls "C:\Apps\Portway" /grant "DOMAIN\SVC_PORTWAY:(OI)(CI)M" /T /C
-```
-
-:::
-
-Docker containers run as the image user; bind-mounted folders need write access for that user.
+The service account requires write access to the deployment directory. The Linux package sets ownership to the `portway` user. IIS commands: [Deploying on Windows Server](/guide/deployment-windows#3-configure-iis). Docker containers run as the image user: bind-mounted folders require write access for that user.
 
 | Folder | Minimum permission | Reason |
 |---|---|---|
@@ -91,14 +72,3 @@ Docker containers run as the image user; bind-mounted folders need write access 
 | `environments/` | Read/Write | Configuration; console edits and secret encryption |
 | `endpoints/` | Read/Write | Configuration; console edits |
 | Root | Read/Write | `auth.db`, `mcp.db`, `metrics.db`, `portway.key` |
-
-:::warning
-Directory browsing must be disabled in `web.config`.
-:::
-
-## Next steps
-
-- [Environments](/guide/environments)
-- [SQL Endpoints](/guide/endpoints-sql)
-- [Proxy Endpoints](/guide/endpoints-proxy)
-- [HTTP Methods](/reference/http-methods)

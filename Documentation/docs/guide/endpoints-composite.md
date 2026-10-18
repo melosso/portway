@@ -129,42 +129,6 @@ Failure response:
 
 The response status is the failing step's status. `details` contains the step's upstream error body; a non-JSON body is truncated to 200 characters. `completedSteps` lists the steps completed before the failure.
 
-## Example: multi-service operation
-
-```json
-{
-  "Type": "Composite",
-  "Url": "http://erp-service/api",
-  "Methods": ["POST"],
-  "CompositeConfig": {
-    "Name": "ProcessOrder",
-    "Steps": [
-      {
-        "Name": "ValidateCustomer",
-        "Endpoint": "CustomerService",
-        "Method": "POST",
-        "SourceProperty": "Customer"
-      },
-      {
-        "Name": "CheckInventory",
-        "Endpoint": "InventoryService",
-        "Method": "POST",
-        "SourceProperty": "Items"
-      },
-      {
-        "Name": "CreateOrder",
-        "Endpoint": "OrderService",
-        "Method": "POST",
-        "TemplateTransformations": {
-          "CustomerId": "$prev.ValidateCustomer.id",
-          "AvailableItems": "$prev.CheckInventory.available"
-        }
-      }
-    ]
-  }
-}
-```
-
 ## Troubleshooting
 
 | Symptom | Resolution |
@@ -173,22 +137,6 @@ The response status is the failing step's status. `details` contains the step's 
 | Transformation resolves to `null` | Check the `$prev.StepName.property` path and array indices against the referenced step's response. |
 | Timeouts | Execution time is the sum of all steps. Test slow steps individually. |
 
-Debug logging:
-
-```json
-{
-  "Serilog": {
-    "MinimumLevel": {
-      "Default": "Debug"
-    }
-  }
-}
-```
+Debug logging: [Log levels](/guide/monitoring#log-levels).
 
 Each step logs its name, target URL and method at `Debug`.
-
-## Next steps
-
-- [Proxy Endpoints](/guide/endpoints-proxy)
-- [Environments](/guide/environments)
-- [Security](/guide/security)

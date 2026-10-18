@@ -405,12 +405,20 @@
         ]
       },
       {
-        "title": "Deployment",
+        "title": "Installation",
         "collapsed": false,
         "items": [
           {
-            "title": "Overview",
-            "path": "guide/deployment"
+            "title": "Docker",
+            "path": "guide/deployment-docker"
+          },
+          {
+            "title": "Linux",
+            "path": "guide/deployment-linux"
+          },
+          {
+            "title": "Windows Server",
+            "path": "guide/deployment-windows"
           },
           {
             "title": "Instances",
@@ -435,12 +443,12 @@
             "path": "guide/endpoints-proxy"
           },
           {
-            "title": "Static",
-            "path": "guide/endpoints-static"
-          },
-          {
             "title": "Composite",
             "path": "guide/endpoints-composite"
+          },
+          {
+            "title": "Static",
+            "path": "guide/endpoints-static"
           },
           {
             "title": "Files",

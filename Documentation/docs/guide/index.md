@@ -1,41 +1,41 @@
 ---
-title: Guide
-description: "Portway concepts: endpoint types, environments, security and configuration files"
-outline: [2, 3]
-keywords: [API Gateway, Docker, Windows, SQL Server, REST, OData]
+title: What is Portway?
+description: "Portway is a self-hosted API gateway that exposes databases, internal services and files through one authenticated REST and MCP interface"
+keywords: [API Gateway, Docker, Windows, SQL Server, REST, OData, MCP]
 ---
 
 # What is Portway?
 
-Portway is an API gateway that exposes SQL databases, internal HTTP services, static content, files and inbound webhooks through one authenticated REST interface, configured with JSON files.
+Portway is a self-hosted API gateway for databases, internal web services and file storage. Each endpoint exposes one table, view, stored procedure or internal service, and includes a URL, OData queries, generated OpenAPI documentation and an optional MCP tool for AI agents. Endpoints are defined in configuration files and require no application code, build or deployment.
 
-## Concepts
+## Use cases
 
-### Security
+Portway is installed on the internal network, next to the ERP database or internal services. Partners, applications and AI agents call the Portway API. The database and internal services require no access from external networks. Common deployments:
 
-API requests require a Bearer token, restricted to endpoints, environments and optionally tenant values. Details: [Security](/guide/security).
+- **Share ERP data with a partner or webshop.** Stock levels, prices or order status from Exact, AFAS, SAP Business One or Business Central. The partner's access token is limited to those endpoints.
+- **Feed reports and scripts.** BI tools, spreadsheets and scripts read views from the API. Filtering, sorting and paging are executed in the database.
+- **Publish an internal service.** Portway forwards requests to a REST or SOAP service on the private network, with authentication and rate limiting.
+- **Receive webhooks.** Payment, shipping and e-commerce platforms send events to Portway. Each payload is stored in a SQL table.
+- **Exchange documents.** Clients upload and download invoices, exports and images in a folder per client.
+- **Give AI assistants controlled access.** Claude, Copilot and other MCP clients call selected endpoints. Each call is limited by the user's access token.
 
-### Environment awareness
+## Building blocks
 
-The environment segment in `/api/{environment}/{endpoint}` selects the connection string, headers and access rules of that environment. Details: [Environments](/guide/environments).
+Every Portway installation is configured with the same three parts. Each part has its own section in this guide.
 
-### Endpoint types
+- **[Environments](/guide/environments)**: the target systems, e.g. `test` and `prod`, each with its own database connection. One endpoint definition serves every environment.
+- **[Endpoints](/guide/endpoints-sql)**: the exposed resources, one folder per endpoint: a database object, an internal service, static content, a file store or a webhook.
+- **[Access tokens](/guide/tokens)**: one per client, limited to endpoints, environments and, for multi-company data, companies.
 
-| Type | Behavior |
-|---|---|
-| SQL | Tables, views, stored procedures and table-valued functions on SQL Server, PostgreSQL, MySQL/MariaDB and SQLite, with OData queries |
-| Proxy | Forwards requests to internal HTTP/HTTPS services with URL rewriting |
-| Composite | Calls several proxy endpoints in sequence |
-| File | File upload, download, delete and listing |
-| Webhook | Stores POST payloads in a SQL table |
-| Static | Serves JSON, XML or CSV content with optional OData queries |
+## Get started
 
-### Configuration and reloading
+The [live demo](https://portway-demo.melosso.com/){target="_blank" rel="noopener"} contains example SQL and proxy endpoints. Installation and the first endpoint:
 
-Endpoints and environments are JSON files on disk. Changes are reloaded without a restart, and the OpenAPI document at `/docs` follows them.
-
-## Next steps
-
-- [Getting Started](/guide/getting-started)
-- [Deployment](/guide/deployment)
-- [Security](/guide/security)
+::: cards 3
+- [Get started](/guide/getting-started)
+  Install Portway and make the first authenticated API call.
+- [Your first endpoint](/guide/endpoints-sql)
+  Publish a table, view or stored procedure with OData queries.
+- [Access tokens](/guide/tokens)
+  Scope tokens to endpoints, environments and tenants.
+:::

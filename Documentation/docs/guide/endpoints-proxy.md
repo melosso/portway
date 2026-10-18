@@ -7,10 +7,6 @@ description: "Forward requests to internal HTTP/HTTPS services through a consist
 
 Proxy endpoints forward requests to an internal service and return its responses. Portway adds token authentication, environment headers and URL rewriting.
 
-:::details Note on pass-through authentication
-For backends that require NTLM authentication (e.g. Exact Globe+, Exact Synergy), run the IIS Application Pool under a domain user with the required permissions.
-:::
-
 ## Configuration
 
 Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
@@ -23,17 +19,9 @@ Each endpoint is defined in `endpoints/Proxy/{EndpointName}/entity.json`:
 }
 ```
 
-### Configuration properties
+The target host must be listed in `allowedHosts` of `environments/network-access-policy.json` ([Network access policy](/guide/environments#network-access-policy)). Backends with NTLM authentication (e.g. Exact Globe+, Exact Synergy) require a domain service account ([Deploying on Windows Server](/guide/deployment-windows#3-configure-iis)).
 
-| Property | Required | Type | Description |
-|---|---|---|---|
-| `Url` | Yes | string | Target URL |
-| `Methods` | Yes | array | Allowed HTTP methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH` |
-| `Hidden` | No | boolean | Excludes the endpoint from the OpenAPI document; requests are still served (default `false`) |
-| `AllowedEnvironments` | No | array | Environments the endpoint serves |
-| `Tenancy` | No | object | Tenant header to upstream header; see [Tenant headers](/guide/tenant-headers) |
-
-All properties: [Entity configuration](/reference/entity-config#proxy).
+Fallback URLs, retries, response transforms, delete patterns and method translation: [Entity configuration](/reference/entity-config#proxy).
 
 ## Request forwarding
 
@@ -106,20 +94,5 @@ GET responses are cached for `Caching:DefaultCacheDurationSeconds` (default `300
 | "Connection refused" | Check that the target service is reachable from the Portway host (port, firewall). |
 | "Method not allowed" | Add the method to `Methods`. |
 | Internal hostnames in responses | The internal service returns absolute URLs outside the rewritten link format. |
-| Slow responses | Enable request traffic logging (below) and compare durations. |
-
-```json
-{
-  "RequestTrafficLogging": {
-    "Enabled": true,
-    "IncludeRequestBodies": true,
-    "IncludeResponseBodies": true
-  }
-}
-```
-
-## Next steps
-
-- [Composite Endpoints](/guide/endpoints-composite)
-- [Environments](/guide/environments)
-- [Security](/guide/security)
+| Slow responses | Enable [traffic logging](/guide/monitoring#request-traffic-logging) and compare durations. |
+| Host not allowed | Add the host to `allowedHosts` in `network-access-policy.json`. |

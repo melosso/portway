@@ -101,10 +101,3 @@ Console views under **MCP**:
 
 - **Explorer** (`/ui/mcp/explorer`): registered tools by namespace, with methods and endpoint links; requires only `Mcp:Enabled: true`
 - **Chat** (`/ui/mcp/chat`): an AI model calling Portway tools; requires [Chat configuration](/guide/mcp-chat)
-
-## Next steps
-
-- [MCP Chat](/guide/mcp-chat)
-- [Access Tokens](/guide/tokens)
-- [Namespaces](/reference/namespaces)
-- [Entity configuration](/reference/entity-config): full `entity.json` reference including `Exposed`

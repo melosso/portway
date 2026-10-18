@@ -7,8 +7,8 @@ description: "Run multiple Portway versions side by side behind Nginx, Caddy or 
 
 Multiple Portway versions run side by side as separate instances, each under its own path (e.g. `/v1`, `/v2`, `/dev`). A reverse proxy routes each path to its instance and redirects the root URL to the default version. 
 
-::: Note
-Do not confuse this with versioning individual endpoints inside a single instance. Learn more about single-instance versioning in [Endpoint Versions](/guide/endpoint-versions).
+::: note
+Instances version the whole gateway. Versions of a single endpoint inside one instance: [Endpoint Versions](/guide/endpoint-versions).
 :::
 
 ```mermaid
@@ -21,7 +21,6 @@ graph TD
     V2 --> DB2[(Production)]
     Dev --> DBDev[(Development)]
 ```
-<br>
 
 Each instance has:
 
@@ -139,11 +138,3 @@ Each version's `appsettings.json` sets `PathBase` to its folder name, e.g. for `
 ### 4. Application pools
 
 Each version needs its own application pool (e.g. `PortwayApi_v1`, `PortwayApi_v2`).
-
-## Related topics
-
-- [Deployment](/guide/deployment)
-- [Deploying with Docker](/guide/deployment-docker)
-- [Deploying on Linux](/guide/deployment-linux)
-- [Deploying on Windows Server](/guide/deployment-windows)
-- [Upgrading](/guide/upgrading)

@@ -106,8 +106,4 @@ After the sunset date, set `"Enabled": false` in the `v1` file. `v1` requests re
 
 The next breaking change follows the same steps with a `v3/` folder.
 
-## Related topics
-
-- [Versions reference](/reference/namespaces#versions): every rule for version folders, routes, scopes and headers
-- [Access tokens](/guide/tokens)
-- [Instances](/guide/instances): separate Portway instances per path, e.g. `/v1` and `/v2`
+Every rule for version folders, routes, scopes and headers: [Versions](/reference/namespaces#versions). Separate Portway instances per path, e.g. `/v1` and `/v2`: [Instances](/guide/instances).
