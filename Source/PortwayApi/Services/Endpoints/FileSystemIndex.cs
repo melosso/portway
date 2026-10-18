@@ -184,6 +184,6 @@ public class FileSystemIndex
             await GetDirectoryIndexAsync(environment, forceRefresh: true);
         }
 
-        _logger.Information("Refreshed all file indices");
+        _logger.Debug("Refreshed all file indices");
     }
 }
