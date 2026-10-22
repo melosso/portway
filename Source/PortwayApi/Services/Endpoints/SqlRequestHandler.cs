@@ -363,8 +363,7 @@ public sealed partial class SqlRequestHandler
 
             if (cacheEnabled)
             {
-                // Create cache key based on query parameters
-                cacheKey = $"sql:{env}:{endpointName}:{query.GetHashCode()}:{string.Join(",", parameters?.Select(p => $"{p.Key}={p.Value}") ?? new string[0])}:count={countRequested}";
+                cacheKey = BuildCacheKey(env, endpointName, query, parameters, countRequested);
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
 
                 if (cachedResponse != null)
@@ -492,6 +491,13 @@ public sealed partial class SqlRequestHandler
                 endpointName, ex.GetType().Name);
             return PortwayResults.ServerError(context, "Error processing. Please check the logs for more details.");
         }
+    }
+
+    // json keeps query and parameter values unambiguous and the hash is stable across instances
+    internal static string BuildCacheKey(string env, string endpointName, string query, IReadOnlyDictionary<string, object>? parameters, bool countRequested)
+    {
+        var material = JsonSerializer.SerializeToUtf8Bytes(new object?[] { query, parameters, countRequested });
+        return $"sql:{env}:{endpointName}:{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(material))}";
     }
 
     // Masked reference for any provider's database error; full detail stays in the log
