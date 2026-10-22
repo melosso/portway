@@ -30,7 +30,7 @@ public static class HealthCheckEndpointExtensions
             context.Response.Headers.Append("Expires", DateTime.UtcNow.AddSeconds(15).ToString("R"));
 
             context.Response.ContentType = "application/json";
-            context.Response.StatusCode = report.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
+            context.Response.StatusCode = IsServing(report)
                 ? StatusCodes.Status200OK
                 : StatusCodes.Status503ServiceUnavailable;
 
@@ -100,4 +100,11 @@ public static class HealthCheckEndpointExtensions
 
         return app;
     }
+
+    /// <summary>
+    /// Whether the instance accepts traffic. A degraded cache entry counts as serving.
+    /// </summary>
+    internal static bool IsServing(Microsoft.Extensions.Diagnostics.HealthChecks.HealthReport report) =>
+        report.Entries.Values.All(e => e.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
+            || (e.Status == Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded && e.Tags.Contains("cache")));
 }

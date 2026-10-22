@@ -1,98 +1,48 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using StackExchange.Redis;
+using PortwayApi.Services.Caching;
 using Serilog;
 
 namespace PortwayApi.Services.Health;
 
 /// <summary>
-/// Health check for Redis cache
+/// Health check for the Redis cache connection used by <see cref="RedisCacheProvider"/>
 /// </summary>
-public sealed class RedisCacheHealthCheck : IHealthCheck, IDisposable
+public sealed class RedisCacheHealthCheck(RedisCacheProvider cache, IOptions<CacheOptions> options) : IHealthCheck
 {
-    private readonly Caching.CacheOptions _options;
-    private readonly ConnectionMultiplexer? _redis;
-    private static readonly string HealthCheckKey = "health:check:key";
+    // per instance key so concurrent probes from other instances cannot overwrite it
+    private readonly string _probeKey = $"health:check:{Guid.NewGuid():N}";
 
-    public RedisCacheHealthCheck(IOptions<Caching.CacheOptions> options)
-    {
-        _options = options.Value;
-
-        // Only try to connect if Redis is configured
-        if (_options.ProviderType == Caching.CacheProviderType.Redis)
-        {
-            try
-            {
-                var configOptions = ConfigurationOptions.Parse(_options.Redis.ConnectionString);
-                configOptions.AbortOnConnectFail = false;
-                configOptions.ConnectTimeout = 2000; // 2 seconds timeout for health check
-                configOptions.SyncTimeout = 2000;
-                configOptions.Ssl = _options.Redis.UseSsl;
-
-                _redis = ConnectionMultiplexer.Connect(configOptions);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Failed to initialize Redis connection for health check");
-            }
-        }
-    }
+    // the memory fallback keeps serving while redis is down
+    private readonly HealthStatus _failureStatus = options.Value.Redis.FallbackToMemoryCache
+        ? HealthStatus.Degraded
+        : HealthStatus.Unhealthy;
 
     /// <summary>
     /// Performs the health check
     /// </summary>
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
-        // If Redis is not configured, return healthy
-        if (_options.ProviderType != Caching.CacheProviderType.Redis)
+        if (!cache.IsConnected)
         {
-            return HealthCheckResult.Healthy("Redis caching is not enabled");
+            return new HealthCheckResult(_failureStatus, "Redis connection is not established");
         }
 
         try
         {
-            if (_redis == null || !_redis.IsConnected)
-            {
-                return HealthCheckResult.Unhealthy("Redis connection is not established");
-            }
+            var latency = await cache.ProbeAsync(_probeKey).WaitAsync(cancellationToken);
 
-            // Get a database instance
-            var db = _redis.GetDatabase();
-
-            // Test basic operations
-            var testValue = $"health-check-{DateTime.UtcNow:yyyy-MM-dd-HH-mm-ss}";
-
-            // Set a value
-            if (!await db.StringSetAsync(
-                $"{_options.Redis.InstanceName}{HealthCheckKey}",
-                testValue,
-                TimeSpan.FromSeconds(30)))
-            {
-                return HealthCheckResult.Degraded("Failed to set a value in Redis");
-            }
-
-            // Get the value back
-            var retrievedValue = await db.StringGetAsync($"{_options.Redis.InstanceName}{HealthCheckKey}");
-
-            if (!retrievedValue.HasValue || retrievedValue.ToString() != testValue)
-            {
-                return HealthCheckResult.Degraded("Redis set/get operations not working correctly");
-            }
-
-            // info requires allowadmin in stackexchange redis
-            var latency = await db.PingAsync();
-
-            return HealthCheckResult.Healthy("Redis is operational", new Dictionary<string, object>
-            {
-                ["latency_ms"] = Math.Round(latency.TotalMilliseconds, 2)
-            });
+            return latency is { } roundTrip
+                ? HealthCheckResult.Healthy("Redis is operational", new Dictionary<string, object>
+                {
+                    ["latency_ms"] = Math.Round(roundTrip.TotalMilliseconds, 2)
+                })
+                : new HealthCheckResult(_failureStatus, "Redis set/get operations not working correctly");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Error(ex, "Redis health check failed");
-            return HealthCheckResult.Unhealthy("Redis health check failed", ex);
+            return new HealthCheckResult(_failureStatus, "Redis health check failed", ex);
         }
     }
-
-    public void Dispose() => _redis?.Dispose();
 }

@@ -45,7 +45,7 @@ public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
             options.AbortOnConnectFail = false;
             _redis = ConnectionMultiplexer.Connect(options);
             _db = _redis.GetDatabase();
-            Log.Information("Rate limiter using Redis store at {ConnectionString}", connectionString);
+            Log.Information("Rate limiter using Redis store at {ConnectionString}", options.ToString(includePassword: false));
         }
         catch (Exception ex)
         {

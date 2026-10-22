@@ -28,13 +28,12 @@ public static class CachingServiceExtensions
         // Add Redis if configured
         if (cacheOptions.ProviderType == CacheProviderType.Redis)
         {
-            Log.Information("Configuring Redis cache provider with connection to {ConnectionString}",
-                cacheOptions.Redis.ConnectionString);
+            Log.Debug("Configuring Redis cache provider");
 
             // Add StackExchange.Redis ConnectionMultiplexer
             services.AddSingleton<RedisCacheProvider>();
 
-            // singleton keeps one redis connection for every health probe
+            // singleton keeps one probe key per instance
             services.AddSingleton<RedisCacheHealthCheck>();
             services.AddHealthChecks()
                 .AddCheck<RedisCacheHealthCheck>(
