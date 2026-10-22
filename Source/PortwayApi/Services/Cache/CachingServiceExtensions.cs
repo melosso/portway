@@ -34,7 +34,8 @@ public static class CachingServiceExtensions
             // Add StackExchange.Redis ConnectionMultiplexer
             services.AddSingleton<RedisCacheProvider>();
 
-            // Add Redis health check
+            // singleton keeps one redis connection for every health probe
+            services.AddSingleton<RedisCacheHealthCheck>();
             services.AddHealthChecks()
                 .AddCheck<RedisCacheHealthCheck>(
                     "redis_cache",

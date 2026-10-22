@@ -17,6 +17,7 @@
     <PackageReference Include="Testcontainers.MsSql" />
     <PackageReference Include="Testcontainers.MySql" />
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
     <PackageReference Include="coverlet.collector">

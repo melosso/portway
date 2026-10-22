@@ -8,7 +8,7 @@ namespace PortwayApi.Services.Health;
 /// <summary>
 /// Health check for Redis cache
 /// </summary>
-public class RedisCacheHealthCheck : IHealthCheck
+public sealed class RedisCacheHealthCheck : IHealthCheck, IDisposable
 {
     private readonly Caching.CacheOptions _options;
     private readonly ConnectionMultiplexer? _redis;
@@ -79,56 +79,13 @@ public class RedisCacheHealthCheck : IHealthCheck
                 return HealthCheckResult.Degraded("Redis set/get operations not working correctly");
             }
 
-            // Get Redis info for reporting
-            var endPoints = _redis.GetEndPoints();
-            var serverInfo = new Dictionary<string, object>();
+            // info requires allowadmin in stackexchange redis
+            var latency = await db.PingAsync();
 
-            foreach (var endpoint in endPoints)
+            return HealthCheckResult.Healthy("Redis is operational", new Dictionary<string, object>
             {
-                var server = _redis.GetServer(endpoint);
-                if (server.IsConnected)
-                {
-                    // Gather info about the server
-                    var info = await server.InfoAsync("server");
-                    var memory = await server.InfoAsync("memory");
-                    var clients = await server.InfoAsync("clients");
-
-                    // Extract key metrics
-                    var serverData = new Dictionary<string, string>();
-
-                    // Flatten groupings and add key-value pairs
-                    foreach (var grouping in info)
-                    {
-                        foreach (var pair in grouping)
-                        {
-                            serverData[pair.Key] = pair.Value;
-                        }
-                    }
-                    foreach (var grouping in memory)
-                    {
-                        foreach (var pair in grouping)
-                        {
-                            serverData[pair.Key] = pair.Value;
-                        }
-                    }
-                    foreach (var grouping in clients)
-                    {
-                        foreach (var pair in grouping)
-                        {
-                            serverData[pair.Key] = pair.Value;
-                        }
-                    }
-
-                    serverInfo[endpoint?.ToString() ?? "unknown"] = serverData;
-                }
-                else
-                {
-                    serverInfo[endpoint?.ToString() ?? "unknown"] = "Not connected";
-                }
-            }
-
-            // Return healthy with server info
-            return HealthCheckResult.Healthy("Redis is operational", serverInfo);
+                ["latency_ms"] = Math.Round(latency.TotalMilliseconds, 2)
+            });
         }
         catch (Exception ex)
         {
@@ -136,4 +93,6 @@ public class RedisCacheHealthCheck : IHealthCheck
             return HealthCheckResult.Unhealthy("Redis health check failed", ex);
         }
     }
+
+    public void Dispose() => _redis?.Dispose();
 }
