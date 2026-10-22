@@ -52,11 +52,11 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             _redis.ConnectionRestored += OnConnectionRestored;
 
             Log.Information("Successfully connected to Redis at {ConnectionString}, database: {Database}",
-                _redisOptions.ConnectionString, _redisOptions.Database);
+                configOptions.ToString(includePassword: false), _redisOptions.Database);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to connect to Redis at {ConnectionString}", _redisOptions.ConnectionString);
+            Log.Error(ex, "Failed to connect to Redis");
             _isConnected = false;
 
             if (!_redisOptions.FallbackToMemoryCache)
@@ -543,6 +543,23 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
         {
             _connectionLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Writes, reads back and pings a probe key on the configured database. Returns null when the value does not round-trip.
+    /// </summary>
+    internal async Task<TimeSpan?> ProbeAsync(string key)
+    {
+        var redisKey = GetFormattedKey(key);
+        var value = Guid.NewGuid().ToString("N");
+
+        await _db!.StringSetAsync(redisKey, value, TimeSpan.FromSeconds(30));
+        if (await _db.StringGetAsync(redisKey) != value)
+        {
+            return null;
+        }
+
+        return await _db.PingAsync();
     }
 
     /// <summary>

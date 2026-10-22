@@ -121,7 +121,7 @@ With `FallbackToMemoryCache: true`, an unavailable Redis switches caching to mem
 
 ## Cache statistics
 
-The detailed health check (`GET /health/details`) includes item count, hit and miss ratio, memory usage and Redis connection status.
+The detailed health check (`GET /health/details`) includes the Redis connection status and `PING` round trip (`latency_ms`) in the `redis_cache` check ([Health checks](/reference/health-checks#redis-cache-check)).
 
 ## Troubleshooting
 

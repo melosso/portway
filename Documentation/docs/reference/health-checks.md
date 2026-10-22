@@ -32,6 +32,8 @@ GET /health
 | `Degraded` | At least one check degraded |
 | `Unhealthy` | At least one check failed |
 
+HTTP status: `200` if every check is `Healthy` or every non-healthy check is a `Degraded` cache check (`redis_cache`). Other results return `503`.
+
 ### Liveness check
 
 ```http
@@ -124,6 +126,16 @@ Free disk space:
 ### Proxy endpoints check
 
 Upstream reachability of proxy endpoints. All public proxy endpoints with GET are checked in parallel, with a 10-second timeout per endpoint. An upstream `401` counts as reachable.
+
+### Redis cache check
+
+Registered as `redis_cache` with `Caching:ProviderType: Redis`. Writes and reads a per-instance probe key on the configured database (`Caching:Redis:Database`), then sends `PING`. `data.latency_ms` contains the `PING` round trip. The check requires no Redis admin mode.
+
+| Result | Status |
+|---|---|
+| Probe succeeds | `Healthy` |
+| Probe fails, `FallbackToMemoryCache: true` | `Degraded` |
+| Probe fails, `FallbackToMemoryCache: false` | `Unhealthy` |
 
 ## Response headers
 
