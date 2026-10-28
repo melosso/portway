@@ -28,7 +28,7 @@
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core">
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0-rc.2.26504.105" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.2.26504.105" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.3.26522.148" />
   </ItemGroup>
   <ItemGroup Label="Authentication">
     <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.23.0" />
