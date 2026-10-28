@@ -27,7 +27,7 @@
     <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
   </ItemGroup>
   <ItemGroup Label="ASP.NET Core">
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0-rc.2.26504.105" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0-rc.3.26522.148" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="11.0.0-rc.2.26504.105" />
   </ItemGroup>
   <ItemGroup Label="Authentication">
