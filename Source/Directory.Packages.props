@@ -42,7 +42,7 @@
   </ItemGroup>
   <ItemGroup Label="Databases">
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.1" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0-rc.2.26504.105" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="11.0.0-rc.3.26522.148" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <PackageVersion Include="MySqlConnector" Version="2.6.2" />
     <PackageVersion Include="Dapper" Version="2.1.89" />
