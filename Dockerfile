@@ -4,7 +4,7 @@
 # Stage 1: Build the application
 # pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
 # Build on the runner arch; the publish output is RID-agnostic
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.2 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.3 AS build
 WORKDIR /src
 
 # Copy only project files first to leverage Docker layer caching for dependencies
@@ -30,7 +30,7 @@ RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
 
 # Stage 2: Runtime image
 # pinned to .NET 11 RC1; switch to 11.0 / 11.0-noble at GA
-FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.2 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.3 AS final
 WORKDIR /app
 
 # Install SQLite and curl for healthchecks

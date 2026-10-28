@@ -1,6 +1,6 @@
 namespace PortwayApi.Tests.Parity;
 
-using System.Diagnostics;
+using DotNet.Testcontainers.Configurations;
 using System.Runtime.CompilerServices;
 using Xunit;
 
@@ -21,17 +21,12 @@ public static class DockerProbe
 {
     public static bool IsAvailable { get; } = Probe();
 
+    // testcontainers discovery pings the endpoint and honours DOCKER_HOST, so podman works without a docker cli
     private static bool Probe()
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo("docker", "info")
-            {
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false
-            });
-            return process != null && process.WaitForExit(5000) && process.ExitCode == 0;
+            return TestcontainersSettings.OS.DockerEndpointAuthConfig != null;
         }
         catch
         {
