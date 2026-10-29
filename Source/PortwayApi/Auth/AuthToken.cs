@@ -12,6 +12,11 @@ public class AuthToken
     public required string Username { get; set; } = $"user_{Guid.NewGuid().ToString("N").Substring(0, 8)}";
     public required string TokenHash { get; set; } = string.Empty;
     public required string TokenSalt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// SHA-256 hex of the token for indexed lookup; null on tokens created before it existed until their first use
+    /// </summary>
+    public string? TokenLookup { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ExpiresAt { get; set; } = null;
     public DateTime? RevokedAt { get; set; } = null;

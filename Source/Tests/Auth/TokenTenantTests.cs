@@ -99,6 +99,8 @@ public sealed class TokenTenantTests : IAsyncLifetime
             var legacy = db.Tokens.AsNoTracking().Single();
             Assert.Equal(TenantGrants.Empty, legacy.AllowedTenants);
             Assert.Empty(legacy.Tenants);
+            Assert.Null(legacy.TokenLookup);
+            Assert.Equal(1, db.Database.GetDbConnection().ExecuteScalar<int>("SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='IX_AuthTokens_TokenLookup'"));
         }
         finally
         {

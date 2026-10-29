@@ -102,6 +102,7 @@ public class AuthDbContext : DbContext
             ("RateLimitWindowSeconds", "ALTER TABLE Tokens ADD COLUMN RateLimitWindowSeconds INTEGER NULL"),
             ("AllowedTenants", "ALTER TABLE Tokens ADD COLUMN AllowedTenants TEXT NOT NULL DEFAULT '{}'"),
             ("LastUsedAt", "ALTER TABLE Tokens ADD COLUMN LastUsedAt DATETIME NULL"),
+            ("TokenLookup", "ALTER TABLE Tokens ADD COLUMN TokenLookup TEXT NULL"),
         };
 
         foreach (var (column, alterSql) in migrations)
@@ -121,6 +122,15 @@ public class AuthDbContext : DbContext
             {
                 Log.Error(ex, "Error ensuring {Column} column exists", column);
             }
+        }
+
+        try
+        {
+            OpenConnection().Execute("CREATE INDEX IF NOT EXISTS IX_AuthTokens_TokenLookup ON Tokens (TokenLookup)");
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Could not create IX_AuthTokens_TokenLookup index");
         }
     }
 
@@ -166,12 +176,14 @@ public class AuthDbContext : DbContext
                     RateLimitRequests INTEGER NULL,
                     RateLimitWindowSeconds INTEGER NULL,
                     AllowedTenants TEXT NOT NULL DEFAULT '{}',
-                    LastUsedAt DATETIME NULL
+                    LastUsedAt DATETIME NULL,
+                    TokenLookup TEXT NULL
                 )");
 
             OpenConnection().Execute(@"
                 CREATE INDEX IF NOT EXISTS IX_AuthTokens_ActiveFilter
                     ON Tokens (RevokedAt, ExpiresAt)");
+            OpenConnection().Execute("CREATE INDEX IF NOT EXISTS IX_AuthTokens_TokenLookup ON Tokens (TokenLookup)");
 
             Log.Debug("Created new Tokens table");
         }
@@ -341,6 +353,8 @@ public class AuthDbContext : DbContext
             entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
             entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(500);
             entity.Property(e => e.TokenSalt).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.TokenLookup).IsRequired(false).HasMaxLength(64);
+            entity.HasIndex(e => e.TokenLookup).HasDatabaseName("IX_AuthTokens_TokenLookup");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.RevokedAt).IsRequired(false);
             entity.Property(e => e.ExpiresAt).IsRequired(false);

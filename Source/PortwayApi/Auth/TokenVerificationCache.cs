@@ -35,9 +35,14 @@ public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificat
     public long Generation => Interlocked.Read(ref _generation);
 
     /// <summary>
-    /// Builds a stable, fixed-length cache key from the raw bearer token using SHA-256. The raw token is never stored; only its hash is used as the key. Uses a stack buffer for tokens ≤256 UTF-8 bytes, ArrayPool otherwise
+    /// Builds a stable, fixed-length cache key from the raw bearer token. The raw token is never stored; only its hash is used as the key
     /// </summary>
-    public static string BuildKey(string rawToken)
+    public static string BuildKey(string rawToken) => $"ptok:{HashToken(rawToken)}";
+
+    /// <summary>
+    /// SHA-256 of the raw token as upper-case hex, stored as AuthToken.TokenLookup. Uses a stack buffer for tokens ≤256 UTF-8 bytes, ArrayPool otherwise
+    /// </summary>
+    public static string HashToken(string rawToken)
     {
         const int StackLimit = 256;
         var enc = Encoding.UTF8;
@@ -53,7 +58,7 @@ public sealed class TokenVerificationCache(IMemoryCache cache) : ITokenVerificat
         {
             var written = enc.GetBytes(rawToken.AsSpan(), tokenBuf);
             SHA256.HashData(tokenBuf[..written], hash);
-            return $"ptok:{Convert.ToHexString(hash)}";
+            return Convert.ToHexString(hash);
         }
         finally
         {

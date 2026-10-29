@@ -53,11 +53,9 @@ public class TokenService
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         string token = RandomNumberGenerator.GetString(chars, 128);
 
-        // Generate salt for hashing
-        byte[] salt = GenerateSalt();
+        // pbkdf2 hash kept so a rollback to an older release still verifies this token
+        byte[] salt = RandomNumberGenerator.GetBytes(16);
         string saltString = Convert.ToBase64String(salt);
-
-        // Hash the token
         string hashedToken = HashToken(token, salt);
 
         // Calculate expiration if specified
@@ -71,6 +69,7 @@ public class TokenService
             Username = username,
             TokenHash = hashedToken,
             TokenSalt = saltString,
+            TokenLookup = TokenVerificationCache.HashToken(token),
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = expiresAt,
             AllowedScopes = allowedScopes,
@@ -110,40 +109,6 @@ public class TokenService
         await GetTokenDetailsByTokenAsync(token) is not null;
 
     /// <summary>
-    /// Verify if a token is valid for a specific username
-    /// </summary>
-    public virtual async Task<bool> VerifyTokenAsync(string token, string username)
-    {
-        // Get active tokens for this user
-        var tokens = await _dbContext.Tokens
-            .AsNoTracking()
-            .Where(t => t.Username == username &&
-                   t.RevokedAt == null &&
-                   (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-            .ToListAsync();
-
-        // Check each token
-        foreach (var storedToken in tokens)
-        {
-            // Convert stored salt from string to bytes
-            byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-
-            // Hash the provided token with the stored salt
-            string hashedToken = HashToken(token, salt);
-
-            // Compare hashed tokens using constant-time comparison to prevent timing attacks
-            if (CryptographicOperations.FixedTimeEquals(
-                    Convert.FromBase64String(hashedToken),
-                    Convert.FromBase64String(storedToken.TokenHash)))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
     /// Verify if a token has access to a specific endpoint. Uses the cache-backed GetTokenDetailsByTokenAsync
     /// </summary>
     public virtual async Task<bool> VerifyTokenForEndpointAsync(string token, string endpointName)
@@ -165,11 +130,12 @@ public class TokenService
     }
 
     /// <summary>
-    /// Get token details by token string (for middleware use). Results are cached for 30 seconds to eliminate repeated PBKDF2 hashing per request. Cache is invalidated explicitly on revocation
+    /// Get token details by token string (for middleware use). Looks the token up by its SHA-256 hash; tokens without one fall back to a PBKDF2 scan once and are then backfilled. Results are cached for 30 seconds and invalidated explicitly on revocation
     /// </summary>
     public virtual async Task<AuthToken?> GetTokenDetailsByTokenAsync(string token)
     {
         var cacheKey = TokenVerificationCache.BuildKey(token);
+        var lookup = TokenVerificationCache.HashToken(token);
 
         if (_tokenCache.TryGet(cacheKey, out var cached))
         {
@@ -177,7 +143,7 @@ public class TokenService
             return cached;
         }
 
-        // Short-circuit recently seen invalid tokens so a flood cannot force a full PBKDF2 scan per request
+        // Short-circuit recently seen invalid tokens so a flood cannot force the legacy PBKDF2 scan per request
         if (_tokenCache.IsKnownMiss(cacheKey))
         {
             Log.Debug("Token negative-cache hit; rejecting known invalid token without rehashing");
@@ -186,29 +152,22 @@ public class TokenService
 
         var generation = _tokenCache.Generation;
 
-        // Cache miss; load from DB with no tracking overhead (entities are never modified here)
-        var tokens = await _dbContext.Tokens
+        var active = _dbContext.Tokens
             .AsNoTracking()
-            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow))
-            .ToListAsync();
+            .Where(t => t.RevokedAt == null && (t.ExpiresAt == null || t.ExpiresAt > DateTime.UtcNow));
 
-        foreach (var storedToken in tokens)
+        var storedToken = await active.FirstOrDefaultAsync(t => t.TokenLookup == lookup)
+            ?? await FindLegacyTokenAsync(active, token);
+
+        if (storedToken is not null)
         {
-            byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
-            // Constant-time comparison to prevent timing attacks
-            if (CryptographicOperations.FixedTimeEquals(
-                    Convert.FromBase64String(HashToken(token, salt)),
-                    Convert.FromBase64String(storedToken.TokenHash)))
-            {
-                Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
-                await RecordLastUseAsync(storedToken);
-                _tokenCache.Set(cacheKey, storedToken, storedToken.Id, generation);
-                return storedToken;
-            }
+            Log.Debug("Token verified and cached: {Username} (ID: {TokenId})", storedToken.Username, storedToken.Id);
+            await RecordLastUseAsync(storedToken, lookup);
+            _tokenCache.Set(cacheKey, storedToken, storedToken.Id, generation);
+            return storedToken;
         }
 
-        Log.Warning("Failed token access attempt with token: {TokenPrefix}...",
-            token.Length > 10 ? token[..10] : token);
+        Log.Warning("Failed token access attempt");
 
         // Record the miss so repeated probes with this token skip the scan until the short TTL expires
         _tokenCache.SetMiss(cacheKey);
@@ -217,17 +176,35 @@ public class TokenService
     }
 
     /// <summary>
-    /// Stores the verification time; runs only on a cache miss, so at most once per token per cache window
+    /// Matches tokens stored before TokenLookup existed; constant-time PBKDF2 comparison per row
     /// </summary>
-    private async Task RecordLastUseAsync(AuthToken token)
+    private static async Task<AuthToken?> FindLegacyTokenAsync(IQueryable<AuthToken> active, string token)
+    {
+        foreach (var storedToken in await active.Where(t => t.TokenLookup == null).ToListAsync())
+        {
+            byte[] salt = Convert.FromBase64String(storedToken.TokenSalt);
+            if (CryptographicOperations.FixedTimeEquals(
+                    Convert.FromBase64String(HashToken(token, salt)),
+                    Convert.FromBase64String(storedToken.TokenHash)))
+                return storedToken;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Stores the verification time and backfills TokenLookup; runs only on a cache miss, so at most once per token per cache window
+    /// </summary>
+    private async Task RecordLastUseAsync(AuthToken token, string lookup)
     {
         var now = DateTime.UtcNow;
         try
         {
             await _dbContext.Tokens
                 .Where(t => t.Id == token.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(t => t.LastUsedAt, now));
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.LastUsedAt, now).SetProperty(t => t.TokenLookup, lookup));
             token.LastUsedAt = now;
+            token.TokenLookup = lookup;
         }
         catch (Exception ex)
         {
@@ -239,23 +216,10 @@ public class TokenService
     /// <summary>
     /// Hashes a token with PBKDF2-SHA256
     /// </summary>
-    private string HashToken(string token, byte[] salt)
+    private static string HashToken(string token, byte[] salt)
     {
         byte[] hash = Rfc2898DeriveBytes.Pbkdf2(token, salt, 10000, HashAlgorithmName.SHA256, 32);
         return Convert.ToBase64String(hash);
-    }
-
-    /// <summary>
-    /// Generates a random salt
-    /// </summary>
-    private byte[] GenerateSalt()
-    {
-        byte[] salt = new byte[16];
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(salt);
-        }
-        return salt;
     }
 
     /// <summary>
