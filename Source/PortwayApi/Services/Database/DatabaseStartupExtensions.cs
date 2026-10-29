@@ -32,9 +32,9 @@ public static class DatabaseStartupExtensions
     }
 
     /// <summary>
-    /// Initializes the auth database, seeds the initial admin account, and generates a default token if none exist.
+    /// Initializes the auth database, seeds the initial admin account, and writes a default token file if none exist and the console is disabled.
     /// </summary>
-    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey, string? seedPassword = null)
+    public static async Task InitializeAuthDatabaseAsync(this WebApplication app, string serverName, PortwayApi.Helpers.AdminSeedKey adminApiKey, bool webUiEnabled, string? seedPassword = null)
     {
         using var scope = app.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -50,15 +50,22 @@ public static class DatabaseStartupExtensions
         try
         {
             var activeTokens = await tokenService.GetActiveTokensAsync();
-            if (!activeTokens.Any())
+            if (activeTokens.Any())
             {
-                var token = await tokenService.GenerateTokenAsync(serverName);
-                Log.Information("Token has been saved to tokens/{ServerName}.txt", serverName);
+                Log.Debug("Total active tokens: {Count}", activeTokens.Count());
+                var tokensDir = Path.Combine(Directory.GetCurrentDirectory(), "tokens");
+                if (Directory.Exists(tokensDir) && Directory.EnumerateFiles(tokensDir, "*.txt").Any())
+                    Log.Warning("Tokens detected in the tokens directory; relocate them to a secure location");
+            }
+            else if (webUiEnabled)
+            {
+                Log.Information("No access tokens exist; create one in the console under Access Tokens");
             }
             else
             {
-                Log.Debug("Total active tokens: {Count}", activeTokens.Count());
-                Log.Warning("Tokens detected in the tokens directory; relocate them to a secure location");
+                var token = await tokenService.GenerateTokenAsync(serverName);
+                await tokenService.SaveTokenToFileAsync(serverName, token);
+                Log.Information("Token has been saved to tokens/{ServerName}.txt", serverName);
             }
         }
         catch (Exception ex)

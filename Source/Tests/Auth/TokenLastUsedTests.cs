@@ -31,6 +31,15 @@ public sealed class TokenLastUsedTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GeneratedTokenIsNotWrittenToDisk()
+    {
+        var username = $"t-{Guid.NewGuid():N}";
+        await _tokens.GenerateTokenAsync(username, ct: TestContext.Current.CancellationToken);
+
+        Assert.False(File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "tokens", $"{username}.txt")));
+    }
+
+    [Fact]
     public async Task NewTokenIsNeverUsed()
     {
         var username = $"t-{Guid.NewGuid():N}";

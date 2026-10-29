@@ -22,7 +22,9 @@ Each installation guide ends at a running instance. The steps below apply to eve
 
 ## 2. Record the access token
 
-The first start generates a full-access token and writes it to `tokens/{SERVER_NAME}.txt`:
+If the console is enabled (`Console:Enabled`, default `true`): the first start creates no token. Tokens are created in the console under **Access Tokens** and are displayed once.
+
+If the console is disabled: the first start generates a full-access token and writes it to `tokens/{SERVER_NAME}.txt`:
 
 ```json [tokens/{SERVER_NAME}.txt]
 {

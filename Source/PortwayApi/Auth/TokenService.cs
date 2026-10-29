@@ -17,13 +17,6 @@ public class TokenService
         _dbContext = dbContext;
         _tokenCache = tokenCache;
         _tokenFolderPath = Path.Combine(Directory.GetCurrentDirectory(), "tokens");
-
-        // Ensure tokens directory exists
-        if (!Directory.Exists(_tokenFolderPath))
-        {
-            Directory.CreateDirectory(_tokenFolderPath);
-            Log.Debug("Created tokens directory: {Directory}", _tokenFolderPath);
-        }
     }
 
     /// <summary>
@@ -104,9 +97,6 @@ public class TokenService
                 RateLimit = rateLimitRequests.HasValue ? $"{rateLimitRequests}/{rateLimitWindowSeconds ?? 60}s" : "default",
                 TokenLength = token.Length
             }));
-
-        // Save token to file
-        await SaveTokenToFileAsync(username, token, allowedScopes, allowedEnvironments, expiresAt, description, allowedTenants);
 
         Log.Information("Created new token (ID: {TokenId}) for user: {Username}", tokenEntry.Id, username);
 
@@ -269,9 +259,9 @@ public class TokenService
     }
 
     /// <summary>
-    /// Writes the token and its usage details to the user's token file
+    /// Writes the token and its usage details to tokens/{username}.txt
     /// </summary>
-    private async Task SaveTokenToFileAsync(
+    public async Task SaveTokenToFileAsync(
         string username,
         string token,
         string allowedScopes = "*",
@@ -282,6 +272,7 @@ public class TokenService
     {
         try
         {
+            Directory.CreateDirectory(_tokenFolderPath);
             string filePath = Path.Combine(_tokenFolderPath, $"{username}.txt");
 
             // Create a more informative token file with usage instructions

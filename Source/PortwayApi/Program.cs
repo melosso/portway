@@ -208,8 +208,8 @@ try
     // Initialise mcp.db unconditionally so the setup wizard works before Mcp:Enabled is true
     await app.InitializeMcpConfigDatabaseAsync();
 
-    // Initialise auth.db and create a default token if none exist
-    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, seedPassword);
+    // Initialise auth.db; without webui, write a default token file if none exist
+    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, webUiEnabled, seedPassword);
 
     // Log cache configuration
     app.LogCacheConfiguration();

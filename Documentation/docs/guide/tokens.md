@@ -7,7 +7,7 @@ description: "Create, scope, rotate, and archive the Bearer tokens that control 
 
 API requests authenticate with a Bearer token ([RFC 6750](https://datatracker.ietf.org/doc/html/rfc6750)). Tokens are managed in the console under **Access Tokens**.
 
-The first start writes a full-access token to `tokens/{SERVER_NAME}.txt` ([Getting Started](/guide/getting-started#2-record-the-access-token)).
+Tokens are stored hashed in `auth.db`. The console displays a new token once. With the console disabled, the first start writes a full-access token to `tokens/{SERVER_NAME}.txt` ([Getting Started](/guide/getting-started#2-record-the-access-token)).
 
 ## Creating a token
 

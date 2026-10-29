@@ -46,7 +46,7 @@ ORDER BY Timestamp DESC;
 
 ## First-run token file
 
-The first start writes a full-access token to `tokens/{SERVER_NAME}.txt`. File format: [Getting Started](/guide/getting-started#2-record-the-access-token).
+With the console disabled, the first start writes a full-access token to `tokens/{SERVER_NAME}.txt`. In any other case, you'll have to re-generate a token using the CLI or web-interface. File format: [Getting Started](/guide/getting-started#2-record-the-access-token).
 
 ## Related topics
 
