@@ -16,7 +16,7 @@ fetch() {
     curl -fsSL "$url" -o "$dest"
 }
 
-SCALAR_VERSION="1.76.2"
+SCALAR_VERSION="1.76.4"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
