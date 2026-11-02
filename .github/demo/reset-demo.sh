@@ -48,13 +48,13 @@ files=(
     "config/endpoints/Proxy/CRM/Accounts/v2/entity.json"
     "config/endpoints/Proxy/Company/Companies/v1/entity.json"
     "config/endpoints/Proxy/Company/Companies/v2/entity.json"
-    "config/endpoints/Proxy/Inventory/Products/v1/entity.json"
-    "config/endpoints/Proxy/Inventory/Products/v2/entity.json"
+    "config/endpoints/Proxy/Warehouse/Products/v1/entity.json"
+    "config/endpoints/Proxy/Warehouse/Products/v2/entity.json"
     "config/endpoints/Proxy/Production/Orders/v1/entity.json"
     "config/endpoints/Proxy/Production/Orders/v2/entity.json"
-    "config/endpoints/SQL/WMS/Warehouses/v1/entity.json"
-    "config/endpoints/SQL/WMS/Warehouses/v2/entity.json"
-    "config/endpoints/SQL/WMS/CountryWarehouses/entity.json"
+    "config/endpoints/SQL/Warehouse/Warehouses/v1/entity.json"
+    "config/endpoints/SQL/Warehouse/Warehouses/v2/entity.json"
+    "config/endpoints/SQL/Warehouse/CountryWarehouses/entity.json"
     "data/demo.db"
     "data/auth.db"
 )
@@ -74,8 +74,8 @@ for _ in $(seq 1 30); do
     sleep 2
 done
 TOKEN="$(sed -n 's/.*"Token": *"\([^"]*\)".*/\1/p' tokens/*.txt | head -n 1)"
-for path in CRM/Accounts v2/CRM/Accounts Company/Companies v2/Company/Companies Inventory/Products v2/Inventory/Products \
-    Production/Orders v2/Production/Orders WMS/Warehouses v2/WMS/Warehouses v2/WMS/Warehouses?\$top=1; do
+for path in CRM/Accounts v2/CRM/Accounts Company/Companies v2/Company/Companies Warehouse/Products v2/Warehouse/Products \
+    Production/Orders v2/Production/Orders Warehouse/Warehouses v2/Warehouse/Warehouses v2/Warehouse/Warehouses?\$top=1; do
     for _ in 1 2 3; do
         curl -s -o /dev/null -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/WMS/$path"
     done
@@ -83,5 +83,6 @@ done
 curl -s -o /dev/null -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"name":"Jansen Agri B.V.","country":"NL"}' http://localhost:8080/api/WMS/v2/CRM/Accounts
 curl -s -o /dev/null -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"email":"inkoop@brouwerzonen.example"}' http://localhost:8080/api/WMS/v2/CRM/Accounts/01JNH6R020RJKTTWA0V4PC549M
 curl -s -o /dev/null http://localhost:8080/api/WMS/v2/CRM/Accounts
+curl -s -o /dev/null -X QUERY -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "{\"filter\":\"country eq 'NL'\",\"top\":5}" http://localhost:8080/api/WMS/v2/Warehouse/Warehouses
 
 echo "Demo reset successfully!"

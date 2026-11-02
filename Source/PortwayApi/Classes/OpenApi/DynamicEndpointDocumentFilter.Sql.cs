@@ -451,6 +451,7 @@ public partial class DynamicEndpointDocumentFilter
     {
         var operation = CreateSqlOperation(endpointName, "GET", definition, effectiveEnvironments);
         operation.OperationId += "_byId";
+        operation.Summary = $"Get {definition.DisplayName ?? definition.EndpointName} by ID";
         operation.Parameters = operation.Parameters!
             .Where(p => p.Name?.StartsWith('$') != true)
             .Append(new OpenApiParameter

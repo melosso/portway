@@ -1,9 +1,9 @@
 {
   "DatabaseObjectName": "Warehouses",
-  "Namespace": "WMS",
-  "NamespaceDisplayName": "WMS",
+  "Namespace": "Warehouse",
+  "NamespaceDisplayName": "Warehouse",
   "AllowedEnvironments": ["WMS"],
-  "AllowedMethods": ["GET"],
+  "AllowedMethods": ["GET", "QUERY"],
   "AllowedColumns": [
     "Id;id",
     "Code;code",
@@ -20,12 +20,14 @@
     "DefaultSort": "Code ASC"
   },
   "Documentation": {
-    "TagDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
+    "TagDescription": "Warehouse reference data backed by a local SQLite database. No external dependencies required.",
     "MethodDescriptions": {
-      "GET": "Retrieve warehouse locations"
+      "GET": "Retrieve warehouse locations",
+      "QUERY": "Search warehouse locations"
     },
     "MethodDocumentation": {
-      "GET": "Version 2 returns camelCase field names, matching the proxy endpoints. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip` on the same names."
+      "GET": "Version 2 returns camelCase field names, matching the proxy endpoints. Supports `$filter`, `$select`, `$orderby`, `$top`, `$skip` on the same names.",
+      "QUERY": "Same query as `GET` with the OData options in a JSON request body, e.g. `{\"filter\": \"country eq 'NL'\", \"top\": 5}`."
     }
   },
   "Mcp": {

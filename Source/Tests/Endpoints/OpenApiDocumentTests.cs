@@ -601,6 +601,7 @@ public class OpenApiDocumentTests : ApiTestBase
 
         var byId = paths.GetProperty("/api/{env}/WMS/Bins({id})").GetProperty("get");
         Assert.Equal("get_WMS_Bins_byId", byId.GetProperty("operationId").GetString());
+        Assert.NotEqual(paths.GetProperty("/api/{env}/WMS/Bins").GetProperty("get").GetProperty("summary").GetString(), byId.GetProperty("summary").GetString());
         var parameters = byId.GetProperty("parameters").EnumerateArray().ToList();
         Assert.Contains(parameters, p => p.GetProperty("name").GetString() == "id" && p.GetProperty("in").GetString() == "path");
         Assert.DoesNotContain(parameters, p => p.GetProperty("name").GetString()!.StartsWith('$'));

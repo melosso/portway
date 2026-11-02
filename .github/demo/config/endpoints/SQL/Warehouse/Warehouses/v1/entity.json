@@ -3,8 +3,8 @@
   "DeprecatedSince": "2026-10-01T00:00:00Z",
   "Sunset": "2027-04-01T00:00:00Z",
   "DatabaseObjectName": "Warehouses",
-  "Namespace": "WMS",
-  "NamespaceDisplayName": "WMS",
+  "Namespace": "Warehouse",
+  "NamespaceDisplayName": "Warehouse",
   "AllowedEnvironments": ["WMS"],
   "AllowedMethods": ["GET"],
   "AllowedColumns": [
@@ -23,7 +23,7 @@
     "DefaultSort": "Code ASC"
   },
   "Documentation": {
-    "TagDescription": "WMS reference data backed by a local SQLite database. No external dependencies required.",
+    "TagDescription": "Warehouse reference data backed by a local SQLite database. No external dependencies required.",
     "MethodDescriptions": {
       "GET": "Retrieve warehouse locations"
     },
