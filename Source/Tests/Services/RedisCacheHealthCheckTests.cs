@@ -64,7 +64,7 @@ public class RedisCacheHealthCheckTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Caching:ProviderType"] = "Redis",
+                ["Caching:Provider"] = "Redis",
                 ["Caching:Redis:ConnectionString"] = Unreachable
             })
             .Build();
@@ -88,7 +88,7 @@ public class RedisCacheHealthCheckTests
             var configuration = new ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Caching:ProviderType"] = "Redis",
+                    ["Caching:Provider"] = "Redis",
                     ["Caching:Redis:ConnectionString"] = connectionString
                 })
                 .Build();
