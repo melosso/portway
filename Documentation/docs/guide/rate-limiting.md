@@ -52,6 +52,10 @@ Token API fields:
 
 ## Distributed deployments with Redis
 
+::: remark
+The Redis store requires Redis 5 or later.
+:::
+
 The Redis store shares bucket state across instances:
 
 ```json
@@ -63,7 +67,7 @@ The Redis store shares bucket state across instances:
 }
 ```
 
-An empty `RedisConnectionString` reuses the [caching](/reference/caching) connection string. Buckets are evaluated atomically on the Redis server. When Redis is unreachable, the in-memory store is used with per-instance limits.
+An empty `RedisConnectionString` reuses the [caching](/reference/caching) connection string. Buckets are evaluated atomically on the Redis server, with the Redis server clock. When Redis is unreachable, the in-memory store is used with per-instance limits.
 
 ## Rate limit response
 

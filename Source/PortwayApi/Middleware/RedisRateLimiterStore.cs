@@ -8,12 +8,13 @@ using Serilog;
 /// </summary>
 public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
 {
-    // Atomic token bucket: refill by elapsed time, consume if enough, return state
+    // Atomic token bucket on the Redis server clock, so instance clock skew cannot refill a shared bucket; TIME in a script needs Redis 5 or later
     private const string _consumeScript = @"
         local capacity = tonumber(ARGV[1])
         local refill_seconds = tonumber(ARGV[2])
-        local now_ms = tonumber(ARGV[3])
-        local requested = tonumber(ARGV[4])
+        local requested = tonumber(ARGV[3])
+        local time = redis.call('TIME')
+        local now_ms = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
         local state = redis.call('HMGET', KEYS[1], 'tokens', 'last_ms')
         local tokens = tonumber(state[1]) or capacity
         local last_ms = tonumber(state[2]) or now_ms
@@ -64,7 +65,7 @@ public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
             var result = (RedisResult[]?)await _db.ScriptEvaluateAsync(
                 _consumeScript,
                 new RedisKey[] { $"portway:ratelimit:{key}" },
-                new RedisValue[] { limit, windowSeconds, now.ToUnixTimeMilliseconds(), 1 });
+                new RedisValue[] { limit, windowSeconds, 1 });
 
             if (result is not { Length: 3 })
                 return await _fallback.TryConsumeAsync(key, limit, windowSeconds, cancellationToken);
