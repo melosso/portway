@@ -102,7 +102,7 @@ const CARDS = {
 
   captureBody: {
     rows: () => [
-      '<p class="trace-warning">Bodies are logged unfiltered. Authorization, cookies and the headers and query parameters of an environment\'s Authentication.Methods are redacted.</p>',
+      '<p class="trace-warning">Bodies are logged unfiltered. Redacted: the Authorization and Cookie headers, and the credential headers and query parameters defined in the environment settings.</p>',
       field('RequestTrafficLogging:CaptureRequestBodies', 'Request bodies', 'Records the body sent by the client.'),
       field('RequestTrafficLogging:CaptureResponseBodies', 'Response bodies', 'Records the body returned to the client.'),
       field('RequestTrafficLogging:MaxBodyCaptureSizeBytes', 'Size limit', 'Longer bodies are cut off.', { unit: 'KB', scale: 1024 }),
