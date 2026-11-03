@@ -13,7 +13,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
 {
     private readonly CacheOptions _options;
     private readonly RedisOptions _redisOptions;
-    private readonly ConnectionMultiplexer? _redis;
+    private readonly IConnectionMultiplexer? _redis;
     private readonly IDatabase? _db;
     private readonly string _instanceName;
 
@@ -27,42 +27,48 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     public RedisCacheProvider(
         IOptions<CacheOptions> options,
         MemoryCacheProvider fallbackProvider)
+        : this(options, fallbackProvider, Connect(options.Value.Redis))
+    {
+    }
+
+    internal RedisCacheProvider(IOptions<CacheOptions> options, ICacheProvider fallbackProvider, IConnectionMultiplexer? redis)
     {
         _options = options.Value;
         _redisOptions = _options.Redis;
         _instanceName = _redisOptions.InstanceName;
         _fallbackProvider = fallbackProvider;
+        _redis = redis;
 
+        if (_redis is null)
+            return;
+
+        _db = _redis.GetDatabase(_redisOptions.Database);
+        _isConnected = _redis.IsConnected;
+        _redis.ConnectionFailed += OnConnectionFailed;
+        _redis.ConnectionRestored += OnConnectionRestored;
+    }
+
+    private static ConnectionMultiplexer? Connect(RedisOptions redisOptions)
+    {
         try
         {
-            // Configure Redis connection
-            var configOptions = ConfigurationOptions.Parse(_redisOptions.ConnectionString);
-            configOptions.AbortOnConnectFail = _redisOptions.AbortOnConnectFail;
-            configOptions.ConnectTimeout = _redisOptions.ConnectTimeoutMs;
-            configOptions.SyncTimeout = _redisOptions.ConnectTimeoutMs;
-            configOptions.Ssl = _redisOptions.UseSsl;
+            var configOptions = ConfigurationOptions.Parse(redisOptions.ConnectionString);
+            configOptions.AbortOnConnectFail = redisOptions.AbortOnConnectFail;
+            configOptions.ConnectTimeout = redisOptions.ConnectTimeoutMs;
+            configOptions.SyncTimeout = redisOptions.ConnectTimeoutMs;
+            configOptions.Ssl = redisOptions.UseSsl;
 
-            // Connect to Redis
-            _redis = ConnectionMultiplexer.Connect(configOptions);
-            _db = _redis.GetDatabase(_redisOptions.Database);
-            _isConnected = _redis.IsConnected;
-
-            // Subscribe to connection events
-            _redis.ConnectionFailed += OnConnectionFailed;
-            _redis.ConnectionRestored += OnConnectionRestored;
-
+            var redis = ConnectionMultiplexer.Connect(configOptions);
             Log.Information("Successfully connected to Redis at {ConnectionString}, database: {Database}",
-                configOptions.ToString(includePassword: false), _redisOptions.Database);
+                configOptions.ToString(includePassword: false), redisOptions.Database);
+            return redis;
         }
         catch (Exception ex)
         {
             Log.Error(ex, "Failed to connect to Redis");
-            _isConnected = false;
-
-            if (!_redisOptions.FallbackToMemoryCache)
-            {
+            if (!redisOptions.FallbackToMemoryCache)
                 throw;
-            }
+            return null;
         }
     }
 
@@ -125,7 +131,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 return null;
             });
         }
-        catch (Exception ex) when (ex is not RedisConnectionException)
+        catch (Exception ex)
         {
             Log.Error(ex, "Error retrieving value from Redis for key: {Key}", redisKey);
 
@@ -188,7 +194,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 }
             });
         }
-        catch (Exception ex) when (ex is not RedisConnectionException)
+        catch (Exception ex)
         {
             Log.Error(ex, "Error adding value to Redis for key: {Key}", redisKey);
 
@@ -244,7 +250,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 await _fallbackProvider.RemoveAsync(key);
             }
         }
-        catch (Exception ex) when (ex is not RedisConnectionException)
+        catch (Exception ex)
         {
             Log.Error(ex, "Error removing value from Redis for key: {Key}", redisKey);
 
@@ -287,7 +293,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 return await _db!.KeyExistsAsync(redisKey);
             });
         }
-        catch (Exception ex) when (ex is not RedisConnectionException)
+        catch (Exception ex)
         {
             Log.Error(ex, "Error checking existence in Redis for key: {Key}", redisKey);
 
@@ -347,7 +353,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 return false;
             });
         }
-        catch (Exception ex) when (ex is not RedisConnectionException)
+        catch (Exception ex)
         {
             Log.Error(ex, "Error refreshing expiration in Redis for key: {Key}", redisKey);
 
@@ -424,7 +430,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
 
             return null;
         }
-        catch (Exception ex) when (ex is not RedisConnectionException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Error(ex, "Error acquiring Redis lock for key: {Key}", redisLockKey);
 
