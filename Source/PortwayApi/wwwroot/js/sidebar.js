@@ -154,13 +154,13 @@ function renderSidebar(mcpEnabled) {
                     const extBadge = item.external
                         ? `<svg class="nav-external" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
                         : '';
-                    const row = `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}">${icon(item.icon)}<span>${item.label}</span>${extBadge}${item.children ? NAV_CHEVRON : ''}</a>`;
+                    const row = `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}"${active ? ' aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${extBadge}${item.children ? NAV_CHEVRON : ''}</a>`;
                     if (!item.children || !active) return row;
                     const current = (location.hash || '').replace('#', '') || item.children[0].hash;
                     const kids = item.children
                         .map(
                             (c) =>
-                                `<a href="${href}#${c.hash}" class="nav-item nav-child${c.hash === current ? ' active' : ''}" data-section="${c.hash}"><span>${c.label}</span></a>`
+                                `<a href="${href}#${c.hash}" class="nav-item nav-child${c.hash === current ? ' active' : ''}"${c.hash === current ? ' aria-current="location"' : ''} data-section="${c.hash}" onclick="closeNav()"><span>${c.label}</span></a>`
                         )
                         .join('\n      ');
                     return `${row}\n    <div class="nav-kids">\n      ${kids}\n    </div>`;
@@ -175,7 +175,7 @@ function renderSidebar(mcpEnabled) {
 
     aside.innerHTML = `
   <div class="sidebar-brand">
-  <button type="button" class="brand select-none" onclick="toggleSidebar()" title="Toggle sidebar" aria-expanded="true">
+  <button type="button" class="brand select-none" onclick="toggleSidebar()" title="Toggle sidebar" aria-expanded="${navExpanded()}">
     <div class="brand-avatar">${BRAND_SVG}</div>
     <span class="brand-name">Portway</span>
     <svg class="brand-collapse" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
@@ -293,12 +293,23 @@ function isMobileNav() {
     return window.matchMedia('(max-width: 768px)').matches;
 }
 
+function navExpanded() {
+    return isMobileNav()
+        ? document.body.classList.contains('nav-open')
+        : !document.documentElement.classList.contains('sidebar-collapsed');
+}
+
 function openNav() {
     document.body.classList.add('nav-open');
+    setNavExpanded(true);
+    document.querySelector('aside .nav-item.active, aside .nav-item')?.focus();
 }
 
 function closeNav() {
+    if (!document.body.classList.contains('nav-open')) return;
     document.body.classList.remove('nav-open');
+    setNavExpanded(false);
+    document.querySelector('.nav-trigger')?.focus();
 }
 
 const DOCS_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`;
@@ -318,7 +329,7 @@ function mountChrome(openapiEnabled) {
     const bar = document.createElement('header');
     bar.className = 'topbar';
     bar.innerHTML = `
-    <button type="button" class="topbar-btn nav-trigger" aria-label="Toggle navigation" aria-expanded="true">${MENU_SVG}</button>
+    <button type="button" class="topbar-btn nav-trigger" aria-label="Toggle navigation" aria-expanded="${navExpanded()}">${MENU_SVG}</button>
     <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
     <div class="topbar-actions">
       <button type="button" class="topbar-btn" id="topbarTheme" data-tooltip="Toggle theme">${THEME_SVG}</button>
@@ -403,14 +414,7 @@ function toggleSidebar() {
         return;
     }
     const collapsed = document.documentElement.classList.contains('sidebar-collapsed');
-    if (collapsed) {
-        // Thisw'l apply blur during transition
-        document.body.classList.add('sidebar-expanding');
-        document.documentElement.classList.remove('sidebar-collapsed');
-        setTimeout(() => document.body.classList.remove('sidebar-expanding'), 240);
-    } else {
-        document.documentElement.classList.add('sidebar-collapsed');
-    }
+    document.documentElement.classList.toggle('sidebar-collapsed', !collapsed);
     setNavExpanded(collapsed);
     try {
         const s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');

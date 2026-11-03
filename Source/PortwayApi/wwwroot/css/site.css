@@ -209,9 +209,6 @@ aside {
     display: flex;
     flex-direction: column;
     height: 100%;
-    transition:
-        width 0.22s ease,
-        min-width 0.22s ease;
 }
 
 .sidebar-brand {
@@ -232,10 +229,6 @@ aside {
     display: flex;
     flex-direction: column;
     padding: 0 0 0.5rem;
-}
-
-main {
-    transition: filter 0.22s ease;
 }
 
 /* Sidebar collapsed state, desktop only: below 768px the rail is a drawer instead */
@@ -329,10 +322,11 @@ main {
         min-width: 0;
         transform: translateX(-100%);
         visibility: hidden;
+        border-right: none;
         transition:
-            transform 0.22s ease,
-            visibility 0.22s ease;
-        box-shadow: 0 0 2.5rem rgb(0 0 0 / 0.28);
+            transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+            visibility 0.24s;
+        box-shadow: 0.5rem 0 2rem rgb(0 0 0 / 0.2);
     }
 
     body.nav-open aside {
@@ -348,7 +342,7 @@ main {
         background: rgb(0 0 0 / 0.45);
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.22s ease;
+        transition: opacity 0.24s ease-out;
     }
 
     body.nav-open .nav-scrim {
@@ -368,12 +362,6 @@ main {
     .main-content-fill {
         padding: 0 1rem 1rem;
     }
-}
-
-/* Blur main while sidebar is transitioning open */
-body.sidebar-expanding main {
-    filter: blur(1px);
-    pointer-events: none;
 }
 
 .brand {
@@ -455,10 +443,10 @@ body.sidebar-expanding main {
 
 .nav-label {
     flex-shrink: 0;
-    font-size: 0.625rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.08em;
     color: hsl(var(--sidebar-muted));
     padding: 1rem 0.875rem 0.375rem;
     white-space: nowrap;
@@ -1857,11 +1845,11 @@ input[type='radio'] {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 2.75rem;
+    margin-bottom: 2rem;
 }
 
 .signin-wordmark {
-    font-size: 1.1rem;
+    font-size: 1.0625rem;
     font-weight: 600;
     letter-spacing: -0.02em;
 }
@@ -1873,28 +1861,30 @@ input[type='radio'] {
 }
 
 .signin-header {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1.5rem;
     text-align: center;
 }
 
 .signin-header h1 {
-    font-size: 1.4375rem;
-    font-weight: 600;
+    font-size: 1.35rem;
+    font-weight: 700;
     letter-spacing: -0.02em;
 }
 
 .signin-header p {
-    margin-top: 0.5rem;
-    font-size: 0.9375rem;
-    line-height: 1.55;
+    margin-top: 0.375rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
     color: hsl(var(--muted-foreground));
 }
 
+.signin-header p:empty {
+    display: none;
+}
+
 .signin-submit {
-    margin-top: 1.375rem;
-    height: 2.5rem;
-    font-size: 0.9375rem;
-    border-radius: 0.5rem;
+    margin-top: 1.25rem;
+    height: 2.25rem;
 }
 
 .field {
@@ -1917,19 +1907,10 @@ input[type='radio'] {
     color: hsl(var(--foreground));
 }
 
-.signin-panel .field-label {
-    font-size: 0.875rem;
-}
-
 .field-help {
     font-size: 0.75rem;
     line-height: 1.5;
     color: hsl(var(--muted-foreground));
-}
-
-.signin-panel .field-help {
-    font-size: 0.8125rem;
-    margin-top: 0.125rem;
 }
 
 .field-help code {
@@ -1957,9 +1938,8 @@ input[type='radio'] {
 }
 
 .signin-panel .input {
-    height: 2.5rem;
-    font-size: 0.9375rem;
-    border-radius: 0.5rem;
+    height: 2.25rem;
+    font-size: 0.875rem;
 }
 
 .input:focus {
@@ -2027,9 +2007,9 @@ textarea.input-code {
 .signin-error {
     color: hsl(var(--destructive));
     background: hsl(var(--destructive) / 0.08);
-    border-radius: 0.5rem;
+    border-radius: var(--nav-radius);
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     line-height: 1.4;
     margin-top: 0.875rem;
     margin-bottom: 0;
@@ -3713,13 +3693,20 @@ body.has-promo .signin-theme {
 }
 
 .signin-or {
-    margin: 2.25rem 0 1rem;
-    text-align: center;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
+}
+
+.signin-or::before,
+.signin-or::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: hsl(var(--border));
 }
 
 .signin-providers {
@@ -3731,17 +3718,15 @@ body.has-promo .signin-theme {
 .sso-btn {
     width: 100%;
     justify-content: center;
-    height: 2.5rem;
-    font-size: 0.9375rem;
-    border-radius: 0.5rem;
+    height: 2.25rem;
 }
 
 .signin-footer {
-    margin-top: 2.25rem;
-    font-size: 0.8125rem;
+    margin-top: 2rem;
+    font-size: 0.75rem;
     color: hsl(var(--muted-foreground));
     text-align: center;
-    max-width: 320px;
+    max-width: 20rem;
     line-height: 1.5;
 }
 
@@ -3849,30 +3834,6 @@ body.has-promo .signin-theme {
     transition: transform 0.26s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Login page — brand, box, and footer enter as a staggered sequence */
-@keyframes portway-auth-enter {
-    from {
-        opacity: 0;
-        transform: translateY(14px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-.signin-mark {
-    animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0s both;
-}
-.signin-panel {
-    animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.08s both;
-}
-.signin-sso {
-    animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.14s both;
-}
-.signin-footer {
-    animation: portway-auth-enter 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.2s both;
-}
-
 :focus-visible {
     outline: 2px solid hsl(var(--ring) / 0.6);
     outline-offset: 2px;
@@ -3970,10 +3931,8 @@ body.has-promo .signin-theme {
     .drawer {
         transition: transform 0.15s ease;
     }
-    .signin-mark,
-    .signin-panel,
-    .signin-sso,
-    .signin-footer {
-        animation: none;
+    aside,
+    .nav-scrim {
+        transition: none;
     }
 }

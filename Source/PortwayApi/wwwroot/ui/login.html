@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sign In · Portway</title>
+  <title>Sign in · Portway</title>
   <link href="css/site.css" rel="stylesheet" />
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script src="js/components/tooltip.js"></script>
@@ -63,18 +63,18 @@
   <form class="signin-panel" onsubmit="event.preventDefault();signIn()">
     <header class="signin-header">
       <h1>Sign in</h1>
-      <p id="signinIntro">Sign in to continue.</p>
+      <p id="signinIntro"></p>
     </header>
 
     <div class="field">
       <label class="field-label" for="usernameInput">Username</label>
-      <input type="text" id="usernameInput" class="input" autocomplete="username" placeholder="e.g. admin"
+      <input type="text" id="usernameInput" class="input" autocomplete="username"
              required autofocus aria-describedby="authError">
     </div>
 
     <div class="field">
       <label class="field-label" for="passwordInput">Password</label>
-      <input type="password" id="passwordInput" class="input" autocomplete="current-password" placeholder="*********"
+      <input type="password" id="passwordInput" class="input" autocomplete="current-password"
              required aria-describedby="authError">
     </div>
 
@@ -87,7 +87,7 @@
     <div class="signin-error" id="authError" role="alert" aria-live="assertive">Invalid username or password</div>
 
     <button type="submit" class="btn btn-primary btn-block signin-submit" id="signInBtn">
-      <span class="btn-label">Sign In</span><span class="btn-spinner"></span>
+      <span class="btn-label">Sign in</span><span class="btn-spinner"></span>
     </button>
   </form>
 
