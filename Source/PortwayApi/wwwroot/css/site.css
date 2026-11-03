@@ -1909,6 +1909,7 @@ input[type='radio'] {
     width: 100%;
     max-width: 20rem;
     text-align: left;
+    user-select: none;
 }
 
 .signin-header {
@@ -1989,6 +1990,7 @@ input[type='radio'] {
 }
 
 .signin-panel .input {
+    user-select: text;
     height: 2.25rem;
     font-size: 0.875rem;
 }
