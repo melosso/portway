@@ -14,16 +14,16 @@ public static partial class WebUiEndpointExtensions
     private static void MapPageAndAuthRoutes(WebApplication app, string wwwroot, string appVersion, bool secureCookies)
     {
         // Login
-        app.MapGet("/ui/login", (HttpContext ctx) =>
+        app.MapGet("/_/login", (HttpContext ctx) =>
             WebUiAuthState.Enabled
                 ? ServeHtml(Path.Combine(wwwroot, "login.html"), ctx.Request.PathBase, appVersion, app.Configuration)
-                : Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
+                : Results.Redirect($"{ctx.Request.PathBase}/_/dashboard"))
             .ExcludeFromDescription();
-        app.MapGet("/ui/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/login"))
+        app.MapGet("/_/login.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/login"))
             .ExcludeFromDescription();
 
         // CSRF token endpoint
-        app.MapGet("/ui/api/auth/csrf", async (PortwayApi.Auth.AuthDbContext db) => Results.Json(new
+        app.MapGet("/_/api/auth/csrf", async (PortwayApi.Auth.AuthDbContext db) => Results.Json(new
         {
             csrf = WebUiAuthHelper.GenerateCsrfToken(),
             // no account has a permanent password yet
@@ -32,7 +32,7 @@ public static partial class WebUiEndpointExtensions
             .ExcludeFromDescription();
 
         // Auth endpoints
-        app.MapPost("/ui/api/auth", async (HttpContext context) =>
+        app.MapPost("/_/api/auth", async (HttpContext context) =>
         {
             // Rate limiting and lockout check
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -77,7 +77,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Completes a first sign-in: verifies the old password again and issues the session only once the new one is set
-        app.MapPost("/ui/api/auth/password", async (HttpContext context) =>
+        app.MapPost("/_/api/auth/password", async (HttpContext context) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
 
@@ -117,7 +117,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/auth/logout", (HttpContext context) =>
+        app.MapPost("/_/api/auth/logout", (HttpContext context) =>
         {
             context.Response.Cookies.Append(CookieName, "", new CookieOptions
             {
@@ -139,7 +139,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Page routes
-        app.MapGet("/ui", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard"))
+        app.MapGet("/_", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/dashboard"))
             .ExcludeFromDescription();
 
         // Pages render Beacon-style: _shell.html + views/{page}.html + _footer.html streamed as one document
@@ -158,20 +158,20 @@ public static partial class WebUiEndpointExtensions
         {
             var p = page;
             var t = title;
-            app.MapGet($"/ui/{p}", (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
-            app.MapGet($"/ui/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/{p}")).ExcludeFromDescription();
+            app.MapGet($"/_/{p}", (HttpContext ctx) => ServeComposedPage(wwwroot, p, t, ctx.Request.PathBase, appVersion)).ExcludeFromDescription();
+            app.MapGet($"/_/{p}.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/{p}")).ExcludeFromDescription();
         }
 
         // MCP explorer page
         var mcpExplorerPath = Path.Combine(wwwroot, "mcp", "explorer.html");
-        app.MapGet("/ui/mcp/explorer", (HttpContext ctx) => ServeHtml(mcpExplorerPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
-        app.MapGet("/ui/mcp/explorer.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/mcp/explorer")).ExcludeFromDescription();
+        app.MapGet("/_/mcp/explorer", (HttpContext ctx) => ServeHtml(mcpExplorerPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/_/mcp/explorer.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/mcp/explorer")).ExcludeFromDescription();
 
         // MCP chat page
         var mcpChatPath = Path.Combine(wwwroot, "mcp", "chat.html");
-        app.MapGet("/ui/mcp", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
-        app.MapGet("/ui/mcp/chat", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
-        app.MapGet("/ui/mcp/chat.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/ui/mcp/chat")).ExcludeFromDescription();
+        app.MapGet("/_/mcp", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/_/mcp/chat", (HttpContext ctx) => ServeHtml(mcpChatPath, ctx.Request.PathBase, appVersion, app.Configuration)).ExcludeFromDescription();
+        app.MapGet("/_/mcp/chat.html", (HttpContext ctx) => Results.Redirect($"{ctx.Request.PathBase}/_/mcp/chat")).ExcludeFromDescription();
 
         // Data endpoints
     }

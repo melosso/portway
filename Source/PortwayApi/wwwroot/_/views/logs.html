@@ -110,7 +110,7 @@ async function load(append = false) {
   if (activeLevel && activeLevel !== 'ALL') params.set('level', activeLevel);
 
   try {
-    const d = await api(`/ui/api/logs?${params}`, { failure: 'Failed to load logs' });
+    const d = await api(`/_/api/logs?${params}`, { failure: 'Failed to load logs' });
     
     const newLogs = d.lines ?? [];
     currentLogs = append ? [...currentLogs, ...newLogs] : newLogs;

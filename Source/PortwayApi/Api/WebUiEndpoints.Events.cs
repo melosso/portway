@@ -9,7 +9,7 @@ public static partial class WebUiEndpointExtensions
 {
     private static void MapEventRoutes(WebApplication app)
     {
-        app.MapGet("/ui/api/events", async (HttpContext context) =>
+        app.MapGet("/_/api/events", async (HttpContext context) =>
         {
             var response = context.Response;
             response.Headers.ContentType = "text/event-stream";
@@ -46,6 +46,6 @@ public static partial class WebUiEndpointExtensions
 
         // Endpoint CRUD
 
-        // PATCH /ui/api/endpoints/{type}/{**name}, rename (move directory)
+        // PATCH /_/api/endpoints/{type}/{**name}, rename (move directory)
     }
 }

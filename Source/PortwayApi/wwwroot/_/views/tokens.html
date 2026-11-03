@@ -491,7 +491,6 @@ let editingTokenId = null;
 let createScopesTI, createEnvsTI, editScopesTI, editEnvsTI;
 let revealData = null;
 
-// Sort n pagination state 
 let sortCol = 'id', sortDir = 'asc';
 let currentPage = 1;
 
@@ -505,7 +504,6 @@ function setSort(col) {
   applyFilters();
 }
 
-// Tag Input Class 
 class TagInput {
   constructor(wrapperId, inputId, dropdownId) {
     this.wrapper  = document.getElementById(wrapperId);
@@ -631,12 +629,11 @@ class TagInput {
   _hideDropdown() { this.dropdown.style.display = 'none'; }
 }
 
-// Data Loading
 async function loadTokens() {
   const includeRevoked = document.getElementById('showRevokedCb').checked;
   const qs = includeRevoked ? '?include_revoked=true' : '';
   try {
-    allTokens = await api(`/ui/api/tokens${qs}`, { failure: 'Failed to load tokens' });
+    allTokens = await api(`/_/api/tokens${qs}`, { failure: 'Failed to load tokens' });
     currentPage = 1;
     applyFilters();
   } catch(e) {}
@@ -663,8 +660,8 @@ function lastUsedLabel(iso) {
 
 async function refreshAll() {
   const [epsResult, envResult] = await Promise.allSettled([
-    api('/ui/api/endpoints', { failure: 'Failed to load endpoints' }),
-    api('/ui/api/environments', { failure: 'Failed to load environments' })
+    api('/_/api/endpoints', { failure: 'Failed to load endpoints' }),
+    api('/_/api/environments', { failure: 'Failed to load environments' })
   ]);
 
   if (epsResult.status === 'fulfilled') {
@@ -703,7 +700,6 @@ function applyFilters() {
         || (t.allowed_environments || '').toLowerCase().includes(q);
   });
 
-  // sort
   list = list.slice().sort((a, b) => {
     let av, bv;
     if (sortCol === 'id') { av = a.id; bv = b.id; }
@@ -735,7 +731,6 @@ function renderTable() {
   const tbody = document.getElementById('tokenTableBody');
   const activeCount = allTokens.filter(t => t.is_active).length;
 
-  // Update sort indicators
   document.querySelectorAll('th.sortable').forEach(th => {
     const col = th.dataset.col;
     th.classList.remove('sort-asc', 'sort-desc');
@@ -833,7 +828,6 @@ function toggleSelectAll(checked) {
   document.querySelectorAll('.row-check').forEach(cb => cb.checked = checked);
 }
 
-// Create Drawer
 function openCreateDrawer() {
   createScopesTI.clear();
   createEnvsTI.clear();
@@ -886,7 +880,7 @@ async function createToken() {
       body.rate_limit_window_seconds = rateLimit.window;
     }
 
-    const d = await api('/ui/api/tokens', { method: 'POST', body, failure: 'Failed to create token' });
+    const d = await api('/_/api/tokens', { method: 'POST', body, failure: 'Failed to create token' });
 
     await closeCreateDrawer();
     await loadTokens();
@@ -917,7 +911,6 @@ function readRateLimitFields(limitId, windowId) {
   return { requests, window };
 }
 
-// Edit Drawer
 function openEditDrawer(id) {
   const token = allTokens.find(t => t.id === id);
   if (!token) return;
@@ -989,7 +982,7 @@ async function saveToken() {
       body.expires_at = dt.toISOString();
     }
 
-    await api(`/ui/api/tokens/${editingTokenId}`, { method: 'PUT', body, success: 'Token updated', failure: 'Save failed' });
+    await api(`/_/api/tokens/${editingTokenId}`, { method: 'PUT', body, success: 'Token updated', failure: 'Save failed' });
 
     await closeEditDrawer();
     await loadTokens();
@@ -1003,7 +996,7 @@ async function loadAudit(id) {
   const tbody = document.getElementById('auditTableBody');
   tbody.innerHTML = `<tr><td colspan="3" class="empty-state">Loading…</td></tr>`;
   try {
-    const entries = await api(`/ui/api/tokens/${id}/audit`, { failure: 'Failed to load audit log' });
+    const entries = await api(`/_/api/tokens/${id}/audit`, { failure: 'Failed to load audit log' });
     if (!entries.length) {
       tbody.innerHTML = `<tr><td colspan="3" class="empty-state">No audit entries found</td></tr>`;
       return;
@@ -1027,7 +1020,6 @@ async function loadAudit(id) {
   }
 }
 
-// Revoke
 function confirmRevoke(id, btn) {
   const cell = btn.closest('td');
   cell.innerHTML = `
@@ -1040,7 +1032,7 @@ function confirmRevoke(id, btn) {
 
 async function revokeToken(id) {
   try {
-    await api(`/ui/api/tokens/${id}`, { method: 'DELETE', success: 'Token archived', failure: 'Failed to archive token' });
+    await api(`/_/api/tokens/${id}`, { method: 'DELETE', success: 'Token archived', failure: 'Failed to archive token' });
     await loadTokens();
   } catch(e) {
     if (e.status === 409) await loadTokens();
@@ -1049,12 +1041,11 @@ async function revokeToken(id) {
 
 async function unarchiveToken(id) {
   try {
-    await api(`/ui/api/tokens/${id}/unarchive`, { method: 'POST', success: 'Token restored', failure: 'Failed to restore token' });
+    await api(`/_/api/tokens/${id}/unarchive`, { method: 'POST', success: 'Token restored', failure: 'Failed to restore token' });
     await loadTokens();
   } catch(e) {}
 }
 
-// Rotate
 function confirmRotate() {
   const token = allTokens.find(t => t.id === editingTokenId);
   if (!token) return;
@@ -1069,7 +1060,7 @@ function confirmRotate() {
 
 async function rotateToken(id) {
   try {
-    const d = await api(`/ui/api/tokens/${id}/rotate`, { method: 'POST', success: 'Token rotated', failure: 'Failed to rotate token' });
+    const d = await api(`/_/api/tokens/${id}/rotate`, { method: 'POST', success: 'Token rotated', failure: 'Failed to rotate token' });
     await Drawer.close('editDrawer', true);
     editingTokenId = null;
     await loadTokens();
@@ -1079,7 +1070,6 @@ async function rotateToken(id) {
   }
 }
 
-// Token Reveal Modal
 function showRevealModal(token, data) {
   revealData = { ...data, token };
   document.getElementById('revealTokenValue').textContent = token;
@@ -1138,11 +1128,10 @@ async function copyRevealToken() {
   }
 }
 
-// Init 
 async function init() {
   const [epsResult, envResult] = await Promise.allSettled([
-    api('/ui/api/endpoints', { failure: 'Failed to load endpoints' }),
-    api('/ui/api/environments', { failure: 'Failed to load environments' })
+    api('/_/api/endpoints', { failure: 'Failed to load endpoints' }),
+    api('/_/api/environments', { failure: 'Failed to load environments' })
   ]);
 
   if (epsResult.status === 'fulfilled') {

@@ -101,8 +101,8 @@ public class RateLimiter
     {
         var pathBase = context.Request.PathBase.Value ?? "";
 
-        // Exempt /ui when auth is off, else signed-in non-auth routes; login is never exempt
-        if (context.Request.Path.StartsWithSegments("/ui"))
+        // Exempt /_ when auth is off, else signed-in non-auth routes; login is never exempt
+        if (context.Request.Path.StartsWithSegments("/_"))
         {
             if (!_uiAuthEnabled)
             {
@@ -110,8 +110,8 @@ public class RateLimiter
                 return;
             }
 
-            bool isAuthPath = context.Request.Path.StartsWithSegments("/ui/api/auth") ||
-                              context.Request.Path.StartsWithSegments("/ui/login");
+            bool isAuthPath = context.Request.Path.StartsWithSegments("/_/api/auth") ||
+                              context.Request.Path.StartsWithSegments("/_/login");
 
             bool hasValidSession = context.Request.Cookies.TryGetValue("portway_auth", out var sessionCookie) &&
                                    WebUiAuthHelper.ResolveSession(sessionCookie) is not null;

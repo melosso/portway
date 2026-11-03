@@ -8,7 +8,7 @@ public static partial class WebUiEndpointExtensions
     private static void MapRateLimitRoutes(WebApplication app)
     {
         // Live rate limiter state: penalty boxes plus in-memory bucket snapshot
-        app.MapGet("/ui/api/ratelimits", (
+        app.MapGet("/_/api/ratelimits", (
             RateLimiterState state,
             IRateLimiterStore store,
             RateLimitSettings settings,

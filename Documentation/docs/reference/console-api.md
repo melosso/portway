@@ -1,26 +1,26 @@
 ---
 title: Console API
-description: "Console API routes under /ui/api, session authentication and CSRF"
+description: "Console API routes under /_/api, session authentication and CSRF"
 ---
 
 # Console API
 
-The console at `/ui` uses the routes under `/ui/api`. They are authenticated by a console session, not by API tokens, and may change between releases.
+The console at `/_` uses the routes under `/_/api`. They are authenticated by a console session, not by API tokens, and may change between releases.
 
 ## Authentication
 
 ```http
-GET /ui/api/auth/csrf
+GET /_/api/auth/csrf
 ```
 
 ```http
-POST /ui/api/auth
+POST /_/api/auth
 Content-Type: application/json
 
 { "username": "admin", "password": "your-password", "csrf": "..." }
 ```
 
-A successful sign-in returns `{ "ok": true }` and sets the `portway_auth` and `portway_csrf` cookies. An account that must change its password returns `{ "ok": false, "must_change_password": true }`; `POST /ui/api/auth/password` with `username`, `password`, `newPassword` and a new `csrf` completes the sign-in.
+A successful sign-in returns `{ "ok": true }` and sets the `portway_auth` and `portway_csrf` cookies. An account that must change its password returns `{ "ok": false, "must_change_password": true }`; `POST /_/api/auth/password` with `username`, `password`, `newPassword` and a new `csrf` completes the sign-in.
 
 Write requests (`POST`, `PUT`, `PATCH`, `DELETE`) send the `portway_csrf` cookie value in an `X-CSRF-Token` header; without it they return `403`. Accounts with the `viewer` role receive `403` on writes, except linking and unlinking their own single sign-on identity ([Account roles](/guide/accounts#account-roles)).
 
@@ -28,40 +28,40 @@ Write requests (`POST`, `PUT`, `PATCH`, `DELETE`) send the `portway_csrf` cookie
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/ui/api/overview` | Dashboard data |
-| `GET` | `/ui/api/metrics` | Request metrics (`period`: `24h`, `7d`, `30d`) |
-| `DELETE` | `/ui/api/metrics` | Deletes all recorded request metrics |
-| `GET` | `/ui/api/metrics/health` | Success rate, failures and latency percentiles (`period`: `1h`, `24h`, `7d`, `30d`; `env`, `endpoint`, `version`, `method`) |
-| `GET` | `/ui/api/events` | Server-sent events |
-| `GET` | `/ui/api/logs` | Entries from the three newest `log/portwayapi-*.log` files, newest first (`limit` default `200`, maximum `2000`; `offset`; `level` `ALL`, `INF`, `WRN`, `ERR`, `DBG`) |
-| `GET` | `/ui/api/audit` | Configuration change history |
-| `POST` | `/ui/api/audit/{id}/restore` | Restores a saved configuration version |
-| `GET` | `/ui/api/endpoints` | Endpoints by type |
-| `GET`, `PUT`, `DELETE` | `/ui/api/endpoints/{type}/{name}` | Reads, saves or deletes an `entity.json` |
-| `POST` | `/ui/api/endpoints/{type}` | Creates an endpoint |
-| `POST` | `/ui/api/endpoints/{type}/validate` | Validates an endpoint without saving |
-| `GET`, `POST` | `/ui/api/environments` | Lists or creates environments |
-| `PUT` | `/ui/api/environments/settings` | Saves `environments/settings.json` |
-| `GET`, `PUT`, `DELETE` | `/ui/api/environments/{name}` | Reads, saves or deletes an environment |
-| `GET`, `PUT` | `/ui/api/environments/{name}/raw` | Environment file as JSON text |
-| `POST` | `/ui/api/environments/{name}/test` | Tests the connection |
-| `GET`, `PUT` | `/ui/api/settings` | Application settings; writes go to `appsettings.overrides.json` |
-| `GET`, `POST` | `/ui/api/tokens` | Lists or creates tokens |
-| `PUT`, `DELETE` | `/ui/api/tokens/{id}` | Updates or archives a token |
-| `POST` | `/ui/api/tokens/{id}/rotate` | Rotates a token |
-| `POST` | `/ui/api/tokens/{id}/unarchive` | Restores an archived token |
-| `GET` | `/ui/api/tokens/{id}/audit` | Token history |
-| `GET` | `/ui/api/ratelimits` | Active rate limit blocks |
-| `GET`, `POST`, `DELETE` | `/ui/api/mcp/config` | MCP chat configuration |
-| `GET`, `POST` | `/ui/api/users` | Console accounts |
-| `PUT`, `DELETE` | `/ui/api/users/{id}` | Updates or deletes an account |
-| `GET` | `/ui/api/users/me` | Signed-in account |
-| `GET`, `POST` | `/ui/api/oidc/providers` | Single sign-on providers |
-| `PUT`, `DELETE` | `/ui/api/oidc/providers/{id}` | Updates or deletes a provider |
+| `GET` | `/_/api/overview` | Dashboard data |
+| `GET` | `/_/api/metrics` | Request metrics (`period`: `24h`, `7d`, `30d`) |
+| `DELETE` | `/_/api/metrics` | Deletes all recorded request metrics |
+| `GET` | `/_/api/metrics/health` | Success rate, failures and latency percentiles (`period`: `1h`, `24h`, `7d`, `30d`; `env`, `endpoint`, `version`, `method`) |
+| `GET` | `/_/api/events` | Server-sent events |
+| `GET` | `/_/api/logs` | Entries from the three newest `log/portwayapi-*.log` files, newest first (`limit` default `200`, maximum `2000`; `offset`; `level` `ALL`, `INF`, `WRN`, `ERR`, `DBG`) |
+| `GET` | `/_/api/audit` | Configuration change history |
+| `POST` | `/_/api/audit/{id}/restore` | Restores a saved configuration version |
+| `GET` | `/_/api/endpoints` | Endpoints by type |
+| `GET`, `PUT`, `DELETE` | `/_/api/endpoints/{type}/{name}` | Reads, saves or deletes an `entity.json` |
+| `POST` | `/_/api/endpoints/{type}` | Creates an endpoint |
+| `POST` | `/_/api/endpoints/{type}/validate` | Validates an endpoint without saving |
+| `GET`, `POST` | `/_/api/environments` | Lists or creates environments |
+| `PUT` | `/_/api/environments/settings` | Saves `environments/settings.json` |
+| `GET`, `PUT`, `DELETE` | `/_/api/environments/{name}` | Reads, saves or deletes an environment |
+| `GET`, `PUT` | `/_/api/environments/{name}/raw` | Environment file as JSON text |
+| `POST` | `/_/api/environments/{name}/test` | Tests the connection |
+| `GET`, `PUT` | `/_/api/settings` | Application settings; writes go to `appsettings.overrides.json` |
+| `GET`, `POST` | `/_/api/tokens` | Lists or creates tokens |
+| `PUT`, `DELETE` | `/_/api/tokens/{id}` | Updates or archives a token |
+| `POST` | `/_/api/tokens/{id}/rotate` | Rotates a token |
+| `POST` | `/_/api/tokens/{id}/unarchive` | Restores an archived token |
+| `GET` | `/_/api/tokens/{id}/audit` | Token history |
+| `GET` | `/_/api/ratelimits` | Active rate limit blocks |
+| `GET`, `POST`, `DELETE` | `/_/api/mcp/config` | MCP chat configuration |
+| `GET`, `POST` | `/_/api/users` | Console accounts |
+| `PUT`, `DELETE` | `/_/api/users/{id}` | Updates or deletes an account |
+| `GET` | `/_/api/users/me` | Signed-in account |
+| `GET`, `POST` | `/_/api/oidc/providers` | Single sign-on providers |
+| `PUT`, `DELETE` | `/_/api/oidc/providers/{id}` | Updates or deletes a provider |
 
 ## Token fields
 
-Fields accepted by `POST /ui/api/tokens` and `PUT /ui/api/tokens/{id}`:
+Fields accepted by `POST /_/api/tokens` and `PUT /_/api/tokens/{id}`:
 
 | Field | Type | Description |
 |---|---|---|

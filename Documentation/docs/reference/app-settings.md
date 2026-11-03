@@ -20,7 +20,7 @@ From highest to lowest priority:
 | `appsettings.{ASPNETCORE_ENVIRONMENT}.json` | Per-deployment overrides |
 | `appsettings.json` | Shipped defaults, with every section below |
 
-The console never rewrites `appsettings.json`. An environment variable takes precedence over the same key in `appsettings.overrides.json`. The console displays a key set by an environment variable as read-only, with the variable name. `PUT /ui/api/settings` returns `400` for that key.
+The console never rewrites `appsettings.json`. An environment variable takes precedence over the same key in `appsettings.overrides.json`. The console displays a key set by an environment variable as read-only, with the variable name. `PUT /_/api/settings` returns `400` for that key.
 
 ## Sections
 
@@ -56,10 +56,10 @@ The console never rewrites `appsettings.json`. An environment variable takes pre
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `Enabled` | boolean | `true` | Serves the console at `/ui` |
+| `Enabled` | boolean | `true` | Serves the console at `/_` |
 | `AdminApiKey` | string | `""` | Deprecated enable switch; not a password. The first account is named `admin` when set |
 | `SeedPassword` | string | `""` | Fixed password for the first account, without a forced change; demo instances only |
-| `PublicOrigins` | string[] | `[]` | Origins allowed to reach `/ui` from outside the local network; one `*` per segment |
+| `PublicOrigins` | string[] | `[]` | Origins allowed to reach `/_` from outside the local network; one `*` per segment |
 | `CorsOrigins` | string[] | `[]` | Browser origins allowed by CORS |
 | `SecureCookies` | boolean | `false` | Session cookies over HTTPS only |
 | `Customization.EnableLandingPage` | boolean | `true` | Landing page at `/`; `false` redirects `/` to `/docs` |

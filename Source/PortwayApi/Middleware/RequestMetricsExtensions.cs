@@ -43,7 +43,7 @@ public static class RequestMetricsExtensions
                     (scrapePath is null || !path.StartsWithSegments(scrapePath)))
                 {
                     var duration = System.Diagnostics.Stopwatch.GetElapsedTime(startTimestamp);
-                    var source = path.StartsWithSegments("/ui") ? "ui" : path.StartsWithSegments("/api") ? "api" : "other";
+                    var source = path.StartsWithSegments("/_") ? "ui" : path.StartsWithSegments("/api") ? "api" : "other";
                     var (environment, endpoint, version) = source == "api"
                         ? Label(path.Value, environments.IsEnvironmentAllowed)
                         : ("", "", "");

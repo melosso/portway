@@ -151,7 +151,6 @@
 </div>
 
 <script>
-// Config
 const ENDPOINT_TYPES = [
   {
     key: 'sql', label: 'SQL', dotClass: 'dot-sql',
@@ -181,15 +180,14 @@ const ENDPOINT_TYPES = [
   {
     key: 'webhook', label: 'Webhook', dotClass: 'dot-webhook',
     fields: ['methods','schema','object_name','allowed_columns','hidden','enabled','deprecated','is_mcp_exposed','documentation'],
-    defaultContent: null // fixed file
+    defaultContent: null 
   }
 ];
 
-// State 
 let _allData = {};        // { sql: [...], proxy: [...], ... }
 let _activeTab = 'all';   // tab key or 'all'
 let _selected = null;     // { type, name }
-let _detailData = null;   // raw content from GET /ui/api/endpoints/{type}/{name}
+let _detailData = null;   // raw content from GET /_/api/endpoints/{type}/{name}
 let _dirty = false;
 let _rawMode = false;
 let _renaming = false;
@@ -225,11 +223,10 @@ window.addEventListener('beforeunload', e => {
   if (_dirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
-// Init 
 async function refreshAll() {
   confirmNavigate(async () => {
     try {
-      const d = await api('/ui/api/endpoints', { silent: true });
+      const d = await api('/_/api/endpoints', { silent: true });
       _allData = {
         sql:       (d.sql ?? []).map(e => ({ ...e, _type: 'sql' })),
         proxy:     (d.proxy ?? []).map(e => ({ ...e, _type: 'proxy' })),
@@ -247,7 +244,6 @@ async function refreshAll() {
   });
 }
 
-// Tabs 
 function renderTabs() {
   const count = key => resourcesOf(key === 'all' ? Object.values(_allData).flat() : (_allData[key] ?? [])).length;
   const options = [{ key: 'all', label: 'All types' }, ...ENDPOINT_TYPES.map(t => ({ key: t.key, label: t.label }))];
@@ -291,7 +287,6 @@ function selectedResource() {
   return resourcesOf(_allData[_selected.type] ?? []).find(r => r.base === base) ?? null;
 }
 
-// List
 function getFilteredItems() {
   const q = (document.getElementById('epSearch')?.value ?? '').toLowerCase();
   const types = _activeTab === 'all' ? ENDPOINT_TYPES.map(t => t.key) : [_activeTab];
@@ -381,17 +376,16 @@ function filterList() {
   renderList();
 }
 
-// Detail
 async function selectEndpoint(type, name, scroll = true) {
   _selected = { type, name };
   _confirmingDelete = false;
-  renderList(); // update active state
+  renderList();
 
   const detail = document.getElementById('epDetail');
   detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
 
   try {
-    const d = await api(`/ui/api/endpoints/${type}/${name}`, { silent: true });
+    const d = await api(`/_/api/endpoints/${type}/${name}`, { silent: true });
     _detailData = d;
     _dirty = false;
     _rawMode = false;
@@ -534,8 +528,6 @@ function applyLifecycle(cfg) {
     Sunset: sunset ? `${sunset}T00:00:00Z` : undefined
   };
 }
-
-// Field helpers
 
 function fieldText(id, label, value) {
   return `<div class="field">
@@ -754,8 +746,6 @@ function fieldDocumentation(c) {
   );
 }
 
-// Structured forms per type
-
 // SQL fields in entity.json order
 function renderSqlForm(c) {
   return `
@@ -970,7 +960,6 @@ function renderWebhookForm(c) {
     ${fieldDocumentation(c)}`;
 }
 
-// Validation
 function readEnvs() {
   const raw = document.getElementById('allowedEnvironments')?.value ?? '*';
   const envs = raw.split(',').map(s => s.trim()).filter(Boolean);
@@ -1175,7 +1164,6 @@ function collectFormConfig(type, existingContent) {
   return {};
 }
 
-// Save
 async function saveEndpoint() {
   if (!_selected || !_detailData) return;
   const { type, name } = _selected;
@@ -1188,7 +1176,7 @@ async function saveEndpoint() {
       const raw = document.getElementById('rawContent')?.value ?? '';
       try { JSON.parse(raw); } catch(e) { toast('Invalid JSON: ' + e.message, 'error'); return; }
       body = { content: raw };
-      await api(`/ui/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
+      await api(`/_/api/endpoints/${type}/${name}?raw=true`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
       _dirty = false;
       await refreshAll();
     } else {
@@ -1196,7 +1184,7 @@ async function saveEndpoint() {
       if (errs.length) { toast(errs[0], 'error'); return; }
       const cfg = applyLifecycle(collectFormConfig(type, _detailData.content));
       body = { content: cfg };
-      await api(`/ui/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
+      await api(`/_/api/endpoints/${type}/${name}`, { method: 'PUT', body, success: 'Saved', failure: 'Save failed' });
       _dirty = false;
       await refreshAll();
     }
@@ -1217,7 +1205,6 @@ async function reloadDetail() {
   });
 }
 
-// Alert Dialog 
 function showAlertDialog({ title, description, actionLabel = 'Confirm', onConfirm, extraHtml = '' }) {
   AlertDialog.show({
     title,
@@ -1237,7 +1224,6 @@ function confirmAlertDialog() {
   // Handled by AlertDialog component
 }
 
-// Delete 
 function startDelete() {
   if (!_selected) return;
   const { name } = _selected;
@@ -1253,7 +1239,7 @@ async function confirmDelete() {
   if (!_selected) return;
   const { type, name } = _selected;
   try {
-    await api(`/ui/api/endpoints/${type}/${name}`, { method: 'DELETE', success: `${name} deleted`, failure: 'Delete failed' });
+    await api(`/_/api/endpoints/${type}/${name}`, { method: 'DELETE', success: `${name} deleted`, failure: 'Delete failed' });
     _selected = null;
     _detailData = null;
     document.getElementById('epDetail').innerHTML = `<div class="ep-empty">
@@ -1264,20 +1250,16 @@ async function confirmDelete() {
   } catch(e) {}
 }
 
-// Versions
-
 async function createVersion() {
   if (!_selected) return;
   const { type, name } = _selected;
   try {
-    const d = await api(`/ui/api/endpoints/${type}/versions/${name}`, { method: 'POST', failure: 'Version not created' });
+    const d = await api(`/_/api/endpoints/${type}/versions/${name}`, { method: 'POST', failure: 'Version not created' });
     toast(`${d.version} created`, 'success');
     await refreshAll();
     selectEndpoint(type, d.name);
   } catch(e) {}
 }
-
-// Rename
 
 function startRename() {
   _renaming = true;
@@ -1297,7 +1279,7 @@ async function confirmRename() {
   }
   const { type, name } = _selected;
   try {
-    await api(`/ui/api/endpoints/${type}/${name}`, {
+    await api(`/_/api/endpoints/${type}/${name}`, {
       method: 'PATCH', body: { new_name: newName }, success: 'Renamed', failure: 'Rename failed'
     });
     _renaming = false;
@@ -1306,7 +1288,6 @@ async function confirmRename() {
   } catch(e) {}
 }
 
-// Create Drawer
 let _preDrawerDirty = false;
 function openCreateDrawer() {
   _preDrawerDirty = _dirty;
@@ -1513,7 +1494,7 @@ async function submitCreate() {
   if (validationErr) { toast(validationErr, 'error'); return; }
 
   try {
-    await api(`/ui/api/endpoints/${_createType}`, {
+    await api(`/_/api/endpoints/${_createType}`, {
       method: 'POST',
       body: { name, content: JSON.stringify(content, null, 2) },
       success: `${name} created`, failure: 'Create failed'
@@ -1524,7 +1505,6 @@ async function submitCreate() {
   } catch(e) {}
 }
 
-// Bootstrap
 Drawer.onClose('createDrawer', () => { _dirty = _preDrawerDirty; });
 refreshAll();
 </script>

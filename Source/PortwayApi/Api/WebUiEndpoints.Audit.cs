@@ -12,7 +12,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/audit", (HttpRequest request) =>
+        app.MapGet("/_/api/audit", (HttpRequest request) =>
         {
             var limit = int.TryParse(request.Query["limit"], out var l) ? l : 50;
             var entries = configAudit.GetRecent(limit).Select(e => new
@@ -31,7 +31,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Restores the pre-change backup recorded on an audit entry
-        app.MapPost("/ui/api/audit/{id:long}/restore", (long id, HttpContext context) =>
+        app.MapPost("/_/api/audit/{id:long}/restore", (long id, HttpContext context) =>
         {
             var entry = configAudit.GetById(id);
             if (entry?.BackupPath is null || !File.Exists(entry.BackupPath))

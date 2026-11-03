@@ -91,4 +91,4 @@ Archiving revokes a token; requests with it return `401`, and its plaintext toke
 
 ## Token audit log
 
-Each token records its operations (created, scopes, environments and tenants changed, rotated, archived). The log opens from the token's edit drawer under **Audit Log**. API: `GET /ui/api/tokens/{id}/audit` ([Console API](/reference/console-api)).
+Each token records its operations (created, scopes, environments and tenants changed, rotated, archived). The log opens from the token's edit drawer under **Audit Log**. API: `GET /_/api/tokens/{id}/audit` ([Console API](/reference/console-api)).

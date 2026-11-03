@@ -358,14 +358,13 @@ function setSort(col) {
   renderUsers();
 }
 
-
 async function load() {
   const btn = document.getElementById('refreshBtn');
   if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
 
   const tbody = document.getElementById('usersBody');
   try {
-    const d = await api('/ui/api/users', { failure: 'Failed to load users' });
+    const d = await api('/_/api/users', { failure: 'Failed to load users' });
     _users = d.users ?? [];
     _meId = d.signed_in_user_id ?? null;
     renderUsers();
@@ -449,7 +448,7 @@ async function createUser() {
   btn.classList.add('is-loading');
   btn.disabled = true;
   try {
-    await api('/ui/api/users', { method: 'POST', body, success: 'User created', failure: 'Failed to create user' });
+    await api('/_/api/users', { method: 'POST', body, success: 'User created', failure: 'Failed to create user' });
     await closeCreateDrawer();
     await load();
   } catch(e) {
@@ -499,7 +498,7 @@ async function saveUser() {
   btn.classList.add('is-loading');
   btn.disabled = true;
   try {
-    await api(`/ui/api/users/${_editingId}`, { method: 'PUT', body, success: 'User updated', failure: 'Failed to save changes' });
+    await api(`/_/api/users/${_editingId}`, { method: 'PUT', body, success: 'User updated', failure: 'Failed to save changes' });
     await closeEditDrawer();
     await Promise.all([load(), refreshAccount()]);
   } catch(e) {
@@ -530,7 +529,7 @@ function confirmDelete(id) {
 
 async function doDelete(id, currentPassword) {
   try {
-    await api(`/ui/api/users/${id}`, {
+    await api(`/_/api/users/${id}`, {
       method: 'DELETE', body: { current_password: currentPassword },
       success: 'User deleted', failure: 'Failed to delete user'
     });
@@ -538,15 +537,13 @@ async function doDelete(id, currentPassword) {
   } catch(e) {}
 }
 
-// Sign-in providers
-
 let _providers = [];
 let _editingProviderId = null;
 
 async function loadProviders() {
   const el = document.getElementById('providersBody');
   try {
-    const d = await api('/ui/api/oidc/providers', { failure: 'Failed to load providers' });
+    const d = await api('/_/api/oidc/providers', { failure: 'Failed to load providers' });
     _providers = d.providers ?? [];
 
     if (!_providers.length) {
@@ -624,9 +621,9 @@ async function saveProvider() {
   btn.disabled = true;
   try {
     if (_editingProviderId === null) {
-      await api('/ui/api/oidc/providers', { method: 'POST', body, success: 'Provider added', failure: 'Failed to add provider' });
+      await api('/_/api/oidc/providers', { method: 'POST', body, success: 'Provider added', failure: 'Failed to add provider' });
     } else {
-      await api(`/ui/api/oidc/providers/${_editingProviderId}`, { method: 'PUT', body, success: 'Provider updated', failure: 'Failed to save provider' });
+      await api(`/_/api/oidc/providers/${_editingProviderId}`, { method: 'PUT', body, success: 'Provider updated', failure: 'Failed to save provider' });
     }
     await Drawer.close('providerDrawer');
     await loadProviders();
@@ -655,7 +652,7 @@ function confirmDeleteProvider(id) {
 
 async function doDeleteProvider(id) {
   try {
-    const r = await api(`/ui/api/oidc/providers/${id}`, { method: 'DELETE', failure: 'Failed to delete provider' });
+    const r = await api(`/_/api/oidc/providers/${id}`, { method: 'DELETE', failure: 'Failed to delete provider' });
     toast(r.stranded_accounts
       ? `Provider deleted. ${r.stranded_accounts} account(s) have no sign-in method.`
       : 'Provider deleted', r.stranded_accounts ? 'warning' : 'success');
@@ -673,7 +670,7 @@ async function loadMyLink() {
   const card = document.getElementById('myLinkCard');
   const el = document.getElementById('myLinkBody');
   try {
-    _me = await api('/ui/api/users/me', { silent: true });
+    _me = await api('/_/api/users/me', { silent: true });
     if (!_me?.signed_in) { card.hidden = true; return; }
 
     const linked = _me.provider && _me.provider !== 'local';
@@ -721,7 +718,7 @@ function linkMe(slug, name) {
 
 async function startLink(slug, currentPassword) {
   try {
-    const r = await api(`/ui/api/oidc/providers/${encodeURIComponent(slug)}/link`, {
+    const r = await api(`/_/api/oidc/providers/${encodeURIComponent(slug)}/link`, {
       method: 'POST', body: { current_password: currentPassword }, failure: 'Could not start linking'
     });
     window.location.href = r.authorize_url;
@@ -740,7 +737,7 @@ function unlinkMe() {
 
 async function doUnlinkMe() {
   try {
-    await api('/ui/api/oidc/link', { method: 'DELETE', success: 'Unlinked', failure: 'Could not unlink' });
+    await api('/_/api/oidc/link', { method: 'DELETE', success: 'Unlinked', failure: 'Could not unlink' });
     await loadMyLink();
     await load();
   } catch(e) {}

@@ -9,7 +9,7 @@ public class ChatHtmlXssTests
 {
     private static string ReadChatHtml()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ui", "mcp", "chat.html");
+        var path = Path.Combine(AppContext.BaseDirectory, "wwwroot", "_", "mcp", "chat.html");
         Assert.True(File.Exists(path), $"chat.html not found at {path}");
         return File.ReadAllText(path);
     }

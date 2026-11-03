@@ -26,7 +26,7 @@ Providers are added under **Users → Sign-in providers → Add provider**.
 ## Redirect URI
 
 ```
-https://your-host/ui/api/auth/oidc/{key}/callback
+https://your-host/_/api/auth/oidc/{key}/callback
 ```
 
 The console provider list shows the exact URI per key, including the path base.

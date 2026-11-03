@@ -32,7 +32,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/environments", () =>
+        app.MapGet("/_/api/environments", () =>
         {
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
             var globalPath = Path.Combine(Directory.GetCurrentDirectory(), "environments", "settings.json");
@@ -48,7 +48,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Environment CRUD
-        app.MapPut("/ui/api/environments/settings", async (HttpContext context) =>
+        app.MapPut("/_/api/environments/settings", async (HttpContext context) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var envSettings = app.Services.GetRequiredService<EnvironmentSettings>();
@@ -68,7 +68,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/environments/{name}", (string name) =>
+        app.MapGet("/_/api/environments/{name}", (string name) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
@@ -116,7 +116,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/environments/{name}/raw", (string name) =>
+        app.MapGet("/_/api/environments/{name}/raw", (string name) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
@@ -137,7 +137,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapPut("/ui/api/environments/{name}/raw", async (string name, HttpContext context) =>
+        app.MapPut("/_/api/environments/{name}/raw", async (string name, HttpContext context) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
@@ -192,7 +192,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/environments/{name}/test", async (string name) =>
+        app.MapPost("/_/api/environments/{name}/test", async (string name) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { ok = false, error = "Invalid environment name" }, statusCode: 400);
@@ -226,7 +226,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/environments", async (HttpContext context) =>
+        app.MapPost("/_/api/environments", async (HttpContext context) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var name = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
@@ -267,7 +267,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true, name }, statusCode: 201);
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
-        app.MapPut("/ui/api/environments/{name}", async (string name, HttpContext context) =>
+        app.MapPut("/_/api/environments/{name}", async (string name, HttpContext context) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
@@ -325,7 +325,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
 
-        app.MapMethods("/ui/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
+        app.MapMethods("/_/api/environments/{name}", ["PATCH"], async (string name, HttpContext context) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
@@ -357,7 +357,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, name = newName });
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
-        app.MapDelete("/ui/api/environments/{name}", async (string name, HttpRequest request) =>
+        app.MapDelete("/_/api/environments/{name}", async (string name, HttpRequest request) =>
         {
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);

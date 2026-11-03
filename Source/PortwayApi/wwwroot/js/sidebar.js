@@ -1,4 +1,4 @@
-// Theme + sidebar init (runs synchronously before body paint) ─
+// runs before first paint to avoid a theme and sidebar flash
 (function () {
     try {
         var s = JSON.parse(localStorage.getItem('beacon_settings') || '{}');
@@ -15,27 +15,27 @@ const NAV_GROUPS = [
         label: 'Navigation',
         items: [
             {
-                href: '/ui/dashboard',
+                href: '/_/dashboard',
                 label: 'Dashboard',
                 icon: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'
             },
             {
-                href: '/ui/health',
+                href: '/_/health',
                 label: 'Health',
                 icon: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'
             },
             {
-                href: '/ui/endpoints',
+                href: '/_/endpoints',
                 label: 'Endpoints',
                 icon: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>'
             },
             {
-                href: '/ui/environments',
+                href: '/_/environments',
                 label: 'Environments',
                 icon: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>'
             },
             {
-                href: '/ui/tokens',
+                href: '/_/tokens',
                 label: 'Access Tokens',
                 icon: '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
             }
@@ -45,17 +45,17 @@ const NAV_GROUPS = [
         label: 'System',
         items: [
             {
-                href: '/ui/logs',
+                href: '/_/logs',
                 label: 'Logs',
                 icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>'
             },
             {
-                href: '/ui/users',
+                href: '/_/users',
                 label: 'Users',
                 icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
             },
             {
-                href: '/ui/settings',
+                href: '/_/settings',
                 label: 'Settings',
                 children: [
                     { hash: 'general', label: 'General' },
@@ -125,18 +125,17 @@ function renderSidebar(mcpEnabled) {
 
     let groups = [...NAV_GROUPS];
 
-    // Add MCP group if enabled
     if (mcpEnabled) {
         groups.splice(1, 0, {
             label: 'MCP',
             items: [
                 {
-                    href: '/ui/mcp/chat',
+                    href: '/_/mcp/chat',
                     label: 'Chat',
                     icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'
                 },
                 {
-                    href: '/ui/mcp/explorer',
+                    href: '/_/mcp/explorer',
                     label: 'Explorer',
                     icon: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
                 }
@@ -154,16 +153,17 @@ function renderSidebar(mcpEnabled) {
                     const extBadge = item.external
                         ? `<svg class="nav-external" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
                         : '';
-                    const row = `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}"${active ? ' aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${extBadge}${item.children ? NAV_CHEVRON : ''}</a>`;
-                    if (!item.children || !active) return row;
-                    const current = (location.hash || '').replace('#', '') || item.children[0].hash;
+                    const row = `<a href="${href}"${ext} title="${item.label}" class="nav-item${active ? ' active' : ''}"${active ? ' aria-current="page"' : ''}>${icon(item.icon)}<span>${item.label}</span>${extBadge}</a>`;
+                    if (!item.children) return row;
+                    const kidsId = `nav-kids-${item.label.toLowerCase()}`;
+                    const current = active ? (location.hash || '').replace('#', '') || item.children[0].hash : '';
                     const kids = item.children
                         .map(
                             (c) =>
                                 `<a href="${href}#${c.hash}" class="nav-item nav-child${c.hash === current ? ' active' : ''}"${c.hash === current ? ' aria-current="location"' : ''} data-section="${c.hash}" onclick="closeNav()"><span>${c.label}</span></a>`
                         )
                         .join('\n      ');
-                    return `${row}\n    <div class="nav-kids">\n      ${kids}\n    </div>`;
+                    return `<div class="nav-parent">${row}<button type="button" class="nav-expand" aria-expanded="${active}" aria-controls="${kidsId}" aria-label="${item.label} sections" onclick="toggleNavKids(this)">${NAV_CHEVRON}</button></div>\n    <div class="nav-kids" id="${kidsId}"${active ? '' : ' hidden'}>\n      ${kids}\n    </div>`;
                 })
                 .join('\n    ');
             return `<div class="nav-group">
@@ -227,17 +227,16 @@ function renderSidebar(mcpEnabled) {
 
 let _openapiEnabled = false;
 
-// Fetch settings + overview, then render
 Promise.all([
-    api('/ui/api/overview', { silent: true }),
-    api('/ui/api/settings', { silent: true }).catch(() => ({ mcp: { enabled: false } })),
-    api('/ui/api/users/me', { silent: true }).catch(() => ({ signed_in: false }))
+    api('/_/api/overview', { silent: true }),
+    api('/_/api/settings', { silent: true }).catch(() => ({ mcp: { enabled: false } })),
+    api('/_/api/users/me', { silent: true }).catch(() => ({ signed_in: false }))
 ])
     .then(([d, settings, me]) => {
         const mcpEnabled = settings?.mcp?.enabled ?? false;
 
-        if (!mcpEnabled && location.pathname.startsWith((window.PortwayBase || '') + '/ui/mcp')) {
-            location.href = (window.PortwayBase || '') + '/ui/dashboard';
+        if (!mcpEnabled && location.pathname.startsWith((window.PortwayBase || '') + '/_/mcp')) {
+            location.href = (window.PortwayBase || '') + '/_/dashboard';
             return;
         }
 
@@ -279,14 +278,13 @@ Promise.all([
     });
 
 function logout() {
-    api('/ui/api/auth/logout', { method: 'POST', silent: true })
+    api('/_/api/auth/logout', { method: 'POST', silent: true })
         .catch(() => {})
         .finally(() => {
-            window.location.href = (window.PortwayBase || '') + '/ui/login';
+            window.location.href = (window.PortwayBase || '') + '/_/login';
         });
 }
 
-// Mobile drawer
 const MENU_SVG = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
 
 function isMobileNav() {
@@ -303,6 +301,12 @@ function openNav() {
     document.body.classList.add('nav-open');
     setNavExpanded(true);
     document.querySelector('aside .nav-item.active, aside .nav-item')?.focus();
+}
+
+function toggleNavKids(btn) {
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    btn.setAttribute('aria-expanded', String(open));
+    document.getElementById(btn.getAttribute('aria-controls')).hidden = !open;
 }
 
 function closeNav() {
@@ -360,7 +364,7 @@ function mountDocsButton() {
 
 // repaints the signed-in account after a change to it
 function refreshAccount() {
-    return api('/ui/api/users/me', { silent: true })
+    return api('/_/api/users/me', { silent: true })
         .then(paintAccount)
         .catch(() => {});
 }
@@ -403,7 +407,6 @@ document.addEventListener('keydown', (e) => {
     closeNav();
 });
 
-// Sidebar collapse
 function setNavExpanded(open) {
     document.querySelectorAll('.brand, .nav-trigger').forEach((el) => el.setAttribute('aria-expanded', String(open)));
 }
@@ -423,7 +426,6 @@ function toggleSidebar() {
     } catch {}
 }
 
-// Theme
 function _getTheme() {
     try {
         return JSON.parse(localStorage.getItem('beacon_settings') || '{}').theme || 'system';

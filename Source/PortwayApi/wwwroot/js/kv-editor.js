@@ -1,6 +1,5 @@
 // Key-value row editor; needs esc from shared.js and a markDirty function
 
-// Render existing key-value pairs as editable rows
 function buildKvEditor(headers) {
     return Object.entries(headers)
         .map(
@@ -34,7 +33,6 @@ function addKvRow(containerId, options = {}) {
     c.appendChild(row);
 }
 
-// Extract headers from all rows in a container
 function collectHeaders(containerId) {
     const headers = {};
     document.querySelectorAll(`#${containerId} .kv-row`).forEach((row) => {

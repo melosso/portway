@@ -11,7 +11,7 @@ public static partial class WebUiEndpointExtensions
 {
     private static void MapDiagnosticsRoutes(WebApplication app)
     {
-        app.MapPost("/ui/api/client-error", async (HttpContext context) =>
+        app.MapPost("/_/api/client-error", async (HttpContext context) =>
         {
             try
             {
@@ -29,7 +29,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok();
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/logs", async (HttpRequest request) =>
+        app.MapGet("/_/api/logs", async (HttpRequest request) =>
         {
             var limit = int.TryParse(request.Query["limit"], out var l) ? Math.Min(l, 2000) : 200;
             var offset = int.TryParse(request.Query["offset"], out var o) ? Math.Max(0, o) : 0;
@@ -76,7 +76,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/metrics", (HttpRequest request) =>
+        app.MapGet("/_/api/metrics", (HttpRequest request) =>
         {
             var period = request.Query["period"].ToString();
             if (period != "7d" && period != "30d") period = "24h";
@@ -105,7 +105,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/metrics/health", (HttpRequest request, MetricsService metrics) =>
+        app.MapGet("/_/api/metrics/health", (HttpRequest request, MetricsService metrics) =>
         {
             string? Param(string name) => request.Query[name].FirstOrDefault() is { Length: > 0 } v ? v : null;
             var period = Param("period") is { } p && MetricsService.HealthPeriod(p) is not null ? p : "24h";
@@ -149,7 +149,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapDelete("/ui/api/metrics", async (HttpContext context, MetricsService metrics, MetricsPersistenceService persistence,
+        app.MapDelete("/_/api/metrics", async (HttpContext context, MetricsService metrics, MetricsPersistenceService persistence,
             PortwayApi.Services.Configuration.ConfigAuditService configAudit) =>
         {
             var clearedAt = metrics.Clear();

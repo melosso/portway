@@ -99,7 +99,7 @@ public class SecurityHeadersMiddleware
             AddSecurityHeaders(context.Response.Headers);
 
             // Console-only isolation: same-origin here would break cross-origin consumers of the gateway itself
-            if (context.Request.Path.StartsWithSegments("/ui"))
+            if (context.Request.Path.StartsWithSegments("/_"))
             {
                 context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
                 context.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";

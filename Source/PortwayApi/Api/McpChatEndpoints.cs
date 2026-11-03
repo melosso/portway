@@ -9,7 +9,7 @@ public static class McpChatEndpoints
     public static IEndpointRouteBuilder MapMcpChatEndpoints(this IEndpointRouteBuilder app)
     {
         // MCP tools as JSON, with missingMetadata listing tools without SQL field metadata
-        app.MapGet("/ui/api/mcp/tools", (McpChatService chat) =>
+        app.MapGet("/_/api/mcp/tools", (McpChatService chat) =>
         {
             var tools = chat.GetToolDefinitions();
             var missing = chat.GetMissingMetadataEndpoints();
@@ -22,7 +22,7 @@ public static class McpChatEndpoints
         }).ExcludeFromDescription();
 
         // Streaming chat endpoint; SSE
-        app.MapPost("/ui/api/mcp/chat", async (HttpContext context, McpChatService chat) =>
+        app.MapPost("/_/api/mcp/chat", async (HttpContext context, McpChatService chat) =>
         {
             JsonNode? body = null;
             try { body = await JsonNode.ParseAsync(context.Request.Body); }
@@ -82,7 +82,7 @@ public static class McpChatEndpoints
         }).ExcludeFromDescription();
 
         // MCP health without enumerating tools
-        app.MapGet("/ui/api/mcp/health", (McpChatService chat) =>
+        app.MapGet("/_/api/mcp/health", (McpChatService chat) =>
         {
             var tools = chat.GetToolDefinitions();
             var missing = chat.GetMissingMetadataEndpoints();

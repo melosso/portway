@@ -11,7 +11,7 @@ public static partial class WebUiEndpointExtensions
 {
     private static void MapTokenRoutes(WebApplication app)
     {
-        app.MapGet("/ui/api/tokens", async (HttpRequest request, TokenService tokenService) =>
+        app.MapGet("/_/api/tokens", async (HttpRequest request, TokenService tokenService) =>
         {
             var includeRevoked = request.Query["include_revoked"] == "true";
             var tokens = includeRevoked
@@ -35,7 +35,7 @@ public static partial class WebUiEndpointExtensions
             }));
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/tokens", async (HttpContext context, TokenService tokenService) =>
+        app.MapPost("/_/api/tokens", async (HttpContext context, TokenService tokenService) =>
         {
             var request = await context.Request.ReadFromJsonAsync<TokenCreateRequest>();
             if (request is null)
@@ -50,7 +50,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true, token });
         }).ExcludeFromDescription();
 
-        app.MapPut("/ui/api/tokens/{id:int}", async (int id, HttpContext context, TokenService tokenService) =>
+        app.MapPut("/_/api/tokens/{id:int}", async (int id, HttpContext context, TokenService tokenService) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
 
@@ -104,7 +104,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapDelete("/ui/api/tokens/{id:int}", async (int id, TokenService tokenService) =>
+        app.MapDelete("/_/api/tokens/{id:int}", async (int id, TokenService tokenService) =>
         {
             var blockReason = await tokenService.GetRevokeBlockReasonAsync(id);
 
@@ -116,13 +116,13 @@ public static partial class WebUiEndpointExtensions
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found" }, statusCode: 404);
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/tokens/{id:int}/unarchive", async (int id, TokenService tokenService) =>
+        app.MapPost("/_/api/tokens/{id:int}/unarchive", async (int id, TokenService tokenService) =>
         {
             var ok = await tokenService.UnarchiveTokenAsync(id);
             return ok ? Results.Ok(new { ok = true }) : Results.Json(new { error = "Token not found or not archived" }, statusCode: 404);
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/tokens/{id:int}/rotate", async (int id, TokenService tokenService) =>
+        app.MapPost("/_/api/tokens/{id:int}/rotate", async (int id, TokenService tokenService) =>
         {
             var existing = (await tokenService.GetAllTokensAsync()).FirstOrDefault(t => t.Id == id);
 
@@ -165,7 +165,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/tokens/{id:int}/audit", async (int id, TokenService tokenService) =>
+        app.MapGet("/_/api/tokens/{id:int}/audit", async (int id, TokenService tokenService) =>
         {
             var entries = await tokenService.GetAuditLogAsync(tokenId: id, maxRecords: 50);
             return Results.Json(entries.Select(e => new

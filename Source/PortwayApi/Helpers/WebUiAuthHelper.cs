@@ -5,7 +5,7 @@ using System.Text;
 namespace PortwayApi.Helpers;
 
 /// <summary>
-/// Provides security hardening for Web UI (/ui) authentication including rate limiting, CSRF, and account lockout
+/// Provides security hardening for Web UI (/_) authentication including rate limiting, CSRF, and account lockout
 /// </summary>
 public static class WebUiAuthHelper
 {

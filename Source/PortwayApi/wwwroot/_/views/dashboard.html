@@ -99,7 +99,6 @@
         grid-column: 1 / -1;
     }
 
-    /* Chart legend */
     .chart-legend {
         display: flex;
         gap: 1rem;
@@ -131,7 +130,6 @@
         padding-bottom: 1.25rem;
     }
 
-    /* Top endpoints */
     .top-ep-list {
         display: flex;
         flex-direction: column;
@@ -270,7 +268,7 @@
             <section class="card" aria-labelledby="changesTitle">
                 <div class="card-header">
                     <h2 class="card-title" id="changesTitle">Recent changes</h2>
-                    <a class="btn-icon" href="ui/settings#security" aria-label="All changes" data-tooltip="All changes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+                    <a class="btn-icon" href="_/settings#security" aria-label="All changes" data-tooltip="All changes"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
                 </div>
                 <div class="card-body" id="changesBody">
                     <p class="dash-note">Loading…</p>
@@ -279,22 +277,22 @@
         </div>
 
         <div class="summary-cards health-strip">
-            <a class="summary-card" href="ui/health" data-health-link>
+            <a class="summary-card" href="_/health" data-health-link>
                 <div class="summary-value" id="hsSuccess">—</div>
                 <div class="summary-label">Success rate</div>
                 <div class="summary-sub" data-period-sub="API requests">—</div>
             </a>
-            <a class="summary-card" href="ui/health" data-health-link>
+            <a class="summary-card" href="_/health" data-health-link>
                 <div class="summary-value" id="hsFailures">—</div>
                 <div class="summary-label">Failures (5xx)</div>
                 <div class="summary-sub" id="hsClientErrors">—</div>
             </a>
-            <a class="summary-card" href="ui/health" data-health-link>
+            <a class="summary-card" href="_/health" data-health-link>
                 <div class="summary-value" id="hsP95">—</div>
                 <div class="summary-label">p95 latency</div>
                 <div class="summary-sub" id="hsP99">—</div>
             </a>
-            <a class="summary-card" href="ui/health" data-health-link>
+            <a class="summary-card" href="_/health" data-health-link>
                 <div class="summary-value" id="hsTotal">—</div>
                 <div class="summary-label">API requests</div>
                 <div class="summary-sub" data-period-sub="Total">—</div>
@@ -355,7 +353,7 @@
             <section class="card" aria-labelledby="epTitle">
                 <div class="card-header">
                     <h2 class="card-title" id="epTitle">Endpoints</h2>
-                    <a class="btn-icon" href="ui/endpoints" aria-label="Manage endpoints" data-tooltip="Manage endpoints"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+                    <a class="btn-icon" href="_/endpoints" aria-label="Manage endpoints" data-tooltip="Manage endpoints"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
                 </div>
                 <div class="card-body" id="breakdownBody">
                     <p class="dash-note">Loading…</p>
@@ -397,7 +395,6 @@ function healthTone(status) {
 const CHECK_NAMES = { Diskspace: 'Disk space', ProxyEndpoints: 'Proxy endpoints', SqlConnectivity: 'SQL connectivity' };
 function checkName(n) { return CHECK_NAMES[n] ?? n.replace(/([a-z])([A-Z])/g, '$1 $2'); }
 
-// Backends
 function applyHealth(status) {
   const badge = document.getElementById('healthBadge');
   badge.textContent = status || 'Unknown';
@@ -407,7 +404,7 @@ function applyHealth(status) {
 async function loadChecks() {
   const el = document.getElementById('checksBody');
   try {
-    const d = await api('/ui/api/health/checks', { silent: true });
+    const d = await api('/_/api/health/checks', { silent: true });
     applyHealth(d.status);
     const checks = d.checks ?? [];
     const rows = checks.map(c => {
@@ -428,11 +425,10 @@ async function loadChecks() {
   }
 }
 
-// Recent changes
 async function loadChanges() {
   const el = document.getElementById('changesBody');
   try {
-    const entries = (await api('/ui/api/audit?limit=5', { silent: true })).entries ?? [];
+    const entries = (await api('/_/api/audit?limit=5', { silent: true })).entries ?? [];
     if (!entries.length) { el.innerHTML = note('No configuration changes recorded'); return; }
     el.innerHTML = '<ul class="dash-list dash-list-plain">' + entries.map(e => `
       <li class="dash-row">
@@ -445,11 +441,10 @@ async function loadChanges() {
   }
 }
 
-// Endpoint counts
 async function loadOverview() {
   const el = document.getElementById('breakdownBody');
   try {
-    const d = await api('/ui/api/overview', { silent: true });
+    const d = await api('/_/api/overview', { silent: true });
     const ep = d.endpoints ?? {};
     const rows = [
       ['SQL', ep.sql], ['Proxy', ep.proxy], ['Composite', ep.composite],
@@ -467,12 +462,11 @@ async function loadOverview() {
   }
 }
 
-// Rate limiting
 async function loadRateLimits() {
   const badge = document.getElementById('rlBadge');
   const el = document.getElementById('rateLimitBody');
   try {
-    const d = await api('/ui/api/ratelimits', { silent: true });
+    const d = await api('/_/api/ratelimits', { silent: true });
     const blocks = (d.blocked_ips?.length ?? 0) + (d.blocked_tokens?.length ?? 0);
     badge.textContent = !d.enabled ? 'Off' : blocks ? `${blocks} blocked` : 'No blocks';
     badge.className = `badge ${!d.enabled ? 'badge-muted' : blocks ? 'badge-warning' : 'badge-success'}`;
@@ -498,14 +492,13 @@ async function loadRateLimits() {
   }
 }
 
-// KPI strip
 async function loadHealthStrip() {
   const tone = (el, t) => { el.classList.remove('is-good', 'is-warn', 'is-bad'); if (t) el.classList.add(t); };
   const success = document.getElementById('hsSuccess');
   const failures = document.getElementById('hsFailures');
   const p95 = document.getElementById('hsP95');
   try {
-    const s = (await api(`/ui/api/metrics/health?period=${_period}`, { silent: true })).summary ?? {};
+    const s = (await api(`/_/api/metrics/health?period=${_period}`, { silent: true })).summary ?? {};
     success.textContent = s.success_rate == null ? '—' : `${(s.success_rate * 100).toFixed(s.success_rate >= 0.999 && s.success_rate < 1 ? 2 : 1)}%`;
     tone(success, s.success_rate == null ? null : s.success_rate >= 0.999 ? 'is-good' : s.success_rate >= 0.95 ? 'is-warn' : 'is-bad');
     failures.textContent = s.total ? fmtN(s.failures ?? 0) : '—';
@@ -521,9 +514,8 @@ async function loadHealthStrip() {
   }
 }
 
-// Charts, top endpoints
 async function loadMetrics() {
-  const d = await api(`/ui/api/metrics?period=${_period}`, { silent: true });
+  const d = await api(`/_/api/metrics?period=${_period}`, { silent: true });
   const hasData = d.api_traffic?.some(b => b.count > 0) || d.ui_traffic?.some(b => b.count > 0);
   if (hasData) {
     _trafficChart.setData(d.api_traffic, d.ui_traffic);
@@ -546,7 +538,7 @@ function renderTopEndpoints(eps) {
   el.innerHTML = `<ol class="top-ep-list dash-list">${eps.map((ep, i) => `
     <li class="top-ep-item">
       <span class="top-ep-rank">${i + 1}</span>
-      <a class="top-ep-name" href="ui/health?${new URLSearchParams({ period: _period, endpoint: ep.name })}" data-tooltip="${esc(esc(`Health of ${ep.name}`))}">${esc(ep.name)}</a>
+      <a class="top-ep-name" href="_/health?${new URLSearchParams({ period: _period, endpoint: ep.name })}" data-tooltip="${esc(esc(`Health of ${ep.name}`))}">${esc(ep.name)}</a>
       <span class="top-ep-count">${fmtN(ep.count)} req</span>
       <div class="top-ep-bar-track" aria-hidden="true"><div class="top-ep-bar-fill" style="transform:scaleX(${(ep.count / max).toFixed(3)})"></div></div>
     </li>`).join('')}</ol>`;
@@ -555,7 +547,7 @@ function renderTopEndpoints(eps) {
 async function loadPeriodData() {
   const label = PERIOD_LABELS[_period];
   document.querySelectorAll('[data-period-badge]').forEach(b => b.textContent = _period);
-  document.querySelectorAll('[data-health-link]').forEach(a => a.href = `ui/health?period=${_period}`);
+  document.querySelectorAll('[data-health-link]').forEach(a => a.href = `_/health?period=${_period}`);
   document.querySelectorAll('[data-period-sub]').forEach(s => s.textContent = `${s.dataset.periodSub}, ${label}`);
   const results = await Promise.allSettled([loadHealthStrip(), loadMetrics()]);
   document.getElementById('metricsError').hidden = results.every(r => r.status === 'fulfilled');
@@ -583,13 +575,12 @@ async function refreshLive() {
   markUpdated();
 }
 
-// Server-sent events
 let _sseAbort = null, _sseDelay = 1000;
 
 function connectSSE() {
   if (_sseAbort) _sseAbort.abort();
   _sseAbort = new AbortController();
-  fetch('/ui/api/events', { credentials: 'same-origin', signal: _sseAbort.signal })
+  fetch('/_/api/events', { credentials: 'same-origin', signal: _sseAbort.signal })
     .then(response => {
       if (!response.ok) throw new Error(`SSE ${response.status}`);
       _sseDelay = 1000;

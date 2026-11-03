@@ -72,17 +72,16 @@ function boolItem(label, value, desc) {
 
 async function load() {
   try {
-    const settings = await api('/ui/api/settings', { failure: 'Failed to load MCP settings' });
+    const settings = await api('/_/api/settings', { failure: 'Failed to load MCP settings' });
     const mcp  = settings.mcp  || {};
     const chat = settings.chat || {};
 
-    // Show a setup banner if chat is enabled but not yet configured.
     if (chat.enabled && !chat.configured) {
       const banner = document.createElement('div');
       banner.className = 'setup-banner';
       banner.innerHTML =
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-        '<span>Chat is not configured. <a href="/ui/mcp/chat">Open Chat</a> to complete setup.</span>';
+        '<span>Chat is not configured. <a href="/_/mcp/chat">Open Chat</a> to complete setup.</span>';
       document.querySelector('.main-content').prepend(banner);
     }
 
@@ -92,8 +91,8 @@ async function load() {
     ].join('');
 
     const [endpointsRes, toolsRes] = await Promise.all([
-      api('/ui/api/endpoints', { silent: true }),
-      api('/ui/api/mcp/tools', { silent: true }).catch(() => ({}))
+      api('/_/api/endpoints', { silent: true }),
+      api('/_/api/mcp/tools', { silent: true }).catch(() => ({}))
     ]);
     // Build a Set of "Namespace/Name" keys that have no SQL field metadata
     const missingMetadataKeys = new Set(toolsRes.missingMetadata ?? []);

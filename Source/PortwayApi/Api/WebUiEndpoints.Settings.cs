@@ -17,7 +17,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/ui/api/settings", async (IConfiguration config, PortwayApi.Services.Configuration.SettingsWriteService writer, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, IOptionsMonitor<PortwayApi.Classes.OpenApi.OpenApiSettings> openApiMonitor, HttpContext ctx) =>
+        app.MapGet("/_/api/settings", async (IConfiguration config, PortwayApi.Services.Configuration.SettingsWriteService writer, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, IOptionsMonitor<PortwayApi.Classes.OpenApi.OpenApiSettings> openApiMonitor, HttpContext ctx) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -196,7 +196,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // applies allowlisted keys only
-        app.MapPut("/ui/api/settings", async (
+        app.MapPut("/_/api/settings", async (
             HttpContext ctx,
             IConfiguration config,
             PortwayApi.Helpers.UrlValidator urlValidator,
@@ -241,14 +241,14 @@ public static partial class WebUiEndpointExtensions
         // config change audit trail
 
         // masked status, never the raw api key
-        app.MapGet("/ui/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
+        app.MapGet("/_/api/mcp/config", async (PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
         {
             var status = await mcpConfig.GetStatusAsync();
             return Results.Json(status);
         }).ExcludeFromDescription();
 
         // partial update, an omitted field is left unchanged
-        app.MapPost("/ui/api/mcp/config", async (
+        app.MapPost("/_/api/mcp/config", async (
             HttpRequest request,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig) =>
         {
@@ -272,7 +272,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // clears provider, model and key
-        app.MapDelete("/ui/api/mcp/config", async (
+        app.MapDelete("/_/api/mcp/config", async (
             HttpContext context,
             PortwayApi.Services.Mcp.McpConfigService mcpConfig,
             CancellationToken ct) =>

@@ -1,10 +1,9 @@
-// First-run checklist from /ui/api/overview, shown until dismissed
+// First-run checklist from /_/api/overview, shown until dismissed
 (function () {
     'use strict';
 
     const DISMISSED_KEY = 'portway_setup_dismissed';
 
-    // Public API
     window.SetupGuide = {
         /** Mount the guide into the element with the given id, if not yet dismissed. */
         init(containerId) {
@@ -28,7 +27,6 @@
         }
     };
 
-    // Mount
     function _mount(container) {
         const root = document.createElement('div');
         root.id = '_sgRoot';
@@ -63,10 +61,9 @@
             .join('');
     }
 
-    // Load
     async function _load() {
         try {
-            const d = await api('/ui/api/overview', { silent: true });
+            const d = await api('/_/api/overview', { silent: true });
             const hasEnvs = (d.environments ?? 0) > 0;
             const hasEps = (d.endpoints?.total ?? 0) > 0;
             _render(hasEnvs, hasEps);
@@ -75,7 +72,6 @@
         }
     }
 
-    // Render
     function _render(hasEnvs, hasEps) {
         const el = document.getElementById('_sgSteps');
         if (!el) return;
@@ -89,14 +85,14 @@
                 done: hasEnvs,
                 label: 'Environments configured',
                 hint: 'Add at least one environment to route requests.',
-                link: '/ui/environments',
+                link: '/_/environments',
                 linkLabel: 'Open Environments →'
             },
             {
                 done: hasEps,
                 label: 'Endpoints registered',
                 hint: 'Create an entity.json in the endpoints/ directory.',
-                link: '/ui/endpoints',
+                link: '/_/endpoints',
                 linkLabel: 'Open Endpoints →'
             }
         ];
@@ -158,7 +154,6 @@
         );
     }
 
-    // Icons
     function _iconDone() {
         return (
             '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" ' +

@@ -39,7 +39,6 @@
 
     <div class="chat-panel">
 
-      <!-- Thread -->
       <div class="chat-thread" id="thread">
         <div id="emptyState" class="chat-empty">
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -48,7 +47,6 @@
         </div>
       </div>
 
-      <!-- Composer -->
       <div class="chat-composer">
         <div class="chat-composer-inner">
           <textarea id="input" rows="1" placeholder="Add a token to start…" disabled></textarea>
@@ -68,14 +66,12 @@
 </main>
 
 <script>
-// State
 let history         = [];
 let streaming       = false;
 let abortController = null;
 let chatToken = null; // Bearer token for internal tool calls - session only
 let chatReady = false; // true when MCP + Chat are enabled in config
 
-// Markdown renderer
 function md(raw) {
   if (!raw) return '';
   const H = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -131,7 +127,6 @@ function md(raw) {
       tableBuf = [];
     }
     for (const line of lines) {
-      // Table rows start and end with |
       if (/^\|.+\|$/.test(line.trim())) {
         flushList();
         tableBuf.push(line.trim());
@@ -156,7 +151,6 @@ function md(raw) {
   return out.join('');
 }
 
-// Auth
 const SESSION_KEY = 'portway_chat_token';
 
 function loadStoredToken() {
@@ -222,7 +216,7 @@ async function confirmAuthDialog() {
   }
 
   // Lightweight validation: probe a protected endpoint
-  const envRes = await api('/ui/api/environments', { silent: true }).catch(() => ({}));
+  const envRes = await api('/_/api/environments', { silent: true }).catch(() => ({}));
   const firstEnv = (envRes.allowed_environments || [])[0];
   if (firstEnv) {
     try {
@@ -295,13 +289,12 @@ function clearAuth() {
   setAuthenticated(false);
 }
 
-// Init
 async function init() {
   loadStoredToken();
 
   const [settings, toolsRes] = await Promise.all([
-    api('/ui/api/settings', { silent: true }).catch(() => ({})),
-    api('/ui/api/mcp/tools', { silent: true }).catch(() => ({ count: 0, tools: [] }))
+    api('/_/api/settings', { silent: true }).catch(() => ({})),
+    api('/_/api/mcp/tools', { silent: true }).catch(() => ({ count: 0, tools: [] }))
   ]);
 
   const chatEnabled    = settings?.chat?.enabled    ?? false;
@@ -334,7 +327,6 @@ async function init() {
 
   chatReady = true;
 
-  // Show model badge
   const model    = settings?.chat?.model;
   const provider = settings?.chat?.provider;
   if (model) {
@@ -346,8 +338,7 @@ async function init() {
 
   // Status hidden when everything is working - only shown for error states
 
-  // Populate environment selector
-  const envRes = await api('/ui/api/environments', { silent: true }).catch(() => ({}));
+  const envRes = await api('/_/api/environments', { silent: true }).catch(() => ({}));
   const envSelect = document.getElementById('envSelect');
   (envRes.allowed_environments || []).forEach(env => {
     const opt = document.createElement('option');
@@ -361,9 +352,7 @@ async function init() {
     envSelect.appendChild(opt);
   }
 
-  // Show tool hints in empty state
   if (toolsRes.tools?.length) {
-    // Store full tool list for the modal
     window._mcpTools = toolsRes.tools;
     document.getElementById('toolHints').innerHTML =
       '<button class="btn-link" onclick="showToolsModal()">Available tools</button>';
@@ -439,7 +428,6 @@ function askTool(name) {
 
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
-// Chat
 async function send(retryMessage) {
   if (!chatToken) { openAuthDialog(); return; }
 
@@ -484,7 +472,7 @@ async function send(retryMessage) {
   showTyping();
 
   try {
-    const resp = await fetch('/ui/api/mcp/chat', {
+    const resp = await fetch('/_/api/mcp/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -558,12 +546,10 @@ async function send(retryMessage) {
   }
 }
 
-// Cancel stream
 function cancelStream() {
   if (abortController) abortController.abort();
 }
 
-// Retry
 function retry(btn) {
   if (streaming) return;
   const assistantEl = btn.closest('.msg-assistant');
@@ -582,7 +568,6 @@ function retry(btn) {
   send(userMessage);
 }
 
-// Copy response
 function copyResponse(btn) {
   const msgText = btn.closest('.msg-bubble')?.querySelector('.msg-text');
   if (!msgText) return;
@@ -607,7 +592,6 @@ function vote(btn, direction) {
   }
 }
 
-// DOM helpers
 function appendMessage(role, text) {
   const thread = document.getElementById('thread');
   const isUser = role === 'user';
@@ -650,14 +634,12 @@ function appendMessage(role, text) {
 
 function renderToolResult(raw) {
   if (!raw) return '';
-  // Binary placeholder - render info card
   if (raw.startsWith('[Binary content:')) {
     return '<div class="tool-binary-notice">' +
       '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
       ' ' + esc(raw) +
       '</div>';
   }
-  // Content-type prefixed response
   const ctMatch = raw.match(/^\[Content-Type:\s*([^\]]+)\]\n/);
   if (ctMatch) {
     const ct = ctMatch[1].trim().toLowerCase();
@@ -666,7 +648,6 @@ function renderToolResult(raw) {
     if (ct.includes('xml')) return '<pre class="tool-pre lang-xml">' + esc(body) + '</pre>';
     return '<pre class="tool-pre">' + esc(body) + '</pre>';
   }
-  // Default: JSON or plain text
   return '<pre class="tool-pre">' + esc(tryPrettyJson(raw)) + '</pre>';
 }
 
@@ -724,7 +705,6 @@ function tryPrettyJson(s) {
   try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
 }
 
-// Input auto-resize + keyboard shortcuts
 document.getElementById('input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 128) + 'px';
@@ -747,7 +727,6 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 
 init();
 
-// Navigation guard
 let _navConfirmed = false; // set true once user confirms leaving via AlertDialog
 
 // Hard navigation: tab close, F5, address-bar changes
@@ -779,7 +758,6 @@ document.addEventListener('click', e => {
 });
 
 // Setup wizard, provider then model, API key and optional token
-
 
 let _wizardStep     = 1;
 let _wizardProvider = null;
@@ -891,7 +869,7 @@ async function _wizardSave() {
   btn.textContent = 'Saving…';
 
   try {
-    await api('/ui/api/mcp/config', {
+    await api('/_/api/mcp/config', {
       method: 'POST',
       body: {
         provider:         _wizardProvider.id,
@@ -914,7 +892,6 @@ async function _wizardSave() {
 </script>
 
 <style>
-/* Layout */
 .chat-page-body {
   flex: 1;
   overflow: hidden;
@@ -930,7 +907,6 @@ async function _wizardSave() {
   background: hsl(var(--card));
 }
 
-/* Thread */
 .chat-thread {
   flex: 1;
   overflow-y: auto;
@@ -949,7 +925,6 @@ async function _wizardSave() {
 .chat-empty p { font-size: 0.875rem; line-height: 1.6; }
 .chat-tool-hints { margin-top: 0.75rem; font-size: 0.75rem; }
 
-/* Composer */
 .chat-composer {
   flex-shrink: 0;
   padding: 0.75rem 1.25rem 1rem;
@@ -992,7 +967,6 @@ async function _wizardSave() {
 @keyframes spin { to { transform: rotate(360deg); } }
 .spin { animation: spin 0.8s linear infinite; }
 
-/* Model badge */
 .model-badge {
   font-size: 0.72rem;
   font-weight: 500;
@@ -1005,7 +979,6 @@ async function _wizardSave() {
   font-family: ui-monospace, monospace;
 }
 
-/* Message bubbles */
 .msg { display: flex; }
 .msg-user      { justify-content: flex-end; }
 .msg-assistant { justify-content: flex-start; }
@@ -1036,7 +1009,6 @@ async function _wizardSave() {
 }
 .msg-text { font-size: 0.875rem; line-height: 1.6; word-break: break-word; }
 
-/* Message action bar */
 .msg-actions { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.375rem; }
 .vote-btn, .copy-btn, .retry-btn {
   display: inline-flex;
@@ -1062,7 +1034,6 @@ async function _wizardSave() {
   color: hsl(var(--primary));
 }
 
-/* Typing indicator */
 .msg-typing { display: inline-flex; gap: 4px; align-items: center; padding: 2px 0; }
 .msg-typing span {
   width: 6px; height: 6px; border-radius: 50%;
@@ -1077,7 +1048,6 @@ async function _wizardSave() {
   40%           { opacity: 1;    transform: scale(1.1);  }
 }
 
-/* Markdown */
 .msg-text .md-h1 { font-size: 1.1rem; font-weight: 700; margin: 0.5rem 0 0.25rem; }
 .msg-text .md-h2 { font-size: 1rem;   font-weight: 700; margin: 0.5rem 0 0.25rem; }
 .msg-text .md-h3 { font-size: 0.9rem; font-weight: 700; margin: 0.4rem 0 0.2rem; }
@@ -1115,7 +1085,6 @@ async function _wizardSave() {
 .msg-text .md-table th { background: hsl(var(--muted)); font-weight: 600; }
 .msg-text .md-table tbody tr:nth-child(even) { background: hsl(var(--muted) / 0.4); }
 
-/* Tool call panels */
 .tool-call { margin-top: 0.5rem; border: 1px solid hsl(var(--border)); border-radius: 6px; overflow: hidden; }
 .tool-call-header {
   display: flex; align-items: center; gap: 0.375rem; width: 100%;
@@ -1144,7 +1113,6 @@ async function _wizardSave() {
 }
 .tool-binary-notice svg { flex-shrink: 0; margin-top: 1px; }
 
-/* Misc ──*/
 .badge {
   display: inline-block; padding: 2px 8px; border-radius: 4px;
   background: hsl(var(--muted)); border: 1px solid hsl(var(--border));
@@ -1159,7 +1127,6 @@ async function _wizardSave() {
 }
 .btn-link:hover { color: hsl(var(--primary) / 0.8); }
 
-/* Tools modal */
 .tools-list {
   display: flex;
   flex-direction: column;
@@ -1201,7 +1168,6 @@ async function _wizardSave() {
   white-space: nowrap;
 }
 
-/* Setup wizard */
 .wizard-intro {
   font-size: 0.82rem;
   color: var(--text-secondary);

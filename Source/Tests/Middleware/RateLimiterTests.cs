@@ -175,7 +175,7 @@ public class RateLimiterTests
 
         for (var i = 0; i < 5; i++)
         {
-            var ctx = BuildContext(path: "/ui/api/settings");
+            var ctx = BuildContext(path: "/_/api/settings");
             ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
             await limiter.InvokeAsync(ctx);
         }
@@ -192,7 +192,7 @@ public class RateLimiterTests
 
         for (var i = 0; i < 6; i++)
         {
-            var ctx = BuildContext(path: "/ui/api/settings");
+            var ctx = BuildContext(path: "/_/api/settings");
             ctx.Request.Headers.Cookie = "portway_auth=forged-value";
             await limiter.InvokeAsync(ctx);
         }
@@ -210,7 +210,7 @@ public class RateLimiterTests
 
         for (var i = 0; i < 6; i++)
         {
-            var ctx = BuildContext(path: "/ui/api/auth/csrf");
+            var ctx = BuildContext(path: "/_/api/auth/csrf");
             ctx.Request.Headers.Cookie = $"portway_auth={cookie}";
             await limiter.InvokeAsync(ctx);
         }

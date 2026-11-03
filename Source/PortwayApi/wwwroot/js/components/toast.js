@@ -50,6 +50,5 @@
         }, duration);
     }
 
-    // Export to global
     global.toast = toast;
 })(typeof window !== 'undefined' ? window : this);

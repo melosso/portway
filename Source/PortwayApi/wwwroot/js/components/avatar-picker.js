@@ -33,7 +33,7 @@ class AvatarPicker {
     }
 
     _fetch() {
-        return api(`/ui/api/avatars/candidates?count=${AvatarPicker.COUNT}`, { silent: true })
+        return api(`/_/api/avatars/candidates?count=${AvatarPicker.COUNT}`, { silent: true })
             .then((d) => d.candidates ?? [])
             .catch(() => []);
     }

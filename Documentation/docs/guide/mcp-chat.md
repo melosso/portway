@@ -13,7 +13,7 @@ MCP Chat requires `Mcp:Enabled: true` and at least one endpoint with `"Mcp": { "
 
 ## Enable chat
 
-Setting `Mcp:ChatEnabled: true` in `appsettings.json` enables the Chat UI and the `/ui/api/mcp/chat` SSE endpoint.
+Setting `Mcp:ChatEnabled: true` in `appsettings.json` enables the Chat UI and the `/_/api/mcp/chat` SSE endpoint.
 
 ```json
 "Mcp": {
@@ -26,7 +26,7 @@ Provider, model and API key are set in the setup wizard and stored encrypted in 
 
 ## Configure a provider
 
-The setup wizard opens on the first visit to `/ui/mcp/chat` and under **Settings → AI**. It sets the provider, the model and the API key. The API key is encrypted (`PWENC:`) before it is written to `mcp.db`.
+The setup wizard opens on the first visit to `/_/mcp/chat` and under **Settings → AI**. It sets the provider, the model and the API key. The API key is encrypted (`PWENC:`) before it is written to `mcp.db`.
 
 ## Supply the API key via environment variable
 
@@ -67,4 +67,4 @@ Each chat turn runs up to five tool rounds:
 
 ## Environment selector
 
-The environment selector lists the environments from `GET /ui/api/environments`. A tool call uses the environment the model passes, or the selected environment. An environment outside the endpoint's `AllowedEnvironments` is replaced by the endpoint's first allowed environment.
+The environment selector lists the environments from `GET /_/api/environments`. A tool call uses the environment the model passes, or the selected environment. An environment outside the endpoint's `AllowedEnvironments` is replaced by the endpoint's first allowed environment.

@@ -69,7 +69,7 @@ public class CsrfProtectionTests : ApiTestBase
     public async Task UiMutation_CrossSiteWithoutPortwayCsrf_Rejected()
     {
         // Portway's own double submit CSRF guards the cookie authenticated UI plane
-        var response = await PostAsync("/ui/api/client-error", "cross-site", "https://evil.example");
+        var response = await PostAsync("/_/api/client-error", "cross-site", "https://evil.example");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }

@@ -12,7 +12,7 @@ public static partial class WebUiEndpointExtensions
 {
     private static void MapInfoRoutes(WebApplication app, string appVersion)
     {
-        app.MapGet("/ui/api/customization", (IConfiguration config) =>
+        app.MapGet("/_/api/customization", (IConfiguration config) =>
         {
             return Results.Json(new
             {
@@ -21,7 +21,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/overview", (IOptionsMonitor<OpenApiSettings> openApiMonitor) =>
+        app.MapGet("/_/api/overview", (IOptionsMonitor<OpenApiSettings> openApiMonitor) =>
         {
             var sqlEps = EndpointHandler.GetSqlEndpoints();
             var proxyEps = EndpointHandler.GetProxyEndpoints();
@@ -62,7 +62,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/health/checks", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
+        app.MapGet("/_/api/health/checks", async (PortwayApi.Services.HealthCheckService healthService, CancellationToken ct) =>
         {
             var report = await healthService.CheckHealthAsync(ct);
             return Results.Json(new
@@ -81,7 +81,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/endpoints", () =>
+        app.MapGet("/_/api/endpoints", () =>
         {
             var sqlEps = EndpointHandler.GetSqlEndpoints();
             var proxyEps = EndpointHandler.GetProxyEndpoints();

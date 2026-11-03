@@ -1,6 +1,5 @@
 <script src="js/components/dialog.js"></script>
 <style>
-    /* Wizard & dialog styles */
     .wizard-intro {
         font-size: 0.82rem;
         color: var(--text-secondary);
@@ -72,7 +71,6 @@
         transform: rotate(90deg);
     }
 
-    /* Section groupings */
     .settings-section {
         display: none;
         flex-direction: column;
@@ -144,7 +142,6 @@
         background-color: hsl(var(--foreground));
     }
 
-    /* Setting value variants */
     .setting-on {
         color: hsl(var(--success));
         font-weight: 600;
@@ -160,7 +157,6 @@
         font-weight: 600;
     }
 
-    /* AI Provider card */
     .card-featured .ai-clear-row {
         margin-top: 0.5rem;
         padding-top: 0.75rem;
@@ -428,7 +424,6 @@
 </main>
 
 <script>
-// Helpers
 
 let _writable = {};
 
@@ -606,7 +601,7 @@ async function runMaintenance(btn) {
   btn.classList.add('is-loading');
   btn.disabled = true;
   try {
-    const { results = [] } = await api('/ui/api/maintenance/run', { method: 'POST', failure: 'Maintenance failed' });
+    const { results = [] } = await api('/_/api/maintenance/run', { method: 'POST', failure: 'Maintenance failed' });
     const failed = results.filter(r => r.integrity !== 'ok').length;
     const compacted = results.filter(r => r.vacuumed).length;
     const freed = results.reduce((n, r) => n + Math.max(0, r.reclaimed_bytes ?? 0), 0);
@@ -624,7 +619,7 @@ async function createBackup(btn) {
   btn.classList.add('is-loading');
   btn.disabled = true;
   try {
-    await api('/ui/api/backups', { method: 'POST', success: 'Backup created', failure: 'Backup failed' });
+    await api('/_/api/backups', { method: 'POST', success: 'Backup created', failure: 'Backup failed' });
     await loadBackups();
   } catch (e) {
   } finally {
@@ -637,7 +632,7 @@ async function loadBackups() {
   const el = document.getElementById('backupList');
   if (!el) return;
   try {
-    const d = await api('/ui/api/backups', { silent: true });
+    const d = await api('/_/api/backups', { silent: true });
     const pending = d.pending_restore
       ? settingItemRaw('Restore pending', '<button class="btn btn-outline btn-sm" onclick="cancelRestore()">Cancel</button>',
           `${d.pending_restore} replaces the databases and configuration at the next start. Restart Portway to apply.`)
@@ -663,7 +658,7 @@ function restoreBackup(name) {
     confirmDelaySeconds: 10,
     onConfirm:   async () => {
       try {
-        await api(`/ui/api/backups/${encodeURIComponent(name)}/restore`, {
+        await api(`/_/api/backups/${encodeURIComponent(name)}/restore`, {
           method: 'POST', success: 'Restore staged. Restart Portway to apply.', failure: 'Restore failed'
         });
         await loadBackups();
@@ -674,14 +669,14 @@ function restoreBackup(name) {
 
 async function cancelRestore() {
   try {
-    await api('/ui/api/backups/restore', { method: 'DELETE', success: 'Restore cancelled', failure: 'Cancel failed' });
+    await api('/_/api/backups/restore', { method: 'DELETE', success: 'Restore cancelled', failure: 'Cancel failed' });
     await loadBackups();
   } catch (e) {}
 }
 
 // shows a refused download as a toast
 async function downloadBackup(name) {
-  const res = await fetch('/ui/api/backups/' + encodeURIComponent(name));
+  const res = await fetch('/_/api/backups/' + encodeURIComponent(name));
   if (!res.ok) {
     const d = await res.json().catch(() => ({}));
     toast(d.error || 'Download failed', 'error');
@@ -702,7 +697,7 @@ function clearAdminKey() {
     variant:     'destructive',
     onConfirm:   async () => {
       try {
-        await api('/ui/api/settings', {
+        await api('/_/api/settings', {
           method: 'PUT', body: { 'Console:AdminApiKey': '', 'Console:Enabled': true },
           success: 'Seeding key removed', failure: 'Failed to remove the key'
         });
@@ -730,7 +725,7 @@ async function saveCard(bodyId, btn) {
   btn.classList.add('is-loading');
   btn.disabled = true;
   try {
-    const r = await api('/ui/api/settings', {
+    const r = await api('/_/api/settings', {
       method: 'PUT', body: changes, success: 'Settings saved', failure: 'Failed to save settings'
     });
     await load();
@@ -747,14 +742,12 @@ async function saveCard(bodyId, btn) {
   }
 }
 
-// Settings load
-
 async function load() {
   const btn = document.getElementById('refreshBtn');
   if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
 
   try {
-    const d   = await api('/ui/api/settings', { failure: 'Failed to load settings' });
+    const d   = await api('/_/api/settings', { failure: 'Failed to load settings' });
     _writable = Object.fromEntries((d.writable ?? []).map(w => [w.key, w]));
     const rl  = d.rate_limiting      ?? {};
     const c   = d.caching            ?? {};
@@ -945,13 +938,13 @@ async function load() {
 async function loadUsageRows(mcpEnabled) {
   const addRow = (bodyId, html) => document.querySelector(`#${bodyId} .card-footer`)?.insertAdjacentHTML('beforebegin', html);
   try {
-    const c = (await api('/ui/api/metrics?period=24h', { silent: true })).cache ?? {};
+    const c = (await api('/_/api/metrics?period=24h', { silent: true })).cache ?? {};
     const rate = c.hit_rate != null ? `${Math.round(c.hit_rate * 100)}%` : '—';
     addRow('cachingBody', settingItem('Hit rate, last 24 hours', rate, `${c.hits ?? 0} hits, ${c.misses ?? 0} misses.`));
   } catch (e) {}
   if (!mcpEnabled) return;
   try {
-    const t = await api('/ui/api/mcp/tools', { silent: true });
+    const t = await api('/_/api/mcp/tools', { silent: true });
     addRow('mcpBody', settingItem('Exposed endpoints', t.count ?? 0, 'Endpoints with MCP turned on.'));
   } catch (e) {}
 }
@@ -961,7 +954,7 @@ async function loadUsageRows(mcpEnabled) {
 async function loadAudit() {
   const el = document.getElementById('auditBody');
   try {
-    const d = await api('/ui/api/audit?limit=15', { silent: true });
+    const d = await api('/_/api/audit?limit=15', { silent: true });
     const entries = d.entries ?? [];
     if (!entries.length) {
       el.innerHTML = '<span class="muted" style="font-size:0.8rem">No configuration changes recorded</span>';
@@ -997,21 +990,18 @@ function restoreChange(id) {
 
 async function doRestoreChange(id) {
   try {
-    await api(`/ui/api/audit/${id}/restore`, { method: 'POST', success: 'Configuration restored', failure: 'Restore failed' });
+    await api(`/_/api/audit/${id}/restore`, { method: 'POST', success: 'Configuration restored', failure: 'Restore failed' });
     loadAudit();
   } catch(e) {}
 }
 
 load();
 
-// AI Provider card
-
-
 async function loadAiConfig() {
   const aiBody    = document.getElementById('aiBody');
   const aiActions = document.getElementById('aiProviderActions');
   try {
-    const cfg = await api('/ui/api/mcp/config', { silent: true });
+    const cfg = await api('/_/api/mcp/config', { silent: true });
 
     if (!cfg.configured) {
       aiBody.innerHTML = `<div class="settings-item">
@@ -1049,8 +1039,6 @@ async function loadAiConfig() {
     aiActions.innerHTML = '';
   }
 }
-
-// AI wizard
 
 let _wizardStep     = 1;
 let _wizardProvider = null;
@@ -1156,7 +1144,7 @@ async function _aiWizardSave() {
   btn.textContent = 'Saving...';
 
   try {
-    await api('/ui/api/mcp/config', {
+    await api('/_/api/mcp/config', {
       method: 'POST',
       body: {
         provider:         _wizardProvider.id,
@@ -1190,7 +1178,7 @@ function confirmClearAiConfig() {
 
 async function clearAiConfig() {
   try {
-    await api('/ui/api/mcp/config', { method: 'DELETE', success: 'AI provider configuration cleared', failure: 'Failed to clear configuration' });
+    await api('/_/api/mcp/config', { method: 'DELETE', success: 'AI provider configuration cleared', failure: 'Failed to clear configuration' });
     await loadAiConfig();
   } catch(e) {}
 }

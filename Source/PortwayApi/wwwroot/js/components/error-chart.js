@@ -41,8 +41,6 @@ class ErrorChart {
         this._svg?.remove();
     }
 
-    // Internal
-
     _createSvg() {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.style.cssText = 'width:100%;height:100%;display:block;overflow:visible';
@@ -56,7 +54,6 @@ class ErrorChart {
         svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
         svg.innerHTML = '';
 
-        // Collect only codes with count > 0, sorted numerically
         const bars = Object.entries(this._data)
             .map(([code, count]) => ({ code, count: Number(count) }))
             .filter((b) => b.count > 0)
@@ -75,7 +72,7 @@ class ErrorChart {
         const maxVal = Math.max(...bars.map((b) => b.count), 1);
 
         const n = bars.length;
-        const gapPct = 0.25; // 25% gap between bars
+        const gapPct = 0.25;
         const barW = (cW / n) * (1 - gapPct);
         const gapW = (cW / n) * gapPct;
         const halfG = gapW / 2;
@@ -88,7 +85,6 @@ class ErrorChart {
             const y = PAD.top + cH - barH;
             const cx = x + barW / 2;
 
-            // Bar
             const rect = this._elSvg('rect', {
                 x,
                 y,
@@ -102,7 +98,6 @@ class ErrorChart {
             rect.addEventListener('mouseleave', () => this._hideTip());
             svg.appendChild(rect);
 
-            // Count label above bar
             const countLbl = this._elSvg('text', {
                 x: cx,
                 y: y - 4,
@@ -115,7 +110,6 @@ class ErrorChart {
             countLbl.textContent = this._fmt(bar.count);
             svg.appendChild(countLbl);
 
-            // Status code label below bar
             const codeLbl = this._elSvg('text', {
                 x: cx,
                 y: PAD.top + cH + 14,
@@ -128,7 +122,6 @@ class ErrorChart {
             svg.appendChild(codeLbl);
         });
 
-        // Summary line at bottom
         const pct = this._total > 0 ? ((totalErrors / this._total) * 100).toFixed(1) : '0.0';
         const sumLbl = this._elSvg('text', {
             x: W / 2,
@@ -143,7 +136,6 @@ class ErrorChart {
     }
 
     _renderEmpty(svg, W, H) {
-        // Checkmark circle
         const cx = W / 2,
             cy = H / 2 - 10;
         const circle = this._elSvg('circle', {

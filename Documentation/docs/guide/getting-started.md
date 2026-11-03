@@ -44,7 +44,7 @@ The file contains a plaintext token with full access. Record the token value and
 
 ## 3. Sign in to the console
 
-The first start logs an account name (`admin-` plus eight characters) and a one-time password. The console at `/ui` requires a new password at first sign-in. Accounts and recovery: [Console Accounts](/guide/accounts).
+The first start logs an account name (`admin-` plus eight characters) and a one-time password. The console at `/_` requires a new password at first sign-in. Accounts and recovery: [Console Accounts](/guide/accounts).
 
 ## 4. Add an environment
 

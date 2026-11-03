@@ -20,12 +20,10 @@
                 onClose
             } = options;
 
-            // Remove existing dialog with same ID
             if (this._dialogs[id]) {
                 this.close(id);
             }
 
-            // Create container
             const container = document.createElement('div');
             container.id = `dialog-${id}`;
             container.className = `dialog-wrapper`;
@@ -60,7 +58,6 @@
 
             document.body.appendChild(container);
 
-            // Store dialog state
             this._dialogs[id] = {
                 options,
                 container,
@@ -68,7 +65,6 @@
                 onClose
             };
 
-            // Focus first focusable element
             setTimeout(() => {
                 const focusable = container.querySelector(
                     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -80,24 +76,20 @@
                 }
             }, 100);
 
-            // Setup close handlers
             if (closeOnEscape) {
                 this._setupEscapeHandler();
             }
 
-            // Backdrop click
             container.querySelector('[data-dialog-overlay]')?.addEventListener('click', (e) => {
                 if (closeOnBackdrop && e.target.hasAttribute('data-dialog-backdrop')) {
                     this.close(id);
                 }
             });
 
-            // Close buttons
             container.querySelectorAll('[data-dialog-close]').forEach((btn) => {
                 btn.addEventListener('click', () => this.close(id));
             });
 
-            // Dispatch open event
             container.dispatchEvent(new CustomEvent('dialog-open', { bubbles: true }));
 
             if (onOpen) onOpen(container);
@@ -124,7 +116,6 @@
 
                     if (onClose) onClose();
 
-                    // Dispatch close event
                     document.body.dispatchEvent(
                         new CustomEvent('dialog-close', {
                             detail: { id },
@@ -134,7 +125,6 @@
                 }, 200);
             }
 
-            // Manage escape handler
             const hasOpenDialogs = Object.keys(this._dialogs).length > 1;
             if (!hasOpenDialogs && this._escHandler) {
                 document.removeEventListener('keydown', this._escHandler);
@@ -201,7 +191,6 @@
             document.addEventListener('keydown', this._escHandler);
         },
 
-        // Convenience: show a form dialog
         form: function (options) {
             const {
                 id,
@@ -260,7 +249,6 @@
                 onClose: onCancel
             });
 
-            // Handle submit
             const submitBtn = document.getElementById(`dialog-submit-${id}`);
             submitBtn?.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -268,7 +256,6 @@
                 const formData = new FormData(container.querySelector('form'));
                 const data = Object.fromEntries(formData);
 
-                // Handle checkboxes
                 fields.forEach((field) => {
                     if (field.type === 'checkbox') {
                         data[field.name] = container.querySelector(`[name="${field.name}"]`)?.checked || false;
@@ -284,6 +271,5 @@
         }
     };
 
-    // Export
     global.Dialog = Dialog;
 })(typeof window !== 'undefined' ? window : this);

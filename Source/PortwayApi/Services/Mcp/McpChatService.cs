@@ -273,7 +273,7 @@ public sealed partial class McpChatService
         var provider = await BuildProviderAsync(ct);
         if (provider is null)
         {
-            await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Error, Delta = "Chat not configured. Use the MCP Setup page (/ui/mcp/setup) to set a provider and API key." }, ct);
+            await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Error, Delta = "Chat not configured. Use the MCP Setup page (/_/mcp/setup) to set a provider and API key." }, ct);
             await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Done }, ct);
             return;
         }
@@ -631,7 +631,7 @@ public sealed partial class McpChatService
 
         if (!cfg.IsConfigured)
         {
-            Log.Warning("MCP chat is not configured — use the /ui/mcp/setup page to set provider and API key");
+            Log.Warning("MCP chat is not configured — use the /_/mcp/setup page to set provider and API key");
             return null;
         }
 

@@ -89,7 +89,7 @@ An IP address that exceeds its bucket is blocked for the full window. For a toke
 
 ## Observing the limiter
 
-The console dashboard's Rate Limiting card lists the active store, the limits and blocked IP addresses and tokens. JSON: `/ui/api/ratelimits`.
+The console dashboard's Rate Limiting card lists the active store, the limits and blocked IP addresses and tokens. JSON: `/_/api/ratelimits`.
 
 ## Troubleshooting
 

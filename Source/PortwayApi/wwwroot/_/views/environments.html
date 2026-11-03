@@ -234,7 +234,6 @@
 </div>
 
 <script>
-// State 
 let state = {
   globalData: null,
   envData: {},
@@ -274,7 +273,6 @@ window.addEventListener('beforeunload', e => {
   if (state.isDirty) { e.preventDefault(); e.returnValue = ''; }
 });
 
-// Tabs 
 function renderTabs(envs) {
   const total = envs.length;
   const missing = Object.values(state.envData).filter(d => !d.exists).length;
@@ -310,7 +308,6 @@ function applyTabFilter() {
   });
 }
 
-// List filter
 function filterEnvList() {
   const q = (document.getElementById('envSearchInput')?.value ?? '').toLowerCase();
   document.querySelectorAll('#envListScroll .ep-list-item[data-env]').forEach(el => {
@@ -323,9 +320,8 @@ function filterEnvList() {
   });
 }
 
-// Load global list
 async function loadGlobal() {
-  const d = await api('/ui/api/environments', { failure: 'Failed to load environments' });
+  const d = await api('/_/api/environments', { failure: 'Failed to load environments' });
   state.globalData = d;
   const envs = d.allowed_environments ?? [];
   renderList(envs);
@@ -360,7 +356,7 @@ function renderList(envs) {
   // Async status badges: fetch all, then refresh tab counts
   Promise.all(envs.map(async name => {
     try {
-      const d = await api(`/ui/api/environments/${encodeURIComponent(name)}`, { silent: true });
+      const d = await api(`/_/api/environments/${encodeURIComponent(name)}`, { silent: true });
       state.envData[name] = d;
       const dot = document.getElementById(`dot-${name}`);
       if (dot) {
@@ -385,7 +381,6 @@ function setActiveItem(id) {
   if (el) el.classList.add('active');
 }
 
-// Navigation
 function trySelect(target) {
   if (state.selected === target) return;
   confirmNavigate(() => {
@@ -413,7 +408,6 @@ async function selectEnv(name) {
   startPoll(name);
 }
 
-// Global Settings Detail
 function renderGlobalDetail() {
   const d = state.globalData;
   document.getElementById('envDetail').innerHTML = `
@@ -451,7 +445,7 @@ async function saveGlobal() {
   const btn = document.getElementById('globalSaveBtn');
   btn?.classList.add('is-loading');
   try {
-    await api('/ui/api/environments/settings', {
+    await api('/_/api/environments/settings', {
       method: 'PUT',
       body: { server_name: serverName, allowed_environments: state.globalData?.allowed_environments ?? [] },
       success: 'Global settings saved'
@@ -463,13 +457,12 @@ async function saveGlobal() {
   finally { btn?.classList.remove('is-loading'); }
 }
 
-// Per-environment Detail
 async function renderEnvDetail(name) {
   const detail = document.getElementById('envDetail');
   detail.innerHTML = `<div class="ep-empty"><span style="font-size:0.8rem;color:hsl(var(--muted-foreground))">Loading…</span></div>`;
   let d;
   try {
-    d = await api(`/ui/api/environments/${encodeURIComponent(name)}`);
+    d = await api(`/_/api/environments/${encodeURIComponent(name)}`);
     state.envData[name] = d;
     state.polledLastMod = d.last_modified;
   } catch(e) {
@@ -828,7 +821,6 @@ function toggleReplaceCs() {
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-// Test connection
 async function testConnection(name) {
   const btn = document.getElementById('testBtn');
   const result = document.getElementById('testResult');
@@ -837,7 +829,7 @@ async function testConnection(name) {
   btn.textContent = 'Testing…';
   result.style.display = 'none';
   try {
-    const d = await api(`/ui/api/environments/${encodeURIComponent(name)}/test`, { method: 'POST' });
+    const d = await api(`/_/api/environments/${encodeURIComponent(name)}/test`, { method: 'POST' });
     result.style.display = 'block';
     if (d.ok) {
       result.style.color = 'hsl(var(--success))';
@@ -856,7 +848,6 @@ async function testConnection(name) {
   }
 }
 
-// Save form
 async function saveEnv(name) {
   const serverName = document.getElementById('editServerName')?.value?.trim() ?? null;
   const csEl = document.getElementById('editConnStr');
@@ -872,7 +863,7 @@ async function saveEnv(name) {
   const btn = document.getElementById('envSaveBtn');
   btn?.classList.add('is-loading');
   try {
-    const result = await api(`/ui/api/environments/${encodeURIComponent(name)}`, {
+    const result = await api(`/_/api/environments/${encodeURIComponent(name)}`, {
       method: 'PUT', body, success: `Saved ${name}`
     });
     state.polledLastMod = result.last_modified;
@@ -882,19 +873,18 @@ async function saveEnv(name) {
     if (dot) dot.style.background = 'hsl(142 70% 45%)';
     const badge = document.getElementById(`badge-${name}`);
     if (badge) badge.innerHTML = '';
-    state.envData[name] = await api(`/ui/api/environments/${encodeURIComponent(name)}`);
+    state.envData[name] = await api(`/_/api/environments/${encodeURIComponent(name)}`);
   } catch(e) {}
   finally { btn?.classList.remove('is-loading'); }
 }
 
-// Raw JSON mode
 async function toggleRaw(name) {
   confirmNavigate(async () => {
     state.rawMode = !state.rawMode;
     const d = state.envData[name] ?? {};
     if (state.rawMode) {
       try {
-        const r = await api(`/ui/api/environments/${encodeURIComponent(name)}/raw`, { silent: true });
+        const r = await api(`/_/api/environments/${encodeURIComponent(name)}/raw`, { silent: true });
         d._rawContent = r.content;
         state.polledLastMod = r.last_modified;
       } catch(_) {
@@ -929,13 +919,13 @@ async function saveRaw(name) {
   const btn = document.getElementById('envSaveBtn');
   btn?.classList.add('is-loading');
   try {
-    const result = await api(`/ui/api/environments/${encodeURIComponent(name)}/raw`, {
+    const result = await api(`/_/api/environments/${encodeURIComponent(name)}/raw`, {
       method: 'PUT', body: { content }, success: `Saved ${name}`
     });
     state.polledLastMod = result.last_modified;
     state.isDirty = false;
     hideBanner();
-    const d = await api(`/ui/api/environments/${encodeURIComponent(name)}`);
+    const d = await api(`/_/api/environments/${encodeURIComponent(name)}`);
     d._rawContent = content;
     state.envData[name] = d;
     const dot = document.getElementById(`dot-${name}`);
@@ -946,13 +936,12 @@ async function saveRaw(name) {
   finally { btn?.classList.remove('is-loading'); }
 }
 
-// Hot-update polling
 function startPoll(name) {
   stopPoll();
   state.pollTimer = setInterval(async () => {
     if (state.selected !== name) return stopPoll();
     try {
-      const r = await api(`/ui/api/environments/${encodeURIComponent(name)}`, { silent: true });
+      const r = await api(`/_/api/environments/${encodeURIComponent(name)}`, { silent: true });
       if (r.last_modified && r.last_modified !== state.polledLastMod) {
         state.polledLastMod = r.last_modified;
         showBanner();
@@ -973,8 +962,6 @@ async function reloadEnv(name) {
   });
 }
 
-// Alert Dialog - using shared component
-
 function showAlertDialog({ title, description, actionLabel = 'Confirm', onConfirm, extraHtml = '' }) {
   AlertDialog.show({
     title,
@@ -993,8 +980,6 @@ function hideAlertDialog() {
 function confirmAlertDialog() {
   // Handled by AlertDialog component
 }
-
-// Remove environment
 
 function startRemove(name) {
   showAlertDialog({
@@ -1015,7 +1000,7 @@ function startRemove(name) {
 async function doRemove(name) {
   const deleteFiles = document.getElementById('deleteFilesSwitch')?.checked ?? false;
   try {
-    await api(`/ui/api/environments/${encodeURIComponent(name)}?delete_files=${deleteFiles}`, { method: 'DELETE', failure: `Failed to remove ${name}` });
+    await api(`/_/api/environments/${encodeURIComponent(name)}?delete_files=${deleteFiles}`, { method: 'DELETE', failure: `Failed to remove ${name}` });
     toast(`Removed ${name}`, 'warning');
     stopPoll();
     state.selected = '__global__';
@@ -1026,8 +1011,6 @@ async function doRemove(name) {
     renderGlobalDetail();
   } catch(e) {}
 }
-
-// Rename environment
 
 function startEnvRename() {
   _envRenaming = true;
@@ -1050,7 +1033,7 @@ async function confirmEnvRename(oldName) {
     toast('Name may only contain letters, numbers, hyphens, and underscores', 'error'); return;
   }
   try {
-    await api(`/ui/api/environments/${encodeURIComponent(oldName)}`, {
+    await api(`/_/api/environments/${encodeURIComponent(oldName)}`, {
       method: 'PATCH', body: { new_name: newName }, success: 'Renamed', silent: true
     });
     _envRenaming = false;
@@ -1065,7 +1048,6 @@ async function confirmEnvRename(oldName) {
   } catch(e) { toast('Rename failed: ' + e.message, 'error'); }
 }
 
-// Create environment drawer
 let _preDrawerDirty = false;
 function openCreateDrawer() {
   _preDrawerDirty = state.isDirty;
@@ -1124,7 +1106,7 @@ async function submitCreate() {
   const createBody = { name, server_name: serverName, headers, authentication: auth };
   if (connStr) createBody.connection_string = connStr;
   try {
-    await api('/ui/api/environments', {
+    await api('/_/api/environments', {
       method: 'POST', body: createBody, success: `Environment "${name}" created`
     });
     await closeCreateDrawer();
@@ -1134,7 +1116,6 @@ async function submitCreate() {
   finally { btn?.classList.remove('is-loading'); }
 }
 
-// Init 
 async function refreshAll() {
   const prev = state.selected;
   confirmNavigate(async () => {
@@ -1158,8 +1139,8 @@ init();
 
 function logout() {
   confirmNavigate(() => {
-    api('/ui/api/auth/logout', { method: 'POST', silent: true })
-      .catch(() => {}).finally(() => { window.location.href = (window.PortwayBase || '') + '/ui/login'; });
+    api('/_/api/auth/logout', { method: 'POST', silent: true })
+      .catch(() => {}).finally(() => { window.location.href = (window.PortwayBase || '') + '/_/login'; });
   });
 }
 </script>

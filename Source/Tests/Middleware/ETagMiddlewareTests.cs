@@ -72,7 +72,7 @@ public class ETagMiddlewareTests
 
     [Theory]
     [InlineData("POST", "/api/500/Products")]
-    [InlineData("GET", "/ui/api/settings")]
+    [InlineData("GET", "/_/api/settings")]
     [InlineData("GET", "/health")]
     public async Task NonApiGet_IsUntouched(string method, string path)
     {

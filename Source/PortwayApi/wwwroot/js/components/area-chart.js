@@ -7,8 +7,8 @@ class AreaChart {
         this._s2 = null; // secondary (ui), stacked under primary
         this._tooltip = null;
         this._crosshair = null;
-        this._dotGroup = null; // primary (API) dots
-        this._dotGroup2 = null; // secondary (UI) dots
+        this._dotGroup = null;
+        this._dotGroup2 = null;
         this._ro = null;
         this._rafPending = false;
         this._emptyMsg = null;
@@ -55,8 +55,6 @@ class AreaChart {
         this._svg?.remove();
     }
 
-    // Rendering
-
     _render() {
         const svg = this._svg;
         const W = this._container.clientWidth || 400;
@@ -77,7 +75,6 @@ class AreaChart {
         const n = this._s1.length;
         const step = cW / Math.max(n - 1, 1);
 
-        // Y scale — max of stacked total
         const totals = this._s2 ? this._s1.map((d, i) => d.count + this._s2[i].count) : this._s1.map((d) => d.count);
         const maxV = Math.max(...totals, 1);
         const yOf = (v) => PAD.top + cH * (1 - Math.min(v, maxV) / maxV);
@@ -94,7 +91,6 @@ class AreaChart {
             ? this._s2.map((d, i) => ({ x: PAD.left + i * step, y: yOf(d.count), count: d.count }))
             : null;
 
-        // Defs: gradients
         const defs = this._el('defs');
         const gMain = `ag-${this._colorVar}`;
         const gUi = `ag-${this._colorVar}-ui`;
@@ -111,7 +107,6 @@ class AreaChart {
         if (pts2) defs.appendChild(makeGrad(gUi, 'hsl(var(--muted-foreground))', 0.15, 0.02));
         svg.appendChild(defs);
 
-        // Gridlines
         const gridG = this._el('g');
         for (let i = 0; i <= 4; i++) {
             const y = PAD.top + cH * (1 - i / 4);
@@ -138,7 +133,6 @@ class AreaChart {
         }
         svg.appendChild(gridG);
 
-        // X-axis labels
         const maxLbls = Math.floor(cW / 52);
         const lblEvery = Math.max(1, Math.ceil(n / maxLbls));
         const xG = this._el('g');
@@ -157,7 +151,6 @@ class AreaChart {
         }
         svg.appendChild(xG);
 
-        // UI base fill
         if (pts2) {
             const uiPath = this._cubic(pts2) + ` L${pts2[n - 1].x},${bot} L${pts2[0].x},${bot} Z`;
             svg.appendChild(this._el('path', { d: uiPath, fill: `url(#${gUi})`, stroke: 'none' }));
@@ -175,7 +168,6 @@ class AreaChart {
         }
         svg.appendChild(this._el('path', { d: apiPath, fill: `url(#${gMain})`, stroke: 'none' }));
 
-        // Top stroke
         svg.appendChild(
             this._el('path', {
                 d: this._cubic(pts1),
@@ -187,7 +179,6 @@ class AreaChart {
             })
         );
 
-        // Crosshair (hidden until hover)
         const xhair = this._el('line', {
             x1: 0,
             y1: PAD.top,
@@ -202,7 +193,6 @@ class AreaChart {
         svg.appendChild(xhair);
         this._crosshair = xhair;
 
-        // Dots: secondary UI series
         if (pts2) {
             const dotG2 = this._el('g', { 'pointer-events': 'none' });
             pts2.forEach((pt) => {
@@ -221,7 +211,6 @@ class AreaChart {
             this._dotGroup2 = dotG2;
         }
 
-        // Dots: primary API series
         const dotG = this._el('g', { 'pointer-events': 'none' });
         pts1.forEach((pt) => {
             dotG.appendChild(
@@ -238,7 +227,6 @@ class AreaChart {
         svg.appendChild(dotG);
         this._dotGroup = dotG;
 
-        // Hover hit-test rects
         const colW = cW / n;
         const hoverG = this._el('g');
         pts1.forEach((pt, i) => {
@@ -257,8 +245,6 @@ class AreaChart {
         });
         svg.appendChild(hoverG);
     }
-
-    // Hover handlers
 
     _enter(ev, pt, pt2, idx) {
         if (this._crosshair) {

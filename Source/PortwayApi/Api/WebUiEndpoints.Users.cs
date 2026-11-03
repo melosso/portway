@@ -34,7 +34,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
         }
 
-        app.MapGet("/ui/api/avatars/candidates", (HttpRequest request, PortwayApi.Services.Avatars.AvatarService avatars) =>
+        app.MapGet("/_/api/avatars/candidates", (HttpRequest request, PortwayApi.Services.Avatars.AvatarService avatars) =>
         {
             var count = int.TryParse(request.Query["count"], out var c) ? Math.Clamp(c, 1, 24) : 12;
             var candidates = Enumerable.Range(0, count)
@@ -44,7 +44,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { candidates });
         }).ExcludeFromDescription();
 
-        app.MapGet("/ui/api/users", async (
+        app.MapGet("/_/api/users", async (
             HttpContext ctx,
             AdminUserService users,
             PortwayApi.Services.Avatars.AvatarService avatars) =>
@@ -72,7 +72,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Who the sidebar is showing
-        app.MapGet("/ui/api/users/me", async (
+        app.MapGet("/_/api/users/me", async (
             HttpContext ctx,
             AdminUserService users,
             PortwayApi.Services.Avatars.AvatarService avatars) =>
@@ -97,7 +97,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/users", async (HttpContext ctx, AdminUserService users) =>
+        app.MapPost("/_/api/users", async (HttpContext ctx, AdminUserService users) =>
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
@@ -140,7 +140,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true, id = created.Id });
         }).ExcludeFromDescription();
 
-        app.MapPut("/ui/api/users/{id:int}", async (HttpContext ctx, int id, AdminUserService users) =>
+        app.MapPut("/_/api/users/{id:int}", async (HttpContext ctx, int id, AdminUserService users) =>
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
@@ -189,7 +189,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapDelete("/ui/api/users/{id:int}", async (HttpContext ctx, int id, AdminUserService users) =>
+        app.MapDelete("/_/api/users/{id:int}", async (HttpContext ctx, int id, AdminUserService users) =>
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }

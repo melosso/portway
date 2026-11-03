@@ -102,7 +102,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ScalarHideClientButton` | boolean | Hides client generation |
 | `ScalarHideTestRequestButton` | boolean | Hides test requests |
 
-The console edits these properties under **Settings → OpenAPI** (`/ui/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
+The console edits these properties under **Settings → OpenAPI** (`/_/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
 
 The document is served at `/docs/openapi.json`; `/docs/openapi/v{n}/openapi.json` holds the operations of one endpoint version. Other names under `/docs/openapi/{name}/openapi.json` redirect to `/docs/openapi.json`.
 

@@ -38,7 +38,7 @@ public static class FallbackEndpointExtensions
                         <div style="font-size:0.875rem;color:hsl(var(--muted-foreground));margin-bottom:1.5rem">
                           The page you're looking for doesn't exist or has been moved.
                         </div>
-                        <a href="/ui/dashboard" style="display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 1rem;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:var(--radius);text-decoration:none;font-size:0.875rem;font-weight:500">
+                        <a href="/_/dashboard" style="display:inline-flex;align-items:center;gap:0.375rem;padding:0.5rem 1rem;background:hsl(var(--primary));color:hsl(var(--primary-foreground));border-radius:var(--radius);text-decoration:none;font-size:0.875rem;font-weight:500">
                           Go to Dashboard
                         </a>
                       </div>

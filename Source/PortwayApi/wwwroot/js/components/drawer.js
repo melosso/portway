@@ -21,17 +21,13 @@
             if (backdrop) backdrop.classList.add('open');
             if (drawer) drawer.classList.add('open');
 
-            // Reset dirty state when drawer opens
             this._dirtyState[drawerId] = false;
 
-            // Add body class for blur effect
             document.body.classList.add('drawer-open');
 
-            // Trap focus in drawer
             this._trapFocus(drawer);
         },
 
-        // Mark a drawer as having unsaved changes
         markDirty: function (drawerId) {
             this._dirtyState[drawerId] = true;
         },
@@ -63,13 +59,11 @@
 
             this._dirtyState[drawerId] = false;
 
-            // Remove body class if no other drawers are open
             const openDrawers = document.querySelectorAll('.drawer-backdrop.open');
             if (openDrawers.length === 0) {
                 document.body.classList.remove('drawer-open');
             }
 
-            // Call close callback if registered
             if (this._closeCallbacks[drawerId]) {
                 this._closeCallbacks[drawerId]();
             }
@@ -94,7 +88,6 @@
             this._closeCallbacks[drawerId] = callback;
         },
 
-        // Create drawer HTML programmatically
         create: function (options) {
             const {
                 id,
@@ -132,7 +125,6 @@
             return html;
         },
 
-        // Set up automatic backdrop click to close
         init: function () {
             document.addEventListener('click', (e) => {
                 const backdrop = e.target.closest('[data-drawer-backdrop]');
@@ -148,7 +140,6 @@
                 }
             });
 
-            // Close on escape
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     const openDrawer = document.querySelector('.drawer.open');
@@ -165,7 +156,6 @@
 
         _trapFocus: function (drawer) {
             if (!drawer) return;
-            // Simple focus management - focus first focusable element
             const focusable = drawer.querySelector(
                 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
             );
@@ -175,13 +165,11 @@
         }
     };
 
-    // Auto-init when DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => Drawer.init());
     } else {
         Drawer.init();
     }
 
-    // Export
     global.Drawer = Drawer;
 })(typeof window !== 'undefined' ? window : this);

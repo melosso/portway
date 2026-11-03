@@ -174,7 +174,7 @@ async function loadHealth() {
   document.getElementById('healthClearFiltersBtn').hidden = params.size === 1;
   history.replaceState(null, '', `${location.pathname}?${params}`);
   try {
-    const d = await api(`/ui/api/metrics/health?${params}`, { silent: true });
+    const d = await api(`/_/api/metrics/health?${params}`, { silent: true });
     renderHealthFilters(d.options ?? {});
     renderHealthSummary(d.summary ?? {});
     _latencyChart.setData(d.latency, d.summary, _healthPercentile);
@@ -298,7 +298,7 @@ function purgeHealth() {
     variant:     'destructive',
     onConfirm:   async () => {
       try {
-        await api('/ui/api/metrics', { method: 'DELETE', success: 'Metrics purged', failure: 'Failed to purge metrics' });
+        await api('/_/api/metrics', { method: 'DELETE', success: 'Metrics purged', failure: 'Failed to purge metrics' });
         loadHealth();
       } catch(e) {}
     }
@@ -348,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   loadHealth();
   setInterval(loadHealth, 30000);
-  api('/ui/api/users/me', { silent: true })
+  api('/_/api/users/me', { silent: true })
     .then(me => { document.getElementById('healthPurgeBtn').hidden = me?.role !== 'administrator'; })
     .catch(() => {});
 });

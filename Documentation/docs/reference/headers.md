@@ -43,7 +43,7 @@ The proxy response's `Server`, `X-Powered-By`, `X-AspNet-Version` and `X-AspNetM
 | `Permissions-Policy` | `geolocation=(), camera=(), microphone=(), payment=()` |
 | `Content-Security-Policy` | `default-src 'self'; object-src 'none'; frame-ancestors 'none'; ...` |
 
-Responses under `/ui` also include `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin`.
+Responses under `/_` also include `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin`.
 
 ## Rate limiting headers
 

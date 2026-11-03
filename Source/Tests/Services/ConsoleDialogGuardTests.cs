@@ -14,7 +14,7 @@ public class ConsoleDialogGuardTests
     [Fact]
     public void BackupRestoreDialog_WaitsTenSecondsBeforeConfirm()
     {
-        var settings = Read("ui", "views", "settings.html");
+        var settings = Read("_", "views", "settings.html");
         var dialog = Regex.Match(settings, @"function restoreBackup\(name\)\s*\{.*?onConfirm", RegexOptions.Singleline);
 
         Assert.True(dialog.Success);
@@ -24,7 +24,7 @@ public class ConsoleDialogGuardTests
     [Fact]
     public void ConfigurationRestoreDialog_WaitsTenSecondsBeforeConfirm()
     {
-        var settings = Read("ui", "views", "settings.html");
+        var settings = Read("_", "views", "settings.html");
         var dialog = Regex.Match(settings, @"function restoreChange\(id\)\s*\{.*?onConfirm", RegexOptions.Singleline);
 
         Assert.True(dialog.Success);

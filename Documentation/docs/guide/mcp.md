@@ -25,7 +25,7 @@ Setting `Mcp:Enabled: true` in `appsettings.json` enables the server at `Mcp:Pat
 | `Enabled` | Yes | bool | Enables the MCP server (default `false`) |
 | `Path` | No | string | Server path (default `/mcp`) |
 | `RequireAuthentication` | No | bool | Requires a Portway Bearer token (default `true`) |
-| `ChatEnabled` | No | bool | Enables the Chat UI and `/ui/api/mcp/chat`; provider credentials are set in the setup wizard (default `false`) |
+| `ChatEnabled` | No | bool | Enables the Chat UI and `/_/api/mcp/chat`; provider credentials are set in the setup wizard (default `false`) |
 
 :::warning
 Keep `RequireAuthentication: true` on any network-reachable deployment; `false` exposes all registered tools without credentials.
@@ -99,5 +99,5 @@ Scope agent tokens to the required endpoints and environments: [Access Tokens](/
 
 Console views under **MCP**:
 
-- **Explorer** (`/ui/mcp/explorer`): registered tools by namespace, with methods and endpoint links; requires only `Mcp:Enabled: true`
-- **Chat** (`/ui/mcp/chat`): an AI model calling Portway tools; requires [Chat configuration](/guide/mcp-chat)
+- **Explorer** (`/_/mcp/explorer`): registered tools by namespace, with methods and endpoint links; requires only `Mcp:Enabled: true`
+- **Chat** (`/_/mcp/chat`): an AI model calling Portway tools; requires [Chat configuration](/guide/mcp-chat)

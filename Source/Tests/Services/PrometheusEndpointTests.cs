@@ -158,7 +158,7 @@ public class PrometheusScrapeEndpointTests : IDisposable
     [Fact]
     public async Task SettingsApi_ReportsActivePrometheusProvider()
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/ui/api/settings");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/_/api/settings");
         request.Headers.Add("Cookie", $"portway_auth={MintSessionCookie()}");
         var response = await _client.SendAsync(request, TestContext.Current.CancellationToken);
 

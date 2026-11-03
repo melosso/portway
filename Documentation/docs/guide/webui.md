@@ -5,7 +5,7 @@ description: "Browser console for endpoints, environments, tokens, users, settin
 
 # Web UI
 
-The console at `/ui` manages endpoints, environments, tokens, users and settings, and displays the dashboard and application logs. It writes the same configuration files the gateway reads. The gateway API runs without it.
+The console at `/_` manages endpoints, environments, tokens, users and settings, and displays the dashboard and application logs. It writes the same configuration files the gateway reads. The gateway API runs without it.
 
 ## Access
 
@@ -31,9 +31,9 @@ Every console change to environments, endpoints and MCP settings is recorded in 
 
 ## Health
 
-`/ui/health` reports `/api` requests. Console (`/ui`), documentation and `/health` requests are excluded. Data source: `GET /ui/api/metrics/health`.
+`/_/health` reports `/api` requests. Console (`/_`), documentation and `/health` requests are excluded. Data source: `GET /_/api/metrics/health`.
 
-The dashboard health tiles display the last 24 hours (success rate, failures, p95, request count) and link to `/ui/health`.
+The dashboard health tiles display the last 24 hours (success rate, failures, p95, request count) and link to `/_/health`.
 
 ### Figures
 
@@ -75,7 +75,7 @@ One row per environment, endpoint, version and method, with requests, success ra
 
 ### Retention and clearing
 
-Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /ui/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
+Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memory, reloaded from `metrics.db` on start. Each instance keeps its own data. **Purge** (administrator role, `DELETE /_/api/metrics`) deletes every request recorded before the purge from memory and `metrics.db`, which also resets the dashboard traffic, error and top endpoint cards. The purge is recorded in the audit trail. **Clear filters** resets the environment, endpoint, version and method filters.
 
 ## Logs
 
@@ -87,4 +87,4 @@ Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memo
 
 ## API
 
-The console API under `/ui/api` uses the `portway_auth` session cookie and a CSRF header on writes: [Console API](/reference/console-api).
+The console API under `/_/api` uses the `portway_auth` session cookie and a CSRF header on writes: [Console API](/reference/console-api).

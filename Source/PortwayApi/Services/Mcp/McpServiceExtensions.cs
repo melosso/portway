@@ -6,7 +6,7 @@ public static class McpServiceExtensions
 {
     public static IServiceCollection AddMcpServices(this IServiceCollection services, IConfiguration configuration)
     {
-        // Registered unconditionally so /ui/mcp/setup and the settings endpoint can read/write config before Mcp:Enabled is true
+        // Registered unconditionally so /_/mcp/setup and the settings endpoint can read/write config before Mcp:Enabled is true
         var mcpDbPath = Path.Combine(Directory.GetCurrentDirectory(), "mcp.db");
         services.AddDbContextFactory<McpConfigDbContext>(opts =>
             opts.UseSqlite($"Data Source={mcpDbPath}"));

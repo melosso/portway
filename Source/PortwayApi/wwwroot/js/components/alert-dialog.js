@@ -72,7 +72,6 @@
         </div>
       `;
 
-            // Event listeners
             document.getElementById('alertDialogCancel')?.addEventListener('click', () => {
                 if (_currentCancelCallback) {
                     _currentCancelCallback();
@@ -111,7 +110,6 @@
                 setTimeout(() => focusTarget.focus(), 100);
             }
 
-            // ESC key handler
             this._escHandler = (e) => {
                 if (e.key === 'Escape') {
                     if (_currentCancelCallback) {
@@ -144,7 +142,6 @@
             }
         },
 
-        // Convenience methods
         confirm: function (options) {
             return this.show({ variant: 'default', ...options });
         },
@@ -162,6 +159,5 @@
         }
     };
 
-    // Export
     global.AlertDialog = AlertDialog;
 })(typeof window !== 'undefined' ? window : this);

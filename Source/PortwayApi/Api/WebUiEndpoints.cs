@@ -31,7 +31,7 @@ public static partial class WebUiEndpointExtensions
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path;
-            if (!path.StartsWithSegments("/ui")) { await next(); return; }
+            if (!path.StartsWithSegments("/_")) { await next(); return; }
             if (!webUiEnabled)
             {
                 Log.Warning("Web UI request to {Path} rejected: neither Console:Enabled nor Console:AdminApiKey is configured", path);
@@ -68,9 +68,9 @@ public static partial class WebUiEndpointExtensions
 
             // read per request since accounts are seeded later
             if (WebUiAuthState.Enabled &&
-                !path.StartsWithSegments("/ui/login") &&
-                !path.StartsWithSegments("/ui/api/auth") &&
-                !path.StartsWithSegments("/ui/api/customization"))
+                !path.StartsWithSegments("/_/login") &&
+                !path.StartsWithSegments("/_/api/auth") &&
+                !path.StartsWithSegments("/_/api/customization"))
             {
                 var userId = context.Request.Cookies.TryGetValue(CookieName, out var cookie)
                     ? WebUiAuthHelper.ResolveSession(cookie)
@@ -78,7 +78,7 @@ public static partial class WebUiEndpointExtensions
 
                 if (userId is null)
                 {
-                    context.Response.Redirect($"{context.Request.PathBase}/ui/login");
+                    context.Response.Redirect($"{context.Request.PathBase}/_/login");
                     return;
                 }
 
@@ -89,14 +89,14 @@ public static partial class WebUiEndpointExtensions
                 var account = await accounts.FindByIdAsync(userId.Value);
                 if (account is null || !account.IsActive)
                 {
-                    context.Response.Redirect($"{context.Request.PathBase}/ui/login");
+                    context.Response.Redirect($"{context.Request.PathBase}/_/login");
                     return;
                 }
                 context.Items[SignedInUsernameKey] = account.Username;
 
                 // csrf double submit on mutations, client-error uses sendBeacon and is exempt
-                if (path.StartsWithSegments("/ui/api") &&
-                    !path.StartsWithSegments("/ui/api/client-error") &&
+                if (path.StartsWithSegments("/_/api") &&
+                    !path.StartsWithSegments("/_/api/client-error") &&
                     (HttpMethods.IsPost(context.Request.Method) || HttpMethods.IsPut(context.Request.Method) ||
                      HttpMethods.IsPatch(context.Request.Method) || HttpMethods.IsDelete(context.Request.Method)))
                 {
@@ -136,11 +136,11 @@ public static partial class WebUiEndpointExtensions
     /// </summary>
     private static bool IsSelfServiceWrite(PathString path)
     {
-        if (path.StartsWithSegments("/ui/api/client-error")) return true;
-        if (path.StartsWithSegments("/ui/api/oidc/link")) return true;
+        if (path.StartsWithSegments("/_/api/client-error")) return true;
+        if (path.StartsWithSegments("/_/api/oidc/link")) return true;
 
         // links this account to a provider
-        return path.StartsWithSegments("/ui/api/oidc/providers")
+        return path.StartsWithSegments("/_/api/oidc/providers")
             && (path.Value ?? "").EndsWith("/link", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -169,11 +169,11 @@ public static partial class WebUiEndpointExtensions
     }
 
     /// <summary>
-    /// Maps all /ui/* page routes and /ui/api/* data endpoints
+    /// Maps all /_/* page routes and /_/api/* data endpoints
     /// </summary>
     public static WebApplication MapWebUiEndpoints(this WebApplication app)
     {
-        var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ui");
+        var wwwroot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "_");
         var appVersion = typeof(WebUiEndpointExtensions).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ?? "0.0.0";

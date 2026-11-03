@@ -17,7 +17,7 @@ public static partial class WebUiEndpointExtensions
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapMethods("/ui/api/endpoints/{type}/{**name}", ["PATCH"], async (string type, string name, HttpContext context) =>
+        app.MapMethods("/_/api/endpoints/{type}/{**name}", ["PATCH"], async (string type, string name, HttpContext context) =>
         {
             if (IsVersionPath(name))
                 return Results.Json(new { error = "Rename the base endpoint; its versions move with it" }, statusCode: 400);
@@ -68,8 +68,8 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, name = actualName });
         }).ExcludeFromDescription();
 
-        // GET /ui/api/endpoints/{type}/{**name}?raw=true , fetch a single endpoint file (structured or raw JSON)
-        app.MapGet("/ui/api/endpoints/{type}/{**name}", (string type, string name, HttpRequest request) =>
+        // GET /_/api/endpoints/{type}/{**name}?raw=true , fetch a single endpoint file (structured or raw JSON)
+        app.MapGet("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpRequest request) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
@@ -94,8 +94,8 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        // PUT /ui/api/endpoints/{type}/{**name}?raw=true , overwrite a single endpoint file
-        app.MapPut("/ui/api/endpoints/{type}/{**name}", async (string type, string name, HttpContext context) =>
+        // PUT /_/api/endpoints/{type}/{**name}?raw=true , overwrite a single endpoint file
+        app.MapPut("/_/api/endpoints/{type}/{**name}", async (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
@@ -141,8 +141,8 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, last_modified = lastMod });
         }).ExcludeFromDescription();
 
-        // POST /ui/api/endpoints/{type} , create a new endpoint
-        app.MapPost("/ui/api/endpoints/{type}", async (string type, HttpContext context) =>
+        // POST /_/api/endpoints/{type} , create a new endpoint
+        app.MapPost("/_/api/endpoints/{type}", async (string type, HttpContext context) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             var name = body.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
@@ -180,8 +180,8 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true, name }, statusCode: 201);
         }).ExcludeFromDescription();
 
-        // DELETE /ui/api/endpoints/{type}/{**name} , remove an endpoint
-        app.MapDelete("/ui/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
+        // DELETE /_/api/endpoints/{type}/{**name} , remove an endpoint
+        app.MapDelete("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
@@ -207,7 +207,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // copies the base entity.json and its sibling files into the next version folder
-        app.MapPost("/ui/api/endpoints/{type}/versions/{**name}", (string type, string name, HttpContext context) =>
+        app.MapPost("/_/api/endpoints/{type}/versions/{**name}", (string type, string name, HttpContext context) =>
         {
             var baseName = IsVersionPath(name) ? name[..name.LastIndexOf('/')] : name;
             var (filePath, err) = ResolveEndpointPath(type, name);
@@ -237,8 +237,8 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true, name = versionName, version = $"v{next}" });
         }).ExcludeFromDescription();
 
-        // POST /ui/api/endpoints/{type}/validate , dry-run configuration check without saving
-        app.MapPost("/ui/api/endpoints/{type}/validate", async (string type, HttpContext context) =>
+        // POST /_/api/endpoints/{type}/validate , dry-run configuration check without saving
+        app.MapPost("/_/api/endpoints/{type}/validate", async (string type, HttpContext context) =>
         {
             var body = await context.Request.ReadFromJsonAsync<JsonElement>();
             if (!body.TryGetProperty("content", out var contentEl) || contentEl.ValueKind == JsonValueKind.Undefined)

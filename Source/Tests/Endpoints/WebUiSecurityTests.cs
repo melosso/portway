@@ -104,10 +104,10 @@ public class WebUiSecurityTests : IDisposable
     private static async Task<(string AuthCookie, string CsrfCookie)> SignInAsync(
         HttpClient client, string username, string password, string? newPassword = null)
     {
-        var csrfResp = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/csrf");
+        var csrfResp = await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf");
         var oneTimeCsrf = csrfResp.GetProperty("csrf").GetString()!;
 
-        var login = await client.PostAsJsonAsync("/ui/api/auth",
+        var login = await client.PostAsJsonAsync("/_/api/auth",
             new { username, password, csrf = oneTimeCsrf });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
 
@@ -115,8 +115,8 @@ public class WebUiSecurityTests : IDisposable
         if (body.TryGetProperty("must_change_password", out var must) && must.GetBoolean())
         {
             Assert.NotNull(newPassword);
-            var second = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/csrf");
-            login = await client.PostAsJsonAsync("/ui/api/auth/password", new
+            var second = await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf");
+            login = await client.PostAsJsonAsync("/_/api/auth/password", new
             {
                 username,
                 password,
@@ -169,7 +169,7 @@ public class WebUiSecurityTests : IDisposable
 
             var client = CreateClient();
             var (authCookie, _) = await LoginAsync(client);
-            var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/logs?level=ERR&limit=200", authCookie), ct);
+            var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/logs?level=ERR&limit=200", authCookie), ct);
 
             var body = await resp.Content.ReadFromJsonAsync<JsonElement>(ct);
             Assert.Equal("older-file-marker", body.GetProperty("lines")[0].GetProperty("message").GetString());
@@ -185,9 +185,9 @@ public class WebUiSecurityTests : IDisposable
     public async Task UnauthenticatedUiApiRequest_RedirectsToLogin()
     {
         var client = CreateClient();
-        var resp = await client.GetAsync("/ui/api/settings", TestContext.Current.CancellationToken);
+        var resp = await client.GetAsync("/_/api/settings", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
-        Assert.Contains("/ui/login", resp.Headers.Location!.ToString());
+        Assert.Contains("/_/login", resp.Headers.Location!.ToString());
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public class WebUiSecurityTests : IDisposable
                 new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "false" })));
         var client = offFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var resp = await client.GetAsync("/ui/api/environments/500", TestContext.Current.CancellationToken);
+        var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, resp.StatusCode);
     }
 
@@ -212,9 +212,9 @@ public class WebUiSecurityTests : IDisposable
                 new Dictionary<string, string?> { ["WebUi:AdminApiKey"] = "", ["WebUi:Enabled"] = "true" })));
         var client = onFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var resp = await client.GetAsync("/ui/api/environments/500", TestContext.Current.CancellationToken);
+        var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
-        Assert.Contains("/ui/login", resp.Headers.Location!.ToString());
+        Assert.Contains("/_/login", resp.Headers.Location!.ToString());
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public class WebUiSecurityTests : IDisposable
             try
             {
                 var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-                resp = await client.GetAsync("/ui/api/settings", TestContext.Current.CancellationToken);
+                resp = await client.GetAsync("/_/api/settings", TestContext.Current.CancellationToken);
             }
             catch
             {
@@ -268,7 +268,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Put, "/ui/api/environments/settings", authCookie, csrfHeader: null, body: new { });
+        var req = AuthedRequest(HttpMethod.Put, "/_/api/environments/settings", authCookie, csrfHeader: null, body: new { });
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, resp.StatusCode);
@@ -282,12 +282,12 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var put = AuthedRequest(HttpMethod.Put, "/ui/api/environments/settings", authCookie, csrfCookie,
+        var put = AuthedRequest(HttpMethod.Put, "/_/api/environments/settings", authCookie, csrfCookie,
             new { server_name = "localhost", allowed_environments = new[] { "500", "700" } });
         var resp = await client.SendAsync(put, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
-        var auditReq = AuthedRequest(HttpMethod.Get, "/ui/api/audit", authCookie);
+        var auditReq = AuthedRequest(HttpMethod.Get, "/_/api/audit", authCookie);
         var auditResp = await client.SendAsync(auditReq, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, auditResp.StatusCode);
         var audit = await auditResp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
@@ -308,7 +308,7 @@ public class WebUiSecurityTests : IDisposable
         try
         {
             var responses = await Task.WhenAll(names.Select(name => client.SendAsync(
-                AuthedRequest(HttpMethod.Post, "/ui/api/environments", authCookie, csrfCookie, new { name }),
+                AuthedRequest(HttpMethod.Post, "/_/api/environments", authCookie, csrfCookie, new { name }),
                 TestContext.Current.CancellationToken)));
             Assert.All(responses, r => Assert.Equal(HttpStatusCode.Created, r.StatusCode));
 
@@ -338,7 +338,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Post, $"/ui/api/endpoints/{type}/validate", authCookie, csrfCookie,
+        var req = AuthedRequest(HttpMethod.Post, $"/_/api/endpoints/{type}/validate", authCookie, csrfCookie,
             new { content });
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
@@ -353,7 +353,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Post, "/ui/api/endpoints/sql/validate", authCookie, csrfCookie,
+        var req = AuthedRequest(HttpMethod.Post, "/_/api/endpoints/sql/validate", authCookie, csrfCookie,
             new { content = "{ not json" });
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
@@ -368,7 +368,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Get, "/ui/settings", authCookie);
+        var req = AuthedRequest(HttpMethod.Get, "/_/settings", authCookie);
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
@@ -385,7 +385,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/settings", authCookie), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/settings", authCookie), TestContext.Current.CancellationToken);
         var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         var start = html.IndexOf("id=\"section-security\"", StringComparison.Ordinal);
@@ -403,7 +403,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/tokens", authCookie), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/tokens", authCookie), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
@@ -420,7 +420,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/users", authCookie), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/users", authCookie), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
@@ -438,27 +438,27 @@ public class WebUiSecurityTests : IDisposable
         var (authCookie, csrfCookie) = await LoginAsync(client);
         var ct = TestContext.Current.CancellationToken;
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/tokens", authCookie, csrfCookie,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/tokens", authCookie, csrfCookie,
             new { username = "rotate-me", allowed_scopes = "CRM/Accounts", allowed_environments = "dev" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, ct)).StatusCode);
 
-        var list = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/tokens", authCookie), ct))
+        var list = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/tokens", authCookie), ct))
             .Content.ReadFromJsonAsync<JsonElement>(ct);
         var id = list.EnumerateArray().Single(t => t.GetProperty("username").GetString() == "rotate-me").GetProperty("id").GetInt32();
 
-        var rotate = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/ui/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
+        var rotate = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
         Assert.Equal(HttpStatusCode.OK, rotate.StatusCode);
         var rotated = await rotate.Content.ReadFromJsonAsync<JsonElement>(ct);
         Assert.False(string.IsNullOrEmpty(rotated.GetProperty("token").GetString()));
         Assert.Equal("CRM/Accounts", rotated.GetProperty("allowed_scopes").GetString());
 
-        var after = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/tokens", authCookie), ct))
+        var after = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/tokens", authCookie), ct))
             .Content.ReadFromJsonAsync<JsonElement>(ct);
         var active = after.EnumerateArray().Where(t => t.GetProperty("username").GetString() == "rotate-me").ToList();
         Assert.Single(active);
         Assert.NotEqual(id, active[0].GetProperty("id").GetInt32());
 
-        var again = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/ui/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
+        var again = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/tokens/{id}/rotate", authCookie, csrfCookie), ct);
         Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
     }
 
@@ -468,7 +468,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie);
+        var req = AuthedRequest(HttpMethod.Get, "/_/api/settings", authCookie);
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
@@ -485,24 +485,24 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (adminCookie, adminCsrf) = await LoginAsync(client);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
             new { username = "read-only", password = "V13wer-account-pw-77", role = "viewer", current_password = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
 
         var (viewerCookie, viewerCsrf) = await SignInAsync(client, "read-only", "V13wer-account-pw-77");
 
         // Reading the console stays open to a viewer
-        var read = AuthedRequest(HttpMethod.Get, "/ui/api/settings", viewerCookie);
+        var read = AuthedRequest(HttpMethod.Get, "/_/api/settings", viewerCookie);
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(read, TestContext.Current.CancellationToken)).StatusCode);
 
         // Writing settings is administrator-only, CSRF satisfied or not
-        var write = AuthedRequest(HttpMethod.Put, "/ui/api/settings", viewerCookie, viewerCsrf,
+        var write = AuthedRequest(HttpMethod.Put, "/_/api/settings", viewerCookie, viewerCsrf,
             new Dictionary<string, object> { ["Caching:Enabled"] = false });
         var writeResp = await client.SendAsync(write, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, writeResp.StatusCode);
 
         // And it must not be able to hand itself an administrator account
-        var escalate = AuthedRequest(HttpMethod.Post, "/ui/api/users", viewerCookie, viewerCsrf,
+        var escalate = AuthedRequest(HttpMethod.Post, "/_/api/users", viewerCookie, viewerCsrf,
             new { username = "climber", password = "Esc4lation-pw-1234", role = "administrator" });
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(escalate, TestContext.Current.CancellationToken)).StatusCode);
     }
@@ -515,20 +515,20 @@ public class WebUiSecurityTests : IDisposable
         var metrics = _factory.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
         metrics.Record(500, "GET", "api", "Orders", "500", "", 12);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
             new { username = "metrics-viewer", password = "V13wer-metrics-pw-88", role = "viewer", current_password = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
         var (viewerCookie, viewerCsrf) = await SignInAsync(client, "metrics-viewer", "V13wer-metrics-pw-88");
 
-        var viewerRead = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/metrics/health?period=1h", viewerCookie), TestContext.Current.CancellationToken);
+        var viewerRead = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/metrics/health?period=1h", viewerCookie), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, viewerRead.StatusCode);
         var health = await viewerRead.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         Assert.True(health.GetProperty("summary").GetProperty("failures").GetInt64() >= 1);
 
-        var viewerClear = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/ui/api/metrics", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+        var viewerClear = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/_/api/metrics", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Forbidden, viewerClear.StatusCode);
 
-        var adminClear = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/ui/api/metrics", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+        var adminClear = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/_/api/metrics", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, adminClear.StatusCode);
         Assert.Equal(0, metrics.GetHealth(TimeSpan.FromDays(30), new PortwayApi.Services.HealthFilter()).Summary.Total);
     }
@@ -540,7 +540,7 @@ public class WebUiSecurityTests : IDisposable
         var adminClient = CreateClient();
         var (adminCookie, adminCsrf) = await LoginAsync(adminClient);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
             new { username = "soon-deactivated", password = "D3act1vate-me-pw-42", role = "viewer", current_password = SeededPassword });
         var createResp = await adminClient.SendAsync(create, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, createResp.StatusCode);
@@ -551,15 +551,15 @@ public class WebUiSecurityTests : IDisposable
         var (targetCookie, _) = await SignInAsync(targetClient, "soon-deactivated", "D3act1vate-me-pw-42");
 
         // The now-deactivated account's own cookie still authenticates a plain GET before the fix
-        var deactivate = AuthedRequest(HttpMethod.Put, $"/ui/api/users/{targetId}", adminCookie, adminCsrf,
+        var deactivate = AuthedRequest(HttpMethod.Put, $"/_/api/users/{targetId}", adminCookie, adminCsrf,
             new Dictionary<string, object> { ["is_active"] = false, ["current_password"] = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await adminClient.SendAsync(deactivate, TestContext.Current.CancellationToken)).StatusCode);
 
-        var readAfterDeactivation = AuthedRequest(HttpMethod.Get, "/ui/api/settings", targetCookie);
+        var readAfterDeactivation = AuthedRequest(HttpMethod.Get, "/_/api/settings", targetCookie);
         var resp = await targetClient.SendAsync(readAfterDeactivation, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
-        Assert.Contains("/ui/login", resp.Headers.Location!.ToString());
+        Assert.Contains("/_/login", resp.Headers.Location!.ToString());
     }
 
     [Fact]
@@ -568,20 +568,20 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var secret = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var secret = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "stolen" });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(secret, TestContext.Current.CancellationToken)).StatusCode);
 
-        var tooLong = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var tooLong = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = new string('x', 2_001) });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(tooLong, TestContext.Current.CancellationToken)).StatusCode);
 
-        var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:Customization:PromoText"] = "Hello **there**" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
 
         // Console is the current section name; WebUi keys above still write to it
-        var current = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var current = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["Console:Customization:PromoText"] = "Current name" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(current, TestContext.Current.CancellationToken)).StatusCode);
         var written = JsonNode.Parse(await File.ReadAllTextAsync(_overridesPath, TestContext.Current.CancellationToken))!;
@@ -610,11 +610,11 @@ public class WebUiSecurityTests : IDisposable
             ("OpenApi:Title", new string('x', 201))
         })
         {
-            var req = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie, new Dictionary<string, object> { [key] = value });
+            var req = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie, new Dictionary<string, object> { [key] = value });
             Assert.True(HttpStatusCode.BadRequest == (await client.SendAsync(req, TestContext.Current.CancellationToken)).StatusCode, key);
         }
 
-        var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["OpenApi:ShowNamespaces"] = true, ["OpenApi:Footer:Url"] = "https://example.com", ["OpenApi:ScalarTheme"] = "portway", ["OpenApi:ShowBadges"] = false, ["OpenApi:ServeMarkdown"] = true, ["OpenApi:ExternalDocs:Url"] = "", ["OpenApi:ExternalDocs:Description"] = "Guide" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok, TestContext.Current.CancellationToken)).StatusCode);
     }
@@ -634,34 +634,34 @@ public class WebUiSecurityTests : IDisposable
             async Task<HttpResponseMessage> Send(HttpMethod method, string url, object? body = null) =>
                 await client.SendAsync(AuthedRequest(method, url, authCookie, csrfCookie, body), TestContext.Current.CancellationToken);
 
-            var created = await Send(HttpMethod.Post, "/ui/api/endpoints/static/versions/UiVer/Items");
+            var created = await Send(HttpMethod.Post, "/_/api/endpoints/static/versions/UiVer/Items");
             Assert.Equal(HttpStatusCode.OK, created.StatusCode);
             var body = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             Assert.Equal("UiVer/Items/v2", body.GetProperty("name").GetString());
             Assert.True(File.Exists(Path.Combine(dir, "v2", "content.json")));
             Assert.DoesNotContain("Deprecated", await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken));
 
-            var saved = await Send(HttpMethod.Put, "/ui/api/endpoints/static/UiVer/Items/v2",
+            var saved = await Send(HttpMethod.Put, "/_/api/endpoints/static/UiVer/Items/v2",
                 new { content = new { ContentType = "application/json", ContentFile = "content.json", Deprecated = true } });
             Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
             Assert.Contains("\"DeprecatedSince\"", await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken));
 
-            var third = await (await Send(HttpMethod.Post, "/ui/api/endpoints/static/versions/UiVer/Items/v2")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            var third = await (await Send(HttpMethod.Post, "/_/api/endpoints/static/versions/UiVer/Items/v2")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             Assert.Equal("v3", third.GetProperty("version").GetString());
 
-            var overview = await (await Send(HttpMethod.Get, "/ui/api/overview")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            var overview = await (await Send(HttpMethod.Get, "/_/api/overview")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             Assert.True(int.Parse(overview.GetProperty("api_version").GetString()![1..]) >= 3);
 
-            var list = await (await Send(HttpMethod.Get, "/ui/api/endpoints")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+            var list = await (await Send(HttpMethod.Get, "/_/api/endpoints")).Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             var v2 = list.GetProperty("static").EnumerateArray().Single(e => e.GetProperty("name").GetString() == "UiVer/Items/v2");
             Assert.Equal("v2", v2.GetProperty("version").GetString());
             Assert.Equal("UiVer/Items@v2", v2.GetProperty("scope").GetString());
 
-            Assert.Equal(HttpStatusCode.Conflict, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items")).StatusCode);
-            Assert.Equal(HttpStatusCode.BadRequest, (await Send(new HttpMethod("PATCH"), "/ui/api/endpoints/static/UiVer/Items/v2", new { new_name = "UiVer/Other" })).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items/v3")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items/v2")).StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/ui/api/endpoints/static/UiVer/Items")).StatusCode);
+            Assert.Equal(HttpStatusCode.Conflict, (await Send(HttpMethod.Delete, "/_/api/endpoints/static/UiVer/Items")).StatusCode);
+            Assert.Equal(HttpStatusCode.BadRequest, (await Send(new HttpMethod("PATCH"), "/_/api/endpoints/static/UiVer/Items/v2", new { new_name = "UiVer/Other" })).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/_/api/endpoints/static/UiVer/Items/v3")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/_/api/endpoints/static/UiVer/Items/v2")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, "/_/api/endpoints/static/UiVer/Items")).StatusCode);
         }
         finally
         {
@@ -678,20 +678,20 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var bad = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/tokens", authCookie, csrfCookie,
+        var bad = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/tokens", authCookie, csrfCookie,
             new { username = "scope-bad", allowed_scopes = "CRM Accounts" }), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
 
-        var good = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/tokens", authCookie, csrfCookie,
+        var good = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/tokens", authCookie, csrfCookie,
             new { username = "scope-good", allowed_scopes = "CRM/Accounts@v2" }), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, good.StatusCode);
 
-        var tokens = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/tokens", authCookie), TestContext.Current.CancellationToken))
+        var tokens = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/tokens", authCookie), TestContext.Current.CancellationToken))
             .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         var id = tokens.EnumerateArray()
             .First(x => x.GetProperty("username").GetString() == "scope-good").GetProperty("id").GetInt32();
 
-        var update = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/ui/api/tokens/{id}", authCookie, csrfCookie,
+        var update = await client.SendAsync(AuthedRequest(HttpMethod.Put, $"/_/api/tokens/{id}", authCookie, csrfCookie,
             new { allowed_scopes = "CRM/Accounts@v1" }), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
     }
@@ -725,7 +725,7 @@ public class WebUiSecurityTests : IDisposable
 
         // The provider is live while the switch is on, so the assertions below test the switch and not an empty table
         var on = CreateClient();
-        var listed = await on.GetFromJsonAsync<JsonElement>("/ui/api/auth/providers", TestContext.Current.CancellationToken);
+        var listed = await on.GetFromJsonAsync<JsonElement>("/_/api/auth/providers", TestContext.Current.CancellationToken);
         Assert.Contains(listed.GetProperty("providers").EnumerateArray(),
             p => p.GetProperty("slug").GetString() == "acme");
 
@@ -734,14 +734,14 @@ public class WebUiSecurityTests : IDisposable
                 new Dictionary<string, string?> { ["Oidc:Enabled"] = "false" })));
         var client = offFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-        var providers = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/providers", TestContext.Current.CancellationToken);
+        var providers = await client.GetFromJsonAsync<JsonElement>("/_/api/auth/providers", TestContext.Current.CancellationToken);
         Assert.Empty(providers.GetProperty("providers").EnumerateArray());
 
-        var stillEnabled = await client.GetAsync("/ui/api/auth/oidc/acme/start", TestContext.Current.CancellationToken);
+        var stillEnabled = await client.GetAsync("/_/api/auth/oidc/acme/start", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, stillEnabled.StatusCode);
 
         // Disabled OIDC answers the start route with the unknown slug 404
-        var unknown = await client.GetAsync("/ui/api/auth/oidc/anything/start", TestContext.Current.CancellationToken);
+        var unknown = await client.GetAsync("/_/api/auth/oidc/anything/start", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
     }
 
@@ -759,7 +759,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var req = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { [key] = values });
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
@@ -772,8 +772,8 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        // This session reaches /ui via PublicOrigins only, so replacing it is refused
-        var evict = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        // This session reaches /_ via PublicOrigins only, so replacing it is refused
+        var evict = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "https://elsewhere.example.com" } });
         var evictResp = await client.SendAsync(evict, TestContext.Current.CancellationToken);
 
@@ -782,7 +782,7 @@ public class WebUiSecurityTests : IDisposable
         Assert.Contains("refuse your own requests", problem.GetProperty("error").GetString());
 
         // Keeping an entry that still covers the caller is allowed
-        var keep = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var keep = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:PublicOrigins"] = new[] { "http://localhost", "https://elsewhere.example.com" } });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(keep, TestContext.Current.CancellationToken)).StatusCode);
     }
@@ -795,13 +795,13 @@ public class WebUiSecurityTests : IDisposable
         var client = lockedFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var read = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie), TestContext.Current.CancellationToken);
+        var read = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", authCookie), TestContext.Current.CancellationToken);
         var writable = (await read.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken))
             .GetProperty("writable").EnumerateArray().ToDictionary(w => w.GetProperty("key").GetString()!);
         Assert.Equal("PORTWAY_MCP_ENABLED", writable["Mcp:Enabled"].GetProperty("env").GetString());
         Assert.Equal(JsonValueKind.Null, writable["Caching:Enabled"].GetProperty("env").ValueKind);
 
-        var write = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var write = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["Mcp:Enabled"] = true });
         var resp = await client.SendAsync(write, TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
@@ -822,11 +822,11 @@ public class WebUiSecurityTests : IDisposable
             ("Telemetry:ServiceName", "gateway one")
         })
         {
-            var bad = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie, new Dictionary<string, object> { [key] = value });
+            var bad = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie, new Dictionary<string, object> { [key] = value });
             Assert.True(HttpStatusCode.BadRequest == (await client.SendAsync(bad, TestContext.Current.CancellationToken)).StatusCode, key);
         }
 
-        var ok = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie, new Dictionary<string, object>
+        var ok = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie, new Dictionary<string, object>
         {
             ["Telemetry:Provider"] = "None",
             ["Telemetry:Otlp:Endpoint"] = "http://otel-collector:4317",
@@ -859,7 +859,7 @@ public class WebUiSecurityTests : IDisposable
             });
             var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-            var resp = await client.GetAsync("/ui/api/environments/500", TestContext.Current.CancellationToken);
+            var resp = await client.GetAsync("/_/api/environments/500", TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
 
             using var scope = factory.Services.CreateScope();
@@ -880,12 +880,12 @@ public class WebUiSecurityTests : IDisposable
     {
         var client = CreateClient();
 
-        var before = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/csrf", TestContext.Current.CancellationToken);
+        var before = await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", TestContext.Current.CancellationToken);
         Assert.True(before.GetProperty("setup_pending").GetBoolean());
 
         await LoginAsync(client);
 
-        var after = await client.GetFromJsonAsync<JsonElement>("/ui/api/auth/csrf", TestContext.Current.CancellationToken);
+        var after = await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", TestContext.Current.CancellationToken);
         Assert.False(after.GetProperty("setup_pending").GetBoolean());
     }
 
@@ -897,42 +897,42 @@ public class WebUiSecurityTests : IDisposable
         string? name = null;
         try
         {
-            var create = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/backups", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            var create = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/backups", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, create.StatusCode);
             name = (await create.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("created").GetString();
 
-            var list = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/backups", adminCookie), TestContext.Current.CancellationToken);
+            var list = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/backups", adminCookie), TestContext.Current.CancellationToken);
             var names = (await list.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken))
                 .GetProperty("backups").EnumerateArray().Select(b => b.GetProperty("name").GetString());
             Assert.Contains(name, names);
 
-            var download = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/ui/api/backups/{name}", adminCookie), TestContext.Current.CancellationToken);
+            var download = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/backups/{name}", adminCookie), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, download.StatusCode);
             Assert.Equal("application/zip", download.Content.Headers.ContentType?.MediaType);
 
-            var traversal = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/backups/..%2Fappsettings.json", adminCookie), TestContext.Current.CancellationToken);
+            var traversal = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/backups/..%2Fappsettings.json", adminCookie), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.NotFound, traversal.StatusCode);
 
-            var addViewer = AuthedRequest(HttpMethod.Post, "/ui/api/users", adminCookie, adminCsrf,
+            var addViewer = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
                 new { username = "backup-viewer", password = "V13wer-backup-pw-99", role = "viewer", current_password = SeededPassword });
             Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(addViewer, TestContext.Current.CancellationToken)).StatusCode);
             var (viewerCookie, viewerCsrf) = await SignInAsync(client, "backup-viewer", "V13wer-backup-pw-99");
 
-            var viewerDownload = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/ui/api/backups/{name}", viewerCookie), TestContext.Current.CancellationToken);
+            var viewerDownload = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/backups/{name}", viewerCookie), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Forbidden, viewerDownload.StatusCode);
-            var viewerCreate = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/backups", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+            var viewerCreate = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/backups", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Forbidden, viewerCreate.StatusCode);
-            var viewerRun = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/maintenance/run", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+            var viewerRun = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/maintenance/run", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Forbidden, viewerRun.StatusCode);
-            var viewerRestore = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/ui/api/backups/{name}/restore", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
+            var viewerRestore = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/backups/{name}/restore", viewerCookie, viewerCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.Forbidden, viewerRestore.StatusCode);
 
-            var restore = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/ui/api/backups/{name}/restore", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            var restore = await client.SendAsync(AuthedRequest(HttpMethod.Post, $"/_/api/backups/{name}/restore", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, restore.StatusCode);
-            var pending = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/backups", adminCookie), TestContext.Current.CancellationToken);
+            var pending = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/backups", adminCookie), TestContext.Current.CancellationToken);
             Assert.Equal(name, (await pending.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("pending_restore").GetString());
 
-            var cancel = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/ui/api/backups/restore", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+            var cancel = await client.SendAsync(AuthedRequest(HttpMethod.Delete, "/_/api/backups/restore", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
             Assert.Equal(HttpStatusCode.OK, cancel.StatusCode);
             Assert.Null(PortwayApi.Services.Database.BackupArchive.PendingRestore(Directory.GetCurrentDirectory()));
         }
@@ -950,7 +950,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (adminCookie, adminCsrf) = await LoginAsync(client);
 
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/ui/api/maintenance/run", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Post, "/_/api/maintenance/run", adminCookie, adminCsrf), TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var results = (await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken)).GetProperty("results");
@@ -963,11 +963,11 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, csrfCookie) = await LoginAsync(client);
 
-        var set = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var set = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "a-brand-new-secret-value" });
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(set, TestContext.Current.CancellationToken)).StatusCode);
 
-        var clear = AuthedRequest(HttpMethod.Put, "/ui/api/settings", authCookie, csrfCookie,
+        var clear = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
             new Dictionary<string, object> { ["WebUi:AdminApiKey"] = "" });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(clear, TestContext.Current.CancellationToken)).StatusCode);
     }
@@ -979,7 +979,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie);
+        var req = AuthedRequest(HttpMethod.Get, "/_/api/settings", authCookie);
         req.Headers.Add("X-Forwarded-For", "203.0.113.9");
         var json = await (await client.SendAsync(req, TestContext.Current.CancellationToken))
             .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
@@ -990,8 +990,8 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Theory]
-    [InlineData("http://localhost/ui/api/settings", false)]
-    [InlineData("https://localhost/ui/api/settings", true)]
+    [InlineData("http://localhost/_/api/settings", false)]
+    [InlineData("https://localhost/_/api/settings", true)]
     public async Task SettingsEndpoint_ReportsHttpsFromTheRequestScheme(string url, bool expectHttps)
     {
         var client = CreateClient();
@@ -1012,7 +1012,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var req = AuthedRequest(HttpMethod.Get, "/ui/api/settings", authCookie);
+        var req = AuthedRequest(HttpMethod.Get, "/_/api/settings", authCookie);
         req.Headers.Add("X-Forwarded-For", "203.0.113.9");
         var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
 
@@ -1032,7 +1032,7 @@ public class WebUiSecurityTests : IDisposable
     public async Task ConsoleResponses_IncludeTheHardenedSecurityHeaders()
     {
         var client = CreateClient();
-        var resp = await client.GetAsync("/ui/login", TestContext.Current.CancellationToken);
+        var resp = await client.GetAsync("/_/login", TestContext.Current.CancellationToken);
 
         Assert.False(resp.Headers.Contains("X-Powered-By"));
         Assert.Equal("same-origin", resp.Headers.GetValues("Cross-Origin-Opener-Policy").Single());
@@ -1044,7 +1044,7 @@ public class WebUiSecurityTests : IDisposable
     public async Task HealthChecks_RequireConsoleSession()
     {
         var client = CreateClient();
-        var resp = await client.GetAsync("/ui/api/health/checks", TestContext.Current.CancellationToken);
+        var resp = await client.GetAsync("/_/api/health/checks", TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.Found, resp.StatusCode);
     }
 
@@ -1054,7 +1054,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (authCookie, _) = await LoginAsync(client);
 
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/health/checks", authCookie), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/health/checks", authCookie), TestContext.Current.CancellationToken);
 
         // the console reads the status from the body, so an unhealthy gateway still answers 200
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
@@ -1078,7 +1078,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (cookie, csrf) = await LoginAsync(client);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", cookie, csrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
             new { username = "avatar-auto", password = "Av4tar-auto-pw-123", role = "viewer", display_name = "  Jules Verne ", current_password = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
 
@@ -1094,7 +1094,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (cookie, csrf) = await LoginAsync(client);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", cookie, csrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
             new { username = "avatar-none", password = "Av4tar-none-pw-123", role = "viewer", avatar_style = "", current_password = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
 
@@ -1110,7 +1110,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (cookie, csrf) = await LoginAsync(client);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", cookie, csrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
             new { username = "avatar-bad", password = "Av4tar-bad-pw-1234", role = "viewer", avatar_style = style, avatar_seed = seed, current_password = SeededPassword });
         var resp = await client.SendAsync(create, TestContext.Current.CancellationToken);
 
@@ -1125,7 +1125,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (cookie, csrf) = await LoginAsync(client);
 
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", cookie, csrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
             new { username = "avatar-long", password = "Av4tar-long-pw-123", role = "viewer", display_name = new string('x', 81), current_password = SeededPassword });
         var resp = await client.SendAsync(create, TestContext.Current.CancellationToken);
 
@@ -1137,12 +1137,12 @@ public class WebUiSecurityTests : IDisposable
     {
         var client = CreateClient();
         var (cookie, csrf) = await LoginAsync(client);
-        var create = AuthedRequest(HttpMethod.Post, "/ui/api/users", cookie, csrf,
+        var create = AuthedRequest(HttpMethod.Post, "/_/api/users", cookie, csrf,
             new { username = "avatar-edit", password = "Av4tar-edit-pw-123", role = "viewer", current_password = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
         var id = (await FindListedUserAsync(client, cookie, "avatar-edit")).GetProperty("id").GetInt32();
 
-        var update = AuthedRequest(HttpMethod.Put, $"/ui/api/users/{id}", cookie, csrf,
+        var update = AuthedRequest(HttpMethod.Put, $"/_/api/users/{id}", cookie, csrf,
             new { display_name = "Edited", avatar_style = "rings", avatar_seed = "k3x9", current_password = SeededPassword });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(update, TestContext.Current.CancellationToken)).StatusCode);
 
@@ -1158,7 +1158,7 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (cookie, _) = await LoginAsync(client);
 
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/avatars/candidates?count=500", cookie), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/avatars/candidates?count=500", cookie), TestContext.Current.CancellationToken);
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
         var candidates = (await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken))
             .GetProperty("candidates").EnumerateArray().ToList();
@@ -1173,7 +1173,7 @@ public class WebUiSecurityTests : IDisposable
 
     private static async Task<JsonElement> FindListedUserAsync(HttpClient client, string cookie, string username)
     {
-        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/users", cookie), TestContext.Current.CancellationToken);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/users", cookie), TestContext.Current.CancellationToken);
         var json = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         return json.GetProperty("users").EnumerateArray().Single(u => u.GetProperty("username").GetString() == username);
     }
@@ -1184,11 +1184,11 @@ public class WebUiSecurityTests : IDisposable
         var client = CreateClient();
         var (cookie, csrf) = await LoginAsync(client);
 
-        var put = AuthedRequest(HttpMethod.Put, "/ui/api/environments/settings", cookie, csrf,
+        var put = AuthedRequest(HttpMethod.Put, "/_/api/environments/settings", cookie, csrf,
             new { server_name = "localhost", allowed_environments = new[] { "500", "700" } });
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(put, TestContext.Current.CancellationToken)).StatusCode);
 
-        var audit = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/ui/api/audit?limit=1", cookie), TestContext.Current.CancellationToken))
+        var audit = await (await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/audit?limit=1", cookie), TestContext.Current.CancellationToken))
             .Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
         var entry = audit.GetProperty("entries").EnumerateArray().Single();
         Assert.Equal("environment-settings", entry.GetProperty("target_type").GetString());

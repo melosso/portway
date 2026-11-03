@@ -4,7 +4,6 @@
 
     const PromoBar = {
         init: function () {
-            // Don't show if user closed it this session
             if (sessionStorage.getItem('portway_promo_closed')) return;
 
             // Try cache to avoid layout shift/flicker
@@ -14,8 +13,8 @@
                     const data = JSON.parse(cached);
                     if (data && data.text) {
                         const isLogin =
-                            window.location.pathname.endsWith('/ui/login') ||
-                            window.location.pathname.endsWith('/ui/login.html');
+                            window.location.pathname.endsWith('/_/login') ||
+                            window.location.pathname.endsWith('/_/login.html');
                         if (!(isLogin && !data.login)) {
                             this.render(data.text);
                         }
@@ -23,20 +22,17 @@
                 }
             } catch (e) {}
 
-            // Fetch fresh version in background
             this.refresh();
         },
 
         refresh: async function () {
             try {
-                const data = await api('/ui/api/customization', { silent: true });
+                const data = await api('/_/api/customization', { silent: true });
 
                 const isLogin =
-                    window.location.pathname.endsWith('/ui/login') ||
-                    window.location.pathname.endsWith('/ui/login.html');
+                    window.location.pathname.endsWith('/_/login') || window.location.pathname.endsWith('/_/login.html');
                 const shouldShow = data.promo_text && !(isLogin && !data.promo_login);
 
-                // Cache for next page load
                 localStorage.setItem(
                     'portway_promo_cache',
                     JSON.stringify({
@@ -50,17 +46,14 @@
                 if (shouldShow) {
                     const html = this.parseMarkdown(data.promo_text);
                     if (existing) {
-                        // Update if changed
                         const content = existing.querySelector('.promo-bar-content');
                         if (content && content.innerHTML !== html) {
                             content.innerHTML = html;
                         }
                     } else {
-                        // Render if not already there (first time visit or previously hidden)
                         this.render(data.promo_text);
                     }
                 } else if (existing) {
-                    // Hide if it was there but now shouldn't be
                     existing.remove();
                     document.body.classList.remove('has-promo');
                 }
@@ -88,12 +81,10 @@
             document.body.classList.add('has-promo');
             document.body.prepend(container);
 
-            // Handle close
             container.querySelector('.promo-bar-close').addEventListener('click', () => {
                 container.classList.remove('visible');
                 document.body.classList.remove('has-promo');
                 sessionStorage.setItem('portway_promo_closed', 'true');
-                // Remove from DOM after transition
                 setTimeout(() => container.remove(), 150);
             });
         },
@@ -108,10 +99,8 @@
                     .replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;')
                     .replace(/"/g, '&quot;')
-                    // Bold: **text** or __text__
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     .replace(/__(.*?)__/g, '<strong>$1</strong>')
-                    // Italic: *text* or _text_
                     .replace(/\*(.*?)\*/g, '<em>$1</em>')
                     .replace(/_(.*?)_/g, '<em>$1</em>')
                     // Links: [text](url), http(s)/mailto only so javascript: and data: cannot ride in
@@ -124,7 +113,6 @@
         }
     };
 
-    // Auto-init when DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => PromoBar.init());
     } else {

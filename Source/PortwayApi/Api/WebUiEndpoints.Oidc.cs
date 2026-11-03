@@ -11,7 +11,7 @@ using Serilog;
 
 public static partial class WebUiEndpointExtensions
 {
-    private const string OidcBase = "/ui/api/auth/oidc";
+    private const string OidcBase = "/_/api/auth/oidc";
 
     private static void MapOidcRoutes(WebApplication app, PortwayApi.Services.Configuration.ConfigAuditService configAudit, bool secureCookies)
     {
@@ -19,7 +19,7 @@ public static partial class WebUiEndpointExtensions
             => configAudit.Record(action, "oidc-provider", target, ctx.Connection.RemoteIpAddress?.ToString(), details, null);
 
         // Sign-in page renders one button per enabled provider from this list, and hides the block entirely when it is empty
-        app.MapGet("/ui/api/auth/providers", async (AuthDbContext db, IConfiguration config) =>
+        app.MapGet("/_/api/auth/providers", async (AuthDbContext db, IConfiguration config) =>
         {
             if (!OidcEnabled(config)) return Results.Json(new { providers = Array.Empty<object>() });
 
@@ -51,7 +51,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // Account is fixed from the already-authenticated session before redirect; the provider's callback data is written, never matched
-        app.MapPost("/ui/api/oidc/providers/{slug}/link", async (
+        app.MapPost("/_/api/oidc/providers/{slug}/link", async (
             AuthDbContext db, IConfiguration config, HttpContext ctx, AdminUserService users, string slug) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me)
@@ -88,7 +88,7 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapDelete("/ui/api/oidc/link", async (HttpContext ctx, AuthDbContext db, AdminUserService users) =>
+        app.MapDelete("/_/api/oidc/link", async (HttpContext ctx, AuthDbContext db, AdminUserService users) =>
         {
             if (ctx.Items[SignedInUserKey] is not int me)
                 return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
@@ -156,11 +156,11 @@ public static partial class WebUiEndpointExtensions
             Log.Information("Console sign-in as {Username} through {Provider}", account.Username, provider.Name);
 
             IssueSessionCookies(ctx, account.Id, secureCookies);
-            return Results.Redirect($"{ctx.Request.PathBase}/ui/dashboard");
+            return Results.Redirect($"{ctx.Request.PathBase}/_/dashboard");
         }).ExcludeFromDescription();
 
         // Provider administration
-        app.MapGet("/ui/api/oidc/providers", async (AuthDbContext db) =>
+        app.MapGet("/_/api/oidc/providers", async (AuthDbContext db) =>
         {
             var providers = await db.OidcProviders.OrderBy(p => p.Id).ToListAsync();
             return Results.Json(new
@@ -185,7 +185,7 @@ public static partial class WebUiEndpointExtensions
             });
         }).ExcludeFromDescription();
 
-        app.MapPost("/ui/api/oidc/providers", async (HttpContext ctx, AuthDbContext db) =>
+        app.MapPost("/_/api/oidc/providers", async (HttpContext ctx, AuthDbContext db) =>
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
@@ -207,7 +207,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true, id = provider.Id });
         }).ExcludeFromDescription();
 
-        app.MapPut("/ui/api/oidc/providers/{id:int}", async (HttpContext ctx, int id, AuthDbContext db) =>
+        app.MapPut("/_/api/oidc/providers/{id:int}", async (HttpContext ctx, int id, AuthDbContext db) =>
         {
             JsonElement body;
             try { body = await JsonSerializer.DeserializeAsync<JsonElement>(ctx.Request.Body); }
@@ -232,7 +232,7 @@ public static partial class WebUiEndpointExtensions
             return Results.Json(new { ok = true });
         }).ExcludeFromDescription();
 
-        app.MapDelete("/ui/api/oidc/providers/{id:int}", async (HttpContext ctx, int id, AuthDbContext db) =>
+        app.MapDelete("/_/api/oidc/providers/{id:int}", async (HttpContext ctx, int id, AuthDbContext db) =>
         {
             var provider = await db.OidcProviders.FirstOrDefaultAsync(p => p.Id == id);
             if (provider is null) return Results.Json(new { error = "Provider not found" }, statusCode: 404);
@@ -276,7 +276,7 @@ public static partial class WebUiEndpointExtensions
     /// Back to the sign-in page with a reason the page can show
     /// </summary>
     private static string Back(HttpContext ctx, string reason) =>
-        $"{ctx.Request.PathBase}/ui/login?sso={reason}";
+        $"{ctx.Request.PathBase}/_/login?sso={reason}";
 
     /// <summary>
     /// Redirect URI registered at the provider: derived from the live request (so reverse-proxy scheme/host and PathBase are correct) when ctx is available, otherwise from configuration for display purposes
@@ -370,7 +370,7 @@ public static partial class WebUiEndpointExtensions
     }
 
     private static string BackToUsers(HttpContext ctx, string reason) =>
-        $"{ctx.Request.PathBase}/ui/users?link={reason}";
+        $"{ctx.Request.PathBase}/_/users?link={reason}";
 
     /// <summary>
     /// Resolves the account for this identity: a subject already bound to this provider takes priority; otherwise the username claim may match an existing local account; a new account is created only if CreateAccounts is set. Never matches an account already bound to a different provider.

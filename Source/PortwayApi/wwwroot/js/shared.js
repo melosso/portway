@@ -1,6 +1,6 @@
 // Shared utilities for every console page
 
-// CSRF: echo the portway_csrf cookie on every mutating /ui/api request (double-submit pattern)
+// CSRF: echo the portway_csrf cookie on every mutating /_/api request (double-submit pattern)
 (function () {
     function csrfToken() {
         var m = document.cookie.match(/(?:^|;\s*)portway_csrf=([^;]+)/);
@@ -11,7 +11,7 @@
         try {
             var url = typeof input === 'string' ? input : (input && input.url) || '';
             var method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
-            if (method !== 'GET' && method !== 'HEAD' && url.indexOf('/ui/api/') !== -1) {
+            if (method !== 'GET' && method !== 'HEAD' && url.indexOf('/_/api/') !== -1) {
                 var token = csrfToken();
                 if (token) {
                     init = init || {};
@@ -29,7 +29,6 @@
 
 const ROLE_LABELS = { administrator: 'Administrator', viewer: 'Viewer' };
 
-// Sanitizer
 function esc(s) {
     if (s == null) return '';
     return String(s)
@@ -82,7 +81,6 @@ async function api(url, options = {}) {
     return data ?? {};
 }
 
-// Password field show/hide toggle
 function togglePasswordVis(inputId, btn) {
     const el = document.getElementById(inputId);
     if (!el) return;
@@ -118,7 +116,7 @@ function animateCounter(el, target, duration) {
     requestAnimationFrame(step);
 }
 
-// Console easter egg — shown once per session for curious developers.
+// console easter egg, once per session
 (function () {
     if (sessionStorage.getItem('_pw_console')) return;
     sessionStorage.setItem('_pw_console', '1');
@@ -142,7 +140,7 @@ function animateCounter(el, target, duration) {
         _reported++;
         try {
             navigator.sendBeacon(
-                '/ui/api/client-error',
+                '/_/api/client-error',
                 JSON.stringify({
                     message: String(msg).slice(0, 500),
                     source: String(source || '').slice(0, 200),
