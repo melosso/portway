@@ -311,22 +311,18 @@
             </div>
         </div>
 
-        <div class="settings-section" id="section-maintenance">
+        <div class="settings-section" id="section-database">
             <div class="settings-pane">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title">Database Maintenance</h2>
+                        <h2 class="card-title">Maintenance</h2>
                         <a class="card-doc" href="https://melosso.github.io/portway/reference/app-settings#databasemaintenance" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
                     </div>
                     <div class="card-body" id="maintenanceBody">
                         <span class="muted" style="font-size:0.8rem">Loading…</span>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="settings-section" id="section-backups">
-            <div class="settings-pane">
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Backups</h2>
@@ -1194,13 +1190,18 @@ function showSettingsSection(key) {
   if (location.hash !== '#' + key) history.replaceState(null, '', '#' + key);
 }
 
+// pre-0.11 deep links
+const SECTION_ALIASES = { maintenance: 'database', backups: 'database' };
+
 (function initSettingsSection() {
-  const key = (location.hash || '').replace('#', '');
+  const raw = (location.hash || '').replace('#', '');
+  const key = SECTION_ALIASES[raw] ?? raw;
   if (key && document.getElementById('section-' + key)) showSettingsSection(key);
 })();
 
 window.addEventListener('hashchange', () => {
-  const key = (location.hash || '').replace('#', '');
+  const raw = (location.hash || '').replace('#', '');
+  const key = SECTION_ALIASES[raw] ?? raw;
   if (key && document.getElementById('section-' + key)) showSettingsSection(key);
 });
 </script>
