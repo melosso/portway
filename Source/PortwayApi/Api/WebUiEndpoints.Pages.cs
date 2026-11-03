@@ -34,15 +34,17 @@ public static partial class WebUiEndpointExtensions
         // Auth endpoints
         app.MapPost("/_/api/auth", async (HttpContext context) =>
         {
+            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
+            var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
+
             // Rate limiting and lockout check
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var blockReason = WebUiAuthHelper.BeginAttempt(clientIp);
+            var blockReason = WebUiAuthHelper.BeginAttempt(clientIp, username);
             if (blockReason != null)
             {
                 return Results.Json(new { error = blockReason }, statusCode: 429);
             }
-
-            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
 
             // CSRF validation
             var csrfToken = body.TryGetProperty("csrf", out var csrf) ? csrf.GetString() : null;
@@ -50,9 +52,6 @@ public static partial class WebUiEndpointExtensions
             {
                 return Results.Json(new { error = "Invalid or expired CSRF token" }, statusCode: 403);
             }
-
-            var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
-            var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
 
             var users = context.RequestServices.GetRequiredService<AdminUserService>();
             var account = await users.AuthenticateAsync(username, password);
@@ -63,7 +62,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             // Success - clear failed attempts
-            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            WebUiAuthHelper.ClearFailedAttempts(clientIp, username);
 
             // No session until the account sets its own password
             if (account.MustChangePassword)
@@ -92,7 +91,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Choose a password you have not used here before", field = "newPassword" }, statusCode: 400);
 
             var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
+            if (WebUiAuthHelper.BeginAttempt(clientIp, username) is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             var csrf = body.TryGetProperty("csrf", out var c) ? c.GetString() : null;
@@ -107,7 +106,7 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Invalid username or password" }, statusCode: 401);
             }
 
-            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            WebUiAuthHelper.ClearFailedAttempts(clientIp, username);
             WebUiAuthHelper.ConsumeCsrfToken(csrf!);
 
             var account = await users.FindAsync(username);

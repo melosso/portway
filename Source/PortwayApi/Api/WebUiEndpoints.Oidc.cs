@@ -65,7 +65,7 @@ public static partial class WebUiEndpointExtensions
             if (provider is null) return Results.NotFound();
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
+            if (WebUiAuthHelper.BeginAttempt(clientIp, $"#{me}") is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             // Require the current password so a hijacked session cannot attach a new sign-in method to the account
@@ -74,7 +74,7 @@ public static partial class WebUiEndpointExtensions
             {
                 return Results.Json(new { error = "That password is incorrect", field = "current_password" }, statusCode: 403);
             }
-            WebUiAuthHelper.ClearFailedAttempts(clientIp);
+            WebUiAuthHelper.ClearFailedAttempts(clientIp, $"#{me}");
 
             try
             {

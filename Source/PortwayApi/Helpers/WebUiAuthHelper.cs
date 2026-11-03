@@ -9,12 +9,13 @@ namespace PortwayApi.Helpers;
 /// </summary>
 public static class WebUiAuthHelper
 {
-    // Account lockout: attempts before lockout, cleared on success, and lockout duration
+    // Account lockout: attempts per client and account, attempts per client across accounts, lock and counting window
     private const int MaxFailuresBeforeLockout = 10;
+    private const int MaxFailuresPerClient = 50;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(30);
 
-    // Track failed attempts: IP -> (failures, lockedUntil)
-    private static readonly ConcurrentDictionary<string, (int Failures, DateTime? LockedUntil)> _failedAttempts = new();
+    // client ip, or client ip plus account, to failures in the current window
+    private static readonly ConcurrentDictionary<string, (int Failures, DateTime? LockedUntil, DateTime WindowStart)> _failedAttempts = new();
 
     // Track CSRF tokens: token -> expiresAt
     private static readonly ConcurrentDictionary<string, DateTime> _csrfTokens = new();
@@ -29,17 +30,34 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Counts an attempt before the password is checked; returns the block reason, or null when allowed. Call ClearFailedAttempts on success
+    /// Counts an attempt for the client and the account before the password is checked; returns the block reason, or null when allowed. Call ClearFailedAttempts with the same arguments on success
     /// </summary>
-    public static string? BeginAttempt(string clientIp)
+    public static string? BeginAttempt(string clientIp, string account) =>
+        Count(clientIp, MaxFailuresPerClient) ?? Count(AccountKey(clientIp, account), MaxFailuresBeforeLockout);
+
+    /// <summary>
+    /// Clears the account count and returns the attempt to the client count after successful auth
+    /// </summary>
+    public static void ClearFailedAttempts(string clientIp, string account)
+    {
+        _failedAttempts.TryRemove(AccountKey(clientIp, account), out _);
+        _failedAttempts.AddOrUpdate(
+            clientIp,
+            _ => (0, null, DateTime.UtcNow),
+            (_, existing) => existing.LockedUntil.HasValue ? existing : (Math.Max(0, existing.Failures - 1), null, existing.WindowStart));
+    }
+
+    private static string AccountKey(string clientIp, string account) => $"{clientIp}\n{account.ToLowerInvariant()}";
+
+    private static string? Count(string key, int limit)
     {
         var now = DateTime.UtcNow;
         string? reason = null;
 
         // counted up front so parallel requests cannot all pass before the first failure is recorded
         _failedAttempts.AddOrUpdate(
-            clientIp,
-            _ => (1, null),
+            key,
+            _ => (1, null, now),
             (_, existing) =>
             {
                 reason = null;
@@ -49,19 +67,12 @@ public static class WebUiAuthHelper
                     return existing;
                 }
 
-                var attempts = existing.LockedUntil.HasValue ? 1 : existing.Failures + 1;
-                return (attempts, attempts >= MaxFailuresBeforeLockout ? now.Add(LockoutDuration) : null);
+                var expired = existing.LockedUntil.HasValue || now - existing.WindowStart > LockoutDuration;
+                var attempts = expired ? 1 : existing.Failures + 1;
+                return (attempts, attempts >= limit ? now.Add(LockoutDuration) : null, expired ? now : existing.WindowStart);
             });
 
         return reason;
-    }
-
-    /// <summary>
-    /// Clears failed attempts after successful auth
-    /// </summary>
-    public static void ClearFailedAttempts(string clientIp)
-    {
-        _failedAttempts.TryRemove(clientIp, out _);
     }
 
     /// <summary>
@@ -149,11 +160,12 @@ public static class WebUiAuthHelper
         }
 
         // Clean up old failed attempts
-        var expiredAttempts = _failedAttempts.Where(kvp =>
-            kvp.Value.LockedUntil.HasValue && kvp.Value.LockedUntil.Value < now).Select(kvp => kvp.Key).ToList();
-        foreach (var ip in expiredAttempts)
+        var expiredAttempts = _failedAttempts.Where(kvp => kvp.Value.LockedUntil is { } until
+            ? until < now
+            : now - kvp.Value.WindowStart > LockoutDuration).Select(kvp => kvp.Key).ToList();
+        foreach (var key in expiredAttempts)
         {
-            _failedAttempts.TryRemove(ip, out _);
+            _failedAttempts.TryRemove(key, out _);
         }
     }
 }
