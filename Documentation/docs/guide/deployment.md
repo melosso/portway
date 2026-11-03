@@ -1,4 +1,4 @@
 ---
 title: Moved
-redirect: /guide/getting-started
+redirect: /guide/install
 ---

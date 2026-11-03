@@ -5,20 +5,20 @@ description: "Install Portway, sign in to the console and make the first authent
 
 # Getting Started
 
-Portway ships as a container image, as `.deb` and `.rpm` packages, and as Linux and Windows archives. Each release targets x64 and arm64. Endpoint and environment configuration is identical for every installation method.
+Portway is distributed as a container image, as `.deb` and `.rpm` packages, and as Linux and Windows archives. Each release targets x64 and arm64. Endpoint and environment configuration is identical for every installation method.
 
 ## 1. Install
 
 ::: cards 3
 - [Deploying with Docker](/guide/deployment-docker)
-  Docker Compose, from a first container to production.
+  Docker Compose file, encryption key, persistence, TLS and backups.
 - [Deploying on Linux](/guide/deployment-linux)
   `.deb` or `.rpm` package, or release archive, as a systemd service.
 - [Deploying on Windows Server](/guide/deployment-windows)
   IIS website with HTTPS and a dedicated Application Pool.
 :::
 
-Each installation guide ends at a running instance. The steps below apply to every method.
+Steps 2 to 6 apply to every installation method.
 
 ## 2. Record the access token
 
@@ -44,7 +44,7 @@ The file contains a plaintext token with full access. Record the token value and
 
 ## 3. Sign in to the console
 
-The first start logs an account name (`admin-` plus eight characters) and a one-time password. The console at `/_` requires a new password at first sign-in. Accounts and recovery: [Console Accounts](/guide/accounts).
+The first start logs an account name (`admin-` plus eight characters) and a one-time password. The console at `/_` requires a new password at first sign-in. Accounts and recovery: [Accounts](/guide/accounts).
 
 ## 4. Add an environment
 
@@ -90,7 +90,7 @@ Provider detection, headers and authentication: [Environments](/guide/environmen
 }
 ```
 
-Folder layout and routes: [Folders and Routes](/guide/layout).
+Folder layout and routes: [Routing](/guide/layout).
 
 ## 6. Call the API
 

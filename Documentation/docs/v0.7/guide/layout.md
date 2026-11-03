@@ -1,9 +1,9 @@
 ---
-title: Folders and Routes
+title: Routing
 description: "Each subfolder under endpoints/ corresponds to an endpoint type"
 ---
 
-# Folders and Routes
+# Routing
 
 Routes are derived from the `endpoints/` folder tree: the first level is the endpoint type, the folder names below it form the namespace and endpoint name. `Namespace` in `entity.json` overrides the folder namespace ([Namespaces](/reference/namespaces)).
 

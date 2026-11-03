@@ -95,7 +95,7 @@ Authorization: Bearer {token}
 
 Scope agent tokens to the required endpoints and environments: [Access Tokens](/guide/tokens).
 
-## Web UI
+## Console
 
 Console views under **MCP**:
 

@@ -27,7 +27,7 @@
                   "path": "guide/getting-started"
                 },
                 {
-                  "title": "Folders and Routes",
+                  "title": "Routing",
                   "path": "guide/layout"
                 }
               ]
@@ -369,19 +369,6 @@
     {
       "text": "Reference",
       "link": "/reference/"
-    },
-    {
-      "text": "More",
-      "items": [
-        {
-          "text": "Download",
-          "link": "https://github.com/melosso/portway/releases/"
-        },
-        {
-          "text": "Demo page",
-          "link": "https://portway-demo.melosso.com/"
-        }
-      ]
     }
   ],
   "sidebar": {
@@ -399,7 +386,7 @@
             "path": "guide/getting-started"
           },
           {
-            "title": "Folders and Routes",
+            "title": "Routing",
             "path": "guide/layout"
           }
         ]
@@ -409,16 +396,8 @@
         "collapsed": false,
         "items": [
           {
-            "title": "Docker",
-            "path": "guide/deployment-docker"
-          },
-          {
-            "title": "Linux",
-            "path": "guide/deployment-linux"
-          },
-          {
-            "title": "Windows Server",
-            "path": "guide/deployment-windows"
+            "title": "Install",
+            "path": "guide/install"
           },
           {
             "title": "Instances",
@@ -495,11 +474,11 @@
         "collapsed": false,
         "items": [
           {
-            "title": "Web UI",
+            "title": "Overview",
             "path": "guide/webui"
           },
           {
-            "title": "Console Accounts",
+            "title": "Accounts",
             "path": "guide/accounts"
           },
           {
@@ -527,26 +506,16 @@
         "collapsed": false,
         "items": [
           {
-            "title": "Health and Logs",
-            "path": "guide/monitoring"
-          },
-          {
             "title": "Telemetry",
             "path": "guide/telemetry"
           },
           {
+            "title": "Health and Logs",
+            "path": "guide/monitoring"
+          },
+          {
             "title": "Troubleshooting",
             "path": "guide/troubleshooting"
-          }
-        ]
-      },
-      {
-        "title": "Contributing",
-        "collapsed": false,
-        "items": [
-          {
-            "title": "Issues",
-            "path": "https://github.com/melosso/portway/issues/"
           }
         ]
       },

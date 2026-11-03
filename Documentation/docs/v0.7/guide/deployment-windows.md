@@ -65,7 +65,7 @@ The first start creates `tokens/`, `log/` and `auth.db`. Checks:
 
 ## Initial configuration
 
-Access token and environments: [Getting Started](/guide/getting-started). Folder permissions: [Folders and Routes](/guide/layout#folder-permissions).
+Access token and environments: [Getting Started](/guide/getting-started). Folder permissions: [Routing](/guide/layout#folder-permissions).
 
 ## Troubleshooting
 

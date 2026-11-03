@@ -1,9 +1,9 @@
 ---
-title: Web UI
+title: Console
 description: "Browser console for endpoints, environments, tokens, users, settings and logs"
 ---
 
-# Web UI
+# Console
 
 The console at `/_` manages endpoints, environments, tokens, users and settings, and displays the dashboard and application logs. It writes the same configuration files the gateway reads. The gateway API runs without it.
 
@@ -19,7 +19,7 @@ The console is enabled by default and accepts client addresses from loopback and
 
 ## Accounts
 
-Accounts are created under **Users** or from the shell. First account, roles, sessions and recovery: [Console Accounts](/guide/accounts). OpenID Connect sign-in: [Single sign-on](/guide/sso).
+Accounts are created under **Users** or from the shell. First account, roles, sessions and recovery: [Accounts](/guide/accounts). OpenID Connect sign-in: [Single sign-on](/guide/sso).
 
 ## Settings changes
 
@@ -80,10 +80,6 @@ Retention: 31 days in `metrics.db`; 31 days and at most 500,000 requests in memo
 ## Logs
 
 **Logs** displays entries from the three newest `log/portwayapi-*.log` files, newest first. The level filter (`INF`, `WRN`, `ERR`, `DBG`) and page size (100, 200, 500, 1000) apply to all three files. File settings: [Logging](/reference/logging).
-
-## Users
-
-**Users** lists console accounts. The table sorts by name, role, provider, status and last sign-in. The account menu displays the e-mail address of the signed-in account.
 
 ## API
 

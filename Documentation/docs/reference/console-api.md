@@ -79,6 +79,6 @@ Create returns `{ "ok": true, "token": "..." }`; the token value is returned onl
 
 ## Related topics
 
-- [Web UI](/guide/webui)
+- [Console](/guide/webui)
 - [Tokens](/guide/tokens)
 - [Token Audit Log](/reference/token-audit)

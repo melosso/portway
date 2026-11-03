@@ -19,7 +19,7 @@ Tokens are cryptographically random values, stored hashed in `auth.db`, and boun
 
 ### Console accounts
 
-Roles, recovery and session keys: [Console Accounts](/guide/accounts).
+Roles, recovery and session keys: [Accounts](/guide/accounts).
 
 ## Authorization
 

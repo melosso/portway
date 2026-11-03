@@ -1,17 +1,21 @@
 ---
-title: Console Accounts
+title: Accounts
 description: "Console account roles, shell recovery and session keys"
 ---
 
-# Console Accounts
+# Accounts
 
-Console accounts sign in to the [Web UI](/guide/webui).
+Accounts sign in to the [console](/guide/webui) at `/_`.
 
 ## First account
 
 Console accounts are stored in `auth.db` with PBKDF2-SHA256 password hashes. The first start without accounts creates an administrator with a random one-time password, logged once and changed at first sign-in. The account name is `admin-` plus eight random characters, or `admin` when `Console:SeedPassword` or the legacy `Console:AdminApiKey` (`PORTWAY_ADMIN_KEY`) is set. `Console:SeedPassword` sets a fixed password without a forced change, for demo instances only.
 
 The legacy `Console:AdminApiKey` is not used for sign-in. It enables the console like `Console:Enabled` and can be removed, also from **Settings → Security → Deployment & Access**.
+
+## Users page
+
+**Users** lists console accounts. The table sorts by name, role, provider, status and last sign-in. The account menu displays the e-mail address of the signed-in account.
 
 ## Account roles
 

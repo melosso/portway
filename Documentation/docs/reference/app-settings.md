@@ -34,7 +34,7 @@ The console never rewrites `appsettings.json`. An environment variable takes pre
 | `Telemetry` | [Telemetry](/guide/telemetry) |
 | `Mcp` | [MCP Server](/guide/mcp) |
 | `Oidc` | [Single Sign-On](/guide/sso) |
-| `Console` | Below, and [Web UI](/guide/webui) |
+| `Console` | Below, and [Console](/guide/webui) |
 
 ## Console
 

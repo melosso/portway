@@ -164,5 +164,5 @@ Within each group, endpoints are listed before subgroups, each ordered by title.
 ## Related topics
 
 - [Entity Configuration](/reference/entity-config)
-- [Folders and Routes](/guide/layout)
+- [Routing](/guide/layout)
 - [API Overview](/reference/)
