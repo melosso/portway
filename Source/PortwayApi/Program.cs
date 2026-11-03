@@ -170,6 +170,8 @@ try
     // Forwarded headers for reverse proxies plus Cloudflare client IP and scheme restoration
     app.UseProxyForwardedHeaders();
 
+    Log.Information("Console: {Status}", webUiEnabled ? "Enabled" : "Disabled");
+
     // Configure unified documentation
     var openApiMonitor = app.Services.GetRequiredService<IOptionsMonitor<OpenApiSettings>>();
     OpenApiConfiguration.ConfigureDocs(app, openApiMonitor);
@@ -254,8 +256,8 @@ try
     // Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
     app.MapPortwayFallback();
 
-    // Log hosting URLs, Web UI auth status and configuration reload status
-    StartupLogHelper.LogHostingSummary(app, builder.Configuration, webUiEnabled);
+    // Log hosting URLs and configuration reload status
+    StartupLogHelper.LogHostingSummary(app, builder.Configuration);
 
     app.Lifetime.ApplicationStopping.Register(() =>
     {

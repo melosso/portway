@@ -247,10 +247,6 @@ public static class OpenApiConfiguration
             return Results.Text(OpenApiMarkdownRenderer.Render(document), "text/markdown; charset=utf-8");
         }).ExcludeFromDescription();
 
-        // Warn in production if unauthenticated OpenAPI docs expose endpoint topology
-        if (app.Environment.IsProduction())
-            Log.Warning("Unauthenticated OpenAPI specification active at '/docs'. Restrict access via proxy/network rule or set OpenApi:Enabled=false. You can dismiss this warning if you are intentionally exposing the OpenAPI spec for public consumption.");
-
         // Serve minimal source maps for Scalar vendor JS to prevent DevTools 404 warnings
         app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
@@ -522,7 +518,11 @@ public static class OpenApiConfiguration
         app.MapGet("/docs", DocsPage);
         app.MapGet("/docs/{**slug}", DocsPage).ExcludeFromDescription();
 
-        Log.Information("OpenAPI documentation is enabled and available at '/docs'.");
+        // unauthenticated docs expose endpoint topology
+        if (app.Environment.IsProduction())
+            Log.Warning("Unauthenticated OpenAPI documentation is enabled at '/docs'. Restrict access via proxy/network rule or set OpenApi:Enabled=false. Dismiss this warning if the documentation is public by intent.");
+        else
+            Log.Information("OpenAPI documentation is enabled at '/docs'.");
     }
 
     // To-do: drop the scalar 1.72.4 nested tag workarounds once upstream handles parent tags
