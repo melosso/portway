@@ -45,4 +45,34 @@ public class SettingValuesTests
         Assert.Equal("Information", values["Serilog:MinimumLevel:Default"]);
         Assert.Equal("None", values["Telemetry:Provider"]);
     }
+
+    [Fact]
+    public void Secrets_ReportOnlyWhetherTheyAreSet()
+    {
+        var secrets = new Dictionary<string, string?>
+        {
+            ["Caching:Redis:ConnectionString"] = "redis:6379,password=secret-1",
+            ["RateLimiting:Redis:ConnectionString"] = "redis:6379,password=secret-2",
+            ["Proxy:Password"] = "secret-3",
+            ["Console:SeedPassword"] = "secret-4",
+            ["Console:SeedToken"] = "secret-5"
+        };
+        var values = Values(secrets);
+
+        foreach (var key in secrets.Keys)
+            Assert.Equal(true, values[key]);
+        Assert.DoesNotContain(values.Values, v => v?.ToString()?.Contains("secret-") == true);
+    }
+
+    [Fact]
+    public void DeprecatedNames_AreReadThroughTheAliases()
+    {
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?> { ["RateLimiting:IpWindow"] = "15" });
+        config.AddConfigAliases();
+
+        var values = WebUiEndpointExtensions.SettingValues(config, new OpenApiSettings(), "None");
+
+        Assert.Equal(15, values["RateLimiting:IpWindowSeconds"]);
+    }
 }

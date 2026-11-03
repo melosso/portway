@@ -303,7 +303,7 @@ public class FileHandlerService : IDisposable
     }
 
     /// <summary>
-    /// Timer callback that evicts cached files not read within MemoryCacheTimeSeconds
+    /// Timer callback that evicts cached files not read within MemoryCacheDurationSeconds
     /// </summary>
     private async void EvictExpired(object? state)
     {
@@ -313,7 +313,7 @@ public class FileHandlerService : IDisposable
         try
         {
             var expired = _lastAccessTimes
-                .Where(kv => (DateTime.UtcNow - kv.Value).TotalSeconds > _optionsMonitor.CurrentValue.MemoryCacheTimeSeconds)
+                .Where(kv => (DateTime.UtcNow - kv.Value).TotalSeconds > _optionsMonitor.CurrentValue.MemoryCacheDurationSeconds)
                 .Select(kv => kv.Key)
                 .ToList();
             foreach (var fileId in expired)

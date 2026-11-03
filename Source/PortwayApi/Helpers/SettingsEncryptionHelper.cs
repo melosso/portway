@@ -13,6 +13,11 @@ namespace PortwayApi.Helpers
         private const string PublicKeyFileName = "snapshot_blob.bin";
         private const string _fallbackKey = "$XTSI5gTEf1hawq3G2uOdWTsFUrgZ6mkCBGrdr0fsRTegXwis68HxGEoCsIBpgbPl5swwY9BQ0qiXG6CaeEPJzp3SPyGebl0ZyHL3jLACKIuSw7G1ufAZ5XATtetKatH0sr#";
 
+        /// <summary>
+        /// True once the deployment's key pair exists; Encrypt falls back to a built-in key without it
+        /// </summary>
+        public static bool HasKeyPair => File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".core", PrivateKeyFileName));
+
         public static bool IsEncrypted(string content)
         {
             return content.StartsWith(EncryptedHeader);

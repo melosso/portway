@@ -20,15 +20,15 @@ public static class TrafficLoggingExtensions
     {
         // Bind options from configuration
         var optionsSection = configuration.GetSection("RequestTrafficLogging");
-        services.Configure<ProxyTrafficLoggerOptions>(optionsSection);
+        services.Configure<RequestTrafficLoggingOptions>(optionsSection);
 
         // Get options for setup
-        var options = optionsSection.Get<ProxyTrafficLoggerOptions>() ?? new ProxyTrafficLoggerOptions();
+        var options = optionsSection.Get<RequestTrafficLoggingOptions>() ?? new RequestTrafficLoggingOptions();
 
         // Only register services if enabled
         if (options.Enabled)
         {
-            Log.Debug("Traffic logging will be initialized, using {StorageType} storage", options.StorageType);
+            Log.Debug("Traffic logging will be initialized, using {Provider} storage", options.Provider);
 
             // Create bounded channel with specified capacity
             services.AddSingleton(_ => Channel.CreateBounded<ProxyTrafficLogEntry>(
@@ -40,7 +40,7 @@ public static class TrafficLoggingExtensions
                 }));
 
             // Register the appropriate storage implementation
-            if (string.Equals(options.StorageType, "sqlite", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(options.Provider, "sqlite", StringComparison.OrdinalIgnoreCase))
             {
                 services.AddSingleton<ITrafficLogStorage, SqliteTrafficLogStorage>();
             }
@@ -61,7 +61,7 @@ public static class TrafficLoggingExtensions
     /// </summary>
     public static IApplicationBuilder UseRequestTrafficLogging(this IApplicationBuilder app)
     {
-        var options = app.ApplicationServices.GetService<IOptions<ProxyTrafficLoggerOptions>>();
+        var options = app.ApplicationServices.GetService<IOptions<RequestTrafficLoggingOptions>>();
 
         // Only use middleware if enabled
         if (options?.Value.Enabled == true)

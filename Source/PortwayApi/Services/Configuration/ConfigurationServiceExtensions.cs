@@ -24,7 +24,7 @@ public static class ConfigurationServiceExtensions
     /// </summary>
     public static IConfigurationBuilder AddConsoleOverrides(this IConfigurationBuilder config)
     {
-        var source = new JsonConfigurationSource
+        var source = new ConsoleOverridesConfigurationSource
         {
             Path = SettingsWriteService.OverridesFileName,
             Optional = true,

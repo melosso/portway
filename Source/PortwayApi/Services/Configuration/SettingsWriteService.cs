@@ -1,6 +1,7 @@
 namespace PortwayApi.Services.Configuration;
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -37,92 +38,171 @@ public sealed class SettingsWriteService
 
     private static readonly Regex NameFormat = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$", RegexOptions.Compiled);
 
+    private static readonly Regex NamespaceFormat = new(@"^[A-Za-z][A-Za-z0-9_.]{0,99}$", RegexOptions.Compiled);
+
+    private static readonly Regex RelativePathFormat = new(@"^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$", RegexOptions.Compiled);
+
+    private static readonly Regex RouteFormat = new(@"^(/[a-z0-9][a-z0-9_-]*)+$", RegexOptions.Compiled);
+
+    private static readonly Regex PathBaseFormat = new(@"^(/[A-Za-z0-9._-]+)*$", RegexOptions.Compiled);
+
+    private static readonly Regex HostFormat = new(@"^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$", RegexOptions.Compiled);
+
+    private static readonly Regex ExtensionFormat = new(@"^\.[A-Za-z0-9]{1,10}$", RegexOptions.Compiled);
+
+    // lands inside SQL connection strings, so separators and quotes are refused
+    private static readonly Regex ApplicationNameFormat = new(@"^[A-Za-z0-9 ._()-]{1,128}$", RegexOptions.Compiled);
+
+    private static readonly Regex ResourceAttributesFormat = new(@"^([A-Za-z0-9._-]+=[^,=;\s]+(,[A-Za-z0-9._-]+=[^,=;\s]+)*)?$", RegexOptions.Compiled);
+
+    private static readonly string[] ReservedFolders = ["endpoints", "environments", "tokens", "wwwroot", ".core", ".backups"];
+
+    private static readonly string[] ProtectedFiles = ["auth.db", "mcp.db", "metrics.db"];
+
+    private static readonly string[] ReservedRoutes = ["/api", "/docs", "/health", "/openapi"];
+
     private static readonly string[] ScalarThemes =
         ["portway", "default", "alternate", "moon", "purple", "solarized", "bluePlanet", "saturn", "kepler", "mars", "deepSpace", "elysiajs", "fastify", "laserwave", "none"];
 
+    private static readonly string[] Providers = ["Memory", "Redis"];
+
     // Writable keys; anything else is refused by name
-    private static readonly Dictionary<string, WritableSetting> Allowed =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["RateLimiting:Enabled"] = new("RateLimiting:Enabled", "bool", true),
-            ["RateLimiting:IpLimit"] = new("RateLimiting:IpLimit", "int", true, 1, 1_000_000),
-            ["RateLimiting:IpWindow"] = new("RateLimiting:IpWindow", "int", true, 1, 86_400),
-            ["RateLimiting:TokenLimit"] = new("RateLimiting:TokenLimit", "int", true, 1, 1_000_000),
-            ["RateLimiting:TokenWindow"] = new("RateLimiting:TokenWindow", "int", true, 1, 86_400),
+    private static readonly Dictionary<string, WritableSetting> Allowed = new WritableSetting[]
+    {
+        new("RateLimiting:Enabled", "bool", true),
+        new("RateLimiting:IpLimit", "int", true, 1, 1_000_000),
+        new("RateLimiting:IpWindowSeconds", "int", true, 1, 86_400),
+        new("RateLimiting:TokenLimit", "int", true, 1, 1_000_000),
+        new("RateLimiting:TokenWindowSeconds", "int", true, 1, 86_400),
+        new("RateLimiting:Provider", "choice", true, Choices: Providers),
+        new("RateLimiting:Redis:ConnectionString", "secret", true),
 
-            ["Caching:Enabled"] = new("Caching:Enabled", "bool", false),
-            ["Caching:DefaultCacheDurationSeconds"] = new("Caching:DefaultCacheDurationSeconds", "int", false, 0, 86_400),
-            ["Caching:MemoryCacheSizeLimitMB"] = new("Caching:MemoryCacheSizeLimitMB", "int", false, 1, 8_192),
+        new("Caching:Enabled", "bool", false),
+        new("Caching:DefaultCacheDurationSeconds", "int", false, 0, 86_400),
+        new("Caching:MemoryCacheSizeLimitMB", "int", true, 1, 8_192),
+        new("Caching:Provider", "choice", true, Choices: Providers),
+        new("Caching:EndpointCacheDurations", "intmap", false, 0, 86_400),
+        new("Caching:CacheableContentTypes", "mediatypelist", false, Max: 50),
+        new("Caching:Redis:ConnectionString", "secret", true),
+        new("Caching:Redis:InstanceName", "text", true, Max: 100),
+        new("Caching:Redis:Database", "int", true, 0, 255),
+        new("Caching:Redis:UseSsl", "bool", true),
+        new("Caching:Redis:ConnectTimeoutMs", "int", true, 100, 60_000),
+        new("Caching:Redis:AbortOnConnectFail", "bool", true),
+        new("Caching:Redis:FallbackToMemoryCache", "bool", true),
+        new("Caching:Redis:MaxRetryAttempts", "int", true, 0, 10),
+        new("Caching:Redis:RetryDelayMs", "int", true, 0, 60_000),
 
-            ["SqlConnectionPooling:Enabled"] = new("SqlConnectionPooling:Enabled", "bool", true),
-            ["SqlConnectionPooling:MinPoolSize"] = new("SqlConnectionPooling:MinPoolSize", "int", true, 0, 1_000),
-            ["SqlConnectionPooling:MaxPoolSize"] = new("SqlConnectionPooling:MaxPoolSize", "int", true, 1, 5_000),
-            ["SqlConnectionPooling:ConnectionTimeout"] = new("SqlConnectionPooling:ConnectionTimeout", "int", true, 1, 600),
-            ["SqlConnectionPooling:CommandTimeout"] = new("SqlConnectionPooling:CommandTimeout", "int", true, 1, 3_600),
+        new("SqlConnectionPooling:Enabled", "bool", true),
+        new("SqlConnectionPooling:MinPoolSize", "int", true, 0, 1_000),
+        new("SqlConnectionPooling:MaxPoolSize", "int", true, 1, 5_000),
+        new("SqlConnectionPooling:ConnectionTimeoutSeconds", "int", true, 1, 600),
+        new("SqlConnectionPooling:CommandTimeoutSeconds", "int", true, 1, 3_600),
+        new("SqlConnectionPooling:ApplicationName", "appname", true),
 
-            ["EndpointReloading:Enabled"] = new("EndpointReloading:Enabled", "bool", false),
-            ["EndpointReloading:DebounceMs"] = new("EndpointReloading:DebounceMs", "int", false, 50, 60_000),
+        new("EndpointReloading:Enabled", "bool", false),
+        new("EndpointReloading:DebounceMs", "int", false, 50, 60_000),
 
-            ["Serilog:MinimumLevel:Default"] = new("Serilog:MinimumLevel:Default", "choice", true, Choices: LogLevels),
+        new("Serilog:MinimumLevel:Default", "choice", true, Choices: LogLevels),
+        new("Serilog:MinimumLevel:Override", "levelmap", true),
 
-            ["DatabaseMaintenance:Enabled"] = new("DatabaseMaintenance:Enabled", "bool", true),
-            ["DatabaseMaintenance:Schedule"] = new("DatabaseMaintenance:Schedule", "time", true),
-            ["DatabaseMaintenance:Backup:Enabled"] = new("DatabaseMaintenance:Backup:Enabled", "bool", false),
-            ["DatabaseMaintenance:Backup:Retention"] = new("DatabaseMaintenance:Backup:Retention", "int", false, 1, 100),
+        new("RequestTrafficLogging:Enabled", "bool", true),
+        new("RequestTrafficLogging:Provider", "choice", true, Choices: ["File", "Sqlite"]),
+        new("RequestTrafficLogging:SqlitePath", "dbfile", true),
+        new("RequestTrafficLogging:LogDirectory", "relpath", true),
+        new("RequestTrafficLogging:FilePrefix", "name", true),
+        new("RequestTrafficLogging:MaxFileSizeMB", "int", true, 1, 1_024),
+        new("RequestTrafficLogging:MaxFileCount", "int", true, 1, 100),
+        new("RequestTrafficLogging:QueueCapacity", "int", true, 100, 1_000_000),
+        new("RequestTrafficLogging:BatchSize", "int", true, 1, 10_000),
+        new("RequestTrafficLogging:FlushIntervalMs", "int", true, 100, 60_000),
+        new("RequestTrafficLogging:CaptureHeaders", "bool", true),
+        new("RequestTrafficLogging:CaptureRequestBodies", "bool", true),
+        new("RequestTrafficLogging:CaptureResponseBodies", "bool", true),
+        new("RequestTrafficLogging:MaxBodyCaptureSizeBytes", "int", true, 0, 1_048_576),
+        new("RequestTrafficLogging:InfoLoggingEnabled", "bool", true),
 
-            ["Mcp:Enabled"] = new("Mcp:Enabled", "bool", true),
-            ["Mcp:RequireAuthentication"] = new("Mcp:RequireAuthentication", "bool", true),
-            ["Mcp:ChatEnabled"] = new("Mcp:ChatEnabled", "bool", true),
+        new("DatabaseMaintenance:Enabled", "bool", false),
+        new("DatabaseMaintenance:Schedule", "time", false),
+        new("DatabaseMaintenance:RunOnStartup", "bool", true),
+        new("DatabaseMaintenance:FreePageRatioThreshold", "number", false, 0.01, 0.99),
+        new("DatabaseMaintenance:Backup:Enabled", "bool", false),
+        new("DatabaseMaintenance:Backup:Retention", "int", false, 1, 100),
 
-            ["Console:SecureCookies"] = new("Console:SecureCookies", "bool", true),
-            ["Console:Customization:EnableLandingPage"] = new("Console:Customization:EnableLandingPage", "bool", true),
-            ["Console:Customization:PromoText"] = new("Console:Customization:PromoText", "text", false, Max: 2_000),
-            ["Console:Customization:PromoLogin"] = new("Console:Customization:PromoLogin", "bool", false),
-            ["Console:Customization:LoginFooter"] = new("Console:Customization:LoginFooter", "text", false, Max: 2_000),
+        new("Mcp:Enabled", "bool", true),
+        new("Mcp:Path", "route", true),
+        new("Mcp:RequireAuthentication", "bool", true),
+        new("Mcp:ChatEnabled", "bool", true),
+        new("Mcp:ToolTimeoutSeconds", "int", true, 1, 600),
+        new("Mcp:DefaultPageSize", "int", true, 1, 1_000),
+        new("Mcp:MaxPageSize", "int", true, 1, 1_000),
+        new("Mcp:MaxToolResultChars", "int", true, 1_000, 1_000_000),
 
-            ["Oidc:Enabled"] = new("Oidc:Enabled", "bool", false),
-            ["OpenApi:Enabled"] = new("OpenApi:Enabled", "bool", true),
-            ["OpenApi:Title"] = new("OpenApi:Title", "text", false, Max: 200),
-            ["OpenApi:Version"] = new("OpenApi:Version", "name", false),
-            ["OpenApi:Description"] = new("OpenApi:Description", "text", false, Max: 4_000),
-            ["OpenApi:Contact:Name"] = new("OpenApi:Contact:Name", "text", false, Max: 200),
-            ["OpenApi:Contact:Email"] = new("OpenApi:Contact:Email", "email", false),
-            ["OpenApi:ForceHttpsInProduction"] = new("OpenApi:ForceHttpsInProduction", "bool", false),
-            ["OpenApi:ShowNamespaces"] = new("OpenApi:ShowNamespaces", "bool", false),
-            ["OpenApi:DefaultGroup"] = new("OpenApi:DefaultGroup", "name", false),
-            ["OpenApi:ShowBadges"] = new("OpenApi:ShowBadges", "bool", false),
-            ["OpenApi:ServeMarkdown"] = new("OpenApi:ServeMarkdown", "bool", false),
-            ["OpenApi:ExternalDocs:Url"] = new("OpenApi:ExternalDocs:Url", "weburl", false),
-            ["OpenApi:ExternalDocs:Description"] = new("OpenApi:ExternalDocs:Description", "text", false, Max: 200),
-            ["OpenApi:SecurityDefinition:Description"] = new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),
-            ["OpenApi:Footer:Text"] = new("OpenApi:Footer:Text", "text", false, Max: 200),
-            ["OpenApi:Footer:Url"] = new("OpenApi:Footer:Url", "link", false),
-            ["OpenApi:Footer:Target"] = new("OpenApi:Footer:Target", "choice", false, Choices: ["_blank", "_self"]),
-            ["OpenApi:Footer:ShowSourceIcon"] = new("OpenApi:Footer:ShowSourceIcon", "bool", false),
-            ["OpenApi:ScalarTheme"] = new("OpenApi:ScalarTheme", "choice", false, Choices: ScalarThemes),
-            ["OpenApi:ScalarLayout"] = new("OpenApi:ScalarLayout", "choice", false, Choices: ["modern", "classic"]),
-            ["OpenApi:ScalarShowSidebar"] = new("OpenApi:ScalarShowSidebar", "bool", false),
-            ["OpenApi:ScalarHideDownloadButton"] = new("OpenApi:ScalarHideDownloadButton", "bool", false),
-            ["OpenApi:ScalarHideModels"] = new("OpenApi:ScalarHideModels", "bool", false),
-            ["OpenApi:ScalarHideClientButton"] = new("OpenApi:ScalarHideClientButton", "bool", false),
-            ["OpenApi:ScalarHideTestRequestButton"] = new("OpenApi:ScalarHideTestRequestButton", "bool", false),
-            ["RequestTrafficLogging:Enabled"] = new("RequestTrafficLogging:Enabled", "bool", true),
+        new("Console:SecureCookies", "bool", true),
+        new("Console:Customization:LandingPageEnabled", "bool", true),
+        new("Console:Customization:PromoText", "text", false, Max: 2_000),
+        new("Console:Customization:PromoLogin", "bool", false),
+        new("Console:Customization:LoginFooter", "text", false, Max: 2_000),
+        new("Console:CorsOrigins", "originlist", true, Max: 50),
 
-            ["Telemetry:Provider"] = new("Telemetry:Provider", "choice", true, Choices: ["None", "Otlp", "Prometheus"]),
-            ["Telemetry:Otlp:Endpoint"] = new("Telemetry:Otlp:Endpoint", "weburl", true),
-            ["Telemetry:ServiceName"] = new("Telemetry:ServiceName", "name", true),
+        new("Oidc:Enabled", "bool", false),
+        new("OpenApi:Enabled", "bool", true),
+        new("OpenApi:Title", "text", false, Max: 200),
+        new("OpenApi:Version", "name", false),
+        new("OpenApi:Description", "text", false, Max: 4_000),
+        new("OpenApi:Contact:Name", "text", false, Max: 200),
+        new("OpenApi:Contact:Email", "email", false),
+        new("OpenApi:ForceHttpsInProduction", "bool", false),
+        new("OpenApi:ShowNamespaces", "bool", false),
+        new("OpenApi:DefaultGroup", "name", false),
+        new("OpenApi:ShowBadges", "bool", false),
+        new("OpenApi:ServeMarkdown", "bool", false),
+        new("OpenApi:ExternalDocs:Url", "weburl", false),
+        new("OpenApi:ExternalDocs:Description", "text", false, Max: 200),
+        new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),
+        new("OpenApi:Footer:Text", "text", false, Max: 200),
+        new("OpenApi:Footer:Url", "link", false),
+        new("OpenApi:Footer:Target", "choice", false, Choices: ["_blank", "_self"]),
+        new("OpenApi:Footer:ShowSourceIcon", "bool", false),
+        new("OpenApi:Scalar:Theme", "choice", false, Choices: ScalarThemes),
+        new("OpenApi:Scalar:Layout", "choice", false, Choices: ["modern", "classic"]),
+        new("OpenApi:Scalar:ShowSidebar", "bool", false),
+        new("OpenApi:Scalar:HideDownloadButton", "bool", false),
+        new("OpenApi:Scalar:HideModels", "bool", false),
+        new("OpenApi:Scalar:HideClientButton", "bool", false),
+        new("OpenApi:Scalar:HideTestRequestButton", "bool", false),
 
-            ["FileStorage:MaxFileSizeBytes"] = new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
+        new("Telemetry:Provider", "choice", true, Choices: ["None", "Otlp", "Prometheus"]),
+        new("Telemetry:Otlp:Endpoint", "weburl", true),
+        new("Telemetry:ServiceName", "name", true),
+        new("Telemetry:ResourceAttributes", "attributes", true, Max: 1_000),
+        new("Telemetry:Prometheus:Path", "route", true),
 
-            // Deployment shape; the endpoint refuses changes that lock the caller out
-            ["Console:PublicOrigins"] = new("Console:PublicOrigins", "originlist", true, Max: 50),
-            ["ForwardedHeaders:KnownProxies"] = new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
-            ["ForwardedHeaders:KnownNetworks"] = new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
+        new("FileStorage:StorageDirectory", "relpath", true),
+        new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
+        new("FileStorage:UseMemoryCache", "bool", false),
+        new("FileStorage:MemoryCacheDurationSeconds", "int", false, 1, 86_400),
+        new("FileStorage:MaxTotalMemoryCacheMB", "int", false, 1, 8_192),
+        new("FileStorage:AllowedExtensions", "extlist", false, Max: 200),
+        new("FileStorage:BlockedExtensions", "extlist", false, Max: 200),
 
-            // Write-only in the safe direction: the seeding key can be cleared, never set
-            ["Console:AdminApiKey"] = new("Console:AdminApiKey", "clear", true),
-            ["Console:Enabled"] = new("Console:Enabled", "bool", true),
-        };
+        new("Proxy:Username", "text", true, Max: 200),
+        new("Proxy:Password", "secret", true),
+        new("Proxy:Domain", "text", true, Max: 200),
+
+        // Deployment shape; the endpoint refuses changes that lock the caller out
+        new("Console:PublicOrigins", "originlist", true, Max: 50),
+        new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
+        new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
+        new("AllowedHosts", "hostlist", true, Max: 50),
+        new("PathBase", "pathbase", true),
+
+        // Write-only in the safe direction: a credential can be cleared, never set
+        new("Console:AdminApiKey", "clear", true),
+        new("Console:SeedPassword", "clear", true),
+        new("Console:SeedToken", "clear", true),
+        new("Console:Enabled", "bool", true),
+    }.ToDictionary(s => s.Key, StringComparer.OrdinalIgnoreCase);
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);
 
@@ -140,11 +220,19 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Returns the name of the environment variable that sets the key, or null
+    /// Returns the name of the environment variable that sets the key under its current or deprecated name, or null
     /// </summary>
-    public string? LockedBy(string key) => PortwayApi.Helpers.EnvAliases.EnvNameFor(key, _envNames);
+    public string? LockedBy(string key) =>
+        EnvAliases.EnvNameFor(key, _envNames) ??
+        (ConfigAliases.Deprecated(key) is { } deprecated ? EnvAliases.EnvNameFor(deprecated, _envNames) : null);
 
     public static IReadOnlyCollection<WritableSetting> Schema => Allowed.Values;
+
+    /// <summary>
+    /// Lists and maps replace the lower configuration layers as a whole
+    /// </summary>
+    public static bool IsCollection(string kind) =>
+        kind is "originlist" or "iplist" or "cidrlist" or "extlist" or "mediatypelist" or "intmap" or "levelmap";
 
     public static string OverridesPath => Path.Combine(Directory.GetCurrentDirectory(), OverridesFileName);
 
@@ -182,6 +270,9 @@ public sealed class SettingsWriteService
             if (LockedBy(spec.Key) is { } envName)
                 return new SettingsWriteResult(false, $"'{spec.Key}' is set by {envName}", spec.Key);
 
+            if (spec.Kind == "secret" && raw.ValueKind == JsonValueKind.String && raw.GetString() is { Length: > 0 } && !SettingsEncryptionHelper.HasKeyPair)
+                return new SettingsWriteResult(false, "Encryption keys are not initialised; restart Portway and retry", spec.Key);
+
             var (node, error) = Coerce(spec, raw);
             if (error is not null)
                 return new SettingsWriteResult(false, error, key);
@@ -205,6 +296,7 @@ public sealed class SettingsWriteService
         try
         {
             var root = await ReadOverridesAsync();
+            MigrateDeprecatedKeys(root);
             foreach (var (key, node) in parsed) SetPath(root, key, node);
             await WriteOverridesAsync(root);
             // file watchers miss in-place writes on a single-file bind mount
@@ -223,6 +315,12 @@ public sealed class SettingsWriteService
         return new SettingsWriteResult(true, RestartRequired: restart);
     }
 
+    /// <summary>
+    /// Validates one value against its schema entry; returns the node to store or the reason it is refused
+    /// </summary>
+    internal static (JsonNode? Node, string? Error) Coerce(string key, JsonElement raw) =>
+        Allowed.TryGetValue(key, out var spec) ? Coerce(spec, raw) : (null, $"'{key}' is not a writable setting");
+
     private static (JsonNode? Node, string? Error) Coerce(WritableSetting spec, JsonElement raw) => spec.Kind switch
     {
         "bool" => raw.ValueKind is JsonValueKind.True or JsonValueKind.False
@@ -230,6 +328,8 @@ public sealed class SettingsWriteService
             : (null, $"'{spec.Key}' expects true or false"),
 
         "int" => ReadInt(spec, raw),
+
+        "number" => ReadNumber(spec, raw),
 
         "choice" => raw.ValueKind == JsonValueKind.String
                     && spec.Choices!.Contains(raw.GetString(), StringComparer.OrdinalIgnoreCase)
@@ -242,16 +342,66 @@ public sealed class SettingsWriteService
         "iplist" => ReadList(spec, raw, ParseIp),
         "cidrlist" => ReadList(spec, raw, ParseNetwork),
         "originlist" => ReadList(spec, raw, ParseOrigin),
+        "extlist" => ReadList(spec, raw, ParseExtension),
+        "mediatypelist" => ReadList(spec, raw, ParseMediaType),
+
+        "intmap" => ReadMap(spec, raw, NameFormat, value =>
+            value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var n) && n >= spec.Min && n <= spec.Max
+                ? JsonValue.Create(n)
+                : null, $"a whole number from {spec.Min:0} to {spec.Max:0}"),
+
+        "levelmap" => ReadMap(spec, raw, NamespaceFormat, value =>
+            value.ValueKind == JsonValueKind.String && LogLevels.FirstOrDefault(l => l.Equals(value.GetString(), StringComparison.OrdinalIgnoreCase)) is { } level
+                ? JsonValue.Create(level)
+                : null, $"one of {string.Join(", ", LogLevels)}"),
+
+        // the console sends a list, HostFiltering reads one semicolon-separated string
+        "hostlist" => ReadList(spec, raw, ParseHost) switch
+        {
+            (JsonArray { Count: 0 }, null) => (null, $"'{spec.Key}' needs at least one host, or *"),
+            (JsonArray hosts, null) => (JsonValue.Create(string.Join(';', hosts.Select(h => h!.GetValue<string>()))), null),
+            var failed => failed
+        },
 
         // Only ever accepts the empty string: a credential may be removed here, never introduced
         "clear" => raw.ValueKind == JsonValueKind.String && raw.GetString() == ""
             ? (JsonValue.Create(""), null)
             : (null, $"'{spec.Key}' can only be cleared from here, not set"),
 
+        // stored encrypted; empty or null removes the value
+        "secret" => raw.ValueKind switch
+        {
+            JsonValueKind.Null => (null, null),
+            JsonValueKind.String when raw.GetString() is "" => (null, null),
+            JsonValueKind.String when raw.GetString() is { Length: <= 1_024 } secret && !secret.Any(char.IsControl)
+                => (JsonValue.Create(SettingsEncryptionHelper.Encrypt(secret)), null),
+            _ => (null, $"'{spec.Key}' must be text of 1024 characters or fewer")
+        },
+
         // identifiers that land in routes, tag names and the docs page; empty restores the default
         "name" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || NameFormat.IsMatch(raw.GetString()!))
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' allows letters, digits, dots, dashes and underscores only"),
+
+        "appname" => ReadString(spec, raw, value => ApplicationNameFormat.IsMatch(value)
+            ? null
+            : $"'{spec.Key}' allows letters, digits, spaces, dots, dashes, underscores and parentheses, up to 128 characters"),
+
+        "attributes" => ReadString(spec, raw, value => value.Length <= spec.Max && ResourceAttributesFormat.IsMatch(value)
+            ? null
+            : $"'{spec.Key}' must be key=value pairs separated by commas"),
+
+        "relpath" => ReadString(spec, raw, ParseRelativePath),
+
+        "dbfile" => ReadString(spec, raw, value => ParseRelativePath(value) ??
+            (value.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ? null : $"'{value}' must end in .db")),
+
+        "route" => ReadString(spec, raw, ParseRoute),
+
+        "pathbase" => ReadString(spec, raw, value =>
+            value.Length <= 100 && PathBaseFormat.IsMatch(value) && !value.Split('/').Any(s => s is "." or "..")
+                ? null
+                : $"'{value}' must be empty or a path such as /portway"),
 
         "link" => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
             ? (JsonValue.Create(raw.GetString()), null)
@@ -271,6 +421,18 @@ public sealed class SettingsWriteService
 
         _ => (null, $"'{spec.Key}' has no validator"),
     };
+
+    /// <summary>
+    /// Reads a JSON string and runs it through the kind's own parser
+    /// </summary>
+    private static (JsonNode? Node, string? Error) ReadString(WritableSetting spec, JsonElement raw, Func<string, string?> validate)
+    {
+        if (raw.ValueKind != JsonValueKind.String)
+            return (null, $"'{spec.Key}' expects text");
+
+        var value = raw.GetString()!.Trim();
+        return validate(value) is { } problem ? (null, problem) : (JsonValue.Create(value), null);
+    }
 
     /// <summary>
     /// Reads a JSON array of strings, running every entry through the kind's own parser
@@ -300,6 +462,31 @@ public sealed class SettingsWriteService
             return (null, $"'{spec.Key}' allows at most {max:0} entries");
 
         return (items, null);
+    }
+
+    /// <summary>
+    /// Reads a JSON object of at most 100 entries; keys must match the format, values pass the reader
+    /// </summary>
+    private static (JsonNode? Node, string? Error) ReadMap(
+        WritableSetting spec, JsonElement raw, Regex keyFormat, Func<JsonElement, JsonNode?> read, string expected)
+    {
+        if (raw.ValueKind != JsonValueKind.Object)
+            return (null, $"'{spec.Key}' expects a set of named values");
+
+        var map = new JsonObject();
+        foreach (var entry in raw.EnumerateObject())
+        {
+            if (!keyFormat.IsMatch(entry.Name))
+                return (null, $"'{entry.Name}' is not a valid name for '{spec.Key}'");
+            if (read(entry.Value) is not { } value)
+                return (null, $"'{entry.Name}' in '{spec.Key}' must be {expected}");
+            map[entry.Name] = value;
+        }
+
+        if (map.Count > 100)
+            return (null, $"'{spec.Key}' allows at most 100 entries");
+
+        return (map, null);
     }
 
     /// <summary>
@@ -344,6 +531,52 @@ public sealed class SettingsWriteService
         return null;
     }
 
+    private static string? ParseHost(string value) =>
+        value == "*" || HostFormat.IsMatch(value) && value.Length <= 253 ||
+        value.StartsWith('[') && value.EndsWith(']') && IPAddress.TryParse(value[1..^1], out _)
+            ? null
+            : $"'{value}' must be a host name, *.domain, an IP address or *";
+
+    private static string? ParseExtension(string value) =>
+        ExtensionFormat.IsMatch(value) ? null : $"'{value}' must be an extension such as .pdf";
+
+    private static string? ParseMediaType(string value) =>
+        MediaTypeHeaderValue.TryParse(value, out var media) && media.MediaType == value
+            ? null
+            : $"'{value}' must be a media type such as application/json";
+
+    /// <summary>
+    /// A path under the working directory that stays clear of Portway's own folders and databases
+    /// </summary>
+    private static string? ParseRelativePath(string value)
+    {
+        if (value.Length > 200 || !RelativePathFormat.IsMatch(value))
+            return $"'{value}' must be a relative path of letters, digits, dots, dashes and underscores, such as log/traffic";
+
+        var segments = value.Split('/');
+        if (segments.Any(s => s is "." or ".."))
+            return $"'{value}' must stay inside the Portway folder";
+
+        if (ReservedFolders.Contains(segments[0], StringComparer.OrdinalIgnoreCase))
+            return $"'{value}' is inside a folder Portway manages";
+
+        var name = segments[^1];
+        if (ProtectedFiles.Contains(name, StringComparer.OrdinalIgnoreCase) || name.StartsWith("appsettings", StringComparison.OrdinalIgnoreCase))
+            return $"'{value}' names a file Portway manages";
+
+        return null;
+    }
+
+    private static string? ParseRoute(string value)
+    {
+        if (value.Length > 64 || !RouteFormat.IsMatch(value))
+            return $"'{value}' must be a lower-case path such as /metrics";
+
+        return ReservedRoutes.Any(r => value == r || value.StartsWith(r + "/"))
+            ? $"'{value}' is reserved by Portway"
+            : null;
+    }
+
     private static (JsonNode? Node, string? Error) ReadText(WritableSetting spec, JsonElement raw)
     {
         if (raw.ValueKind == JsonValueKind.Null) return (null, null);
@@ -367,15 +600,71 @@ public sealed class SettingsWriteService
         return (JsonValue.Create(value), null);
     }
 
-    private static (string Message, string Field)? CrossCheck(IReadOnlyDictionary<string, JsonNode?> parsed)
+    private static (JsonNode? Node, string? Error) ReadNumber(WritableSetting spec, JsonElement raw)
     {
-        if (parsed.TryGetValue("SqlConnectionPooling:MinPoolSize", out var minNode) &&
-            parsed.TryGetValue("SqlConnectionPooling:MaxPoolSize", out var maxNode) &&
-            minNode?.GetValue<long>() > maxNode?.GetValue<long>())
+        if (raw.ValueKind != JsonValueKind.Number || !raw.TryGetDouble(out var value))
+            return (null, $"'{spec.Key}' expects a number");
+        if (value < spec.Min || value > spec.Max)
+            return (null, $"'{spec.Key}' must be between {spec.Min} and {spec.Max}");
+        return (JsonValue.Create(value), null);
+    }
+
+    /// <summary>
+    /// Rules across settings; a side missing from the request is read from the current configuration
+    /// </summary>
+    private (string Message, string Field)? CrossCheck(IReadOnlyDictionary<string, JsonNode?> parsed)
+    {
+        string? Value(string key, string? fallback = null) =>
+            parsed.TryGetValue(key, out var node) ? node?.ToString() : _root?[key] ?? fallback;
+        long? Number(string key) => long.TryParse(Value(key), out var n) ? n : null;
+        string? Touched(params string[] keys) => keys.FirstOrDefault(parsed.ContainsKey);
+
+        if (Touched("SqlConnectionPooling:MinPoolSize", "SqlConnectionPooling:MaxPoolSize") is { } pool &&
+            Number("SqlConnectionPooling:MinPoolSize") > Number("SqlConnectionPooling:MaxPoolSize"))
+            return ("The minimum pool size cannot exceed the maximum", pool);
+
+        if (Touched("Mcp:DefaultPageSize", "Mcp:MaxPageSize") is { } page &&
+            Number("Mcp:DefaultPageSize") > Number("Mcp:MaxPageSize"))
+            return ("The default MCP page size cannot exceed the maximum", page);
+
+        if (Touched("Mcp:Path", "Telemetry:Prometheus:Path") is { } route &&
+            string.Equals(Value("Mcp:Path", "/mcp"), Value("Telemetry:Prometheus:Path", "/metrics"), StringComparison.OrdinalIgnoreCase))
+            return ("The MCP path and the metrics path must differ", route);
+
+        // uploaded files are served back, so their folder must not hold any log
+        if (Touched("FileStorage:StorageDirectory", "RequestTrafficLogging:LogDirectory", "RequestTrafficLogging:SqlitePath") is { } folder)
         {
-            return ("The minimum pool size cannot exceed the maximum", "SqlConnectionPooling:MinPoolSize");
+            var storage = Value("FileStorage:StorageDirectory", "files")!;
+            var logs = new[]
+            {
+                "log",
+                Value("RequestTrafficLogging:LogDirectory", "log/traffic")!,
+                Path.GetDirectoryName(Value("RequestTrafficLogging:SqlitePath", "log/traffic_logs.db"))!.Replace('\\', '/'),
+            };
+            if (logs.Any(log => Overlaps(storage, log)))
+                return ("File storage cannot share a folder with log files", folder);
         }
+
         return null;
+    }
+
+    private static bool Overlaps(string a, string b)
+    {
+        a = a.Trim('/'); b = b.Trim('/');
+        return a.Length > 0 && b.Length > 0 && (a.Equals(b, StringComparison.OrdinalIgnoreCase) ||
+            a.StartsWith(b + "/", StringComparison.OrdinalIgnoreCase) || b.StartsWith(a + "/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Moves values written under a deprecated name to the current name, unless the current name is already set
+    /// </summary>
+    internal static void MigrateDeprecatedKeys(JsonObject root)
+    {
+        foreach (var (current, deprecated) in ConfigAliases.RenamedKeys)
+        {
+            if (!TryTakePath(root, deprecated, out var value)) continue;
+            if (!TryGetPath(root, current, out _)) SetPath(root, current, value);
+        }
     }
 
     private static async Task<JsonObject> ReadOverridesAsync()
@@ -400,10 +689,7 @@ public sealed class SettingsWriteService
         await AtomicFile.WriteAllTextAsync(OverridesPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
-    /// <summary>
-    /// Writes a colon-separated configuration key into the nested JSON document
-    /// </summary>
-    private static void SetPath(JsonObject root, string key, JsonNode? value)
+    private static JsonObject? Parent(JsonObject root, string key, bool create)
     {
         var segments = key.Split(':');
         var node = root;
@@ -411,11 +697,33 @@ public sealed class SettingsWriteService
         {
             if (node[segments[i]] is not JsonObject child)
             {
+                if (!create) return null;
                 child = new JsonObject();
                 node[segments[i]] = child;
             }
             node = child;
         }
-        node[segments[^1]] = value;
+        return node;
     }
+
+    private static string Leaf(string key) => key[(key.LastIndexOf(':') + 1)..];
+
+    private static bool TryGetPath(JsonObject root, string key, out JsonNode? value)
+    {
+        value = null;
+        return Parent(root, key, false) is { } parent && parent.TryGetPropertyValue(Leaf(key), out value);
+    }
+
+    private static bool TryTakePath(JsonObject root, string key, out JsonNode? value)
+    {
+        if (!TryGetPath(root, key, out value)) return false;
+        Parent(root, key, false)!.Remove(Leaf(key));
+        return true;
+    }
+
+    /// <summary>
+    /// Writes a colon-separated configuration key into the nested JSON document
+    /// </summary>
+    private static void SetPath(JsonObject root, string key, JsonNode? value) =>
+        Parent(root, key, true)![Leaf(key)] = value;
 }

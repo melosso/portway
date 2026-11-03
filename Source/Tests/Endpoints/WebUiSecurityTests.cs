@@ -380,6 +380,34 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task SettingsWrite_RefusesAllowedHostsThatExcludeTheCaller()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["AllowedHosts"] = new[] { "portway.example.com" } });
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Equal("AllowedHosts", body.GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task SettingsRead_NeverReturnsSecretValues()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", authCookie), TestContext.Current.CancellationToken);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        foreach (var w in body.GetProperty("writable").EnumerateArray().Where(w => w.GetProperty("kind").GetString() is "secret" or "clear"))
+            Assert.True(w.GetProperty("value").ValueKind is JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null, w.GetProperty("key").GetString());
+    }
+
+    [Fact]
     public async Task SettingsPage_SecuritySectionHoldsOnlySecurityCards()
     {
         var client = CreateClient();

@@ -28,7 +28,7 @@ public class ProxyTrafficLoggerMiddlewareRedactionTests
         services.AddSingleton(envProvider.Object);
         var provider = services.BuildServiceProvider();
 
-        var options = Options.Create(new ProxyTrafficLoggerOptions { Enabled = true, CaptureHeaders = true });
+        var options = Options.Create(new RequestTrafficLoggingOptions { Enabled = true, CaptureHeaders = true });
         var middleware = new ProxyTrafficLoggerMiddleware(_ => Task.CompletedTask, options, channel, provider);
 
         return (middleware, channel.Reader);

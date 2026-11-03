@@ -54,7 +54,7 @@ public sealed class RedisCacheProviderTests
     {
         var (provider, db, redis, _) = Create(connected: false);
         var manager = new CacheManager(
-            new PortwayApi.Tests.Support.StaticOptionsMonitor<CacheOptions>(new CacheOptions { ProviderType = CacheProviderType.Redis }),
+            new PortwayApi.Tests.Support.StaticOptionsMonitor<CacheOptions>(new CacheOptions { Provider = CacheProviderType.Redis }),
             new MemoryCacheProvider(Options.Create(new CacheOptions())),
             new PortwayApi.Services.MetricsService(),
             new PortwayApi.Services.Telemetry.PortwayMetrics(),

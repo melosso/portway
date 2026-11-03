@@ -41,11 +41,11 @@ public static class OpenApiConfiguration
             if (string.IsNullOrWhiteSpace(openApiSettings.SecurityDefinition.Scheme))
                 openApiSettings.SecurityDefinition.Scheme = "Bearer";
 
-            if (string.IsNullOrWhiteSpace(openApiSettings.ScalarTheme))
-                openApiSettings.ScalarTheme = "purple";
+            if (string.IsNullOrWhiteSpace(openApiSettings.Scalar.Theme))
+                openApiSettings.Scalar.Theme = "purple";
 
-            if (string.IsNullOrWhiteSpace(openApiSettings.ScalarLayout))
-                openApiSettings.ScalarLayout = "modern";
+            if (string.IsNullOrWhiteSpace(openApiSettings.Scalar.Layout))
+                openApiSettings.Scalar.Layout = "modern";
         });
 
         // Get initial settings to register OpenAPI services
@@ -262,7 +262,7 @@ public static class OpenApiConfiguration
 
             // Get the base path for URL construction
             var pathBase = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "";
-            var sidebarConfig = openApiSettings.ScalarShowSidebar ? "true" : "false";
+            var sidebarConfig = openApiSettings.Scalar.ShowSidebar ? "true" : "false";
 
             // Preselect the only scheme Portway publishes, so the auth panel opens ready to paste a token
             var securitySchemeName = JsonEncodedText.Encode(
@@ -273,7 +273,7 @@ public static class OpenApiConfiguration
             string Js(string? value) => JsonSerializer.Serialize(value ?? "");
 
             // scalar fonts stay off so the console onest files are served from this origin instead
-            var portwayTheme = string.Equals(openApiSettings.ScalarTheme, "portway", StringComparison.OrdinalIgnoreCase);
+            var portwayTheme = string.Equals(openApiSettings.Scalar.Theme, "portway", StringComparison.OrdinalIgnoreCase);
             var customCss = JsonEncodedText.Encode(DocsCss.Replace("{pathBase}", pathBase) + (portwayTheme ? PortwayThemeCss : ""));
             var docsBase = JsonEncodedText.Encode(pathBase + "/docs");
             var versions = OpenApiVersionSelector.Versions();
@@ -283,16 +283,16 @@ public static class OpenApiConfiguration
 
             // Debug logging
             Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
-                openApiSettings.ScalarTheme, openApiSettings.ScalarLayout);
+                openApiSettings.Scalar.Theme, openApiSettings.Scalar.Layout);
 
             var configJson = $@"{{
-                    ""theme"": ""{GetScalarThemeName(openApiSettings.ScalarTheme)}"",
-                    ""layout"": ""{GetScalarLayoutName(openApiSettings.ScalarLayout)}"",
+                    ""theme"": ""{GetScalarThemeName(openApiSettings.Scalar.Theme)}"",
+                    ""layout"": ""{GetScalarLayoutName(openApiSettings.Scalar.Layout)}"",
                     ""sidebar"": {sidebarConfig},
-                    ""documentDownloadType"": ""{(openApiSettings.ScalarHideDownloadButton ? "none" : "both")}"",
-                    ""hideModels"": {(openApiSettings.ScalarHideModels ? "true" : "false")},
-                    ""hideClientButton"": {(openApiSettings.ScalarHideClientButton ? "true" : "false")},
-                    ""hideTestRequestButton"": {(openApiSettings.ScalarHideTestRequestButton ? "true" : "false")},
+                    ""documentDownloadType"": ""{(openApiSettings.Scalar.HideDownloadButton ? "none" : "both")}"",
+                    ""hideModels"": {(openApiSettings.Scalar.HideModels ? "true" : "false")},
+                    ""hideClientButton"": {(openApiSettings.Scalar.HideClientButton ? "true" : "false")},
+                    ""hideTestRequestButton"": {(openApiSettings.Scalar.HideTestRequestButton ? "true" : "false")},
                     ""authentication"": {{ ""preferredSecurityScheme"": ""{securitySchemeName}"" }},
                     ""hiddenClients"": {HiddenClients},
                     ""defaultHttpClient"": {{ ""targetKey"": ""shell"", ""clientKey"": ""curl"" }},

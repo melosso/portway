@@ -38,7 +38,7 @@ try
 
     PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
     builder.Configuration.AddConsoleOverrides();
-    builder.Configuration.AddConsoleSectionAlias();
+    builder.Configuration.AddConfigAliases();
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -55,7 +55,7 @@ try
         Log.Warning("Restored backup {Backup}; the replaced files are in .backups/pre-restore-*", restored);
 
     EnvAliases.WarnOnLegacyUsage();
-    ConsoleSectionAlias.WarnOnLegacySection(builder.Configuration);
+    ConfigAliases.WarnOnDeprecatedNames(builder.Configuration);
 
     builder.Services.Configure<HostOptions>(opts =>
         {
@@ -155,7 +155,7 @@ try
     SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
 
     var publicOrigins = builder.Configuration.GetSection("Console:PublicOrigins").Get<string[]>() ?? [];
-    var enableLandingPage = builder.Configuration.GetValue<bool>("Console:Customization:EnableLandingPage", true);
+    var enableLandingPage = builder.Configuration.GetValue<bool>("Console:Customization:LandingPageEnabled", true);
 
     // Path base from ASPNETCORE_PATHBASE or PathBase config
     app.UsePortwayPathBase();

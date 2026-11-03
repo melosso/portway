@@ -27,7 +27,7 @@ public class CacheManager : ICacheProvider
         var options = optionsMonitor.CurrentValue;
 
         // Select the appropriate provider based on configuration
-        _provider = options.ProviderType switch
+        _provider = options.Provider switch
         {
             CacheProviderType.Redis when redisCacheProvider != null => redisCacheProvider,
             _ => memoryCacheProvider

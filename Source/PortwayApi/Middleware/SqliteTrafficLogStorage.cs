@@ -14,10 +14,10 @@ using Serilog;
 /// </summary>
 public class SqliteTrafficLogStorage : ITrafficLogStorage
 {
-    private readonly ProxyTrafficLoggerOptions _options;
+    private readonly RequestTrafficLoggingOptions _options;
     private readonly string _connectionString;
 
-    public SqliteTrafficLogStorage(IOptions<ProxyTrafficLoggerOptions> options)
+    public SqliteTrafficLogStorage(IOptions<RequestTrafficLoggingOptions> options)
     {
         _options = options.Value;
         _connectionString = $"Data Source={_options.SqlitePath}";

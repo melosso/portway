@@ -24,16 +24,16 @@ public static class RateLimitingExtensions
         services.AddSingleton<InMemoryRateLimiterStore>();
 
         // Redis is opt-in only; memory remains the standard store
-        bool useRedis = string.Equals(settings.Store, "Redis", StringComparison.OrdinalIgnoreCase);
+        bool useRedis = string.Equals(settings.Provider, "Redis", StringComparison.OrdinalIgnoreCase);
         if (useRedis)
         {
-            var connectionString = settings.RedisConnectionString;
+            var connectionString = configuration["RateLimiting:Redis:ConnectionString"];
             if (string.IsNullOrWhiteSpace(connectionString))
                 connectionString = configuration.GetValue<string>("Caching:Redis:ConnectionString");
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                Log.Warning("RateLimiting:Store is Redis but no connection string is configured, using in-memory store");
+                Log.Warning("RateLimiting:Provider is Redis but no connection string is configured, using in-memory store");
                 useRedis = false;
             }
             else

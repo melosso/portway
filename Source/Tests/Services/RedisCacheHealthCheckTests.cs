@@ -22,7 +22,7 @@ public class RedisCacheHealthCheckTests
     private static RedisCacheProvider Provider(string connectionString, bool fallbackToMemoryCache = true) => new(
         Options.Create(new CacheOptions
         {
-            ProviderType = CacheProviderType.Redis,
+            Provider = CacheProviderType.Redis,
             Redis = new RedisOptions { ConnectionString = connectionString, FallbackToMemoryCache = fallbackToMemoryCache }
         }),
         new MemoryCacheProvider(Options.Create(new CacheOptions())));

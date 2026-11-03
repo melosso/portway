@@ -24,9 +24,9 @@ public class RateLimiterTests
         {
             Enabled = enabled,
             IpLimit = ipLimit,
-            IpWindow = 60,
+            IpWindowSeconds = 60,
             TokenLimit = tokenLimit,
-            TokenWindow = 60,
+            TokenWindowSeconds = 60,
         };
 
         var tp = timeProvider ?? TimeProvider.System;

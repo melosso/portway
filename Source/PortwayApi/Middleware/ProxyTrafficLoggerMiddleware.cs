@@ -17,7 +17,7 @@ using Serilog;
 public class ProxyTrafficLoggerMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ProxyTrafficLoggerOptions _options;
+    private readonly RequestTrafficLoggingOptions _options;
     private readonly System.Threading.Channels.Channel<ProxyTrafficLogEntry> _logChannel;
     private readonly IServiceProvider _serviceProvider;
 
@@ -31,7 +31,7 @@ public class ProxyTrafficLoggerMiddleware
 
     public ProxyTrafficLoggerMiddleware(
         RequestDelegate next,
-        IOptions<ProxyTrafficLoggerOptions> options,
+        IOptions<RequestTrafficLoggingOptions> options,
         System.Threading.Channels.Channel<ProxyTrafficLogEntry> logChannel,
         IServiceProvider serviceProvider)
     {
@@ -94,7 +94,7 @@ public class ProxyTrafficLoggerMiddleware
         Stream? originalResponseBodyStream = null;
         MemoryStream? responseBodyStream = null;
 
-        if (_options.IncludeResponseBodies)
+        if (_options.CaptureResponseBodies)
         {
             originalResponseBodyStream = context.Response.Body;
             responseBodyStream = new MemoryStream();
@@ -106,7 +106,7 @@ public class ProxyTrafficLoggerMiddleware
         try
         {
             // Capture request body if enabled
-            if (_options.IncludeRequestBodies)
+            if (_options.CaptureRequestBodies)
             {
                 // Create a new MemoryStream to capture the request body
                 requestBodyStream = new MemoryStream();
@@ -168,7 +168,7 @@ public class ProxyTrafficLoggerMiddleware
             logEntry.StatusCode = context.Response.StatusCode;
 
             // Capture response body if enabled
-            if (_options.IncludeResponseBodies && responseBodyStream != null && originalResponseBodyStream != null)
+            if (_options.CaptureResponseBodies && responseBodyStream != null && originalResponseBodyStream != null)
             {
                 responseBodyStream.Position = 0;
                 logEntry.ResponseSize = responseBodyStream.Length;
@@ -215,7 +215,7 @@ public class ProxyTrafficLoggerMiddleware
             }
 
             // Log with Serilog for immediate visibility
-            if (_options.EnableInfoLogging)
+            if (_options.InfoLoggingEnabled)
             {
                 Log.Information($"[Trace: {traceId}] {logEntry.Method} {logEntry.Path} -> {logEntry.StatusCode} ({logEntry.DurationMs}ms)");
             }

@@ -73,7 +73,7 @@ public class AuthToken
     public int? RateLimitRequests { get; set; }
 
     /// <summary>
-    /// Per-token rate limit window in seconds, null falls back to the global RateLimiting:TokenWindow
+    /// Per-token rate limit window in seconds, null falls back to the global RateLimiting:TokenWindowSeconds
     /// </summary>
     public int? RateLimitWindowSeconds { get; set; }
 

@@ -13,52 +13,108 @@ using PortwayApi.Helpers;
 public static partial class WebUiEndpointExtensions
 {
     /// <summary>
-    /// Current value of every writable setting. Excludes write-only settings.
+    /// Current value of every writable setting. Secrets and seed credentials report whether they are set, never the value.
     /// </summary>
     internal static Dictionary<string, object?> SettingValues(IConfiguration config, PortwayApi.Classes.OpenApi.OpenApiSettings openApi, string effectiveTelemetryProvider)
     {
         string[] List(string key) => config.GetSection(key).Get<string[]>() ?? [];
+        Dictionary<string, string?> Map(string key) => config.GetSection(key).GetChildren().ToDictionary(c => c.Key, c => c.Value);
+        bool IsSet(string key) => !string.IsNullOrEmpty(config[key]);
+        string Text(string key, string fallback = "") => config[key] ?? fallback;
 
         return new(StringComparer.OrdinalIgnoreCase)
         {
             ["RateLimiting:Enabled"] = config.GetValue<bool>("RateLimiting:Enabled"),
             ["RateLimiting:IpLimit"] = config.GetValue<int>("RateLimiting:IpLimit"),
-            ["RateLimiting:IpWindow"] = config.GetValue<int>("RateLimiting:IpWindow"),
+            ["RateLimiting:IpWindowSeconds"] = config.GetValue("RateLimiting:IpWindowSeconds", 60),
             ["RateLimiting:TokenLimit"] = config.GetValue<int>("RateLimiting:TokenLimit"),
-            ["RateLimiting:TokenWindow"] = config.GetValue<int>("RateLimiting:TokenWindow"),
+            ["RateLimiting:TokenWindowSeconds"] = config.GetValue("RateLimiting:TokenWindowSeconds", 60),
+            ["RateLimiting:Provider"] = Text("RateLimiting:Provider", "Memory"),
+            ["RateLimiting:Redis:ConnectionString"] = IsSet("RateLimiting:Redis:ConnectionString"),
             ["Caching:Enabled"] = config.GetValue<bool>("Caching:Enabled"),
             ["Caching:DefaultCacheDurationSeconds"] = config.GetValue<int>("Caching:DefaultCacheDurationSeconds"),
             ["Caching:MemoryCacheSizeLimitMB"] = config.GetValue<int>("Caching:MemoryCacheSizeLimitMB"),
+            ["Caching:Provider"] = Text("Caching:Provider", "Memory"),
+            ["Caching:EndpointCacheDurations"] = Map("Caching:EndpointCacheDurations"),
+            ["Caching:CacheableContentTypes"] = List("Caching:CacheableContentTypes"),
+            ["Caching:Redis:ConnectionString"] = IsSet("Caching:Redis:ConnectionString"),
+            ["Caching:Redis:InstanceName"] = Text("Caching:Redis:InstanceName", "Portway:"),
+            ["Caching:Redis:Database"] = config.GetValue("Caching:Redis:Database", 0),
+            ["Caching:Redis:UseSsl"] = config.GetValue("Caching:Redis:UseSsl", false),
+            ["Caching:Redis:ConnectTimeoutMs"] = config.GetValue("Caching:Redis:ConnectTimeoutMs", 5000),
+            ["Caching:Redis:AbortOnConnectFail"] = config.GetValue("Caching:Redis:AbortOnConnectFail", false),
+            ["Caching:Redis:FallbackToMemoryCache"] = config.GetValue("Caching:Redis:FallbackToMemoryCache", true),
+            ["Caching:Redis:MaxRetryAttempts"] = config.GetValue("Caching:Redis:MaxRetryAttempts", 3),
+            ["Caching:Redis:RetryDelayMs"] = config.GetValue("Caching:Redis:RetryDelayMs", 200),
             ["SqlConnectionPooling:Enabled"] = config.GetValue<bool>("SqlConnectionPooling:Enabled"),
             ["SqlConnectionPooling:MinPoolSize"] = config.GetValue<int>("SqlConnectionPooling:MinPoolSize"),
             ["SqlConnectionPooling:MaxPoolSize"] = config.GetValue<int>("SqlConnectionPooling:MaxPoolSize"),
-            ["SqlConnectionPooling:ConnectionTimeout"] = config.GetValue<int>("SqlConnectionPooling:ConnectionTimeout"),
-            ["SqlConnectionPooling:CommandTimeout"] = config.GetValue<int>("SqlConnectionPooling:CommandTimeout"),
+            ["SqlConnectionPooling:ConnectionTimeoutSeconds"] = config.GetValue("SqlConnectionPooling:ConnectionTimeoutSeconds", 15),
+            ["SqlConnectionPooling:CommandTimeoutSeconds"] = config.GetValue("SqlConnectionPooling:CommandTimeoutSeconds", 30),
+            ["SqlConnectionPooling:ApplicationName"] = Text("SqlConnectionPooling:ApplicationName", "PortwayAPI"),
             ["EndpointReloading:Enabled"] = config.GetValue<bool>("EndpointReloading:Enabled"),
             ["EndpointReloading:DebounceMs"] = config.GetValue<int>("EndpointReloading:DebounceMs"),
-            ["Serilog:MinimumLevel:Default"] = config["Serilog:MinimumLevel:Default"] ?? "Information",
+            ["Serilog:MinimumLevel:Default"] = Text("Serilog:MinimumLevel:Default", "Information"),
+            ["Serilog:MinimumLevel:Override"] = Map("Serilog:MinimumLevel:Override"),
+            ["RequestTrafficLogging:Enabled"] = config.GetValue("RequestTrafficLogging:Enabled", false),
+            ["RequestTrafficLogging:Provider"] = Text("RequestTrafficLogging:Provider", "File"),
+            ["RequestTrafficLogging:SqlitePath"] = Text("RequestTrafficLogging:SqlitePath", "log/traffic_logs.db"),
+            ["RequestTrafficLogging:LogDirectory"] = Text("RequestTrafficLogging:LogDirectory", "log/traffic"),
+            ["RequestTrafficLogging:FilePrefix"] = Text("RequestTrafficLogging:FilePrefix", "proxy_traffic_"),
+            ["RequestTrafficLogging:MaxFileSizeMB"] = config.GetValue("RequestTrafficLogging:MaxFileSizeMB", 50),
+            ["RequestTrafficLogging:MaxFileCount"] = config.GetValue("RequestTrafficLogging:MaxFileCount", 10),
+            ["RequestTrafficLogging:QueueCapacity"] = config.GetValue("RequestTrafficLogging:QueueCapacity", 10000),
+            ["RequestTrafficLogging:BatchSize"] = config.GetValue("RequestTrafficLogging:BatchSize", 100),
+            ["RequestTrafficLogging:FlushIntervalMs"] = config.GetValue("RequestTrafficLogging:FlushIntervalMs", 1000),
+            ["RequestTrafficLogging:CaptureHeaders"] = config.GetValue("RequestTrafficLogging:CaptureHeaders", true),
+            ["RequestTrafficLogging:CaptureRequestBodies"] = config.GetValue("RequestTrafficLogging:CaptureRequestBodies", false),
+            ["RequestTrafficLogging:CaptureResponseBodies"] = config.GetValue("RequestTrafficLogging:CaptureResponseBodies", false),
+            ["RequestTrafficLogging:MaxBodyCaptureSizeBytes"] = config.GetValue("RequestTrafficLogging:MaxBodyCaptureSizeBytes", 4096),
+            ["RequestTrafficLogging:InfoLoggingEnabled"] = config.GetValue("RequestTrafficLogging:InfoLoggingEnabled", true),
             ["DatabaseMaintenance:Enabled"] = config.GetValue("DatabaseMaintenance:Enabled", true),
-            ["DatabaseMaintenance:Schedule"] = config["DatabaseMaintenance:Schedule"] ?? "03:00",
+            ["DatabaseMaintenance:Schedule"] = Text("DatabaseMaintenance:Schedule", "03:00"),
+            ["DatabaseMaintenance:RunOnStartup"] = config.GetValue("DatabaseMaintenance:RunOnStartup", false),
+            ["DatabaseMaintenance:FreePageRatioThreshold"] = config.GetValue("DatabaseMaintenance:FreePageRatioThreshold", 0.25),
             ["DatabaseMaintenance:Backup:Enabled"] = config.GetValue("DatabaseMaintenance:Backup:Enabled", true),
             ["DatabaseMaintenance:Backup:Retention"] = config.GetValue("DatabaseMaintenance:Backup:Retention", 7),
             ["Mcp:Enabled"] = config.GetValue<bool>("Mcp:Enabled"),
+            ["Mcp:Path"] = Text("Mcp:Path", "/mcp"),
             ["Mcp:RequireAuthentication"] = config.GetValue<bool>("Mcp:RequireAuthentication"),
             ["Mcp:ChatEnabled"] = config.GetValue<bool>("Mcp:ChatEnabled"),
+            ["Mcp:ToolTimeoutSeconds"] = config.GetValue("Mcp:ToolTimeoutSeconds", 30),
+            ["Mcp:DefaultPageSize"] = config.GetValue("Mcp:DefaultPageSize", 50),
+            ["Mcp:MaxPageSize"] = config.GetValue("Mcp:MaxPageSize", 200),
+            ["Mcp:MaxToolResultChars"] = config.GetValue("Mcp:MaxToolResultChars", 12000),
             ["Console:SecureCookies"] = config.GetValue("Console:SecureCookies", false),
             ["Console:Enabled"] = config.GetValue("Console:Enabled", true),
-            ["Console:Customization:EnableLandingPage"] = config.GetValue("Console:Customization:EnableLandingPage", true),
-            ["Console:Customization:PromoText"] = config["Console:Customization:PromoText"] ?? "",
+            ["Console:Customization:LandingPageEnabled"] = config.GetValue("Console:Customization:LandingPageEnabled", true),
+            ["Console:Customization:PromoText"] = Text("Console:Customization:PromoText"),
             ["Console:Customization:PromoLogin"] = config.GetValue("Console:Customization:PromoLogin", false),
-            ["Console:Customization:LoginFooter"] = config["Console:Customization:LoginFooter"] ?? "",
+            ["Console:Customization:LoginFooter"] = Text("Console:Customization:LoginFooter"),
+            ["Console:CorsOrigins"] = List("Console:CorsOrigins"),
             ["Console:PublicOrigins"] = List("Console:PublicOrigins"),
+            ["Console:SeedPassword"] = IsSet("Console:SeedPassword"),
+            ["Console:SeedToken"] = IsSet("Console:SeedToken"),
             ["ForwardedHeaders:KnownProxies"] = List("ForwardedHeaders:KnownProxies"),
             ["ForwardedHeaders:KnownNetworks"] = List("ForwardedHeaders:KnownNetworks"),
+            ["AllowedHosts"] = Text("AllowedHosts", "*").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            ["PathBase"] = Text("PathBase"),
+            ["Proxy:Username"] = Text("Proxy:Username"),
+            ["Proxy:Password"] = IsSet("Proxy:Password"),
+            ["Proxy:Domain"] = Text("Proxy:Domain"),
             ["Oidc:Enabled"] = config.GetValue("Oidc:Enabled", true),
-            ["RequestTrafficLogging:Enabled"] = config.GetValue("RequestTrafficLogging:Enabled", false),
+            ["FileStorage:StorageDirectory"] = Text("FileStorage:StorageDirectory", "files"),
             ["FileStorage:MaxFileSizeBytes"] = config.GetValue<long>("FileStorage:MaxFileSizeBytes"),
+            ["FileStorage:UseMemoryCache"] = config.GetValue("FileStorage:UseMemoryCache", true),
+            ["FileStorage:MemoryCacheDurationSeconds"] = config.GetValue("FileStorage:MemoryCacheDurationSeconds", 60),
+            ["FileStorage:MaxTotalMemoryCacheMB"] = config.GetValue("FileStorage:MaxTotalMemoryCacheMB", 200),
+            ["FileStorage:AllowedExtensions"] = List("FileStorage:AllowedExtensions"),
+            ["FileStorage:BlockedExtensions"] = List("FileStorage:BlockedExtensions"),
             ["Telemetry:Provider"] = config["Telemetry:Provider"] is { Length: > 0 } provider ? provider : effectiveTelemetryProvider,
-            ["Telemetry:ServiceName"] = config["Telemetry:ServiceName"] ?? "",
-            ["Telemetry:Otlp:Endpoint"] = config["Telemetry:Otlp:Endpoint"] ?? "",
+            ["Telemetry:ServiceName"] = Text("Telemetry:ServiceName"),
+            ["Telemetry:Otlp:Endpoint"] = Text("Telemetry:Otlp:Endpoint"),
+            ["Telemetry:ResourceAttributes"] = Text("Telemetry:ResourceAttributes"),
+            ["Telemetry:Prometheus:Path"] = Text("Telemetry:Prometheus:Path", "/metrics"),
             ["OpenApi:Enabled"] = config.GetValue("OpenApi:Enabled", true),
             ["OpenApi:Title"] = openApi.Title,
             ["OpenApi:Version"] = openApi.Version,
@@ -77,13 +133,13 @@ public static partial class WebUiEndpointExtensions
             ["OpenApi:Footer:Url"] = openApi.Footer.Url,
             ["OpenApi:Footer:Target"] = openApi.Footer.Target,
             ["OpenApi:Footer:ShowSourceIcon"] = openApi.Footer.ShowSourceIcon,
-            ["OpenApi:ScalarTheme"] = openApi.ScalarTheme,
-            ["OpenApi:ScalarLayout"] = openApi.ScalarLayout,
-            ["OpenApi:ScalarShowSidebar"] = openApi.ScalarShowSidebar,
-            ["OpenApi:ScalarHideDownloadButton"] = openApi.ScalarHideDownloadButton,
-            ["OpenApi:ScalarHideModels"] = openApi.ScalarHideModels,
-            ["OpenApi:ScalarHideClientButton"] = openApi.ScalarHideClientButton,
-            ["OpenApi:ScalarHideTestRequestButton"] = openApi.ScalarHideTestRequestButton
+            ["OpenApi:Scalar:Theme"] = openApi.Scalar.Theme,
+            ["OpenApi:Scalar:Layout"] = openApi.Scalar.Layout,
+            ["OpenApi:Scalar:ShowSidebar"] = openApi.Scalar.ShowSidebar,
+            ["OpenApi:Scalar:HideDownloadButton"] = openApi.Scalar.HideDownloadButton,
+            ["OpenApi:Scalar:HideModels"] = openApi.Scalar.HideModels,
+            ["OpenApi:Scalar:HideClientButton"] = openApi.Scalar.HideClientButton,
+            ["OpenApi:Scalar:HideTestRequestButton"] = openApi.Scalar.HideTestRequestButton
         };
     }
 
@@ -147,11 +203,11 @@ public static partial class WebUiEndpointExtensions
                 },
                 rate_limiting = new
                 {
-                    store = config.GetValue<string>("RateLimiting:Store") ?? "Memory"
+                    store = config.GetValue<string>("RateLimiting:Provider") ?? "Memory"
                 },
                 caching = new
                 {
-                    provider = config.GetValue<string>("Caching:ProviderType") ?? "Memory"
+                    provider = config.GetValue<string>("Caching:Provider") ?? "Memory"
                 },
                 file_storage = new
                 {
@@ -215,7 +271,7 @@ public static partial class WebUiEndpointExtensions
 
             // refuse a change that would lock the caller out of the console
             // older clients send WebUi keys
-            changes = changes.GroupBy(c => PortwayApi.Services.Configuration.ConsoleSectionAlias.Canonical(c.Key), StringComparer.OrdinalIgnoreCase)
+            changes = changes.GroupBy(c => PortwayApi.Services.Configuration.ConfigAliases.Canonical(c.Key), StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
 
             if (WouldLockCallerOut(ctx, config, urlValidator, changes) is { } lockout)
@@ -297,6 +353,17 @@ public static partial class WebUiEndpointExtensions
                      .Where(v => v.Length > 0)
                      .ToArray()
                 : current;
+
+        if (changes.TryGetValue("AllowedHosts", out var hostsRaw) && hostsRaw.ValueKind == JsonValueKind.Array)
+        {
+            var host = ctx.Request.Host.Host;
+            var hosts = Strings("AllowedHosts", []);
+            if (hosts.Length > 0 && !hosts.Any(h => h == "*" ||
+                    h.Equals(host, StringComparison.OrdinalIgnoreCase) ||
+                    h.Trim('[', ']').Equals(host.Trim('[', ']'), StringComparison.OrdinalIgnoreCase) ||
+                    h.StartsWith("*.") && host.EndsWith(h[1..], StringComparison.OrdinalIgnoreCase)))
+                return ($"This change would refuse requests for {host}, the host this console is opened on. Keep an entry that covers it.", "AllowedHosts");
+        }
 
         var touchesOrigins = changes.ContainsKey("Console:PublicOrigins");
         var touchesProxies = changes.ContainsKey("ForwardedHeaders:KnownProxies")
