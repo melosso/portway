@@ -54,7 +54,7 @@ public class SqlMetadataService
 
         try
         {
-            await Task.WhenAll(BuildInitTasks(sqlEndpoints, environmentSettings, getConnectionStringAsync, cancellationToken));
+            LogFailures(await Task.WhenAll(BuildInitTasks(sqlEndpoints, environmentSettings, getConnectionStringAsync, cancellationToken)));
         }
         catch (Exception ex)
         {
@@ -113,7 +113,7 @@ public class SqlMetadataService
             changed = sqlEndpoints
                 .Where(kv => !_sourceSignatures.TryGetValue(kv.Key, out var known) || known != Signature(kv.Value))
                 .ToDictionary(StringComparer.OrdinalIgnoreCase);
-        await Task.WhenAll(BuildInitTasks(changed, _environmentSettings, _getConnectionStringAsync, cancellationToken));
+        LogFailures(await Task.WhenAll(BuildInitTasks(changed, _environmentSettings, _getConnectionStringAsync, cancellationToken)));
 
         lock (_cacheLock)
         {
@@ -131,13 +131,29 @@ public class SqlMetadataService
         d.DatabaseSchema, d.DatabaseObjectName, d.DatabaseObjectType, d.Procedure,
         string.Join(',', d.AllowedColumns ?? []), string.Join(',', d.AllowedEnvironments ?? []));
 
-    private List<Task> BuildInitTasks(
+    // one line per load, not per endpoint, so an unreachable database does not flood the log
+    private static void LogFailures(MetadataLoadResult[] results)
+    {
+        var failed = results.Where(r => r.Error is not null).ToList();
+        if (failed.Count == 0)
+            return;
+
+        Log.Warning("SQL metadata not loaded for {Count} endpoint(s): {Endpoints}. Environments tried: {Environments}. First error: {Error}",
+            failed.Count,
+            string.Join(", ", failed.Select(f => f.Endpoint)),
+            string.Join(", ", failed.SelectMany(f => f.Environments).Distinct(StringComparer.OrdinalIgnoreCase)),
+            failed[0].Error);
+    }
+
+    private sealed record MetadataLoadResult(string Endpoint, IReadOnlyList<string> Environments, string? Error);
+
+    private List<Task<MetadataLoadResult>> BuildInitTasks(
         Dictionary<string, Classes.EndpointDefinition> sqlEndpoints,
         EnvironmentSettings environmentSettings,
         Func<string, Task<string>> getConnectionStringAsync,
         CancellationToken cancellationToken)
     {
-        var initTasks = new List<Task>();
+        var initTasks = new List<Task<MetadataLoadResult>>();
         lock (_cacheLock)
             foreach (var (key, definition) in sqlEndpoints)
                 _sourceSignatures[key] = Signature(definition);
@@ -178,7 +194,7 @@ public class SqlMetadataService
         return initTasks;
     }
 
-    private async Task InitializeEndpointMetadataAsync(
+    private async Task<MetadataLoadResult> InitializeEndpointMetadataAsync(
         string endpointName,
         Classes.EndpointDefinition definition,
         List<string> environments,
@@ -196,6 +212,7 @@ public class SqlMetadataService
                 var connectionString = await getConnectionStringAsync(environment);
                 if (string.IsNullOrEmpty(connectionString))
                 {
+                    lastError ??= $"no connection string for environment {environment}";
                     Log.Debug("No connection string found for environment {Environment}, trying next environment for {EndpointName}",
                         environment, endpointName);
                     continue;
@@ -205,6 +222,7 @@ public class SqlMetadataService
 
                 if (columnCount == 0)
                 {
+                    lastError ??= $"{definition.DatabaseObjectName} has no columns in environment {environment}";
                     Log.Debug("No columns found for {EndpointName} in environment {Environment}, trying next environment",
                         endpointName, environment);
                     continue;
@@ -215,11 +233,16 @@ public class SqlMetadataService
 
                 Log.Debug("Successfully initialized metadata for {EndpointName} using environment {Environment} ({ColumnCount} columns)",
                     endpointName, environment, columnCount);
-                return;
+                return new(endpointName, environments, null);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return new(endpointName, environments, null);
             }
             catch (OperationCanceledException)
             {
-                Log.Error("Metadata initialization timed out for endpoint {EndpointName} in environment {Environment} after 30 seconds",
+                lastError = $"timed out after 30 seconds in environment {environment}";
+                Log.Debug("Metadata initialization timed out for endpoint {EndpointName} in environment {Environment} after 30 seconds",
                     endpointName, environment);
             }
             catch (Exception ex)
@@ -230,8 +253,7 @@ public class SqlMetadataService
             }
         }
 
-        Log.Error("Failed to initialize metadata for endpoint {EndpointName} after trying all allowed environments: {Environments}. Last error: {ErrorMessage}",
-            endpointName, string.Join(", ", environments), lastError ?? "none");
+        return new(endpointName, environments, lastError ?? "no environment returned metadata");
     }
 
     private bool HasModificationMethods(Classes.EndpointDefinition definition)
