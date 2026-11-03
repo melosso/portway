@@ -417,15 +417,8 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 await Task.Delay(retryTime, cancellationToken);
             }
 
+            // another instance holds the lock; a local lock would not exclude it
             Log.Warning("Timed out waiting for Redis lock: {LockKey}", redisLockKey);
-
-            // If fallback is enabled, try memory cache
-            if (_redisOptions.FallbackToMemoryCache)
-            {
-                Log.Information("Falling back to memory lock for key: {Key}", lockKey);
-                return await _fallbackProvider.AcquireLockAsync(lockKey, expiryTime, waitTime, retryTime, cancellationToken);
-            }
-
             return null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
