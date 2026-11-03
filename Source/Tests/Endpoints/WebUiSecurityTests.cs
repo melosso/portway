@@ -380,6 +380,23 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task TracePage_IsComposedForASignedInAccountOnly()
+    {
+        var client = CreateClient();
+
+        var anonymous = await client.GetAsync("/_/trace", TestContext.Current.CancellationToken);
+        Assert.NotEqual(HttpStatusCode.OK, anonymous.StatusCode);
+
+        var (authCookie, _) = await LoginAsync(client);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/trace", authCookie), TestContext.Current.CancellationToken);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Contains("<title>Trace · Portway</title>", html);
+        Assert.Contains("id=\"captureBody\"", html);
+    }
+
+    [Fact]
     public async Task SettingsWrite_RefusesAllowedHostsThatExcludeTheCaller()
     {
         var client = CreateClient();

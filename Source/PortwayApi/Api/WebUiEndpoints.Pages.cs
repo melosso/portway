@@ -152,7 +152,8 @@ public static partial class WebUiEndpointExtensions
             ["tokens"] = "Access Tokens",
             ["users"] = "Users",
             ["settings"] = "Settings",
-            ["logs"] = "Logs"
+            ["logs"] = "Logs",
+            ["trace"] = "Trace"
         };
         foreach (var (page, title) in pageTitles)
         {
