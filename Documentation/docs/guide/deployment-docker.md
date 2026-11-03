@@ -21,7 +21,6 @@ services:
       - portway_app:/app
       - ./environments:/app/environments
       - ./endpoints:/app/endpoints
-      - ./tokens:/app/tokens
       - ./log:/app/log
       - ./data:/app/data
     environment:
@@ -75,7 +74,8 @@ The API listens on `http://localhost:8080`. Checks:
 
 | Data | Location |
 |---|---|
-| `environments/`, `endpoints/`, `tokens/` | Bind mounts, editable on the host |
+| `environments/`, `endpoints/` | Bind mounts, editable on the host |
+| `tokens/` (written only with the console disabled) | `portway_app` volume |
 | Application and traffic logs | `./log` |
 | `auth.db`, `metrics.db`, `mcp.db`, `portway.key` | `portway_app` volume |
 | `appsettings.overrides.json` (settings saved in the console) | `portway_app` volume |

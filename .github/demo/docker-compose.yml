@@ -7,7 +7,6 @@ services:
     volumes:
       - ./config/environments:/app/environments:z
       - ./config/endpoints:/app/endpoints:z
-      - ./tokens:/app/tokens:z
       - ./log:/app/log:z
       - ./data:/app/data:z
       - type: bind

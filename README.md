@@ -61,7 +61,6 @@ services:
       - portway_app:/app
       - ./environments:/app/environments
       - ./endpoints:/app/endpoints
-      - ./tokens:/app/tokens
       - ./log:/app/log
       - ./data:/app/data
     environment:
