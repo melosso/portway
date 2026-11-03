@@ -66,4 +66,16 @@ public sealed class RedisCacheProviderTests
 
         db.Verify(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()), Times.Once);
     }
+
+    [Fact]
+    public async Task OneFailedNode_KeepsUsingRedis_WhileTheMultiplexerIsConnected()
+    {
+        var (provider, db, redis, _) = Create();
+
+        redis.Raise(r => r.ConnectionFailed += null, NodeEvent());
+        await provider.GetAsync<Item>("k");
+
+        Assert.True(provider.IsConnected);
+        db.Verify(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()), Times.Once);
+    }
 }

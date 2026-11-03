@@ -17,8 +17,6 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     private readonly IDatabase? _db;
     private readonly string _instanceName;
 
-    // Written from Redis connection-event callbacks, lets read from request threads
-    private volatile bool _isConnected;
     private readonly ICacheProvider _fallbackProvider;
     private readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
     private long _lastConnectionAttemptTicks = DateTime.MinValue.Ticks;
@@ -43,7 +41,6 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
             return;
 
         _db = _redis.GetDatabase(_redisOptions.Database);
-        _isConnected = _redis.IsConnected;
         _redis.ConnectionFailed += OnConnectionFailed;
         _redis.ConnectionRestored += OnConnectionRestored;
     }
@@ -80,7 +77,8 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     /// <summary>
     /// Whether the Redis connection is active
     /// </summary>
-    public bool IsConnected => _isConnected;
+    // the multiplexer is connected while any node is reachable
+    public bool IsConnected => _redis?.IsConnected == true;
 
     /// <summary>
     /// Gets a value from the cache
@@ -492,7 +490,6 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     /// </summary>
     private void OnConnectionFailed(object? sender, ConnectionFailedEventArgs args)
     {
-        _isConnected = false;
         Log.Error("Redis connection failed: {FailureType} - {Exception}",
             args.FailureType, args.Exception?.Message);
     }
@@ -502,7 +499,6 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     /// </summary>
     private void OnConnectionRestored(object? sender, ConnectionFailedEventArgs args)
     {
-        _isConnected = true;
         Log.Information("Redis connection restored");
     }
 
@@ -513,7 +509,7 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
     {
         // Avoid too frequent reconnection attempts
         var lastAttempt = new DateTime(Interlocked.Read(ref _lastConnectionAttemptTicks), DateTimeKind.Utc);
-        if (_isConnected || (DateTime.UtcNow - lastAttempt) < _reconnectInterval)
+        if (IsConnected || (DateTime.UtcNow - lastAttempt) < _reconnectInterval)
         {
             return;
         }
@@ -535,12 +531,10 @@ public class RedisCacheProvider : ICacheProvider, IDisposable
                 try
                 {
                     await _redis.GetDatabase().PingAsync();
-                    _isConnected = true;
                     Log.Information("Successfully reconnected to Redis");
                 }
                 catch (Exception ex)
                 {
-                    _isConnected = false;
                     Log.Error(ex, "Failed to reconnect to Redis");
                 }
             }
