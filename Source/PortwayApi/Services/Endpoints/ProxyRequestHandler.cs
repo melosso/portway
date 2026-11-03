@@ -781,7 +781,7 @@ public sealed class ProxyRequestHandler
     }
 
     // kestrel rejects any body write on 204 and 304
-    private static Task WriteBodyAsync(HttpResponse response, string content) =>
+    internal static Task WriteBodyAsync(HttpResponse response, string content) =>
         response.StatusCode is StatusCodes.Status204NoContent or StatusCodes.Status304NotModified
             ? Task.CompletedTask
             : response.WriteAsync(content, response.HttpContext.RequestAborted);

@@ -129,20 +129,30 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
         Assert.Contains("application/xml", _upstream.ContentType);
     }
 
+    [Theory]
+    [InlineData(StatusCodes.Status204NoContent)]
+    [InlineData(StatusCodes.Status304NotModified)]
+    public async Task BodylessStatus_WritesNoBody(int status)
+    {
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        context.Response.StatusCode = status;
+
+        await PortwayApi.Services.ProxyRequestHandler.WriteBodyAsync(context.Response, "{\"ok\":true}");
+
+        Assert.Equal(0, context.Response.Body.Length);
+    }
+
     [Fact]
     public async Task NoContentUpstream_Returns204WithoutBody()
     {
         _upstream.ResponseStatus = 204;
-        // testserver accepts a body on 204, kestrel rejects it
-        using var kestrel = _factory.WithWebHostBuilder(_ => { });
-        kestrel.UseKestrel(0);
-        using var client = kestrel.CreateClient();
-        client.DefaultRequestHeaders.Authorization = _client.DefaultRequestHeaders.Authorization;
-        var metrics = kestrel.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
+        // testserver passes a written body through, so a body on 204 fails the empty assertion
+        var metrics = _factory.Services.GetRequiredService<PortwayApi.Services.MetricsService>();
         long ServerErrors() => metrics.GetSnapshot("24h").Errors.GetValueOrDefault("500");
         var serverErrorsBefore = ServerErrors();
 
-        var response = await client.DeleteAsync(ApiPath + "/1", TestContext.Current.CancellationToken);
+        var response = await _client.DeleteAsync(ApiPath + "/1", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         Assert.Empty(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
