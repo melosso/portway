@@ -169,7 +169,7 @@
         <div class="page-title">
             <div class="page-heading">
                 <h1 class="select-none">Settings</h1>
-                <p class="page-sub">Console, security, OpenAPI, AI, telemetry, performance, system, maintenance and backups.</p>
+                <p class="page-sub">Console, security, OpenAPI, AI, telemetry, performance, system and database.</p>
             </div>
         </div>
         <div class="page-actions">
@@ -470,13 +470,6 @@ function riskItem(label, ok, okText, badText, desc) {
   return statusItem(label, ok ? 'ok' : 'warn', ok ? okText : badText, desc);
 }
 
-function boolItem(label, value, desc, key) {
-  const html = value
-    ? '<span class="setting-on">Enabled</span>'
-    : '<span class="setting-off">Disabled</span>';
-  return settingItemRaw(label, html, desc, key);
-}
-
 function editable(key) {
   const spec = _writable[key];
   return spec && !spec.env ? spec : null;
@@ -485,87 +478,50 @@ function editable(key) {
 // env-set values render as disabled controls, skipped on save
 function locked(key) { return _writable[key]?.env ? ' disabled' : ''; }
 
-function switchRow(key, label, value, desc) {
-  const spec = _writable[key];
-  if (!spec) return boolItem(label, value, desc, key);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  return `<div class="setting-row">
-    ${labelBlock(label, desc, id, key)}
-    <label class="switch${locked(key)}">
-      <input${locked(key)} type="checkbox" id="${id}" data-setting="${key}" data-kind="bool" ${value ? 'checked' : ''}>
-      <span class="slider"></span>
-    </label>
-  </div>`;
-}
+const LIST_KINDS = ['originlist', 'iplist', 'cidrlist'];
 
+// one editable row; control and value come from the writable schema entry
 // scale converts the stored value into the displayed unit, e.g. bytes shown as MB
-function numberRow(key, label, value, desc, unit, scale = 1) {
+function field(key, label, desc, { unit, scale = 1, multiline, placeholder = '' } = {}) {
   const spec = _writable[key];
-  const shown = value != null ? Math.round((value / scale) * 100) / 100 : null;
-  if (!spec) return settingItem(label, shown != null ? `${shown} ${unit ?? ''}`.trim() : '—', desc, key);
+  if (!spec) return settingItem(label, '—', desc);
   const id = 'set-' + key.replace(/[:.]/g, '-');
-  const min = spec.min != null ? ` min="${spec.min / scale}"` : '';
-  const max = spec.max != null ? ` max="${spec.max / scale}"` : '';
-  const step = scale !== 1 ? ' step="any"' : '';
-  const input = `<input${locked(key)} type="number" class="input" id="${id}" data-setting="${key}" data-kind="int" data-scale="${scale}"${min}${max}${step} value="${shown ?? ''}">`;
-  return `<div class="setting-row">
-    ${labelBlock(label, desc, id, key)}
-    ${unit ? `<div class="setting-unit">${input}<span>${esc(unit)}</span></div>` : input}
-  </div>`;
-}
+  const dis = locked(key);
+  const attrs = `${dis} id="${id}" data-setting="${key}"`;
+  const ph = ` placeholder="${esc(placeholder)}"`;
+  const maxlength = spec.max != null ? ` maxlength="${spec.max}"` : '';
+  const v = spec.value;
+  let control;
+  let stacked = false;
 
-function choiceRow(key, label, value, desc) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, CHOICE_LABELS[value] ?? value, desc, key);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  const opts = (spec.choices ?? []).map(c =>
-    `<option value="${esc(c)}"${c.toLowerCase() === String(value ?? '').toLowerCase() ? ' selected' : ''}>${esc(CHOICE_LABELS[c] ?? c)}</option>`).join('');
-  return `<div class="setting-row">
-    ${labelBlock(label, desc, id, key)}
-    <select${locked(key)} class="input" id="${id}" data-setting="${key}" data-kind="choice">${opts}</select>
-  </div>`;
-}
+  if (spec.kind === 'bool') {
+    control = `<label class="switch${dis}"><input${attrs} data-kind="bool" type="checkbox"${v ? ' checked' : ''}><span class="slider"></span></label>`;
+  } else if (spec.kind === 'int') {
+    const shown = v != null ? Math.round((v / scale) * 100) / 100 : '';
+    const min = spec.min != null ? ` min="${spec.min / scale}"` : '';
+    const max = spec.max != null ? ` max="${spec.max / scale}"` : '';
+    const step = scale !== 1 ? ' step="any"' : '';
+    const input = `<input${attrs} data-kind="int" data-scale="${scale}" type="number" class="input"${min}${max}${step} value="${shown}">`;
+    control = unit ? `<div class="setting-unit">${input}<span>${esc(unit)}</span></div>` : input;
+  } else if (spec.kind === 'choice') {
+    const opts = (spec.choices ?? []).map(c =>
+      `<option value="${esc(c)}"${c.toLowerCase() === String(v ?? '').toLowerCase() ? ' selected' : ''}>${esc(CHOICE_LABELS[c] ?? c)}</option>`).join('');
+    control = `<select${attrs} data-kind="choice" class="input">${opts}</select>`;
+  } else if (spec.kind === 'time') {
+    control = `<input${attrs} data-kind="time" type="time" class="input" value="${esc(v ?? '')}">`;
+  } else if (LIST_KINDS.includes(spec.kind)) {
+    stacked = true;
+    control = `<textarea${attrs} data-kind="list" class="input" rows="3" spellcheck="false"${ph}>${esc((v ?? []).join('\n'))}</textarea>`;
+  } else if (multiline) {
+    stacked = true;
+    control = `<textarea${attrs} data-kind="text" class="input" rows="2"${maxlength}${ph}>${esc(v ?? '')}</textarea>`;
+  } else {
+    control = `<input${attrs} data-kind="text" type="text" class="input"${maxlength} spellcheck="false"${ph} value="${esc(v ?? '')}">`;
+  }
 
-function timeRow(key, label, value, desc) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value, desc, key);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  return `<div class="setting-row">
+  return `<div class="setting-row${stacked ? ' setting-row-stacked' : ''}">
     ${labelBlock(label, desc, id, key)}
-    <input${locked(key)} type="time" class="input" id="${id}" data-setting="${key}" data-kind="time" value="${esc(value ?? '')}">
-  </div>`;
-}
-
-function inputRow(key, label, value, desc, placeholder) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value || '—', desc, key);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
-  return `<div class="setting-row">
-    ${labelBlock(label, desc, id, key)}
-    <input${locked(key)} type="text" class="input" id="${id}" data-setting="${key}" data-kind="text"${max} spellcheck="false" placeholder="${esc(placeholder ?? '')}" value="${esc(value ?? '')}">
-  </div>`;
-}
-
-function textRow(key, label, value, desc, placeholder) {
-  const spec = _writable[key];
-  if (!spec) return settingItem(label, value || '—', desc, key);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  const max = spec.max != null ? ` maxlength="${spec.max}"` : '';
-  return `<div class="setting-row setting-row-stacked">
-    ${labelBlock(label, desc, id, key)}
-    <textarea${locked(key)} class="input" rows="2" id="${id}" data-setting="${key}" data-kind="text"${max} placeholder="${esc(placeholder ?? '')}">${esc(value ?? '')}</textarea>
-  </div>`;
-}
-
-function listRow(key, label, values, desc, placeholder) {
-  const spec = _writable[key];
-  const shown = (values ?? []).join('\n');
-  if (!spec) return settingItem(label, (values ?? []).join(', ') || 'None', desc, key);
-  const id = 'set-' + key.replace(/[:.]/g, '-');
-  return `<div class="setting-row setting-row-stacked">
-    ${labelBlock(label, desc, id, key)}
-    <textarea${locked(key)} class="input" rows="3" id="${id}" data-setting="${key}" data-kind="list" spellcheck="false" placeholder="${esc(placeholder ?? '')}">${esc(shown)}</textarea>
+    ${control}
   </div>`;
 }
 
@@ -738,192 +694,180 @@ async function saveCard(bodyId, btn) {
   }
 }
 
-async function load() {
-  const btn = document.getElementById('refreshBtn');
-  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-  try {
-    const d   = await api('/_/api/settings', { failure: 'Failed to load settings' });
-    _writable = Object.fromEntries((d.writable ?? []).map(w => [w.key, w]));
-    const rl  = d.rate_limiting      ?? {};
-    const c   = d.caching            ?? {};
-    const sql = d.sql_pooling        ?? {};
-    const f   = d.file_storage       ?? {};
-    const log = d.logging            ?? {};
-    const ep  = d.endpoint_reloading ?? {};
-    const tel = d.telemetry          ?? {};
-    const m   = d.mcp                ?? {};
-    const sec = d.security           ?? {};
-    const feat = d.features          ?? {};
-    const cus  = d.customization     ?? {};
-    const dbm = d.database_maintenance ?? {};
-    const oa  = d.openapi             ?? {};
+// card body id to its rows; footer: false marks a read-only card
+const CARDS = {
+  securityBody: { footer: false, rows: ({ security: sec = {} }) => [
+    statusItem('Sign-in required', sec.webui_auth_enabled ? 'ok' : 'bad',
+      sec.webui_auth_enabled ? 'Required' : 'Not required. The console is unauthenticated.',
+      'Console requests require a signed-in account.'),
+    statusItem('Accounts', sec.admin_accounts > 0 ? 'ok' : 'warn', plural(sec.admin_accounts ?? 0, 'account'),
+      'Console accounts, managed on the Users page.'),
+    riskItem('Client addresses', !sec.forwarded_ignored,
+      sec.client_ip || 'Direct', 'Untrusted proxy',
+      sec.forwarded_ignored
+        ? `The proxy is not trusted. Every client appears as ${sec.client_ip || 'one address'}. The console gate, rate limits and sign-in lockout use this address. Add the proxy under Trusted proxies.`
+        : `Address of this request${sec.behind_proxy ? ', read from the trusted proxy' : ''}.`),
+    riskItem('Console reach', !sec.console_public,
+      'Local network only', 'Reachable from configured origins',
+      sec.console_public
+        ? 'The sign-in page is reachable from the configured origins. Origin matching does not restrict access.'
+        : 'The console accepts requests from loopback and local addresses only.'),
+    riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
+      'Scheme of this request. Behind a TLS proxy, add the proxy under Trusted proxies.'),
+    riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
+      sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
+      'Sends the session cookie over HTTPS only.'),
+    statusItem('CSRF protection', sec.csrf_protection ? 'ok' : 'bad', sec.csrf_protection ? 'Enabled' : 'Disabled', 'Console writes require a CSRF token.'),
+    statusItem('Administrator-only writes', 'ok', 'Enabled', 'Viewers can read settings and change their own sign-in.'),
+    statusItem('CORS origins', 'ok', plural(sec.cors_origins_count ?? 0, 'origin'), 'Browser origins allowed by CORS.'),
+  ] },
 
-    const accounts = sec.admin_accounts ?? 0;
-    document.getElementById('securityBody').innerHTML = [
-      statusItem('Sign-in required', sec.webui_auth_enabled ? 'ok' : 'bad',
-        sec.webui_auth_enabled ? 'Required' : 'Not required. The console is unauthenticated.',
-        'Console requests require a signed-in account.'),
-      statusItem('Accounts', accounts > 0 ? 'ok' : 'warn', `${accounts} account${accounts === 1 ? '' : 's'}`,
-        'Console accounts, managed on the Users page.'),
-      riskItem('Client addresses', !sec.forwarded_ignored,
-        sec.client_ip || 'Direct', 'Untrusted proxy',
-        sec.forwarded_ignored
-          ? `The proxy is not trusted. Every client appears as ${sec.client_ip || 'one address'}. The console gate, rate limits and sign-in lockout use this address. Add the proxy under Trusted proxies.`
-          : `Address of this request${sec.behind_proxy ? ', read from the trusted proxy' : ''}.`),
-      riskItem('Console reach', !sec.console_public,
-        'Local network only', 'Reachable from configured origins',
-        sec.console_public
-          ? 'The sign-in page is reachable from the configured origins. Origin matching does not restrict access.'
-          : 'The console accepts requests from loopback and local addresses only.'),
-      riskItem('HTTPS', sec.https_enabled, 'Enabled', 'Not detected',
-        'Scheme of this request. Behind a TLS proxy, add the proxy under Trusted proxies.'),
-      riskItem('Secure cookies', sec.secure_cookies || !sec.https_enabled,
-        sec.secure_cookies ? 'Enabled' : 'Not needed on HTTP', 'Off while serving HTTPS',
-        'Sends the session cookie over HTTPS only.'),
-      statusItem('CSRF protection', sec.csrf_protection ? 'ok' : 'bad', sec.csrf_protection ? 'Enabled' : 'Disabled', 'Console writes require a CSRF token.'),
-      statusItem('Administrator-only writes', 'ok', 'Enabled', 'Viewers can read settings and change their own sign-in.'),
-      statusItem('CORS origins', 'ok', `${sec.cors_origins_count ?? 0} origin${sec.cors_origins_count === 1 ? '' : 's'}`, 'Browser origins allowed by CORS.'),
-    ].join('');
+  deploymentBody: { rows: ({ security: sec = {}, features: feat = {} }) => [
+    field('ForwardedHeaders:KnownProxies', 'Trusted proxies', 'Proxies whose forwarded client address is accepted. One IP per line.',
+      { placeholder: sec.behind_proxy && sec.client_ip ? sec.client_ip : '10.0.0.8' }),
+    field('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', 'Networks of proxies without a fixed address. One CIDR range per line.',
+      { placeholder: '172.18.0.0/16' }),
+    field('Console:PublicOrigins', 'Public console origins', 'Origins that may open the console from outside the local network. One per line.',
+      { placeholder: 'https://portway.example.com' }),
+    field('Oidc:Enabled', 'Single sign-on', feat.oidc_providers
+      ? `Sign-in through ${feat.oidc_providers} configured provider(s).`
+      : 'Sign-in through an identity provider. No providers configured.'),
+    ...(sec.legacy_admin_key && editable('Console:AdminApiKey') ? [settingItemRaw('Seeding key',
+      '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
+      'Deprecated console key. Not used for sign-in.')] : []),
+  ] },
 
-    const dep = d.deployment ?? {};
-    document.getElementById('deploymentBody').innerHTML = [
-      listRow('ForwardedHeaders:KnownProxies', 'Trusted proxies', dep.known_proxies,
-        'Proxies whose forwarded client address is accepted. One IP per line.',
-        sec.behind_proxy && sec.client_ip ? sec.client_ip : '10.0.0.8'),
-      listRow('ForwardedHeaders:KnownNetworks', 'Trusted proxy networks', dep.known_networks,
-        'Networks of proxies without a fixed address. One CIDR range per line.', '172.18.0.0/16'),
-      listRow('Console:PublicOrigins', 'Public console origins', dep.public_origins,
-        'Origins that may open the console from outside the local network. One per line.',
-        'https://portway.example.com'),
-      switchRow('Oidc:Enabled', 'Single sign-on', feat.oidc,
-        feat.oidc_providers ? `Sign-in through ${feat.oidc_providers} configured provider(s).`
-                            : 'Sign-in through an identity provider. No providers configured.'),
-      ...(sec.legacy_admin_key && editable('Console:AdminApiKey') ? [settingItemRaw('Seeding key',
-        '<button class="btn btn-outline" onclick="clearAdminKey()">Remove</button>',
-        'Deprecated console key. Not used for sign-in.')] : []),
-    ].join('') + cardFooter('deploymentBody');
+  openApiBody: { rows: () => [
+    field('OpenApi:Enabled', 'Enabled', 'Serves the OpenAPI document and the API reference.'),
+    field('OpenApi:Title', 'Title', 'Title of the document and the reference page.'),
+    field('OpenApi:Version', 'Document version', 'Version label of the OpenAPI document.'),
+    field('OpenApi:Description', 'Description', 'Markdown shown above the reference.', { multiline: true }),
+    field('OpenApi:Contact:Name', 'Contact name', 'Contact listed in the document.'),
+    field('OpenApi:Contact:Email', 'Contact e-mail', 'Contact address listed in the document.'),
+    field('OpenApi:ForceHttpsInProduction', 'Force HTTPS', 'Uses an HTTPS server URL outside Development.'),
+    field('OpenApi:ServeMarkdown', 'Markdown export', 'Serves the reference as Markdown for LLMs.'),
+    field('OpenApi:ExternalDocs:Url', 'Guide link', 'Link to your own API guide.', { placeholder: 'https://example.com/guide' }),
+    field('OpenApi:ExternalDocs:Description', 'Guide label', 'Text of the guide link.'),
+    field('OpenApi:SecurityDefinition:Description', 'Authentication note', 'Shown next to the bearer token field.', { multiline: true }),
+  ] },
 
-    document.getElementById('openApiBody').innerHTML = [
-      switchRow('OpenApi:Enabled', 'Enabled', feat.openapi, 'Serves the OpenAPI document and the API reference.'),
-      inputRow('OpenApi:Title', 'Title', oa.title, 'Title of the document and the reference page.'),
-      inputRow('OpenApi:Version', 'Document version', oa.version, 'Version label of the OpenAPI document.'),
-      textRow('OpenApi:Description', 'Description', oa.description, 'Markdown shown above the reference.'),
-      inputRow('OpenApi:Contact:Name', 'Contact name', oa.contact_name, 'Contact listed in the document.'),
-      inputRow('OpenApi:Contact:Email', 'Contact e-mail', oa.contact_email, 'Contact address listed in the document.'),
-      switchRow('OpenApi:ForceHttpsInProduction', 'Force HTTPS', oa.force_https, 'Uses an HTTPS server URL outside Development.'),
-      switchRow('OpenApi:ServeMarkdown', 'Markdown export', oa.serve_markdown, 'Serves the reference as Markdown for LLMs.'),
-      inputRow('OpenApi:ExternalDocs:Url', 'Guide link', oa.external_docs_url, 'Link to your own API guide.', 'https://example.com/guide'),
-      inputRow('OpenApi:ExternalDocs:Description', 'Guide label', oa.external_docs_description, 'Text of the guide link.'),
-      textRow('OpenApi:SecurityDefinition:Description', 'Authentication note', oa.security_description, 'Shown next to the bearer token field.'),
-    ].join('') + cardFooter('openApiBody');
+  docsBody: { rows: () => [
+    field('OpenApi:ShowNamespaces', 'Group by namespace', 'Groups endpoints by namespace in the sidebar.'),
+    field('OpenApi:DefaultGroup', 'Default group', 'Group for endpoints without a namespace.', { placeholder: 'General' }),
+    field('OpenApi:ShowBadges', 'MCP and OData badges', 'Labels operations that support MCP or OData.'),
+    field('OpenApi:ScalarTheme', 'Theme', 'Color theme of the reference.'),
+    field('OpenApi:ScalarLayout', 'Layout', 'Page layout of the reference.'),
+    field('OpenApi:ScalarShowSidebar', 'Sidebar', 'Shows the operation sidebar.'),
+    field('OpenApi:ScalarHideDownloadButton', 'Hide download', 'Hides the document download button.'),
+    field('OpenApi:ScalarHideModels', 'Hide models', 'Hides the schema section.'),
+    field('OpenApi:ScalarHideClientButton', 'Hide client generation', 'Hides the client code generator.'),
+    field('OpenApi:ScalarHideTestRequestButton', 'Hide test requests', 'Hides the request runner.'),
+  ] },
 
-    document.getElementById('docsBody').innerHTML = [
-      switchRow('OpenApi:ShowNamespaces', 'Group by namespace', oa.show_namespaces, 'Groups endpoints by namespace in the sidebar.'),
-      inputRow('OpenApi:DefaultGroup', 'Default group', oa.default_group, 'Group for endpoints without a namespace.', 'General'),
-      switchRow('OpenApi:ShowBadges', 'MCP and OData badges', oa.show_badges, 'Labels operations that support MCP or OData.'),
-      choiceRow('OpenApi:ScalarTheme', 'Theme', oa.theme, 'Color theme of the reference.'),
-      choiceRow('OpenApi:ScalarLayout', 'Layout', oa.layout, 'Page layout of the reference.'),
-      switchRow('OpenApi:ScalarShowSidebar', 'Sidebar', oa.show_sidebar, 'Shows the operation sidebar.'),
-      switchRow('OpenApi:ScalarHideDownloadButton', 'Hide download', oa.hide_download, 'Hides the document download button.'),
-      switchRow('OpenApi:ScalarHideModels', 'Hide models', oa.hide_models, 'Hides the schema section.'),
-      switchRow('OpenApi:ScalarHideClientButton', 'Hide client generation', oa.hide_client, 'Hides the client code generator.'),
-      switchRow('OpenApi:ScalarHideTestRequestButton', 'Hide test requests', oa.hide_test_request, 'Hides the request runner.'),
-    ].join('') + cardFooter('docsBody');
+  footerBody: { rows: () => [
+    field('OpenApi:Footer:Text', 'Text', 'Footer text of the reference.'),
+    field('OpenApi:Footer:Url', 'Link', 'Footer link. http, https or mailto.', { placeholder: 'https://example.com' }),
+    field('OpenApi:Footer:Target', 'Opens in', 'Window the footer link opens in.'),
+    field('OpenApi:Footer:ShowSourceIcon', 'GitHub icon', 'Shows the Portway source link.'),
+  ] },
 
-    document.getElementById('footerBody').innerHTML = [
-      inputRow('OpenApi:Footer:Text', 'Text', oa.footer_text, 'Footer text of the reference.'),
-      inputRow('OpenApi:Footer:Url', 'Link', oa.footer_url, 'Footer link. http, https or mailto.', 'https://example.com'),
-      choiceRow('OpenApi:Footer:Target', 'Opens in', oa.footer_target, 'Window the footer link opens in.'),
-      switchRow('OpenApi:Footer:ShowSourceIcon', 'GitHub icon', oa.footer_source_icon, 'Shows the Portway source link.'),
-    ].join('') + cardFooter('footerBody');
+  customizationBody: { rows: () => [
+    field('Console:Customization:EnableLandingPage', 'Landing page', 'Serves the public landing page.'),
+    field('Console:Customization:PromoText', 'Promo banner', 'Markdown banner across the console.', { multiline: true, placeholder: 'Empty hides the banner' }),
+    field('Console:Customization:PromoLogin', 'Banner on sign-in', 'Shows the banner on the sign-in page.'),
+    field('Console:Customization:LoginFooter', 'Sign-in footer', 'Markdown below the sign-in form.', { multiline: true, placeholder: 'Contact your [administrator](mailto:...)' }),
+  ] },
 
-    document.getElementById('customizationBody').innerHTML = [
-      switchRow('Console:Customization:EnableLandingPage', 'Landing page', feat.landing_page, 'Serves the public landing page.'),
-      textRow('Console:Customization:PromoText', 'Promo banner', cus.promo_text, 'Markdown banner across the console.', 'Empty hides the banner'),
-      switchRow('Console:Customization:PromoLogin', 'Banner on sign-in', cus.promo_login, 'Shows the banner on the sign-in page.'),
-      textRow('Console:Customization:LoginFooter', 'Sign-in footer', cus.login_footer, 'Markdown below the sign-in form.', 'Contact your [administrator](mailto:...)'),
-    ].join('') + cardFooter('customizationBody');
-
-    document.getElementById('maintenanceBody').innerHTML = [
-      switchRow('DatabaseMaintenance:Enabled', 'Enabled', dbm.enabled, 'Checks, analyzes and compacts the SQLite databases daily.'),
-      timeRow('DatabaseMaintenance:Schedule', 'Run at', dbm.schedule, 'Server local time of the daily run.'),
+  maintenanceBody: { actions: '<button class="btn btn-outline" onclick="runMaintenance(this)">Run now</button>',
+    rows: ({ database_maintenance: dbm = {} }) => [
+      field('DatabaseMaintenance:Enabled', 'Enabled', 'Checks, analyzes and compacts the SQLite databases daily.'),
+      field('DatabaseMaintenance:Schedule', 'Run at', 'Server local time of the daily run.'),
       settingItem('Last run', dbm.last_run_utc ? new Date(dbm.last_run_utc).toLocaleString() : 'Not yet', 'Most recent completed run.'),
       ...(dbm.last_results ?? []).map(r => statusItem(esc(r.database),
         r.integrity === 'ok' ? 'ok' : r.integrity ? 'bad' : 'warn',
         r.integrity === 'ok' ? 'Healthy' : r.integrity ? 'Check failed' : 'Not checked',
         maintenanceSummary(r))),
-    ].join('') + cardFooter('maintenanceBody', '<button class="btn btn-outline" onclick="runMaintenance(this)">Run now</button>');
+    ] },
 
-    document.getElementById('backupBody').innerHTML = [
-      switchRow('DatabaseMaintenance:Backup:Enabled', 'Scheduled backup', dbm.backup_enabled, 'Writes a snapshot at the maintenance time.'),
-      numberRow('DatabaseMaintenance:Backup:Retention', 'Keep', dbm.backup_retention, 'Snapshots kept. Older ones are deleted.', 'backups'),
-    ].join('') + '<div id="backupList"></div>' + cardFooter('backupBody', '<button class="btn btn-outline" onclick="createBackup(this)">Create backup</button>');
+  backupBody: { actions: '<button class="btn btn-outline" onclick="createBackup(this)">Create backup</button>', rows: () => [
+    field('DatabaseMaintenance:Backup:Enabled', 'Scheduled backup', 'Writes a snapshot at the maintenance time.'),
+    field('DatabaseMaintenance:Backup:Retention', 'Keep', 'Snapshots kept. Older ones are deleted.', { unit: 'backups' }),
+    '<div id="backupList"></div>',
+  ] },
+
+  rateLimitBody: { rows: ({ rate_limiting: rl = {} }) => [
+    field('RateLimiting:Enabled', 'Enabled', 'Limits requests per client address and per token.'),
+    settingItem('Store', rl.store ?? 'Memory', 'Memory or Redis, set at startup.'),
+    field('RateLimiting:IpLimit', 'Requests per IP', 'Requests allowed from one address per window.'),
+    field('RateLimiting:IpWindow', 'IP window', 'Length of the address window.', { unit: 's' }),
+    field('RateLimiting:TokenLimit', 'Requests per token', 'Default for tokens without their own limit.'),
+    field('RateLimiting:TokenWindow', 'Token window', 'Length of the token window.', { unit: 's' }),
+  ] },
+
+  cachingBody: { rows: ({ caching: c = {} }) => [
+    field('Caching:Enabled', 'Enabled', 'Caches responses of endpoints with caching enabled.'),
+    settingItem('Provider', c.provider ?? '—', 'Memory or Redis, set at startup.'),
+    field('Caching:DefaultCacheDurationSeconds', 'Default duration', 'Time a cached response stays valid.', { unit: 's' }),
+    field('Caching:MemoryCacheSizeLimitMB', 'Memory budget', 'Upper limit of the in-memory cache.', { unit: 'MB' }),
+  ] },
+
+  sqlBody: { rows: () => [
+    field('SqlConnectionPooling:Enabled', 'Enabled', 'Reuses database connections between requests.'),
+    field('SqlConnectionPooling:MinPoolSize', 'Minimum pool size', 'Connections kept open per connection string.'),
+    field('SqlConnectionPooling:MaxPoolSize', 'Maximum pool size', 'Upper limit before requests wait for a connection.'),
+    field('SqlConnectionPooling:ConnectionTimeout', 'Connection timeout', 'Wait time to open a connection.', { unit: 's' }),
+    field('SqlConnectionPooling:CommandTimeout', 'Command timeout', 'Wait time for a statement to finish.', { unit: 's' }),
+  ] },
+
+  fileBody: { rows: ({ file_storage: f = {} }) => [
+    settingItem('Storage directory', f.directory || '—', 'Folder for uploaded files, set at startup.'),
+    field('FileStorage:MaxFileSizeBytes', 'Max file size', 'Largest accepted upload.', { unit: 'MB', scale: 1048576 }),
+  ] },
+
+  loggingBody: { rows: () => [
+    field('Serilog:MinimumLevel:Default', 'Minimum level', 'Events below this level are not written.'),
+    field('RequestTrafficLogging:Enabled', 'Request traffic logging', 'Records proxied requests to file or SQLite.'),
+  ] },
+
+  reloadBody: { rows: () => [
+    field('EndpointReloading:Enabled', 'Enabled', 'Reloads endpoints and environments after a file change.'),
+    field('EndpointReloading:DebounceMs', 'Debounce', 'Wait time after a change before reloading.', { unit: 'ms' }),
+  ] },
+
+  telemetryBody: { rows: ({ telemetry: tel = {} }) => [
+    field('Telemetry:Provider', 'Provider', 'Exporter for traces and metrics.'),
+    field('Telemetry:ServiceName', 'Service name', 'Service name on every span and metric.', { placeholder: 'Portway.Api' }),
+    field('Telemetry:Otlp:Endpoint', 'OTLP endpoint', 'Collector address for the Otlp provider.', { placeholder: 'http://localhost:4317' }),
+    ...(tel.prometheus_path ? [settingItem('Scrape path', tel.prometheus_path, 'Path Prometheus scrapes metrics from.')] : []),
+  ] },
+
+  mcpBody: { rows: () => [
+    field('Mcp:Enabled', 'Enabled', 'Serves the MCP server for AI clients.'),
+    field('Mcp:RequireAuthentication', 'Require a token', 'Rejects MCP calls without a bearer token.'),
+  ] },
+
+  chatBody: { rows: () => [
+    field('Mcp:ChatEnabled', 'Enabled', 'Enables the chat console.'),
+  ] },
+};
+
+async function load() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+
+  try {
+    const d = await api('/_/api/settings', { failure: 'Failed to load settings' });
+    _writable = Object.fromEntries((d.writable ?? []).map(w => [w.key, w]));
+    for (const [id, card] of Object.entries(CARDS)) {
+      document.getElementById(id).innerHTML = card.rows(d).join('') + (card.footer === false ? '' : cardFooter(id, card.actions));
+    }
     loadBackups();
-
-    document.getElementById('rateLimitBody').innerHTML = [
-      switchRow('RateLimiting:Enabled', 'Enabled', rl.enabled, 'Limits requests per client address and per token.'),
-      settingItem('Store', rl.store ?? 'Memory', 'Memory or Redis, set at startup.'),
-      numberRow('RateLimiting:IpLimit', 'Requests per IP', rl.ip_limit, 'Requests allowed from one address per window.'),
-      numberRow('RateLimiting:IpWindow', 'IP window', rl.ip_window_seconds, 'Length of the address window.', 's'),
-      numberRow('RateLimiting:TokenLimit', 'Requests per token', rl.token_limit, 'Default for tokens without their own limit.'),
-      numberRow('RateLimiting:TokenWindow', 'Token window', rl.token_window_seconds, 'Length of the token window.', 's'),
-    ].join('') + cardFooter('rateLimitBody');
-
-    document.getElementById('cachingBody').innerHTML = [
-      switchRow('Caching:Enabled', 'Enabled', c.enabled, 'Caches responses of endpoints with caching enabled.'),
-      settingItem('Provider', c.provider ?? '—', 'Memory or Redis, set at startup.'),
-      numberRow('Caching:DefaultCacheDurationSeconds', 'Default duration', c.default_duration_seconds, 'Time a cached response stays valid.', 's'),
-      numberRow('Caching:MemoryCacheSizeLimitMB', 'Memory budget', c.max_size_mb, 'Upper limit of the in-memory cache.', 'MB'),
-    ].join('') + cardFooter('cachingBody');
-
-    document.getElementById('sqlBody').innerHTML = [
-      switchRow('SqlConnectionPooling:Enabled', 'Enabled', sql.enabled, 'Reuses database connections between requests.'),
-      numberRow('SqlConnectionPooling:MinPoolSize', 'Minimum pool size', sql.min_pool_size, 'Connections kept open per connection string.'),
-      numberRow('SqlConnectionPooling:MaxPoolSize', 'Maximum pool size', sql.max_pool_size, 'Upper limit before requests wait for a connection.'),
-      numberRow('SqlConnectionPooling:ConnectionTimeout', 'Connection timeout', sql.connection_timeout, 'Wait time to open a connection.', 's'),
-      numberRow('SqlConnectionPooling:CommandTimeout', 'Command timeout', sql.command_timeout, 'Wait time for a statement to finish.', 's'),
-    ].join('') + cardFooter('sqlBody');
-
-    document.getElementById('fileBody').innerHTML = [
-      settingItem('Storage directory', f.directory || '—', 'Folder for uploaded files, set at startup.'),
-      numberRow('FileStorage:MaxFileSizeBytes', 'Max file size', f.max_file_size_bytes, 'Largest accepted upload.', 'MB', 1048576),
-    ].join('') + cardFooter('fileBody');
-
-    document.getElementById('loggingBody').innerHTML = [
-      choiceRow('Serilog:MinimumLevel:Default', 'Minimum level', log.min_level, 'Events below this level are not written.'),
-      switchRow('RequestTrafficLogging:Enabled', 'Request traffic logging', feat.traffic_logging, 'Records proxied requests to file or SQLite.'),
-    ].join('') + cardFooter('loggingBody');
-
-    document.getElementById('reloadBody').innerHTML = [
-      switchRow('EndpointReloading:Enabled', 'Enabled', ep.enabled, 'Reloads endpoints and environments after a file change.'),
-      numberRow('EndpointReloading:DebounceMs', 'Debounce', ep.debounce_ms, 'Wait time after a change before reloading.', 'ms'),
-    ].join('') + cardFooter('reloadBody');
-
-    document.getElementById('telemetryBody').innerHTML = [
-      choiceRow('Telemetry:Provider', 'Provider', tel.provider, 'Exporter for traces and metrics.'),
-      inputRow('Telemetry:ServiceName', 'Service name', tel.service_name, 'Service name on every span and metric.', 'Portway.Api'),
-      inputRow('Telemetry:Otlp:Endpoint', 'OTLP endpoint', tel.otlp_endpoint, 'Collector address for the Otlp provider.', 'http://localhost:4317'),
-      ...(tel.prometheus_path ? [settingItem('Scrape path', tel.prometheus_path, 'Path Prometheus scrapes metrics from.')] : []),
-    ].join('') + cardFooter('telemetryBody');
-
-    document.getElementById('mcpBody').innerHTML = [
-      switchRow('Mcp:Enabled', 'Enabled', m.enabled, 'Serves the MCP server for AI clients.'),
-      switchRow('Mcp:RequireAuthentication', 'Require a token', m.require_authentication, 'Rejects MCP calls without a bearer token.'),
-    ].join('') + cardFooter('mcpBody');
-
-    document.getElementById('chatBody').innerHTML = [
-      switchRow('Mcp:ChatEnabled', 'Enabled', d.chat?.enabled ?? false, 'Enables the chat console.'),
-    ].join('') + cardFooter('chatBody');
-
-    loadUsageRows(m.enabled);
-
+    loadUsageRows(d.mcp?.enabled);
   } catch(e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
-    ['rateLimitBody','telemetryBody','cachingBody','sqlBody','fileBody','loggingBody','reloadBody','mcpBody','securityBody','maintenanceBody','backupBody','openApiBody','docsBody','footerBody','chatBody','customizationBody','deploymentBody'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = msg;
-    });
+    Object.keys(CARDS).forEach(id => document.getElementById(id).innerHTML = msg);
   }
 
   loadAudit();

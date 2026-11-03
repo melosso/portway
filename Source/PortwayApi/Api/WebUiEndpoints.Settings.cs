@@ -12,6 +12,81 @@ using PortwayApi.Helpers;
 
 public static partial class WebUiEndpointExtensions
 {
+    /// <summary>
+    /// Current value of every writable setting. Excludes write-only settings.
+    /// </summary>
+    internal static Dictionary<string, object?> SettingValues(IConfiguration config, PortwayApi.Classes.OpenApi.OpenApiSettings openApi, string effectiveTelemetryProvider)
+    {
+        string[] List(string key) => config.GetSection(key).Get<string[]>() ?? [];
+
+        return new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["RateLimiting:Enabled"] = config.GetValue<bool>("RateLimiting:Enabled"),
+            ["RateLimiting:IpLimit"] = config.GetValue<int>("RateLimiting:IpLimit"),
+            ["RateLimiting:IpWindow"] = config.GetValue<int>("RateLimiting:IpWindow"),
+            ["RateLimiting:TokenLimit"] = config.GetValue<int>("RateLimiting:TokenLimit"),
+            ["RateLimiting:TokenWindow"] = config.GetValue<int>("RateLimiting:TokenWindow"),
+            ["Caching:Enabled"] = config.GetValue<bool>("Caching:Enabled"),
+            ["Caching:DefaultCacheDurationSeconds"] = config.GetValue<int>("Caching:DefaultCacheDurationSeconds"),
+            ["Caching:MemoryCacheSizeLimitMB"] = config.GetValue<int>("Caching:MemoryCacheSizeLimitMB"),
+            ["SqlConnectionPooling:Enabled"] = config.GetValue<bool>("SqlConnectionPooling:Enabled"),
+            ["SqlConnectionPooling:MinPoolSize"] = config.GetValue<int>("SqlConnectionPooling:MinPoolSize"),
+            ["SqlConnectionPooling:MaxPoolSize"] = config.GetValue<int>("SqlConnectionPooling:MaxPoolSize"),
+            ["SqlConnectionPooling:ConnectionTimeout"] = config.GetValue<int>("SqlConnectionPooling:ConnectionTimeout"),
+            ["SqlConnectionPooling:CommandTimeout"] = config.GetValue<int>("SqlConnectionPooling:CommandTimeout"),
+            ["EndpointReloading:Enabled"] = config.GetValue<bool>("EndpointReloading:Enabled"),
+            ["EndpointReloading:DebounceMs"] = config.GetValue<int>("EndpointReloading:DebounceMs"),
+            ["Serilog:MinimumLevel:Default"] = config["Serilog:MinimumLevel:Default"] ?? "Information",
+            ["DatabaseMaintenance:Enabled"] = config.GetValue("DatabaseMaintenance:Enabled", true),
+            ["DatabaseMaintenance:Schedule"] = config["DatabaseMaintenance:Schedule"] ?? "03:00",
+            ["DatabaseMaintenance:Backup:Enabled"] = config.GetValue("DatabaseMaintenance:Backup:Enabled", true),
+            ["DatabaseMaintenance:Backup:Retention"] = config.GetValue("DatabaseMaintenance:Backup:Retention", 7),
+            ["Mcp:Enabled"] = config.GetValue<bool>("Mcp:Enabled"),
+            ["Mcp:RequireAuthentication"] = config.GetValue<bool>("Mcp:RequireAuthentication"),
+            ["Mcp:ChatEnabled"] = config.GetValue<bool>("Mcp:ChatEnabled"),
+            ["Console:SecureCookies"] = config.GetValue("Console:SecureCookies", false),
+            ["Console:Enabled"] = config.GetValue("Console:Enabled", true),
+            ["Console:Customization:EnableLandingPage"] = config.GetValue("Console:Customization:EnableLandingPage", true),
+            ["Console:Customization:PromoText"] = config["Console:Customization:PromoText"] ?? "",
+            ["Console:Customization:PromoLogin"] = config.GetValue("Console:Customization:PromoLogin", false),
+            ["Console:Customization:LoginFooter"] = config["Console:Customization:LoginFooter"] ?? "",
+            ["Console:PublicOrigins"] = List("Console:PublicOrigins"),
+            ["ForwardedHeaders:KnownProxies"] = List("ForwardedHeaders:KnownProxies"),
+            ["ForwardedHeaders:KnownNetworks"] = List("ForwardedHeaders:KnownNetworks"),
+            ["Oidc:Enabled"] = config.GetValue("Oidc:Enabled", true),
+            ["RequestTrafficLogging:Enabled"] = config.GetValue("RequestTrafficLogging:Enabled", false),
+            ["FileStorage:MaxFileSizeBytes"] = config.GetValue<long>("FileStorage:MaxFileSizeBytes"),
+            ["Telemetry:Provider"] = config["Telemetry:Provider"] is { Length: > 0 } provider ? provider : effectiveTelemetryProvider,
+            ["Telemetry:ServiceName"] = config["Telemetry:ServiceName"] ?? "",
+            ["Telemetry:Otlp:Endpoint"] = config["Telemetry:Otlp:Endpoint"] ?? "",
+            ["OpenApi:Enabled"] = config.GetValue("OpenApi:Enabled", true),
+            ["OpenApi:Title"] = openApi.Title,
+            ["OpenApi:Version"] = openApi.Version,
+            ["OpenApi:Description"] = openApi.Description,
+            ["OpenApi:Contact:Name"] = openApi.Contact.Name,
+            ["OpenApi:Contact:Email"] = openApi.Contact.Email,
+            ["OpenApi:ForceHttpsInProduction"] = openApi.ForceHttpsInProduction,
+            ["OpenApi:ShowNamespaces"] = openApi.ShowNamespaces,
+            ["OpenApi:DefaultGroup"] = openApi.DefaultGroup,
+            ["OpenApi:ShowBadges"] = openApi.ShowBadges,
+            ["OpenApi:ServeMarkdown"] = openApi.ServeMarkdown,
+            ["OpenApi:ExternalDocs:Url"] = openApi.ExternalDocs.Url,
+            ["OpenApi:ExternalDocs:Description"] = openApi.ExternalDocs.Description,
+            ["OpenApi:SecurityDefinition:Description"] = openApi.SecurityDefinition.Description,
+            ["OpenApi:Footer:Text"] = openApi.Footer.Text,
+            ["OpenApi:Footer:Url"] = openApi.Footer.Url,
+            ["OpenApi:Footer:Target"] = openApi.Footer.Target,
+            ["OpenApi:Footer:ShowSourceIcon"] = openApi.Footer.ShowSourceIcon,
+            ["OpenApi:ScalarTheme"] = openApi.ScalarTheme,
+            ["OpenApi:ScalarLayout"] = openApi.ScalarLayout,
+            ["OpenApi:ScalarShowSidebar"] = openApi.ScalarShowSidebar,
+            ["OpenApi:ScalarHideDownloadButton"] = openApi.ScalarHideDownloadButton,
+            ["OpenApi:ScalarHideModels"] = openApi.ScalarHideModels,
+            ["OpenApi:ScalarHideClientButton"] = openApi.ScalarHideClientButton,
+            ["OpenApi:ScalarHideTestRequestButton"] = openApi.ScalarHideTestRequestButton
+        };
+    }
+
     private static void MapSettingsRoutes(WebApplication app, PortwayApi.Services.Configuration.ConfigAuditService configAudit)
     {
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
@@ -39,18 +114,14 @@ public static partial class WebUiEndpointExtensions
             var peerIp = ctx.Connection.RemoteIpAddress;
             var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy = !string.IsNullOrEmpty(forwardedFor);
-            var openApi = openApiMonitor.CurrentValue;
+            var values = SettingValues(config, openApiMonitor.CurrentValue, telemetry.EffectiveProvider.ToString());
 
             return Results.Json(new
             {
                 database_maintenance = new
                 {
-                    enabled = config.GetValue<bool>("DatabaseMaintenance:Enabled", true),
-                    schedule = config.GetValue<string>("DatabaseMaintenance:Schedule") ?? "03:00",
                     last_run_utc = dbMaintenance?.LastRunUtc,
-                    last_results = dbMaintenance?.LastRunResults.Select(MaintenanceResultDto),
-                    backup_enabled = config.GetValue("DatabaseMaintenance:Backup:Enabled", true),
-                    backup_retention = config.GetValue("DatabaseMaintenance:Backup:Retention", 7)
+                    last_results = dbMaintenance?.LastRunResults.Select(MaintenanceResultDto)
                 },
                 security = new
                 {
@@ -70,102 +141,25 @@ public static partial class WebUiEndpointExtensions
                     forwarded_ignored = behindProxy && trustedProxyCount == 0,
                     console_public = publicOrigins.Length > 0
                 },
-                deployment = new
-                {
-                    public_origins = publicOrigins,
-                    known_proxies = knownProxies,
-                    known_networks = knownNetworks
-                },
-                // subsystem switches
                 features = new
                 {
-                    oidc = config.GetValue("Oidc:Enabled", true),
-                    openapi = config.GetValue("OpenApi:Enabled", true),
-                    traffic_logging = config.GetValue("RequestTrafficLogging:Enabled", false),
-                    landing_page = config.GetValue("Console:Customization:EnableLandingPage", true),
                     oidc_providers = await db.OidcProviders.CountAsync(p => p.IsEnabled)
-                },
-                openapi = new
-                {
-                    title = openApi.Title,
-                    version = openApi.Version,
-                    description = openApi.Description,
-                    contact_name = openApi.Contact.Name,
-                    contact_email = openApi.Contact.Email,
-                    force_https = openApi.ForceHttpsInProduction,
-                    show_namespaces = openApi.ShowNamespaces,
-                    default_group = openApi.DefaultGroup,
-                    show_badges = openApi.ShowBadges,
-                    serve_markdown = openApi.ServeMarkdown,
-                    external_docs_url = openApi.ExternalDocs.Url,
-                    external_docs_description = openApi.ExternalDocs.Description,
-                    security_description = openApi.SecurityDefinition.Description,
-                    footer_text = openApi.Footer.Text,
-                    footer_url = openApi.Footer.Url,
-                    footer_target = openApi.Footer.Target,
-                    footer_source_icon = openApi.Footer.ShowSourceIcon,
-                    theme = openApi.ScalarTheme,
-                    layout = openApi.ScalarLayout,
-                    show_sidebar = openApi.ScalarShowSidebar,
-                    hide_download = openApi.ScalarHideDownloadButton,
-                    hide_models = openApi.ScalarHideModels,
-                    hide_client = openApi.ScalarHideClientButton,
-                    hide_test_request = openApi.ScalarHideTestRequestButton
-                },
-                customization = new
-                {
-                    promo_text = config.GetValue<string>("Console:Customization:PromoText") ?? "",
-                    promo_login = config.GetValue("Console:Customization:PromoLogin", false),
-                    login_footer = config.GetValue<string>("Console:Customization:LoginFooter") ?? ""
                 },
                 rate_limiting = new
                 {
-                    enabled = config.GetValue<bool>("RateLimiting:Enabled"),
-                    store = config.GetValue<string>("RateLimiting:Store") ?? "Memory",
-                    ip_limit = config.GetValue<int>("RateLimiting:IpLimit"),
-                    ip_window_seconds = config.GetValue<int>("RateLimiting:IpWindow"),
-                    token_limit = config.GetValue<int>("RateLimiting:TokenLimit"),
-                    token_window_seconds = config.GetValue<int>("RateLimiting:TokenWindow")
+                    store = config.GetValue<string>("RateLimiting:Store") ?? "Memory"
                 },
                 caching = new
                 {
-                    enabled = config.GetValue<bool>("Caching:Enabled"),
-                    provider = config.GetValue<string>("Caching:ProviderType") ?? "Memory",
-                    default_duration_seconds = config.GetValue<int>("Caching:DefaultCacheDurationSeconds"),
-                    max_size_mb = config.GetValue<int>("Caching:MemoryCacheSizeLimitMB")
-                },
-                sql_pooling = new
-                {
-                    enabled = config.GetValue<bool>("SqlConnectionPooling:Enabled"),
-                    min_pool_size = config.GetValue<int>("SqlConnectionPooling:MinPoolSize"),
-                    max_pool_size = config.GetValue<int>("SqlConnectionPooling:MaxPoolSize"),
-                    connection_timeout = config.GetValue<int>("SqlConnectionPooling:ConnectionTimeout"),
-                    command_timeout = config.GetValue<int>("SqlConnectionPooling:CommandTimeout")
+                    provider = config.GetValue<string>("Caching:ProviderType") ?? "Memory"
                 },
                 file_storage = new
                 {
-                    directory = config.GetValue<string>("FileStorage:StorageDirectory") ?? "",
-                    max_file_size_mb = config.GetValue<long>("FileStorage:MaxFileSizeBytes") / 1024 / 1024,
-                    max_file_size_bytes = config.GetValue<long>("FileStorage:MaxFileSizeBytes")
-                },
-                logging = new
-                {
-                    min_level = config.GetSection("Serilog:MinimumLevel:Default").Value ?? "Information",
-                    sinks = config.GetSection("Serilog:WriteTo").GetChildren()
-                                .Select(s => s["Name"] ?? "")
-                                .Where(n => !string.IsNullOrEmpty(n))
-                                .ToList()
-                },
-                endpoint_reloading = new
-                {
-                    enabled = config.GetValue<bool>("EndpointReloading:Enabled"),
-                    debounce_ms = config.GetValue<int>("EndpointReloading:DebounceMs")
+                    directory = config.GetValue<string>("FileStorage:StorageDirectory") ?? ""
                 },
                 telemetry = new
                 {
-                    provider = config["Telemetry:Provider"] is { Length: > 0 } provider ? provider : telemetry.EffectiveProvider.ToString(),
-                    service_name = config["Telemetry:ServiceName"] ?? "",
-                    otlp_endpoint = config["Telemetry:Otlp:Endpoint"] ?? "",
+                    provider = values["Telemetry:Provider"],
                     prometheus_path = telemetry.ActiveMetricsPath
                 },
                 mcp = new
@@ -190,7 +184,8 @@ public static partial class WebUiEndpointExtensions
                     min = w.Min,
                     max = w.Max,
                     choices = w.Choices,
-                    env = writer.LockedBy(w.Key)
+                    env = writer.LockedBy(w.Key),
+                    value = values.GetValueOrDefault(w.Key)
                 })
             });
         }).ExcludeFromDescription();
