@@ -150,6 +150,7 @@ try
 
     // Fixed password for the seeded admin account; demo/non-production instances only, never required
     var seedPassword = builder.Configuration.GetValue<string>("Console:SeedPassword");
+    var seedToken = builder.Configuration.GetValue<string>("Console:SeedToken");
 
     // Refuse to start outside Development without a proper encryption key
     SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
@@ -209,7 +210,7 @@ try
     await app.InitializeMcpConfigDatabaseAsync();
 
     // Initialise auth.db; without webui, write a default token file if none exist
-    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, webUiEnabled, seedPassword);
+    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, webUiEnabled, seedPassword, seedToken);
 
     // Log cache configuration
     app.LogCacheConfiguration();

@@ -71,4 +71,25 @@ public sealed class TokenLookupTests : IAsyncLifetime
 
         Assert.Null(await _tokens.GetTokenDetailsByTokenAsync("not-a-token"));
     }
+
+    [Fact]
+    public async Task SeedTokenVerifiesWithFullAccess()
+    {
+        const string token = "demo-seed-token-0123456789abcdef0123";
+        await _tokens.SeedTokenAsync(token, "demo", TestContext.Current.CancellationToken);
+
+        var details = await _tokens.GetTokenDetailsByTokenAsync(token);
+        Assert.NotNull(details);
+        Assert.Equal("*", details.AllowedScopes);
+        Assert.Equal("*", details.AllowedEnvironments);
+    }
+
+    [Theory]
+    [InlineData("short")]
+    [InlineData("demo seed token with spaces 0123456789")]
+    public async Task SeedTokenRejectsWeakValues(string token)
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _tokens.SeedTokenAsync(token, "demo", TestContext.Current.CancellationToken));
+        Assert.False(await _db.Tokens.AnyAsync(TestContext.Current.CancellationToken));
+    }
 }
