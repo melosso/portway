@@ -35,6 +35,9 @@ public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
     private readonly ConnectionMultiplexer? _redis;
     private readonly IDatabase? _db;
 
+    // 1 while Redis evaluations fail, so an outage logs once
+    private int _failing;
+
     public RedisRateLimiterStore(string connectionString, InMemoryRateLimiterStore fallback, TimeProvider timeProvider)
     {
         _fallback = fallback;
@@ -70,6 +73,9 @@ public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
             if (result is not { Length: 3 })
                 return await _fallback.TryConsumeAsync(key, limit, windowSeconds, cancellationToken);
 
+            if (Interlocked.Exchange(ref _failing, 0) == 1)
+                Log.Information("Redis rate limit store responds again, shared limits restored");
+
             return new RateLimitLease(
                 (long)result[0] == 1,
                 limit,
@@ -79,7 +85,10 @@ public class RedisRateLimiterStore : IRateLimiterStore, IDisposable
         catch (Exception ex)
         {
             // Fail open to the local store; rate limiting must never take the gateway down
-            Log.Warning(ex, "Redis rate limit evaluation failed, using in-memory fallback");
+            if (Interlocked.Exchange(ref _failing, 1) == 0)
+                Log.Warning(ex, "Redis rate limit evaluation failed, using in-memory fallback until Redis responds");
+            else
+                Log.Debug(ex, "Redis rate limit evaluation failed, using in-memory fallback");
             return await _fallback.TryConsumeAsync(key, limit, windowSeconds, cancellationToken);
         }
     }
