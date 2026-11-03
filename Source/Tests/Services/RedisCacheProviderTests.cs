@@ -12,6 +12,9 @@ public sealed class RedisCacheProviderTests
 
     private static readonly RedisConnectionException ConnectionLost = new(ConnectionFailureType.SocketFailure, "connection lost");
 
+    private static ConnectionFailedEventArgs NodeEvent() =>
+        new(null, new System.Net.DnsEndPoint("redis", 6379), ConnectionType.Interactive, ConnectionFailureType.None, null, "redis");
+
     private static (RedisCacheProvider Provider, Mock<IDatabase> Db, Mock<IConnectionMultiplexer> Redis, MemoryCacheProvider Fallback) Create(bool fallback = true, bool connected = true)
     {
         var options = Options.Create(new CacheOptions { Redis = new RedisOptions { FallbackToMemoryCache = fallback, MaxRetryAttempts = 0 } });
@@ -44,5 +47,23 @@ public sealed class RedisCacheProviderTests
 
         Assert.Null(await provider.GetAsync<Item>("k"));
         await provider.RemoveAsync("k");
+    }
+
+    [Fact]
+    public async Task CacheManager_UsesRedis_AfterAStartupWithoutConnection()
+    {
+        var (provider, db, redis, _) = Create(connected: false);
+        var manager = new CacheManager(
+            new PortwayApi.Tests.Support.StaticOptionsMonitor<CacheOptions>(new CacheOptions { ProviderType = CacheProviderType.Redis }),
+            new MemoryCacheProvider(Options.Create(new CacheOptions())),
+            new PortwayApi.Services.MetricsService(),
+            new PortwayApi.Services.Telemetry.PortwayMetrics(),
+            provider);
+
+        redis.SetupGet(r => r.IsConnected).Returns(true);
+        redis.Raise(r => r.ConnectionRestored += null, NodeEvent());
+        await manager.GetAsync<Item>("k");
+
+        db.Verify(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()), Times.Once);
     }
 }
