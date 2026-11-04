@@ -59,7 +59,7 @@ curl -H "Authorization: Bearer $TOKEN" "https://api.example.com/api/prod/v2/Inve
 
 A token scoped to `Inventory/Products` returns `403` here. That scope grants `v1`. Use a token with `Inventory/Products@v2` or `Inventory/Products*`.
 
-`/docs` displays a version switch for the endpoint. `/docs/openapi/v2/openapi.json` contains the `v2` operations for client generation.
+`/docs` opens the latest version and displays a version switch. `/docs/openapi/v2/openapi.json` contains the `v2` operations for client generation.
 
 ## 4. Move clients to v2
 

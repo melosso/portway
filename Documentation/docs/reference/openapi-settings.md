@@ -20,14 +20,16 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | Errors | One shared response per status code under `components/responses` (`BadRequest`, `Unauthorized`, ...), each with the `ErrorResponse` schema (`ValidationErrorResponse` for `422`); `Unauthorized` declares `WWW-Authenticate` |
 | Security | Bearer requirement declared once on the document root |
 | `operationId` | `{method}_{namespace}_{endpoint}` (`get_WMS_Bins`, `merge_WMS_Bins`); `_byId` for `GET {endpoint}({id})`; composites `composite_...`, files `uploadFile_...`, `listFiles_...`, `downloadFile_...`, `deleteFile_...`. Derived from the route. Adding an endpoint changes no other id |
-| SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET` |
+| SQL key lookup | `GET /api/{env}/{endpoint}({id})` for tables and views that allow `GET`. `{id}` accepts `123`, `'ABC'`, `guid'...'` or a plain GUID; any other value returns `400` |
 | Tenant headers | Optional header parameters per `Tenancy` header; tenant columns `readOnly` in request bodies |
 | Table-valued function parameters | Query and header parameters from `FunctionParameters` |
 | `Hidden: true` | Endpoint omitted |
 | `Mcp.Exposed: true` | `MCP` badge (`x-badges`) on the endpoint's operations |
 | OData parameters | `OData` badge on operations that accept `$filter` |
+| `Badges` | `x-badges` on the endpoint's operations |
+| `Stability` | `x-scalar-stability` on the endpoint's operations; omitted for a deprecated endpoint |
 | `ExternalDocs` | Document-level `externalDocs` |
-| Endpoint versions | `/api/{env}/v{n}/...` paths under the endpoint's tag; `(v{n})` summary and `operationId` suffix ([Versions](/reference/namespaces#versions)) |
+| Endpoint versions | `/api/{env}/v{n}/...` paths under the endpoint's tag; `_v{n}` `operationId` suffix. `/docs/openapi.json` also includes a `(v{n})` summary suffix and version badge ([Versions](/reference/namespaces#versions)) |
 | Stored procedure names | Never included |
 
 ## Global configuration
@@ -92,7 +94,7 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ForceHttpsInProduction` | boolean | HTTPS server URLs in production (default `true`) |
 | `ShowNamespaces` | boolean | Groups endpoints by namespace in the sidebar (default `true`); `false` lists every endpoint flat |
 | `DefaultGroup` | string | Sidebar group for endpoints without a namespace (default `General`); empty lists them ungrouped |
-| `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`) |
+| `ShowBadges` | boolean | `MCP` and `OData` badges on operations (default `true`). Configured `Badges` are independent of this setting. |
 | `ServeMarkdown` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `true`, `PORTWAY_OPENAPI_MARKDOWN`) |
 | `ExternalDocs.Url` | string | Link to an external API guide, shown with the document description; empty omits it |
 | `ExternalDocs.Description` | string | Label for that link |
@@ -139,7 +141,7 @@ Every operation has a shareable URL under `/docs` (for example `/docs/tag/...`).
 | Property | Type | Required | Description |
 |---|---|---|---|
 | `TagDescription` | string | No | Tag description (Markdown) |
-| `MethodDescriptions` | object | No | Short summary per method |
+| `MethodDescriptions` | object | No | Short summary per method. `GET:id` (case-insensitive) sets the SQL key lookup summary; default `Get {DisplayName} by ID`, or `Get record by ID` without `DisplayName` |
 | `MethodDocumentation` | object | No | Long description per method (Markdown) |
 | `Examples` | object | No | Success response example per method; replaces generated sample data |
 
