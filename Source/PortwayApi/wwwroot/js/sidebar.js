@@ -231,6 +231,15 @@ function renderSidebar(mcpEnabled) {
 
 let _openapiEnabled = false;
 
+// body capture costs throughput and writes request data to disk, so the Trace item stays marked while it runs
+function markBodyCapture() {
+    const link = document.querySelector(`.side-nav a[href="${window.PortwayBase || ''}/_/trace"]`);
+    if (!link) return;
+    link.title = 'Trace: body capture is running';
+    link.setAttribute('aria-label', 'Trace, body capture is running');
+    link.insertAdjacentHTML('beforeend', '<i class="nav-dot" aria-hidden="true"></i>');
+}
+
 Promise.all([
     api('/_/api/overview', { silent: true }),
     api('/_/api/settings', { silent: true }).catch(() => ({ mcp: { enabled: false } })),
@@ -246,6 +255,8 @@ Promise.all([
 
         _openapiEnabled = d.openapi_enabled ?? false;
         renderSidebar(mcpEnabled);
+        const trace = settings?.traffic_logging;
+        if (trace?.request_bodies || trace?.response_bodies) markBodyCapture();
         if (_openapiEnabled) mountDocsButton();
 
         const v = (d.version ?? '').split('+')[0];

@@ -491,6 +491,20 @@ aside {
 .nav-item:hover svg {
     color: hsl(var(--sidebar-fg));
 }
+.nav-dot {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    margin-left: auto;
+    border-radius: 50%;
+    background: hsl(var(--warning));
+}
+.sidebar-collapsed .nav-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    margin: 0;
+}
 .nav-item.active {
     background-color: hsl(var(--sidebar-active));
     color: hsl(var(--brand));
@@ -1204,6 +1218,11 @@ h1 {
 }
 
 /* settings form rows, shared by the Settings and Trace pages */
+.settings-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
 /* Markdown fields need the full card width, not the 22rem control column */
 .setting-row-stacked {
     grid-template-columns: minmax(0, 1fr);

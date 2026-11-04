@@ -75,4 +75,39 @@ public class SettingValuesTests
 
         Assert.Equal(15, values["RateLimiting:IpWindowSeconds"]);
     }
+
+    private static System.Text.Json.JsonElement TrafficStatus(PortwayApi.Middleware.RequestTrafficLoggingOptions running, Dictionary<string, string?> saved) =>
+        System.Text.Json.JsonSerializer.SerializeToElement(WebUiEndpointExtensions.TrafficLoggingStatus(running,
+            new ConfigurationBuilder().AddInMemoryCollection(saved).Build()));
+
+    [Fact]
+    public void TrafficStatus_ReportsTheRunningBodyCapture()
+    {
+        var status = TrafficStatus(new() { Enabled = true, CaptureResponseBodies = true },
+            new() { ["RequestTrafficLogging:Enabled"] = "true", ["RequestTrafficLogging:CaptureResponseBodies"] = "true" });
+
+        Assert.True(status.GetProperty("running").GetBoolean());
+        Assert.False(status.GetProperty("request_bodies").GetBoolean());
+        Assert.True(status.GetProperty("response_bodies").GetBoolean());
+        Assert.False(status.GetProperty("restart_required").GetBoolean());
+    }
+
+    [Fact]
+    public void TrafficStatus_IgnoresBodyFlagsWhileLoggingIsOff()
+    {
+        var status = TrafficStatus(new() { Enabled = false, CaptureRequestBodies = true },
+            new() { ["RequestTrafficLogging:CaptureRequestBodies"] = "true" });
+
+        Assert.False(status.GetProperty("request_bodies").GetBoolean());
+    }
+
+    [Fact]
+    public void TrafficStatus_RequiresARestartWhenTheSavedSettingsDiffer()
+    {
+        var status = TrafficStatus(new() { Enabled = false },
+            new() { ["RequestTrafficLogging:Enabled"] = "true" });
+
+        Assert.True(status.GetProperty("restart_required").GetBoolean());
+        Assert.False(status.GetProperty("running").GetBoolean());
+    }
 }

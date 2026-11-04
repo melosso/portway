@@ -1,15 +1,4 @@
 <script src="js/components/settings-form.js"></script>
-<style>
-    .trace-warning {
-        font-size: 0.8rem;
-        color: hsl(var(--destructive));
-        padding: 0.5rem 0.75rem;
-        margin-bottom: 0.5rem;
-        background: hsl(var(--destructive) / 0.08);
-        border: 1px solid hsl(var(--destructive) / 0.25);
-        border-radius: 5px;
-    }
-</style>
 
 <main>
     <div class="page-header">
@@ -102,9 +91,8 @@ const CARDS = {
 
   captureBody: {
     rows: () => [
-      '<p class="trace-warning">Bodies are logged unfiltered. Redacted: the Authorization and Cookie headers, and the credential headers and query parameters defined in the environment settings.</p>',
-      field('RequestTrafficLogging:CaptureRequestBodies', 'Request bodies', 'Records the body sent by the client.'),
-      field('RequestTrafficLogging:CaptureResponseBodies', 'Response bodies', 'Records the body returned to the client.'),
+      field('RequestTrafficLogging:CaptureRequestBodies', 'Request bodies', 'Logged unfiltered. Credentials in headers are redacted.'),
+      field('RequestTrafficLogging:CaptureResponseBodies', 'Response bodies', 'Logged unfiltered. Credentials in headers are redacted.'),
       field('RequestTrafficLogging:MaxBodyCaptureSizeBytes', 'Size limit', 'Longer bodies are cut off.', { unit: 'KB', scale: 1024 }),
     ],
     confirm: changes => BODY_KEYS.some(k => changes[k] === true && _writable[k]?.value !== true) ? {
@@ -133,7 +121,11 @@ async function load() {
   if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
 
   try {
-    renderCards(CARDS, await api('/_/api/settings', { failure: 'Failed to load settings' }));
+    const d = await api('/_/api/settings', { failure: 'Failed to load settings' });
+    renderCards(CARDS, d);
+    // saved settings the running process has not picked up yet
+    if (d.traffic_logging?.restart_required)
+      ['trafficBody', 'captureBody'].forEach(id => document.getElementById(id + '-note').textContent = 'Saved. Restart Portway to apply.');
   } catch (e) {
     const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
     Object.keys(CARDS).forEach(id => document.getElementById(id).innerHTML = msg);

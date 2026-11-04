@@ -2,7 +2,7 @@ namespace PortwayApi.Middleware;
 /// <summary>
 /// Options bound from the RequestTrafficLogging section
 /// </summary>
-public class RequestTrafficLoggingOptions
+public sealed record RequestTrafficLoggingOptions
 {
     public bool Enabled { get; set; } = false;
     public int QueueCapacity { get; set; } = 10000;

@@ -142,12 +142,27 @@ public static partial class WebUiEndpointExtensions
         };
     }
 
+    /// <summary>
+    /// Traffic logging as the process runs it; restart_required when the saved settings differ from that
+    /// </summary>
+    internal static object TrafficLoggingStatus(PortwayApi.Middleware.RequestTrafficLoggingOptions running, IConfiguration config)
+    {
+        var saved = config.GetSection("RequestTrafficLogging").Get<PortwayApi.Middleware.RequestTrafficLoggingOptions>() ?? new();
+        return new
+        {
+            running = running.Enabled,
+            request_bodies = running.Enabled && running.CaptureRequestBodies,
+            response_bodies = running.Enabled && running.CaptureResponseBodies,
+            restart_required = running != saved
+        };
+    }
+
     private static void MapSettingsRoutes(WebApplication app, PortwayApi.Services.Configuration.ConfigAuditService configAudit)
     {
         void Audit(HttpContext ctx, string action, string targetType, string target, string? details = null, string? backupPath = null)
             => configAudit.Record(action, targetType, target, ctx.Connection.RemoteIpAddress?.ToString(), details, backupPath);
 
-        app.MapGet("/_/api/settings", async (IConfiguration config, PortwayApi.Services.Configuration.SettingsWriteService writer, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, IOptionsMonitor<PortwayApi.Classes.OpenApi.OpenApiSettings> openApiMonitor, HttpContext ctx) =>
+        app.MapGet("/_/api/settings", async (IConfiguration config, PortwayApi.Services.Configuration.SettingsWriteService writer, PortwayApi.Services.Telemetry.TelemetryOptions telemetry, PortwayApi.Services.Mcp.McpConfigService? mcpConfig, PortwayApi.Services.Database.DatabaseMaintenanceService? dbMaintenance, PortwayApi.Auth.AdminUserService users, PortwayApi.Auth.AuthDbContext db, IOptionsMonitor<PortwayApi.Classes.OpenApi.OpenApiSettings> openApiMonitor, IOptions<PortwayApi.Middleware.RequestTrafficLoggingOptions> trafficAtStartup, HttpContext ctx) =>
         {
             PortwayApi.Services.Mcp.McpConfigService.ConfigSnapshot? chatCfg = null;
             if (mcpConfig is not null)
@@ -208,6 +223,7 @@ public static partial class WebUiEndpointExtensions
                 {
                     provider = config.GetValue<string>("Caching:Provider") ?? "Memory"
                 },
+                traffic_logging = TrafficLoggingStatus(trafficAtStartup.Value, config),
                 file_storage = new
                 {
                     directory = config.GetValue<string>("FileStorage:StorageDirectory") ?? ""
