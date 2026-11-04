@@ -13,7 +13,7 @@ using PortwayApi.Helpers;
 public static partial class WebUiEndpointExtensions
 {
     /// <summary>
-    /// Current value of every writable setting. Secrets and seed credentials report whether they are set, never the value.
+    /// Current values; secrets report presence.
     /// </summary>
     internal static Dictionary<string, object?> SettingValues(IConfiguration config, PortwayApi.Classes.OpenApi.OpenApiSettings openApi, string effectiveTelemetryProvider)
     {
@@ -143,7 +143,7 @@ public static partial class WebUiEndpointExtensions
     }
 
     /// <summary>
-    /// Traffic logging as the process runs it; restart_required when the saved settings differ from that
+    /// Running traffic logging state.
     /// </summary>
     internal static object TrafficLoggingStatus(PortwayApi.Middleware.RequestTrafficLoggingOptions running, IConfiguration config)
     {

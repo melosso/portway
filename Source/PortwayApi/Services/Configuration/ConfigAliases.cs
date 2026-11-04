@@ -3,7 +3,7 @@ namespace PortwayApi.Services.Configuration;
 using Serilog;
 
 /// <summary>
-/// Reads deprecated configuration names under their current names with the same source precedence
+/// Resolves deprecated configuration names.
 /// </summary>
 public static class ConfigAliases
 {
@@ -12,7 +12,7 @@ public static class ConfigAliases
     public const string LegacySection = "WebUi";
 
     /// <summary>
-    /// Renamed keys as (current, deprecated); a value is copied, never converted
+    /// Renamed keys as (current, deprecated).
     /// </summary>
     public static readonly IReadOnlyList<(string Current, string Deprecated)> RenamedKeys =
     [
@@ -39,12 +39,12 @@ public static class ConfigAliases
     ];
 
     /// <summary>
-    /// Keys that no longer have an effect; the console drops them from its overrides file
+    /// Keys that no longer apply.
     /// </summary>
     public static readonly IReadOnlyList<string> RemovedKeys = ["Mcp:RequireAuthentication"];
 
     /// <summary>
-    /// The current name of a key; WebUi keys map to Console and renamed keys to their new name
+    /// Current name of a key.
     /// </summary>
     public static string Canonical(string key)
     {
@@ -53,13 +53,13 @@ public static class ConfigAliases
     }
 
     /// <summary>
-    /// The deprecated name of a current key, or null
+    /// Deprecated name, or null.
     /// </summary>
     public static string? Deprecated(string key) =>
         RenamedKeys.FirstOrDefault(r => r.Current.Equals(key, StringComparison.OrdinalIgnoreCase)).Deprecated;
 
     /// <summary>
-    /// Adds the provider that resolves current keys from the highest source holding either name
+    /// Adds the alias provider.
     /// </summary>
     public static ConfigurationManager AddConfigAliases(this ConfigurationManager config)
     {
@@ -85,7 +85,7 @@ public static class ConfigAliases
         key.StartsWith(section, StringComparison.OrdinalIgnoreCase) &&
         (key.Length == section.Length || key[section.Length] == ':');
 
-    // a Console key is also readable under WebUi
+    // WebUi also names Console
     private static IEnumerable<string> Names(string key) =>
         IsUnder(key, Section) ? [key, LegacySection + key[Section.Length..]] : [key];
 
@@ -126,7 +126,7 @@ public static class ConfigAliases
                 keys = Others.Aggregate(keys, (k, p) => p.GetChildKeys(k, legacy));
             }
 
-            // renamed keys appear under their new parent when a source holds the deprecated name
+            // Renamed keys under new parent
             var prefix = parentPath is null ? "" : parentPath + ":";
             foreach (var (current, deprecated) in RenamedKeys)
             {

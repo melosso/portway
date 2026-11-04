@@ -59,7 +59,7 @@ public sealed class RedisRateLimiterStoreTests
                 await store.TryConsumeAsync("outage", 100, 60, ct);
             await container.UnpauseAsync(ct);
 
-            // the client can need a few attempts to reconnect on a slow runner
+            // Reconnect can take several attempts
             var deadline = DateTime.UtcNow.AddSeconds(15);
             do
             {

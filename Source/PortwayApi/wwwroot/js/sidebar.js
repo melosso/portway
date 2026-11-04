@@ -231,7 +231,7 @@ function renderSidebar(mcpEnabled) {
 
 let _openapiEnabled = false;
 
-// body capture costs throughput and writes request data to disk, so the Trace item stays marked while it runs
+// Body capture is running
 function markBodyCapture() {
     const link = document.querySelector(`.side-nav a[href="${window.PortwayBase || ''}/_/trace"]`);
     if (!link) return;

@@ -82,6 +82,8 @@ The API listens on `http://localhost:8080`. Checks:
 
 Endpoint and environment files are reloaded on change. Other configuration changes require `docker compose restart`.
 
+The image contains the release files in `/opt/portway`. Each start copies them into the `portway_app` volume, so `docker compose pull` followed by `docker compose up -d` runs the new release. An existing `appsettings.json`, `endpoints/` and `environments/` in the volume are not changed.
+
 An environment variable overrides the same setting in `appsettings.overrides.json`, and the console displays that setting as read-only. `appsettings.overrides.json` can be bind-mounted as a single file: create it with the content `{}` before the first start, because Docker creates a directory for a missing bind-mount source.
 
 ## TLS

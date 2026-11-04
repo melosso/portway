@@ -254,7 +254,7 @@ try
     // Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
     app.MapPortwayFallback();
 
-    // Feature status, then hosting URLs and configuration reload status
+    // Feature status, then hosting
     Log.Information("Console: {Status}", webUiEnabled ? "Enabled" : "Disabled");
     OpenApiConfiguration.LogDocsStatus(app, openApiMonitor.CurrentValue);
     app.LogRateLimitStatus();

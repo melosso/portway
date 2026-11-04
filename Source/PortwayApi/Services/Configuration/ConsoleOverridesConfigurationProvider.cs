@@ -6,7 +6,7 @@ using PortwayApi.Helpers;
 using Serilog;
 
 /// <summary>
-/// Source for appsettings.overrides.json; lists and maps written by the console replace the lower layers
+/// Source for appsettings.overrides.json.
 /// </summary>
 public sealed class ConsoleOverridesConfigurationSource : JsonConfigurationSource
 {
@@ -23,7 +23,7 @@ public sealed class ConsoleOverridesConfigurationSource : JsonConfigurationSourc
 }
 
 /// <summary>
-/// Decrypts PWENC values and hides lower-layer entries of every list or map the overrides file declares
+/// Decrypts values, replaces console collections.
 /// </summary>
 public sealed class ConsoleOverridesConfigurationProvider(ConsoleOverridesConfigurationSource source)
     : JsonConfigurationProvider(source)

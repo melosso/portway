@@ -1217,7 +1217,7 @@ h1 {
     grid-template-columns: minmax(0, 1fr) auto;
 }
 
-/* settings form rows, shared by the Settings and Trace pages */
+/* Shared settings form rows */
 .settings-pane {
     display: flex;
     flex-direction: column;

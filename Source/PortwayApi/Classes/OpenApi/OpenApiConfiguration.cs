@@ -513,7 +513,7 @@ public static class OpenApiConfiguration
     }
 
     /// <summary>
-    /// Logs whether /docs is served, with the other feature lines after startup loading
+    /// Logs whether /docs is served.
     /// </summary>
     public static void LogDocsStatus(WebApplication app, OpenApiSettings settings)
     {

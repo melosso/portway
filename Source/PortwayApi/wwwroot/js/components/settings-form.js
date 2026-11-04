@@ -1,4 +1,4 @@
-// Settings form rows built from the /_/api/settings writable schema; the page defines CARDS and load()
+// Page defines CARDS and load()
 
 let _writable = {};
 
@@ -137,7 +137,7 @@ function cardFooter(bodyId, actionsHtml = '') {
   </div>`;
 }
 
-// fills every card body from the settings payload
+// Render every card
 function renderCards(cards, data) {
     _writable = Object.fromEntries((data.writable ?? []).map((w) => [w.key, w]));
     for (const [id, card] of Object.entries(cards)) {
@@ -166,7 +166,7 @@ function clearSecret(btn) {
     input.closest('.card')?.querySelector('.card-save')?.removeAttribute('disabled');
 }
 
-// removes a write-once credential such as a seed password; applied on restart
+// Remove a write-once credential
 function clearSetting(key, label) {
     AlertDialog.show({
         title: `Remove ${label}?`,
@@ -198,7 +198,7 @@ function readMap(el) {
     return map;
 }
 
-// value to send for one control, or undefined to leave the setting unchanged
+// Undefined leaves the setting unchanged
 function readControl(el) {
     switch (el.dataset.kind) {
         case 'bool':
@@ -260,7 +260,7 @@ async function saveCard(bodyId, btn) {
         }
     };
 
-    // a card can ask for confirmation before a risky change
+    // Optional confirm before saving
     const confirm = CARDS[bodyId]?.confirm?.(changes);
     if (confirm) AlertDialog.show({ ...confirm, onConfirm: send });
     else await send();

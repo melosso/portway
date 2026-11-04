@@ -7,7 +7,7 @@ using Xunit;
 namespace PortwayApi.Tests.Services;
 
 /// <summary>
-/// Every console-writable kind refuses values outside its rule before anything is written
+/// Validation per writable kind.
 /// </summary>
 public sealed class SettingsWriteKindTests
 {

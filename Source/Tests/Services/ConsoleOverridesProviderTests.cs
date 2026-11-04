@@ -5,7 +5,7 @@ using Xunit;
 namespace PortwayApi.Tests.Services;
 
 /// <summary>
-/// Lists and maps written by the console replace the base file, and encrypted values are read decrypted
+/// Console overrides provider behaviour.
 /// </summary>
 public sealed class ConsoleOverridesProviderTests
 {

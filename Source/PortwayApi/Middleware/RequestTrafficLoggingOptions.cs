@@ -1,6 +1,6 @@
 namespace PortwayApi.Middleware;
 /// <summary>
-/// Options bound from the RequestTrafficLogging section
+/// RequestTrafficLogging section options.
 /// </summary>
 public sealed record RequestTrafficLoggingOptions
 {

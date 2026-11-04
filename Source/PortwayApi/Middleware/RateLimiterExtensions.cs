@@ -11,7 +11,7 @@ public static class RateLimiterExtensions
     }
 
     /// <summary>
-    /// Logs the rate limit settings, with the other feature lines after startup loading
+    /// Logs the rate limit settings.
     /// </summary>
     public static void LogRateLimitStatus(this IApplicationBuilder app)
     {

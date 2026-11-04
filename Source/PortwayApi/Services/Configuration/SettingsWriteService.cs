@@ -50,7 +50,7 @@ public sealed class SettingsWriteService
 
     private static readonly Regex ExtensionFormat = new(@"^\.[A-Za-z0-9]{1,10}$", RegexOptions.Compiled);
 
-    // lands inside SQL connection strings, so separators and quotes are refused
+    // Part of SQL connection strings
     private static readonly Regex ApplicationNameFormat = new(@"^[A-Za-z0-9 ._()-]{1,128}$", RegexOptions.Compiled);
 
     private static readonly Regex ResourceAttributesFormat = new(@"^([A-Za-z0-9._-]+=[^,=;\s]+(,[A-Za-z0-9._-]+=[^,=;\s]+)*)?$", RegexOptions.Compiled);
@@ -196,7 +196,7 @@ public sealed class SettingsWriteService
         new("AllowedHosts", "hostlist", true, Max: 50),
         new("PathBase", "pathbase", true),
 
-        // Write-only in the safe direction: a credential can be cleared, never set
+        // Credentials: clear only, never set
         new("Console:AdminApiKey", "clear", true),
         new("Console:SeedPassword", "clear", true),
         new("Console:SeedToken", "clear", true),
@@ -219,7 +219,7 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Returns the name of the environment variable that sets the key under its current or deprecated name, or null
+    /// Locking env variable, or null.
     /// </summary>
     public string? LockedBy(string key) =>
         EnvAliases.EnvNameFor(key, _envNames) ??
@@ -228,7 +228,7 @@ public sealed class SettingsWriteService
     public static IReadOnlyCollection<WritableSetting> Schema => Allowed.Values;
 
     /// <summary>
-    /// Lists and maps replace the lower configuration layers as a whole
+    /// Collections replace lower layers.
     /// </summary>
     public static bool IsCollection(string kind) =>
         kind is "originlist" or "iplist" or "cidrlist" or "extlist" or "mediatypelist" or "intmap" or "levelmap";
@@ -315,7 +315,7 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Validates one value against its schema entry; returns the node to store or the reason it is refused
+    /// Validates one value.
     /// </summary>
     internal static (JsonNode? Node, string? Error) Coerce(string key, JsonElement raw) =>
         Allowed.TryGetValue(key, out var spec) ? Coerce(spec, raw) : (null, $"'{key}' is not a writable setting");
@@ -354,7 +354,7 @@ public sealed class SettingsWriteService
                 ? JsonValue.Create(level)
                 : null, $"one of {string.Join(", ", LogLevels)}"),
 
-        // the console sends a list, HostFiltering reads one semicolon-separated string
+        // HostFiltering expects one string
         "hostlist" => ReadList(spec, raw, ParseHost) switch
         {
             (JsonArray { Count: 0 }, null) => (null, $"'{spec.Key}' needs at least one host, or *"),
@@ -367,7 +367,7 @@ public sealed class SettingsWriteService
             ? (JsonValue.Create(""), null)
             : (null, $"'{spec.Key}' can only be cleared from here, not set"),
 
-        // stored encrypted; empty or null removes the value
+        // Encrypted; empty clears
         "secret" => raw.ValueKind switch
         {
             JsonValueKind.Null => (null, null),
@@ -422,7 +422,7 @@ public sealed class SettingsWriteService
     };
 
     /// <summary>
-    /// Reads a JSON string and runs it through the kind's own parser
+    /// Reads and validates a string.
     /// </summary>
     private static (JsonNode? Node, string? Error) ReadString(WritableSetting spec, JsonElement raw, Func<string, string?> validate)
     {
@@ -464,7 +464,7 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Reads a JSON object of at most 100 entries; keys must match the format, values pass the reader
+    /// Reads a validated map.
     /// </summary>
     private static (JsonNode? Node, string? Error) ReadMap(
         WritableSetting spec, JsonElement raw, Regex keyFormat, Func<JsonElement, JsonNode?> read, string expected)
@@ -545,7 +545,7 @@ public sealed class SettingsWriteService
             : $"'{value}' must be a media type such as application/json";
 
     /// <summary>
-    /// A path under the working directory that stays clear of Portway's own folders and databases
+    /// Relative path outside Portway folders.
     /// </summary>
     private static string? ParseRelativePath(string value)
     {
@@ -609,7 +609,7 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Rules across settings; a side missing from the request is read from the current configuration
+    /// Rules across settings.
     /// </summary>
     private (string Message, string Field)? CrossCheck(IReadOnlyDictionary<string, JsonNode?> parsed)
     {
@@ -630,7 +630,7 @@ public sealed class SettingsWriteService
             string.Equals(Value("Mcp:Path", "/mcp"), Value("Telemetry:Prometheus:Path", "/metrics"), StringComparison.OrdinalIgnoreCase))
             return ("The MCP path and the metrics path must differ", route);
 
-        // uploaded files are served back, so their folder must not hold any log
+        // Uploads are served back
         if (Touched("FileStorage:StorageDirectory", "RequestTrafficLogging:LogDirectory", "RequestTrafficLogging:SqlitePath") is { } folder)
         {
             var storage = Value("FileStorage:StorageDirectory", "files")!;
@@ -655,7 +655,7 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Moves values written under a deprecated name to the current name, unless the current name is already set, and drops removed keys
+    /// Migrates deprecated and removed keys.
     /// </summary>
     internal static void MigrateDeprecatedKeys(JsonObject root)
     {

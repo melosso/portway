@@ -109,7 +109,7 @@ const CARDS = {
   ] },
 };
 
-// storage fields follow the selected provider before save
+// Show the selected storage fields
 document.addEventListener('change', e => {
   if (e.target.dataset?.setting !== 'RequestTrafficLogging:Provider') return;
   const sqlite = e.target.value.toLowerCase() === 'sqlite';
@@ -123,7 +123,7 @@ async function load() {
   try {
     const d = await api('/_/api/settings', { failure: 'Failed to load settings' });
     renderCards(CARDS, d);
-    // saved settings the running process has not picked up yet
+    // Saved, not yet running
     if (d.traffic_logging?.restart_required)
       ['trafficBody', 'captureBody'].forEach(id => document.getElementById(id + '-note').textContent = 'Saved. Restart Portway to apply.');
   } catch (e) {
