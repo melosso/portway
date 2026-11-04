@@ -29,6 +29,10 @@ public class SqlErrorClassifierTests
     }
 
     [Fact]
+    public void UnknownDbException_IsNotTypeMismatch() =>
+        Assert.False(SqlErrorClassifier.IsTypeMismatch(new FakeDbException("boom")));
+
+    [Fact]
     public void UnknownDbException_IsNotIntentional_AndDescribesType()
     {
         var ex = new FakeDbException("boom");

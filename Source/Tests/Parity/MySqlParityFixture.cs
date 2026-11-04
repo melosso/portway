@@ -14,6 +14,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
     public override string QualifiedCategoriesTable => "test.Categories";
     public override string QualifiedGuidKeysTable => "test.GuidKeys";
     public override string QualifiedTextKeysTable => "test.TextKeys";
+    public override string GuidKeyProcedureName => "FindGuidKey";
     public override string ProcedureSchema => "test";
     public override string ProcedureName => "GetProductsByPrice";
     public override string WriteProcedureName => "ManageProduct";
@@ -42,6 +43,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
         $"INSERT INTO test.GuidKeys (Id, Name) VALUES {GuidKeySeedValues}",
         "CREATE TABLE test.TextKeys (Id VARCHAR(50) PRIMARY KEY, Name VARCHAR(100) NOT NULL)",
         $"INSERT INTO test.TextKeys (Id, Name) VALUES {TextKeySeedValues}",
+        "CREATE PROCEDURE test.FindGuidKey(IN Method VARCHAR(10), IN Id CHAR(36), IN Name VARCHAR(100)) SELECT k.Name FROM test.GuidKeys k WHERE k.Id = Id",
         "CREATE PROCEDURE test.GetProductsByPrice(IN MinPrice DECIMAL(10,2)) SELECT Id, Name, Price FROM test.Products WHERE Price >= MinPrice",
         """
         CREATE PROCEDURE test.ManageProduct(IN Method VARCHAR(10), IN Id INT, IN Name VARCHAR(100), IN Price DECIMAL(10,2))

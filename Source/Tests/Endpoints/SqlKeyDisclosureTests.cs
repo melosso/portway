@@ -5,6 +5,7 @@ using System.Text.Json;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using Moq;
+using Npgsql;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
 using PortwayApi.Services.Providers;
@@ -41,7 +42,7 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
             DatabaseObjectName = "Items",
             DatabaseObjectType = "Table",
             AllowedEnvironments = new[] { Env },
-            AllowedMethods = new[] { "GET", "PUT", "PATCH", "DELETE" },
+            AllowedMethods = new[] { "GET", "POST", "PUT", "PATCH", "DELETE" },
             WriteMode = "Table",
             PrimaryKey = "ItemCode",
             AllowedColumns = new[] { "ItemCode;ProductNumber", "Description", "Legacy;Id" },
@@ -153,6 +154,14 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
     }
 
     [Fact]
+    public async Task UnhyphenatedGuidKey_ReturnsBadRequest()
+    {
+        var (status, _) = await Send(HttpMethod.Get, $"{Api}(3f2a1b4c111142228333444455556666)");
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+    }
+
+    [Fact]
     public async Task GuidKey_IgnoresClientFilter()
     {
         var (status, body) = await Send(HttpMethod.Get, $"{Api}(3f2a1b4c-1111-4222-8333-444455556666)?$filter=Description eq 'First'");
@@ -187,6 +196,39 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
         Assert.Equal(HttpStatusCode.OK, status);
         Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, $"{Api}(3f2a1b4c-1111-4222-8333-444455556666)")).Status);
         Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, $"{Api}('A1')")).Status);
+    }
+
+    private void FailDatabaseWith(string sqlState) =>
+        _mockEnvironmentSettingsProvider
+            .Setup(p => p.LoadEnvironmentOrThrowAsync(It.IsAny<string>()))
+            .ThrowsAsync(new PostgresException("internal detail", "ERROR", "ERROR", sqlState));
+
+    [Fact]
+    public async Task TypeMismatch_OnCollectionRead_StaysServerError()
+    {
+        FailDatabaseWith("42883");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, (await Send(HttpMethod.Get, Api)).Status);
+    }
+
+    [Theory]
+    [InlineData("GET", "('abc')")]
+    [InlineData("DELETE", "('abc')")]
+    public async Task OtherDatabaseError_OnKeyRequest_StaysServerError(string method, string suffix)
+    {
+        FailDatabaseWith("42P01");
+
+        Assert.Equal(HttpStatusCode.InternalServerError, (await Send(new HttpMethod(method), $"{Api}{suffix}")).Status);
+    }
+
+    [Fact]
+    public async Task DuplicateKey_ReturnsConflict_WithoutTheValue()
+    {
+        var (status, body) = await Send(HttpMethod.Post, Api, """{ "ProductNumber": "A1", "Description": "Again" }""");
+
+        Assert.Equal(HttpStatusCode.Conflict, status);
+        Assert.Contains("Record already exists", body);
+        Assert.DoesNotContain("A1", body);
     }
 
     [Fact]

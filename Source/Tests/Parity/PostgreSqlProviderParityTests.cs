@@ -24,3 +24,6 @@ public sealed class PostgreSqlProviderParityTests(PostgreSqlParityFixture fixtur
         Assert.Equal("System.Decimal", columns[1].ClrType);
     }
 }
+
+public sealed class PostgreSqlProviderHttpParityTests(PostgreSqlParityFixture fixture)
+    : ProviderHttpParityTests<PostgreSqlParityFixture>(fixture);
