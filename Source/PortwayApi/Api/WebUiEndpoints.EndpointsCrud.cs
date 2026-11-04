@@ -126,8 +126,8 @@ public static partial class WebUiEndpointExtensions
 
             rawContent = StampDeprecatedSince(rawContent);
 
-            if (TenancyError(type, rawContent) is { } putTenancyError)
-                return Results.Json(new { error = putTenancyError }, statusCode: 400);
+            if (ConfigError(type, rawContent) is { } putConfigError)
+                return Results.Json(new { error = putConfigError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
@@ -167,8 +167,8 @@ public static partial class WebUiEndpointExtensions
             try { using var _ = JsonDocument.Parse(rawContent); }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
-            if (TenancyError(type, rawContent) is { } postTenancyError)
-                return Results.Json(new { error = postTenancyError }, statusCode: 400);
+            if (ConfigError(type, rawContent) is { } postConfigError)
+                return Results.Json(new { error = postConfigError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             await File.WriteAllTextAsync(filePath!, rawContent);
@@ -289,7 +289,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             if (TypeStringToEndpointType(type) is { } validateType)
-                errors.AddRange(EndpointHandler.ValidateTenancy(validateType, rawContent));
+                errors.AddRange(EndpointHandler.ValidateConfig(validateType, rawContent));
 
             // Same namespace rules the loader enforces at startup (charset, length, reserved names)
             if (root.ValueKind == JsonValueKind.Object &&
@@ -304,14 +304,14 @@ public static partial class WebUiEndpointExtensions
         // Client JS errors, unauthenticated for sendBeacon and IP rate limited
     }
 
-    private static string? TenancyError(string type, string json) =>
-        TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateTenancy(endpointType, json) is { Count: > 0 } errors
+    private static string? ConfigError(string type, string json) =>
+        TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateConfig(endpointType, json) is { Count: > 0 } errors
             ? string.Join("; ", errors)
             : null;
 
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset"];
+    private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset", "Stability"];
 
     // the deprecation header needs a date, a deprecated endpoint without one gets today
     private static string StampDeprecatedSince(string json)

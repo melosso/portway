@@ -3229,6 +3229,20 @@ th.sortable.sort-desc .sort-icon {
     justify-content: center;
 }
 
+.ep-badge-row select.input {
+    flex: 0 0 5.5rem;
+}
+
+@media (max-width: 640px) {
+    .ep-badge-row {
+        flex-wrap: wrap;
+    }
+
+    .ep-badge-row [data-badge="name"] {
+        flex: 1 1 100%;
+    }
+}
+
 /* Allowed columns list */
 
 .ep-col-list {

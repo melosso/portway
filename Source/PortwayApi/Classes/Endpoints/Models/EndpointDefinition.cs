@@ -37,6 +37,16 @@ public class EndpointDefinition
     public DateTimeOffset? Sunset { get; set; }
 
     /// <summary>
+    /// Stable or Experimental, sent as x-scalar-stability
+    /// </summary>
+    public string? Stability { get; set; }
+
+    /// <summary>
+    /// Sent as x-badges on the endpoint's operations
+    /// </summary>
+    public List<EndpointBadge>? Badges { get; set; }
+
+    /// <summary>
     /// Version from a v{n} folder below the endpoint folder, null for the unversioned endpoint
     /// </summary>
     public string? Version { get; set; }

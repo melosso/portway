@@ -333,6 +333,9 @@ public class WebUiSecurityTests : IDisposable
     [InlineData("proxy", """{"Url":"http://localhost:8020/svc","Methods":["GET"]}""", true)]
     [InlineData("proxy", """{"Methods":["GET"]}""", false)]
     [InlineData("static", """{"ContentType":"text/csv","Namespace":"1bad"}""", false)]
+    [InlineData("static", """{ "ContentType": "text/plain", "ContentFile": "a.txt", "Stability": "Experimental", "Badges": [{ "Name": "New", "Position": "before", "Color": "#fff" }] }""", true)]
+    [InlineData("static", """{ "ContentType": "text/plain", "ContentFile": "a.txt", "Stability": "Deprecated" }""", false)]
+    [InlineData("static", """{ "ContentType": "text/plain", "ContentFile": "a.txt", "Badges": [{ "Name": "New", "Color": "red;x:y" }] }""", false)]
     public async Task ValidateEndpoint_ChecksTypeRules(string type, string content, bool expectValid)
     {
         var client = CreateClient();
@@ -693,7 +696,7 @@ public class WebUiSecurityTests : IDisposable
         var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiVer", "Items");
         Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), """{ "ContentType": "application/json", "ContentFile": "content.json", "Deprecated": true, "DeprecatedSince": "2026-01-01T00:00:00Z" }""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), """{ "ContentType": "application/json", "ContentFile": "content.json", "Deprecated": true, "DeprecatedSince": "2026-01-01T00:00:00Z", "Stability": "Stable" }""", TestContext.Current.CancellationToken);
         try
         {
             var client = CreateClient();
@@ -706,7 +709,13 @@ public class WebUiSecurityTests : IDisposable
             var body = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             Assert.Equal("UiVer/Items/v2", body.GetProperty("name").GetString());
             Assert.True(File.Exists(Path.Combine(dir, "v2", "content.json")));
-            Assert.DoesNotContain("Deprecated", await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken));
+            var copied = await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("Deprecated", copied);
+            Assert.DoesNotContain("Stability", copied);
+
+            var rejected = await Send(HttpMethod.Put, "/_/api/endpoints/static/UiVer/Items/v2",
+                new { content = new { ContentType = "application/json", ContentFile = "content.json", Stability = "Deprecated" } });
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
 
             var saved = await Send(HttpMethod.Put, "/_/api/endpoints/static/UiVer/Items/v2",
                 new { content = new { ContentType = "application/json", ContentFile = "content.json", Deprecated = true } });

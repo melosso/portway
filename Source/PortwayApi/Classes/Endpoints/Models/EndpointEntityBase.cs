@@ -39,6 +39,16 @@ public abstract class EndpointEntityBase
     /// </summary>
     public DateTimeOffset? Sunset { get; set; }
 
+    /// <summary>
+    /// Stable or Experimental, shown in the API reference; Deprecated takes precedence
+    /// </summary>
+    public string? Stability { get; set; }
+
+    /// <summary>
+    /// Labels on the endpoint's operations in the API reference
+    /// </summary>
+    public List<EndpointBadge>? Badges { get; set; }
+
     public McpSettings? Mcp { get; set; }
 
     /// <summary>
@@ -83,6 +93,8 @@ public abstract class EndpointEntityBase
         definition.Deprecated = Deprecated;
         definition.DeprecatedSince = DeprecatedSince;
         definition.Sunset = Sunset;
+        definition.Stability = Stability;
+        definition.Badges = Badges;
         definition.Mcp = Mcp;
         definition.AllowedEnvironments = AllowedEnvironments;
         definition.Documentation = Documentation;

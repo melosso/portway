@@ -14,46 +14,43 @@ public sealed class TableValuedFunctionDocumentFilter : IOpenApiDocumentTransfor
         if (document.Paths is null)
             return Task.CompletedTask;
 
-        var functions = OpenApiEndpointCatalog.All()
-            .Where(e => e.Definition.IsSql && SqlTableValuedFunctionHelper.IsTableValuedFunction(e.Definition) && e.Definition.FunctionParameters is { Count: > 0 })
-            .ToList();
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
 
         foreach (var (pathKey, pathItem) in document.Paths)
         {
-            if (pathItem.Operations is null)
+            if (pathItem.Operations is null
+                || OpenApiEndpointCatalog.Owner(endpoints, pathKey) is not { IsSql: true, FunctionParameters.Count: > 0 } definition
+                || !SqlTableValuedFunctionHelper.IsTableValuedFunction(definition))
                 continue;
 
-            foreach (var (_, definition) in functions.Where(e => OpenApiEndpointCatalog.Covers(e.BasePath, pathKey)))
-            {
-                var tenantTargets = definition.Tenancy?.Values.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
-                var documented = definition.FunctionParameters!
-                    .Where(p => !tenantTargets.Contains(p.Name))
-                    .Select(p => (Parameter: p, Location: p.Source.ToLowerInvariant() switch
-                    {
-                        "query" => ParameterLocation.Query,
-                        "header" => ParameterLocation.Header,
-                        _ => (ParameterLocation?)null
-                    }))
-                    .Where(p => p.Location is not null)
-                    .ToList();
-
-                foreach (var operation in pathItem.Operations.Values)
+            var tenantTargets = definition.Tenancy?.Values.ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            var documented = definition.FunctionParameters
+                .Where(p => !tenantTargets.Contains(p.Name))
+                .Select(p => (Parameter: p, Location: p.Source.ToLowerInvariant() switch
                 {
-                    operation.Parameters ??= [];
-                    foreach (var (parameter, location) in documented)
-                    {
-                        var name = location == ParameterLocation.Header ? parameter.HeaderName ?? parameter.Name : parameter.QueryParameterName ?? parameter.Name;
-                        if (operation.Parameters.Any(p => p.In == location && string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
-                            continue;
+                    "query" => ParameterLocation.Query,
+                    "header" => ParameterLocation.Header,
+                    _ => (ParameterLocation?)null
+                }))
+                .Where(p => p.Location is not null)
+                .ToList();
 
-                        operation.Parameters.Add(new OpenApiParameter
-                        {
-                            Name = name,
-                            In = location,
-                            Required = parameter.Required && string.IsNullOrEmpty(parameter.DefaultValue),
-                            Schema = new OpenApiSchema { Type = SchemaType(parameter.SqlType), Pattern = parameter.ValidationPattern }
-                        });
-                    }
+            foreach (var operation in pathItem.Operations.Values)
+            {
+                operation.Parameters ??= [];
+                foreach (var (parameter, location) in documented)
+                {
+                    var name = location == ParameterLocation.Header ? parameter.HeaderName ?? parameter.Name : parameter.QueryParameterName ?? parameter.Name;
+                    if (operation.Parameters.Any(p => p.In == location && string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)))
+                        continue;
+
+                    operation.Parameters.Add(new OpenApiParameter
+                    {
+                        Name = name,
+                        In = location,
+                        Required = parameter.Required && string.IsNullOrEmpty(parameter.DefaultValue),
+                        Schema = new OpenApiSchema { Type = SchemaType(parameter.SqlType), Pattern = parameter.ValidationPattern }
+                    });
                 }
             }
         }

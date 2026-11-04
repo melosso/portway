@@ -97,9 +97,14 @@ internal static class OpenApiMarkdownRenderer
             md.AppendLine("Deprecated.").AppendLine();
         }
 
+        if (operation.Extensions?.TryGetValue("x-scalar-stability", out var stability) == true && stability is JsonNodeExtension { Node: JsonValue value })
+        {
+            md.Append("Stability: ").AppendLine(value.GetValue<string>()).AppendLine();
+        }
+
         if (operation.Extensions?.TryGetValue("x-badges", out var badges) == true && badges is JsonNodeExtension { Node: JsonArray list })
         {
-            md.Append("Supports: ").AppendLine(string.Join(", ", list.Select(b => b?["name"]?.GetValue<string>()))).AppendLine();
+            md.Append("Badges: ").AppendLine(string.Join(", ", list.Select(b => b?["name"]?.GetValue<string>()))).AppendLine();
         }
 
         if (!string.IsNullOrWhiteSpace(operation.Description))

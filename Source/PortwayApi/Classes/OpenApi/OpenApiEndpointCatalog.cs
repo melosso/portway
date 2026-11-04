@@ -45,6 +45,16 @@ internal static class OpenApiEndpointCatalog
         => $"{action.ToLowerInvariant()}_{definition.FullPath}".Replace(' ', '_').Replace('/', '_');
 
     /// <summary>
+    /// Endpoint a document path belongs to: the longest matching base, so a parent never claims a nested endpoint
+    /// </summary>
+    public static EndpointDefinition? Owner(IEnumerable<(string BasePath, EndpointDefinition Definition)> endpoints, string pathKey) =>
+        endpoints
+            .Where(e => Covers(e.BasePath, pathKey))
+            .OrderByDescending(e => e.BasePath.Length)
+            .Select(e => e.Definition)
+            .FirstOrDefault();
+
+    /// <summary>
     /// Whether an endpoint belongs in the document; disabled ones stay in, marked by EndpointStateDocumentFilter
     /// </summary>
     public static bool IsDocumented(EndpointDefinition definition) => !definition.Hidden;

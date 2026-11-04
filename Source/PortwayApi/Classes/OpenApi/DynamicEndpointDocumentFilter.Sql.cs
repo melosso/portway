@@ -89,8 +89,8 @@ public partial class DynamicEndpointDocumentFilter
                     Name = "id",
                     In = ParameterLocation.Path,
                     Required = true,
-                    Schema = new OpenApiSchema { Type = JsonSchemaType.String },
-                    Description = "ID of the record to delete (OData-style: /endpointName(id))"
+                    Schema = new OpenApiSchema { Type = JsonSchemaType.String, Pattern = RecordKeyPattern },
+                    Description = "ID of the record to delete: 123, 'ABC' or guid'3f2a...'"
                 });
 
                 document.Paths[deletePath].Operations![HttpMethod.Delete] = deleteOperation;
@@ -451,7 +451,10 @@ public partial class DynamicEndpointDocumentFilter
     {
         var operation = CreateSqlOperation(endpointName, "GET", definition, effectiveEnvironments);
         operation.OperationId += "_byId";
-        operation.Summary = $"Get {definition.DisplayName ?? definition.EndpointName} by ID";
+        operation.Summary = definition.Documentation?.MethodDescriptions?
+            .FirstOrDefault(d => d.Key.Equals("GET:id", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(d.Value)).Value
+            ?? $"Get {definition.DisplayName ?? "record"} by ID";
+        operation.Description = "Returns the record with the given ID.";
         operation.Parameters = operation.Parameters!
             .Where(p => p.Name?.StartsWith('$') != true)
             .Append(new OpenApiParameter
@@ -459,8 +462,8 @@ public partial class DynamicEndpointDocumentFilter
                 Name = "id",
                 In = ParameterLocation.Path,
                 Required = true,
-                Schema = new OpenApiSchema { Type = JsonSchemaType.String },
-                Description = "Primary key of the record (OData-style: /endpointName(id))"
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String, Pattern = RecordKeyPattern },
+                Description = "Record ID: 123, 'ABC' or guid'3f2a...'"
             })
             .ToList();
         operation.Responses!["200"] = new OpenApiResponse
@@ -473,6 +476,8 @@ public partial class DynamicEndpointDocumentFilter
         };
         return operation;
     }
+
+    private const string RecordKeyPattern = @"^(\d+|'[^']+'|guid'[\w-]+'|[0-9a-fA-F-]{36})$";
 
     internal static OpenApiSchema TotalCountSchema() => new()
     {

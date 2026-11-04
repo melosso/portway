@@ -42,6 +42,11 @@ internal static class OpenApiVersionSelector
             return false;
         }
 
+        foreach (var operation in document.Paths.Values.SelectMany(p => p.Operations?.Values ?? Enumerable.Empty<OpenApiOperation>()))
+        {
+            EndpointVersionDocumentFilter.RemoveVersionLabels(operation, version);
+        }
+
         var tags = document.Tags?.ToList() ?? [];
         var parents = tags.Where(t => t.Name is not null).ToDictionary(t => t.Name!, t => t.Parent?.Name, StringComparer.Ordinal);
         var used = new HashSet<string>(StringComparer.Ordinal);
