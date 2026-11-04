@@ -120,6 +120,9 @@ Requests for each type are listed under [Examples](#examples).
 
 <details>
 <summary>SQL Endpoints</summary>
+
+<br> 
+
 Map to a database table or view. `AllowedColumns` sets the exposed columns and their public names.
 
 #### Example — `endpoints/SQL/Products/entity.json`
@@ -140,9 +143,12 @@ Map to a database table or view. `AllowedColumns` sets the exposed columns and t
 ```
 
 </details>
-<br>
+
 <details>
 <summary>Proxy Endpoints</summary>
+
+<br> 
+
 Forward requests to another service, limited to the configured HTTP methods.
 
 #### Example — `endpoints/Proxy/Accounts/entity.json`
@@ -156,9 +162,12 @@ Forward requests to another service, limited to the configured HTTP methods.
 ```
 
 </details>
-<br>
+
 <details>
 <summary>Composite Endpoints</summary>
+
+<br> 
+
 These help when a single logical action actually means “call a bunch of other endpoints in a specific order.” Think of creating an order with multiple lines and a header. You wire the steps together and the engine handles the sequencing.
 
 #### Example — `endpoints/Proxy/SalesOrder/entity.json`
@@ -197,9 +206,12 @@ These help when a single logical action actually means “call a bunch of other 
 ```
 
 </details>
-<br>
+
 <details>
 <summary>Static Endpoints</summary>
+
+<br> 
+
 Serve static JSON, XML or CSV content, with optional OData filtering.
 
 #### Example — `endpoints/Static/ProductionMachine/entity.json`
@@ -214,9 +226,12 @@ Serve static JSON, XML or CSV content, with optional OData filtering.
 ```
 
 </details>
-<br>
+
 <details>
 <summary>Files Endpoints</summary>
+
+<br> 
+
 Store and retrieve files such as documents, images and exports.
 
 #### Example — `endpoints/Files/Documents/entity.json`
@@ -231,9 +246,12 @@ Store and retrieve files such as documents, images and exports.
 ```
 
 </details>
-<br>
+
 <details>
 <summary>Webhook Endpoints</summary>
+
+<br> 
+
 Receive inbound calls from external services and write the payload to a table.
 
 #### Example — `endpoints/Webhooks/Webhooks/Incoming/entity.json`
@@ -250,19 +268,19 @@ Receive inbound calls from external services and write the payload to a table.
 
 ### 4. Deploy
 
-When you're ready to host in IIS or Docker, follow the <a href="https://melosso.github.io/portway/guide/deployment" target="_blank" rel="noopener noreferrer">deployment guide</a>. It covers application pool identity (needed for NTLM proxy scenarios), security settings, and production hardening.
+When you're ready to deploy, follow the <a href="https://melosso.github.io/portway/guide/deployment" target="_blank" rel="noopener noreferrer">deployment guide</a>. It covers most scenario's, from containerization to application pool identity (needed for NTLM proxy scenarios), security settings, and production hardening.
 
 ---
 
 ## Security
 
-Portway uses a lightweight token-based system for authentication. Include the token in request headers, with the Bearer prefix included:
+Portway uses a hardened token-based system for authentication. Include the token in request headers, with the Bearer prefix included:
 
 ```bash
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-The first-run token file, scope control, Azure Key Vault, secret encryption at rest, and application identity for NTLM scenarios are covered in the <a href="https://melosso.github.io/portway/guide/security" target="_blank" rel="noopener noreferrer">security guide</a>.
+You can find more about this topic in the <a href="https://melosso.github.io/portway/guide/security" target="_blank" rel="noopener noreferrer">security guide</a>.
 
 ---
 
@@ -374,11 +392,11 @@ Content-Type: application/json
 
 </details>
 
-More configuration examples are in the <a href="https://melosso.github.io/portway/" target="_blank" rel="noopener noreferrer">documentation page</a>.
+More configuration examples are in the <a href="https://melosso.github.io/portway/guide" target="_blank" rel="noopener noreferrer">Endpoint sections</a> in the documentation .
 
 ## Documentation
 
-The API documentation endpoint is configurable and can be disabled.
+The OpenAPI documentation endpoint is configurable and can be disabled.
 
 ### Interactive documentation
 The application uses <a href="https://github.com/scalar/scalar" target="_blank" rel="noopener noreferrer">Scalar</a> to render your OpenAPI specification as interactive API documentation. `/docs` lists endpoints, request and response schemas and a request client, generated from the endpoint configuration.
