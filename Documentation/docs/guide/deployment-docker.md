@@ -8,6 +8,7 @@ description: "Deploy Portway with Docker Compose, from a first container through
 ## Prerequisites
 
 - [Docker Engine](https://www.docker.com/get-started) with Compose support
+- *Alternative:* If you use Podman, make sure to use the `podman-docker` plugin.
 
 ## Compose file
 
