@@ -29,6 +29,8 @@ public abstract class SqlProviderBase : ISqlProvider
         string schema, string procedureName, IReadOnlyCollection<string> parameterNames)
         => (schema.Length > 0 ? $"{schema}.{procedureName}" : procedureName, CommandType.StoredProcedure);
 
+    public virtual object ProcedureValue(string value) => value;
+
     public virtual Task<List<ColumnMetadata>> GetTvfColumnsAsync(
         DbConnection connection, string schema, string functionName, CancellationToken cancellationToken)
     {

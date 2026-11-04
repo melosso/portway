@@ -25,6 +25,11 @@ public class MySqlProvider : SqlProviderBase
             Pooling = options.EnablePooling,
             ApplicationName = options.ApplicationName
         };
+
+        // keep non-guid char(36) readable
+        if (builder.GuidFormat == MySqlGuidFormat.Default && !builder.OldGuids)
+            builder.GuidFormat = MySqlGuidFormat.None;
+
         return builder.ConnectionString;
     }
 

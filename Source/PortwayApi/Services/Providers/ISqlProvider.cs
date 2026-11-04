@@ -29,6 +29,11 @@ public interface ISqlProvider
     /// </summary>
     (string CommandText, CommandType CommandType) BuildProcedureInvocation(string schema, string procedureName, IReadOnlyCollection<string> parameterNames);
 
+    /// <summary>
+    /// Value bound for a string passed to a procedure or function
+    /// </summary>
+    object ProcedureValue(string value);
+
     string HealthCheckQuery { get; }
 
     Task<List<Services.Database.ColumnMetadata>> GetTvfColumnsAsync(
