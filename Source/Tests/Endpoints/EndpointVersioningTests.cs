@@ -324,6 +324,9 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
 
         var slugs = json.RootElement.GetProperty("sources").EnumerateArray().Select(s => s.GetProperty("slug").GetString()).ToList();
         Assert.Equal(["all", "v1", "v2"], slugs);
+        var defaults = json.RootElement.GetProperty("sources").EnumerateArray()
+            .Where(s => s.GetProperty("default").GetBoolean()).Select(s => s.GetProperty("slug").GetString());
+        Assert.Equal(["v2"], defaults);
         Assert.DoesNotContain("data-url=", html);
     }
 

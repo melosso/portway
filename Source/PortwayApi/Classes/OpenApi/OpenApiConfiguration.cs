@@ -267,8 +267,8 @@ public static class OpenApiConfiguration
             var docsBase = JsonEncodedText.Encode(pathBase + "/docs");
             var versions = OpenApiVersionSelector.Versions();
             var sources = versions.Count < 2 ? "" : $@"""sources"": {JsonSerializer.Serialize(
-                versions.Select(v => new { title = v, slug = v, url = $"{pathBase}/docs/openapi/{v}/openapi.json" })
-                    .Prepend(new { title = "All versions", slug = "all", url = $"{pathBase}/docs/openapi.json" }))},";
+                versions.Select(v => new { title = v, slug = v, url = $"{pathBase}/docs/openapi/{v}/openapi.json", @default = v == versions[^1] })
+                    .Prepend(new { title = "All versions", slug = "all", url = $"{pathBase}/docs/openapi.json", @default = false }))},";
 
             // Debug logging
             Log.Debug("Scalar configuration: Theme={Theme}, Layout={Layout}",
