@@ -199,6 +199,17 @@ public sealed class SettingsWriteKindTests
     }
 
     [Fact]
+    public void Migration_DropsRemovedKeys()
+    {
+        var root = JsonNode.Parse("""{ "Mcp": { "Enabled": true, "RequireAuthentication": false } }""")!.AsObject();
+
+        SettingsWriteService.MigrateDeprecatedKeys(root);
+
+        Assert.False(root["Mcp"]!.AsObject().ContainsKey("RequireAuthentication"));
+        Assert.True(root["Mcp"]!["Enabled"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public void EveryRenamedKeyIsWritableUnderItsNewNameOnly()
     {
         var keys = SettingsWriteService.Schema.Select(s => s.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);

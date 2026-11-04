@@ -397,6 +397,28 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task McpEndpoint_RequiresABearerToken()
+    {
+        var client = CreateClient();
+
+        var resp = await client.PostAsync("/mcp", new StringContent("""{"jsonrpc":"2.0","id":1,"method":"tools/list"}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task SettingsWrite_RefusesTheRemovedMcpAuthenticationSwitch()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["Mcp:RequireAuthentication"] = false });
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(req, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
     public async Task SettingsWrite_RefusesAllowedHostsThatExcludeTheCaller()
     {
         var client = CreateClient();

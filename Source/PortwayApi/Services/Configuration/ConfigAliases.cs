@@ -39,6 +39,11 @@ public static class ConfigAliases
     ];
 
     /// <summary>
+    /// Keys that no longer have an effect; the console drops them from its overrides file
+    /// </summary>
+    public static readonly IReadOnlyList<string> RemovedKeys = ["Mcp:RequireAuthentication"];
+
+    /// <summary>
     /// The current name of a key; WebUi keys map to Console and renamed keys to their new name
     /// </summary>
     public static string Canonical(string key)

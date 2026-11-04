@@ -79,7 +79,6 @@ public static partial class WebUiEndpointExtensions
             ["DatabaseMaintenance:Backup:Retention"] = config.GetValue("DatabaseMaintenance:Backup:Retention", 7),
             ["Mcp:Enabled"] = config.GetValue<bool>("Mcp:Enabled"),
             ["Mcp:Path"] = Text("Mcp:Path", "/mcp"),
-            ["Mcp:RequireAuthentication"] = config.GetValue<bool>("Mcp:RequireAuthentication"),
             ["Mcp:ChatEnabled"] = config.GetValue<bool>("Mcp:ChatEnabled"),
             ["Mcp:ToolTimeoutSeconds"] = config.GetValue("Mcp:ToolTimeoutSeconds", 30),
             ["Mcp:DefaultPageSize"] = config.GetValue("Mcp:DefaultPageSize", 50),
@@ -221,8 +220,7 @@ public static partial class WebUiEndpointExtensions
                 mcp = new
                 {
                     enabled = config.GetValue<bool>("Mcp:Enabled"),
-                    path = config.GetValue<string>("Mcp:Path") ?? "/mcp",
-                    require_authentication = config.GetValue<bool>("Mcp:RequireAuthentication")
+                    path = config.GetValue<string>("Mcp:Path") ?? "/mcp"
                 },
                 chat = new
                 {

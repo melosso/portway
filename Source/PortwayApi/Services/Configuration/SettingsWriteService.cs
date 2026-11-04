@@ -131,7 +131,6 @@ public sealed class SettingsWriteService
 
         new("Mcp:Enabled", "bool", true),
         new("Mcp:Path", "route", true),
-        new("Mcp:RequireAuthentication", "bool", true),
         new("Mcp:ChatEnabled", "bool", true),
         new("Mcp:ToolTimeoutSeconds", "int", true, 1, 600),
         new("Mcp:DefaultPageSize", "int", true, 1, 1_000),
@@ -656,7 +655,7 @@ public sealed class SettingsWriteService
     }
 
     /// <summary>
-    /// Moves values written under a deprecated name to the current name, unless the current name is already set
+    /// Moves values written under a deprecated name to the current name, unless the current name is already set, and drops removed keys
     /// </summary>
     internal static void MigrateDeprecatedKeys(JsonObject root)
     {
@@ -665,6 +664,9 @@ public sealed class SettingsWriteService
             if (!TryTakePath(root, deprecated, out var value)) continue;
             if (!TryGetPath(root, current, out _)) SetPath(root, current, value);
         }
+
+        foreach (var removed in ConfigAliases.RemovedKeys)
+            TryTakePath(root, removed, out _);
     }
 
     private static async Task<JsonObject> ReadOverridesAsync()

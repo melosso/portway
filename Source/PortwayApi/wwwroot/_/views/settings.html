@@ -663,7 +663,6 @@ const CARDS = {
 
   mcpBody: { rows: () => [
     field('Mcp:Enabled', 'Enabled', 'Serves the MCP server for AI clients.'),
-    field('Mcp:RequireAuthentication', 'Require a token', 'Rejects MCP calls without a bearer token.'),
     field('Mcp:Path', 'Path', 'Route of the MCP server.', { placeholder: '/mcp' }),
     field('Mcp:ToolTimeoutSeconds', 'Tool timeout', 'Wait time for one tool call.', { unit: 's' }),
     field('Mcp:DefaultPageSize', 'Default page size', 'Rows per tool result page.'),
