@@ -109,6 +109,9 @@ public partial class EndpointController
         return null;
     }
 
+    // read after environment checks
+    private bool _malformedSqlKey;
+
     /// <summary>
     /// Parses the catchall segment to determine endpoint type and name with namespace support
     /// </summary>
@@ -151,6 +154,7 @@ public partial class EndpointController
                         Regex.Match(s, @"^\w+\((\d+)\)$").Groups[1].Value,
                     _ => null
                 };
+                _malformedSqlKey = id is null && endpointType == EndpointType.SQL;
             }
 
             // The segment after the endpoint may contain an ID or the remaining path

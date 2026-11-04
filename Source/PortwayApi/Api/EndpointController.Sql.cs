@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using PortwayApi.Classes;
+using PortwayApi.Helpers;
 
 namespace PortwayApi.Api;
 
@@ -21,6 +22,12 @@ public partial class EndpointController
         if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
         {
             return resolveError;
+        }
+
+        var unreadablePath = id is null && !string.IsNullOrEmpty(remainingPath) && !SqlTableValuedFunctionHelper.IsTableValuedFunction(endpoint);
+        if (_malformedSqlKey || unreadablePath)
+        {
+            return PortwayResults.BadRequest("Invalid record ID. Use 123, 'ABC' or guid'3f2a...'.");
         }
 
         var tenants = ResolveTenants(endpoint, out var refusal);
