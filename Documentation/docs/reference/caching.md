@@ -21,7 +21,7 @@ Successful GET responses from SQL and proxy endpoints are cached in memory or Re
   "Caching": {
     "Enabled": true,
     "DefaultCacheDurationSeconds": 300,
-    "ProviderType": "Memory",
+    "Provider": "Memory",
     "MemoryCacheSizeLimitMB": 100,
     "CacheableContentTypes": [
       "application/json",
@@ -41,7 +41,7 @@ Successful GET responses from SQL and proxy endpoints are cached in memory or Re
 |----------|------|---------|-------------|
 | `Enabled` | boolean | `true` | Enable response caching |
 | `DefaultCacheDurationSeconds` | integer | `300` | Default TTL for cached responses |
-| `ProviderType` | string | `"Memory"` | Cache backend: `"Memory"` or `"Redis"` |
+| `Provider` | string | `"Memory"` | Cache backend: `"Memory"` or `"Redis"` |
 | `MemoryCacheSizeLimitMB` | integer | `100` | Memory budget in MB; entries are evicted once cached payloads exceed it |
 | `CacheableContentTypes` | array | `["application/json", ...]` | Only cache responses with these content types |
 | `EndpointCacheDurations` | object | `{}` | Per-endpoint TTL overrides keyed by endpoint name |
@@ -51,7 +51,7 @@ Successful GET responses from SQL and proxy endpoints are cached in memory or Re
 ```json
 {
   "Caching": {
-    "ProviderType": "Redis",
+    "Provider": "Redis",
     "Redis": {
       "ConnectionString": "localhost:6379",
       "InstanceName": "Portway:",

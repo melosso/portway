@@ -60,13 +60,15 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
       "Url": "https://example.com/api-guide",
       "Description": "Integration guide"
     },
-    "ScalarTheme": "default",
-    "ScalarLayout": "modern",
-    "ScalarShowSidebar": true,
-    "ScalarHideDownloadButton": false,
-    "ScalarHideModels": true,
-    "ScalarHideClientButton": true,
-    "ScalarHideTestRequestButton": false
+    "Scalar": {
+      "Theme": "default",
+      "Layout": "modern",
+      "ShowSidebar": true,
+      "HideDownloadButton": false,
+      "HideModels": true,
+      "HideClientButton": true,
+      "HideTestRequestButton": false
+    }
   }
 }
 ```
@@ -94,13 +96,15 @@ The OpenAPI 3.2 document and the Scalar reference at `/docs` are generated from 
 | `ServeMarkdown` | boolean | Serves the reference as Markdown at `/docs/openapi.md` (default `true`, `PORTWAY_OPENAPI_MARKDOWN`) |
 | `ExternalDocs.Url` | string | Link to an external API guide, shown with the document description; empty omits it |
 | `ExternalDocs.Description` | string | Label for that link |
-| `ScalarTheme` | string | Scalar theme; `portway` applies the console colours |
-| `ScalarLayout` | string | `modern` or `classic` |
-| `ScalarShowSidebar` | boolean | Sidebar |
-| `ScalarHideDownloadButton` | boolean | Hides the document download |
-| `ScalarHideModels` | boolean | Hides the schema section |
-| `ScalarHideClientButton` | boolean | Hides client generation |
-| `ScalarHideTestRequestButton` | boolean | Hides test requests |
+| `Scalar.Theme` | string | Scalar theme; `portway` applies the console colours |
+| `Scalar.Layout` | string | `modern` or `classic` |
+| `Scalar.ShowSidebar` | boolean | Sidebar |
+| `Scalar.HideDownloadButton` | boolean | Hides the document download |
+| `Scalar.HideModels` | boolean | Hides the schema section |
+| `Scalar.HideClientButton` | boolean | Hides client generation |
+| `Scalar.HideTestRequestButton` | boolean | Hides test requests |
+
+The flat `ScalarTheme`, `ScalarLayout`, `ScalarShowSidebar` and `ScalarHide*` keys are deprecated and still read: [Deprecated keys](/reference/app-settings#deprecated-keys).
 
 The console edits these properties under **Settings → OpenAPI** (`/_/settings#openapi`: OpenAPI, API Reference and Reference Footer cards), except `SecurityDefinition.Name`, `Type`, `In` and `Scheme`: Portway accepts tokens only in the `Authorization` header. `Enabled` and `SecurityDefinition.Description` apply after a restart; the others apply on save. `Version` and `DefaultGroup` accept letters, digits, `.`, `-` and `_`. `Footer.Url` accepts `http`, `https` and `mailto` links or `#`. `ExternalDocs.Url` accepts `http` and `https` links or empty.
 

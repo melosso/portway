@@ -19,21 +19,21 @@ Response format, component checks and probe configuration: [Health Checks](/refe
 
 ## Request traffic logging
 
-Traffic logging records per-request metadata (path, status, duration, user, client IP) to file or SQLite. Disabled by default; enabled in `appsettings.json`:
+Traffic logging records per-request metadata (path, status, duration, user, client IP) to file or SQLite. Disabled by default. Every field is editable on the console [Trace](/guide/webui#trace) page or in `appsettings.json`:
 
 ```json
 {
   "RequestTrafficLogging": {
     "Enabled": true,
-    "StorageType": "file",
+    "Provider": "File",
     "LogDirectory": "log/traffic",
     "MaxFileSizeMB": 50,
     "MaxFileCount": 5,
     "FilePrefix": "proxy_traffic_",
     "BatchSize": 100,
     "FlushIntervalMs": 1000,
-    "IncludeRequestBodies": false,
-    "IncludeResponseBodies": false,
+    "CaptureRequestBodies": false,
+    "CaptureResponseBodies": false,
     "MaxBodyCaptureSizeBytes": 4096,
     "CaptureHeaders": true
   }
@@ -43,7 +43,7 @@ Traffic logging records per-request metadata (path, status, duration, user, clie
 All fields, including SQLite storage and retention: [Audit and traffic logging](/reference/audit#configuration).
 
 :::warning
-With `IncludeRequestBodies` and `IncludeResponseBodies`, bodies are logged unfiltered. `Authorization`, cookies and the headers and query parameters of an environment's `Authentication.Methods` are redacted.
+With `CaptureRequestBodies` and `CaptureResponseBodies`, bodies are logged unfiltered. Redacted: the `Authorization` and `Cookie` headers, and the credential headers and query parameters defined in the environment's `Authentication.Methods`.
 :::
 
 ### Log entry format
@@ -75,7 +75,7 @@ SQLite storage:
 ```json
 {
   "RequestTrafficLogging": {
-    "StorageType": "sqlite",
+    "Provider": "Sqlite",
     "SqlitePath": "log/traffic_logs.db"
   }
 }

@@ -62,14 +62,14 @@ Portway logs through Serilog, configured in the `Serilog` section of `appsetting
 | `Error` | Failures and exceptions |
 | `Fatal` | Startup failures |
 
-The `Default` level applies to Portway's events, which have no source context; `Override` entries apply to framework namespaces.
+The `Default` level applies to Portway's events, which have no source context; `Override` entries apply to framework namespaces. The console **Trace** page edits both. Changes apply after a restart.
 
 ## Examples
 
 ```
 [DBG] Incoming request: POST /api/500/Orders
 [DBG] Outgoing response: 200 for /api/500/Orders - Took 125ms
-[INF] Rate limiting enabled. Store: InMemoryRateLimiterStore, IP: 100/60s, Token: 1000/60s
+[INF] Rate limiting: Memory, 100 per 60s per IP, 1000 per 60s per token
 [WRN] IP 192.168.1.100 has exceeded rate limit, blocking for 60s
 ```
 

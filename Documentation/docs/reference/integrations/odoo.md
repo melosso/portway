@@ -64,7 +64,7 @@ Content-Type: application/json
 
 ## Limitations
 
-- Request bodies contain Odoo API keys. `IncludeRequestBodies` in [traffic logging](/reference/audit) stays off for this endpoint.
+- Request bodies contain Odoo API keys. `CaptureRequestBodies` in [traffic logging](/reference/audit) stays off for this endpoint.
 - All calls use one endpoint; model access is limited in Odoo, not per Portway endpoint.
 
 ## Troubleshooting
