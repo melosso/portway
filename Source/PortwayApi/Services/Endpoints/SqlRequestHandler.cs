@@ -493,6 +493,10 @@ public sealed partial class SqlRequestHandler
             Log.Debug("SQL query for {EndpointName} cancelled by client disconnect", endpointName);
             return new StatusCodeResult(499);
         }
+        catch (DbException dbEx) when (!string.IsNullOrEmpty(id) && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidRecordIdMessage);
+        }
         catch (DbException dbEx)
         {
             return MaskedDataError(context, dbEx, endpointName);
@@ -510,6 +514,32 @@ public sealed partial class SqlRequestHandler
     {
         var material = JsonSerializer.SerializeToUtf8Bytes(new object?[] { query, parameters, countRequested });
         return $"sql:{env}:{endpointName}:{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(material))}";
+    }
+
+    internal const string InvalidRecordIdMessage = "Invalid record ID. Use 123, 'ABC' or guid'3f2a...'.";
+
+    private const string InvalidColumnValueMessage = "Invalid column value. Check the value types.";
+
+    private static IActionResult ClientTypeMismatch(DbException dbEx, string endpointName, string message)
+    {
+        Log.Warning("Client value does not fit a column type of {EndpointName} ({Detail})", endpointName, SqlErrorClassifier.DescribeForLog(dbEx));
+        return PortwayResults.BadRequest(message);
+    }
+
+    private static IActionResult DuplicateRecord(DbException dbEx, string endpointName)
+    {
+        Log.Warning("Duplicate record on {EndpointName} ({Detail})", endpointName, SqlErrorClassifier.DescribeForLog(dbEx));
+        return PortwayResults.Conflict("Record already exists");
+    }
+
+    private void AddPayloadParameters(DynamicParameters parameters, JsonElement data, string connectionString)
+    {
+        var provider = _providerFactory.GetProvider(connectionString);
+        foreach (var property in data.EnumerateObject())
+        {
+            var value = GetParameterValue(property.Value);
+            parameters.Add($"@{property.Name}", value is string text ? provider.ProcedureValue(text) : value);
+        }
     }
 
     // Masked reference for any provider's database error; full detail stays in the log
@@ -592,10 +622,7 @@ public sealed partial class SqlRequestHandler
             }
 
             // Extract and add parameters
-            foreach (var property in data.EnumerateObject())
-            {
-                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-            }
+            AddPayloadParameters(dynamicParams, data, connectionString);
 
             foreach (var tenant in tenantPredicates)
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
@@ -620,6 +647,14 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
+        {
+            return DuplicateRecord(dbEx, endpointName);
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidColumnValueMessage);
         }
         catch (DbException dbEx)
         {
@@ -719,10 +754,7 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 7: Extract and add data parameters from the request
-            foreach (var property in data.EnumerateObject())
-            {
-                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-            }
+            AddPayloadParameters(dynamicParams, data, connectionString);
 
             foreach (var tenant in tenantPredicates)
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
@@ -749,6 +781,14 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
+        {
+            return DuplicateRecord(dbEx, endpointName);
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidColumnValueMessage);
         }
         catch (DbException dbEx)
         {
@@ -846,10 +886,7 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 7: Extract and add data parameters from the request. Only the fields provided in the request will be updated
-            foreach (var property in data.EnumerateObject())
-            {
-                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-            }
+            AddPayloadParameters(dynamicParams, data, connectionString);
 
             foreach (var tenant in tenantPredicates)
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
@@ -876,6 +913,14 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
+        {
+            return DuplicateRecord(dbEx, endpointName);
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidColumnValueMessage);
         }
         catch (DbException dbEx)
         {
@@ -953,12 +998,13 @@ public sealed partial class SqlRequestHandler
 
             // Handle different primary key parameter names
             var primaryKey = endpoint.PrimaryKey ?? "Id";
-            dynamicParams.Add($"@{primaryKey}", id);
+            var keyValue = _providerFactory.GetProvider(connectionString).ProcedureValue(id);
+            dynamicParams.Add($"@{primaryKey}", keyValue);
 
             // For backward compatibility, also add @id parameter
             if (!primaryKey.Equals("id", StringComparison.OrdinalIgnoreCase))
             {
-                dynamicParams.Add("@id", id);
+                dynamicParams.Add("@id", keyValue);
             }
 
             // Add user parameter if available
@@ -992,6 +1038,10 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidRecordIdMessage);
         }
         catch (DbException dbEx)
         {
