@@ -1,7 +1,6 @@
 namespace PortwayApi.Middleware;
 
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 using Serilog;
 using Microsoft.Extensions.DependencyInjection;
 using PortwayApi.Auth;
