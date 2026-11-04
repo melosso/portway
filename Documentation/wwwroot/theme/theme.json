@@ -1,5 +1,7 @@
 {
   "primaryColor": "#3E63DD",
+  "primaryColorDark": "#9DB1FF",
+  "accentLightDark": "#252C4A",
   "bgColor": "#ffffff",
   "sidebarBg": "#fafafa",
   "textColor": "#18181b",
