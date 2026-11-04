@@ -90,7 +90,7 @@ public sealed partial class SqlRequestHandler
             case TableWriteKind.Update:
                 {
                     if (pkValue == null)
-                        return PortwayResults.BadRequest($"Updates require the '{endpoint.PrimaryKey}' column");
+                        return PortwayResults.BadRequest($"Updates require the '{endpoint.DatabaseToAlias.GetValueOrDefault(endpoint.PrimaryKey!, endpoint.PrimaryKey!)}' column");
 
                     columns.Remove(pkColumn);
                     if (columns.Count == 0)

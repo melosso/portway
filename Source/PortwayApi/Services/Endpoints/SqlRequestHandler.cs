@@ -423,7 +423,7 @@ public sealed partial class SqlRequestHandler
                 // Return 404 if no results found
                 if (transformedResults.Count == 0)
                 {
-                    return PortwayResults.NotFound($"No record found with {primaryKey} = {id}");
+                    return PortwayResults.NotFound("Record not found");
                 }
 
                 // Return the single item directly (OData convention - no wrapper)
