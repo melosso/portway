@@ -18,7 +18,7 @@ public class SettingValuesTests
         var values = Values([]);
 
         var missing = SettingsWriteService.Schema
-            .Where(w => w.Kind != "clear" && !values.ContainsKey(w.Key))
+            .Where(w => w.Kind != SettingKind.Clear && !values.ContainsKey(w.Key))
             .Select(w => w.Key)
             .ToList();
 

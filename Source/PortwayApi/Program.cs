@@ -56,6 +56,7 @@ try
 
     EnvAliases.WarnOnLegacyUsage();
     ConfigAliases.WarnOnDeprecatedNames(builder.Configuration);
+    builder.Configuration.ValidateConsoleSettings();
 
     builder.Services.Configure<HostOptions>(opts =>
         {

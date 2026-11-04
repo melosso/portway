@@ -1,6 +1,6 @@
 namespace PortwayApi.Classes.OpenApi;
 
-public class ScalarInfo
+public sealed class ScalarInfo
 {
     public string Theme { get; set; } = "purple";
     public string Layout { get; set; } = "modern";

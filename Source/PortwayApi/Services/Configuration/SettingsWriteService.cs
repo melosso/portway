@@ -13,11 +13,19 @@ using Serilog;
 /// </summary>
 public sealed record WritableSetting(
     string Key,
-    string Kind,
+    SettingKind Kind,
     bool RequiresRestart,
     double? Min = null,
     double? Max = null,
     string[]? Choices = null);
+
+/// <summary>
+/// Validator for a writable setting.
+/// </summary>
+public enum SettingKind
+{
+    Bool, Int, Number, Choice, Text, IpList, CidrList, OriginList, ExtList, MediaTypeList, IntMap, LevelMap, HostList, Clear, Secret, Name, AppName, Attributes, RelPath, DbFile, Route, PathBase, Link, WebUrl, Email, Time,
+}
 
 /// <summary>
 /// Outcome of a write attempt; Field names the setting that failed so a caller can mark it
@@ -27,33 +35,43 @@ public sealed record SettingsWriteResult(bool Ok, string? Error = null, string? 
 /// <summary>
 /// Writes allowlisted settings to appsettings.overrides.json, never appsettings.json
 /// </summary>
-public sealed class SettingsWriteService
+public sealed partial class SettingsWriteService
 {
     public const string OverridesFileName = "appsettings.overrides.json";
 
     private static readonly string[] LogLevels =
         ["Verbose", "Debug", "Information", "Warning", "Error", "Fatal"];
 
-    private static readonly Regex ScheduleFormat = new(@"^([01]\d|2[0-3]):[0-5]\d$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^([01]\d|2[0-3]):[0-5]\d$")]
+    private static partial Regex ScheduleFormat();
 
-    private static readonly Regex NameFormat = new(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$")]
+    private static partial Regex NameFormat();
 
-    private static readonly Regex NamespaceFormat = new(@"^[A-Za-z][A-Za-z0-9_.]{0,99}$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[A-Za-z][A-Za-z0-9_.]{0,99}$")]
+    private static partial Regex NamespaceFormat();
 
-    private static readonly Regex RelativePathFormat = new(@"^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$")]
+    private static partial Regex RelativePathFormat();
 
-    private static readonly Regex RouteFormat = new(@"^(/[a-z0-9][a-z0-9_-]*)+$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^(/[a-z0-9][a-z0-9_-]*)+$")]
+    private static partial Regex RouteFormat();
 
-    private static readonly Regex PathBaseFormat = new(@"^(/[A-Za-z0-9._-]+)*$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^(/[A-Za-z0-9._-]+)*$")]
+    private static partial Regex PathBaseFormat();
 
-    private static readonly Regex HostFormat = new(@"^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^(\*\.)?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*$")]
+    private static partial Regex HostFormat();
 
-    private static readonly Regex ExtensionFormat = new(@"^\.[A-Za-z0-9]{1,10}$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^\.[A-Za-z0-9]{1,10}$")]
+    private static partial Regex ExtensionFormat();
 
     // Part of SQL connection strings
-    private static readonly Regex ApplicationNameFormat = new(@"^[A-Za-z0-9 ._()-]{1,128}$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^[A-Za-z0-9 ._()-]{1,128}$")]
+    private static partial Regex ApplicationNameFormat();
 
-    private static readonly Regex ResourceAttributesFormat = new(@"^([A-Za-z0-9._-]+=[^,=;\s]+(,[A-Za-z0-9._-]+=[^,=;\s]+)*)?$", RegexOptions.Compiled);
+    [GeneratedRegex(@"^([A-Za-z0-9._-]+=[^,=;\s]+(,[A-Za-z0-9._-]+=[^,=;\s]+)*)?$")]
+    private static partial Regex ResourceAttributesFormat();
 
     private static readonly string[] ReservedFolders = ["endpoints", "environments", "tokens", "wwwroot", ".core", ".backups"];
 
@@ -69,138 +87,138 @@ public sealed class SettingsWriteService
     // Writable keys; anything else is refused by name
     private static readonly Dictionary<string, WritableSetting> Allowed = new WritableSetting[]
     {
-        new("RateLimiting:Enabled", "bool", true),
-        new("RateLimiting:IpLimit", "int", true, 1, 1_000_000),
-        new("RateLimiting:IpWindowSeconds", "int", true, 1, 86_400),
-        new("RateLimiting:TokenLimit", "int", true, 1, 1_000_000),
-        new("RateLimiting:TokenWindowSeconds", "int", true, 1, 86_400),
-        new("RateLimiting:Provider", "choice", true, Choices: Providers),
-        new("RateLimiting:Redis:ConnectionString", "secret", true),
+        new("RateLimiting:Enabled", SettingKind.Bool, true),
+        new("RateLimiting:IpLimit", SettingKind.Int, true, 1, 1_000_000),
+        new("RateLimiting:IpWindowSeconds", SettingKind.Int, true, 1, 86_400),
+        new("RateLimiting:TokenLimit", SettingKind.Int, true, 1, 1_000_000),
+        new("RateLimiting:TokenWindowSeconds", SettingKind.Int, true, 1, 86_400),
+        new("RateLimiting:Provider", SettingKind.Choice, true, Choices: Providers),
+        new("RateLimiting:Redis:ConnectionString", SettingKind.Secret, true),
 
-        new("Caching:Enabled", "bool", false),
-        new("Caching:DefaultCacheDurationSeconds", "int", false, 0, 86_400),
-        new("Caching:MemoryCacheSizeLimitMB", "int", true, 1, 8_192),
-        new("Caching:Provider", "choice", true, Choices: Providers),
-        new("Caching:EndpointCacheDurations", "intmap", false, 0, 86_400),
-        new("Caching:CacheableContentTypes", "mediatypelist", false, Max: 50),
-        new("Caching:Redis:ConnectionString", "secret", true),
-        new("Caching:Redis:InstanceName", "text", true, Max: 100),
-        new("Caching:Redis:Database", "int", true, 0, 255),
-        new("Caching:Redis:UseSsl", "bool", true),
-        new("Caching:Redis:ConnectTimeoutMs", "int", true, 100, 60_000),
-        new("Caching:Redis:AbortOnConnectFail", "bool", true),
-        new("Caching:Redis:FallbackToMemoryCache", "bool", true),
-        new("Caching:Redis:MaxRetryAttempts", "int", true, 0, 10),
-        new("Caching:Redis:RetryDelayMs", "int", true, 0, 60_000),
+        new("Caching:Enabled", SettingKind.Bool, false),
+        new("Caching:DefaultCacheDurationSeconds", SettingKind.Int, false, 0, 86_400),
+        new("Caching:MemoryCacheSizeLimitMB", SettingKind.Int, true, 1, 8_192),
+        new("Caching:Provider", SettingKind.Choice, true, Choices: Providers),
+        new("Caching:EndpointCacheDurations", SettingKind.IntMap, false, 0, 86_400),
+        new("Caching:CacheableContentTypes", SettingKind.MediaTypeList, false, Max: 50),
+        new("Caching:Redis:ConnectionString", SettingKind.Secret, true),
+        new("Caching:Redis:InstanceName", SettingKind.Text, true, Max: 100),
+        new("Caching:Redis:Database", SettingKind.Int, true, 0, 255),
+        new("Caching:Redis:UseSsl", SettingKind.Bool, true),
+        new("Caching:Redis:ConnectTimeoutMs", SettingKind.Int, true, 100, 60_000),
+        new("Caching:Redis:AbortOnConnectFail", SettingKind.Bool, true),
+        new("Caching:Redis:FallbackToMemoryCache", SettingKind.Bool, true),
+        new("Caching:Redis:MaxRetryAttempts", SettingKind.Int, true, 0, 10),
+        new("Caching:Redis:RetryDelayMs", SettingKind.Int, true, 0, 60_000),
 
-        new("SqlConnectionPooling:Enabled", "bool", true),
-        new("SqlConnectionPooling:MinPoolSize", "int", true, 0, 1_000),
-        new("SqlConnectionPooling:MaxPoolSize", "int", true, 1, 5_000),
-        new("SqlConnectionPooling:ConnectionTimeoutSeconds", "int", true, 1, 600),
-        new("SqlConnectionPooling:CommandTimeoutSeconds", "int", true, 1, 3_600),
-        new("SqlConnectionPooling:ApplicationName", "appname", true),
+        new("SqlConnectionPooling:Enabled", SettingKind.Bool, true),
+        new("SqlConnectionPooling:MinPoolSize", SettingKind.Int, true, 0, 1_000),
+        new("SqlConnectionPooling:MaxPoolSize", SettingKind.Int, true, 1, 5_000),
+        new("SqlConnectionPooling:ConnectionTimeoutSeconds", SettingKind.Int, true, 1, 600),
+        new("SqlConnectionPooling:CommandTimeoutSeconds", SettingKind.Int, true, 1, 3_600),
+        new("SqlConnectionPooling:ApplicationName", SettingKind.AppName, true),
 
-        new("EndpointReloading:Enabled", "bool", false),
-        new("EndpointReloading:DebounceMs", "int", false, 50, 60_000),
+        new("EndpointReloading:Enabled", SettingKind.Bool, false),
+        new("EndpointReloading:DebounceMs", SettingKind.Int, false, 50, 60_000),
 
-        new("Serilog:MinimumLevel:Default", "choice", true, Choices: LogLevels),
-        new("Serilog:MinimumLevel:Override", "levelmap", true),
+        new("Serilog:MinimumLevel:Default", SettingKind.Choice, true, Choices: LogLevels),
+        new("Serilog:MinimumLevel:Override", SettingKind.LevelMap, true),
 
-        new("RequestTrafficLogging:Enabled", "bool", true),
-        new("RequestTrafficLogging:Provider", "choice", true, Choices: ["File", "Sqlite"]),
-        new("RequestTrafficLogging:SqlitePath", "dbfile", true),
-        new("RequestTrafficLogging:LogDirectory", "relpath", true),
-        new("RequestTrafficLogging:FilePrefix", "name", true),
-        new("RequestTrafficLogging:MaxFileSizeMB", "int", true, 1, 1_024),
-        new("RequestTrafficLogging:MaxFileCount", "int", true, 1, 100),
-        new("RequestTrafficLogging:QueueCapacity", "int", true, 100, 1_000_000),
-        new("RequestTrafficLogging:BatchSize", "int", true, 1, 10_000),
-        new("RequestTrafficLogging:FlushIntervalMs", "int", true, 100, 60_000),
-        new("RequestTrafficLogging:CaptureHeaders", "bool", true),
-        new("RequestTrafficLogging:CaptureRequestBodies", "bool", true),
-        new("RequestTrafficLogging:CaptureResponseBodies", "bool", true),
-        new("RequestTrafficLogging:MaxBodyCaptureSizeBytes", "int", true, 0, 1_048_576),
-        new("RequestTrafficLogging:InfoLoggingEnabled", "bool", true),
+        new("RequestTrafficLogging:Enabled", SettingKind.Bool, true),
+        new("RequestTrafficLogging:Provider", SettingKind.Choice, true, Choices: ["File", "Sqlite"]),
+        new("RequestTrafficLogging:SqlitePath", SettingKind.DbFile, true),
+        new("RequestTrafficLogging:LogDirectory", SettingKind.RelPath, true),
+        new("RequestTrafficLogging:FilePrefix", SettingKind.Name, true),
+        new("RequestTrafficLogging:MaxFileSizeMB", SettingKind.Int, true, 1, 1_024),
+        new("RequestTrafficLogging:MaxFileCount", SettingKind.Int, true, 1, 100),
+        new("RequestTrafficLogging:QueueCapacity", SettingKind.Int, true, 100, 1_000_000),
+        new("RequestTrafficLogging:BatchSize", SettingKind.Int, true, 1, 10_000),
+        new("RequestTrafficLogging:FlushIntervalMs", SettingKind.Int, true, 100, 60_000),
+        new("RequestTrafficLogging:CaptureHeaders", SettingKind.Bool, true),
+        new("RequestTrafficLogging:CaptureRequestBodies", SettingKind.Bool, true),
+        new("RequestTrafficLogging:CaptureResponseBodies", SettingKind.Bool, true),
+        new("RequestTrafficLogging:MaxBodyCaptureSizeBytes", SettingKind.Int, true, 0, 1_048_576),
+        new("RequestTrafficLogging:InfoLoggingEnabled", SettingKind.Bool, true),
 
-        new("DatabaseMaintenance:Enabled", "bool", false),
-        new("DatabaseMaintenance:Schedule", "time", false),
-        new("DatabaseMaintenance:RunOnStartup", "bool", true),
-        new("DatabaseMaintenance:FreePageRatioThreshold", "number", false, 0.01, 0.99),
-        new("DatabaseMaintenance:Backup:Enabled", "bool", false),
-        new("DatabaseMaintenance:Backup:Retention", "int", false, 1, 100),
+        new("DatabaseMaintenance:Enabled", SettingKind.Bool, false),
+        new("DatabaseMaintenance:Schedule", SettingKind.Time, false),
+        new("DatabaseMaintenance:RunOnStartup", SettingKind.Bool, true),
+        new("DatabaseMaintenance:FreePageRatioThreshold", SettingKind.Number, false, 0.01, 0.99),
+        new("DatabaseMaintenance:Backup:Enabled", SettingKind.Bool, false),
+        new("DatabaseMaintenance:Backup:Retention", SettingKind.Int, false, 1, 100),
 
-        new("Mcp:Enabled", "bool", true),
-        new("Mcp:Path", "route", true),
-        new("Mcp:ChatEnabled", "bool", true),
-        new("Mcp:ToolTimeoutSeconds", "int", true, 1, 600),
-        new("Mcp:DefaultPageSize", "int", true, 1, 1_000),
-        new("Mcp:MaxPageSize", "int", true, 1, 1_000),
-        new("Mcp:MaxToolResultChars", "int", true, 1_000, 1_000_000),
+        new("Mcp:Enabled", SettingKind.Bool, true),
+        new("Mcp:Path", SettingKind.Route, true),
+        new("Mcp:ChatEnabled", SettingKind.Bool, true),
+        new("Mcp:ToolTimeoutSeconds", SettingKind.Int, true, 1, 600),
+        new("Mcp:DefaultPageSize", SettingKind.Int, true, 1, 1_000),
+        new("Mcp:MaxPageSize", SettingKind.Int, true, 1, 1_000),
+        new("Mcp:MaxToolResultChars", SettingKind.Int, true, 1_000, 1_000_000),
 
-        new("Console:SecureCookies", "bool", true),
-        new("Console:Customization:LandingPageEnabled", "bool", true),
-        new("Console:Customization:PromoText", "text", false, Max: 2_000),
-        new("Console:Customization:PromoLogin", "bool", false),
-        new("Console:Customization:LoginFooter", "text", false, Max: 2_000),
-        new("Console:CorsOrigins", "originlist", true, Max: 50),
+        new("Console:SecureCookies", SettingKind.Bool, true),
+        new("Console:Customization:LandingPageEnabled", SettingKind.Bool, true),
+        new("Console:Customization:PromoText", SettingKind.Text, false, Max: 2_000),
+        new("Console:Customization:PromoLogin", SettingKind.Bool, false),
+        new("Console:Customization:LoginFooter", SettingKind.Text, false, Max: 2_000),
+        new("Console:CorsOrigins", SettingKind.OriginList, true, Max: 50),
 
-        new("Oidc:Enabled", "bool", false),
-        new("OpenApi:Enabled", "bool", true),
-        new("OpenApi:Title", "text", false, Max: 200),
-        new("OpenApi:Version", "name", false),
-        new("OpenApi:Description", "text", false, Max: 4_000),
-        new("OpenApi:Contact:Name", "text", false, Max: 200),
-        new("OpenApi:Contact:Email", "email", false),
-        new("OpenApi:ForceHttpsInProduction", "bool", false),
-        new("OpenApi:ShowNamespaces", "bool", false),
-        new("OpenApi:DefaultGroup", "name", false),
-        new("OpenApi:ShowBadges", "bool", false),
-        new("OpenApi:ServeMarkdown", "bool", false),
-        new("OpenApi:ExternalDocs:Url", "weburl", false),
-        new("OpenApi:ExternalDocs:Description", "text", false, Max: 200),
-        new("OpenApi:SecurityDefinition:Description", "text", true, Max: 500),
-        new("OpenApi:Footer:Text", "text", false, Max: 200),
-        new("OpenApi:Footer:Url", "link", false),
-        new("OpenApi:Footer:Target", "choice", false, Choices: ["_blank", "_self"]),
-        new("OpenApi:Footer:ShowSourceIcon", "bool", false),
-        new("OpenApi:Scalar:Theme", "choice", false, Choices: ScalarThemes),
-        new("OpenApi:Scalar:Layout", "choice", false, Choices: ["modern", "classic"]),
-        new("OpenApi:Scalar:ShowSidebar", "bool", false),
-        new("OpenApi:Scalar:HideDownloadButton", "bool", false),
-        new("OpenApi:Scalar:HideModels", "bool", false),
-        new("OpenApi:Scalar:HideClientButton", "bool", false),
-        new("OpenApi:Scalar:HideTestRequestButton", "bool", false),
+        new("Oidc:Enabled", SettingKind.Bool, false),
+        new("OpenApi:Enabled", SettingKind.Bool, true),
+        new("OpenApi:Title", SettingKind.Text, false, Max: 200),
+        new("OpenApi:Version", SettingKind.Name, false),
+        new("OpenApi:Description", SettingKind.Text, false, Max: 4_000),
+        new("OpenApi:Contact:Name", SettingKind.Text, false, Max: 200),
+        new("OpenApi:Contact:Email", SettingKind.Email, false),
+        new("OpenApi:ForceHttpsInProduction", SettingKind.Bool, false),
+        new("OpenApi:ShowNamespaces", SettingKind.Bool, false),
+        new("OpenApi:DefaultGroup", SettingKind.Name, false),
+        new("OpenApi:ShowBadges", SettingKind.Bool, false),
+        new("OpenApi:ServeMarkdown", SettingKind.Bool, false),
+        new("OpenApi:ExternalDocs:Url", SettingKind.WebUrl, false),
+        new("OpenApi:ExternalDocs:Description", SettingKind.Text, false, Max: 200),
+        new("OpenApi:SecurityDefinition:Description", SettingKind.Text, true, Max: 500),
+        new("OpenApi:Footer:Text", SettingKind.Text, false, Max: 200),
+        new("OpenApi:Footer:Url", SettingKind.Link, false),
+        new("OpenApi:Footer:Target", SettingKind.Choice, false, Choices: ["_blank", "_self"]),
+        new("OpenApi:Footer:ShowSourceIcon", SettingKind.Bool, false),
+        new("OpenApi:Scalar:Theme", SettingKind.Choice, false, Choices: ScalarThemes),
+        new("OpenApi:Scalar:Layout", SettingKind.Choice, false, Choices: ["modern", "classic"]),
+        new("OpenApi:Scalar:ShowSidebar", SettingKind.Bool, false),
+        new("OpenApi:Scalar:HideDownloadButton", SettingKind.Bool, false),
+        new("OpenApi:Scalar:HideModels", SettingKind.Bool, false),
+        new("OpenApi:Scalar:HideClientButton", SettingKind.Bool, false),
+        new("OpenApi:Scalar:HideTestRequestButton", SettingKind.Bool, false),
 
-        new("Telemetry:Provider", "choice", true, Choices: ["None", "Otlp", "Prometheus"]),
-        new("Telemetry:Otlp:Endpoint", "weburl", true),
-        new("Telemetry:ServiceName", "name", true),
-        new("Telemetry:ResourceAttributes", "attributes", true, Max: 1_000),
-        new("Telemetry:Prometheus:Path", "route", true),
+        new("Telemetry:Provider", SettingKind.Choice, true, Choices: ["None", "Otlp", "Prometheus"]),
+        new("Telemetry:Otlp:Endpoint", SettingKind.WebUrl, true),
+        new("Telemetry:ServiceName", SettingKind.Name, true),
+        new("Telemetry:ResourceAttributes", SettingKind.Attributes, true, Max: 1_000),
+        new("Telemetry:Prometheus:Path", SettingKind.Route, true),
 
-        new("FileStorage:StorageDirectory", "relpath", true),
-        new("FileStorage:MaxFileSizeBytes", "int", false, 1_024, 1_073_741_824),
-        new("FileStorage:UseMemoryCache", "bool", false),
-        new("FileStorage:MemoryCacheDurationSeconds", "int", false, 1, 86_400),
-        new("FileStorage:MaxTotalMemoryCacheMB", "int", false, 1, 8_192),
-        new("FileStorage:AllowedExtensions", "extlist", false, Max: 200),
-        new("FileStorage:BlockedExtensions", "extlist", false, Max: 200),
+        new("FileStorage:StorageDirectory", SettingKind.RelPath, true),
+        new("FileStorage:MaxFileSizeBytes", SettingKind.Int, false, 1_024, 1_073_741_824),
+        new("FileStorage:UseMemoryCache", SettingKind.Bool, false),
+        new("FileStorage:MemoryCacheDurationSeconds", SettingKind.Int, false, 1, 86_400),
+        new("FileStorage:MaxTotalMemoryCacheMB", SettingKind.Int, false, 1, 8_192),
+        new("FileStorage:AllowedExtensions", SettingKind.ExtList, false, Max: 200),
+        new("FileStorage:BlockedExtensions", SettingKind.ExtList, false, Max: 200),
 
-        new("Proxy:Username", "text", true, Max: 200),
-        new("Proxy:Password", "secret", true),
-        new("Proxy:Domain", "text", true, Max: 200),
+        new("Proxy:Username", SettingKind.Text, true, Max: 200),
+        new("Proxy:Password", SettingKind.Secret, true),
+        new("Proxy:Domain", SettingKind.Text, true, Max: 200),
 
         // Deployment shape; the endpoint refuses changes that lock the caller out
-        new("Console:PublicOrigins", "originlist", true, Max: 50),
-        new("ForwardedHeaders:KnownProxies", "iplist", true, Max: 50),
-        new("ForwardedHeaders:KnownNetworks", "cidrlist", true, Max: 50),
-        new("AllowedHosts", "hostlist", true, Max: 50),
-        new("PathBase", "pathbase", true),
+        new("Console:PublicOrigins", SettingKind.OriginList, true, Max: 50),
+        new("ForwardedHeaders:KnownProxies", SettingKind.IpList, true, Max: 50),
+        new("ForwardedHeaders:KnownNetworks", SettingKind.CidrList, true, Max: 50),
+        new("AllowedHosts", SettingKind.HostList, true, Max: 50),
+        new("PathBase", SettingKind.PathBase, true),
 
         // Credentials: clear only, never set
-        new("Console:AdminApiKey", "clear", true),
-        new("Console:SeedPassword", "clear", true),
-        new("Console:SeedToken", "clear", true),
-        new("Console:Enabled", "bool", true),
+        new("Console:AdminApiKey", SettingKind.Clear, true),
+        new("Console:SeedPassword", SettingKind.Clear, true),
+        new("Console:SeedToken", SettingKind.Clear, true),
+        new("Console:Enabled", SettingKind.Bool, true),
     }.ToDictionary(s => s.Key, StringComparer.OrdinalIgnoreCase);
 
     private static readonly SemaphoreSlim WriteLock = new(1, 1);
@@ -230,8 +248,8 @@ public sealed class SettingsWriteService
     /// <summary>
     /// Collections replace lower layers.
     /// </summary>
-    public static bool IsCollection(string kind) =>
-        kind is "originlist" or "iplist" or "cidrlist" or "extlist" or "mediatypelist" or "intmap" or "levelmap";
+    public static bool IsCollection(SettingKind kind) =>
+        kind is SettingKind.OriginList or SettingKind.IpList or SettingKind.CidrList or SettingKind.ExtList or SettingKind.MediaTypeList or SettingKind.IntMap or SettingKind.LevelMap;
 
     public static string OverridesPath => Path.Combine(Directory.GetCurrentDirectory(), OverridesFileName);
 
@@ -253,7 +271,7 @@ public sealed class SettingsWriteService
     /// <summary>
     /// Validates every entry, then writes them together; nothing is applied when one fails
     /// </summary>
-    public async Task<SettingsWriteResult> ApplyAsync(IDictionary<string, JsonElement> changes)
+    public async Task<SettingsWriteResult> ApplyAsync(IDictionary<string, JsonElement> changes, CancellationToken cancellationToken = default)
     {
         if (changes.Count == 0)
             return new SettingsWriteResult(false, "No settings supplied");
@@ -269,7 +287,7 @@ public sealed class SettingsWriteService
             if (LockedBy(spec.Key) is { } envName)
                 return new SettingsWriteResult(false, $"'{spec.Key}' is set by {envName}", spec.Key);
 
-            if (spec.Kind == "secret" && raw.ValueKind == JsonValueKind.String && raw.GetString() is { Length: > 0 } && !SettingsEncryptionHelper.HasKeyPair)
+            if (spec.Kind == SettingKind.Secret && raw.ValueKind == JsonValueKind.String && raw.GetString() is { Length: > 0 } && !SettingsEncryptionHelper.HasKeyPair)
                 return new SettingsWriteResult(false, "Encryption keys are not initialised; restart Portway and retry", spec.Key);
 
             var (node, error) = Coerce(spec, raw);
@@ -288,20 +306,20 @@ public sealed class SettingsWriteService
             parsed["Telemetry:Enabled"] = JsonValue.Create(false);
         }
 
-        if (CrossCheck(parsed) is { } crossError)
+        if (CrossCheck(parsed, _root) is { } crossError)
             return new SettingsWriteResult(false, crossError.Message, crossError.Field);
 
-        await WriteLock.WaitAsync();
+        await WriteLock.WaitAsync(cancellationToken);
         try
         {
-            var root = await ReadOverridesAsync();
+            var root = await ReadOverridesAsync(cancellationToken);
             MigrateDeprecatedKeys(root);
             foreach (var (key, node) in parsed) SetPath(root, key, node);
             await WriteOverridesAsync(root);
             // file watchers miss in-place writes on a single-file bind mount
             _root?.Reload();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Log.Error(ex, "Failed to write {File}", OverridesFileName);
             return new SettingsWriteResult(false, "Could not write the settings file");
@@ -322,40 +340,40 @@ public sealed class SettingsWriteService
 
     private static (JsonNode? Node, string? Error) Coerce(WritableSetting spec, JsonElement raw) => spec.Kind switch
     {
-        "bool" => raw.ValueKind is JsonValueKind.True or JsonValueKind.False
+        SettingKind.Bool => raw.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? (JsonValue.Create(raw.GetBoolean()), null)
             : (null, $"'{spec.Key}' expects true or false"),
 
-        "int" => ReadInt(spec, raw),
+        SettingKind.Int => ReadInt(spec, raw),
 
-        "number" => ReadNumber(spec, raw),
+        SettingKind.Number => ReadNumber(spec, raw),
 
-        "choice" => raw.ValueKind == JsonValueKind.String
+        SettingKind.Choice => raw.ValueKind == JsonValueKind.String
                     && spec.Choices!.Contains(raw.GetString(), StringComparer.OrdinalIgnoreCase)
             ? (JsonValue.Create(spec.Choices!.First(c => c.Equals(raw.GetString(), StringComparison.OrdinalIgnoreCase))), null)
             : (null, $"'{spec.Key}' must be one of {string.Join(", ", spec.Choices!)}"),
 
         // Free text bounded by Max; null clears the override back to whatever appsettings.json declares
-        "text" => ReadText(spec, raw),
+        SettingKind.Text => ReadText(spec, raw),
 
-        "iplist" => ReadList(spec, raw, ParseIp),
-        "cidrlist" => ReadList(spec, raw, ParseNetwork),
-        "originlist" => ReadList(spec, raw, ParseOrigin),
-        "extlist" => ReadList(spec, raw, ParseExtension),
-        "mediatypelist" => ReadList(spec, raw, ParseMediaType),
+        SettingKind.IpList => ReadList(spec, raw, ParseIp),
+        SettingKind.CidrList => ReadList(spec, raw, ParseNetwork),
+        SettingKind.OriginList => ReadList(spec, raw, ParseOrigin),
+        SettingKind.ExtList => ReadList(spec, raw, ParseExtension),
+        SettingKind.MediaTypeList => ReadList(spec, raw, ParseMediaType),
 
-        "intmap" => ReadMap(spec, raw, NameFormat, value =>
+        SettingKind.IntMap => ReadMap(spec, raw, NameFormat(), value =>
             value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var n) && n >= spec.Min && n <= spec.Max
                 ? JsonValue.Create(n)
                 : null, $"a whole number from {spec.Min:0} to {spec.Max:0}"),
 
-        "levelmap" => ReadMap(spec, raw, NamespaceFormat, value =>
+        SettingKind.LevelMap => ReadMap(spec, raw, NamespaceFormat(), value =>
             value.ValueKind == JsonValueKind.String && LogLevels.FirstOrDefault(l => l.Equals(value.GetString(), StringComparison.OrdinalIgnoreCase)) is { } level
                 ? JsonValue.Create(level)
                 : null, $"one of {string.Join(", ", LogLevels)}"),
 
         // HostFiltering expects one string
-        "hostlist" => ReadList(spec, raw, ParseHost) switch
+        SettingKind.HostList => ReadList(spec, raw, ParseHost) switch
         {
             (JsonArray { Count: 0 }, null) => (null, $"'{spec.Key}' needs at least one host, or *"),
             (JsonArray hosts, null) => (JsonValue.Create(string.Join(';', hosts.Select(h => h!.GetValue<string>()))), null),
@@ -363,12 +381,12 @@ public sealed class SettingsWriteService
         },
 
         // Only ever accepts the empty string: a credential may be removed here, never introduced
-        "clear" => raw.ValueKind == JsonValueKind.String && raw.GetString() == ""
+        SettingKind.Clear => raw.ValueKind == JsonValueKind.String && raw.GetString() == ""
             ? (JsonValue.Create(""), null)
             : (null, $"'{spec.Key}' can only be cleared from here, not set"),
 
         // Encrypted; empty clears
-        "secret" => raw.ValueKind switch
+        SettingKind.Secret => raw.ValueKind switch
         {
             JsonValueKind.Null => (null, null),
             JsonValueKind.String when raw.GetString() is "" => (null, null),
@@ -378,47 +396,47 @@ public sealed class SettingsWriteService
         },
 
         // identifiers that land in routes, tag names and the docs page; empty restores the default
-        "name" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || NameFormat.IsMatch(raw.GetString()!))
+        SettingKind.Name => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || NameFormat().IsMatch(raw.GetString()!))
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' allows letters, digits, dots, dashes and underscores only"),
 
-        "appname" => ReadString(spec, raw, value => ApplicationNameFormat.IsMatch(value)
+        SettingKind.AppName => ReadString(spec, raw, value => ApplicationNameFormat().IsMatch(value)
             ? null
             : $"'{spec.Key}' allows letters, digits, spaces, dots, dashes, underscores and parentheses, up to 128 characters"),
 
-        "attributes" => ReadString(spec, raw, value => value.Length <= spec.Max && ResourceAttributesFormat.IsMatch(value)
+        SettingKind.Attributes => ReadString(spec, raw, value => value.Length <= spec.Max && ResourceAttributesFormat().IsMatch(value)
             ? null
             : $"'{spec.Key}' must be key=value pairs separated by commas"),
 
-        "relpath" => ReadString(spec, raw, ParseRelativePath),
+        SettingKind.RelPath => ReadString(spec, raw, ParseRelativePath),
 
-        "dbfile" => ReadString(spec, raw, value => ParseRelativePath(value) ??
+        SettingKind.DbFile => ReadString(spec, raw, value => ParseRelativePath(value) ??
             (value.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ? null : $"'{value}' must end in .db")),
 
-        "route" => ReadString(spec, raw, ParseRoute),
+        SettingKind.Route => ReadString(spec, raw, ParseRoute),
 
-        "pathbase" => ReadString(spec, raw, value =>
-            value.Length <= 100 && PathBaseFormat.IsMatch(value) && !value.Split('/').Any(s => s is "." or "..")
+        SettingKind.PathBase => ReadString(spec, raw, value =>
+            value.Length <= 100 && PathBaseFormat().IsMatch(value) && !value.Split('/').Any(s => s is "." or "..")
                 ? null
                 : $"'{value}' must be empty or a path such as /portway"),
 
-        "link" => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
+        SettingKind.Link => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be an http, https or mailto link, or #"),
 
-        "weburl" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || Uri.TryCreate(raw.GetString(), UriKind.Absolute, out var web) && web.Scheme is "http" or "https")
+        SettingKind.WebUrl => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || Uri.TryCreate(raw.GetString(), UriKind.Absolute, out var web) && web.Scheme is "http" or "https")
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be an http or https link, or empty"),
 
-        "email" => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || IsEmail(raw.GetString()!))
+        SettingKind.Email => raw.ValueKind == JsonValueKind.String && (raw.GetString() is "" || IsEmail(raw.GetString()!))
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be an e-mail address"),
 
-        "time" => raw.ValueKind == JsonValueKind.String && ScheduleFormat.IsMatch(raw.GetString() ?? "")
+        SettingKind.Time => raw.ValueKind == JsonValueKind.String && ScheduleFormat().IsMatch(raw.GetString() ?? "")
             ? (JsonValue.Create(raw.GetString()), null)
             : (null, $"'{spec.Key}' must be a 24-hour time such as 03:00"),
 
-        _ => (null, $"'{spec.Key}' has no validator"),
+        _ => throw new ArgumentOutOfRangeException(nameof(spec), spec.Kind, null),
     };
 
     /// <summary>
@@ -531,13 +549,13 @@ public sealed class SettingsWriteService
     }
 
     private static string? ParseHost(string value) =>
-        value == "*" || HostFormat.IsMatch(value) && value.Length <= 253 ||
+        value == "*" || value.Length <= 253 && HostFormat().IsMatch(value) ||
         value.StartsWith('[') && value.EndsWith(']') && IPAddress.TryParse(value[1..^1], out _)
             ? null
             : $"'{value}' must be a host name, *.domain, an IP address or *";
 
     private static string? ParseExtension(string value) =>
-        ExtensionFormat.IsMatch(value) ? null : $"'{value}' must be an extension such as .pdf";
+        ExtensionFormat().IsMatch(value) ? null : $"'{value}' must be an extension such as .pdf";
 
     private static string? ParseMediaType(string value) =>
         MediaTypeHeaderValue.TryParse(value, out var media) && media.MediaType == value
@@ -549,7 +567,7 @@ public sealed class SettingsWriteService
     /// </summary>
     private static string? ParseRelativePath(string value)
     {
-        if (value.Length > 200 || !RelativePathFormat.IsMatch(value))
+        if (value.Length > 200 || !RelativePathFormat().IsMatch(value))
             return $"'{value}' must be a relative path of letters, digits, dots, dashes and underscores, such as log/traffic";
 
         var segments = value.Split('/');
@@ -568,7 +586,7 @@ public sealed class SettingsWriteService
 
     private static string? ParseRoute(string value)
     {
-        if (value.Length > 64 || !RouteFormat.IsMatch(value))
+        if (value.Length > 64 || !RouteFormat().IsMatch(value))
             return $"'{value}' must be a lower-case path such as /metrics";
 
         return ReservedRoutes.Any(r => value == r || value.StartsWith(r + "/"))
@@ -611,10 +629,10 @@ public sealed class SettingsWriteService
     /// <summary>
     /// Rules across settings.
     /// </summary>
-    private (string Message, string Field)? CrossCheck(IReadOnlyDictionary<string, JsonNode?> parsed)
+    internal static (string Message, string Field)? CrossCheck(IReadOnlyDictionary<string, JsonNode?> parsed, IConfiguration? config)
     {
         string? Value(string key, string? fallback = null) =>
-            parsed.TryGetValue(key, out var node) ? node?.ToString() : _root?[key] ?? fallback;
+            parsed.TryGetValue(key, out var node) ? node?.ToString() : config?[key] ?? fallback;
         long? Number(string key) => long.TryParse(Value(key), out var n) ? n : null;
         string? Touched(params string[] keys) => keys.FirstOrDefault(parsed.ContainsKey);
 
@@ -669,13 +687,13 @@ public sealed class SettingsWriteService
             TryTakePath(root, removed, out _);
     }
 
-    private static async Task<JsonObject> ReadOverridesAsync()
+    private static async Task<JsonObject> ReadOverridesAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(OverridesPath)) return new JsonObject();
         try
         {
             await using var stream = File.OpenRead(OverridesPath);
-            return (await JsonNode.ParseAsync(stream)) as JsonObject ?? new JsonObject();
+            return (await JsonNode.ParseAsync(stream, cancellationToken: cancellationToken)) as JsonObject ?? new JsonObject();
         }
         catch (JsonException ex)
         {

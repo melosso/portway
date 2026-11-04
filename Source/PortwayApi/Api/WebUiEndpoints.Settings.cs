@@ -249,7 +249,7 @@ public static partial class WebUiEndpointExtensions
                 .Select(w => new
                 {
                     key = w.Key,
-                    kind = w.Kind,
+                    kind = w.Kind.ToString().ToLowerInvariant(),
                     requires_restart = w.RequiresRestart,
                     min = w.Min,
                     max = w.Max,
@@ -291,7 +291,7 @@ public static partial class WebUiEndpointExtensions
             if (WouldLockCallerOut(ctx, config, urlValidator, changes) is { } lockout)
                 return Results.Json(new { error = lockout.Message, field = lockout.Field }, statusCode: 400);
 
-            var result = await writer.ApplyAsync(changes);
+            var result = await writer.ApplyAsync(changes, ctx.RequestAborted);
             if (!result.Ok)
                 return Results.Json(new { error = result.Error, field = result.Field }, statusCode: 400);
 

@@ -4,19 +4,19 @@ namespace PortwayApi.Middleware;
 /// </summary>
 public sealed record RequestTrafficLoggingOptions
 {
-    public bool Enabled { get; set; } = false;
-    public int QueueCapacity { get; set; } = 10000;
-    public string Provider { get; set; } = "File";
-    public string SqlitePath { get; set; } = "log/traffic_logs.db";
-    public string LogDirectory { get; set; } = "log/traffic";
-    public int MaxFileSizeMB { get; set; } = 50;
-    public int MaxFileCount { get; set; } = 10;
-    public string FilePrefix { get; set; } = "proxy_traffic_";
-    public int BatchSize { get; set; } = 100;
-    public int FlushIntervalMs { get; set; } = 1000;
-    public bool CaptureRequestBodies { get; set; } = false;
-    public bool CaptureResponseBodies { get; set; } = false;
-    public int MaxBodyCaptureSizeBytes { get; set; } = 4096;
-    public bool CaptureHeaders { get; set; } = true;
-    public bool InfoLoggingEnabled { get; set; } = true;
+    public bool Enabled { get; init; } = false;
+    public int QueueCapacity { get; init; } = 10000;
+    public string Provider { get; init; } = "File";
+    public string SqlitePath { get; init; } = "log/traffic_logs.db";
+    public string LogDirectory { get; init; } = "log/traffic";
+    public int MaxFileSizeMB { get; init; } = 50;
+    public int MaxFileCount { get; init; } = 10;
+    public string FilePrefix { get; init; } = "proxy_traffic_";
+    public int BatchSize { get; init; } = 100;
+    public int FlushIntervalMs { get; init; } = 1000;
+    public bool CaptureRequestBodies { get; init; } = false;
+    public bool CaptureResponseBodies { get; init; } = false;
+    public int MaxBodyCaptureSizeBytes { get; init; } = 4096;
+    public bool CaptureHeaders { get; init; } = true;
+    public bool InfoLoggingEnabled { get; init; } = true;
 }

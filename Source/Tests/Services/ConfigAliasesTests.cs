@@ -115,4 +115,16 @@ public sealed class ConfigAliasesTests
         Assert.Equal("Console:Customization:LandingPageEnabled", ConfigAliases.Canonical("WebUi:Customization:EnableLandingPage"));
         Assert.Equal("OpenApi:Scalar:Theme", ConfigAliases.Canonical("OpenApi:Scalar:Theme"));
     }
+
+    [Fact]
+    public void UnaliasedReadsDoNotAllocate()
+    {
+        var config = Build(new Dictionary<string, string?> { ["Oidc:Enabled"] = "true", ["WebUi:Enabled"] = "false" });
+        _ = config["Oidc:Enabled"];
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 1_000; i++) _ = config["Oidc:Enabled"];
+
+        Assert.Equal(0, GC.GetAllocatedBytesForCurrentThread() - before);
+    }
 }

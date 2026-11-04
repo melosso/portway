@@ -1,5 +1,6 @@
 namespace PortwayApi.Services.Configuration;
 
+using System.Collections.Frozen;
 using Serilog;
 
 /// <summary>
@@ -41,7 +42,20 @@ public static class ConfigAliases
     /// <summary>
     /// Keys that no longer apply.
     /// </summary>
-    public static readonly IReadOnlyList<string> RemovedKeys = ["Mcp:RequireAuthentication"];
+    public static readonly IReadOnlyList<string> RemovedKeys = ["Mcp:RequireAuthentication", "Mcp:AppsEnabled"];
+
+    private static readonly FrozenDictionary<string, string> CurrentByDeprecated =
+        RenamedKeys.ToFrozenDictionary(r => r.Deprecated, r => r.Current, StringComparer.OrdinalIgnoreCase);
+
+    private static readonly FrozenDictionary<string, string> DeprecatedByCurrent =
+        RenamedKeys.ToFrozenDictionary(r => r.Current, r => r.Deprecated, StringComparer.OrdinalIgnoreCase);
+
+    // names read per renamed key
+    private static readonly FrozenDictionary<string, string[]> RenamedNames =
+        RenamedKeys.ToFrozenDictionary(r => r.Current, r => (string[])[.. Names(r.Current), .. Names(r.Deprecated)], StringComparer.OrdinalIgnoreCase);
+
+    private static readonly (string Current, string[] DeprecatedNames)[] RenamedParents =
+        [.. RenamedKeys.Select(r => (r.Current, Names(r.Deprecated)))];
 
     /// <summary>
     /// Current name of a key.
@@ -49,14 +63,13 @@ public static class ConfigAliases
     public static string Canonical(string key)
     {
         if (IsUnder(key, LegacySection)) key = Section + key[LegacySection.Length..];
-        return RenamedKeys.FirstOrDefault(r => r.Deprecated.Equals(key, StringComparison.OrdinalIgnoreCase)).Current ?? key;
+        return CurrentByDeprecated.GetValueOrDefault(key, key);
     }
 
     /// <summary>
     /// Deprecated name, or null.
     /// </summary>
-    public static string? Deprecated(string key) =>
-        RenamedKeys.FirstOrDefault(r => r.Current.Equals(key, StringComparison.OrdinalIgnoreCase)).Deprecated;
+    public static string? Deprecated(string key) => DeprecatedByCurrent.GetValueOrDefault(key);
 
     /// <summary>
     /// Adds the alias provider.
@@ -86,7 +99,7 @@ public static class ConfigAliases
         (key.Length == section.Length || key[section.Length] == ':');
 
     // WebUi also names Console
-    private static IEnumerable<string> Names(string key) =>
+    private static string[] Names(string key) =>
         IsUnder(key, Section) ? [key, LegacySection + key[Section.Length..]] : [key];
 
     private sealed class AliasSource(IConfigurationRoot root) : IConfigurationSource
@@ -96,46 +109,66 @@ public static class ConfigAliases
 
     private sealed class AliasProvider(IConfigurationRoot root) : ConfigurationProvider
     {
-        private IEnumerable<IConfigurationProvider> Others => root.Providers.Where(p => !ReferenceEquals(p, this));
-
         public override bool TryGet(string key, out string? value)
         {
-            value = null;
-            var deprecated = Deprecated(key);
-            if (!IsUnder(key, Section) && deprecated is null) return false;
+            if (RenamedNames.TryGetValue(key, out var names)) return TryRead(names, out value);
 
-            var names = Names(key).Concat(deprecated is null ? [] : Names(deprecated)).ToArray();
-            foreach (var provider in Others.Reverse())
-            {
-                foreach (var name in names)
-                    if (provider.TryGet(name, out value)) return true;
-            }
-            return false;
+            value = null;
+            return IsUnder(key, Section) && TryRead([key, LegacySection + key[Section.Length..]], out value);
         }
 
         public override IEnumerable<string> GetChildKeys(IEnumerable<string> earlierKeys, string? parentPath)
         {
+            var providers = Providers();
             var keys = earlierKeys;
-
-            if (parentPath is null && Others.Any(p => p.GetChildKeys([], LegacySection).Any()))
-                keys = keys.Append(Section);
 
             if (parentPath is not null && IsUnder(parentPath, Section))
             {
                 var legacy = LegacySection + parentPath[Section.Length..];
-                keys = Others.Aggregate(keys, (k, p) => p.GetChildKeys(k, legacy));
+                foreach (var provider in providers)
+                    if (!ReferenceEquals(provider, this)) keys = provider.GetChildKeys(keys, legacy);
             }
+
+            var result = new List<string>(keys);
+
+            if (parentPath is null && HasLegacySection(providers))
+                result.Add(Section);
 
             // Renamed keys under new parent
             var prefix = parentPath is null ? "" : parentPath + ":";
-            foreach (var (current, deprecated) in RenamedKeys)
+            foreach (var (current, deprecatedNames) in RenamedParents)
             {
-                if (!current.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
-                if (!Names(deprecated).Any(name => Others.Any(p => p.TryGet(name, out _)))) continue;
-                keys = keys.Append(current[prefix.Length..].Split(':')[0]);
+                if (current.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && TryRead(deprecatedNames, out _))
+                    result.Add(current[prefix.Length..].Split(':')[0]);
             }
 
-            return keys;
+            return result;
+        }
+
+        private IList<IConfigurationProvider> Providers() =>
+            root.Providers as IList<IConfigurationProvider> ?? [.. root.Providers];
+
+        private bool HasLegacySection(IList<IConfigurationProvider> providers)
+        {
+            foreach (var provider in providers)
+            {
+                if (ReferenceEquals(provider, this)) continue;
+                foreach (var _ in provider.GetChildKeys([], LegacySection)) return true;
+            }
+            return false;
+        }
+
+        private bool TryRead(ReadOnlySpan<string> names, out string? value)
+        {
+            var providers = Providers();
+            for (var i = providers.Count - 1; i >= 0; i--)
+            {
+                if (ReferenceEquals(providers[i], this)) continue;
+                foreach (var name in names)
+                    if (providers[i].TryGet(name, out value)) return true;
+            }
+            value = null;
+            return false;
         }
     }
 }

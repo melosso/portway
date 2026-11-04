@@ -1,6 +1,6 @@
 namespace PortwayApi.Classes.OpenApi;
 
-public class FooterInfo
+public sealed class FooterInfo
 {
     public string Text { get; set; } = "Powered by Scalar";
     public string Target { get; set; } = "_blank";
