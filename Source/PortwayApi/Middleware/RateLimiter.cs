@@ -54,12 +54,6 @@ public class RateLimiter
         // Agrees with UseWebUiAuth so the exemption check applies exactly when the UI middleware does
         _uiAuthEnabled = webUiEnabled;
 
-        if (_settings.Enabled)
-        {
-            _logger.LogInformation("Rate limiting enabled. Store: {Store}, IP: {IpLimit}/{IpWindow}s, Token: {TokenLimit}/{TokenWindow}s",
-                _store.GetType().Name, _settings.IpLimit, _settings.IpWindowSeconds, _settings.TokenLimit, _settings.TokenWindowSeconds);
-        }
-
         // Periodically remove expired entries to prevent unbounded dictionary growth
         _cleanupTimer = timeProvider.CreateTimer(_ => CleanupExpiredEntries(), null,
             TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));

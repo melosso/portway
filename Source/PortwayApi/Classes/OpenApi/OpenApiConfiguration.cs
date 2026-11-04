@@ -190,10 +190,6 @@ public static class OpenApiConfiguration
 
             Log.Debug("OpenAPI services registered successfully");
         }
-        else
-        {
-            Log.Information("OpenAPI documentation is disabled in configuration");
-        }
     }
 
     public static void ConfigureDocs(WebApplication app, IOptionsMonitor<OpenApiSettings> openApiMonitor)
@@ -201,10 +197,7 @@ public static class OpenApiConfiguration
         // Check if OpenAPI is enabled at startup
         var initialSettings = openApiMonitor.CurrentValue;
         if (!initialSettings.Enabled)
-        {
-            Log.Information("OpenAPI documentation is disabled in configuration");
             return;
-        }
 
         // Configure OpenAPI JSON endpoint (server URL is handled by document transformer in ConfigureOpenApi)
         app.MapOpenApi("/docs/openapi.json");
@@ -517,12 +510,20 @@ public static class OpenApiConfiguration
         // every operation has its own url under /docs, the more specific document route still wins
         app.MapGet("/docs", DocsPage);
         app.MapGet("/docs/{**slug}", DocsPage).ExcludeFromDescription();
+    }
 
+    /// <summary>
+    /// Logs whether /docs is served, with the other feature lines after startup loading
+    /// </summary>
+    public static void LogDocsStatus(WebApplication app, OpenApiSettings settings)
+    {
+        if (!settings.Enabled)
+            Log.Information("OpenAPI documentation: Disabled");
         // unauthenticated docs expose endpoint topology
-        if (app.Environment.IsProduction())
+        else if (app.Environment.IsProduction())
             Log.Warning("Unauthenticated OpenAPI documentation is enabled at '/docs'. Restrict access via proxy/network rule or set OpenApi:Enabled=false. Dismiss this warning if the documentation is public by intent.");
         else
-            Log.Information("OpenAPI documentation is enabled at '/docs'.");
+            Log.Information("OpenAPI documentation: Enabled at '/docs'");
     }
 
     // To-do: drop the scalar 1.72.4 nested tag workarounds once upstream handles parent tags
