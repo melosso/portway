@@ -54,7 +54,11 @@ public class ApiTestBase : IDisposable
     private readonly string _authDbPath;
     private readonly string _mcpDbPath;
 
-    public ApiTestBase()
+    public ApiTestBase() : this(connectTimeoutSeconds: 1)
+    {
+    }
+
+    protected ApiTestBase(int connectTimeoutSeconds)
     {
         var id = Guid.NewGuid().ToString("N");
         _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_auth.db");
@@ -65,7 +69,7 @@ public class ApiTestBase : IDisposable
         _mockODataToSqlConverter = new Mock<IODataToSqlConverter>();
 
         // 1s connect timeout; no SQL Server runs under test so the default 15s wait would dominate the suite
-        var poolingOptions = new SqlPoolingOptions(5, 100, 1, true, "PortwayAPI");
+        var poolingOptions = new SqlPoolingOptions(5, 100, connectTimeoutSeconds, true, "PortwayAPI");
 
         // Real factory (this is not a mock) so the WMS SQLite demo.db resolves to SqliteProvider
         var providerFactory = new SqlProviderFactory(

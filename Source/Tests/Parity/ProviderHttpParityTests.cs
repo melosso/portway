@@ -26,7 +26,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
     protected virtual HttpStatusCode NonGuidKeyOnGuidColumnStatus => HttpStatusCode.BadRequest;
 
-    protected ProviderHttpParityTests(TFixture fixture)
+    protected ProviderHttpParityTests(TFixture fixture) : base(connectTimeoutSeconds: 15)
     {
         _namespace = $"Http{fixture.ProviderType}";
         _endpointDir = Path.Combine("endpoints", "SQL", _namespace);
@@ -130,7 +130,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
             Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url(endpoint), $$"""{ "Id": "{{key}}", "Name": "New" }""")).Status);
             Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Patch, Url(endpoint), $$"""{ "Id": "{{key}}", "Name": "Changed" }""")).Status);
-            Assert.Contains("Changed", (await Send(HttpMethod.Get, Url(endpoint, $"({key})"))).Body);
+            Assert.Contains("Changed", (await Send(HttpMethod.Get, Url(endpoint, $"({key})?$select=Name"))).Body);
             Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url(endpoint, $"(guid'{key}')"))).Status);
             Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, Url(endpoint, $"({key})"))).Status);
         }
