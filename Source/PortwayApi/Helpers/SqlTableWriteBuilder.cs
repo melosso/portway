@@ -93,13 +93,17 @@ public static partial class SqlTableWriteBuilder
         => Compile(provider, new Query(table).AsInsert(columns, returnId: true));
 
     public static TableWriteCommand BuildUpdate(ISqlProvider provider, string table, string pkColumn, object pkValue, Dictionary<string, object?> columns, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsUpdate(columns));
+        => Compile(provider, Confine(new Query(table).Where(pkColumn, KeyValue(pkValue)), tenants).AsUpdate(columns));
 
     public static TableWriteCommand BuildDelete(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsDelete());
+        => Compile(provider, Confine(new Query(table).Where(pkColumn, KeyValue(pkValue)), tenants).AsDelete());
 
     public static TableWriteCommand BuildSelectByKey(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants));
+        => Compile(provider, Confine(new Query(table).Where(pkColumn, KeyValue(pkValue)), tenants));
+
+    // literal coerces to column type
+    private static object KeyValue(object pkValue) =>
+        pkValue is string key && Guid.TryParseExact(key, "D", out _) ? TenantSql.Literal(key) : pkValue;
 
     private static Query Confine(Query query, IReadOnlyList<TenantPredicate>? tenants)
     {

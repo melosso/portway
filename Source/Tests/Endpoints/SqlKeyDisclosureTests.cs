@@ -30,7 +30,7 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
         {
             connection.Execute("""
                 CREATE TABLE Items (ItemCode TEXT PRIMARY KEY, Description TEXT NOT NULL, Legacy TEXT);
-                INSERT INTO Items VALUES ('A1', 'First', 'x'), ('B2', 'Second', 'y');
+                INSERT INTO Items VALUES ('A1', 'First', 'x'), ('B2', 'Second', 'y'), ('3f2a1b4c-1111-4222-8333-444455556666', 'GuidRow', 'z');
                 """);
         }
 
@@ -41,7 +41,7 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
             DatabaseObjectName = "Items",
             DatabaseObjectType = "Table",
             AllowedEnvironments = new[] { Env },
-            AllowedMethods = new[] { "GET", "PUT", "PATCH" },
+            AllowedMethods = new[] { "GET", "PUT", "PATCH", "DELETE" },
             WriteMode = "Table",
             PrimaryKey = "ItemCode",
             AllowedColumns = new[] { "ItemCode;ProductNumber", "Description", "Legacy;Id" },
@@ -136,6 +136,57 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
         Assert.Equal(HttpStatusCode.OK, status);
         Assert.Contains("First", body);
         Assert.DoesNotContain("Second", body);
+    }
+
+    [Theory]
+    [InlineData("(3f2a1b4c-1111-4222-8333-444455556666)")]
+    [InlineData("(guid'3f2a1b4c-1111-4222-8333-444455556666')")]
+    [InlineData("('3f2a1b4c-1111-4222-8333-444455556666')")]
+    [InlineData("/3f2a1b4c-1111-4222-8333-444455556666")]
+    public async Task GuidKey_ReturnsTheRecord(string suffix)
+    {
+        var (status, body) = await Send(HttpMethod.Get, $"{Api}{suffix}");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("GuidRow", body);
+        Assert.DoesNotContain("Second", body);
+    }
+
+    [Fact]
+    public async Task GuidKey_IgnoresClientFilter()
+    {
+        var (status, body) = await Send(HttpMethod.Get, $"{Api}(3f2a1b4c-1111-4222-8333-444455556666)?$filter=Description eq 'First'");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("GuidRow", body);
+    }
+
+    [Fact]
+    public async Task UnknownGuidKey_ReturnsNotFound()
+    {
+        var (status, _) = await Send(HttpMethod.Get, $"{Api}(00000000-1111-4222-8333-444455556666)");
+
+        Assert.Equal(HttpStatusCode.NotFound, status);
+    }
+
+    [Fact]
+    public async Task GuidKey_Update_ChangesOnlyThatRecord()
+    {
+        var (status, body) = await Send(HttpMethod.Patch, Api, """{ "Id": "x", "ProductNumber": "3f2a1b4c-1111-4222-8333-444455556666", "Description": "Changed" }""");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("Changed", body);
+        Assert.Contains("First", (await Send(HttpMethod.Get, $"{Api}('A1')")).Body);
+    }
+
+    [Fact]
+    public async Task GuidKey_Delete_RemovesOnlyThatRecord()
+    {
+        var (status, _) = await Send(HttpMethod.Delete, $"{Api}(guid'3f2a1b4c-1111-4222-8333-444455556666')");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, $"{Api}(3f2a1b4c-1111-4222-8333-444455556666)")).Status);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Get, $"{Api}('A1')")).Status);
     }
 
     [Fact]

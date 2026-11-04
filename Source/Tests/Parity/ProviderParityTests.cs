@@ -209,6 +209,33 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
         }
     }
 
+    [DockerFact]
+    public Task GuidKey_MatchesNativeColumn() => AssertGuidKeyRoundtrip(_fixture.QualifiedGuidKeysTable);
+
+    [DockerFact]
+    public Task GuidKey_MatchesTextColumn() => AssertGuidKeyRoundtrip(_fixture.QualifiedTextKeysTable);
+
+    private async Task AssertGuidKeyRoundtrip(string table)
+    {
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+
+        var (sql, parameters) = CreateConverter().ConvertToSQL(table, new Dictionary<string, string> { ["select"] = "Name" },
+            _fixture.ProviderType, null, [new TenantPredicate("Id", ParityDatabaseFixture.GuidKey)]);
+        Assert.Equal("Kept", Assert.Single(await connection.QueryAsync<string>(sql, new DynamicParameters(parameters))));
+
+        var update = SqlTableWriteBuilder.BuildUpdate(provider, table, "Id", ParityDatabaseFixture.GuidKey,
+            new Dictionary<string, object?> { ["Name"] = "Changed" });
+        Assert.Equal(1, await connection.ExecuteAsync(update.Sql, update.Parameters));
+
+        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, "Id", ParityDatabaseFixture.GuidKey);
+        Assert.Equal("Changed", (string)Assert.Single(await connection.QueryAsync(select.Sql, select.Parameters)).Name);
+
+        var delete = SqlTableWriteBuilder.BuildDelete(provider, table, "Id", ParityDatabaseFixture.RemovableGuidKey);
+        Assert.Equal(1, await connection.ExecuteAsync(delete.Sql, delete.Parameters));
+    }
+
     private async Task<List<int>> TenantIds(string column, string value, string? filter = null)
     {
         var odata = new Dictionary<string, string> { ["select"] = "Id" };

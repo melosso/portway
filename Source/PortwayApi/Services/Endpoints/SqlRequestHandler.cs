@@ -208,10 +208,11 @@ public sealed partial class SqlRequestHandler
                     }
                 }
 
-                // Build the primary-key filter, quoting the value as a GUID literal when it parses as one
-                if (Guid.TryParse(id, out _))
+                // literal coerces to column type
+                if (Guid.TryParseExact(id, "D", out _))
                 {
-                    filter = $"{actualPrimaryKey} eq guid'{id}'";
+                    filter = null;
+                    tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id)];
                 }
                 else
                 {
