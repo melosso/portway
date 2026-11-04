@@ -25,7 +25,7 @@ public sealed class MySqlParityFixture : ParityDatabaseFixture
     protected override async Task<string> StartContainerAsync()
     {
         await _container.StartAsync();
-        return $"{_container.GetConnectionString()};AllowUserVariables=true";
+        return _container.GetConnectionString();
     }
 
     protected override Task StopContainerAsync() => _container.DisposeAsync().AsTask();
