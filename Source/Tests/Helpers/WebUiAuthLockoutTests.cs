@@ -88,4 +88,21 @@ public class WebUiAuthLockoutTests
             WebUiAuthHelper.ClearFailedAttempts(ip, $"user{i % 5}");
         }
     }
+
+    [Fact]
+    public void AccountKey_HasOneSizeForAnyUsername()
+    {
+        var shortKey = WebUiAuthHelper.AccountKey("203.0.113.1", "admin");
+        var hugeKey = WebUiAuthHelper.AccountKey("203.0.113.1", new string('x', 10_000_000));
+
+        Assert.Equal(shortKey.Length, hugeKey.Length);
+        Assert.True(hugeKey.Length < 128);
+    }
+
+    [Fact]
+    public void AccountKey_IgnoresCaseAndSeparatesAccounts()
+    {
+        Assert.Equal(WebUiAuthHelper.AccountKey("203.0.113.1", "Admin"), WebUiAuthHelper.AccountKey("203.0.113.1", "admin"));
+        Assert.NotEqual(WebUiAuthHelper.AccountKey("203.0.113.1", "admin"), WebUiAuthHelper.AccountKey("203.0.113.1", "viewer"));
+    }
 }

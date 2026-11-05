@@ -47,7 +47,9 @@ public static class WebUiAuthHelper
             (_, existing) => existing.LockedUntil.HasValue ? existing : (Math.Max(0, existing.Failures - 1), null, existing.WindowStart));
     }
 
-    private static string AccountKey(string clientIp, string account) => $"{clientIp}\n{account.ToLowerInvariant()}";
+    // fixed size for untrusted names
+    internal static string AccountKey(string clientIp, string account) =>
+        $"{clientIp}\n{Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(account.ToLowerInvariant())))}";
 
     private static string? Count(string key, int limit)
     {
