@@ -551,6 +551,55 @@ public class WebUiSecurityTests : IDisposable
         Assert.True(security.GetProperty("csrf_protection").GetBoolean());
     }
 
+    [Theory]
+    [InlineData("/_/api/auth", """{"username":1,"password":"x"}""", "application/json")]
+    [InlineData("/_/api/auth", """{"username":"admin","password":{}}""", "application/json")]
+    [InlineData("/_/api/auth", """{"username":"admin","csrf":[]}""", "application/json")]
+    [InlineData("/_/api/auth", "[]", "application/json")]
+    [InlineData("/_/api/auth", "not json", "application/json")]
+    [InlineData("/_/api/auth/password", """{"username":1}""", "application/json")]
+    [InlineData("/_/api/auth/password", """{"username":"admin","newPassword":5}""", "application/json")]
+    [InlineData("/_/api/auth/password", "[]", "application/json")]
+    [InlineData("/_/api/auth/password", "not json", "application/json")]
+    public async Task MalformedSignInBody_Returns400(string path, string body, string contentType)
+    {
+        var client = CreateClient();
+
+        var response = await client.PostAsync(path, new StringContent(body, System.Text.Encoding.UTF8, contentType), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SignInBodyOfAnotherMediaType_Returns415()
+    {
+        var response = await CreateClient().PostAsync("/_/api/auth", new StringContent("""{"username":"admin"}""", System.Text.Encoding.UTF8, "text/plain"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/_/api/auth")]
+    [InlineData("/_/api/auth/password")]
+    public async Task EmptySignInRequest_Returns400(string path)
+    {
+        var response = await CreateClient().PostAsync(path, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MalformedSignInBody_DoesNotCountTowardTheLockout()
+    {
+        var client = CreateClient();
+
+        for (var i = 0; i < 60; i++)
+        {
+            var response = await client.PostAsync("/_/api/auth", new StringContent("""{"username":1}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+    }
+
     [Fact]
     public async Task ViewerAccount_CannotWriteSettings_ButCanRead()
     {

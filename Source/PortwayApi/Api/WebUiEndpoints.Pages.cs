@@ -11,6 +11,29 @@ using PortwayApi.Helpers;
 
 public static partial class WebUiEndpointExtensions
 {
+    private const string InvalidSignInBody = "Invalid request body";
+
+    /// <summary>
+    /// Reads a JSON object of text fields, or null.
+    /// </summary>
+    private static async Task<JsonElement?> ReadSignInBodyAsync(HttpRequest request)
+    {
+        if (!request.HasJsonContentType())
+            return null;
+
+        try
+        {
+            var body = await request.ReadFromJsonAsync<JsonElement>(request.HttpContext.RequestAborted);
+            return body.ValueKind == JsonValueKind.Object && body.EnumerateObject().All(field => field.Value.ValueKind is JsonValueKind.String or JsonValueKind.Null)
+                ? body
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static void MapPageAndAuthRoutes(WebApplication app, string wwwroot, string appVersion, bool secureCookies)
     {
         // Login
@@ -34,7 +57,9 @@ public static partial class WebUiEndpointExtensions
         // Auth endpoints
         app.MapPost("/_/api/auth", async (HttpContext context) =>
         {
-            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (await ReadSignInBodyAsync(context.Request) is not { } body)
+                return Results.Json(new { error = InvalidSignInBody }, statusCode: 400);
+
             var username = body.TryGetProperty("username", out var up) ? up.GetString() ?? "" : "";
             var password = body.TryGetProperty("password", out var pp) ? pp.GetString() ?? "" : "";
 
@@ -78,7 +103,8 @@ public static partial class WebUiEndpointExtensions
         // Completes a first sign-in: verifies the old password again and issues the session only once the new one is set
         app.MapPost("/_/api/auth/password", async (HttpContext context) =>
         {
-            var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+            if (await ReadSignInBodyAsync(context.Request) is not { } body)
+                return Results.Json(new { error = InvalidSignInBody }, statusCode: 400);
 
             var username = body.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
             var current = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
