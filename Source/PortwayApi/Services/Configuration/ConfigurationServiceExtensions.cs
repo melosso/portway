@@ -59,6 +59,9 @@ public static class ConfigurationServiceExtensions
             var children = section.GetChildren().ToList();
             if (section.Value is null && children.Count == 0) continue;
 
+            // empty hosts allow every host
+            if (spec.Kind == SettingKind.HostList && section.Value is "") continue;
+
             // operator files may use absolute paths
             if (spec.Kind is SettingKind.RelPath or SettingKind.DbFile)
             {
@@ -79,7 +82,7 @@ public static class ConfigurationServiceExtensions
                 continue;
             }
 
-            if (spec.Kind is SettingKind.Route or SettingKind.PathBase or SettingKind.HostList or SettingKind.OriginList or SettingKind.IpList or SettingKind.CidrList or SettingKind.AppName)
+            if (spec.Kind is SettingKind.Route or SettingKind.PathBase or SettingKind.HostList or SettingKind.OriginList or SettingKind.IpList or SettingKind.CidrList)
                 throw new InvalidOperationException($"Configuration key {spec.Key} is invalid: {error}");
 
             Log.Warning("Configuration key {Key} is outside the console range: {Reason}", spec.Key, error);
@@ -100,6 +103,7 @@ public static class ConfigurationServiceExtensions
             SettingKind.HostList => new JsonArray([.. (value ?? "").Split(';').Select(h => (JsonNode?)JsonValue.Create(h))]),
             SettingKind.Bool => bool.TryParse(value, out var b) ? JsonValue.Create(b) : null,
             SettingKind.Int => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i) ? JsonValue.Create(i) : null,
+            SettingKind.Long => long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l) ? JsonValue.Create(l) : null,
             SettingKind.Number => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) ? JsonValue.Create(d) : null,
             _ => JsonValue.Create(value),
         };

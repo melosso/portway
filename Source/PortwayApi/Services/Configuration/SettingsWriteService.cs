@@ -24,7 +24,7 @@ public sealed record WritableSetting(
 /// </summary>
 public enum SettingKind
 {
-    Bool, Int, Number, Choice, Text, IpList, CidrList, OriginList, ExtList, MediaTypeList, IntMap, LevelMap, HostList, Clear, Secret, Name, AppName, Attributes, RelPath, DbFile, Route, PathBase, Link, WebUrl, Email, Time,
+    Bool, Int, Number, Choice, Text, IpList, CidrList, OriginList, ExtList, MediaTypeList, IntMap, LevelMap, HostList, Clear, Secret, Name, AppName, Attributes, RelPath, DbFile, Route, PathBase, Link, WebUrl, Email, Time, Long,
 }
 
 /// <summary>
@@ -77,7 +77,7 @@ public sealed partial class SettingsWriteService
 
     private static readonly string[] ProtectedFiles = ["auth.db", "mcp.db", "metrics.db"];
 
-    private static readonly string[] ReservedRoutes = ["/api", "/docs", "/health", "/openapi"];
+    private static readonly string[] ReservedRoutes = ["/api", "/docs", "/health", "/openapi", "/sm"];
 
     private static readonly string[] ScalarThemes =
         ["portway", "default", "alternate", "moon", "purple", "solarized", "bluePlanet", "saturn", "kepler", "mars", "deepSpace", "elysiajs", "fastify", "laserwave", "none"];
@@ -196,7 +196,7 @@ public sealed partial class SettingsWriteService
         new("Telemetry:Prometheus:Path", SettingKind.Route, true),
 
         new("FileStorage:StorageDirectory", SettingKind.RelPath, true),
-        new("FileStorage:MaxFileSizeBytes", SettingKind.Int, false, 1_024, 1_073_741_824),
+        new("FileStorage:MaxFileSizeBytes", SettingKind.Long, false, 1_024, 1_073_741_824),
         new("FileStorage:UseMemoryCache", SettingKind.Bool, false),
         new("FileStorage:MemoryCacheDurationSeconds", SettingKind.Int, false, 1, 86_400),
         new("FileStorage:MaxTotalMemoryCacheMB", SettingKind.Int, false, 1, 8_192),
@@ -344,7 +344,7 @@ public sealed partial class SettingsWriteService
             ? (JsonValue.Create(raw.GetBoolean()), null)
             : (null, $"'{spec.Key}' expects true or false"),
 
-        SettingKind.Int => ReadInt(spec, raw),
+        SettingKind.Int or SettingKind.Long => ReadInt(spec, raw),
 
         SettingKind.Number => ReadNumber(spec, raw),
 
@@ -415,10 +415,7 @@ public sealed partial class SettingsWriteService
 
         SettingKind.Route => ReadString(spec, raw, ParseRoute),
 
-        SettingKind.PathBase => ReadString(spec, raw, value =>
-            value.Length <= 100 && PathBaseFormat().IsMatch(value) && !value.Split('/').Any(s => s is "." or "..")
-                ? null
-                : $"'{value}' must be empty or a path such as /portway"),
+        SettingKind.PathBase => ReadPathBase(spec, raw),
 
         SettingKind.Link => raw.ValueKind == JsonValueKind.String && IsSafeLink(raw.GetString()!)
             ? (JsonValue.Create(raw.GetString()), null)
@@ -449,6 +446,21 @@ public sealed partial class SettingsWriteService
 
         var value = raw.GetString()!.Trim();
         return validate(value) is { } problem ? (null, problem) : (JsonValue.Create(value), null);
+    }
+
+    /// <summary>
+    /// Reads a path base in the form UsePortwayPathBase serves.
+    /// </summary>
+    private static (JsonNode? Node, string? Error) ReadPathBase(WritableSetting spec, JsonElement raw)
+    {
+        if (raw.ValueKind != JsonValueKind.String)
+            return (null, $"'{spec.Key}' expects text");
+
+        var trimmed = raw.GetString()!.Trim().Trim('/');
+        var value = trimmed.Length == 0 ? "" : "/" + trimmed;
+        return value.Length <= 100 && PathBaseFormat().IsMatch(value) && !value.Split('/').Any(s => s is "." or "..")
+            ? (JsonValue.Create(value), null)
+            : (null, $"'{raw.GetString()}' must be empty or a path such as /portway");
     }
 
     /// <summary>
@@ -632,7 +644,7 @@ public sealed partial class SettingsWriteService
     internal static (string Message, string Field)? CrossCheck(IReadOnlyDictionary<string, JsonNode?> parsed, IConfiguration? config)
     {
         string? Value(string key, string? fallback = null) =>
-            parsed.TryGetValue(key, out var node) ? node?.ToString() : config?[key] ?? fallback;
+            (parsed.TryGetValue(key, out var node) ? node?.ToString() : config?[key]) ?? fallback;
         long? Number(string key) => long.TryParse(Value(key), out var n) ? n : null;
         string? Touched(params string[] keys) => keys.FirstOrDefault(parsed.ContainsKey);
 
@@ -645,8 +657,8 @@ public sealed partial class SettingsWriteService
             return ("The default MCP page size cannot exceed the maximum", page);
 
         if (Touched("Mcp:Path", "Telemetry:Prometheus:Path") is { } route &&
-            string.Equals(Value("Mcp:Path", "/mcp"), Value("Telemetry:Prometheus:Path", "/metrics"), StringComparison.OrdinalIgnoreCase))
-            return ("The MCP path and the metrics path must differ", route);
+            Overlaps(Value("Mcp:Path", "/mcp")!, Value("Telemetry:Prometheus:Path", "/metrics")!))
+            return ("The MCP path and the metrics path cannot overlap", route);
 
         // Uploads are served back
         if (Touched("FileStorage:StorageDirectory", "RequestTrafficLogging:LogDirectory", "RequestTrafficLogging:SqlitePath") is { } folder)
@@ -656,7 +668,7 @@ public sealed partial class SettingsWriteService
             {
                 "log",
                 Value("RequestTrafficLogging:LogDirectory", "log/traffic")!,
-                Path.GetDirectoryName(Value("RequestTrafficLogging:SqlitePath", "log/traffic_logs.db"))!.Replace('\\', '/'),
+                Path.GetDirectoryName(Value("RequestTrafficLogging:SqlitePath", "log/traffic_logs.db"))?.Replace('\\', '/') ?? "",
             };
             if (logs.Any(log => Overlaps(storage, log)))
                 return ("File storage cannot share a folder with log files", folder);

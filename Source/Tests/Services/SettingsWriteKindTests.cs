@@ -60,10 +60,19 @@ public sealed class SettingsWriteKindTests
     [InlineData("\"\"", true)]
     [InlineData("\"/portway\"", true)]
     [InlineData("\"/a/b\"", true)]
-    [InlineData("\"portway\"", false)]
+    [InlineData("\"portway\"", true)]
+    [InlineData("\"/portway/\"", true)]
     [InlineData("\"/..\"", false)]
     [InlineData("\"/a b\"", false)]
     public void PathBase(string json, bool ok) => Assert.Equal(ok, Error("PathBase", json) is null);
+
+    [Theory]
+    [InlineData("\"portway\"", "/portway")]
+    [InlineData("\"/portway/\"", "/portway")]
+    [InlineData("\"/a/b\"", "/a/b")]
+    [InlineData("\"/\"", "")]
+    public void PathBase_IsNormalized(string json, string expected) =>
+        Assert.Equal(expected, SettingsWriteService.Coerce("PathBase", Json(json)).Node?.GetValue<string>());
 
     [Fact]
     public void AllowedHosts_IsStoredAsOneSemicolonSeparatedString()

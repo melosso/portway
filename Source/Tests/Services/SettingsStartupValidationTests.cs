@@ -85,4 +85,50 @@ public sealed class SettingsStartupValidationTests
         var error = Assert.Throws<InvalidOperationException>(() => Validate(new() { [key] = value }));
         Assert.Contains(key, error.Message);
     }
+
+    [Fact]
+    public void FileSizeAboveTheIntRange_StartsWithAWarning()
+    {
+        var warning = Assert.Single(Validate(new() { ["FileStorage:MaxFileSizeBytes"] = "5368709120" }));
+        Assert.Contains("FileStorage:MaxFileSizeBytes", warning.RenderMessage());
+    }
+
+    [Theory]
+    [InlineData("portway")]
+    [InlineData("/portway/")]
+    [InlineData("/")]
+    public void PathBaseThatWorksAtRuntime_Passes(string value) =>
+        Assert.Empty(Validate(new() { ["PathBase"] = value }));
+
+    [Fact]
+    public void EmptySqlitePath_Passes() =>
+        Assert.Empty(Validate(new() { ["RequestTrafficLogging:SqlitePath"] = "" }));
+
+    [Fact]
+    public void EmptyAllowedHosts_Passes() =>
+        Assert.Empty(Validate(new() { ["AllowedHosts"] = "" }));
+
+    [Fact]
+    public void ApplicationNameOutsideTheConsoleFormat_StartsWithAWarning()
+    {
+        var warning = Assert.Single(Validate(new() { ["SqlConnectionPooling:ApplicationName"] = "Portway: prod" }));
+        Assert.Contains("SqlConnectionPooling:ApplicationName", warning.RenderMessage());
+    }
+
+    [Theory]
+    [InlineData("/sm")]
+    [InlineData("/sm/mcp")]
+    [InlineData("/metrics/mcp")]
+    public void McpPathWhereTokenAuthIsSkipped_FailsStart(string path)
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => Validate(new() { ["Mcp:Path"] = path, ["Telemetry:Prometheus:Path"] = "/metrics" }));
+        Assert.Contains("Mcp:Path", error.Message);
+    }
+
+    [Fact]
+    public void WideKnownNetwork_FailsStart()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() => Validate(new() { ["ForwardedHeaders:KnownNetworks:0"] = "0.0.0.0/0" }));
+        Assert.Contains("ForwardedHeaders:KnownNetworks", error.Message);
+    }
 }
