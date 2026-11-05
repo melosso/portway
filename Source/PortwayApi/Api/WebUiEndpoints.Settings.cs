@@ -371,19 +371,10 @@ public static partial class WebUiEndpointExtensions
         PortwayApi.Helpers.UrlValidator urlValidator,
         IDictionary<string, JsonElement> changes)
     {
-        string[] Strings(string key, string[] current) =>
-            changes.TryGetValue(key, out var raw) && raw.ValueKind == JsonValueKind.Array
-                ? raw.EnumerateArray()
-                     .Where(e => e.ValueKind == JsonValueKind.String)
-                     .Select(e => (e.GetString() ?? "").Trim())
-                     .Where(v => v.Length > 0)
-                     .ToArray()
-                : current;
-
         if (changes.TryGetValue("AllowedHosts", out var hostsRaw) && hostsRaw.ValueKind == JsonValueKind.Array)
         {
             var host = ctx.Request.Host.Host;
-            var hosts = Strings("AllowedHosts", []);
+            var hosts = PendingList(changes, "AllowedHosts", []);
             if (hosts.Length > 0 && !hosts.Any(h => h == "*" ||
                     h.Equals(host, StringComparison.OrdinalIgnoreCase) ||
                     h.Trim('[', ']').Equals(host.Trim('[', ']'), StringComparison.OrdinalIgnoreCase) ||
@@ -396,7 +387,7 @@ public static partial class WebUiEndpointExtensions
                           || changes.ContainsKey("ForwardedHeaders:KnownNetworks");
         if (!touchesOrigins && !touchesProxies) return null;
 
-        var origins = Strings("Console:PublicOrigins",
+        var origins = PendingList(changes, "Console:PublicOrigins",
             config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
 
         if (origins.Length > 0 && IsPublicOriginAllowed(ctx.Request, origins))
@@ -412,6 +403,18 @@ public static partial class WebUiEndpointExtensions
     }
 
     /// <summary>
+    /// List value once the change applies.
+    /// </summary>
+    private static string[] PendingList(IDictionary<string, JsonElement> changes, string key, string[] current) =>
+        changes.TryGetValue(key, out var raw) && raw.ValueKind == JsonValueKind.Array
+            ? raw.EnumerateArray()
+                 .Where(e => e.ValueKind == JsonValueKind.String)
+                 .Select(e => (e.GetString() ?? "").Trim())
+                 .Where(v => v.Length > 0)
+                 .ToArray()
+            : current;
+
+    /// <summary>
     /// Client address the console gate compares once the change applies.
     /// </summary>
     private static IPAddress? EffectiveClientIp(
@@ -421,18 +424,11 @@ public static partial class WebUiEndpointExtensions
         if (peer is null) return null;
         if (peer.IsIPv4MappedToIPv6) peer = peer.MapToIPv4();
 
-        string[] Strings(string key) =>
-            changes.TryGetValue(key, out var raw) && raw.ValueKind == JsonValueKind.Array
-                ? raw.EnumerateArray()
-                     .Where(e => e.ValueKind == JsonValueKind.String)
-                     .Select(e => (e.GetString() ?? "").Trim())
-                     .Where(v => v.Length > 0)
-                     .ToArray()
-                : config.GetSection(key).Get<string[]>() ?? [];
+        string[] Trusted(string key) => PendingList(changes, key, config.GetSection(key).Get<string[]>() ?? []);
 
-        var trusted = Strings("ForwardedHeaders:KnownProxies")
+        var trusted = Trusted("ForwardedHeaders:KnownProxies")
             .Any(p => IPAddress.TryParse(p, out var ip) && ip.Equals(peer))
-            || Strings("ForwardedHeaders:KnownNetworks")
+            || Trusted("ForwardedHeaders:KnownNetworks")
                 .Any(n => IPNetwork.TryParse(n, out var net) && net.Contains(peer));
 
         if (!trusted) return peer;
