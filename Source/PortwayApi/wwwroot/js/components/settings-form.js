@@ -2,6 +2,9 @@
 
 let _writable = {};
 
+// rendered values for edit detection
+let _initial = new WeakMap();
+
 // display labels for raw choice values
 const CHOICE_LABELS = { _blank: 'New tab', _self: 'Same tab' };
 
@@ -79,7 +82,7 @@ function field(key, label, desc, { unit, scale = 1, multiline, placeholder = '' 
 
     if (spec.kind === 'bool') {
         control = `<label class="switch${dis}"><input${attrs} data-kind="bool" type="checkbox"${v ? ' checked' : ''}><span class="slider"></span></label>`;
-    } else if (spec.kind === 'int' || spec.kind === 'number') {
+    } else if (spec.kind === 'int' || spec.kind === 'long' || spec.kind === 'number') {
         const shown = v != null ? Math.round((v / scale) * 100) / 100 : '';
         const min = spec.min != null ? ` min="${spec.min / scale}"` : '';
         const max = spec.max != null ? ` max="${spec.max / scale}"` : '';
@@ -144,6 +147,8 @@ function renderCards(cards, data) {
         document.getElementById(id).innerHTML =
             card.rows(data).join('') + (card.footer === false ? '' : cardFooter(id, card.actions));
     }
+    _initial = new WeakMap();
+    document.querySelectorAll('[data-setting]').forEach((el) => _initial.set(el, JSON.stringify(readControl(el))));
 }
 
 // a card's save button enables on its first edit
@@ -204,9 +209,10 @@ function readControl(el) {
         case 'bool':
             return el.checked;
         case 'int':
-            return Math.round(Number(el.value) * (Number(el.dataset.scale) || 1));
+        case 'long':
+            return el.value === '' ? undefined : Math.round(Number(el.value) * (Number(el.dataset.scale) || 1));
         case 'number':
-            return Number(el.value);
+            return el.value === '' ? undefined : Number(el.value);
         case 'list':
             return el.value
                 .split('\n')
@@ -229,9 +235,12 @@ async function saveCard(bodyId, btn) {
     body.querySelectorAll('[data-setting]:not(:disabled)').forEach((el) => {
         el.classList.remove('input-invalid');
         const value = readControl(el);
-        if (value !== undefined) changes[el.dataset.setting] = value;
+        if (value !== undefined && JSON.stringify(value) !== _initial.get(el)) changes[el.dataset.setting] = value;
     });
-    if (!Object.keys(changes).length) return;
+    if (!Object.keys(changes).length) {
+        btn.disabled = true;
+        return;
+    }
 
     const send = async () => {
         btn.classList.add('is-loading');
