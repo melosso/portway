@@ -110,7 +110,7 @@ public static class SqlProviderDetector
             return SqlProviderType.Sqlite;
 
         if (HasKeyword(connectionString, "Port") || HasKeyword(connectionString, "Username"))
-            return HasKeyword(connectionString, "Uid") || HasKeyword(connectionString, "User") || HasKeyword(connectionString, "Pwd")
+            return HasKeyword(connectionString, "Uid") || HasKeyword(connectionString, "User") || HasKeyword(connectionString, "Pwd") || HasKeyword(connectionString, "Port", "3306")
                 ? SqlProviderType.MySql
                 : SqlProviderType.PostgreSql;
 
@@ -124,13 +124,14 @@ public static class SqlProviderDetector
         return SqlProviderType.SqlServer;
     }
 
-    private static bool HasKeyword(ReadOnlySpan<char> connectionString, ReadOnlySpan<char> keyword)
+    private static bool HasKeyword(ReadOnlySpan<char> connectionString, ReadOnlySpan<char> keyword, ReadOnlySpan<char> value = default)
     {
         foreach (var range in connectionString.Split(';'))
         {
             var segment = connectionString[range];
             var equals = segment.IndexOf('=');
-            if (equals > 0 && segment[..equals].Trim().Equals(keyword, StringComparison.OrdinalIgnoreCase))
+            if (equals > 0 && segment[..equals].Trim().Equals(keyword, StringComparison.OrdinalIgnoreCase)
+                && (value.IsEmpty || segment[(equals + 1)..].Trim().SequenceEqual(value)))
                 return true;
         }
 
