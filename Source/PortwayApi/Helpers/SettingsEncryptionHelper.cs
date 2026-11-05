@@ -238,7 +238,7 @@ namespace PortwayApi.Helpers
                 var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
                 if (!File.Exists(privateKeyPath))
                 {
-                    Log.Warning("Cannot decrypt Chat:ApiKey — private key not found at {Path}", privateKeyPath);
+                    Log.Warning("Cannot decrypt value: private key not found at {Path}", privateKeyPath);
                     return false;
                 }
 
