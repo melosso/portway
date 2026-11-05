@@ -243,6 +243,7 @@ public static class OpenApiConfiguration
         // Serve minimal source maps for Scalar vendor JS to prevent DevTools 404 warnings
         app.MapGet("/sm/{*path}", () => Results.Json(new { version = 3, sources = Array.Empty<string>(), mappings = "" }))
            .ExcludeFromDescription();
+           
         // Configure unified documentation interface at /docs using Scalar
         IResult DocsPage(HttpContext context)
         {
