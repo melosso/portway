@@ -98,6 +98,30 @@ public sealed class SqlKeyDisclosureTests : ApiTestBase, IDisposable
         Assert.DoesNotContain("B2", body);
     }
 
+    [Theory]
+    [InlineData("('A1')")]
+    [InlineData("(guid'3f2a1b4c-1111-4222-8333-444455556666')")]
+    public async Task HyphenatedEndpointName_ReadsTheKey(string key)
+    {
+        var target = Path.Combine(EndpointDir, "Catalog-Items");
+        Directory.CreateDirectory(target);
+        File.WriteAllText(Path.Combine(target, "entity.json"), JsonSerializer.Serialize(new
+        {
+            DatabaseObjectName = "Items",
+            DatabaseObjectType = "Table",
+            AllowedEnvironments = new[] { Env },
+            AllowedMethods = new[] { "GET" },
+            PrimaryKey = "ItemCode",
+            AllowedColumns = new[] { "ItemCode", "Description" }
+        }));
+        EndpointHandler.ReloadAllEndpoints();
+
+        var (status, body) = await Send(HttpMethod.Get, $"/api/{Env}/KeyTest/Catalog-Items{key}");
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.StartsWith("{\"ItemCode\"", body.Replace(" ", ""));
+    }
+
     [Fact]
     public async Task UnknownKey_NamesNeitherColumnNorValue()
     {

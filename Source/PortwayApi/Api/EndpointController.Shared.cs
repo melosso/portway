@@ -138,20 +138,20 @@ public partial class EndpointController
                 id = segment switch
                 {
                     // guid'...' form: Cancellations(guid'...') 
-                    var s when Regex.IsMatch(s, @"^\w+\(guid'([\w\-]+)'\)$") =>
-                        Regex.Match(s, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
+                    var s when Regex.IsMatch(s, @"^[\w\-]+\(guid'([\w\-]+)'\)$") =>
+                        Regex.Match(s, @"^[\w\-]+\(guid'([\w\-]+)'\)$").Groups[1].Value,
 
                     // quoted string form: Cancellations('value')
-                    var s when Regex.IsMatch(s, @"^\w+\('([^']+)'\)$") =>
-                        Regex.Match(s, @"^\w+\('([^']+)'\)$").Groups[1].Value,
+                    var s when Regex.IsMatch(s, @"^[\w\-]+\('([^']+)'\)$") =>
+                        Regex.Match(s, @"^[\w\-]+\('([^']+)'\)$").Groups[1].Value,
 
                     // plain GUID inside parentheses: Cancellations(744276de-4918-4b56-af75-16901371983b)
-                    var s when Regex.IsMatch(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$") =>
-                        Regex.Match(s, @"^\w+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
+                    var s when Regex.IsMatch(s, @"^[\w\-]+\(([0-9a-fA-F\-]{36})\)$") =>
+                        Regex.Match(s, @"^[\w\-]+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
 
                     // numeric key: Cancellations(123)
-                    var s when Regex.IsMatch(s, @"^\w+\((\d+)\)$") =>
-                        Regex.Match(s, @"^\w+\((\d+)\)$").Groups[1].Value,
+                    var s when Regex.IsMatch(s, @"^[\w\-]+\((\d+)\)$") =>
+                        Regex.Match(s, @"^[\w\-]+\((\d+)\)$").Groups[1].Value,
                     _ => null
                 };
                 _malformedSqlKey = id is null && endpointType == EndpointType.SQL;
@@ -226,15 +226,15 @@ public partial class EndpointController
         // Extract ID from endpoint name (legacy format)
         fallbackId = endpointName switch
         {
-            var name when Regex.IsMatch(name, @"^\w+\(guid'([\w\-]+)'\)$") =>
-                Regex.Match(name, @"^\w+\(guid'([\w\-]+)'\)$").Groups[1].Value,
-            var name when Regex.IsMatch(name, @"^\w+\('([^']+)'\)$") =>
-                Regex.Match(name, @"^\w+\('([^']+)'\)$").Groups[1].Value,
+            var name when Regex.IsMatch(name, @"^[\w\-]+\(guid'([\w\-]+)'\)$") =>
+                Regex.Match(name, @"^[\w\-]+\(guid'([\w\-]+)'\)$").Groups[1].Value,
+            var name when Regex.IsMatch(name, @"^[\w\-]+\('([^']+)'\)$") =>
+                Regex.Match(name, @"^[\w\-]+\('([^']+)'\)$").Groups[1].Value,
             // plain GUID inside parentheses fallback
-            var name when Regex.IsMatch(name, @"^\w+\(([0-9a-fA-F\-]{36})\)$") =>
-                Regex.Match(name, @"^\w+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
-            var name when Regex.IsMatch(name, @"^\w+\((\d+)\)$") =>
-                Regex.Match(name, @"^\w+\((\d+)\)$").Groups[1].Value,
+            var name when Regex.IsMatch(name, @"^[\w\-]+\(([0-9a-fA-F\-]{36})\)$") =>
+                Regex.Match(name, @"^[\w\-]+\(([0-9a-fA-F\-]{36})\)$").Groups[1].Value,
+            var name when Regex.IsMatch(name, @"^[\w\-]+\((\d+)\)$") =>
+                Regex.Match(name, @"^[\w\-]+\((\d+)\)$").Groups[1].Value,
             _ => null
         };
 
