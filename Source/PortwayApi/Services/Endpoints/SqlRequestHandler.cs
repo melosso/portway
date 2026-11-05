@@ -47,15 +47,7 @@ public sealed partial class SqlRequestHandler
         var provider = _providerFactory.GetProvider(connectionString);
         var (schema, name) = ParseProcedureName(procedure, provider, connection);
 
-        // mysql procedures have no defaults
-        if (provider.ProviderType == SqlProviderType.MySql)
-        {
-            foreach (var declared in await provider.GetProcedureParametersAsync(connection, schema, name, CancellationToken.None))
-            {
-                if (!declared.IsOutput && !parameters.ParameterNames.Contains(declared.ParameterName, StringComparer.OrdinalIgnoreCase))
-                    parameters.Add($"@{declared.ParameterName}");
-            }
-        }
+        await provider.AddMissingProcedureArgumentsAsync(connection, schema, name, parameters, CancellationToken.None);
 
         var (commandText, commandType) = provider.BuildProcedureInvocation(schema, name, parameters.ParameterNames.ToList());
         var rows = await connection.QueryAsync(commandText, parameters, commandType: commandType);

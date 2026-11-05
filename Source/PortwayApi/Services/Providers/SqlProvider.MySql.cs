@@ -1,6 +1,8 @@
 namespace PortwayApi.Services.Providers;
 
+using System.Data;
 using System.Data.Common;
+using Dapper;
 using MySqlConnector;
 using PortwayApi.Services.Database;
 using SqlKata.Compilers;
@@ -61,6 +63,22 @@ public class MySqlProvider : SqlProviderBase
         "json" => "System.String",
         _ => "System.Object"
     };
+
+    // uses cached connector metadata
+    public override async Task AddMissingProcedureArgumentsAsync(
+        DbConnection connection, string schema, string procedureName, DynamicParameters parameters, CancellationToken cancellationToken)
+    {
+        var name = schema.Length > 0 ? $"{schema}.{procedureName}" : procedureName;
+        await using var command = new MySqlCommand(name, (MySqlConnection)connection) { CommandType = CommandType.StoredProcedure };
+        await MySqlCommandBuilder.DeriveParametersAsync(command);
+
+        foreach (MySqlParameter declared in command.Parameters)
+        {
+            var argument = declared.ParameterName.TrimStart('@');
+            if (declared.Direction == ParameterDirection.Input && !parameters.ParameterNames.Contains(argument, StringComparer.OrdinalIgnoreCase))
+                parameters.Add($"@{argument}");
+        }
+    }
 
     public override Task<List<ParameterMetadata>> GetProcedureParametersAsync(
         DbConnection connection, string schema, string procedureName, CancellationToken cancellationToken)

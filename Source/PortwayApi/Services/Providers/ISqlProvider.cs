@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.Common;
+using Dapper;
 using SqlKata.Compilers;
 
 namespace PortwayApi.Services.Providers;
@@ -33,6 +34,11 @@ public interface ISqlProvider
     /// Value bound for a string passed to a procedure or function
     /// </summary>
     object ProcedureValue(string value);
+
+    /// <summary>
+    /// Adds declared arguments the call omits when the database has no parameter defaults
+    /// </summary>
+    Task AddMissingProcedureArgumentsAsync(DbConnection connection, string schema, string procedureName, DynamicParameters parameters, CancellationToken cancellationToken);
 
     string HealthCheckQuery { get; }
 
