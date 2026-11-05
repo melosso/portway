@@ -125,8 +125,16 @@ public static class ConfigAliases
             if (parentPath is not null && IsUnder(parentPath, Section))
             {
                 var legacy = LegacySection + parentPath[Section.Length..];
+                IEnumerable<string> legacyKeys = [];
                 foreach (var provider in providers)
-                    if (!ReferenceEquals(provider, this)) keys = provider.GetChildKeys(keys, legacy);
+                {
+                    if (ReferenceEquals(provider, this)) continue;
+                    // replaced lists hide legacy layers
+                    if (provider is ConsoleOverridesConfigurationProvider overrides && overrides.Replaces(parentPath))
+                        legacyKeys = [];
+                    legacyKeys = provider.GetChildKeys(legacyKeys, legacy);
+                }
+                keys = keys.Concat(legacyKeys);
             }
 
             var result = new List<string>(keys);
@@ -142,6 +150,7 @@ public static class ConfigAliases
                     result.Add(current[prefix.Length..].Split(':')[0]);
             }
 
+            result.Sort(ConfigurationKeyComparer.Instance);
             return result;
         }
 

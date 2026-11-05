@@ -88,4 +88,69 @@ public sealed class ConsoleOverridesProviderTests
 
         Assert.Null(config["Caching:Redis:ConnectionString"]);
     }
+
+    private static ConfigurationManager BuildWithAliases(string baseJson, string overridesJson, Dictionary<string, string?>? higherLayer = null)
+    {
+        var dir = Directory.CreateTempSubdirectory("portway_overrides_").FullName;
+        File.WriteAllText(Path.Combine(dir, "appsettings.json"), baseJson);
+        File.WriteAllText(Path.Combine(dir, SettingsWriteService.OverridesFileName), overridesJson);
+
+        var config = new ConfigurationManager();
+        config.SetBasePath(dir);
+        config.AddJsonFile("appsettings.json");
+        var source = new ConsoleOverridesConfigurationSource { Path = SettingsWriteService.OverridesFileName, Optional = true };
+        source.ResolveFileProvider();
+        ((IConfigurationBuilder)config).Add(source);
+        if (higherLayer is not null) config.AddInMemoryCollection(higherLayer);
+        config.AddConfigAliases();
+        return config;
+    }
+
+    [Fact]
+    public void ShorterListReplacesTheLegacySectionList()
+    {
+        var config = BuildWithAliases(
+            """{ "WebUi": { "PublicOrigins": ["https://a", "https://removed", "https://also-removed"] } }""",
+            """{ "Console": { "PublicOrigins": ["https://a"] } }""");
+
+        Assert.Equal(["https://a"], config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
+    }
+
+    [Fact]
+    public void EmptyListClearsTheLegacySectionList()
+    {
+        var config = BuildWithAliases(
+            """{ "WebUi": { "PublicOrigins": ["https://removed"] } }""",
+            """{ "Console": { "PublicOrigins": [] } }""");
+
+        Assert.Empty(config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
+    }
+
+    [Fact]
+    public void LegacyListStaysWithoutAnOverride()
+    {
+        var config = BuildWithAliases("""{ "WebUi": { "PublicOrigins": ["https://a", "https://b"] } }""", "{}");
+
+        Assert.Equal(["https://a", "https://b"], config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
+    }
+
+    [Fact]
+    public void LegacyLayerAboveTheOverridesStillApplies()
+    {
+        var config = BuildWithAliases(
+            """{ "WebUi": { "PublicOrigins": ["https://removed", "https://also-removed"] } }""",
+            """{ "Console": { "PublicOrigins": ["https://a"] } }""",
+            new() { ["WebUi:PublicOrigins:0"] = "https://env" });
+
+        Assert.Equal(["https://env"], config.GetSection("Console:PublicOrigins").Get<string[]>() ?? []);
+    }
+
+    [Fact]
+    public void LegacyAndCurrentListKeysKeepTheirOrder()
+    {
+        var items = string.Join(",", Enumerable.Range(0, 12).Select(i => $"\"https://{i}\""));
+        var config = BuildWithAliases($$"""{ "WebUi": { "CorsOrigins": [{{items}}] } }""", "{}", new() { ["Console:CorsOrigins:0"] = "https://0" });
+
+        Assert.Equal(Enumerable.Range(0, 12).Select(i => $"https://{i}"), config.GetSection("Console:CorsOrigins").Get<string[]>() ?? []);
+    }
 }

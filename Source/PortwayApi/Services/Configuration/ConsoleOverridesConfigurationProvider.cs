@@ -48,11 +48,13 @@ public sealed class ConsoleOverridesConfigurationProvider(ConsoleOverridesConfig
 
     public override IEnumerable<string> GetChildKeys(IEnumerable<string> earlierKeys, string? parentPath)
     {
-        if (parentPath is not null && ReplacedPaths.Contains(parentPath) && Declares(parentPath))
+        if (parentPath is not null && Replaces(parentPath))
             earlierKeys = [];
 
         return base.GetChildKeys(earlierKeys, parentPath);
     }
+
+    internal bool Replaces(string path) => ReplacedPaths.Contains(path) && Declares(path);
 
     private bool Declares(string path)
     {
