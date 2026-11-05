@@ -10,8 +10,10 @@ public static class ConfigAliases
 {
     public const string Section = "Console";
 
+    // To-do: remove the WebUi section alias in v0.13.0
     public const string LegacySection = "WebUi";
 
+    // To-do: remove the renamed key aliases and overrides migration in v0.13.0
     /// <summary>
     /// Renamed keys as (current, deprecated).
     /// </summary>
@@ -39,6 +41,7 @@ public static class ConfigAliases
         ("OpenApi:Scalar:HideTestRequestButton", "OpenApi:ScalarHideTestRequestButton"),
     ];
 
+    // To-do: remove the removed key cleanup in v0.13.0
     /// <summary>
     /// Keys that no longer apply.
     /// </summary>
