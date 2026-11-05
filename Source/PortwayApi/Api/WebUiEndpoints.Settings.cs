@@ -143,6 +143,16 @@ public static partial class WebUiEndpointExtensions
     }
 
     /// <summary>
+    /// Reports the proxy account and collector address as presence only.
+    /// </summary>
+    internal static void HideFromViewer(Dictionary<string, object?> values)
+    {
+        foreach (var key in (string[])["Proxy:Username", "Proxy:Domain", "Telemetry:Otlp:Endpoint"])
+            if (values[key] is string { Length: > 0 })
+                values[key] = "Set";
+    }
+
+    /// <summary>
     /// Running traffic logging state.
     /// </summary>
     internal static object TrafficLoggingStatus(PortwayApi.Middleware.RequestTrafficLoggingOptions running, IConfiguration config)
@@ -185,6 +195,8 @@ public static partial class WebUiEndpointExtensions
             var forwardedFor = ctx.Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? "";
             var behindProxy = !string.IsNullOrEmpty(forwardedFor);
             var values = SettingValues(config, openApiMonitor.CurrentValue, telemetry.EffectiveProvider.ToString());
+            if (ctx.Items[SignedInRoleKey] as string != PortwayApi.Auth.AdminUserRoles.Administrator)
+                HideFromViewer(values);
 
             return Results.Json(new
             {

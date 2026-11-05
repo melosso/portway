@@ -110,4 +110,26 @@ public class SettingValuesTests
         Assert.True(status.GetProperty("restart_required").GetBoolean());
         Assert.False(status.GetProperty("running").GetBoolean());
     }
+
+    [Fact]
+    public void HideFromViewer_ReportsProxyAccountAndCollectorAsPresenceOnly()
+    {
+        var values = Values(new() { ["Proxy:Username"] = "svc-account", ["Proxy:Domain"] = "CORP", ["Telemetry:Otlp:Endpoint"] = "https://otel.example/?token=secret" });
+
+        WebUiEndpointExtensions.HideFromViewer(values);
+
+        Assert.Equal("Set", values["Proxy:Username"]);
+        Assert.Equal("Set", values["Proxy:Domain"]);
+        Assert.Equal("Set", values["Telemetry:Otlp:Endpoint"]);
+    }
+
+    [Fact]
+    public void HideFromViewer_KeepsAnEmptyProxyAccountEmpty()
+    {
+        var values = Values([]);
+
+        WebUiEndpointExtensions.HideFromViewer(values);
+
+        Assert.Equal("", values["Proxy:Username"]);
+    }
 }

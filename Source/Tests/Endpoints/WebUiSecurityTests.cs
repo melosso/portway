@@ -45,6 +45,8 @@ public class WebUiSecurityTests : IDisposable
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["Mcp:Enabled"] = "false",
+                        ["Proxy:Username"] = "svc-proxy-account",
+                        ["Telemetry:Otlp:Endpoint"] = "https://otel.example/?token=otlp-secret",
                         ["WebUi:AdminApiKey"] = AdminKey,
                         // TestServer connections have no remote IP, so allow via PublicOrigins instead of the local-network check
                         ["WebUi:PublicOrigins:0"] = "http://localhost"
@@ -562,8 +564,16 @@ public class WebUiSecurityTests : IDisposable
         var (viewerCookie, viewerCsrf) = await SignInAsync(client, "read-only", "V13wer-account-pw-77");
 
         // Reading the console stays open to a viewer
-        var read = AuthedRequest(HttpMethod.Get, "/_/api/settings", viewerCookie);
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(read, TestContext.Current.CancellationToken)).StatusCode);
+        var read = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", viewerCookie), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        var viewerBody = await read.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("svc-proxy-account", viewerBody);
+        Assert.DoesNotContain("otlp-secret", viewerBody);
+
+        var adminRead = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", adminCookie), TestContext.Current.CancellationToken);
+        var adminBody = await adminRead.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("svc-proxy-account", adminBody);
+        Assert.Contains("otlp-secret", adminBody);
 
         // Writing settings is administrator-only, CSRF satisfied or not
         var write = AuthedRequest(HttpMethod.Put, "/_/api/settings", viewerCookie, viewerCsrf,
