@@ -1,3 +1,6 @@
+using Microsoft.OData;
+using Microsoft.OData.Edm;
+using Microsoft.OData.UriParser;
 using Serilog;
 using System.Text.RegularExpressions;
 
@@ -6,32 +9,137 @@ namespace PortwayApi.Helpers;
 /// <summary>
 /// Helper class for handling column alias mappings in SQL endpoints
 /// </summary>
-public static partial class ColumnMappingHelper
+public static class ColumnMappingHelper
 {
-    private static readonly System.Collections.Frozen.FrozenSet<string> ODataWords = System.Collections.Frozen.FrozenSet.ToFrozenSet(
-        ["eq", "ne", "gt", "ge", "lt", "le", "and", "or", "not", "add", "sub", "mul", "div", "mod", "in", "has", "asc", "desc", "null", "true", "false"],
-        StringComparer.OrdinalIgnoreCase);
-
-    [System.Text.RegularExpressions.GeneratedRegex(@"\w*'(?:[^']|'')*'")]
-    private static partial System.Text.RegularExpressions.Regex ODataLiteral();
-
-    [System.Text.RegularExpressions.GeneratedRegex(@"(?<![\w.])[A-Za-z_]\w*(?!\w)(?!\s*\()")]
-    private static partial System.Text.RegularExpressions.Regex ODataIdentifier();
+    private const string InvalidExpression = "invalid expression";
 
     /// <summary>
-    /// Names in an OData $filter or $orderby expression outside the columns of the endpoint, by alias or database name
+    /// Names in a $filter outside the columns of the endpoint, by alias or database name. Anything the parser cannot prove to be an allowed column is refused
     /// </summary>
-    public static IReadOnlyList<string> FindDisallowedColumns(string? expression, IReadOnlyDictionary<string, string> aliasToDatabase)
+    public static IReadOnlyList<string> FindDisallowedFilterColumns(string? filter, IReadOnlyDictionary<string, string> aliasToDatabase) =>
+        Disallowed(string.IsNullOrWhiteSpace(filter) ? [] : [filter], aliasToDatabase);
+
+    /// <summary>
+    /// Names in an $orderby outside the columns of the endpoint, by alias or database name
+    /// </summary>
+    public static IReadOnlyList<string> FindDisallowedOrderByColumns(string? orderby, IReadOnlyDictionary<string, string> aliasToDatabase)
     {
-        if (string.IsNullOrWhiteSpace(expression))
+        if (string.IsNullOrWhiteSpace(orderby))
             return [];
 
+        return SplitOrderBy(orderby) is { } terms ? Disallowed(terms, aliasToDatabase) : [InvalidExpression];
+    }
+
+    private static List<string> Disallowed(IEnumerable<string> expressions, IReadOnlyDictionary<string, string> aliasToDatabase)
+    {
+        var names = new List<string>();
+        try
+        {
+            foreach (var expression in expressions)
+                CollectColumns(new UriQueryExpressionParser(EmptyModel, MaxExpressionDepth).ParseFilter(expression), names);
+        }
+        catch (ODataException)
+        {
+            return [InvalidExpression];
+        }
+
         var columns = aliasToDatabase.Keys.Concat(aliasToDatabase.Values).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return ODataIdentifier().Matches(ODataLiteral().Replace(expression, " "))
-            .Select(match => match.Value)
-            .Where(name => !ODataWords.Contains(name) && !columns.Contains(name))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return names.Where(name => !columns.Contains(name)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static readonly EdmModel EmptyModel = new();
+    private const int MaxExpressionDepth = 100;
+
+    private static void CollectColumns(QueryToken? token, List<string> names)
+    {
+        switch (token)
+        {
+            case null or LiteralToken or CollectionLiteralToken:
+                break;
+            case EndPathToken path when path.NextToken is null:
+                names.Add(path.Identifier);
+                break;
+            case EndPathToken path:
+                CollectColumns(path.NextToken, names);
+                break;
+            case InnerPathToken path when path.NextToken is null:
+                names.Add(path.Identifier);
+                break;
+            case InnerPathToken path:
+                CollectColumns(path.NextToken, names);
+                break;
+            case BinaryOperatorToken binary:
+                CollectColumns(binary.Left, names);
+                CollectColumns(binary.Right, names);
+                break;
+            case UnaryOperatorToken unary:
+                CollectColumns(unary.Operand, names);
+                break;
+            case InToken list:
+                CollectColumns(list.Left, names);
+                CollectColumns(list.Right, names);
+                break;
+            case FunctionCallToken call:
+                CollectColumns(call.Source, names);
+                foreach (var argument in call.Arguments)
+                    CollectColumns(argument, names);
+                break;
+            case FunctionParameterToken argument:
+                CollectColumns(argument.ValueToken, names);
+                break;
+            default:
+                names.Add(token.Kind.ToString());
+                break;
+        }
+    }
+
+    // null when the expression is unbalanced or has an empty term
+    private static List<string>? SplitOrderBy(string orderby)
+    {
+        var terms = new List<string>();
+        var depth = 0;
+        var start = 0;
+        char? quote = null;
+
+        for (var i = 0; i <= orderby.Length; i++)
+        {
+            var c = i < orderby.Length ? orderby[i] : ',';
+            if (quote is not null)
+            {
+                if (i == orderby.Length)
+                    return null;
+                if (c == quote)
+                    quote = null;
+            }
+            else if (c is '\'' or '"')
+                quote = c;
+            else if (c == '(')
+                depth++;
+            else if (c == ')')
+                depth--;
+            else if (c == ',' && depth == 0)
+            {
+                var term = StripDirection(orderby[start..i]);
+                if (term.Length == 0)
+                    return null;
+                terms.Add(term);
+                start = i + 1;
+            }
+        }
+
+        return depth == 0 ? terms : null;
+    }
+
+    private static string StripDirection(string term)
+    {
+        term = term.Trim();
+        foreach (var direction in (ReadOnlySpan<string>)[" asc", " desc"])
+        {
+            if (term.EndsWith(direction, StringComparison.OrdinalIgnoreCase))
+                return term[..^direction.Length].TrimEnd();
+        }
+
+        return term;
     }
 
     /// <summary>

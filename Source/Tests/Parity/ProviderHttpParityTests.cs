@@ -231,6 +231,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     {
         Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", "?$filter=ReleasedAt eq '2023-03-01'"))).Status);
         Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", "?$orderby=ReleasedAt"))).Status);
+        Assert.Equal(HttpStatusCode.BadRequest, (await Send(HttpMethod.Get, Url("Int", "?$filter=Name ne \"'\" and ReleasedAt ne null and Name ne \"'\""))).Status);
 
         if (_fixture.Provider.SupportsTvf)
             Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Tvf", "/30?$filter=Id eq 4 and CategoryId eq 20"))).Status);

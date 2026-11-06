@@ -91,8 +91,8 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.AllowedColumns is { Count: > 0 })
             {
-                var refused = ColumnMappingHelper.FindDisallowedColumns(filter, endpoint.AliasToDatabase)
-                    .Concat(ColumnMappingHelper.FindDisallowedColumns(orderby, endpoint.AliasToDatabase))
+                var refused = ColumnMappingHelper.FindDisallowedFilterColumns(filter, endpoint.AliasToDatabase)
+                    .Concat(ColumnMappingHelper.FindDisallowedOrderByColumns(orderby, endpoint.AliasToDatabase))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 if (refused.Count > 0)

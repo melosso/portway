@@ -74,23 +74,75 @@ public class ODataColumnAllowlistTests
     [InlineData("Name eq 'Secret eq Hidden'")]
     [InlineData("contains(Name,'x') and Price gt 1.5")]
     [InlineData("name eq 'It''s' or not (Price le 2)")]
-    [InlineData("Price desc, Name asc")]
     [InlineData("Price eq null")]
     [InlineData("ItemName eq 'x'")]
-    [InlineData("Name eq guid'3f2a1b4c-1111-4222-8333-444455556666'")]
     [InlineData("")]
-    public void AllowedExpressions_RefuseNothing(string expression)
+    public void AllowedFilters_RefuseNothing(string expression)
     {
-        Assert.Empty(ColumnMappingHelper.FindDisallowedColumns(expression, Aliases));
+        Assert.Empty(ColumnMappingHelper.FindDisallowedFilterColumns(expression, Aliases));
     }
 
     [Theory]
     [InlineData("Salary gt 100", "Salary")]
     [InlineData("Name eq 'x' and Salary gt 100", "Salary")]
     [InlineData("startswith(Salary,'1')", "Salary")]
-    [InlineData("Salary desc", "Salary")]
-    public void HiddenColumns_AreRefused(string expression, string refused)
+    [InlineData("Name ne \"'\" and startswith(Salary,\"a\") and Name ne \"'\"", "Salary")]
+    [InlineData("Desc eq 'x'", "Desc")]
+    [InlineData("desc eq 'x'", "desc")]
+    [InlineData("Öffnung eq 1", "Öffnung")]
+    [InlineData("Price mul Salary gt 1", "Salary")]
+    [InlineData("not (Salary gt 1)", "Salary")]
+    [InlineData("contains(tolower(Salary),'x')", "Salary")]
+    [InlineData("Salary in ('a','b')", "Salary")]
+    [InlineData("Category/Salary eq 1", "Category")]
+    public void HiddenFilterColumns_AreRefused(string expression, string refused)
     {
-        Assert.Equal([refused], ColumnMappingHelper.FindDisallowedColumns(expression, Aliases));
+        Assert.Equal([refused], ColumnMappingHelper.FindDisallowedFilterColumns(expression, Aliases));
+    }
+
+    [Theory]
+    [InlineData("Name eq (")]
+    [InlineData("Name eq")]
+    [InlineData("'")]
+    [InlineData("\"")]
+    [InlineData("((((")]
+    [InlineData("%")]
+    [InlineData("Name eq 'a\0b' or")]
+    [InlineData("#")]
+    [InlineData("$it/Salary eq 1")]
+    [InlineData("Lines/any(l: l/Salary eq 1)")]
+    [InlineData("cast(Name,Edm.String) eq 'x'")]
+    public void UnknownOrInvalidFilters_FailClosed(string expression)
+    {
+        Assert.NotEmpty(ColumnMappingHelper.FindDisallowedFilterColumns(expression, Aliases));
+    }
+
+    [Theory]
+    [InlineData("Price desc, Name asc")]
+    [InlineData("tolower(Name) DESC")]
+    [InlineData("ItemName")]
+    [InlineData("")]
+    public void AllowedOrderBy_RefusesNothing(string expression)
+    {
+        Assert.Empty(ColumnMappingHelper.FindDisallowedOrderByColumns(expression, Aliases));
+    }
+
+    [Theory]
+    [InlineData("Salary desc", "Salary")]
+    [InlineData("Name desc, tolower(Salary) asc", "Salary")]
+    [InlineData("Desc desc", "Desc")]
+    [InlineData("Öffnung", "Öffnung")]
+    public void HiddenOrderByColumns_AreRefused(string expression, string refused)
+    {
+        Assert.Equal([refused], ColumnMappingHelper.FindDisallowedOrderByColumns(expression, Aliases));
+    }
+
+    [Theory]
+    [InlineData("Name,")]
+    [InlineData("\"'\",Salary")]
+    [InlineData("tolower(Name")]
+    public void InvalidOrderBy_FailsClosed(string expression)
+    {
+        Assert.NotEmpty(ColumnMappingHelper.FindDisallowedOrderByColumns(expression, Aliases));
     }
 }
