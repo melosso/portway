@@ -107,6 +107,10 @@ public sealed partial class SqlRequestHandler
                     ? new string[0]
                     : remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
+                // numeric segments are path values
+                if (!string.IsNullOrEmpty(id))
+                    pathSegments = [id, .. pathSegments];
+
                 var tvfColumnProblem = MapODataColumns(endpoint, ref select, ref filter, ref orderby);
                 if (tvfColumnProblem is not null)
                     return tvfColumnProblem;
@@ -159,17 +163,6 @@ public sealed partial class SqlRequestHandler
                 if (endpoint.ResponseTransforms is { HasRules: true } tvfTransforms)
                 {
                     tvfResultList = HttpResponseTransformHelper.ApplyToRows(tvfResultList, tvfTransforms);
-                }
-
-                // For ID-based requests (if applicable to TVF), return single item directly (OData convention)
-                if (!string.IsNullOrEmpty(id))
-                {
-                    if (tvfResultList.Count == 0)
-                    {
-                        return PortwayResults.NotFound("No record found with specified parameters");
-                    }
-
-                    return new OkObjectResult(tvfResultList.FirstOrDefault());
                 }
 
                 // Return collection response with pagination headers
