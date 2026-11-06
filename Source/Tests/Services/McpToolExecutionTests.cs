@@ -330,6 +330,18 @@ public class McpToolExecutionTests
         Assert.False(document.RootElement.TryGetProperty("top", out _));
     }
 
+    [Fact]
+    public async Task ProxyQueryTool_KeepsTheBodyUnchanged()
+    {
+        var (service, handler) = Build(Endpoint("QUERY") with { IsProxy = true });
+
+        await Call(service, new { environment = "500", body = "{\"Search\":\"x\"}" });
+        await Call(service, new { environment = "500" });
+
+        Assert.Equal("{\"Search\":\"x\"}", handler.Calls[0].Body);
+        Assert.Equal("{}", handler.Calls[1].Body);
+    }
+
     [Theory]
     [InlineData("[1]")]
     [InlineData("not json")]

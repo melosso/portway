@@ -87,6 +87,7 @@ public class McpEndpointRegistry
                     Url = ep.Url,
                     ContentType = ep.ContentType,
                     EndpointKind = ep.EndpointKind,
+                    IsProxy = ep.IsProxy,
                     Instruction = ep.Instruction
                 };
 

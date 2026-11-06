@@ -456,7 +456,9 @@ public sealed partial class McpChatService
             return McpToolResult.Failure($"The key or path argument is not valid for {toolName}.");
 
         if (isQueryMethod)
-            body = EnforceQueryBodyLimit(body, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
+            body = tool.IsProxy
+                ? (string.IsNullOrWhiteSpace(body) ? "{}" : body)
+                : EnforceQueryBodyLimit(body, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
         else if (method == HttpMethod.Get && tool.EndpointKind != "file")
             query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
 

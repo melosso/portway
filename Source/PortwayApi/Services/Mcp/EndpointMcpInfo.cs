@@ -30,4 +30,8 @@ public sealed record EndpointMcpInfo
     /// "api" | "static" | "file"; affects how the chat layer handles the response
     /// </summary>
     public string EndpointKind { get; init; } = "api";
+    /// <summary>
+    /// Proxy upstreams define their own QUERY body
+    /// </summary>
+    public bool IsProxy { get; init; }
 }

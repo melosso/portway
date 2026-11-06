@@ -41,6 +41,7 @@ public sealed record McpToolDescriptor
     /// "api" | "static" | "file"; affects how the chat layer handles the response
     /// </summary>
     public string EndpointKind { get; init; } = "api";
+    public bool IsProxy { get; init; }
     /// <summary>
     /// Usage instruction appended to the tool description (from Mcp.Instruction)
     /// </summary>

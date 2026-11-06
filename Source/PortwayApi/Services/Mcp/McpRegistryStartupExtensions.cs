@@ -74,6 +74,7 @@ public static class McpRegistryStartupExtensions
                 ContentType = kvp.Value.Properties?.TryGetValue("ContentType", out var ct) == true
                     ? ct?.ToString() : null,
                 EndpointKind = endpointKind,
+                IsProxy = kvp.Value.Type == EndpointType.Proxy,
                 Instruction = kvp.Value.Mcp?.Instruction
             };
         }
