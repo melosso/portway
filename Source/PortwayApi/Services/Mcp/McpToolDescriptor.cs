@@ -32,7 +32,6 @@ public sealed record McpToolDescriptor
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }
     public IReadOnlyList<string> TenantHeaders { get; init; } = [];
-    public string Url { get; init; } = string.Empty;
     /// <summary>
     /// MIME type for Static endpoints (e.g. "text/csv"); null for SQL/Proxy
     /// </summary>

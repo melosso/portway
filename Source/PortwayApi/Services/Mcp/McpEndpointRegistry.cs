@@ -84,7 +84,6 @@ public class McpEndpointRegistry
                     AllowedEnvironments = ep.AllowedEnvironments,
                     TenantHeaders = ep.TenantHeaders,
                     AvailableFields = ep.AvailableFields,
-                    Url = ep.Url,
                     ContentType = ep.ContentType,
                     EndpointKind = ep.EndpointKind,
                     IsProxy = ep.IsProxy,

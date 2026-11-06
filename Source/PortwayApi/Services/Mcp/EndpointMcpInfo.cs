@@ -5,7 +5,6 @@ public sealed record EndpointMcpInfo
     public string Name { get; init; } = string.Empty;
     public string? Namespace { get; init; }
     public string? Version { get; init; }
-    public string Url { get; init; } = string.Empty;
     public IReadOnlyList<string> Methods { get; init; } = [];
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }
