@@ -23,11 +23,16 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
     private readonly string _namespace;
     private readonly string _endpointDir;
+    private readonly TFixture _fixture;
 
     protected virtual HttpStatusCode NonGuidKeyOnGuidColumnStatus => HttpStatusCode.BadRequest;
 
+    // sqlite never converts text keys
+    protected virtual bool KeyMismatchIsAnError => true;
+
     protected ProviderHttpParityTests(TFixture fixture) : base(connectTimeoutSeconds: 15)
     {
+        _fixture = fixture;
         _namespace = $"Http{fixture.ProviderType}";
         _endpointDir = Path.Combine("endpoints", "SQL", _namespace);
 
@@ -40,6 +45,13 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         procedure.Remove("WriteMode");
         procedure["Procedure"] = $"{schema}.{fixture.GuidKeyProcedureName}";
         WriteEndpoint("Proc", procedure);
+
+        var function = TableEndpoint($"{schema}.{(fixture.TvfName.Length > 0 ? fixture.TvfName : "NoFunction")}", "Id", "Name", "Price");
+        function["DatabaseObjectType"] = "TableValuedFunction";
+        function["AllowedMethods"] = new[] { "GET" };
+        function.Remove("WriteMode");
+        function["FunctionParameters"] = new[] { new { Name = "MinPrice", SqlType = "decimal", Source = "Path", Position = 1, Required = true } };
+        WriteEndpoint("Tvf", function);
         EndpointHandler.ReloadAllEndpoints();
 
         SetAllowedEnvironments(Env);
@@ -49,8 +61,14 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         var converter = new ODataToSqlConverter([new MsSqlProvider(), new PostgreSqlProvider(), new MySqlProvider(), new SqliteProvider()]);
         _mockODataToSqlConverter
+            .Setup(c => c.ConvertToSQL(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>()))
+            .Returns((string e, Dictionary<string, string> o, SqlProviderType p) => converter.ConvertToSQL(e, o, p));
+        _mockODataToSqlConverter
             .Setup(c => c.ConvertToSQL(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>(), It.IsAny<IReadOnlyList<EndpointRelationship>?>()))
             .Returns((string e, Dictionary<string, string> o, SqlProviderType p, IReadOnlyList<EndpointRelationship>? r) => converter.ConvertToSQL(e, o, p, r));
+        _mockODataToSqlConverter
+            .Setup(c => c.ConvertToSQL(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>()))
+            .Returns((string e, Dictionary<string, string> o, SqlProviderType p) => converter.ConvertToSQL(e, o, p));
         _mockODataToSqlConverter
             .Setup(c => c.ConvertToSQL(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>(), It.IsAny<SqlProviderType>(), It.IsAny<IReadOnlyList<EndpointRelationship>?>(), It.IsAny<IReadOnlyList<TenantPredicate>>()))
             .Returns((string e, Dictionary<string, string> o, SqlProviderType p, IReadOnlyList<EndpointRelationship>? r, IReadOnlyList<TenantPredicate> t) => converter.ConvertToSQL(e, o, p, r, t));
@@ -155,7 +173,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     {
         const string payload = """{ "Id": "abc", "Name": "Bad", "Price": 1 }""";
 
-        foreach (var method in new[] { HttpMethod.Post, HttpMethod.Patch })
+        foreach (var method in KeyMismatchIsAnError ? new[] { HttpMethod.Post, HttpMethod.Patch } : [HttpMethod.Post])
         {
             var (status, body) = await Send(method, Url("Int"), payload);
 
@@ -164,17 +182,99 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         }
 
         var (deleteStatus, deleteBody) = await Send(HttpMethod.Delete, Url("Int", "('abc')"));
+        if (!KeyMismatchIsAnError)
+        {
+            Assert.Equal(HttpStatusCode.NotFound, deleteStatus);
+            return;
+        }
+
         Assert.Equal(HttpStatusCode.BadRequest, deleteStatus);
         Assert.Contains("Invalid record ID", deleteBody);
     }
 
     [DockerFact]
-    public async Task Procedure_Delete_SendsOnlyTheKey() =>
-        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Proc", $"({GuidKey})"))).Status);
+    public async Task TextKey_OnNumericColumn_ReturnsNoRecord()
+    {
+        foreach (var form in new[] { "('3abc')", $"({GuidKey})" })
+            Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", form))).Status);
+
+        Assert.Contains("Bird Seed", (await Send(HttpMethod.Get, Url("Int", "(3)"))).Body);
+    }
+
+    [DockerFact]
+    public async Task NumericKey_UpdatesAndDeletes()
+    {
+        const string payload = """{ "Id": 9001, "Name": "Temp", "Price": 1 }""";
+
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("Int"), payload)).Status);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Patch, Url("Int"), """{ "Id": 9001, "Name": "Changed" }""")).Status);
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9001)"))).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, Url("Int", "(9001)"))).Status);
+    }
+
+    [DockerFact]
+    public async Task Write_InvalidatesCachedRead()
+    {
+        const string payload = """{ "Id": 9002, "Name": "Cached", "Price": 1 }""";
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("Int"), payload)).Status);
+        Assert.Contains("Cached", (await Send(HttpMethod.Get, Url("Int", "(9002)"))).Body);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Patch, Url("Int"), """{ "Id": 9002, "Name": "Renamed" }""")).Status);
+        Assert.Contains("Renamed", (await Send(HttpMethod.Get, Url("Int", "(9002)"))).Body);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9002)"))).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await Send(HttpMethod.Get, Url("Int", "(9002)"))).Status);
+    }
+
+    [DockerFact]
+    public async Task Filter_OnColumnOutsideAllowedColumns_IsRefused()
+    {
+        Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", "?$filter=ReleasedAt eq '2023-03-01'"))).Status);
+        Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Int", "?$orderby=ReleasedAt"))).Status);
+
+        if (_fixture.Provider.SupportsTvf)
+            Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Tvf", "/30?$filter=Id eq 4 and CategoryId eq 20"))).Status);
+    }
+
+    [DockerFact]
+    public async Task Tvf_PathFilterAndSelect()
+    {
+        if (!_fixture.Provider.SupportsTvf)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, (await Send(HttpMethod.Get, Url("Tvf", "/30"))).Status);
+            return;
+        }
+
+        var (status, body) = await Send(HttpMethod.Get, Url("Tvf", "/30"));
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Equal(3, JsonDocument.Parse(body).RootElement.GetProperty("value").GetArrayLength());
+
+        var filtered = await Send(HttpMethod.Get, Url("Tvf", "/30?$filter=Id eq 4"));
+        Assert.Equal(HttpStatusCode.OK, filtered.Status);
+        Assert.Contains("Giant Magnet", filtered.Body);
+        Assert.DoesNotContain("Tornado Kit", filtered.Body);
+
+        var selected = await Send(HttpMethod.Get, Url("Tvf", "/30?$select=Name"));
+        Assert.Equal(HttpStatusCode.OK, selected.Status);
+        Assert.Contains("Giant Magnet", selected.Body);
+        Assert.DoesNotContain("Price", selected.Body);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await Send(HttpMethod.Get, Url("Tvf", "/30?$select=ReleasedAt"))).Status);
+    }
+
+    [DockerFact]
+    public async Task Procedure_Delete_SendsOnlyTheKey()
+    {
+        if (_fixture.Provider.SupportsProcedures)
+            Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Proc", $"({GuidKey})"))).Status);
+    }
 
     [DockerFact]
     public async Task Procedure_Writes_BindGuidValues()
     {
+        if (!_fixture.Provider.SupportsProcedures)
+            return;
+
         var payload = $$"""{ "Id": "{{GuidKey}}", "Name": "Value" }""";
 
         Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("Proc"), payload)).Status);

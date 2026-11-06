@@ -258,8 +258,7 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
             var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, "Id", key);
             try
             {
-                // To-do: assert empty once mysql stops coercing keys on numeric columns, before v0.12.0
-                await connection.QueryAsync(select.Sql, select.Parameters);
+                Assert.Empty(await connection.QueryAsync(select.Sql, select.Parameters));
             }
             catch (System.Data.Common.DbException ex)
             {
