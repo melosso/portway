@@ -103,6 +103,8 @@ public static class PortwayMcpTools
         [Description("JSON body for POST/PUT/PATCH requests (optional)")] string? body = null,
         [Description("Tenant header values for endpoints with TenantHeaders in GetEndpointInfo, e.g. {\"X-Company-Id\":\"ACME\"} (optional when the token holds one value)")] Dictionary<string, string>? tenants = null,
         [Description("HTTP method from GetEndpointInfo (optional). Defaults to the first listed method")] string? method = null,
+        [Description("Record key, e.g. '42' or 'ABC' (optional)")] string? key = null,
+        [Description("Path below the endpoint, e.g. a table-valued function parameter such as '3' (optional)")] string? path = null,
         CancellationToken ct = default)
     {
         if (_registry is null) return ToCallResult(McpToolResult.Failure("MCP not initialized"));
@@ -116,7 +118,7 @@ public static class PortwayMcpTools
             ? authHeader["Bearer ".Length..].Trim()
             : null;
 
-        var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants, method });
+        var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants, method, key, path });
         return ToCallResult(await chat.ExecuteToolAsync(endpointName, inputJson, environment, McpLoopback.BaseUrl(httpContext), bearerToken, ct));
     }
 

@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using PortwayApi.Api;
 using PortwayApi.Auth;
 using PortwayApi.Classes;
 using PortwayApi.Services;
@@ -130,6 +131,8 @@ public sealed partial class McpChatService
           "properties": {
             "environment": { "type": "string", "description": "The Portway environment to query (e.g. '500')" },
             "method":      { "type": "string", "description": "HTTP method from the methods listed for this tool (optional). Defaults to the first listed method." },
+            "key":         { "type": "string", "description": "Record key, e.g. '42' or 'ABC' (optional)" },
+            "path":        { "type": "string", "description": "Path below the endpoint, e.g. a table-valued function parameter such as '3' (optional)" },
             "query":       { "type": "string", "description": "OData query string for GET requests (optional). Always use $top to limit results (e.g. '$top=20'). Combine with $filter, $select, $orderby as needed." },
             "body":        { "type": "string", "description": "JSON body for POST/PATCH/PUT requests (optional)" },
             "tenants":     { "type": "object", "additionalProperties": { "type": "string" }, "description": "Tenant header values for tools that list [tenant headers: ...] (optional when the token holds one value)" }
@@ -448,11 +451,14 @@ public sealed partial class McpChatService
         if (method == HttpMethod.Get && !string.IsNullOrEmpty(body))
             return McpToolResult.Failure($"A GET request has no body. Set method to one of: {string.Join(", ", methods)}.");
 
+        if (BuildRoutePath(tool, ReadArgument(input, "key"), ReadArgument(input, "path")) is not { } route)
+            return McpToolResult.Failure($"The key or path argument is not valid for {toolName}.");
+
         if (method == HttpMethod.Get)
             query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
 
         var endpointPath = tool.RoutePath;
-        var url = $"{baseUrl}/api/{Uri.EscapeDataString(environment)}/{endpointPath}";
+        var url = $"{baseUrl}/api/{Uri.EscapeDataString(environment)}/{route}";
         if (!string.IsNullOrEmpty(query))
             url += $"?{RemoveFragment(query).TrimStart('?')}";
 
@@ -479,7 +485,7 @@ public sealed partial class McpChatService
             sw.Stop();
 
             Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Path})",
-                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, endpointPath);
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, route);
 
             if (resp.IsSuccessStatusCode)
             {
@@ -601,6 +607,51 @@ public sealed partial class McpChatService
         var caller = await scope.ServiceProvider.GetRequiredService<TokenService>().GetTokenDetailsByTokenAsync(authToken);
         return caller is not null && caller.HasAccessToEndpoint(tool.Identity);
     }
+
+    /// <summary>
+    /// Path below /api/{env} for a tool call, escaped; null when the key or path is refused
+    /// </summary>
+    internal static string? BuildRoutePath(McpToolDescriptor tool, string? key, string? path)
+    {
+        var hasKey = !string.IsNullOrEmpty(key);
+        var hasPath = !string.IsNullOrEmpty(path);
+
+        if (tool.EndpointKind != "api")
+            return hasKey || hasPath ? null : tool.RoutePath;
+
+        var route = tool.RoutePath;
+        if (hasKey)
+        {
+            if (!IsSafeSegment(key!) || key!.AsSpan().ContainsAny("'()"))
+                return null;
+
+            var isBare = key.All(char.IsAsciiDigit) || Guid.TryParse(key, out _);
+            route += isBare ? $"({key})" : $"('{Uri.EscapeDataString(key)}')";
+        }
+
+        if (hasPath)
+        {
+            var segments = path!.Trim('/').Split('/');
+            if (!segments.All(IsSafeSegment))
+                return null;
+
+            // path must stay on endpoint
+            string[] full = [.. tool.RoutePath.Split('/'), .. segments];
+            if (EndpointController.ResolveEndpointIdentity(full) is not { } resolved)
+                return null;
+
+            var identity = resolved.Namespace.Length > 0 ? $"{resolved.Namespace}/{resolved.Name}" : resolved.Name;
+            if (!identity.Equals(tool.Identity, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            route += "/" + string.Join('/', segments.Select(Uri.EscapeDataString));
+        }
+
+        return route;
+    }
+
+    private static bool IsSafeSegment(string segment) =>
+        segment.Length > 0 && segment is not ("." or "..") && !segment.Any(c => c is '/' or '\\' || char.IsControl(c));
 
     private static string RemoveFragment(string query) =>
         query.IndexOf('#') is >= 0 and var hash ? query[..hash] : query;
