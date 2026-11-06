@@ -30,6 +30,7 @@ public static class SqlErrorClassifier
         SqlException sql => sql.Number is 206 or 245 or 8114 or 8169,
         PostgresException pg => pg.SqlState is "42883" or "22P02" or "42804",
         MySqlException my => my.Number is 1292 or 1366,
+        SqliteException sqlite => sqlite.SqliteErrorCode == 20,
         _ => false
     };
 
