@@ -89,6 +89,16 @@ public sealed partial class SqlRequestHandler
             }
 
 
+            if (endpoint.AllowedColumns is { Count: > 0 })
+            {
+                var refused = ColumnMappingHelper.FindDisallowedColumns(filter, endpoint.AliasToDatabase)
+                    .Concat(ColumnMappingHelper.FindDisallowedColumns(orderby, endpoint.AliasToDatabase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (refused.Count > 0)
+                    return PortwayResults.BadRequest($"Columns not allowed: {string.Join(", ", refused)}");
+            }
+
             // Step 2.1: Apply endpoint-specific property overrides
             top = ApplyMaxPageSizeLimit(top, endpoint);
             orderby = ApplyDefaultSorting(orderby, endpoint);

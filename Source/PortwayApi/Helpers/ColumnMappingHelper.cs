@@ -6,8 +6,34 @@ namespace PortwayApi.Helpers;
 /// <summary>
 /// Helper class for handling column alias mappings in SQL endpoints
 /// </summary>
-public static class ColumnMappingHelper
+public static partial class ColumnMappingHelper
 {
+    private static readonly System.Collections.Frozen.FrozenSet<string> ODataWords = System.Collections.Frozen.FrozenSet.ToFrozenSet(
+        ["eq", "ne", "gt", "ge", "lt", "le", "and", "or", "not", "add", "sub", "mul", "div", "mod", "in", "has", "asc", "desc", "null", "true", "false"],
+        StringComparer.OrdinalIgnoreCase);
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\w*'(?:[^']|'')*'")]
+    private static partial System.Text.RegularExpressions.Regex ODataLiteral();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(?<![\w.])[A-Za-z_]\w*(?!\w)(?!\s*\()")]
+    private static partial System.Text.RegularExpressions.Regex ODataIdentifier();
+
+    /// <summary>
+    /// Names in an OData $filter or $orderby expression outside the columns of the endpoint, by alias or database name
+    /// </summary>
+    public static IReadOnlyList<string> FindDisallowedColumns(string? expression, IReadOnlyDictionary<string, string> aliasToDatabase)
+    {
+        if (string.IsNullOrWhiteSpace(expression))
+            return [];
+
+        var columns = aliasToDatabase.Keys.Concat(aliasToDatabase.Values).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return ODataIdentifier().Matches(ODataLiteral().Replace(expression, " "))
+            .Select(match => match.Value)
+            .Where(name => !ODataWords.Contains(name) && !columns.Contains(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     /// <summary>
     /// Parses "DatabaseColumn;Alias" mappings into alias and database lookups
     /// </summary>
