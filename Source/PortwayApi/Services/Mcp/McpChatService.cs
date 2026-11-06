@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using PortwayApi.Auth;
 using PortwayApi.Services;
 using PortwayApi.Services.Mcp.Providers;
 using Serilog;
@@ -29,6 +30,7 @@ public sealed partial class McpChatService
     private readonly McpConfigService _configService;
     private readonly IHttpClientFactory _httpFactory;
     private readonly SqlMetadataService? _sqlMetadata;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     // Source-generated zero-overhead regexes
     [GeneratedRegex(@"[^a-zA-Z0-9_]")]
@@ -141,12 +143,14 @@ public sealed partial class McpChatService
         IOptions<McpOptions> mcpOptions,
         McpConfigService configService,
         IHttpClientFactory httpFactory,
+        IServiceScopeFactory scopeFactory,
         SqlMetadataService? sqlMetadata = null)
     {
         _registry = registry;
         _mcpOptions = mcpOptions.Value;
         _configService = configService;
         _httpFactory = httpFactory;
+        _scopeFactory = scopeFactory;
         _sqlMetadata = sqlMetadata;
     }
 
@@ -405,11 +409,14 @@ public sealed partial class McpChatService
         string? authToken,
         CancellationToken ct)
     {
-        // O(1) lookup via pre-built dictionary keyed by sanitized endpoint name
-        var sanitizedEndpointName = toolName; // tool names are already sanitized
-        var tool = _registry.FindByName(sanitizedEndpointName);
+        // Tool execution must run under the caller's own API token
+        if (string.IsNullOrWhiteSpace(authToken))
+            return McpToolResult.Failure("Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.");
 
-        if (tool is null)
+        var tool = _registry.FindByName(toolName);
+
+        // scope failure reads as missing
+        if (tool is null || !await CallerHasAccessAsync(authToken, tool))
             return McpToolResult.Failure($"Unknown tool: {toolName}");
 
         JsonNode? input = null;
@@ -418,11 +425,10 @@ public sealed partial class McpChatService
 
         var environment = input?["environment"]?.GetValue<string>() ?? defaultEnvironment;
 
-        // Fall back to the tool's first allowed environment when the selected one is outside its restriction
-        if (tool.AllowedEnvironments is { Count: > 0 } &&
-            !tool.AllowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
+        if (tool.AllowedEnvironments is { Count: > 0 } toolEnvironments &&
+            !toolEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
         {
-            environment = tool.AllowedEnvironments[0];
+            return McpToolResult.Failure($"Environment '{environment}' is not allowed for {toolName}. Allowed environments: {string.Join(", ", toolEnvironments)}.");
         }
 
         var query = input?["query"]?.GetValue<string>();
@@ -443,10 +449,6 @@ public sealed partial class McpChatService
         var url = $"{baseUrl}/api/{environment}/{endpointPath}";
         if (!string.IsNullOrEmpty(query))
             url += $"?{query.TrimStart('?')}";
-
-        // Tool execution must run under the caller's own API token
-        if (string.IsNullOrWhiteSpace(authToken))
-            return McpToolResult.Failure("Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.");
 
         var sw = Stopwatch.StartNew();
         try
@@ -578,6 +580,13 @@ public sealed partial class McpChatService
         }
 
         return sb.ToString();
+    }
+
+    private async Task<bool> CallerHasAccessAsync(string authToken, McpToolDescriptor tool)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var caller = await scope.ServiceProvider.GetRequiredService<TokenService>().GetTokenDetailsByTokenAsync(authToken);
+        return caller is not null && caller.HasAccessToEndpoint(tool.Identity);
     }
 
     /// <summary>
