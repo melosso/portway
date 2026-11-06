@@ -1,6 +1,7 @@
 namespace PortwayApi.Services.Mcp;
 
 using Microsoft.AspNetCore.Http;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using PortwayApi.Auth;
 using System.ComponentModel;
@@ -94,7 +95,7 @@ public static class PortwayMcpTools
 
     [McpServerTool(Destructive = true, OpenWorld = false),
      Description("Call a registered Portway endpoint. Use ListEndpoints/GetEndpointInfo first to find the endpoint name, method and allowed environments.")]
-    public static async Task<string> CallEndpoint(
+    public static async Task<CallToolResult> CallEndpoint(
         McpChatService chat,
         IHttpContextAccessor httpContextAccessor,
         [Description("Endpoint name as returned by ListEndpoints, e.g. 'namespace_endpoint' or 'endpoint'")] string endpointName,
@@ -104,10 +105,10 @@ public static class PortwayMcpTools
         [Description("Tenant header values for endpoints with TenantHeaders in GetEndpointInfo, e.g. {\"X-Company-Id\":\"ACME\"} (optional when the token holds one value)")] Dictionary<string, string>? tenants = null,
         CancellationToken ct = default)
     {
-        if (_registry is null) return "MCP not initialized";
+        if (_registry is null) return ToCallResult(McpToolResult.Failure("MCP not initialized"));
 
         var httpContext = httpContextAccessor.HttpContext;
-        if (httpContext is null) return "No active HTTP request context to resolve the base URL and credentials from.";
+        if (httpContext is null) return ToCallResult(McpToolResult.Failure("No active HTTP request context to resolve the base URL and credentials from."));
 
         // avoid host header injection
         var req = httpContext.Request;
@@ -121,6 +122,12 @@ public static class PortwayMcpTools
             : null;
 
         var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants });
-        return await chat.ExecuteToolAsync(endpointName, inputJson, environment, baseUrl, bearerToken, ct);
+        return ToCallResult(await chat.ExecuteToolAsync(endpointName, inputJson, environment, baseUrl, bearerToken, ct));
     }
+
+    private static CallToolResult ToCallResult(McpToolResult result) => new()
+    {
+        Content = [new TextContentBlock { Text = result.Text }],
+        IsError = result.IsError
+    };
 }

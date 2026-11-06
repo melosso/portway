@@ -12,3 +12,11 @@ public sealed record EndpointInfoResult
     public IReadOnlyList<string> AllowedEnvironments { get; init; } = [];
     public IReadOnlyList<string> TenantHeaders { get; init; } = [];
 }
+
+/// <summary>
+/// Text of a tool call and whether the call failed
+/// </summary>
+internal readonly record struct McpToolResult(string Text, bool IsError = false)
+{
+    public static McpToolResult Failure(string text) => new(text, true);
+}

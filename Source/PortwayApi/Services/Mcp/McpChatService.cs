@@ -344,7 +344,7 @@ public sealed partial class McpChatService
                     continue;
                 }
 
-                var result = await ExecuteToolAsync(name, inputJson, defaultEnvironment, baseUrl, authToken, ct);
+                var result = (await ExecuteToolAsync(name, inputJson, defaultEnvironment, baseUrl, authToken, ct)).Text;
 
                 // Truncate for history to stay within context window limits
                 var historyResult = result.Length > maxChars
@@ -397,7 +397,7 @@ public sealed partial class McpChatService
     }
 
     // internal, reused by mcp tool call
-    internal async Task<string> ExecuteToolAsync(
+    internal async Task<McpToolResult> ExecuteToolAsync(
         string toolName,
         string inputJson,
         string defaultEnvironment,
@@ -410,7 +410,7 @@ public sealed partial class McpChatService
         var tool = _registry.FindByName(sanitizedEndpointName);
 
         if (tool is null)
-            return $"Unknown tool: {toolName}";
+            return McpToolResult.Failure($"Unknown tool: {toolName}");
 
         JsonNode? input = null;
         try { input = JsonNode.Parse(inputJson); }
@@ -446,7 +446,7 @@ public sealed partial class McpChatService
 
         // Tool execution must run under the caller's own API token
         if (string.IsNullOrWhiteSpace(authToken))
-            return "Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.";
+            return McpToolResult.Failure("Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.");
 
         var sw = Stopwatch.StartNew();
         try
@@ -479,8 +479,8 @@ public sealed partial class McpChatService
 
                 // Block binary types; sending raw bytes to the LLM is wasteful and meaningless
                 if (IsBinaryContentType(mediaType))
-                    return $"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
-                           $"read in chat. The user should download it directly from the Portway API.";
+                    return new McpToolResult($"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
+                           $"read in chat. The user should download it directly from the Portway API.");
 
                 // Size-capped read: stream only up to MaxToolResultChars plus a small buffer, then discard the rest, so huge responses never load fully into memory
                 var maxChars = _mcpOptions.MaxToolResultChars;
@@ -493,9 +493,9 @@ public sealed partial class McpChatService
                 // If the endpoint returned an empty JSON array, give the LLM an explicit signal so it doesn't retry with rephrased queries
                 var trimmed = content.AsSpan().Trim();
                 if (trimmed.Length >= 2 && trimmed[0] == '[' && trimmed[^1] == ']' && trimmed[1..^1].IsWhiteSpace())
-                    return "[No records found] The endpoint returned an empty result for this query. Do not retry.";
+                    return new McpToolResult("[No records found] The endpoint returned an empty result for this query. Do not retry.");
 
-                return content;
+                return new McpToolResult(content);
             }
 
             // Return a clear, actionable message so the LLM can relay it to the user
@@ -540,21 +540,21 @@ public sealed partial class McpChatService
 
             Log.Warning("Tool call {Tool} → {Status} in {Elapsed}ms: {Hint}",
                 toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, hint);
-            return $"[Tool error {(int)resp.StatusCode}] {hint}\nResponse body: {errorBody}";
+            return McpToolResult.Failure($"[Tool error {(int)resp.StatusCode}] {hint}\nResponse body: {errorBody}");
         }
         catch (TaskCanceledException) when (ct.IsCancellationRequested)
         {
-            return $"[Tool cancelled] The request for {toolName} was cancelled.";
+            return McpToolResult.Failure($"[Tool cancelled] The request for {toolName} was cancelled.");
         }
         catch (TaskCanceledException)
         {
             Log.Warning("Tool call {Tool} timed out after {Elapsed}ms", toolName, sw.ElapsedMilliseconds);
-            return $"[Tool timeout] {toolName} did not respond within the configured timeout. Try a more specific query with $filter or $top.";
+            return McpToolResult.Failure($"[Tool timeout] {toolName} did not respond within the configured timeout. Try a more specific query with $filter or $top.");
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "Tool execution failed for {Tool}", toolName);
-            return $"Error executing {toolName}: {ex.Message}";
+            return McpToolResult.Failure($"Error executing {toolName}. Check the Portway logs for details.");
         }
     }
 
