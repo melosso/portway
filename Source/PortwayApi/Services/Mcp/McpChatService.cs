@@ -129,6 +129,7 @@ public sealed partial class McpChatService
           "type": "object",
           "properties": {
             "environment": { "type": "string", "description": "The Portway environment to query (e.g. '500')" },
+            "method":      { "type": "string", "description": "HTTP method from the methods listed for this tool (optional). Defaults to the first listed method." },
             "query":       { "type": "string", "description": "OData query string for GET requests (optional). Always use $top to limit results (e.g. '$top=20'). Combine with $filter, $select, $orderby as needed." },
             "body":        { "type": "string", "description": "JSON body for POST/PATCH/PUT requests (optional)" },
             "tenants":     { "type": "object", "additionalProperties": { "type": "string" }, "description": "Tenant header values for tools that list [tenant headers: ...] (optional when the token holds one value)" }
@@ -420,11 +421,11 @@ public sealed partial class McpChatService
         if (tool is null || !await CallerHasAccessAsync(authToken, tool))
             return McpToolResult.Failure($"Unknown tool: {toolName}");
 
-        JsonNode? input = null;
-        try { input = JsonNode.Parse(inputJson); }
+        JsonObject? input = null;
+        try { input = JsonNode.Parse(inputJson) as JsonObject; }
         catch (Exception ex) { Log.Debug(ex, "Could not parse tool input JSON for {Tool}", toolName); }
 
-        var environment = input?["environment"]?.GetValue<string>() ?? defaultEnvironment;
+        var environment = ReadArgument(input, "environment") ?? defaultEnvironment;
 
         if (tool.AllowedEnvironments is { Count: > 0 } toolEnvironments &&
             !toolEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
@@ -435,9 +436,17 @@ public sealed partial class McpChatService
         if (!_environments.IsEnvironmentAllowed(environment))
             return McpToolResult.Failure($"Environment '{environment}' is not allowed.");
 
-        var query = input?["query"]?.GetValue<string>();
-        var body = input?["body"]?.GetValue<string>();
-        var method = new HttpMethod(tool.Method.ToUpperInvariant());
+        var methodName = ReadArgument(input, "method") ?? tool.Method;
+        var methods = _registry.MethodsOf(tool);
+        if (!methods.Contains(methodName, StringComparer.OrdinalIgnoreCase))
+            return McpToolResult.Failure($"Method '{methodName}' is not available on {toolName}. Available methods: {string.Join(", ", methods)}.");
+
+        var method = new HttpMethod(methodName.ToUpperInvariant());
+        var query = ReadArgument(input, "query");
+        var body = ReadArgument(input, "body");
+
+        if (method == HttpMethod.Get && !string.IsNullOrEmpty(body))
+            return McpToolResult.Failure($"A GET request has no body. Set method to one of: {string.Join(", ", methods)}.");
 
         if (method == HttpMethod.Get)
             query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
@@ -578,6 +587,13 @@ public sealed partial class McpChatService
 
         return sb.ToString();
     }
+
+    private static string? ReadArgument(JsonObject? input, string name) => input?[name] switch
+    {
+        null => null,
+        JsonValue value when value.TryGetValue<string>(out var text) => text,
+        var node => node.ToJsonString()
+    };
 
     private async Task<bool> CallerHasAccessAsync(string authToken, McpToolDescriptor tool)
     {

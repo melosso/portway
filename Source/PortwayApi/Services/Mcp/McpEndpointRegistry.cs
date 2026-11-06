@@ -44,6 +44,9 @@ public class McpEndpointRegistry
     public McpToolDescriptor? FindByName(string sanitizedName) =>
         _current.ByName.TryGetValue(sanitizedName, out var t) ? t : null;
 
+    public IReadOnlyList<string> MethodsOf(McpToolDescriptor tool) =>
+        [.. _current.Tools.Where(t => t.Identity == tool.Identity).Select(t => t.Method)];
+
     // same map findbyname uses
     public ImmutableDictionary<string, McpToolDescriptor> ToolsByInvokeName => _current.ByName;
 

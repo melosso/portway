@@ -93,7 +93,7 @@ public static class PortwayMcpTools
     }
 
     [McpServerTool(Destructive = true, OpenWorld = false),
-     Description("Call a registered Portway endpoint. Use ListEndpoints/GetEndpointInfo first to find the endpoint name, method and allowed environments.")]
+     Description("Call a registered Portway endpoint. Use ListEndpoints/GetEndpointInfo first to find the endpoint name, methods and allowed environments.")]
     public static async Task<CallToolResult> CallEndpoint(
         McpChatService chat,
         IHttpContextAccessor httpContextAccessor,
@@ -102,6 +102,7 @@ public static class PortwayMcpTools
         [Description("OData query string for GET requests (optional), e.g. '$top=20&$filter=...'")] string? query = null,
         [Description("JSON body for POST/PUT/PATCH requests (optional)")] string? body = null,
         [Description("Tenant header values for endpoints with TenantHeaders in GetEndpointInfo, e.g. {\"X-Company-Id\":\"ACME\"} (optional when the token holds one value)")] Dictionary<string, string>? tenants = null,
+        [Description("HTTP method from GetEndpointInfo (optional). Defaults to the first listed method")] string? method = null,
         CancellationToken ct = default)
     {
         if (_registry is null) return ToCallResult(McpToolResult.Failure("MCP not initialized"));
@@ -115,7 +116,7 @@ public static class PortwayMcpTools
             ? authHeader["Bearer ".Length..].Trim()
             : null;
 
-        var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants });
+        var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants, method });
         return ToCallResult(await chat.ExecuteToolAsync(endpointName, inputJson, environment, McpLoopback.BaseUrl(httpContext), bearerToken, ct));
     }
 
