@@ -7,6 +7,7 @@ public class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }
+    public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
     public List<string> Methods { get; set; } = new List<string>();

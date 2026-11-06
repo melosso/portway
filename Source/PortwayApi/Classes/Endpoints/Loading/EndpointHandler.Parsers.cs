@@ -129,6 +129,7 @@ public static partial class EndpointHandler
             DeletePatterns = entity.DeletePatterns,
             SupportsOData = entity.SupportsOData,
             FallbackUrls = entity.FallbackUrls,
+            ForwardAuthorization = entity.ForwardAuthorization,
             Retry = entity.Retry,
             ResponseTransforms = entity.ResponseTransforms
         };

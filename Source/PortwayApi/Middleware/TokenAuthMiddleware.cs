@@ -157,9 +157,11 @@ public class TokenAuthMiddleware
         Log.Debug("Authorized {User} (Token ID: {TokenId}) for {Method} {Path}",
             tokenDetails.Username, tokenDetails.Id, context.Request.Method, context.Request.Path);
         context.Features.Set(tokenDetails);
+        context.Items[AuthorizationAcceptedKey] = true;
         await _next(context);
     }
 
+    public const string AuthorizationAcceptedKey = "Portway.AuthorizationAccepted";
     private const string FileScopePrefix = "files/";
     private const string BearerChallenge = "Bearer realm=\"portway\"";
     private const string InvalidTokenChallenge = "Bearer realm=\"portway\", error=\"invalid_token\"";

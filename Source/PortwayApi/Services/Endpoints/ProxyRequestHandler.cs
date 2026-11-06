@@ -101,6 +101,7 @@ public sealed class ProxyRequestHandler
 
             // Construct full URL
             var queryString = context.Request.QueryString.Value ?? string.Empty;
+            var queryCredentials = (await CredentialNamesAsync(env)).Query;
             // Detach any query baked into the endpoint Url so ids and path segments append to the path; re-attached after construction
             var (fullUrl, baseQuery, reservedParams) = SplitEndpointUrl(endpointConfig.Url ?? string.Empty);
 
@@ -173,10 +174,14 @@ public sealed class ProxyRequestHandler
                 var qs = queryString.StartsWith("?") ? queryString.Substring(1) : queryString;
 
                 // Drop client params that collide with baked ones; upstreams resolving duplicates last-wins would let clients override injected credentials
-                if (reservedParams.Count > 0)
+                if (reservedParams.Count > 0 || queryCredentials.Count > 0)
                 {
                     qs = string.Join('&', qs.Split('&', StringSplitOptions.RemoveEmptyEntries)
-                        .Where(p => !reservedParams.Contains(p.Split('=', 2)[0])));
+                        .Where(p =>
+                        {
+                            var name = p.Split('=', 2)[0];
+                            return !reservedParams.Contains(name) && !queryCredentials.Contains(System.Net.WebUtility.UrlDecode(name));
+                        }));
                 }
 
                 if (!string.IsNullOrEmpty(qs))
@@ -503,6 +508,10 @@ public sealed class ProxyRequestHandler
         return keyBuilder.ToString();
     }
 
+    private async Task<(HashSet<string> Headers, HashSet<string> Query, HashSet<string> Cookies)> CredentialNamesAsync(string env) =>
+        (await _environmentSettingsProvider.GetEnvironmentConfigAsync(env))?.Authentication?.CredentialNames()
+        ?? AuthenticationSettings.NoCredentialNames;
+
     /// <summary>
     /// Executes the actual proxy request and writes the response
     /// </summary>
@@ -542,6 +551,7 @@ public sealed class ProxyRequestHandler
 
         // Load environment settings
         var (_, _, envHeaders) = await _environmentSettingsProvider.LoadEnvironmentOrThrowAsync(env);
+        var credentials = await CredentialNamesAsync(env);
 
         // environment and endpoint headers replace client headers of the same name
         var configuredHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -593,6 +603,23 @@ public sealed class ProxyRequestHandler
             {
                 if (headersToStrip.Contains(header.Key) || configuredHeaders.ContainsKey(header.Key) || tenantSelectors.Contains(header.Key))
                     continue;
+
+                if (credentials.Headers.Contains(header.Key))
+                    continue;
+
+                if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+                    && context.Items.ContainsKey(Middleware.TokenAuthMiddleware.AuthorizationAcceptedKey)
+                    && endpointDefinition is not { ForwardAuthorization: true })
+                    continue;
+
+                if (header.Key.Equals("Cookie", StringComparison.OrdinalIgnoreCase) && credentials.Cookies.Count > 0)
+                {
+                    var kept = string.Join("; ", header.Value.ToString().Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                        .Where(c => !credentials.Cookies.Contains(c.Split('=', 2)[0])));
+                    if (kept.Length > 0)
+                        requestMessage.Headers.TryAddWithoutValidation("Cookie", kept);
+                    continue;
+                }
 
                 try
                 {
