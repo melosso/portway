@@ -373,7 +373,8 @@ public sealed partial class SqlRequestHandler
 
             if (cacheEnabled)
             {
-                cacheKey = BuildCacheKey(env, endpointName, query, parameters, countRequested);
+                var generation = await GetReadGenerationAsync(env, endpointName);
+                cacheKey = BuildCacheKey(env, $"{endpointName}:{generation}", query, parameters, countRequested);
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
 
                 if (cachedResponse != null)
@@ -508,6 +509,29 @@ public sealed partial class SqlRequestHandler
     }
 
     // json keeps query and parameter values unambiguous and the hash is stable across instances
+    private static string ReadGenerationKey(string env, string endpointName) => $"sql:generation:{env}:{endpointName}";
+
+    // new generation hides older entries
+    private async Task<string> GetReadGenerationAsync(string env, string endpointName)
+    {
+        var key = ReadGenerationKey(env, endpointName);
+        var generation = await _cacheManager.GetAsync<string>(key);
+        if (generation is not null)
+            return generation;
+
+        generation = Guid.NewGuid().ToString("N");
+        await _cacheManager.SetAsync(key, generation, ReadGenerationLifetime);
+        return generation;
+    }
+
+    private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env, string endpointName)
+    {
+        if (IsCacheEnabled(endpoint))
+            await _cacheManager.SetAsync(ReadGenerationKey(env, endpointName), Guid.NewGuid().ToString("N"), ReadGenerationLifetime);
+    }
+
+    private static readonly TimeSpan ReadGenerationLifetime = TimeSpan.FromDays(7);
+
     internal static string BuildCacheKey(string env, string endpointName, string query, IReadOnlyDictionary<string, object>? parameters, bool countRequested)
     {
         var material = JsonSerializer.SerializeToUtf8Bytes(new object?[] { query, parameters, countRequested });
@@ -670,6 +694,10 @@ public sealed partial class SqlRequestHandler
 
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
         }
+        finally
+        {
+            await InvalidateReadsAsync(endpoint, env, endpointName);
+        }
     }
 
     /// <summary>
@@ -798,6 +826,10 @@ public sealed partial class SqlRequestHandler
         {
             Log.Error(ex, "Error processing UPDATE for {Endpoint}", endpointName);
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
+        }
+        finally
+        {
+            await InvalidateReadsAsync(endpoint, env, endpointName);
         }
     }
 
@@ -931,6 +963,10 @@ public sealed partial class SqlRequestHandler
             Log.Error(ex, "Error processing PATCH for {Endpoint}", endpointName);
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
         }
+        finally
+        {
+            await InvalidateReadsAsync(endpoint, env, endpointName);
+        }
     }
 
     /// <summary>
@@ -1051,6 +1087,10 @@ public sealed partial class SqlRequestHandler
         {
             Log.Error(ex, "Error processing DELETE for {Endpoint}", endpointName);
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
+        }
+        finally
+        {
+            await InvalidateReadsAsync(endpoint, env, endpointName);
         }
     }
 
