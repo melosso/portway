@@ -601,6 +601,57 @@ public class WebUiSecurityTests : IDisposable
     }
 
     [Fact]
+    public async Task Viewer_EnvironmentRaw_Forbidden_AndEnvironmentGet_OmitsValues()
+    {
+        var name = $"viewerenv{Guid.NewGuid():N}";
+        var folder = Path.Combine("environments", name);
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, "settings.json"),
+                """{"ServerName":"srv","ConnectionString":"Server=x;Password=conn-secret","Headers":{"X-Api-Key":"header-secret"}}""");
+
+            var client = CreateClient();
+            var (adminCookie, adminCsrf) = await LoginAsync(client);
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "env-viewer", password = "V13wer-env-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "env-viewer", "V13wer-env-pw-99");
+
+            var raw = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}/raw", viewerCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.Forbidden, raw.StatusCode);
+
+            var read = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}", viewerCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+            var body = await read.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("conn-secret", body);
+            Assert.DoesNotContain("header-secret", body);
+            Assert.Contains("X-Api-Key", body);
+
+            Assert.DoesNotContain("PWENC:", body);
+
+            var adminRaw = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}/raw", adminCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, adminRaw.StatusCode);
+            Assert.Contains("ConnectionString", await adminRaw.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RedactEndpointUrls_MasksUrlAndFallbackQueries()
+    {
+        var redacted = PortwayApi.Endpoints.WebUiEndpointExtensions.RedactEndpointUrls(
+            """{"Url":"http://x/a?key=url-secret","FallbackUrls":["http://y/b?key=fallback-secret"],"Methods":["GET"]}""");
+
+        Assert.DoesNotContain("url-secret", redacted);
+        Assert.DoesNotContain("fallback-secret", redacted);
+        Assert.Contains("Methods", redacted);
+    }
+
+    [Fact]
     public async Task ViewerAccount_CannotWriteSettings_ButCanRead()
     {
         var client = CreateClient();
