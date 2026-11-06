@@ -61,6 +61,12 @@ public class CacheManager : ICacheProvider
     }
 
     /// <summary>
+    /// Gets a bookkeeping value without counting it as a cache hit or miss
+    /// </summary>
+    public Task<T?> GetUncountedAsync<T>(string key) where T : class =>
+        _optionsMonitor.CurrentValue.Enabled ? _provider.GetAsync<T>(key) : Task.FromResult<T?>(null);
+
+    /// <summary>
     /// Sets a value in the cache
     /// </summary>
     public Task SetAsync<T>(string key, T value, TimeSpan expiration) where T : class

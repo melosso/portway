@@ -146,3 +146,27 @@ public class ODataColumnAllowlistTests
         Assert.NotEmpty(ColumnMappingHelper.FindDisallowedOrderByColumns(expression, Aliases));
     }
 }
+
+public class CacheManagerCountingTests
+{
+    [Fact]
+    public async Task UncountedRead_LeavesHitAndMissCountsAlone()
+    {
+        var options = new PortwayApi.Services.Caching.CacheOptions { Enabled = true };
+        var metrics = new PortwayApi.Services.MetricsService();
+        var cache = new PortwayApi.Services.Caching.CacheManager(
+            new PortwayApi.Tests.Support.StaticOptionsMonitor<PortwayApi.Services.Caching.CacheOptions>(options),
+            new PortwayApi.Services.Caching.MemoryCacheProvider(Microsoft.Extensions.Options.Options.Create(options)),
+            metrics,
+            new PortwayApi.Services.Telemetry.PortwayMetrics());
+
+        await cache.SetAsync("present", "value", TimeSpan.FromMinutes(1));
+
+        Assert.Equal("value", await cache.GetUncountedAsync<string>("present"));
+        Assert.Null(await cache.GetUncountedAsync<string>("absent"));
+
+        var snapshot = metrics.GetSnapshot("1h");
+        Assert.Equal(0, snapshot.CacheHits);
+        Assert.Equal(0, snapshot.CacheMisses);
+    }
+}

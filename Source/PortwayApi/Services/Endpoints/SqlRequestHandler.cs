@@ -513,7 +513,7 @@ public sealed partial class SqlRequestHandler
     private async Task<string> GetReadGenerationAsync(EndpointDefinition endpoint, string env)
     {
         var key = ReadGenerationKey(endpoint, env);
-        var generation = await _cacheManager.GetAsync<string>(key);
+        var generation = await _cacheManager.GetUncountedAsync<string>(key);
         if (generation is not null)
             return generation;
 
