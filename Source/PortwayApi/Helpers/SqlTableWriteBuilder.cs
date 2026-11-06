@@ -105,7 +105,7 @@ public static partial class SqlTableWriteBuilder
     private static Query KeyQuery(ISqlProvider provider, string table, string pkColumn, object pkValue)
     {
         var isWholeNumber = pkValue is string digits && long.TryParse(digits, System.Globalization.NumberStyles.None, null, out _);
-        var query = new Query(table).Where(pkColumn, GuidAsLiteral(pkValue));
+        var query = new Query(table).Where(pkColumn, isWholeNumber ? TenantSql.Literal((string)pkValue) : GuidAsLiteral(pkValue));
 
         return provider.CoercesTextKeys && !isWholeNumber && pkValue is string text
             ? TenantSql.WhereExactText(query, pkColumn, text)
