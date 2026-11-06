@@ -315,7 +315,7 @@ public class CompositeEndpointHandler
         // Prepare the URL for the request
         string fullUrl = endpoint.Url;
 
-        Log.Debug("Executing step {StepName} to {Url} with method {Method}", step.Name, fullUrl, step.Method);
+        Log.Debug("Executing step {StepName} to {Url} with method {Method}", step.Name, UrlRedaction.Redact(fullUrl), step.Method);
 
         HttpRequestMessage BuildRequest(string targetUrl)
         {
@@ -553,7 +553,7 @@ public class CompositeEndpointHandler
                     // Parse original URL parts for replacement
                     if (!Uri.TryCreate(endpoint.Value.Url, UriKind.Absolute, out var originalUri))
                     {
-                        Log.Warning("Could not parse endpoint URL as URI: {Url}", endpoint.Value.Url);
+                        Log.Warning("Could not parse endpoint URL as URI: {Url}", UrlRedaction.Redact(endpoint.Value.Url));
                         continue;
                     }
 

@@ -125,25 +125,25 @@ public sealed class ProxyRequestHandler
                     if (fullUrl.Contains("{id}", StringComparison.OrdinalIgnoreCase))
                     {
                         fullUrl = fullUrl.Replace("{id}", encodedId, StringComparison.OrdinalIgnoreCase);
-                        Log.Debug("Replaced {id} placeholder in URL: {Url} (ID: {Id})", fullUrl, id);
+                        Log.Debug("Replaced {id} placeholder in URL: {Url} (ID: {Id})", UrlRedaction.Redact(fullUrl), id);
                     }
                     else if (Guid.TryParse(id, out _))
                     {
                         // Prefer OData GUID format if GUID detected and base looks OData-ish (heuristic)
                         fullUrl += $"(guid'{encodedId}')";
-                        Log.Debug("Appended OData GUID to URL: {Url} (ID: {Id})", fullUrl, id);
+                        Log.Debug("Appended OData GUID to URL: {Url} (ID: {Id})", UrlRedaction.Redact(fullUrl), id);
                     }
                     else if (long.TryParse(id, out _))
                     {
                         // Numeric key as OData key
                         fullUrl += $"({encodedId})";
-                        Log.Debug("Appended numeric key to URL: {Url} (ID: {Id})", fullUrl, id);
+                        Log.Debug("Appended numeric key to URL: {Url} (ID: {Id})", UrlRedaction.Redact(fullUrl), id);
                     }
                     else
                     {
                         // Fallback: append as path segment
                         fullUrl += $"/{Uri.EscapeDataString(id!)}";
-                        Log.Debug("Appended ID as path segment to URL: {Url} (ID: {Id})", fullUrl, id);
+                        Log.Debug("Appended ID as path segment to URL: {Url} (ID: {Id})", UrlRedaction.Redact(fullUrl), id);
                     }
                 }
                 else if (!string.IsNullOrEmpty(remainingPath))
@@ -152,11 +152,11 @@ public sealed class ProxyRequestHandler
                     var segments = remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
                                                 .Select(s => Uri.EscapeDataString(s));
                     fullUrl += "/" + string.Join('/', segments);
-                    Log.Debug("Added remaining path to URL: {Url} (Path: {RemainingPath})", fullUrl, remainingPath);
+                    Log.Debug("Added remaining path to URL: {Url} (Path: {RemainingPath})", UrlRedaction.Redact(fullUrl), remainingPath);
                 }
                 else
                 {
-                    Log.Debug("No ID or remaining path found for URL: {Url}", fullUrl);
+                    Log.Debug("No ID or remaining path found for URL: {Url}", UrlRedaction.Redact(fullUrl));
                 }
             }
 
@@ -183,15 +183,15 @@ public sealed class ProxyRequestHandler
                     fullUrl += fullUrl.Contains('?') ? "&" + qs : "?" + qs;
             }
 
-            Log.Debug("Final constructed URL: {Url}", fullUrl);
+            Log.Debug("Final constructed URL: {Url}", UrlRedaction.Redact(fullUrl));
 
             // Store the target URL in the context items for logging
-            context.Items["TargetUrl"] = fullUrl;
+            context.Items["TargetUrl"] = UrlRedaction.Redact(fullUrl);
 
             // Validate URL safety
             if (!_urlValidator.IsUrlSafe(fullUrl))
             {
-                Log.Warning("Blocked URL due to security restrictions: {Url}", fullUrl);
+                Log.Warning("Blocked URL due to security restrictions: {Url}", UrlRedaction.Redact(fullUrl));
                 return new ObjectResult(ErrorResponse.Of("Request blocked due to security restrictions")) { StatusCode = 403 };
             }
 
@@ -228,7 +228,7 @@ public sealed class ProxyRequestHandler
 
                 if (cacheEntry != null)
                 {
-                    Log.Debug("Cache hit for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
+                    Log.Debug("Cache hit for proxy request: {Endpoint}, URL: {Url}", endpointName, UrlRedaction.Redact(fullUrl));
 
                     // Apply cached headers and status code
                     foreach (var header in cacheEntry.Headers)
@@ -244,7 +244,7 @@ public sealed class ProxyRequestHandler
                     return new EmptyResult(); // Response already written
                 }
 
-                Log.Debug("Cache miss for proxy request: {Endpoint}, URL: {Url}", endpointName, fullUrl);
+                Log.Debug("Cache miss for proxy request: {Endpoint}, URL: {Url}", endpointName, UrlRedaction.Redact(fullUrl));
 
                 // Acquire a distributed lock to prevent duplicate requests
                 using var lockHandle = await _cacheManager.AcquireLockAsync(
@@ -391,19 +391,19 @@ public sealed class ProxyRequestHandler
                 if (!string.IsNullOrEmpty(encodedId) && baseUrl.IndexOf("{id}", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     baseUrl = Regex.Replace(baseUrl, @"\{id\}", encodedId, RegexOptions.IgnoreCase);
-                    Log.Debug("DELETE using PathParameter (placeholder): {Url} (ID: {Id})", baseUrl, id);
+                    Log.Debug("DELETE using PathParameter (placeholder): {Url} (ID: {Id})", UrlRedaction.Redact(baseUrl), id);
                 }
                 else if (!string.IsNullOrEmpty(encodedId))
                 {
                     baseUrl = $"{baseUrl}/{encodedId}";
-                    Log.Debug("DELETE using PathParameter: {Url} (ID: {Id})", baseUrl, id);
+                    Log.Debug("DELETE using PathParameter: {Url} (ID: {Id})", UrlRedaction.Redact(baseUrl), id);
                 }
                 else if (!string.IsNullOrEmpty(remainingPath))
                 {
                     var segments = remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
                                                .Select(s => Uri.EscapeDataString(s));
                     baseUrl = $"{baseUrl}/{string.Join('/', segments)}";
-                    Log.Debug("DELETE using PathParameter (remainingPath): {Url} (Path: {Path})", baseUrl, remainingPath);
+                    Log.Debug("DELETE using PathParameter (remainingPath): {Url} (Path: {Path})", UrlRedaction.Redact(baseUrl), remainingPath);
                 }
                 break;
 
@@ -411,11 +411,11 @@ public sealed class ProxyRequestHandler
                 if (!string.IsNullOrEmpty(encodedId))
                 {
                     baseUrl = baseUrl + (baseUrl.Contains('?') ? "&" : "?") + $"id={encodedId}";
-                    Log.Debug("DELETE using QueryParameter: {Url} (ID: {Id})", baseUrl, id);
+                    Log.Debug("DELETE using QueryParameter: {Url} (ID: {Id})", UrlRedaction.Redact(baseUrl), id);
                 }
                 else
                 {
-                    Log.Debug("DELETE using QueryParameter but no ID provided, leaving base URL unchanged: {Url}", baseUrl);
+                    Log.Debug("DELETE using QueryParameter but no ID provided, leaving base URL unchanged: {Url}", UrlRedaction.Redact(baseUrl));
                 }
                 break;
 
@@ -423,7 +423,7 @@ public sealed class ProxyRequestHandler
                 if (!string.IsNullOrEmpty(encodedId))
                 {
                     baseUrl = $"{baseUrl}(guid'{encodedId}')";
-                    Log.Debug("DELETE using ODataGuid: {Url} (ID: {Id})", baseUrl, id);
+                    Log.Debug("DELETE using ODataGuid: {Url} (ID: {Id})", UrlRedaction.Redact(baseUrl), id);
                 }
                 break;
 
@@ -431,7 +431,7 @@ public sealed class ProxyRequestHandler
                 if (!string.IsNullOrEmpty(encodedId))
                 {
                     baseUrl = $"{baseUrl}({encodedId})";
-                    Log.Debug("DELETE using ODataKey: {Url} (ID: {Id})", baseUrl, id);
+                    Log.Debug("DELETE using ODataKey: {Url} (ID: {Id})", UrlRedaction.Redact(baseUrl), id);
                 }
                 break;
 
@@ -439,7 +439,7 @@ public sealed class ProxyRequestHandler
                 if (!string.IsNullOrEmpty(encodedId))
                 {
                     baseUrl = $"{baseUrl}/{encodedId}";
-                    Log.Debug("DELETE using fallback PathParameter: {Url} (ID: {Id})", baseUrl, id);
+                    Log.Debug("DELETE using fallback PathParameter: {Url} (ID: {Id})", UrlRedaction.Redact(baseUrl), id);
                 }
                 break;
         }
@@ -475,7 +475,9 @@ public sealed class ProxyRequestHandler
     private string CreateCacheKey(string env, string endpointName, string path, string queryString, IHeaderDictionary headers, IReadOnlyDictionary<string, string> tenants)
     {
         var keyBuilder = new StringBuilder();
-        keyBuilder.Append($"proxy:{env}:{endpointName}:{path}:{queryString}");
+        // query may hold credentials
+        var queryHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(queryString)));
+        keyBuilder.Append($"proxy:{env}:{endpointName}:{path}:{queryHash}");
 
         // Include authorization to differentiate between users if needed
         if (headers.TryGetValue("Authorization", out var authValues))
@@ -518,7 +520,7 @@ public sealed class ProxyRequestHandler
         var client = _httpClientFactory.CreateClient("ProxyClient");
 
         // Log the actual HTTP method being sent to backend
-        Log.Debug("Sending {Method} request to backend: {Url}", method, fullUrl);
+        Log.Debug("Sending {Method} request to backend: {Url}", method, UrlRedaction.Redact(fullUrl));
 
         // Buffer request body once so it can be re-sent on retry or failover
         byte[]? bodyBytes = null;
@@ -714,7 +716,7 @@ public sealed class ProxyRequestHandler
         {
             if (!Uri.TryCreate(endpointConfig.Url, UriKind.Absolute, out var originalUri))
             {
-                Log.Warning("Could not parse endpoint URL as URI: {Url}", endpointConfig.Url);
+                Log.Warning("Could not parse endpoint URL as URI: {Url}", UrlRedaction.Redact(endpointConfig.Url));
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsync("Error processing request");
                 return (false, string.Empty, responseHeaders, 500, null);

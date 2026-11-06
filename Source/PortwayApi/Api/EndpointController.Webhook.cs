@@ -20,7 +20,7 @@ public partial class EndpointController
         JsonElement payload)
     {
         var requestUrl = $"{Request.Scheme}://{Request.Host}{Request.Path}";
-        Log.Debug("Webhook received: {Method} {Url}", Request.Method, requestUrl);
+        Log.Debug("Webhook received: {Method} {Url}", Request.Method, UrlRedaction.Redact(requestUrl));
 
         try
         {

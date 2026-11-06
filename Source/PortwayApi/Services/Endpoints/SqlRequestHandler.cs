@@ -77,7 +77,7 @@ public sealed partial class SqlRequestHandler
             return PortwayResults.Forbidden("This endpoint requires tenant access");
 
         var url = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
-        Log.Debug("SQL Query Request: {Url}", url);
+        Log.Debug("SQL Query Request: {Url}", UrlRedaction.Redact(url));
 
         try
         {

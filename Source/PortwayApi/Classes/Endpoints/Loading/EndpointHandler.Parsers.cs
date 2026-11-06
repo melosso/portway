@@ -1,5 +1,6 @@
 namespace PortwayApi.Classes;
 
+using PortwayApi.Helpers;
 using System.Text.Json;
 using Serilog;
 
@@ -277,11 +278,11 @@ public static partial class EndpointHandler
     {
         if (definition.Hidden)
         {
-            Log.Debug("Loaded private proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded private proxy endpoint: {Name} -> {Url}", endpointName, UrlRedaction.Redact(definition.Url));
         }
         else if (definition.IsComposite)
         {
-            Log.Debug("Loaded composite proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded composite proxy endpoint: {Name} -> {Url}", endpointName, UrlRedaction.Redact(definition.Url));
         }
         else if (definition.IsSql)
         {
@@ -289,7 +290,7 @@ public static partial class EndpointHandler
         }
         else
         {
-            Log.Debug("Loaded proxy endpoint: {Name} -> {Url}", endpointName, definition.Url);
+            Log.Debug("Loaded proxy endpoint: {Name} -> {Url}", endpointName, UrlRedaction.Redact(definition.Url));
         }
     }
 }

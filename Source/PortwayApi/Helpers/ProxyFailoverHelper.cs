@@ -35,7 +35,7 @@ public static class ProxyFailoverHelper
             if (!isUrlSafe(targetUrl))
             {
                 Log.Warning("Proxy candidate {Url} for {Context} failed URL safety validation, skipping",
-                    targetUrl, logContext);
+                    UrlRedaction.Redact(targetUrl), logContext);
                 continue;
             }
 
@@ -51,7 +51,7 @@ public static class ProxyFailoverHelper
                         return response;
 
                     Log.Warning("Proxy attempt {Attempt} to {Url} for {Context} returned {StatusCode}, trying next",
-                        attempt, targetUrl, logContext, (int)response.StatusCode);
+                        attempt, UrlRedaction.Redact(targetUrl), logContext, (int)response.StatusCode);
                     response.Dispose();
                 }
                 catch (Exception ex) when (failoverEnabled && !lastTry &&
@@ -59,7 +59,7 @@ public static class ProxyFailoverHelper
                     !ct.IsCancellationRequested)
                 {
                     Log.Warning("Proxy attempt {Attempt} to {Url} for {Context} failed: {Error}, trying next",
-                        attempt, targetUrl, logContext, ex.Message);
+                        attempt, UrlRedaction.Redact(targetUrl), logContext, ex.Message);
                 }
 
                 if (retryDelayMs > 0)

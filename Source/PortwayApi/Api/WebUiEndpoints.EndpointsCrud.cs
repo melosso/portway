@@ -1,3 +1,4 @@
+using PortwayApi.Auth;
 namespace PortwayApi.Endpoints;
 
 using Serilog;
@@ -69,7 +70,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // GET /_/api/endpoints/{type}/{**name}?raw=true , fetch a single endpoint file (structured or raw JSON)
-        app.MapGet("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpRequest request) =>
+        app.MapGet("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
@@ -80,9 +81,11 @@ public static partial class WebUiEndpointExtensions
             try
             {
                 var raw = File.ReadAllText(filePath!);
+                if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)
+                    raw = RedactEndpointUrls(raw);
                 var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
-                if (request.Query["raw"] == "true")
+                if (context.Request.Query["raw"] == "true")
                     return Results.Json(new { content = raw, last_modified = lastMod });
 
                 var content = JsonDocument.Parse(raw).RootElement.Clone();
@@ -310,6 +313,22 @@ public static partial class WebUiEndpointExtensions
             : null;
 
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    internal static string RedactEndpointUrls(string json)
+    {
+        if (JsonNode.Parse(json) is not JsonObject entity)
+            return json;
+
+        foreach (var (key, value) in entity.ToList())
+        {
+            if (key.Equals("Url", StringComparison.OrdinalIgnoreCase) && value is JsonValue url && url.TryGetValue<string>(out var text))
+                entity[key] = UrlRedaction.Redact(text);
+            else if (key.Equals("FallbackUrls", StringComparison.OrdinalIgnoreCase) && value is JsonArray urls)
+                entity[key] = new JsonArray([.. urls.Select(u => (JsonNode?)UrlRedaction.Redact(u?.GetValue<string>()))]);
+        }
+
+        return entity.ToJsonString();
+    }
 
     private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset", "Stability"];
 
