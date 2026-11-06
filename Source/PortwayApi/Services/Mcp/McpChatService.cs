@@ -454,7 +454,7 @@ public sealed partial class McpChatService
         if (BuildRoutePath(tool, ReadArgument(input, "key"), ReadArgument(input, "path")) is not { } route)
             return McpToolResult.Failure($"The key or path argument is not valid for {toolName}.");
 
-        if (method == HttpMethod.Get)
+        if (method == HttpMethod.Get && tool.EndpointKind != "file")
             query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
 
         var endpointPath = tool.RoutePath;
@@ -617,7 +617,7 @@ public sealed partial class McpChatService
         var hasPath = !string.IsNullOrEmpty(path);
 
         if (tool.EndpointKind != "api")
-            return hasKey || hasPath ? null : tool.RoutePath;
+            return hasKey || hasPath ? null : tool.EndpointKind == "file" ? $"{tool.RoutePath}/list" : tool.RoutePath;
 
         var route = tool.RoutePath;
         if (hasKey)
