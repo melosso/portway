@@ -58,7 +58,7 @@ public class ApiTestBase : IDisposable
     {
     }
 
-    protected ApiTestBase(int connectTimeoutSeconds)
+    protected ApiTestBase(int connectTimeoutSeconds, bool mcpEnabled = false)
     {
         var id = Guid.NewGuid().ToString("N");
         _authDbPath = Path.Combine(Path.GetTempPath(), $"portway_test_{id}_auth.db");
@@ -124,7 +124,8 @@ public class ApiTestBase : IDisposable
                     // Disable the MCP HTTP server: its hosted service conflicts when parallel WebApplicationFactory instances start
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["Mcp:Enabled"] = "false",
+                        ["Mcp:Enabled"] = mcpEnabled ? "true" : "false",
+                        ["Console:CorsOrigins:0"] = "https://console.example",
                         // pinned so a local console save cannot change the generated document
                         ["OpenApi:ShowNamespaces"] = "true",
                         ["OpenApi:DefaultGroup"] = "General"
