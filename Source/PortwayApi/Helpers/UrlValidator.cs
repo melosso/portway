@@ -159,7 +159,7 @@ public class UrlValidator
             Log.Debug("Validating URL: {Url}", UrlRedaction.Redact(url));
             Log.Debug("Host to validate: {Host}", host);
 
-            // Check allowedHosts first; explicit allowlist bypasses IP range checks
+            // blockedIpRanges applies at connection
             bool isHostAllowed = _allowedHosts.Any(allowed =>
                 string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
                 MatchHostPattern(host, allowed));
