@@ -498,7 +498,10 @@ public sealed partial class McpChatService
 
                 // Size-capped read: stream only up to MaxToolResultChars plus a small buffer, then discard the rest, so huge responses never load fully into memory
                 var maxChars = _mcpOptions.MaxToolResultChars;
-                var content = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
+                var content = await ReadCappedAsync(resp.Content, maxChars + 1, ct);
+                var truncated = content.Length > maxChars;
+                if (truncated)
+                    content = content[..(char.IsHighSurrogate(content[maxChars - 1]) ? maxChars - 1 : maxChars)];
 
                 // Prefix non-JSON text responses so the LLM knows the format
                 if (!string.IsNullOrEmpty(mediaType) && !mediaType.Contains("json"))
@@ -509,7 +512,7 @@ public sealed partial class McpChatService
                 if (trimmed.Length >= 2 && trimmed[0] == '[' && trimmed[^1] == ']' && trimmed[1..^1].IsWhiteSpace())
                     return new McpToolResult("[No records found] The endpoint returned an empty result for this query. Do not retry.");
 
-                return new McpToolResult(content);
+                return new McpToolResult(truncated ? DescribeTruncation(content, resp.Content.Headers.ContentLength) : content);
             }
 
             // Return a clear, actionable message so the LLM can relay it to the user
@@ -682,6 +685,16 @@ public sealed partial class McpChatService
         parts.Add($"$top={Math.Min(requested ?? defaultPageSize, maxPageSize)}");
         return string.Join('&', parts);
     }
+
+    private static string DescribeTruncation(string partial, long? totalBytes) =>
+        JsonSerializer.Serialize(new
+        {
+            truncated = true,
+            returnedChars = partial.Length,
+            totalBytes,
+            message = "Result truncated. Ask for fewer results or apply a filter.",
+            partial
+        }, _jsonOpts);
 
     private static ChatMessage BuildSystemPrompt(string? locale)
     {
