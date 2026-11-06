@@ -23,15 +23,18 @@ public class PostgreSqlProvider : SqlProviderBase
 
     public override string OptimizeConnectionString(string connectionString, SqlPoolingOptions options)
     {
+        var idleLifetime = Math.Max(options.ConnectionTimeout, 1);
         var builder = new NpgsqlConnectionStringBuilder(connectionString)
         {
             MinPoolSize = options.MinPoolSize,
             MaxPoolSize = options.MaxPoolSize,
-            ConnectionIdleLifetime = options.ConnectionTimeout,
+            ConnectionIdleLifetime = idleLifetime,
             CommandTimeout = options.CommandTimeout,
             Pooling = options.EnablePooling,
             ApplicationName = options.ApplicationName
         };
+        // pruning must fit idle lifetime
+        builder.ConnectionPruningInterval = Math.Min(builder.ConnectionPruningInterval, idleLifetime);
         return builder.ConnectionString;
     }
 
