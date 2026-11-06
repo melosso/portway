@@ -65,7 +65,7 @@ public static class PortwayMcpTools
         return sb.ToString();
     }
 
-    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Get details about a specific endpoint including available methods and URL. Pass the name shown by ListEndpoints")]
+    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Get details about a specific endpoint including methods, fields and description. Pass the name shown by ListEndpoints")]
     public static async Task<EndpointInfoResult> GetEndpointInfo(
         IHttpContextAccessor httpContextAccessor, TokenService tokenService, string endpointName)
     {
@@ -87,6 +87,9 @@ public static class PortwayMcpTools
             Name = tool.EndpointName,
             Ns = tool.Namespace,
             Method = tool.Method,
+            Methods = _registry.MethodsOf(tool),
+            Description = tool.Description,
+            AvailableFields = tool.AvailableFields ?? [],
             AllowedEnvironments = tool.AllowedEnvironments ?? [],
             TenantHeaders = tool.TenantHeaders
         };
