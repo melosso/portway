@@ -586,6 +586,8 @@ public sealed partial class SqlRequestHandler
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
 
+        var writeAttempted = false;
+
         try
         {
             // Validate environment
@@ -621,6 +623,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Insert, data, null, tenantPredicates);
@@ -647,6 +650,7 @@ public sealed partial class SqlRequestHandler
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -693,7 +697,8 @@ public sealed partial class SqlRequestHandler
         }
         finally
         {
-            await InvalidateReadsAsync(endpoint, env, endpointName);
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env, endpointName);
         }
     }
 
@@ -711,6 +716,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -754,6 +761,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
@@ -783,6 +791,7 @@ public sealed partial class SqlRequestHandler
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Step 8: Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -826,7 +835,8 @@ public sealed partial class SqlRequestHandler
         }
         finally
         {
-            await InvalidateReadsAsync(endpoint, env, endpointName);
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env, endpointName);
         }
     }
 
@@ -845,6 +855,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -890,6 +902,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
@@ -919,6 +932,7 @@ public sealed partial class SqlRequestHandler
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Step 8: Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -962,7 +976,8 @@ public sealed partial class SqlRequestHandler
         }
         finally
         {
-            await InvalidateReadsAsync(endpoint, env, endpointName);
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env, endpointName);
         }
     }
 
@@ -980,6 +995,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -1011,6 +1028,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Delete, null, id, tenantPredicates);
@@ -1048,6 +1066,7 @@ public sealed partial class SqlRequestHandler
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -1087,7 +1106,8 @@ public sealed partial class SqlRequestHandler
         }
         finally
         {
-            await InvalidateReadsAsync(endpoint, env, endpointName);
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env, endpointName);
         }
     }
 

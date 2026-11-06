@@ -40,6 +40,9 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         WriteEndpoint("Native", TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name"));
         WriteEndpoint("Text", TableEndpoint(fixture.QualifiedTextKeysTable, "Id", "Name"));
         WriteEndpoint("Int", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name", "Price"));
+        var readOnly = TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name");
+        readOnly["AllowedMethods"] = new[] { "GET" };
+        WriteEndpoint("IntReadOnly", readOnly);
 
         var procedure = TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name");
         procedure.Remove("WriteMode");
@@ -235,6 +238,25 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         if (_fixture.Provider.SupportsTvf)
             Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Tvf", "/30?$filter=Id eq 4 and CategoryId eq 20"))).Status);
+    }
+
+    [DockerFact]
+    public async Task RefusedWrite_KeepsCachedRead()
+    {
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("Int"), """{ "Id": 9004, "Name": "Before", "Price": 1 }""")).Status);
+        Assert.Contains("Before", (await Send(HttpMethod.Get, Url("IntReadOnly", "(9004)"))).Body);
+
+        await using (var connection = _fixture.Provider.CreateConnection(_fixture.ConnectionString))
+        {
+            await connection.OpenAsync(TestContext.Current.CancellationToken);
+            var update = SqlTableWriteBuilder.BuildUpdate(_fixture.Provider, _fixture.QualifiedProductsTable, "Id", 9004, new Dictionary<string, object?> { ["Name"] = "After" });
+            await Dapper.SqlMapper.ExecuteAsync(connection, update.Sql, update.Parameters);
+        }
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, (await Send(HttpMethod.Delete, Url("IntReadOnly", "(9004)"))).Status);
+        Assert.Contains("Before", (await Send(HttpMethod.Get, Url("IntReadOnly", "(9004)"))).Body);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9004)"))).Status);
     }
 
     [DockerFact]
