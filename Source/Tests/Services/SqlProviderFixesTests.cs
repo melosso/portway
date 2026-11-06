@@ -147,6 +147,36 @@ public class ODataColumnAllowlistTests
     }
 }
 
+public class RecordKeyParsingTests
+{
+    [Theory]
+    [InlineData("Items(123)", "123")]
+    [InlineData("Items('ABC')", "ABC")]
+    [InlineData("my-items(guid'3f2a1b4c-1111-4222-8333-444455556666')", "3f2a1b4c-1111-4222-8333-444455556666")]
+    [InlineData("my-items(3f2a1b4c-1111-4222-8333-444455556666)", "3f2a1b4c-1111-4222-8333-444455556666")]
+    [InlineData("Items(ABC)", null)]
+    [InlineData("Items", null)]
+    public void KeyedName_ReadsEveryForm(string segment, string? expected)
+    {
+        Assert.Equal(expected, PortwayApi.Api.EndpointController.ReadKeyedName(segment));
+    }
+
+    [Theory]
+    [InlineData("(123)", "123")]
+    [InlineData("('ABC')", "ABC")]
+    [InlineData("(guid'3f2a1b4c-1111-4222-8333-444455556666')", "3f2a1b4c-1111-4222-8333-444455556666")]
+    [InlineData("(3f2a1b4c-1111-4222-8333-444455556666)", "3f2a1b4c-1111-4222-8333-444455556666")]
+    [InlineData("guid'3f2a1b4c-1111-4222-8333-444455556666'", "3f2a1b4c-1111-4222-8333-444455556666")]
+    [InlineData("'ABC'", "ABC")]
+    [InlineData("3f2a1b4c-1111-4222-8333-444455556666", "3f2a1b4c-1111-4222-8333-444455556666")]
+    [InlineData("123", "123")]
+    [InlineData("details", null)]
+    public void KeySegment_ReadsEveryForm(string segment, string? expected)
+    {
+        Assert.Equal(expected, PortwayApi.Api.EndpointController.ReadKeySegment(segment));
+    }
+}
+
 public class CacheManagerCountingTests
 {
     [Fact]
