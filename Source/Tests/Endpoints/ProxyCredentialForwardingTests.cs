@@ -176,6 +176,9 @@ public sealed class ProxyCredentialForwardingTests : ApiTestBase, IDisposable
     [InlineData("http://x/a?k=v&b=c", "http://x/a?k=***&b=***")]
     [InlineData("http://x/a?flag", "http://x/a?flag")]
     [InlineData(null, "")]
+    [InlineData("http://svc:secret@x/a", "http://***@x/a")]
+    [InlineData("https://svc:secret@x:8443/a?k=v", "https://***@x:8443/a?k=***")]
+    [InlineData("http://x/a@b", "http://x/a@b")]
     public void Redact_RemovesEveryQueryValue(string? url, string expected)
     {
         Assert.Equal(expected, UrlRedaction.Redact(url));
