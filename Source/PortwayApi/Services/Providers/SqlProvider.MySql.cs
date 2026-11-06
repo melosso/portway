@@ -10,6 +10,8 @@ using SqlKata.Compilers;
 public class MySqlProvider : SqlProviderBase
 {
     public override SqlProviderType ProviderType => SqlProviderType.MySql;
+    public override bool CoercesTextKeys => true;
+
     // MySQL schemas are databases, resolve from the active connection
     public override string DefaultSchema => "";
 

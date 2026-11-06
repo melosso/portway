@@ -211,11 +211,15 @@ public sealed partial class SqlRequestHandler
                     }
                 }
 
+                var keyCoerces = _providerFactory.GetProvider(connectionString).CoercesTextKeys;
+
                 // literal coerces to column type
                 if (Guid.TryParseExact(id, "D", out _))
                 {
                     filter = null;
                     tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id)];
+                    if (keyCoerces)
+                        tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id, ExactText: true)];
                 }
                 else
                 {
@@ -224,6 +228,8 @@ public sealed partial class SqlRequestHandler
                     filter = isNumeric
                         ? $"{actualPrimaryKey} eq {id}"
                         : $"{actualPrimaryKey} eq '{id}'";
+                    if (keyCoerces && !isNumeric)
+                        tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id, ExactText: true)];
                 }
 
                 // Set top to 1 to return only one record when requesting by ID

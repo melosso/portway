@@ -94,13 +94,23 @@ public static partial class SqlTableWriteBuilder
         => Compile(provider, new Query(table).AsInsert(GuidsAsLiterals(columns), returnId: true));
 
     public static TableWriteCommand BuildUpdate(ISqlProvider provider, string table, string pkColumn, object pkValue, Dictionary<string, object?> columns, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, GuidAsLiteral(pkValue)), tenants).AsUpdate(GuidsAsLiterals(columns)));
+        => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants).AsUpdate(GuidsAsLiterals(columns)));
 
     public static TableWriteCommand BuildDelete(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, GuidAsLiteral(pkValue)), tenants).AsDelete());
+        => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants).AsDelete());
 
     public static TableWriteCommand BuildSelectByKey(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, GuidAsLiteral(pkValue)), tenants));
+        => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants));
+
+    private static Query KeyQuery(ISqlProvider provider, string table, string pkColumn, object pkValue)
+    {
+        var isWholeNumber = pkValue is string digits && long.TryParse(digits, System.Globalization.NumberStyles.None, null, out _);
+        var query = new Query(table).Where(pkColumn, GuidAsLiteral(pkValue));
+
+        return provider.CoercesTextKeys && !isWholeNumber && pkValue is string text
+            ? TenantSql.WhereExactText(query, pkColumn, text)
+            : query;
+    }
 
     // literal coerces to column type
     [return: NotNullIfNotNull(nameof(value))]

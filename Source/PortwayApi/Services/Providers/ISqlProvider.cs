@@ -19,6 +19,11 @@ public interface ISqlProvider
     bool SupportsSchemas { get; }
 
     /// <summary>
+    /// True when the database compares a numeric column to text by converting the text prefix
+    /// </summary>
+    bool CoercesTextKeys { get; }
+
+    /// <summary>
     /// Schema assumed when an endpoint omits DatabaseSchema, empty means use the connection's database
     /// </summary>
     string DefaultSchema { get; }

@@ -15,6 +15,7 @@ public abstract class SqlProviderBase : ISqlProvider
     public abstract SqlProviderType ProviderType { get; }
 
     public virtual bool SupportsTvf => false;
+    public virtual bool CoercesTextKeys => false;
     public virtual bool SupportsProcedures => true;
     public virtual bool SupportsSchemas => true;
     public virtual string DefaultSchema => "dbo";
