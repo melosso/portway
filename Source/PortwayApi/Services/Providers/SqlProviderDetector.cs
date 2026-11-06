@@ -159,6 +159,7 @@ public static class SqlProviderDetector
                     var value = segment[(eq + 1)..].Trim();
                     if (value.Equals(":memory:", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".db", StringComparison.OrdinalIgnoreCase)
+                     || value.EndsWith(".db3", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".sqlite3", StringComparison.OrdinalIgnoreCase))
                         return true;
