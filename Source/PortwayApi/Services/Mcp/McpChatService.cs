@@ -452,7 +452,7 @@ public sealed partial class McpChatService
         if (method == HttpMethod.Get && !string.IsNullOrEmpty(body))
             return McpToolResult.Failure($"A GET request has no body. Set method to one of: {string.Join(", ", methods)}.");
 
-        if (BuildRoutePath(tool, ReadArgument(input, "key"), ReadArgument(input, "path")) is not { } route)
+        if (BuildRoutePath(tool, method, ReadArgument(input, "key"), ReadArgument(input, "path")) is not { } route)
             return McpToolResult.Failure($"The key or path argument is not valid for {toolName}.");
 
         if (isQueryMethod)
@@ -619,13 +619,13 @@ public sealed partial class McpChatService
     /// <summary>
     /// Path below /api/{env} for a tool call, escaped; null when the key or path is refused
     /// </summary>
-    internal static string? BuildRoutePath(McpToolDescriptor tool, string? key, string? path)
+    internal static string? BuildRoutePath(McpToolDescriptor tool, HttpMethod method, string? key, string? path)
     {
         var hasKey = !string.IsNullOrEmpty(key);
         var hasPath = !string.IsNullOrEmpty(path);
 
         if (tool.EndpointKind != "api")
-            return hasKey || hasPath ? null : tool.EndpointKind == "file" ? $"{tool.RoutePath}/list" : tool.RoutePath;
+            return hasKey || hasPath ? null : tool.EndpointKind == "file" && method == HttpMethod.Get ? $"{tool.RoutePath}/list" : tool.RoutePath;
 
         var route = tool.RoutePath;
         if (hasKey)

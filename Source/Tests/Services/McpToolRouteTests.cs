@@ -35,12 +35,12 @@ public sealed class McpToolRouteTests : IDisposable
     public void Path_ResolvingToNeighbouringEndpoint_IsRefused()
     {
         Assert.True(EndpointHandler.GetProxyEndpoints().ContainsKey("McpRoute/Items/Hidden"));
-        Assert.Null(McpChatService.BuildRoutePath(Tool, null, "Hidden"));
+        Assert.Null(McpChatService.BuildRoutePath(Tool, HttpMethod.Get, null, "Hidden"));
     }
 
     [Fact]
     public void Path_OnTheEndpoint_IsEscaped()
     {
-        Assert.Equal("McpRoute/Items/a%20b", McpChatService.BuildRoutePath(Tool, null, "a b"));
+        Assert.Equal("McpRoute/Items/a%20b", McpChatService.BuildRoutePath(Tool, HttpMethod.Get, null, "a b"));
     }
 }

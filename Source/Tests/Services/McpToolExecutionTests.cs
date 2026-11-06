@@ -304,6 +304,16 @@ public class McpToolExecutionTests
     }
 
     [Fact]
+    public async Task FileTool_OtherMethod_CallsTheEndpointRoute()
+    {
+        var (service, handler) = Build(Endpoint("GET", "POST") with { EndpointKind = "file" });
+
+        await Call(service, new { environment = "500", method = "POST", body = "{}" });
+
+        Assert.Equal("/api/500/files/Items", handler.Calls.Single().Request.RequestUri!.PathAndQuery);
+    }
+
+    [Fact]
     public async Task QueryTool_WithoutBody_SendsJsonWithinPageLimit()
     {
         var (service, handler) = Build(Endpoint("QUERY"));

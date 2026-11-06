@@ -13,4 +13,9 @@ public class McpSettings
     /// Usage instruction appended to the tool description when registered with MCP
     /// </summary>
     public string? Instruction { get; set; }
+
+    /// <summary>
+    /// Methods MCP clients can call. Unset allows the first method of the endpoint
+    /// </summary>
+    public List<string>? AllowedMethods { get; set; }
 }

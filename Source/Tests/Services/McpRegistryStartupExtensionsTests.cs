@@ -47,7 +47,33 @@ public class McpRegistryStartupExtensionsTests
         Assert.Equal("Always filter by AccountCode.", info.Instruction);
         Assert.Equal(new[] { "500", "700" }, info.AllowedEnvironments);
         Assert.Equal("Retrieve accounts", info.MethodDescriptions?["GET"]);
-        Assert.Equal(new[] { "GET", "POST" }, info.Methods);
+        Assert.Equal(new[] { "GET" }, info.Methods);
+    }
+
+    [Fact]
+    public void AllowedMethods_ApplyToFileEndpointsToo()
+    {
+        var endpoint = ProxyEndpoint(mcp: new McpSettings { Exposed = true, AllowedMethods = ["DELETE"] });
+        endpoint.Type = EndpointType.Files;
+        endpoint.Methods = ["GET", "POST", "DELETE"];
+
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new Dictionary<string, EndpointDefinition> { ["Account/Accounts"] = endpoint }));
+
+        Assert.Equal(new[] { "DELETE" }, info.Methods);
+    }
+
+    [Fact]
+    public void AllowedMethods_ListTheReachableMethods()
+    {
+        var endpoints = new Dictionary<string, EndpointDefinition>
+        {
+            ["Account/Accounts"] = ProxyEndpoint(mcp: new McpSettings { Exposed = true, AllowedMethods = ["post", "DELETE"] })
+        };
+
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(endpoints));
+
+        Assert.Equal(new[] { "POST" }, info.Methods);
+        Assert.True(info.IsProxy);
     }
 
     [Fact]
