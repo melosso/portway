@@ -338,7 +338,7 @@ public sealed partial class SqlRequestHandler
 
             if (cacheEnabled)
             {
-                var generation = await GetReadGenerationAsync(env, endpointName);
+                var generation = await GetReadGenerationAsync(endpoint, env);
                 cacheKey = BuildCacheKey(env, $"{endpointName}:{generation}", query, parameters, countRequested);
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
 
@@ -506,12 +506,13 @@ public sealed partial class SqlRequestHandler
         return null;
     }
 
-    private static string ReadGenerationKey(string env, string endpointName) => $"sql:generation:{env}:{endpointName}";
+    private static string ReadGenerationKey(EndpointDefinition endpoint, string env) =>
+        $"sql:generation:{env}:{endpoint.DatabaseSchema}.{endpoint.DatabaseObjectName}".ToLowerInvariant();
 
     // new generation hides older entries
-    private async Task<string> GetReadGenerationAsync(string env, string endpointName)
+    private async Task<string> GetReadGenerationAsync(EndpointDefinition endpoint, string env)
     {
-        var key = ReadGenerationKey(env, endpointName);
+        var key = ReadGenerationKey(endpoint, env);
         var generation = await _cacheManager.GetAsync<string>(key);
         if (generation is not null)
             return generation;
@@ -521,10 +522,10 @@ public sealed partial class SqlRequestHandler
         return generation;
     }
 
-    private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env, string endpointName)
+    private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env)
     {
         if (IsCacheEnabled(endpoint))
-            await _cacheManager.SetAsync(ReadGenerationKey(env, endpointName), Guid.NewGuid().ToString("N"), ReadGenerationLifetime);
+            await _cacheManager.SetAsync(ReadGenerationKey(endpoint, env), Guid.NewGuid().ToString("N"), ReadGenerationLifetime);
     }
 
     private static readonly TimeSpan ReadGenerationLifetime = TimeSpan.FromDays(7);
@@ -698,7 +699,7 @@ public sealed partial class SqlRequestHandler
         finally
         {
             if (writeAttempted)
-                await InvalidateReadsAsync(endpoint, env, endpointName);
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -836,7 +837,7 @@ public sealed partial class SqlRequestHandler
         finally
         {
             if (writeAttempted)
-                await InvalidateReadsAsync(endpoint, env, endpointName);
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -977,7 +978,7 @@ public sealed partial class SqlRequestHandler
         finally
         {
             if (writeAttempted)
-                await InvalidateReadsAsync(endpoint, env, endpointName);
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -1107,7 +1108,7 @@ public sealed partial class SqlRequestHandler
         finally
         {
             if (writeAttempted)
-                await InvalidateReadsAsync(endpoint, env, endpointName);
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 

@@ -40,6 +40,7 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
         WriteEndpoint("Native", TableEndpoint(fixture.QualifiedGuidKeysTable, "Id", "Name"));
         WriteEndpoint("Text", TableEndpoint(fixture.QualifiedTextKeysTable, "Id", "Name"));
         WriteEndpoint("Int", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name", "Price"));
+        WriteEndpoint("IntCopy", TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name"));
         var readOnly = TableEndpoint(fixture.QualifiedProductsTable, "Id", "Name");
         readOnly["AllowedMethods"] = new[] { "GET" };
         WriteEndpoint("IntReadOnly", readOnly);
@@ -238,6 +239,18 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
 
         if (_fixture.Provider.SupportsTvf)
             Assert.NotEqual(HttpStatusCode.OK, (await Send(HttpMethod.Get, Url("Tvf", "/30?$filter=Id eq 4 and CategoryId eq 20"))).Status);
+    }
+
+    [DockerFact]
+    public async Task WriteOnOneEndpoint_InvalidatesOtherEndpointsOfTheTable()
+    {
+        Assert.Equal(HttpStatusCode.Created, (await Send(HttpMethod.Post, Url("Int"), """{ "Id": 9003, "Name": "Shared", "Price": 1 }""")).Status);
+        Assert.Contains("Shared", (await Send(HttpMethod.Get, Url("IntCopy", "(9003)"))).Body);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Patch, Url("Int"), """{ "Id": 9003, "Name": "Renamed" }""")).Status);
+        Assert.Contains("Renamed", (await Send(HttpMethod.Get, Url("IntCopy", "(9003)"))).Body);
+
+        Assert.Equal(HttpStatusCode.OK, (await Send(HttpMethod.Delete, Url("Int", "(9003)"))).Status);
     }
 
     [DockerFact]
