@@ -259,8 +259,8 @@ public class CompositeEndpointHandler
             }
             else
             {
-                throw new Exception(
-                    $"Property '{step.ArrayProperty}' is not an array or not found in the request data for step '{step.Name}'");
+                var problem = $"Property '{step.ArrayProperty}' must be an array";
+                throw new CompositeStepException(problem, step.Name, StatusCodes.Status400BadRequest, problem, string.Empty);
             }
         }
         else
