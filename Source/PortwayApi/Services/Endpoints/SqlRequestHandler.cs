@@ -128,6 +128,7 @@ public sealed partial class SqlRequestHandler
                     pathSegments,
                     _connectionPoolService.OptimizeConnectionString(connectionString),
                     tvfODataParams,
+                    _providerFactory.GetProvider(connectionString),
                     tenantPredicates);
 
                 bool tvfSuccess = tvfResult.Item1;
