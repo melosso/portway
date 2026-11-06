@@ -307,6 +307,11 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
         Assert.EndsWith("/docs/openapi/v2/openapi.json", v2.RootElement.GetProperty("$self").GetString());
         Assert.Equal("v2", v2.RootElement.GetProperty("info").GetProperty("version").GetString());
 
+        var v2Operation = v2.RootElement.GetProperty("paths").GetProperty("/api/{env}/v2/VerTest/Items").GetProperty("get");
+        Assert.DoesNotContain("(v2)", v2Operation.GetProperty("summary").GetString());
+        Assert.False(v2Operation.TryGetProperty("x-badges", out var v2Badges) && v2Badges.EnumerateArray().Any(b => b.GetProperty("name").GetString() == "v2"));
+        Assert.EndsWith("_v2", v2Operation.GetProperty("operationId").GetString());
+
         using var v1 = await Document("/docs/openapi/v1/openapi.json");
         var v1Paths = v1.RootElement.GetProperty("paths").EnumerateObject().Select(p => p.Name).ToList();
         Assert.Contains("/api/{env}/VerTest/Items", v1Paths);
@@ -324,6 +329,9 @@ public sealed class EndpointVersioningTests : ApiTestBase, IDisposable
 
         var slugs = json.RootElement.GetProperty("sources").EnumerateArray().Select(s => s.GetProperty("slug").GetString()).ToList();
         Assert.Equal(["all", "v1", "v2"], slugs);
+        var defaults = json.RootElement.GetProperty("sources").EnumerateArray()
+            .Where(s => s.GetProperty("default").GetBoolean()).Select(s => s.GetProperty("slug").GetString());
+        Assert.Equal(["v2"], defaults);
         Assert.DoesNotContain("data-url=", html);
     }
 

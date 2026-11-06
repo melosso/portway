@@ -244,7 +244,7 @@ public class SqlTableValuedFunctionHelperTests
         };
 
         // Act
-        var result = SqlTableValuedFunctionHelper.BuildFunctionCall(schema, functionName, parameterValues, functionParameters);
+        var result = SqlTableValuedFunctionHelper.BuildFunctionCall(new PortwayApi.Services.Providers.MsSqlProvider(), schema, functionName, parameterValues, functionParameters);
 
         // Assert
         Assert.StartsWith("SELECT * FROM [dbo].[GetCustomerOrders]", result.FunctionCall);

@@ -38,7 +38,7 @@ public sealed class StaticRequestHandler
         int skip)
     {
         var url = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
-        Log.Debug("Static Content Request: {Url}", url);
+        Log.Debug("Static Content Request: {Url}", UrlRedaction.Redact(url));
 
         {
             var endpointPath = endpoint.ConfigDirectory ?? Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", endpointName);

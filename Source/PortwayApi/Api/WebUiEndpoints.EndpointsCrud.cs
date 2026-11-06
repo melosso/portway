@@ -1,3 +1,4 @@
+using PortwayApi.Auth;
 namespace PortwayApi.Endpoints;
 
 using Serilog;
@@ -69,7 +70,7 @@ public static partial class WebUiEndpointExtensions
         }).ExcludeFromDescription();
 
         // GET /_/api/endpoints/{type}/{**name}?raw=true , fetch a single endpoint file (structured or raw JSON)
-        app.MapGet("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpRequest request) =>
+        app.MapGet("/_/api/endpoints/{type}/{**name}", (string type, string name, HttpContext context) =>
         {
             var (filePath, err) = ResolveEndpointPath(type, name);
             if (err != null) return Results.Json(new { error = err }, statusCode: 400);
@@ -80,9 +81,11 @@ public static partial class WebUiEndpointExtensions
             try
             {
                 var raw = File.ReadAllText(filePath!);
+                if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)
+                    raw = RedactEndpointUrls(raw);
                 var lastMod = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath!), TimeSpan.Zero).ToUnixTimeSeconds();
 
-                if (request.Query["raw"] == "true")
+                if (context.Request.Query["raw"] == "true")
                     return Results.Json(new { content = raw, last_modified = lastMod });
 
                 var content = JsonDocument.Parse(raw).RootElement.Clone();
@@ -126,8 +129,8 @@ public static partial class WebUiEndpointExtensions
 
             rawContent = StampDeprecatedSince(rawContent);
 
-            if (TenancyError(type, rawContent) is { } putTenancyError)
-                return Results.Json(new { error = putTenancyError }, statusCode: 400);
+            if (ConfigError(type, rawContent) is { } putConfigError)
+                return Results.Json(new { error = putConfigError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             var backupPath = Services.Configuration.ConfigBackupService.Backup(filePath!);
@@ -167,8 +170,8 @@ public static partial class WebUiEndpointExtensions
             try { using var _ = JsonDocument.Parse(rawContent); }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 
-            if (TenancyError(type, rawContent) is { } postTenancyError)
-                return Results.Json(new { error = postTenancyError }, statusCode: 400);
+            if (ConfigError(type, rawContent) is { } postConfigError)
+                return Results.Json(new { error = postConfigError }, statusCode: 400);
 
             Directory.CreateDirectory(Path.GetDirectoryName(filePath!)!);
             await File.WriteAllTextAsync(filePath!, rawContent);
@@ -289,7 +292,7 @@ public static partial class WebUiEndpointExtensions
             }
 
             if (TypeStringToEndpointType(type) is { } validateType)
-                errors.AddRange(EndpointHandler.ValidateTenancy(validateType, rawContent));
+                errors.AddRange(EndpointHandler.ValidateConfig(validateType, rawContent));
 
             // Same namespace rules the loader enforces at startup (charset, length, reserved names)
             if (root.ValueKind == JsonValueKind.Object &&
@@ -304,14 +307,30 @@ public static partial class WebUiEndpointExtensions
         // Client JS errors, unauthenticated for sendBeacon and IP rate limited
     }
 
-    private static string? TenancyError(string type, string json) =>
-        TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateTenancy(endpointType, json) is { Count: > 0 } errors
+    private static string? ConfigError(string type, string json) =>
+        TypeStringToEndpointType(type) is { } endpointType && EndpointHandler.ValidateConfig(endpointType, json) is { Count: > 0 } errors
             ? string.Join("; ", errors)
             : null;
 
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset"];
+    internal static string RedactEndpointUrls(string json)
+    {
+        if (JsonNode.Parse(json) is not JsonObject entity)
+            return json;
+
+        foreach (var (key, value) in entity.ToList())
+        {
+            if (key.Equals("Url", StringComparison.OrdinalIgnoreCase) && value is JsonValue url && url.TryGetValue<string>(out var text))
+                entity[key] = UrlRedaction.Redact(text);
+            else if (key.Equals("FallbackUrls", StringComparison.OrdinalIgnoreCase) && value is JsonArray urls)
+                entity[key] = new JsonArray([.. urls.Select(u => (JsonNode?)UrlRedaction.Redact(u?.GetValue<string>()))]);
+        }
+
+        return entity.ToJsonString();
+    }
+
+    private static readonly string[] LifecycleKeys = ["Deprecated", "DeprecatedSince", "Sunset", "Stability"];
 
     // the deprecation header needs a date, a deprecated endpoint without one gets today
     private static string StampDeprecatedSince(string json)

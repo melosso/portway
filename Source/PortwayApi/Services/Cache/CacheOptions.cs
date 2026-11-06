@@ -23,7 +23,7 @@ public class CacheOptions
     /// <summary>
     /// Which cache provider to use
     /// </summary>
-    public CacheProviderType ProviderType { get; set; } = CacheProviderType.Memory;
+    public CacheProviderType Provider { get; set; } = CacheProviderType.Memory;
 
     /// <summary>
     /// Redis configuration options (if Redis provider is used)

@@ -156,10 +156,10 @@ public class UrlValidator
             var uri = new Uri(url);
             string host = uri.Host.Split(':')[0];
 
-            Log.Debug("Validating URL: {Url}", url);
+            Log.Debug("Validating URL: {Url}", UrlRedaction.Redact(url));
             Log.Debug("Host to validate: {Host}", host);
 
-            // Check allowedHosts first; explicit allowlist bypasses IP range checks
+            // blockedIpRanges applies at connection
             bool isHostAllowed = _allowedHosts.Any(allowed =>
                 string.Equals(host, allowed, StringComparison.OrdinalIgnoreCase) ||
                 MatchHostPattern(host, allowed));
@@ -204,12 +204,12 @@ public class UrlValidator
                 return false;
             }
 
-            Log.Debug("URL {Url} validated successfully", url);
+            Log.Debug("URL {Url} validated successfully", UrlRedaction.Redact(url));
             return true;
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "URL Validation Error for {Url}", url);
+            Log.Error(ex, "URL Validation Error for {Url}", UrlRedaction.Redact(url));
             return false;
         }
     }

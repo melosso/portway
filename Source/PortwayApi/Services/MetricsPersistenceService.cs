@@ -65,12 +65,15 @@ public sealed class MetricsPersistenceService : BackgroundService
                 StatusCode INTEGER NOT NULL,
                 Method     TEXT    NOT NULL,
                 Source     TEXT    NOT NULL DEFAULT 'api',
-                Endpoint   TEXT    NOT NULL DEFAULT ''
+                Endpoint   TEXT    NOT NULL DEFAULT '',
+                Environment TEXT   NOT NULL DEFAULT '',
+                Version    TEXT    NOT NULL DEFAULT '',
+                DurationMs INTEGER NULL
             );
             CREATE INDEX IF NOT EXISTS idx_rm_ts ON RequestMetrics(Timestamp);
             """);
 
-        // Migration: add Source/Endpoint columns to any pre-existing table
+        // Migration: add columns missing from a pre-existing table
         var migrations = new (string Column, string AlterSql)[]
         {
             ("Source", "ALTER TABLE RequestMetrics ADD COLUMN Source TEXT NOT NULL DEFAULT 'api'"),

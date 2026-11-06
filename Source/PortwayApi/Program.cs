@@ -38,7 +38,7 @@ try
 
     PortwayApi.Services.Configuration.SettingsWriteService.EnsureExists();
     builder.Configuration.AddConsoleOverrides();
-    builder.Configuration.AddConsoleSectionAlias();
+    builder.Configuration.AddConfigAliases();
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)
@@ -55,7 +55,8 @@ try
         Log.Warning("Restored backup {Backup}; the replaced files are in .backups/pre-restore-*", restored);
 
     EnvAliases.WarnOnLegacyUsage();
-    ConsoleSectionAlias.WarnOnLegacySection(builder.Configuration);
+    ConfigAliases.WarnOnDeprecatedNames(builder.Configuration);
+    builder.Configuration.ValidateConsoleSettings();
 
     builder.Services.Configure<HostOptions>(opts =>
         {
@@ -150,12 +151,13 @@ try
 
     // Fixed password for the seeded admin account; demo/non-production instances only, never required
     var seedPassword = builder.Configuration.GetValue<string>("Console:SeedPassword");
+    var seedToken = builder.Configuration.GetValue<string>("Console:SeedToken");
 
     // Refuse to start outside Development without a proper encryption key
     SettingsEncryptionHelper.EnsureEncryptionKeyConfigured(app.Environment);
 
     var publicOrigins = builder.Configuration.GetSection("Console:PublicOrigins").Get<string[]>() ?? [];
-    var enableLandingPage = builder.Configuration.GetValue<bool>("Console:Customization:EnableLandingPage", true);
+    var enableLandingPage = builder.Configuration.GetValue<bool>("Console:Customization:LandingPageEnabled", true);
 
     // Path base from ASPNETCORE_PATHBASE or PathBase config
     app.UsePortwayPathBase();
@@ -209,7 +211,7 @@ try
     await app.InitializeMcpConfigDatabaseAsync();
 
     // Initialise auth.db; without webui, write a default token file if none exist
-    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, webUiEnabled, seedPassword);
+    await app.InitializeAuthDatabaseAsync(serverName, adminApiKey, webUiEnabled, seedPassword, seedToken);
 
     // Log cache configuration
     app.LogCacheConfiguration();
@@ -253,8 +255,11 @@ try
     // Fallback for unmatched routes; HTML 404 for browsers, JSON for API clients
     app.MapPortwayFallback();
 
-    // Log hosting URLs, Web UI auth status and configuration reload status
-    StartupLogHelper.LogHostingSummary(app, builder.Configuration, webUiEnabled);
+    // Feature status, then hosting
+    Log.Information("Console: {Status}", webUiEnabled ? "Enabled" : "Disabled");
+    OpenApiConfiguration.LogDocsStatus(app, openApiMonitor.CurrentValue);
+    app.LogRateLimitStatus();
+    StartupLogHelper.LogHostingSummary(app, builder.Configuration);
 
     app.Lifetime.ApplicationStopping.Register(() =>
     {

@@ -16,6 +16,20 @@ public static class StartupLogHelper
     }
 
     /// <summary>
+    /// The URLs Kestrel binds without explicit app.Urls: urls, the Kestrel endpoint, ASPNETCORE_HTTP_PORTS and ASPNETCORE_HTTPS_PORTS, then http://localhost:5000
+    /// </summary>
+    internal static string ConfiguredUrls(IConfiguration configuration)
+    {
+        if ((configuration["urls"] ?? configuration["Kestrel:Endpoints:Http:Url"]) is { Length: > 0 } urls)
+            return urls;
+
+        var ports = (configuration["http_ports"] ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(p => $"http://*:{p}")
+            .Concat((configuration["https_ports"] ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(p => $"https://*:{p}"))
+            .ToList();
+        return ports.Count > 0 ? string.Join(';', ports) : "http://localhost:5000";
+    }
+
+    /// <summary>
     /// Verifies configured ports are free before Kestrel binds; returns false when a port is taken
     /// </summary>
     public static bool TryReservePorts(WebApplication app, IConfiguration configuration)
@@ -25,12 +39,7 @@ public static class StartupLogHelper
         if (server.GetType().Assembly != typeof(Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions).Assembly)
             return true;
 
-        // If no URLs are configured, Kestrel will bind to http://localhost:5000 by default, so we check that too
-        var urlsToCheck = app.Urls.Count > 0
-            ? app.Urls
-            : (configuration["urls"]
-                ?? configuration["Kestrel:Endpoints:Http:Url"]
-                ?? "http://localhost:5000").Split(';');
+        var urlsToCheck = app.Urls.Count > 0 ? app.Urls : ConfiguredUrls(configuration).Split(';');
 
         foreach (var rawUrl in urlsToCheck)
         {
@@ -64,9 +73,9 @@ public static class StartupLogHelper
     }
 
     /// <summary>
-    /// Logs hosting URLs, Web UI auth status and configuration reload status
+    /// Logs hosting URLs and configuration reload status
     /// </summary>
-    public static void LogHostingSummary(WebApplication app, IConfiguration configuration, bool webUiEnabled)
+    public static void LogHostingSummary(WebApplication app, IConfiguration configuration)
     {
         var urls = app.Urls;
         if (urls != null && urls.Any())
@@ -84,20 +93,12 @@ public static class StartupLogHelper
         }
         else
         {
-            // Same order as TryReservePorts, so the banner names the ports actually bound
-            var serverUrls = configuration["urls"]
-                ?? configuration["Kestrel:Endpoints:Http:Url"]
-                ?? "http://localhost:5000";
-
-            var formattedUrls = serverUrls.Replace(";", "; ");
+            var formattedUrls = ConfiguredUrls(configuration).Replace(";", "; ");
             Log.Information("Application is hosted on: {Urls}", formattedUrls);
         }
 
         if (!app.Environment.IsProduction())
             Log.Warning("Application Environment: {Environment}", app.Environment.EnvironmentName);
-
-        var webUiAuthStatus = webUiEnabled ? "Enabled" : "Disabled";
-        Log.Information("Web UI: {Status}", webUiAuthStatus);
 
         var endpointReloadEnabled = configuration.GetValue<bool>("EndpointReloading:Enabled", true);
         if (endpointReloadEnabled)

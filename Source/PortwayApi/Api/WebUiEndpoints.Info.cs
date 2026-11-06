@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using PortwayApi.Classes;
 using PortwayApi.Classes.OpenApi;
-
+using PortwayApi.Helpers;
 
 public static partial class WebUiEndpointExtensions
 {
@@ -113,7 +113,7 @@ public static partial class WebUiEndpointExtensions
                     name = ConsoleName(e.Key, e.Value),
                     version = e.Value.Version,
                     scope = e.Key,
-                    url = e.Value.Url,
+                    url = UrlRedaction.Redact(e.Value.Url),
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,
@@ -128,7 +128,7 @@ public static partial class WebUiEndpointExtensions
                     name = ConsoleName(e.Key, e.Value),
                     version = e.Value.Version,
                     scope = e.Key,
-                    url = e.Value.Url,
+                    url = UrlRedaction.Redact(e.Value.Url),
                     methods = e.Value.Methods,
                     hidden = e.Value.Hidden,
                     enabled = e.Value.Enabled,

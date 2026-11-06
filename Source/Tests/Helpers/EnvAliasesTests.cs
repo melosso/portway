@@ -48,6 +48,7 @@ public sealed class EnvAliasesTests
         { "PORTWAY_OPENAPI_MARKDOWN", "OpenApi__ServeMarkdown", "OpenApi:ServeMarkdown" },
         { "PORTWAY_PUBLIC_ORIGINS", "WebUi__PublicOrigins__0", "Console:PublicOrigins[]" },
         { "PORTWAY_SEED_PASSWORD", "WebUi__SeedPassword", "Console:SeedPassword" },
+        { "PORTWAY_SEED_TOKEN", "WebUi__SeedToken", "Console:SeedToken" },
         { "PORTWAY_PROMO_TEXT", "WebUi__Customization__PromoText", "Console:Customization:PromoText" },
         { "PORTWAY_LOGIN_FOOTER", "WebUi__Customization__LoginFooter", "Console:Customization:LoginFooter" },
         { "PORTWAY_KNOWN_PROXIES", "ForwardedHeaders__KnownProxies__0", "ForwardedHeaders:KnownProxies[]" },

@@ -13,12 +13,12 @@ using Serilog;
 public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.BackgroundService
 {
     private readonly System.Threading.Channels.Channel<ProxyTrafficLogEntry> _logChannel;
-    private readonly ProxyTrafficLoggerOptions _options;
+    private readonly RequestTrafficLoggingOptions _options;
     private readonly ITrafficLogStorage _logStorage;
 
     public ProxyTrafficLoggerService(
         System.Threading.Channels.Channel<ProxyTrafficLogEntry> logChannel,
-        IOptions<ProxyTrafficLoggerOptions> options,
+        IOptions<RequestTrafficLoggingOptions> options,
         ITrafficLogStorage logStorage)
     {
         _logChannel = logChannel;
@@ -32,7 +32,7 @@ public class ProxyTrafficLoggerService : Microsoft.Extensions.Hosting.Background
 
         try
         {
-            Log.Warning($"Traffic tracing enabled with storage type: {_options.StorageType}. This comes with a significant performance overhead.");
+            Log.Warning($"Traffic tracing enabled with storage type: {_options.Provider}. This comes with a significant performance overhead.");
 
             await _logStorage.InitializeAsync();
 

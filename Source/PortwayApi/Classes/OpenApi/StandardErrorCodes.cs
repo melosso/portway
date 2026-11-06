@@ -17,7 +17,7 @@ public static class StandardErrorCodes
         new Dictionary<ApiOperationKind, int[]>
         {
             [ApiOperationKind.SqlRead] = [],
-            [ApiOperationKind.SqlWrite] = [422],
+            [ApiOperationKind.SqlWrite] = [409, 422],
             [ApiOperationKind.SqlQuery] = [415],
             [ApiOperationKind.SqlDelete] = [],
             [ApiOperationKind.Proxy] = [],

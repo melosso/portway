@@ -1,0 +1,136 @@
+<script src="js/components/settings-form.js"></script>
+
+<main>
+    <div class="page-header">
+        <div class="page-title">
+            <div class="page-heading">
+                <h1 class="select-none">Trace</h1>
+                <p class="page-sub">Request traffic logging and log levels.</p>
+            </div>
+        </div>
+        <div class="page-actions">
+            <button class="btn btn-outline" id="refreshBtn" onclick="load()">
+                <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="settings-pane">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Traffic Logging</h2>
+                    <a class="card-doc" href="https://melosso.github.io/portway/reference/logging" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                </div>
+                <div class="card-body" id="trafficBody">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Body Capture</h2>
+                    <a class="card-doc" href="https://melosso.github.io/portway/reference/logging" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                </div>
+                <div class="card-body" id="captureBody">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Log Levels</h2>
+                    <a class="card-doc" href="https://melosso.github.io/portway/reference/logging" target="_blank" rel="noopener noreferrer" aria-label="Documentation" title="Documentation"></a>
+                </div>
+                <div class="card-body" id="levelsBody">
+                    <span class="muted" style="font-size:0.8rem">Loading…</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+const BODY_KEYS = ['RequestTrafficLogging:CaptureRequestBodies', 'RequestTrafficLogging:CaptureResponseBodies'];
+
+const CARDS = {
+  trafficBody: { rows: () => {
+    const sqlite = String(_writable['RequestTrafficLogging:Provider']?.value).toLowerCase() === 'sqlite';
+    return [
+      field('RequestTrafficLogging:Enabled', 'Enabled', 'Records path, status, duration, user and client address of every API request.'),
+      field('RequestTrafficLogging:Provider', 'Storage', 'File writes rotating JSON files. Sqlite writes one database.'),
+      `<div data-storage="sqlite"${sqlite ? '' : ' hidden'}>`,
+      field('RequestTrafficLogging:SqlitePath', 'Database', 'Relative to the Portway folder.', { placeholder: 'log/traffic_logs.db' }),
+      `</div><div data-storage="file"${sqlite ? ' hidden' : ''}>`,
+      field('RequestTrafficLogging:LogDirectory', 'Folder', 'Relative to the Portway folder.', { placeholder: 'log/traffic' }),
+      field('RequestTrafficLogging:FilePrefix', 'File prefix', 'Start of every log file name.'),
+      field('RequestTrafficLogging:MaxFileSizeMB', 'File size', 'Size at which a new file starts.', { unit: 'MB' }),
+      field('RequestTrafficLogging:MaxFileCount', 'Files kept', 'Older files are deleted.'),
+      '</div>',
+      field('RequestTrafficLogging:CaptureHeaders', 'Headers', 'Records request headers. Credentials are redacted.'),
+      field('RequestTrafficLogging:InfoLoggingEnabled', 'Summary line', 'Writes one line per request to the application log.'),
+      field('RequestTrafficLogging:QueueCapacity', 'Queue size', 'Entries buffered in memory. The oldest are dropped when full.'),
+      field('RequestTrafficLogging:BatchSize', 'Batch size', 'Entries written per flush.'),
+      field('RequestTrafficLogging:FlushIntervalMs', 'Flush interval', 'Wait time between writes.', { unit: 'ms' }),
+    ];
+  } },
+
+  captureBody: {
+    rows: () => [
+      field('RequestTrafficLogging:CaptureRequestBodies', 'Request bodies', 'Logged unfiltered. Credentials in headers are redacted.'),
+      field('RequestTrafficLogging:CaptureResponseBodies', 'Response bodies', 'Logged unfiltered. Credentials in headers are redacted.'),
+      field('RequestTrafficLogging:MaxBodyCaptureSizeBytes', 'Size limit', 'Longer bodies are cut off.', { unit: 'KB', scale: 1024 }),
+    ],
+    confirm: changes => BODY_KEYS.some(k => changes[k] === true && _writable[k]?.value !== true) ? {
+      title: 'Log request and response bodies?',
+      description: 'Bodies can contain personal data and credentials. They are written to disk unfiltered.',
+      actionLabel: 'Enable',
+      variant: 'destructive'
+    } : null
+  },
+
+  levelsBody: { rows: () => [
+    field('Serilog:MinimumLevel:Default', 'Minimum level', 'Events below this level are not written.'),
+    field('Serilog:MinimumLevel:Override', 'Per source', 'One Source=Level per line.', { placeholder: 'Microsoft.AspNetCore=Warning' }),
+  ] },
+};
+
+// Show the selected storage fields
+document.addEventListener('change', e => {
+  if (e.target.dataset?.setting !== 'RequestTrafficLogging:Provider') return;
+  const sqlite = e.target.value.toLowerCase() === 'sqlite';
+  document.querySelectorAll('#trafficBody [data-storage]').forEach(el => el.hidden = (el.dataset.storage === 'sqlite') !== sqlite);
+});
+
+async function load() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('is-refreshing'); setTimeout(() => btn.classList.remove('is-refreshing'), 600); }
+
+  try {
+    const d = await api('/_/api/settings', { failure: 'Failed to load settings' });
+    renderCards(CARDS, d);
+    // Saved, not yet running
+    if (d.traffic_logging?.restart_required)
+      ['trafficBody', 'captureBody'].forEach(id => document.getElementById(id + '-note').textContent = 'Saved. Restart Portway to apply.');
+  } catch (e) {
+    const msg = `<div class="muted" style="font-size:0.8rem">Failed to load: ${esc(e.message)}</div>`;
+    Object.keys(CARDS).forEach(id => document.getElementById(id).innerHTML = msg);
+  }
+}
+
+load();
+</script>

@@ -1,3 +1,4 @@
+using PortwayApi.Helpers;
 using System.Collections.Concurrent;
 using System.Data.Common;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -204,7 +205,7 @@ public class HealthCheckService
                 .ToList();
 
             Log.Debug("Checking proxy endpoints: {Endpoints}",
-                string.Join(", ", endpointsToCheck.Select(e => $"{e.Key} ({e.Value.Url})")));
+                string.Join(", ", endpointsToCheck.Select(e => $"{e.Key} ({UrlRedaction.Redact(e.Value.Url)})")));
 
             if (!endpointsToCheck.Any())
             {
@@ -260,7 +261,7 @@ public class HealthCheckService
             // Add headers
             request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 
-            Log.Debug("Sending request to endpoint {Endpoint} with URL: {Url}", endpoint.Key, url);
+            Log.Debug("Sending request to endpoint {Endpoint} with URL: {Url}", endpoint.Key, UrlRedaction.Redact(url));
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
@@ -313,7 +314,7 @@ public class HealthCheckService
         {
             var errorMsg = ex.InnerException?.Message ?? ex.Message;
             Log.Debug("Error checking endpoint {Endpoint} ({ExceptionType}: {ErrorMessage}). URL: {Url}",
-                endpoint.Key, ex.GetType().Name, errorMsg, endpoint.Value.Url);
+                endpoint.Key, ex.GetType().Name, errorMsg, UrlRedaction.Redact(endpoint.Value.Url));
             results[endpoint.Key] = new
             {
                 Status = "Unhealthy",

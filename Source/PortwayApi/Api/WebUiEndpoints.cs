@@ -93,6 +93,7 @@ public static partial class WebUiEndpointExtensions
                     return;
                 }
                 context.Items[SignedInUsernameKey] = account.Username;
+                context.Items[SignedInRoleKey] = account.Role;
 
                 // csrf double submit on mutations, client-error uses sendBeacon and is exempt
                 if (path.StartsWithSegments("/_/api") &&
@@ -302,6 +303,7 @@ public static partial class WebUiEndpointExtensions
 
     internal const string SignedInUserKey = "portway.user";
     internal const string SignedInUsernameKey = "portway.username";
+    internal const string SignedInRoleKey = "portway.role";
 
     /// <summary>
     /// Composes a page from the shared shell, its view fragment and the footer, then applies the standard post-processing

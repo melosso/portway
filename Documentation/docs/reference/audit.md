@@ -9,11 +9,13 @@ Request traffic logging records per-request metadata (timing, status, user, clie
 
 ## Configuration
 
+Settings of the `RequestTrafficLogging` section. The console [Trace](/guide/webui#trace) page edits every field. Changes apply after a restart.
+
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `Enabled` | Enables traffic logging | `false` |
 | `QueueCapacity` | Max queued log entries | `10000` |
-| `StorageType` | Storage type: "file" or "sqlite" | `"file"` |
+| `Provider` | Storage: `"File"` or `"Sqlite"` | `"File"` |
 | `SqlitePath` | Path to SQLite database | `"log/traffic_logs.db"` |
 | `LogDirectory` | Directory for log files | `"log/traffic"` |
 | `MaxFileSizeMB` | Max size per log file | `50` |
@@ -21,17 +23,17 @@ Request traffic logging records per-request metadata (timing, status, user, clie
 | `FilePrefix` | Prefix for log filenames | `"proxy_traffic_"` |
 | `BatchSize` | Entries per batch write | `100` |
 | `FlushIntervalMs` | Write interval in ms | `1000` |
-| `IncludeRequestBodies` | Capture request bodies | `false` |
-| `IncludeResponseBodies` | Capture response bodies | `false` |
+| `CaptureRequestBodies` | Capture request bodies | `false` |
+| `CaptureResponseBodies` | Capture response bodies | `false` |
 | `MaxBodyCaptureSizeBytes` | Max body size to capture | `4096` |
 | `CaptureHeaders` | Capture request headers | `true` |
-| `EnableInfoLogging` | Log at INFO level | `true` |
+| `InfoLoggingEnabled` | Log at INFO level | `true` |
 
 ## Storage types
 
 ### File storage
 
-With `StorageType: "file"`, entries are written to rotating JSON files:
+With `Provider: "File"`, entries are written to rotating JSON files:
 
 ```
 log/traffic/
@@ -47,7 +49,7 @@ log/traffic/
 
 ### SQLite storage
 
-With `StorageType: "sqlite"`, entries are written to this table:
+With `Provider: "Sqlite"`, entries are written to this table:
 ```sql
 CREATE TABLE TrafficLogs (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,11 +126,11 @@ Entries are queued and written in background batches. Tuning for high volume:
 
 | Setting | Recommendation |
 |---------|---------------|
-| `IncludeRequestBodies` / `IncludeResponseBodies` | Disabled outside debugging |
+| `CaptureRequestBodies` / `CaptureResponseBodies` | Disabled outside debugging |
 | `BatchSize` | Higher (e.g. 500) for fewer writes |
 | `FlushIntervalMs` | Higher (e.g. 5000) when I/O is the bottleneck |
 | `QueueCapacity` | Higher when the application log reports a full queue |
-| `StorageType` | `file` has higher throughput than `sqlite` |
+| `Provider` | `File` has higher throughput than `Sqlite` |
 
 ## Querying traffic logs
 

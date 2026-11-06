@@ -176,8 +176,8 @@ public static class EndpointSummaryHelper
 
         var sections = new List<SummarySection>();
         AddSection(sections, "SQL", sqlEndpoints, e => $"{e.Key}: {e.Value.DatabaseSchema}.{e.Value.DatabaseObjectName}", e => e.Value.Hidden);
-        AddSection(sections, "Proxy", proxies, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
-        AddSection(sections, "Composite", composites, e => $"{e.Key}: {e.Value.Url} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
+        AddSection(sections, "Proxy", proxies, e => $"{e.Key}: {UrlRedaction.Redact(e.Value.Url)} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
+        AddSection(sections, "Composite", composites, e => $"{e.Key}: {UrlRedaction.Redact(e.Value.Url)} [{string.Join(", ", e.Value.Methods)}]", e => e.Value.Hidden);
         AddSection(sections, "Webhook", webhookEndpoints, e => $"{e.Key}: [{FormatWebhookIds(e.Value)}]", e => e.Value.Hidden);
         AddSection(sections, "File", fileEndpoints, e => $"{e.Key}{FormatBaseDir(e.Value)}", e => e.Value.Hidden);
         AddSection(sections, "Static", staticEndpoints, e => $"{e.Key} [{FormatContentType(e.Value)}]", e => e.Value.Hidden);

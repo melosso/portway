@@ -1,3 +1,4 @@
+using PortwayApi.Auth;
 namespace PortwayApi.Endpoints;
 
 using System.Text.Json;
@@ -68,8 +69,9 @@ public static partial class WebUiEndpointExtensions
             return Results.Ok(new { ok = true });
         }).AddEndpointFilter(SerializeEnvironmentListEdit).ExcludeFromDescription();
 
-        app.MapGet("/_/api/environments/{name}", (string name) =>
+        app.MapGet("/_/api/environments/{name}", (string name, HttpContext context) =>
         {
+            var isAdministrator = context.Items[SignedInRoleKey] as string == AdminUserRoles.Administrator;
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 
@@ -104,9 +106,9 @@ public static partial class WebUiEndpointExtensions
                     name,
                     exists = true,
                     server_name = sn,
-                    connection_string = isEncrypted ? null : cs,
+                    connection_string = isEncrypted || !isAdministrator ? null : cs,
                     connection_string_encrypted = isEncrypted,
-                    headers = hdrs,
+                    headers = isAdministrator ? hdrs : hdrs.ToDictionary(h => h.Key, _ => "Set"),
                     last_modified = lastMod
                 });
             }
@@ -116,8 +118,11 @@ public static partial class WebUiEndpointExtensions
             }
         }).ExcludeFromDescription();
 
-        app.MapGet("/_/api/environments/{name}/raw", (string name) =>
+        app.MapGet("/_/api/environments/{name}/raw", (string name, HttpContext context) =>
         {
+            if (context.Items[SignedInRoleKey] as string != AdminUserRoles.Administrator)
+                return Results.Json(new { error = "This action needs an administrator account" }, statusCode: 403);
+
             if (!Regex.IsMatch(name, @"^[a-zA-Z0-9_-]+$"))
                 return Results.Json(new { error = "Invalid environment name" }, statusCode: 400);
 

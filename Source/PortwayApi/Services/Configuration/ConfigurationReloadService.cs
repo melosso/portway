@@ -48,7 +48,7 @@ public class ConfigurationReloadService : IHostedService, IDisposable
         Log.Information("Cache configuration changed, new settings will be applied on next cache operation");
         Log.Debug("Cache enabled: {Enabled}, Provider: {Provider}, Default duration: {Duration}s",
             newOptions.Enabled,
-            newOptions.ProviderType,
+            newOptions.Provider,
             newOptions.DefaultCacheDurationSeconds);
 
         // Cache entries are kept to prevent data loss; inject CacheManager and call ClearAllAsync to change that

@@ -26,7 +26,7 @@ public static class CachingServiceExtensions
         services.AddSingleton<MemoryCacheProvider>();
 
         // Add Redis if configured
-        if (cacheOptions.ProviderType == CacheProviderType.Redis)
+        if (cacheOptions.Provider == CacheProviderType.Redis)
         {
             Log.Debug("Configuring Redis cache provider");
 

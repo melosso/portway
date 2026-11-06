@@ -46,6 +46,9 @@ public sealed partial class SqlRequestHandler
     {
         var provider = _providerFactory.GetProvider(connectionString);
         var (schema, name) = ParseProcedureName(procedure, provider, connection);
+
+        await provider.AddMissingProcedureArgumentsAsync(connection, schema, name, parameters, CancellationToken.None);
+
         var (commandText, commandType) = provider.BuildProcedureInvocation(schema, name, parameters.ParameterNames.ToList());
         var rows = await connection.QueryAsync(commandText, parameters, commandType: commandType);
         return rows.ToList();
@@ -74,7 +77,7 @@ public sealed partial class SqlRequestHandler
             return PortwayResults.Forbidden("This endpoint requires tenant access");
 
         var url = $"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}";
-        Log.Debug("SQL Query Request: {Url}", url);
+        Log.Debug("SQL Query Request: {Url}", UrlRedaction.Redact(url));
 
         try
         {
@@ -86,8 +89,19 @@ public sealed partial class SqlRequestHandler
             }
 
 
+            if (endpoint.AllowedColumns is { Count: > 0 })
+            {
+                var refused = ColumnMappingHelper.FindDisallowedFilterColumns(filter, endpoint.AliasToDatabase)
+                    .Concat(ColumnMappingHelper.FindDisallowedOrderByColumns(orderby, endpoint.AliasToDatabase))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                if (refused.Count > 0)
+                    return PortwayResults.BadRequest($"Columns not allowed: {string.Join(", ", refused)}");
+            }
+
             // Step 2.1: Apply endpoint-specific property overrides
             top = ApplyMaxPageSizeLimit(top, endpoint);
+            var requestedOrderby = orderby;
             orderby = ApplyDefaultSorting(orderby, endpoint);
 
             // Check if this is a Table Valued Function endpoint
@@ -104,6 +118,15 @@ public sealed partial class SqlRequestHandler
                     ? new string[0]
                     : remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
+                // numeric segments are path values
+                if (!string.IsNullOrEmpty(id))
+                    pathSegments = [id, .. pathSegments];
+
+                var (tvfSelect, tvfFilter, tvfOrderby) = (select, filter, orderby);
+                var tvfColumnProblem = MapODataColumns(endpoint, ref tvfSelect, ref tvfFilter, ref tvfOrderby);
+                if (tvfColumnProblem is not null)
+                    return tvfColumnProblem;
+
                 // Prepare OData parameters for TVF handling
                 var tvfODataParams = new Dictionary<string, string>
                 {
@@ -111,12 +134,12 @@ public sealed partial class SqlRequestHandler
                     { "skip", skip.ToString() }
                 };
 
-                if (!string.IsNullOrEmpty(select))
-                    tvfODataParams["select"] = select;
-                if (!string.IsNullOrEmpty(filter))
-                    tvfODataParams["filter"] = filter;
-                if (!string.IsNullOrEmpty(orderby))
-                    tvfODataParams["orderby"] = orderby;
+                if (!string.IsNullOrEmpty(tvfSelect))
+                    tvfODataParams["select"] = tvfSelect;
+                if (!string.IsNullOrEmpty(tvfFilter))
+                    tvfODataParams["filter"] = tvfFilter;
+                if (!string.IsNullOrEmpty(tvfOrderby))
+                    tvfODataParams["orderby"] = tvfOrderby;
 
                 // Handle TVF request using the dedicated handler
                 var tvfResult = await Classes.Handlers.TableValuedFunctionSqlHandler.HandleTVFGetRequest(
@@ -125,6 +148,7 @@ public sealed partial class SqlRequestHandler
                     pathSegments,
                     _connectionPoolService.OptimizeConnectionString(connectionString),
                     tvfODataParams,
+                    _providerFactory.GetProvider(connectionString),
                     tenantPredicates);
 
                 bool tvfSuccess = tvfResult.Item1;
@@ -153,17 +177,6 @@ public sealed partial class SqlRequestHandler
                     tvfResultList = HttpResponseTransformHelper.ApplyToRows(tvfResultList, tvfTransforms);
                 }
 
-                // For ID-based requests (if applicable to TVF), return single item directly (OData convention)
-                if (!string.IsNullOrEmpty(id))
-                {
-                    if (tvfResultList.Count == 0)
-                    {
-                        return PortwayResults.NotFound("No record found with specified parameters");
-                    }
-
-                    return new OkObjectResult(tvfResultList.FirstOrDefault());
-                }
-
                 // Return collection response with pagination headers
                 HttpResponseHeaderHelper.SetPaginationHeaders(context, null, tvfResultList.Count, !tvfIsLastPage);
 
@@ -176,7 +189,7 @@ public sealed partial class SqlRequestHandler
 
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return PortwayResults.Collection(tvfResultList,
-                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip));
+                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, requestedOrderby, top, skip, pathSegments));
             }
 
             // Step 3: Extract endpoint details
@@ -208,10 +221,15 @@ public sealed partial class SqlRequestHandler
                     }
                 }
 
-                // Build the primary-key filter, quoting the value as a GUID literal when it parses as one
-                if (Guid.TryParse(id, out _))
+                var keyCoerces = _providerFactory.GetProvider(connectionString).CoercesTextKeys;
+
+                // literal coerces to column type
+                if (Guid.TryParseExact(id, "D", out _))
                 {
-                    filter = $"{actualPrimaryKey} eq guid'{id}'";
+                    filter = null;
+                    tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id)];
+                    if (keyCoerces)
+                        tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id, ExactText: true)];
                 }
                 else
                 {
@@ -220,6 +238,8 @@ public sealed partial class SqlRequestHandler
                     filter = isNumeric
                         ? $"{actualPrimaryKey} eq {id}"
                         : $"{actualPrimaryKey} eq '{id}'";
+                    if (keyCoerces && !isNumeric)
+                        tenantPredicates = [.. tenantPredicates, new TenantPredicate(actualPrimaryKey, id, ExactText: true)];
                 }
 
                 // Set top to 1 to return only one record when requesting by ID
@@ -233,54 +253,9 @@ public sealed partial class SqlRequestHandler
             string? filterForQuery = filter; // This will contain database column names for the SQL query
             string? orderbyForQuery = orderby; // This will contain database column names for the SQL query
 
-            if (allowedColumns.Count > 0)
-            {
-                // Get column mappings for alias support
-                var aliasToDatabase = endpoint.AliasToDatabase;
-                var databaseToAlias = endpoint.DatabaseToAlias;
-
-                // Validate select columns (using aliases)
-                if (!string.IsNullOrEmpty(select))
-                {
-                    var (isValid, invalidAliases) = ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
-
-                    if (!isValid)
-                    {
-                        return PortwayResults.BadRequest($"Selected columns not allowed: {string.Join(", ", invalidAliases)}");
-                    }
-
-                    // Convert aliases to database column names for the SQL query
-                    selectForQuery = ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
-                    Log.Debug("Converted aliases '{Aliases}' to database columns '{DatabaseColumns}'", select, selectForQuery);
-                }
-                else
-                {
-                    // If no select and columns are restricted, use all allowed database columns
-                    var allDatabaseColumns = ColumnMappingHelper.GetDatabaseColumns(databaseToAlias);
-                    selectForQuery = string.Join(",", allDatabaseColumns);
-                    Log.Debug("No select specified, using all allowed database columns: {DatabaseColumns}", selectForQuery);
-                }
-
-                // Convert filter column references from aliases to database columns
-                if (!string.IsNullOrEmpty(filter))
-                {
-                    filterForQuery = ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
-                    if (filterForQuery != filter)
-                    {
-                        Log.Debug("Converted filter aliases: '{OriginalFilter}' -> '{ConvertedFilter}'", filter, filterForQuery);
-                    }
-                }
-
-                // Convert orderby column references from aliases to database columns
-                if (!string.IsNullOrEmpty(orderby))
-                {
-                    orderbyForQuery = ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
-                    if (orderbyForQuery != orderby)
-                    {
-                        Log.Debug("Converted orderby aliases: '{OriginalOrderBy}' -> '{ConvertedOrderBy}'", orderby, orderbyForQuery);
-                    }
-                }
-            }
+            var columnProblem = MapODataColumns(endpoint, ref selectForQuery, ref filterForQuery, ref orderbyForQuery);
+            if (columnProblem is not null)
+                return columnProblem;
 
             // Step 6: Prepare OData parameters (using database column names)
             var odataParams = new Dictionary<string, string>
@@ -363,7 +338,8 @@ public sealed partial class SqlRequestHandler
 
             if (cacheEnabled)
             {
-                cacheKey = BuildCacheKey(env, endpointName, query, parameters, countRequested);
+                var generation = await GetReadGenerationAsync(endpoint, env);
+                cacheKey = BuildCacheKey(env, $"{endpointName}:{generation}", query, parameters, countRequested);
                 cachedResponse = await _cacheManager.GetAsync<object>(cacheKey);
 
                 if (cachedResponse != null)
@@ -423,7 +399,7 @@ public sealed partial class SqlRequestHandler
                 // Return 404 if no results found
                 if (transformedResults.Count == 0)
                 {
-                    return PortwayResults.NotFound($"No record found with {primaryKey} = {id}");
+                    return PortwayResults.NotFound("Record not found");
                 }
 
                 // Return the single item directly (OData convention - no wrapper)
@@ -460,7 +436,7 @@ public sealed partial class SqlRequestHandler
                 totalCount = await connection.ExecuteScalarAsync<long>(new CommandDefinition(countQuery, countParameters, cancellationToken: aborted));
             }
 
-            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip);
+            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, requestedOrderby, top, skip);
             var response = CollectionResponse<object>.Of(transformedResults, nextLink, totalCount);
 
             Log.Debug("Successfully processed query for {Endpoint}", endpointName);
@@ -481,6 +457,10 @@ public sealed partial class SqlRequestHandler
             Log.Debug("SQL query for {EndpointName} cancelled by client disconnect", endpointName);
             return new StatusCodeResult(499);
         }
+        catch (DbException dbEx) when (!string.IsNullOrEmpty(id) && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidRecordIdMessage);
+        }
         catch (DbException dbEx)
         {
             return MaskedDataError(context, dbEx, endpointName);
@@ -494,10 +474,92 @@ public sealed partial class SqlRequestHandler
     }
 
     // json keeps query and parameter values unambiguous and the hash is stable across instances
+    /// <summary>
+    /// Converts OData aliases to database columns and restricts the projection to AllowedColumns; returns a problem result when refused
+    /// </summary>
+    private static IActionResult? MapODataColumns(EndpointDefinition endpoint, ref string? select, ref string? filter, ref string? orderby)
+    {
+        if (endpoint.AllowedColumns is not { Count: > 0 })
+            return null;
+
+        var aliasToDatabase = endpoint.AliasToDatabase;
+
+        if (!string.IsNullOrEmpty(select))
+        {
+            var (isValid, invalidAliases) = ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
+            if (!isValid)
+                return PortwayResults.BadRequest($"Selected columns not allowed: {string.Join(", ", invalidAliases)}");
+
+            select = ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
+        }
+        else
+        {
+            select = string.Join(",", ColumnMappingHelper.GetDatabaseColumns(endpoint.DatabaseToAlias));
+        }
+
+        if (!string.IsNullOrEmpty(filter))
+            filter = ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
+
+        if (!string.IsNullOrEmpty(orderby))
+            orderby = ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
+
+        return null;
+    }
+
+    private static string ReadGenerationKey(EndpointDefinition endpoint, string env) =>
+        $"sql:generation:{env}:{endpoint.DatabaseSchema}.{endpoint.DatabaseObjectName}".ToLowerInvariant();
+
+    // new generation hides older entries
+    private async Task<string> GetReadGenerationAsync(EndpointDefinition endpoint, string env)
+    {
+        var key = ReadGenerationKey(endpoint, env);
+        var generation = await _cacheManager.GetUncountedAsync<string>(key);
+        if (generation is not null)
+            return generation;
+
+        generation = Guid.NewGuid().ToString("N");
+        await _cacheManager.SetAsync(key, generation, ReadGenerationLifetime);
+        return generation;
+    }
+
+    private async Task InvalidateReadsAsync(EndpointDefinition endpoint, string env)
+    {
+        if (IsCacheEnabled(endpoint))
+            await _cacheManager.SetAsync(ReadGenerationKey(endpoint, env), Guid.NewGuid().ToString("N"), ReadGenerationLifetime);
+    }
+
+    private static readonly TimeSpan ReadGenerationLifetime = TimeSpan.FromDays(7);
+
     internal static string BuildCacheKey(string env, string endpointName, string query, IReadOnlyDictionary<string, object>? parameters, bool countRequested)
     {
         var material = JsonSerializer.SerializeToUtf8Bytes(new object?[] { query, parameters, countRequested });
         return $"sql:{env}:{endpointName}:{Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(material))}";
+    }
+
+    internal const string InvalidRecordIdMessage = "Invalid record ID. Use 123, 'ABC' or guid'3f2a...'.";
+
+    private const string InvalidColumnValueMessage = "Invalid column value. Check the value types.";
+
+    private static IActionResult ClientTypeMismatch(DbException dbEx, string endpointName, string message)
+    {
+        Log.Warning("Client value does not fit a column type of {EndpointName} ({Detail})", endpointName, SqlErrorClassifier.DescribeForLog(dbEx));
+        return PortwayResults.BadRequest(message);
+    }
+
+    private static IActionResult DuplicateRecord(DbException dbEx, string endpointName)
+    {
+        Log.Warning("Duplicate record on {EndpointName} ({Detail})", endpointName, SqlErrorClassifier.DescribeForLog(dbEx));
+        return PortwayResults.Conflict("Record already exists");
+    }
+
+    private void AddPayloadParameters(DynamicParameters parameters, JsonElement data, string connectionString)
+    {
+        var provider = _providerFactory.GetProvider(connectionString);
+        foreach (var property in data.EnumerateObject())
+        {
+            var value = GetParameterValue(property.Value);
+            parameters.Add($"@{property.Name}", value is string text ? provider.ProcedureValue(text) : value);
+        }
     }
 
     // Masked reference for any provider's database error; full detail stays in the log
@@ -524,6 +586,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -560,6 +624,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Insert, data, null, tenantPredicates);
@@ -580,15 +645,13 @@ public sealed partial class SqlRequestHandler
             }
 
             // Extract and add parameters
-            foreach (var property in data.EnumerateObject())
-            {
-                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-            }
+            AddPayloadParameters(dynamicParams, data, connectionString);
 
             foreach (var tenant in tenantPredicates)
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -609,6 +672,14 @@ public sealed partial class SqlRequestHandler
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
+        catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
+        {
+            return DuplicateRecord(dbEx, endpointName);
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidColumnValueMessage);
+        }
         catch (DbException dbEx)
         {
             return MaskedDataError(context, dbEx, endpointName);
@@ -624,6 +695,11 @@ public sealed partial class SqlRequestHandler
                 endpointName, ex.GetType().Name, ex.Message);
 
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
+        }
+        finally
+        {
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -641,6 +717,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -684,6 +762,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
@@ -707,15 +786,13 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 7: Extract and add data parameters from the request
-            foreach (var property in data.EnumerateObject())
-            {
-                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-            }
+            AddPayloadParameters(dynamicParams, data, connectionString);
 
             foreach (var tenant in tenantPredicates)
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Step 8: Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -738,6 +815,14 @@ public sealed partial class SqlRequestHandler
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
+        catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
+        {
+            return DuplicateRecord(dbEx, endpointName);
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidColumnValueMessage);
+        }
         catch (DbException dbEx)
         {
             Log.Error(dbEx, "Database error for {Endpoint} ({Detail}): {ErrorMessage}",
@@ -748,6 +833,11 @@ public sealed partial class SqlRequestHandler
         {
             Log.Error(ex, "Error processing UPDATE for {Endpoint}", endpointName);
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
+        }
+        finally
+        {
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -766,6 +856,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -811,6 +903,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
@@ -834,15 +927,13 @@ public sealed partial class SqlRequestHandler
             }
 
             // Step 7: Extract and add data parameters from the request. Only the fields provided in the request will be updated
-            foreach (var property in data.EnumerateObject())
-            {
-                dynamicParams.Add($"@{property.Name}", GetParameterValue(property.Value));
-            }
+            AddPayloadParameters(dynamicParams, data, connectionString);
 
             foreach (var tenant in tenantPredicates)
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Step 8: Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -865,6 +956,14 @@ public sealed partial class SqlRequestHandler
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
+        catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
+        {
+            return DuplicateRecord(dbEx, endpointName);
+        }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidColumnValueMessage);
+        }
         catch (DbException dbEx)
         {
             Log.Error(dbEx, "Database error for {Endpoint} ({Detail}): {ErrorMessage}",
@@ -875,6 +974,11 @@ public sealed partial class SqlRequestHandler
         {
             Log.Error(ex, "Error processing PATCH for {Endpoint}", endpointName);
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
+        }
+        finally
+        {
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -892,6 +996,8 @@ public sealed partial class SqlRequestHandler
         var tenantPredicates = TenantSql.Predicates(endpoint, tenants ?? FrozenDictionary<string, string>.Empty);
         if (endpoint.HasTenancy && tenantPredicates.Count == 0)
             return PortwayResults.Forbidden("This endpoint requires tenant access");
+
+        var writeAttempted = false;
 
         try
         {
@@ -923,6 +1029,7 @@ public sealed partial class SqlRequestHandler
 
             if (endpoint.UsesTableWrites)
             {
+                writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
                 await tableConnection.OpenAsync();
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Delete, null, id, tenantPredicates);
@@ -941,12 +1048,13 @@ public sealed partial class SqlRequestHandler
 
             // Handle different primary key parameter names
             var primaryKey = endpoint.PrimaryKey ?? "Id";
-            dynamicParams.Add($"@{primaryKey}", id);
+            var keyValue = _providerFactory.GetProvider(connectionString).ProcedureValue(id);
+            dynamicParams.Add($"@{primaryKey}", keyValue);
 
             // For backward compatibility, also add @id parameter
             if (!primaryKey.Equals("id", StringComparison.OrdinalIgnoreCase))
             {
-                dynamicParams.Add("@id", id);
+                dynamicParams.Add("@id", keyValue);
             }
 
             // Add user parameter if available
@@ -959,6 +1067,7 @@ public sealed partial class SqlRequestHandler
                 dynamicParams.Add($"@{tenant.Column}", tenant.Value);
 
             // Execute stored procedure
+            writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
             await connection.OpenAsync();
 
@@ -981,6 +1090,10 @@ public sealed partial class SqlRequestHandler
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
         }
+        catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
+        {
+            return ClientTypeMismatch(dbEx, endpointName, InvalidRecordIdMessage);
+        }
         catch (DbException dbEx)
         {
             Log.Error(dbEx, "Database error for {Endpoint} ({Detail}): {ErrorMessage}",
@@ -991,6 +1104,11 @@ public sealed partial class SqlRequestHandler
         {
             Log.Error(ex, "Error processing DELETE for {Endpoint}", endpointName);
             return PortwayResults.ServerError(context, "An error occurred while processing your request");
+        }
+        finally
+        {
+            if (writeAttempted)
+                await InvalidateReadsAsync(endpoint, env);
         }
     }
 
@@ -1013,9 +1131,11 @@ public sealed partial class SqlRequestHandler
         string? filter,
         string? orderby,
         int top,
-        int skip)
+        int skip,
+        string[]? pathSegments = null)
     {
-        var nextLink = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}?$top={top}&$skip={skip + top}";
+        var path = string.Concat((pathSegments ?? []).Select(segment => "/" + Uri.EscapeDataString(segment)));
+        var nextLink = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}{path}?$top={top}&$skip={skip + top}";
 
         if (!string.IsNullOrWhiteSpace(select))
             nextLink += $"&$select={Uri.EscapeDataString(select)}";

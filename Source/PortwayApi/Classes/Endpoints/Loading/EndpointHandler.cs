@@ -57,9 +57,9 @@ public static partial class EndpointHandler
             key, d.DatabaseSchema, d.DatabaseObjectName, d.EffectiveNamespace ?? "None"));
 
     /// <summary>
-    /// Tenancy errors for an endpoint file, using the loader's parser and rules
+    /// Tenancy, Stability and Badges errors for an endpoint file, using the loader's parser and rules
     /// </summary>
-    public static IReadOnlyList<string> ValidateTenancy(EndpointType type, string json)
+    public static IReadOnlyList<string> ValidateConfig(EndpointType type, string json)
     {
         var spec = type switch
         {
@@ -75,7 +75,9 @@ public static partial class EndpointHandler
 
         try
         {
-            return spec.Parse(json) is { } definition ? Helpers.TenancyRules.Validate(definition) : [];
+            return spec.Parse(json) is { } definition
+                ? [.. Helpers.TenancyRules.Validate(definition), .. Helpers.EndpointMetadataRules.Validate(definition)]
+                : [];
         }
         catch (Exception ex) when (ex is JsonException or ArgumentException or InvalidOperationException)
         {

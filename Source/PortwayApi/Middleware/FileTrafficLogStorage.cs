@@ -14,12 +14,12 @@ using Serilog;
 /// </summary>
 public class FileTrafficLogStorage : ITrafficLogStorage
 {
-    private readonly ProxyTrafficLoggerOptions _options;
+    private readonly RequestTrafficLoggingOptions _options;
     private string _currentLogFile;
     private long _currentFileSize;
     private readonly object _fileLock = new object();
 
-    public FileTrafficLogStorage(IOptions<ProxyTrafficLoggerOptions> options)
+    public FileTrafficLogStorage(IOptions<RequestTrafficLoggingOptions> options)
     {
         _options = options.Value;
         _currentLogFile = GenerateLogFileName();

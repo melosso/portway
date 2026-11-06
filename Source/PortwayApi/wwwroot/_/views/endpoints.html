@@ -500,8 +500,10 @@ function dateValue(value) {
 }
 
 function renderLifecycleCard(c) {
+  const stability = ['Stable', 'Experimental'].find(s => s.toLowerCase() === String(c.Stability ?? '').toLowerCase()) ?? 'Not set';
   return `<div class="card">
     <div class="card-header"><h2 class="card-title">Lifecycle</h2></div>
+    ${fieldSelect('lcStability', 'Stability', stability, ['Not set', 'Stable', 'Experimental'])}
     ${fieldToggle('lcDeprecated', 'Deprecated', c.Deprecated ?? false)}
     <div class="ep-lifecycle-dates">
       <div class="field">
@@ -521,12 +523,50 @@ function applyLifecycle(cfg) {
   const deprecated = document.getElementById('lcDeprecated')?.checked ?? false;
   const since = document.getElementById('lcDeprecatedSince')?.value;
   const sunset = document.getElementById('lcSunset')?.value;
+  const stability = document.getElementById('lcStability')?.value;
   return {
     ...cfg,
+    Stability: stability && stability !== 'Not set' ? stability : undefined,
+    Badges: readBadges(),
     Deprecated: deprecated || undefined,
     DeprecatedSince: deprecated && since ? `${since}T00:00:00Z` : undefined,
     Sunset: sunset ? `${sunset}T00:00:00Z` : undefined
   };
+}
+
+function fieldBadges(badges) {
+  return `<div class="field">
+    <label class="field-label">Badges</label>
+    <div class="kv-editor" id="badges">${(badges ?? []).map(badgeRow).join('')}</div>
+    <button type="button" class="ep-add-row" onclick="document.getElementById('badges').insertAdjacentHTML('beforeend', badgeRow()); markDirty()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add badge
+    </button>
+  </div>`;
+}
+
+function badgeRow(badge = {}) {
+  const before = String(badge.Position ?? '').toLowerCase() === 'before';
+  return `<div class="ep-kv-row ep-badge-row">
+    <input type="text" class="input" data-badge="name" placeholder="Name" aria-label="Badge name" maxlength="32" value="${esc(badge.Name ?? '')}" oninput="markDirty()">
+    <select class="input" data-badge="position" aria-label="Badge position" onchange="markDirty()">
+      <option value="after" ${before ? '' : 'selected'}>After</option>
+      <option value="before" ${before ? 'selected' : ''}>Before</option>
+    </select>
+    <input type="text" class="input" data-badge="color" placeholder="Color" aria-label="Badge color" value="${esc(badge.Color ?? '')}" oninput="markDirty()">
+    <button type="button" class="btn btn-ghost btn-icon" onclick="this.closest('.ep-kv-row').remove(); markDirty()" title="Remove" aria-label="Remove badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>`;
+}
+
+function readBadges() {
+  const badges = Array.from(document.querySelectorAll('#badges .ep-badge-row')).map(row => ({
+    Name: row.querySelector('[data-badge="name"]').value.trim(),
+    Position: row.querySelector('[data-badge="position"]').value === 'before' ? 'before' : undefined,
+    Color: row.querySelector('[data-badge="color"]').value.trim() || undefined
+  })).filter(badge => badge.Name || badge.Color);
+  return badges.length ? badges : undefined;
 }
 
 function fieldText(id, label, value) {
@@ -742,7 +782,8 @@ function fieldDocumentation(c) {
     fieldTextarea('docTagDescription', 'Tag Description', doc.TagDescription ?? '', '80px', true) +
     fieldTextarea('namespaceDescription', 'Namespace Description', c.NamespaceDescription ?? '', '80px', true) +
     fieldJson('docMethodDescriptions', 'Method Descriptions (JSON)', doc.MethodDescriptions, '72px') +
-    fieldJson('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation, '100px')
+    fieldJson('docMethodDocumentation', 'Method Documentation (JSON)', doc.MethodDocumentation, '100px') +
+    fieldBadges(c.Badges)
   );
 }
 

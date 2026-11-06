@@ -209,6 +209,85 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
         }
     }
 
+    [DockerFact]
+    public Task GuidKey_MatchesNativeColumn() => AssertGuidKeyRoundtrip(_fixture.QualifiedGuidKeysTable);
+
+    [DockerFact]
+    public Task GuidKey_MatchesTextColumn() => AssertGuidKeyRoundtrip(_fixture.QualifiedTextKeysTable);
+
+    [DockerFact]
+    public Task GuidValue_InsertsAndUpdatesNativeColumn() => AssertGuidValueWrites(_fixture.QualifiedGuidKeysTable);
+
+    [DockerFact]
+    public Task GuidValue_InsertsAndUpdatesTextColumn() => AssertGuidValueWrites(_fixture.QualifiedTextKeysTable);
+
+    private async Task AssertGuidValueWrites(string table)
+    {
+        const string inserted = "11111111-2222-4333-8444-555555555555";
+        const string updated = "66666666-2222-4333-8444-555555555555";
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+
+        var insert = SqlTableWriteBuilder.BuildInsert(provider, table, new Dictionary<string, object?> { ["Id"] = inserted, ["Name"] = "New" });
+        Assert.Equal(1, await connection.ExecuteAsync(insert.Sql, insert.Parameters));
+
+        var update = SqlTableWriteBuilder.BuildUpdate(provider, table, "Id", inserted, new Dictionary<string, object?> { ["Id"] = updated });
+        Assert.Equal(1, await connection.ExecuteAsync(update.Sql, update.Parameters));
+
+        var delete = SqlTableWriteBuilder.BuildDelete(provider, table, "Id", updated);
+        Assert.Equal(1, await connection.ExecuteAsync(delete.Sql, delete.Parameters));
+    }
+
+    [DockerFact]
+    public async Task TypeMismatch_IsClassifiedWhenRaised()
+    {
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+
+        foreach (var (table, key) in new (string Table, object Key)[]
+        {
+            (_fixture.QualifiedGuidKeysTable, "abc"),
+            (_fixture.QualifiedGuidKeysTable, "3f2a1b4c111142228333444455556666x"),
+            (_fixture.QualifiedGuidKeysTable, 123),
+            (_fixture.QualifiedProductsTable, "abc"),
+            (_fixture.QualifiedProductsTable, ParityDatabaseFixture.GuidKey),
+        })
+        {
+            var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, "Id", key);
+            try
+            {
+                Assert.Empty(await connection.QueryAsync(select.Sql, select.Parameters));
+            }
+            catch (System.Data.Common.DbException ex)
+            {
+                Assert.True(SqlErrorClassifier.IsTypeMismatch(ex), $"{table} {key}: {SqlErrorClassifier.DescribeForLog(ex)}");
+            }
+        }
+    }
+
+    private async Task AssertGuidKeyRoundtrip(string table)
+    {
+        var provider = _fixture.Provider;
+        await using var connection = provider.CreateConnection(_fixture.ConnectionString);
+        await connection.OpenAsync();
+
+        var (sql, parameters) = CreateConverter().ConvertToSQL(table, new Dictionary<string, string> { ["select"] = "Name" },
+            _fixture.ProviderType, null, [new TenantPredicate("Id", ParityDatabaseFixture.GuidKey)]);
+        Assert.Equal("Kept", Assert.Single(await connection.QueryAsync<string>(sql, new DynamicParameters(parameters))));
+
+        var update = SqlTableWriteBuilder.BuildUpdate(provider, table, "Id", ParityDatabaseFixture.GuidKey,
+            new Dictionary<string, object?> { ["Name"] = "Changed" });
+        Assert.Equal(1, await connection.ExecuteAsync(update.Sql, update.Parameters));
+
+        var select = SqlTableWriteBuilder.BuildSelectByKey(provider, table, "Id", ParityDatabaseFixture.GuidKey);
+        Assert.Equal("Changed", (string)Assert.Single(await connection.QueryAsync(select.Sql, select.Parameters)).Name);
+
+        var delete = SqlTableWriteBuilder.BuildDelete(provider, table, "Id", ParityDatabaseFixture.RemovableGuidKey);
+        Assert.Equal(1, await connection.ExecuteAsync(delete.Sql, delete.Parameters));
+    }
+
     private async Task<List<int>> TenantIds(string column, string value, string? filter = null)
     {
         var odata = new Dictionary<string, string> { ["select"] = "Id" };

@@ -221,10 +221,10 @@ public static class SqlConnectionPoolingExtensions
         var options = new SqlPoolingOptions(
             MinPoolSize: configuration.GetValue<int>("SqlConnectionPooling:MinPoolSize", 5),
             MaxPoolSize: configuration.GetValue<int>("SqlConnectionPooling:MaxPoolSize", 100),
-            ConnectionTimeout: configuration.GetValue<int>("SqlConnectionPooling:ConnectionTimeout", 15),
+            ConnectionTimeout: configuration.GetValue<int>("SqlConnectionPooling:ConnectionTimeoutSeconds", 15),
             EnablePooling: configuration.GetValue<bool>("SqlConnectionPooling:Enabled", true),
             ApplicationName: configuration.GetValue<string>("SqlConnectionPooling:ApplicationName", "PortwayAPI")!,
-            CommandTimeout: configuration.GetValue<int>("SqlConnectionPooling:CommandTimeout", 30)
+            CommandTimeout: configuration.GetValue<int>("SqlConnectionPooling:CommandTimeoutSeconds", 30)
         );
 
         services.AddSingleton(options);

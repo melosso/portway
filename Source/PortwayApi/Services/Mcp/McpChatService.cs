@@ -9,6 +9,9 @@ using System.Text.Json.Serialization;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using PortwayApi.Api;
+using PortwayApi.Auth;
+using PortwayApi.Classes;
 using PortwayApi.Services;
 using PortwayApi.Services.Mcp.Providers;
 using Serilog;
@@ -29,14 +32,13 @@ public sealed partial class McpChatService
     private readonly McpConfigService _configService;
     private readonly IHttpClientFactory _httpFactory;
     private readonly SqlMetadataService? _sqlMetadata;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly EnvironmentSettings _environments;
 
     // Source-generated zero-overhead regexes
     [GeneratedRegex(@"[^a-zA-Z0-9_]")]
     private static partial Regex SanitisePattern();
 
-
-    [GeneratedRegex(@"\$top=(\d+)", RegexOptions.IgnoreCase)]
-    private static partial Regex TopValuePattern();
 
     [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex ODataIdentifierPattern();
@@ -128,6 +130,9 @@ public sealed partial class McpChatService
           "type": "object",
           "properties": {
             "environment": { "type": "string", "description": "The Portway environment to query (e.g. '500')" },
+            "method":      { "type": "string", "description": "HTTP method from the methods listed for this tool (optional). Defaults to the first listed method." },
+            "key":         { "type": "string", "description": "Record key, e.g. '42' or 'ABC' (optional)" },
+            "path":        { "type": "string", "description": "Path below the endpoint, e.g. a table-valued function parameter such as '3' (optional)" },
             "query":       { "type": "string", "description": "OData query string for GET requests (optional). Always use $top to limit results (e.g. '$top=20'). Combine with $filter, $select, $orderby as needed." },
             "body":        { "type": "string", "description": "JSON body for POST/PATCH/PUT requests (optional)" },
             "tenants":     { "type": "object", "additionalProperties": { "type": "string" }, "description": "Tenant header values for tools that list [tenant headers: ...] (optional when the token holds one value)" }
@@ -141,12 +146,16 @@ public sealed partial class McpChatService
         IOptions<McpOptions> mcpOptions,
         McpConfigService configService,
         IHttpClientFactory httpFactory,
+        IServiceScopeFactory scopeFactory,
+        EnvironmentSettings environments,
         SqlMetadataService? sqlMetadata = null)
     {
         _registry = registry;
         _mcpOptions = mcpOptions.Value;
         _configService = configService;
         _httpFactory = httpFactory;
+        _scopeFactory = scopeFactory;
+        _environments = environments;
         _sqlMetadata = sqlMetadata;
     }
 
@@ -344,7 +353,7 @@ public sealed partial class McpChatService
                     continue;
                 }
 
-                var result = await ExecuteToolAsync(name, inputJson, defaultEnvironment, baseUrl, authToken, ct);
+                var result = (await ExecuteToolAsync(name, inputJson, defaultEnvironment, baseUrl, authToken, ct)).Text;
 
                 // Truncate for history to stay within context window limits
                 var historyResult = result.Length > maxChars
@@ -397,7 +406,7 @@ public sealed partial class McpChatService
     }
 
     // internal, reused by mcp tool call
-    internal async Task<string> ExecuteToolAsync(
+    internal async Task<McpToolResult> ExecuteToolAsync(
         string toolName,
         string inputJson,
         string defaultEnvironment,
@@ -405,48 +414,58 @@ public sealed partial class McpChatService
         string? authToken,
         CancellationToken ct)
     {
-        // O(1) lookup via pre-built dictionary keyed by sanitized endpoint name
-        var sanitizedEndpointName = toolName; // tool names are already sanitized
-        var tool = _registry.FindByName(sanitizedEndpointName);
-
-        if (tool is null)
-            return $"Unknown tool: {toolName}";
-
-        JsonNode? input = null;
-        try { input = JsonNode.Parse(inputJson); }
-        catch (Exception ex) { Log.Debug(ex, "Could not parse tool input JSON for {Tool}", toolName); }
-
-        var environment = input?["environment"]?.GetValue<string>() ?? defaultEnvironment;
-
-        // Fall back to the tool's first allowed environment when the selected one is outside its restriction
-        if (tool.AllowedEnvironments is { Count: > 0 } &&
-            !tool.AllowedEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
-        {
-            environment = tool.AllowedEnvironments[0];
-        }
-
-        var query = input?["query"]?.GetValue<string>();
-        var body = input?["body"]?.GetValue<string>();
-        var method = new HttpMethod(tool.Method.ToUpperInvariant());
-
-        // Server-side $top enforcement: inject the default when the LLM's query omits it, clamp to MaxPageSize to prevent unbounded table scans
-        if (method == HttpMethod.Get && !string.IsNullOrEmpty(query))
-        {
-            query = EnforceTopLimit(query, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
-        }
-        else if (method == HttpMethod.Get && string.IsNullOrEmpty(query))
-        {
-            query = $"$top={_mcpOptions.DefaultPageSize}";
-        }
-
-        var endpointPath = tool.RoutePath;
-        var url = $"{baseUrl}/api/{environment}/{endpointPath}";
-        if (!string.IsNullOrEmpty(query))
-            url += $"?{query.TrimStart('?')}";
-
         // Tool execution must run under the caller's own API token
         if (string.IsNullOrWhiteSpace(authToken))
-            return "Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.";
+            return McpToolResult.Failure("Tool execution requires an API token. Attach an Authorization: Bearer header to this chat request.");
+
+        var tool = _registry.FindByName(toolName);
+
+        // scope failure reads as missing
+        if (tool is null || !await CallerHasAccessAsync(authToken, tool))
+            return McpToolResult.Failure($"Unknown tool: {toolName}");
+
+        JsonObject? input = null;
+        try { input = JsonNode.Parse(inputJson) as JsonObject; }
+        catch (Exception ex) { Log.Debug(ex, "Could not parse tool input JSON for {Tool}", toolName); }
+
+        var environment = ReadArgument(input, "environment") ?? defaultEnvironment;
+
+        if (tool.AllowedEnvironments is { Count: > 0 } toolEnvironments &&
+            !toolEnvironments.Contains(environment, StringComparer.OrdinalIgnoreCase))
+        {
+            return McpToolResult.Failure($"Environment '{environment}' is not allowed for {toolName}. Allowed environments: {string.Join(", ", toolEnvironments)}.");
+        }
+
+        if (!_environments.IsEnvironmentAllowed(environment))
+            return McpToolResult.Failure($"Environment '{environment}' is not allowed.");
+
+        var methodName = ReadArgument(input, "method") ?? tool.Method;
+        var methods = _registry.MethodsOf(tool);
+        if (!methods.Contains(methodName, StringComparer.OrdinalIgnoreCase))
+            return McpToolResult.Failure($"Method '{methodName}' is not available on {toolName}. Available methods: {string.Join(", ", methods)}.");
+
+        var method = new HttpMethod(methodName.ToUpperInvariant());
+        var isQueryMethod = method.Method == "QUERY";
+        var query = ReadArgument(input, "query");
+        var body = ReadArgument(input, "body");
+
+        if (method == HttpMethod.Get && !string.IsNullOrEmpty(body))
+            return McpToolResult.Failure($"A GET request has no body. Set method to one of: {string.Join(", ", methods)}.");
+
+        if (BuildRoutePath(tool, method, ReadArgument(input, "key"), ReadArgument(input, "path")) is not { } route)
+            return McpToolResult.Failure($"The key or path argument is not valid for {toolName}.");
+
+        if (isQueryMethod)
+            body = tool.IsProxy
+                ? (string.IsNullOrWhiteSpace(body) ? "{}" : body)
+                : EnforceQueryBodyLimit(body, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
+        else if (method == HttpMethod.Get && tool.EndpointKind != "file")
+            query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
+
+        var endpointPath = tool.RoutePath;
+        var url = $"{baseUrl}/api/{Uri.EscapeDataString(environment)}/{route}";
+        if (!string.IsNullOrEmpty(query))
+            url += $"?{RemoveFragment(query).TrimStart('?')}";
 
         var sw = Stopwatch.StartNew();
         try
@@ -470,8 +489,8 @@ public sealed partial class McpChatService
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             sw.Stop();
 
-            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url})",
-                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url);
+            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Path})",
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, route);
 
             if (resp.IsSuccessStatusCode)
             {
@@ -479,12 +498,15 @@ public sealed partial class McpChatService
 
                 // Block binary types; sending raw bytes to the LLM is wasteful and meaningless
                 if (IsBinaryContentType(mediaType))
-                    return $"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
-                           $"read in chat. The user should download it directly from the Portway API.";
+                    return new McpToolResult($"[Binary content: {mediaType}] This endpoint returned a file that cannot be " +
+                           $"read in chat. The user should download it directly from the Portway API.");
 
                 // Size-capped read: stream only up to MaxToolResultChars plus a small buffer, then discard the rest, so huge responses never load fully into memory
                 var maxChars = _mcpOptions.MaxToolResultChars;
-                var content = await ReadCappedAsync(resp.Content, maxChars + 256, ct);
+                var content = await ReadCappedAsync(resp.Content, maxChars + 1, ct);
+                var truncated = content.Length > maxChars;
+                if (truncated)
+                    content = content[..(char.IsHighSurrogate(content[maxChars - 1]) ? maxChars - 1 : maxChars)];
 
                 // Prefix non-JSON text responses so the LLM knows the format
                 if (!string.IsNullOrEmpty(mediaType) && !mediaType.Contains("json"))
@@ -493,9 +515,9 @@ public sealed partial class McpChatService
                 // If the endpoint returned an empty JSON array, give the LLM an explicit signal so it doesn't retry with rephrased queries
                 var trimmed = content.AsSpan().Trim();
                 if (trimmed.Length >= 2 && trimmed[0] == '[' && trimmed[^1] == ']' && trimmed[1..^1].IsWhiteSpace())
-                    return "[No records found] The endpoint returned an empty result for this query. Do not retry.";
+                    return new McpToolResult("[No records found] The endpoint returned an empty result for this query. Do not retry.");
 
-                return content;
+                return new McpToolResult(truncated ? DescribeTruncation(content, resp.Content.Headers.ContentLength) : content);
             }
 
             // Return a clear, actionable message so the LLM can relay it to the user
@@ -514,7 +536,7 @@ public sealed partial class McpChatService
                 401 => "The request was rejected because no valid Bearer token was provided. The user should authenticate in the Chat UI before querying endpoints.",
 
                 403 => "The Bearer token does not have permission to access this endpoint or environment.",
-                404 => $"The endpoint '{endpointPath}' was not found at {url}. Check that the endpoint name and environment are correct.",
+                404 => $"The endpoint '{endpointPath}' was not found. Check that the endpoint name and environment are correct.",
                 405 => $"The HTTP method used for '{endpointPath}' is not supported. Verify whether GET, POST, PUT, or DELETE is expected.",
                 407 => "Proxy authentication is required before accessing this endpoint.",
                 408 => "The client request timed out before the server could receive it. Try re-sending the request.",
@@ -540,21 +562,21 @@ public sealed partial class McpChatService
 
             Log.Warning("Tool call {Tool} → {Status} in {Elapsed}ms: {Hint}",
                 toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, hint);
-            return $"[Tool error {(int)resp.StatusCode}] {hint}\nResponse body: {errorBody}";
+            return McpToolResult.Failure($"[Tool error {(int)resp.StatusCode}] {hint}\nResponse body: {errorBody}");
         }
         catch (TaskCanceledException) when (ct.IsCancellationRequested)
         {
-            return $"[Tool cancelled] The request for {toolName} was cancelled.";
+            return McpToolResult.Failure($"[Tool cancelled] The request for {toolName} was cancelled.");
         }
         catch (TaskCanceledException)
         {
             Log.Warning("Tool call {Tool} timed out after {Elapsed}ms", toolName, sw.ElapsedMilliseconds);
-            return $"[Tool timeout] {toolName} did not respond within the configured timeout. Try a more specific query with $filter or $top.";
+            return McpToolResult.Failure($"[Tool timeout] {toolName} did not respond within the configured timeout. Try a more specific query with $filter or $top.");
         }
         catch (Exception ex)
         {
             Log.Warning(ex, "Tool execution failed for {Tool}", toolName);
-            return $"Error executing {toolName}: {ex.Message}";
+            return McpToolResult.Failure($"Error executing {toolName}. Check the Portway logs for details.");
         }
     }
 
@@ -580,26 +602,125 @@ public sealed partial class McpChatService
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Ensures the OData query string respects page size limits. Auto-injects $top if absent; clamps if it exceeds MaxPageSize
-    /// </summary>
-    private static string EnforceTopLimit(string query, int defaultPageSize, int maxPageSize)
+    private static string? ReadArgument(JsonObject? input, string name) => input?[name] switch
     {
-        var match = TopValuePattern().Match(query);
-        if (!match.Success)
-        {
-            // No $top present; inject default
-            return query.Length > 0 ? $"{query}&$top={defaultPageSize}" : $"$top={defaultPageSize}";
-        }
+        null => null,
+        JsonValue value when value.TryGetValue<string>(out var text) => text,
+        var node => node.ToJsonString()
+    };
 
-        if (int.TryParse(match.Groups[1].Value, out var requestedTop) && requestedTop > maxPageSize)
-        {
-            // Clamp to max
-            return TopValuePattern().Replace(query, $"$top={maxPageSize}");
-        }
-
-        return query;
+    private async Task<bool> CallerHasAccessAsync(string authToken, McpToolDescriptor tool)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var caller = await scope.ServiceProvider.GetRequiredService<TokenService>().GetTokenDetailsByTokenAsync(authToken);
+        return caller is not null && caller.HasAccessToEndpoint(tool.Identity);
     }
+
+    /// <summary>
+    /// Path below /api/{env} for a tool call, escaped; null when the key or path is refused
+    /// </summary>
+    internal static string? BuildRoutePath(McpToolDescriptor tool, HttpMethod method, string? key, string? path)
+    {
+        var hasKey = !string.IsNullOrEmpty(key);
+        var hasPath = !string.IsNullOrEmpty(path);
+
+        if (tool.EndpointKind != "api")
+            return hasKey || hasPath ? null : tool.EndpointKind == "file" && method == HttpMethod.Get ? $"{tool.RoutePath}/list" : tool.RoutePath;
+
+        var route = tool.RoutePath;
+        if (hasKey)
+        {
+            if (!IsSafeSegment(key!) || key!.AsSpan().ContainsAny("'()"))
+                return null;
+
+            var isBare = key.All(char.IsAsciiDigit) || Guid.TryParse(key, out _);
+            route += isBare ? $"({key})" : $"('{Uri.EscapeDataString(key)}')";
+        }
+
+        if (hasPath)
+        {
+            var segments = path!.Trim('/').Split('/');
+            if (!segments.All(IsSafeSegment))
+                return null;
+
+            // path must stay on endpoint
+            string[] full = [.. tool.RoutePath.Split('/'), .. segments];
+            if (EndpointController.ResolveEndpointIdentity(full) is not { } resolved)
+                return null;
+
+            var identity = resolved.Namespace.Length > 0 ? $"{resolved.Namespace}/{resolved.Name}" : resolved.Name;
+            if (!identity.Equals(tool.Identity, StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            route += "/" + string.Join('/', segments.Select(Uri.EscapeDataString));
+        }
+
+        return route;
+    }
+
+    private static bool IsSafeSegment(string segment) =>
+        segment.Length > 0 && segment is not ("." or "..") && !segment.Any(c => c is '/' or '\\' || char.IsControl(c));
+
+    private static string RemoveFragment(string query) =>
+        query.IndexOf('#') is >= 0 and var hash ? query[..hash] : query;
+
+    /// <summary>
+    /// Returns the query with one $top within the page limit, whatever form the caller encoded it in
+    /// </summary>
+    internal static string EnforceTopLimit(string query, int defaultPageSize, int maxPageSize)
+    {
+        int? requested = null;
+        var parts = new List<string>();
+
+        foreach (var part in RemoveFragment(query).TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = part.IndexOf('=');
+            var name = Uri.UnescapeDataString(separator < 0 ? part : part[..separator]).Trim();
+            if (!name.Equals("$top", StringComparison.OrdinalIgnoreCase))
+            {
+                parts.Add(part);
+                continue;
+            }
+
+            var value = separator < 0 ? string.Empty : Uri.UnescapeDataString(part[(separator + 1)..]);
+            if (requested is null && int.TryParse(value, System.Globalization.NumberStyles.None, null, out var top))
+                requested = top;
+        }
+
+        parts.Add($"$top={Math.Min(requested ?? defaultPageSize, maxPageSize)}");
+        return string.Join('&', parts);
+    }
+
+    /// <summary>
+    /// Returns a QUERY body with $top within the page limit. A body that is not a JSON object passes through: the endpoint answers 400
+    /// </summary>
+    internal static string EnforceQueryBodyLimit(string? body, int defaultPageSize, int maxPageSize)
+    {
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body); }
+        catch (JsonException) { return body!; }
+
+        if (parsed is not JsonObject query)
+            return body!;
+
+        var requested = ReadTop(query, "$top") ?? ReadTop(query, "top");
+        query.Remove("top");
+        query["$top"] = Math.Min(requested ?? defaultPageSize, maxPageSize);
+        return query.ToJsonString();
+
+        static int? ReadTop(JsonObject source, string name) =>
+            source[name] is JsonValue value && value.TryGetValue<int>(out var top) && top >= 0 ? top : null;
+    }
+
+    private static string DescribeTruncation(string partial, long? totalBytes) =>
+        JsonSerializer.Serialize(new
+        {
+            truncated = true,
+            returnedChars = partial.Length,
+            totalBytes,
+            message = "Result truncated. Ask for fewer results or apply a filter.",
+            partial
+        }, _jsonOpts);
 
     private static ChatMessage BuildSystemPrompt(string? locale)
     {

@@ -20,13 +20,13 @@ public static partial class WebUiEndpointExtensions
                 return Results.Json(new { error = "Sign in to continue" }, statusCode: 401);
 
             var clientIp = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            if (WebUiAuthHelper.BeginAttempt(clientIp) is { } blocked)
+            if (WebUiAuthHelper.BeginAttempt(clientIp, $"#{me}") is { } blocked)
                 return Results.Json(new { error = blocked }, statusCode: 429);
 
             var confirm = body.TryGetProperty("current_password", out var c) ? c.GetString() ?? "" : "";
             if (await users.ConfirmPasswordAsync(me, confirm))
             {
-                WebUiAuthHelper.ClearFailedAttempts(clientIp);
+                WebUiAuthHelper.ClearFailedAttempts(clientIp, $"#{me}");
                 return null;
             }
 

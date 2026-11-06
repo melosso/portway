@@ -13,6 +13,11 @@ namespace PortwayApi.Helpers
         private const string PublicKeyFileName = "snapshot_blob.bin";
         private const string _fallbackKey = "$XTSI5gTEf1hawq3G2uOdWTsFUrgZ6mkCBGrdr0fsRTegXwis68HxGEoCsIBpgbPl5swwY9BQ0qiXG6CaeEPJzp3SPyGebl0ZyHL3jLACKIuSw7G1ufAZ5XATtetKatH0sr#";
 
+        /// <summary>
+        /// Determine if the key pair exists.
+        /// </summary>
+        public static bool HasKeyPair => File.Exists(Path.Combine(Directory.GetCurrentDirectory(), ".core", PrivateKeyFileName));
+
         public static bool IsEncrypted(string content)
         {
             return content.StartsWith(EncryptedHeader);
@@ -233,7 +238,7 @@ namespace PortwayApi.Helpers
                 var privateKeyPath = Path.Combine(certsPath, PrivateKeyFileName);
                 if (!File.Exists(privateKeyPath))
                 {
-                    Log.Warning("Cannot decrypt Chat:ApiKey — private key not found at {Path}", privateKeyPath);
+                    Log.Warning("Cannot decrypt value: private key not found at {Path}", privateKeyPath);
                     return false;
                 }
 

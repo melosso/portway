@@ -12,17 +12,9 @@ public sealed class ConfigExampleDocumentFilter : IOpenApiDocumentTransformer
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        // Only endpoints that supplied examples
-        var byBase = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (basePath, definition) in OpenApiEndpointCatalog.All())
-        {
-            if (definition.Documentation?.Examples is { Count: > 0 })
-            {
-                byBase[basePath] = definition;
-            }
-        }
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
 
-        if (byBase.Count == 0 || document.Paths is null)
+        if (!endpoints.Any(e => e.Definition.Documentation?.Examples is { Count: > 0 }) || document.Paths is null)
         {
             return Task.CompletedTask;
         }
@@ -34,9 +26,7 @@ public sealed class ConfigExampleDocumentFilter : IOpenApiDocumentTransformer
                 continue;
             }
 
-            var definition = byBase.FirstOrDefault(b => OpenApiEndpointCatalog.Covers(b.Key, pathKey)).Value;
-
-            var examples = definition?.Documentation?.Examples;
+            var examples = OpenApiEndpointCatalog.Owner(endpoints, pathKey)?.Documentation?.Examples;
             if (examples is null)
             {
                 continue;

@@ -105,14 +105,37 @@ public static class SqlProviderDetector
          || connectionString.Contains("SslMode=", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.MySql;
 
-        // 8. SQLite Data Source with a .db, .sqlite or :memory: value
+        // 8. Keywords SqlClient rejects, so the string cannot be SQL Server
+        if (HasKeyword(connectionString, "Filename"))
+            return SqlProviderType.Sqlite;
+
+        if (HasKeyword(connectionString, "Port") || HasKeyword(connectionString, "Username"))
+            return HasKeyword(connectionString, "Uid") || HasKeyword(connectionString, "User") || HasKeyword(connectionString, "Pwd") || HasKeyword(connectionString, "Port", "3306")
+                ? SqlProviderType.MySql
+                : SqlProviderType.PostgreSql;
+
+        // 9. SQLite Data Source with a .db, .sqlite or :memory: value
         if (IsSqliteDataSource(connectionString.AsSpan())
          || connectionString.Contains("Mode=Memory", StringComparison.OrdinalIgnoreCase)
          || connectionString.Contains(":memory:", StringComparison.OrdinalIgnoreCase))
             return SqlProviderType.Sqlite;
 
-        // 9. Default to SQL Server
+        // 10. Default to SQL Server
         return SqlProviderType.SqlServer;
+    }
+
+    private static bool HasKeyword(ReadOnlySpan<char> connectionString, ReadOnlySpan<char> keyword, ReadOnlySpan<char> value = default)
+    {
+        foreach (var range in connectionString.Split(';'))
+        {
+            var segment = connectionString[range];
+            var equals = segment.IndexOf('=');
+            if (equals > 0 && segment[..equals].Trim().Equals(keyword, StringComparison.OrdinalIgnoreCase)
+                && (value.IsEmpty || segment[(equals + 1)..].Trim().SequenceEqual(value)))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -136,6 +159,7 @@ public static class SqlProviderDetector
                     var value = segment[(eq + 1)..].Trim();
                     if (value.Equals(":memory:", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".db", StringComparison.OrdinalIgnoreCase)
+                     || value.EndsWith(".db3", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase)
                      || value.EndsWith(".sqlite3", StringComparison.OrdinalIgnoreCase))
                         return true;

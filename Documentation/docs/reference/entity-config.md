@@ -26,6 +26,8 @@ endpoints/
 | `Deprecated` | boolean | `false` | Marks the operations deprecated in the OpenAPI document |
 | `DeprecatedSince` | date | | `Deprecation` response header. Requires `Deprecated: true`. A console save of a deprecated endpoint sets the current date if the key is absent. |
 | `Sunset` | date | | `Sunset` response header |
+| `Stability` | string | | `Stable` or `Experimental`. Label on the operations in the API reference. `Deprecated: true` takes precedence. Invalid values are ignored at load and logged; a console save returns `400`. |
+| `Badges` | object[] | | Labels on the operations in the API reference. Fields: `Name` (required, 32 characters maximum), `Position` (`before` or `after`, default `after`), `Color` (CSS keyword, hex, `rgb`, `rgba`, `hsl` or `hsla`). Invalid values are ignored at load and logged; a console save returns `400`. |
 | `Namespace` | string | Folder | [Namespaces](/reference/namespaces) |
 | `NamespaceDisplayName` | string | | Namespace label in the documentation |
 | `NamespaceDescription` | string | | Namespace group description in the OpenAPI document ([OpenAPI tags](/reference/namespaces#openapi-tags)) |

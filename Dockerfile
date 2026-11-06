@@ -50,8 +50,11 @@ RUN mkdir -p /app/endpoints && \
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 # Copy published output and tools
-COPY --from=build /app/publish .
-COPY start.sh /app/start.sh
+COPY --from=build /app/publish /opt/portway
+COPY start.sh /usr/local/bin/portway-start
+
+# Samples for first start
+RUN cp -a /opt/portway/endpoints /opt/portway/environments /app/
 
 # Copy configuration files
 COPY Source/PortwayApi/environments/settings.json /app/environments/
@@ -64,7 +67,7 @@ RUN sed -i 's/500/prod/g' /app/environments/prod/settings.json && \
     sed -i 's/, "Synergy"//g' /app/environments/settings.json
 
 # Set proper permissions
-RUN chmod -R 755 /app
+RUN chmod -R 755 /app /opt/portway /usr/local/bin/portway-start
 
 # Configure health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
@@ -74,4 +77,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 EXPOSE 8080
 
 # Define entrypoint
-ENTRYPOINT ["/app/start.sh"]
+ENTRYPOINT ["/usr/local/bin/portway-start"]

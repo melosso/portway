@@ -70,10 +70,10 @@ docker compose up -d
 
 echo "Sending sample traffic for the health page..."
 for _ in $(seq 1 30); do
-    curl -fs -o /dev/null http://localhost:8080/health/live && ls tokens/*.txt >/dev/null 2>&1 && break
+    curl -fs -o /dev/null http://localhost:8080/health/live && break
     sleep 2
 done
-TOKEN="$(sed -n 's/.*"Token": *"\([^"]*\)".*/\1/p' tokens/*.txt | head -n 1)"
+TOKEN="$(sed -n 's/.*PORTWAY_SEED_TOKEN=//p' docker-compose.yml)"
 for path in CRM/Accounts v2/CRM/Accounts Company/Companies v2/Company/Companies Warehouse/Products v2/Warehouse/Products \
     Production/Orders v2/Production/Orders Warehouse/Warehouses v2/Warehouse/Warehouses v2/Warehouse/Warehouses?\$top=1; do
     for _ in 1 2 3; do

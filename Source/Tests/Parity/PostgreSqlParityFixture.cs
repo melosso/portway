@@ -11,6 +11,9 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
     public override string QualifiedProductsTable => "public.Products";
     public override string QualifiedWebhookTable => "public.WebhookData";
     public override string QualifiedCategoriesTable => "public.Categories";
+    public override string QualifiedGuidKeysTable => "public.GuidKeys";
+    public override string QualifiedTextKeysTable => "public.TextKeys";
+    public override string GuidKeyProcedureName => "find_guid_key";
     public override string ProcedureSchema => "public";
     public override string ProcedureName => "get_products_by_price";
     // Tests SETOF composite types. See below for RETURNS TABLE test.
@@ -39,6 +42,15 @@ public sealed class PostgreSqlParityFixture : ParityDatabaseFixture
         $"""INSERT INTO public."Categories" ("CategoryId", "CategoryName") VALUES {CategorySeedValues}""",
         """UPDATE public."Products" SET "CategoryId" = 10 WHERE "Id" IN (1, 2)""",
         """UPDATE public."Products" SET "CategoryId" = 20 WHERE "Id" = 4""",
+        """CREATE TABLE public."GuidKeys" ("Id" UUID PRIMARY KEY, "Name" VARCHAR(100) NOT NULL)""",
+        $"""INSERT INTO public."GuidKeys" ("Id", "Name") VALUES {GuidKeySeedValues}""",
+        """CREATE TABLE public."TextKeys" ("Id" VARCHAR(50) PRIMARY KEY, "Name" VARCHAR(100) NOT NULL)""",
+        $"""INSERT INTO public."TextKeys" ("Id", "Name") VALUES {TextKeySeedValues}""",
+        """
+        CREATE FUNCTION public.find_guid_key(method TEXT, id UUID, name VARCHAR DEFAULT NULL) RETURNS TABLE("Name" VARCHAR) AS $$
+            SELECT k."Name" FROM public."GuidKeys" k WHERE k."Id" = find_guid_key.id
+        $$ LANGUAGE sql
+        """,
         """
         CREATE FUNCTION public.get_products_by_price(min_price NUMERIC)
         RETURNS SETOF public."Products" AS $$

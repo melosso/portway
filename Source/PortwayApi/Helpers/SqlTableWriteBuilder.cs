@@ -1,5 +1,6 @@
 namespace PortwayApi.Helpers;
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using PortwayApi.Classes;
 using PortwayApi.Services.Providers;
@@ -84,22 +85,40 @@ public static partial class SqlTableWriteBuilder
         => endpoint.AliasToDatabase.TryGetValue(endpoint.PrimaryKey ?? "", out var db) ? db : endpoint.PrimaryKey ?? "";
 
     public static TableWriteCommand BuildInsert(ISqlProvider provider, string table, Dictionary<string, object?> columns)
-        => Compile(provider, new Query(table).AsInsert(columns));
+        => Compile(provider, new Query(table).AsInsert(GuidsAsLiterals(columns)));
 
     /// <summary>
     /// Insert that returns the generated identity in the provider's own dialect
     /// </summary>
     public static TableWriteCommand BuildInsertReturningId(ISqlProvider provider, string table, Dictionary<string, object?> columns)
-        => Compile(provider, new Query(table).AsInsert(columns, returnId: true));
+        => Compile(provider, new Query(table).AsInsert(GuidsAsLiterals(columns), returnId: true));
 
     public static TableWriteCommand BuildUpdate(ISqlProvider provider, string table, string pkColumn, object pkValue, Dictionary<string, object?> columns, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsUpdate(columns));
+        => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants).AsUpdate(GuidsAsLiterals(columns)));
 
     public static TableWriteCommand BuildDelete(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants).AsDelete());
+        => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants).AsDelete());
 
     public static TableWriteCommand BuildSelectByKey(ISqlProvider provider, string table, string pkColumn, object pkValue, IReadOnlyList<TenantPredicate>? tenants = null)
-        => Compile(provider, Confine(new Query(table).Where(pkColumn, pkValue), tenants));
+        => Compile(provider, Confine(KeyQuery(provider, table, pkColumn, pkValue), tenants));
+
+    private static Query KeyQuery(ISqlProvider provider, string table, string pkColumn, object pkValue)
+    {
+        var isWholeNumber = pkValue is string digits && long.TryParse(digits, System.Globalization.NumberStyles.None, null, out _);
+        var query = new Query(table).Where(pkColumn, isWholeNumber ? TenantSql.Literal((string)pkValue) : GuidAsLiteral(pkValue));
+
+        return provider.CoercesTextKeys && !isWholeNumber && pkValue is string text
+            ? TenantSql.WhereExactText(query, pkColumn, text)
+            : query;
+    }
+
+    // literal coerces to column type
+    [return: NotNullIfNotNull(nameof(value))]
+    private static object? GuidAsLiteral(object? value) =>
+        value is string text && Guid.TryParseExact(text, "D", out _) ? TenantSql.Literal(text) : value;
+
+    private static Dictionary<string, object?> GuidsAsLiterals(Dictionary<string, object?> columns) =>
+        columns.ToDictionary(column => column.Key, column => GuidAsLiteral(column.Value), columns.Comparer);
 
     private static Query Confine(Query query, IReadOnlyList<TenantPredicate>? tenants)
     {

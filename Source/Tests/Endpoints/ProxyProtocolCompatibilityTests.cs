@@ -188,12 +188,12 @@ public class ProxyProtocolCompatibilityTests : ApiTestBase, IDisposable
     // Authorization collision (basis of the Teable/AFAS auth-swap guidance)
 
     [Fact]
-    public async Task ClientAuthorization_IsForwardedUpstream()
+    public async Task AcceptedAuthorization_IsNotForwardedUpstream()
     {
         var response = await _client.GetAsync(ApiPath, TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Bearer test-token", _upstream.Headers["Authorization"]);
+        Assert.False(_upstream.Headers.ContainsKey("Authorization"));
     }
 
     [Fact]

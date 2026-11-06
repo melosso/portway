@@ -53,6 +53,10 @@ public class EnvironmentAuthService
                 if (success)
                 {
                     _logger.Debug("Successfully authenticated using environment method: {Type}", method.Type);
+                    
+                    if (method.Type.ToLowerInvariant() is "basic" or "bearer" or "jwt")
+                        context.Items[Middleware.TokenAuthMiddleware.AuthorizationAcceptedKey] = true;
+                    
                     return true;
                 }
             }

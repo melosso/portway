@@ -45,6 +45,15 @@ internal static class EndpointDirectoryLoader
                         continue;
                     }
 
+                    // labels never stop an endpoint
+                    var metadataErrors = EndpointMetadataRules.Validate(definition);
+                    if (metadataErrors.Count > 0)
+                    {
+                        Log.Warning($"Ignoring Stability and Badges of {spec.FailPrefix}endpoint {{File}}: {{Errors}}", file, string.Join(" ", metadataErrors));
+                        definition.Stability = null;
+                        definition.Badges = null;
+                    }
+
                     var key = spec.NamespaceAware
                         ? BuildNamespacedKey(file, endpointsDirectory, definition)
                         : BuildFlatKey(file, definition);

@@ -1,3 +1,32 @@
+:root {
+  --search-bg: var(--code-bg);
+  --selection: #d6def9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-color: #131419;
+    --sidebar-bg: #191a21;
+    --code-bg: #1a1c24;
+    --search-bg: #1a1c24;
+    --border: #2e3038;
+    --text-color: #ececf1;
+    --text-muted: #a3a5b1;
+    --selection: #34447f;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg-color: #131419;
+  --sidebar-bg: #191a21;
+  --code-bg: #1a1c24;
+  --search-bg: #1a1c24;
+  --border: #2e3038;
+  --text-color: #ececf1;
+  --text-muted: #a3a5b1;
+  --selection: #34447f;
+}
+
 badge[type="info"] {
   background-color: color-mix(in srgb, var(--accent) 14%, var(--code-bg));
   color: var(--accent);

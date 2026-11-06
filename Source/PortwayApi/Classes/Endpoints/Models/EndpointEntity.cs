@@ -29,6 +29,11 @@ public class EndpointEntity : EndpointEntityBase
     public List<string>? Methods { get; set; }
     public List<DeletePattern>? DeletePatterns { get; set; }
     public List<string>? FallbackUrls { get; set; }
+
+    /// <summary>
+    /// Sends the client Authorization header upstream when it also authenticated the request
+    /// </summary>
+    public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
 

@@ -45,6 +45,8 @@ public class WebUiSecurityTests : IDisposable
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["Mcp:Enabled"] = "false",
+                        ["Proxy:Username"] = "svc-proxy-account",
+                        ["Telemetry:Otlp:Endpoint"] = "https://otel.example/?token=otlp-secret",
                         ["WebUi:AdminApiKey"] = AdminKey,
                         // TestServer connections have no remote IP, so allow via PublicOrigins instead of the local-network check
                         ["WebUi:PublicOrigins:0"] = "http://localhost"
@@ -333,6 +335,9 @@ public class WebUiSecurityTests : IDisposable
     [InlineData("proxy", """{"Url":"http://localhost:8020/svc","Methods":["GET"]}""", true)]
     [InlineData("proxy", """{"Methods":["GET"]}""", false)]
     [InlineData("static", """{"ContentType":"text/csv","Namespace":"1bad"}""", false)]
+    [InlineData("static", """{ "ContentType": "text/plain", "ContentFile": "a.txt", "Stability": "Experimental", "Badges": [{ "Name": "New", "Position": "before", "Color": "#fff" }] }""", true)]
+    [InlineData("static", """{ "ContentType": "text/plain", "ContentFile": "a.txt", "Stability": "Deprecated" }""", false)]
+    [InlineData("static", """{ "ContentType": "text/plain", "ContentFile": "a.txt", "Badges": [{ "Name": "New", "Color": "red;x:y" }] }""", false)]
     public async Task ValidateEndpoint_ChecksTypeRules(string type, string content, bool expectValid)
     {
         var client = CreateClient();
@@ -377,6 +382,73 @@ public class WebUiSecurityTests : IDisposable
         Assert.Contains("toastContainer", html);          // shell
         Assert.Contains("id=\"securityBody\"", html);     // view fragment
         Assert.EndsWith("</html>", html.TrimEnd());       // footer
+    }
+
+    [Fact]
+    public async Task TracePage_IsComposedForASignedInAccountOnly()
+    {
+        var client = CreateClient();
+
+        var anonymous = await client.GetAsync("/_/trace", TestContext.Current.CancellationToken);
+        Assert.NotEqual(HttpStatusCode.OK, anonymous.StatusCode);
+
+        var (authCookie, _) = await LoginAsync(client);
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/trace", authCookie), TestContext.Current.CancellationToken);
+        var html = await resp.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Contains("<title>Trace · Portway</title>", html);
+        Assert.Contains("id=\"captureBody\"", html);
+    }
+
+    [Fact]
+    public async Task McpEndpoint_RequiresABearerToken()
+    {
+        var client = CreateClient();
+
+        var resp = await client.PostAsync("/mcp", new StringContent("""{"jsonrpc":"2.0","id":1,"method":"tools/list"}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task SettingsWrite_RefusesTheRemovedMcpAuthenticationSwitch()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["Mcp:RequireAuthentication"] = false });
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(req, TestContext.Current.CancellationToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task SettingsWrite_RefusesAllowedHostsThatExcludeTheCaller()
+    {
+        var client = CreateClient();
+        var (authCookie, csrfCookie) = await LoginAsync(client);
+
+        var req = AuthedRequest(HttpMethod.Put, "/_/api/settings", authCookie, csrfCookie,
+            new Dictionary<string, object> { ["AllowedHosts"] = new[] { "portway.example.com" } });
+        var resp = await client.SendAsync(req, TestContext.Current.CancellationToken);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, resp.StatusCode);
+        Assert.Equal("AllowedHosts", body.GetProperty("field").GetString());
+    }
+
+    [Fact]
+    public async Task SettingsRead_NeverReturnsSecretValues()
+    {
+        var client = CreateClient();
+        var (authCookie, _) = await LoginAsync(client);
+
+        var resp = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", authCookie), TestContext.Current.CancellationToken);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
+
+        foreach (var w in body.GetProperty("writable").EnumerateArray().Where(w => w.GetProperty("kind").GetString() is "secret" or "clear"))
+            Assert.True(w.GetProperty("value").ValueKind is JsonValueKind.True or JsonValueKind.False or JsonValueKind.Null, w.GetProperty("key").GetString());
     }
 
     [Fact]
@@ -479,6 +551,106 @@ public class WebUiSecurityTests : IDisposable
         Assert.True(security.GetProperty("csrf_protection").GetBoolean());
     }
 
+    [Theory]
+    [InlineData("/_/api/auth", """{"username":1,"password":"x"}""", "application/json")]
+    [InlineData("/_/api/auth", """{"username":"admin","password":{}}""", "application/json")]
+    [InlineData("/_/api/auth", """{"username":"admin","csrf":[]}""", "application/json")]
+    [InlineData("/_/api/auth", "[]", "application/json")]
+    [InlineData("/_/api/auth", "not json", "application/json")]
+    [InlineData("/_/api/auth/password", """{"username":1}""", "application/json")]
+    [InlineData("/_/api/auth/password", """{"username":"admin","newPassword":5}""", "application/json")]
+    [InlineData("/_/api/auth/password", "[]", "application/json")]
+    [InlineData("/_/api/auth/password", "not json", "application/json")]
+    public async Task MalformedSignInBody_Returns400(string path, string body, string contentType)
+    {
+        var client = CreateClient();
+
+        var response = await client.PostAsync(path, new StringContent(body, System.Text.Encoding.UTF8, contentType), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SignInBodyOfAnotherMediaType_Returns415()
+    {
+        var response = await CreateClient().PostAsync("/_/api/auth", new StringContent("""{"username":"admin"}""", System.Text.Encoding.UTF8, "text/plain"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/_/api/auth")]
+    [InlineData("/_/api/auth/password")]
+    public async Task EmptySignInRequest_Returns400(string path)
+    {
+        var response = await CreateClient().PostAsync(path, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MalformedSignInBody_DoesNotCountTowardTheLockout()
+    {
+        var client = CreateClient();
+
+        for (var i = 0; i < 60; i++)
+        {
+            var response = await client.PostAsync("/_/api/auth", new StringContent("""{"username":1}""", System.Text.Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Viewer_EnvironmentRaw_Forbidden_AndEnvironmentGet_OmitsValues()
+    {
+        var name = $"viewerenv{Guid.NewGuid():N}";
+        var folder = Path.Combine("environments", name);
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, "settings.json"),
+                """{"ServerName":"srv","ConnectionString":"Server=x;Password=conn-secret","Headers":{"X-Api-Key":"header-secret"}}""");
+
+            var client = CreateClient();
+            var (adminCookie, adminCsrf) = await LoginAsync(client);
+            var create = AuthedRequest(HttpMethod.Post, "/_/api/users", adminCookie, adminCsrf,
+                new { username = "env-viewer", password = "V13wer-env-pw-99", role = "viewer", current_password = SeededPassword });
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(create, TestContext.Current.CancellationToken)).StatusCode);
+            var (viewerCookie, _) = await SignInAsync(client, "env-viewer", "V13wer-env-pw-99");
+
+            var raw = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}/raw", viewerCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.Forbidden, raw.StatusCode);
+
+            var read = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}", viewerCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+            var body = await read.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("conn-secret", body);
+            Assert.DoesNotContain("header-secret", body);
+            Assert.Contains("X-Api-Key", body);
+
+            Assert.DoesNotContain("PWENC:", body);
+
+            var adminRaw = await client.SendAsync(AuthedRequest(HttpMethod.Get, $"/_/api/environments/{name}/raw", adminCookie), TestContext.Current.CancellationToken);
+            Assert.Equal(HttpStatusCode.OK, adminRaw.StatusCode);
+            Assert.Contains("ConnectionString", await adminRaw.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        }
+        finally
+        {
+            Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void RedactEndpointUrls_MasksUrlAndFallbackQueries()
+    {
+        var redacted = PortwayApi.Endpoints.WebUiEndpointExtensions.RedactEndpointUrls(
+            """{"Url":"http://x/a?key=url-secret","FallbackUrls":["http://y/b?key=fallback-secret"],"Methods":["GET"]}""");
+
+        Assert.DoesNotContain("url-secret", redacted);
+        Assert.DoesNotContain("fallback-secret", redacted);
+        Assert.Contains("Methods", redacted);
+    }
+
     [Fact]
     public async Task ViewerAccount_CannotWriteSettings_ButCanRead()
     {
@@ -492,8 +664,16 @@ public class WebUiSecurityTests : IDisposable
         var (viewerCookie, viewerCsrf) = await SignInAsync(client, "read-only", "V13wer-account-pw-77");
 
         // Reading the console stays open to a viewer
-        var read = AuthedRequest(HttpMethod.Get, "/_/api/settings", viewerCookie);
-        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(read, TestContext.Current.CancellationToken)).StatusCode);
+        var read = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", viewerCookie), TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        var viewerBody = await read.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.DoesNotContain("svc-proxy-account", viewerBody);
+        Assert.DoesNotContain("otlp-secret", viewerBody);
+
+        var adminRead = await client.SendAsync(AuthedRequest(HttpMethod.Get, "/_/api/settings", adminCookie), TestContext.Current.CancellationToken);
+        var adminBody = await adminRead.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains("svc-proxy-account", adminBody);
+        Assert.Contains("otlp-secret", adminBody);
 
         // Writing settings is administrator-only, CSRF satisfied or not
         var write = AuthedRequest(HttpMethod.Put, "/_/api/settings", viewerCookie, viewerCsrf,
@@ -626,7 +806,7 @@ public class WebUiSecurityTests : IDisposable
         var dir = Path.Combine(Directory.GetCurrentDirectory(), "endpoints", "Static", "UiVer", "Items");
         Directory.CreateDirectory(dir);
         await File.WriteAllTextAsync(Path.Combine(dir, "content.json"), "[]", TestContext.Current.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), """{ "ContentType": "application/json", "ContentFile": "content.json", "Deprecated": true, "DeprecatedSince": "2026-01-01T00:00:00Z" }""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(dir, "entity.json"), """{ "ContentType": "application/json", "ContentFile": "content.json", "Deprecated": true, "DeprecatedSince": "2026-01-01T00:00:00Z", "Stability": "Stable" }""", TestContext.Current.CancellationToken);
         try
         {
             var client = CreateClient();
@@ -639,7 +819,13 @@ public class WebUiSecurityTests : IDisposable
             var body = await created.Content.ReadFromJsonAsync<JsonElement>(TestContext.Current.CancellationToken);
             Assert.Equal("UiVer/Items/v2", body.GetProperty("name").GetString());
             Assert.True(File.Exists(Path.Combine(dir, "v2", "content.json")));
-            Assert.DoesNotContain("Deprecated", await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken));
+            var copied = await File.ReadAllTextAsync(Path.Combine(dir, "v2", "entity.json"), TestContext.Current.CancellationToken);
+            Assert.DoesNotContain("Deprecated", copied);
+            Assert.DoesNotContain("Stability", copied);
+
+            var rejected = await Send(HttpMethod.Put, "/_/api/endpoints/static/UiVer/Items/v2",
+                new { content = new { ContentType = "application/json", ContentFile = "content.json", Stability = "Deprecated" } });
+            Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
 
             var saved = await Send(HttpMethod.Put, "/_/api/endpoints/static/UiVer/Items/v2",
                 new { content = new { ContentType = "application/json", ContentFile = "content.json", Deprecated = true } });

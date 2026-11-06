@@ -16,33 +16,30 @@ public sealed class TenancyDocumentFilter : IOpenApiDocumentTransformer
         if (document.Paths is null)
             return Task.CompletedTask;
 
-        var tenantEndpoints = OpenApiEndpointCatalog.All().Where(e => e.Definition.HasTenancy).ToList();
+        var endpoints = OpenApiEndpointCatalog.All().ToList();
         foreach (var (pathKey, pathItem) in document.Paths)
         {
-            if (pathItem.Operations is null)
+            if (pathItem.Operations is null || OpenApiEndpointCatalog.Owner(endpoints, pathKey) is not { HasTenancy: true } definition)
                 continue;
 
-            foreach (var (basePath, definition) in tenantEndpoints.Where(e => OpenApiEndpointCatalog.Covers(e.BasePath, pathKey)))
+            var tenantProperties = TenantPropertyNames(definition);
+            foreach (var operation in pathItem.Operations.Values)
             {
-                var tenantProperties = TenantPropertyNames(definition);
-                foreach (var operation in pathItem.Operations.Values)
+                MarkReadOnly(operation, tenantProperties);
+                operation.Parameters ??= [];
+                foreach (var header in definition.Tenancy!.Keys)
                 {
-                    MarkReadOnly(operation, tenantProperties);
-                    operation.Parameters ??= [];
-                    foreach (var header in definition.Tenancy!.Keys)
-                    {
-                        if (operation.Parameters.Any(p => p.In == ParameterLocation.Header && string.Equals(p.Name, header, StringComparison.OrdinalIgnoreCase)))
-                            continue;
+                    if (operation.Parameters.Any(p => p.In == ParameterLocation.Header && string.Equals(p.Name, header, StringComparison.OrdinalIgnoreCase)))
+                        continue;
 
-                        operation.Parameters.Add(new OpenApiParameter
-                        {
-                            Name = header,
-                            In = ParameterLocation.Header,
-                            Required = false,
-                            Description = $"Tenant selector. Required when the token holds more than one {header} value.",
-                            Schema = new OpenApiSchema { Type = JsonSchemaType.String, Pattern = ValuePattern }
-                        });
-                    }
+                    operation.Parameters.Add(new OpenApiParameter
+                    {
+                        Name = header,
+                        In = ParameterLocation.Header,
+                        Required = false,
+                        Description = $"Tenant selector. Required when the token holds more than one {header} value.",
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String, Pattern = ValuePattern }
+                    });
                 }
             }
         }

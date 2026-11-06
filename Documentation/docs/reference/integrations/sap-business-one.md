@@ -40,7 +40,7 @@ Sessions expire after about 30 minutes; a `401` from the Service Layer requires 
 
 ## Limitations
 
-- The login body contains the SAP password. `IncludeRequestBodies` in [traffic logging](/reference/audit) stays off for this endpoint.
+- The login body contains the SAP password. `CaptureRequestBodies` in [traffic logging](/reference/audit) stays off for this endpoint.
 - OData parameters are passed to the Service Layer without translation.
 - All resources share one endpoint; access is limited by SAP B1 authorizations.
 

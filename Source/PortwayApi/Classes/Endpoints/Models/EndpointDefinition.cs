@@ -7,20 +7,24 @@ public class EndpointDefinition
 {
     public string Url { get; set; } = string.Empty;
     public List<string>? FallbackUrls { get; set; }
+    public bool ForwardAuthorization { get; set; } = false;
     public ProxyRetryOptions? Retry { get; set; }
     public ProxyResponseTransforms? ResponseTransforms { get; set; }
     public List<string> Methods { get; set; } = new List<string>();
+
     /// <summary>
     /// True when the proxied service understands OData query parameters; Portway itself only forwards them
     /// </summary>
     public bool SupportsOData { get; set; } = false;
     public EndpointType Type { get; set; } = EndpointType.Standard;
     public CompositeDefinition? CompositeConfig { get; set; }
+
     /// <summary>
     /// When false the endpoint returns 503 instead of serving requests
     /// </summary>
     public bool Enabled { get; set; } = true;
     public bool Hidden { get; set; } = false;
+
     /// <summary>
     /// Marks the endpoint's operations as deprecated in the OpenAPI document
     /// </summary>
@@ -37,17 +41,30 @@ public class EndpointDefinition
     public DateTimeOffset? Sunset { get; set; }
 
     /// <summary>
+    /// Stable or Experimental, sent as x-scalar-stability
+    /// </summary>
+    public string? Stability { get; set; }
+
+    /// <summary>
+    /// Sent as x-badges on the endpoint's operations
+    /// </summary>
+    public List<EndpointBadge>? Badges { get; set; }
+
+    /// <summary>
     /// Version from a v{n} folder below the endpoint folder, null for the unversioned endpoint
     /// </summary>
     public string? Version { get; set; }
 
     public McpSettings? Mcp { get; set; }
+
     /// <summary>
     /// Computed from Mcp.Exposed for backward compatibility with tuple consumers.
     /// </summary>
     public bool IsMcpExposed => Mcp?.Exposed == true;
 
+    /// <summary>
     // SQL endpoint properties
+    /// </summary>
     public string? DatabaseObjectName { get; set; }
     public string? DatabaseSchema { get; set; }
     public List<string>? AllowedColumns { get; set; }

@@ -58,7 +58,15 @@ public sealed class RedisRateLimiterStoreTests
             for (var i = 0; i < 3; i++)
                 await store.TryConsumeAsync("outage", 100, 60, ct);
             await container.UnpauseAsync(ct);
-            await store.TryConsumeAsync("outage", 100, 60, ct);
+
+            // Reconnect can take several attempts
+            var deadline = DateTime.UtcNow.AddSeconds(15);
+            do
+            {
+                await store.TryConsumeAsync("outage", 100, 60, ct);
+                if (sink.Events.Any(e => e.Level == LogEventLevel.Information)) break;
+                await Task.Delay(100, ct);
+            } while (DateTime.UtcNow < deadline);
         }
         finally
         {
