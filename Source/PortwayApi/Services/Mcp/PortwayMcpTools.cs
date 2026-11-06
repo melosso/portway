@@ -109,19 +109,14 @@ public static class PortwayMcpTools
         var httpContext = httpContextAccessor.HttpContext;
         if (httpContext is null) return ToCallResult(McpToolResult.Failure("No active HTTP request context to resolve the base URL and credentials from."));
 
-        // avoid host header injection
-        var req = httpContext.Request;
-        var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
-        var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
-
         // forward caller bearer token
-        var authHeader = req.Headers.Authorization.FirstOrDefault();
+        var authHeader = httpContext.Request.Headers.Authorization.FirstOrDefault();
         string? bearerToken = authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true
             ? authHeader["Bearer ".Length..].Trim()
             : null;
 
         var inputJson = JsonSerializer.Serialize(new { environment, query, body, tenants });
-        return ToCallResult(await chat.ExecuteToolAsync(endpointName, inputJson, environment, baseUrl, bearerToken, ct));
+        return ToCallResult(await chat.ExecuteToolAsync(endpointName, inputJson, environment, McpLoopback.BaseUrl(httpContext), bearerToken, ct));
     }
 
     private static CallToolResult ToCallResult(McpToolResult result) => new()

@@ -57,10 +57,7 @@ public static class McpChatEndpoints
             }
             history.Add(new Services.Mcp.ChatMessage("user", message));
 
-            // Loopback on the bound port, never the Host header, to prevent SSRF
-            var req = context.Request;
-            var serverPort = req.Host.Port ?? (req.IsHttps ? 443 : 80);
-            var baseUrl = $"{req.Scheme}://localhost:{serverPort}";
+            var baseUrl = McpLoopback.BaseUrl(context);
 
             // tool execution uses the caller's own bearer token, never an internal one
             var authHeader = context.Request.Headers.Authorization.FirstOrDefault();

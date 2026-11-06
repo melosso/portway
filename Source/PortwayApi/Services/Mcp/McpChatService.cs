@@ -469,8 +469,8 @@ public sealed partial class McpChatService
             using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             sw.Stop();
 
-            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Url})",
-                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, url);
+            Log.Information("MCP tool {Tool} → {Status} in {Elapsed}ms ({Path})",
+                toolName, (int)resp.StatusCode, sw.ElapsedMilliseconds, endpointPath);
 
             if (resp.IsSuccessStatusCode)
             {
@@ -513,7 +513,7 @@ public sealed partial class McpChatService
                 401 => "The request was rejected because no valid Bearer token was provided. The user should authenticate in the Chat UI before querying endpoints.",
 
                 403 => "The Bearer token does not have permission to access this endpoint or environment.",
-                404 => $"The endpoint '{endpointPath}' was not found at {url}. Check that the endpoint name and environment are correct.",
+                404 => $"The endpoint '{endpointPath}' was not found. Check that the endpoint name and environment are correct.",
                 405 => $"The HTTP method used for '{endpointPath}' is not supported. Verify whether GET, POST, PUT, or DELETE is expected.",
                 407 => "Proxy authentication is required before accessing this endpoint.",
                 408 => "The client request timed out before the server could receive it. Try re-sending the request.",
