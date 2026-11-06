@@ -1,6 +1,9 @@
 namespace PortwayApi.Services.Mcp;
 
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using ModelContextProtocol.Protocol;
+using PortwayApi.Helpers;
 
 public static class McpServiceExtensions
 {
@@ -29,7 +32,7 @@ public static class McpServiceExtensions
                 client.Timeout = TimeSpan.FromSeconds(toolTimeout > 0 ? toolTimeout : 30);
             });
 
-            services.AddMcpServer()
+            services.AddMcpServer(o => o.ServerInfo = new Implementation { Name = "Portway", Version = ServerVersion() })
                 // stateless explicit not implied
                 .WithHttpTransport(o => o.Stateless = true)
                 .WithToolsFromAssembly();
@@ -44,9 +47,34 @@ public static class McpServiceExtensions
         if (mcpEnabled)
         {
             var mcpPath = configuration.GetValue<string>("Mcp:Path") ?? "/mcp";
-            app.MapMcp(mcpPath);
+            var allowedOrigins = configuration.GetSection("Console:CorsOrigins").Get<string[]>() ?? [];
+            app.MapMcp(mcpPath).Add(endpoint =>
+            {
+                var next = endpoint.RequestDelegate!;
+                endpoint.RequestDelegate = async context =>
+                {
+                    if (IsOriginAllowed(context.Request.Headers.Origin.ToString(), allowedOrigins))
+                    {
+                        await next(context);
+                        return;
+                    }
+
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await context.Response.WriteAsJsonAsync(ErrorResponse.Of("Origin not allowed"));
+                };
+            });
         }
 
         return app;
     }
+
+    internal static string ServerVersion() =>
+        typeof(McpServiceExtensions).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
+        ?? "0.0.0";
+
+    /// <summary>
+    /// Clients outside a browser send no Origin. A browser origin requires an entry in Console:CorsOrigins
+    /// </summary>
+    internal static bool IsOriginAllowed(string origin, IReadOnlyCollection<string> allowedOrigins) =>
+        origin.Length == 0 || allowedOrigins.Any(a => a.TrimEnd('/').Equals(origin, StringComparison.OrdinalIgnoreCase));
 }

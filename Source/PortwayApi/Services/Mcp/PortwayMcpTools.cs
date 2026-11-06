@@ -35,7 +35,7 @@ public static class PortwayMcpTools
     /// </summary>
     private static string ScopeKey(McpToolDescriptor tool) => tool.Identity;
 
-    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Browse available Portway endpoints with an interactive UI")]
+    [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("List the Portway endpoints the caller can access, as Markdown")]
     public static async Task<string> ListEndpoints(IHttpContextAccessor httpContextAccessor, TokenService tokenService)
     {
         if (_registry is null) return "MCP not initialized";
