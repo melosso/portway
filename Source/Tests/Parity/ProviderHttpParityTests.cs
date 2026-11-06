@@ -238,6 +238,24 @@ public abstract class ProviderHttpParityTests<TFixture> : ApiTestBase, IClassFix
     }
 
     [DockerFact]
+    public async Task Tvf_NextLink_ReturnsTheNextPage()
+    {
+        if (!_fixture.Provider.SupportsTvf)
+            return;
+
+        var (status, body) = await Send(HttpMethod.Get, Url("Tvf", "/30?$top=1&$orderby=Id"));
+        Assert.Equal(HttpStatusCode.OK, status);
+
+        var nextLink = JsonDocument.Parse(body).RootElement.GetProperty("nextLink").GetString()!;
+        Assert.Contains("/30?", nextLink);
+        Assert.DoesNotContain("$select", nextLink);
+
+        var (nextStatus, nextBody) = await Send(HttpMethod.Get, nextLink);
+        Assert.Equal(HttpStatusCode.OK, nextStatus);
+        Assert.Contains("Giant Magnet", nextBody);
+    }
+
+    [DockerFact]
     public async Task Tvf_PathFilterAndSelect()
     {
         if (!_fixture.Provider.SupportsTvf)

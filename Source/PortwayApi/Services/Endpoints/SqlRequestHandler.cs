@@ -101,6 +101,7 @@ public sealed partial class SqlRequestHandler
 
             // Step 2.1: Apply endpoint-specific property overrides
             top = ApplyMaxPageSizeLimit(top, endpoint);
+            var requestedOrderby = orderby;
             orderby = ApplyDefaultSorting(orderby, endpoint);
 
             // Check if this is a Table Valued Function endpoint
@@ -121,7 +122,8 @@ public sealed partial class SqlRequestHandler
                 if (!string.IsNullOrEmpty(id))
                     pathSegments = [id, .. pathSegments];
 
-                var tvfColumnProblem = MapODataColumns(endpoint, ref select, ref filter, ref orderby);
+                var (tvfSelect, tvfFilter, tvfOrderby) = (select, filter, orderby);
+                var tvfColumnProblem = MapODataColumns(endpoint, ref tvfSelect, ref tvfFilter, ref tvfOrderby);
                 if (tvfColumnProblem is not null)
                     return tvfColumnProblem;
 
@@ -132,12 +134,12 @@ public sealed partial class SqlRequestHandler
                     { "skip", skip.ToString() }
                 };
 
-                if (!string.IsNullOrEmpty(select))
-                    tvfODataParams["select"] = select;
-                if (!string.IsNullOrEmpty(filter))
-                    tvfODataParams["filter"] = filter;
-                if (!string.IsNullOrEmpty(orderby))
-                    tvfODataParams["orderby"] = orderby;
+                if (!string.IsNullOrEmpty(tvfSelect))
+                    tvfODataParams["select"] = tvfSelect;
+                if (!string.IsNullOrEmpty(tvfFilter))
+                    tvfODataParams["filter"] = tvfFilter;
+                if (!string.IsNullOrEmpty(tvfOrderby))
+                    tvfODataParams["orderby"] = tvfOrderby;
 
                 // Handle TVF request using the dedicated handler
                 var tvfResult = await Classes.Handlers.TableValuedFunctionSqlHandler.HandleTVFGetRequest(
@@ -187,7 +189,7 @@ public sealed partial class SqlRequestHandler
 
                 Log.Debug("Successfully processed TVF query for {FunctionName}", endpoint.DatabaseObjectName);
                 return PortwayResults.Collection(tvfResultList,
-                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip));
+                    tvfIsLastPage ? null : BuildNextLink(env, endpointName, select, filter, requestedOrderby, top, skip, pathSegments));
             }
 
             // Step 3: Extract endpoint details
@@ -434,7 +436,7 @@ public sealed partial class SqlRequestHandler
                 totalCount = await connection.ExecuteScalarAsync<long>(new CommandDefinition(countQuery, countParameters, cancellationToken: aborted));
             }
 
-            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, orderby, top, skip);
+            var nextLink = isLastPage ? null : BuildNextLink(env, endpointName, select, filter, requestedOrderby, top, skip);
             var response = CollectionResponse<object>.Of(transformedResults, nextLink, totalCount);
 
             Log.Debug("Successfully processed query for {Endpoint}", endpointName);
@@ -1108,9 +1110,11 @@ public sealed partial class SqlRequestHandler
         string? filter,
         string? orderby,
         int top,
-        int skip)
+        int skip,
+        string[]? pathSegments = null)
     {
-        var nextLink = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}?$top={top}&$skip={skip + top}";
+        var path = string.Concat((pathSegments ?? []).Select(segment => "/" + Uri.EscapeDataString(segment)));
+        var nextLink = $"/api/{env}/{EndpointVersion.RoutePath(endpointPath)}{path}?$top={top}&$skip={skip + top}";
 
         if (!string.IsNullOrWhiteSpace(select))
             nextLink += $"&$select={Uri.EscapeDataString(select)}";
