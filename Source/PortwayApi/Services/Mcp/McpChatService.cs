@@ -39,9 +39,6 @@ public sealed partial class McpChatService
     private static partial Regex SanitisePattern();
 
 
-    [GeneratedRegex(@"\$top=(\d+)", RegexOptions.IgnoreCase)]
-    private static partial Regex TopValuePattern();
-
     [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex ODataIdentifierPattern();
 
@@ -442,20 +439,13 @@ public sealed partial class McpChatService
         var body = input?["body"]?.GetValue<string>();
         var method = new HttpMethod(tool.Method.ToUpperInvariant());
 
-        // Server-side $top enforcement: inject the default when the LLM's query omits it, clamp to MaxPageSize to prevent unbounded table scans
-        if (method == HttpMethod.Get && !string.IsNullOrEmpty(query))
-        {
-            query = EnforceTopLimit(query, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
-        }
-        else if (method == HttpMethod.Get && string.IsNullOrEmpty(query))
-        {
-            query = $"$top={_mcpOptions.DefaultPageSize}";
-        }
+        if (method == HttpMethod.Get)
+            query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
 
         var endpointPath = tool.RoutePath;
         var url = $"{baseUrl}/api/{Uri.EscapeDataString(environment)}/{endpointPath}";
         if (!string.IsNullOrEmpty(query))
-            url += $"?{query.TrimStart('?')}";
+            url += $"?{RemoveFragment(query).TrimStart('?')}";
 
         var sw = Stopwatch.StartNew();
         try
@@ -596,25 +586,34 @@ public sealed partial class McpChatService
         return caller is not null && caller.HasAccessToEndpoint(tool.Identity);
     }
 
+    private static string RemoveFragment(string query) =>
+        query.IndexOf('#') is >= 0 and var hash ? query[..hash] : query;
+
     /// <summary>
-    /// Ensures the OData query string respects page size limits. Auto-injects $top if absent; clamps if it exceeds MaxPageSize
+    /// Returns the query with one $top within the page limit, whatever form the caller encoded it in
     /// </summary>
-    private static string EnforceTopLimit(string query, int defaultPageSize, int maxPageSize)
+    internal static string EnforceTopLimit(string query, int defaultPageSize, int maxPageSize)
     {
-        var match = TopValuePattern().Match(query);
-        if (!match.Success)
+        int? requested = null;
+        var parts = new List<string>();
+
+        foreach (var part in RemoveFragment(query).TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
         {
-            // No $top present; inject default
-            return query.Length > 0 ? $"{query}&$top={defaultPageSize}" : $"$top={defaultPageSize}";
+            var separator = part.IndexOf('=');
+            var name = Uri.UnescapeDataString(separator < 0 ? part : part[..separator]).Trim();
+            if (!name.Equals("$top", StringComparison.OrdinalIgnoreCase))
+            {
+                parts.Add(part);
+                continue;
+            }
+
+            var value = separator < 0 ? string.Empty : Uri.UnescapeDataString(part[(separator + 1)..]);
+            if (requested is null && int.TryParse(value, System.Globalization.NumberStyles.None, null, out var top))
+                requested = top;
         }
 
-        if (int.TryParse(match.Groups[1].Value, out var requestedTop) && requestedTop > maxPageSize)
-        {
-            // Clamp to max
-            return TopValuePattern().Replace(query, $"$top={maxPageSize}");
-        }
-
-        return query;
+        parts.Add($"$top={Math.Min(requested ?? defaultPageSize, maxPageSize)}");
+        return string.Join('&', parts);
     }
 
     private static ChatMessage BuildSystemPrompt(string? locale)
