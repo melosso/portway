@@ -8,7 +8,6 @@ public sealed record EndpointInfoResult
     public string? Name { get; init; }
     public string? Ns { get; init; }
     public string? Method { get; init; }
-    public string? Url { get; init; }
     public IReadOnlyList<string> AllowedEnvironments { get; init; } = [];
     public IReadOnlyList<string> TenantHeaders { get; init; } = [];
 }

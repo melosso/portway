@@ -87,7 +87,6 @@ public static class PortwayMcpTools
             Name = tool.EndpointName,
             Ns = tool.Namespace,
             Method = tool.Method,
-            Url = tool.Url,
             AllowedEnvironments = tool.AllowedEnvironments ?? [],
             TenantHeaders = tool.TenantHeaders
         };
