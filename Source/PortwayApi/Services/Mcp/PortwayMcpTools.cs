@@ -100,7 +100,7 @@ public static class PortwayMcpTools
         [Description("Endpoint name as returned by ListEndpoints, e.g. 'namespace_endpoint' or 'endpoint'")] string endpointName,
         [Description("The Portway environment to call, e.g. '500'")] string environment,
         [Description("OData query string for GET requests (optional), e.g. '$top=20&$filter=...'")] string? query = null,
-        [Description("JSON body for POST/PUT/PATCH requests (optional)")] string? body = null,
+        [Description("JSON body for POST/PUT/PATCH/QUERY requests (optional)")] string? body = null,
         [Description("Tenant header values for endpoints with TenantHeaders in GetEndpointInfo, e.g. {\"X-Company-Id\":\"ACME\"} (optional when the token holds one value)")] Dictionary<string, string>? tenants = null,
         [Description("HTTP method from GetEndpointInfo (optional). Defaults to the first listed method")] string? method = null,
         [Description("Record key, e.g. '42' or 'ABC' (optional)")] string? key = null,

@@ -445,6 +445,7 @@ public sealed partial class McpChatService
             return McpToolResult.Failure($"Method '{methodName}' is not available on {toolName}. Available methods: {string.Join(", ", methods)}.");
 
         var method = new HttpMethod(methodName.ToUpperInvariant());
+        var isQueryMethod = method.Method == "QUERY";
         var query = ReadArgument(input, "query");
         var body = ReadArgument(input, "body");
 
@@ -454,7 +455,9 @@ public sealed partial class McpChatService
         if (BuildRoutePath(tool, ReadArgument(input, "key"), ReadArgument(input, "path")) is not { } route)
             return McpToolResult.Failure($"The key or path argument is not valid for {toolName}.");
 
-        if (method == HttpMethod.Get && tool.EndpointKind != "file")
+        if (isQueryMethod)
+            body = EnforceQueryBodyLimit(body, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
+        else if (method == HttpMethod.Get && tool.EndpointKind != "file")
             query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
 
         var endpointPath = tool.RoutePath;
@@ -684,6 +687,27 @@ public sealed partial class McpChatService
 
         parts.Add($"$top={Math.Min(requested ?? defaultPageSize, maxPageSize)}");
         return string.Join('&', parts);
+    }
+
+    /// <summary>
+    /// Returns a QUERY body with $top within the page limit. A body that is not a JSON object passes through: the endpoint answers 400
+    /// </summary>
+    internal static string EnforceQueryBodyLimit(string? body, int defaultPageSize, int maxPageSize)
+    {
+        JsonNode? parsed;
+        try { parsed = JsonNode.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body); }
+        catch (JsonException) { return body!; }
+
+        if (parsed is not JsonObject query)
+            return body!;
+
+        var requested = ReadTop(query, "$top") ?? ReadTop(query, "top");
+        query.Remove("top");
+        query["$top"] = Math.Min(requested ?? defaultPageSize, maxPageSize);
+        return query.ToJsonString();
+
+        static int? ReadTop(JsonObject source, string name) =>
+            source[name] is JsonValue value && value.TryGetValue<int>(out var top) && top >= 0 ? top : null;
     }
 
     private static string DescribeTruncation(string partial, long? totalBytes) =>
