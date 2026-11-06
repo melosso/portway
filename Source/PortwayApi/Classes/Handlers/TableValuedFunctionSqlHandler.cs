@@ -115,43 +115,12 @@ public static class TableValuedFunctionSqlHandler
                 var (odataQuery, odataParamsDict) = odataConverter.ConvertToSQL(dummyTable, odataParams, sqlProvider.ProviderType);
                 odataSqlParams = odataParamsDict;
 
-                // Extract WHERE, ORDER BY, OFFSET/FETCH from the generated SQL
-                string whereClause = string.Empty;
-                string orderByClause = string.Empty;
-                string offsetClause = string.Empty;
-                var whereIdx = odataQuery.IndexOf(" WHERE ", StringComparison.OrdinalIgnoreCase);
-                var orderByIdx = odataQuery.IndexOf(" ORDER BY ", StringComparison.OrdinalIgnoreCase);
-                var offsetIdx = odataQuery.IndexOf(" OFFSET ", StringComparison.OrdinalIgnoreCase);
-
-                if (whereIdx >= 0)
-                {
-                    if (orderByIdx > whereIdx)
-                        whereClause = odataQuery.Substring(whereIdx, orderByIdx - whereIdx);
-                    else if (offsetIdx > whereIdx)
-                        whereClause = odataQuery.Substring(whereIdx, offsetIdx - whereIdx);
-                    else
-                        whereClause = odataQuery.Substring(whereIdx);
-                }
-                if (orderByIdx >= 0)
-                {
-                    if (offsetIdx > orderByIdx)
-                        orderByClause = odataQuery.Substring(orderByIdx, offsetIdx - orderByIdx);
-                    else
-                        orderByClause = odataQuery.Substring(orderByIdx);
-                }
-                if (offsetIdx >= 0)
-                {
-                    offsetClause = odataQuery.Substring(offsetIdx);
-                }
-
-                // Rebuild the TVF query with OData fragments
-                finalQuery = functionCall;
-                if (!string.IsNullOrEmpty(whereClause))
-                    finalQuery += whereClause;
-                if (!string.IsNullOrEmpty(orderByClause))
-                    finalQuery += orderByClause;
-                if (!string.IsNullOrEmpty(offsetClause))
-                    finalQuery += offsetClause;
+                // strip the dummy table prefix
+                var dummySchema = SqlSchemaResolver.Resolve("dbo", sqlProvider);
+                var wrappedDummy = sqlProvider.GetCompiler().Wrap(dummySchema.Length > 0 ? $"{dummySchema}.{dummyTable}" : dummyTable);
+                finalQuery = odataQuery
+                    .Replace($"{wrappedDummy}.", string.Empty)
+                    .Replace($"FROM {wrappedDummy}", $"FROM {functionCall["SELECT * FROM ".Length..]}");
 
                 Log.Debug("Applied OData fragments to TVF: {Query}", finalQuery);
             }

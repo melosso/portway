@@ -107,6 +107,10 @@ public sealed partial class SqlRequestHandler
                     ? new string[0]
                     : remainingPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
+                var tvfColumnProblem = MapODataColumns(endpoint, ref select, ref filter, ref orderby);
+                if (tvfColumnProblem is not null)
+                    return tvfColumnProblem;
+
                 // Prepare OData parameters for TVF handling
                 var tvfODataParams = new Dictionary<string, string>
                 {
@@ -244,54 +248,9 @@ public sealed partial class SqlRequestHandler
             string? filterForQuery = filter; // This will contain database column names for the SQL query
             string? orderbyForQuery = orderby; // This will contain database column names for the SQL query
 
-            if (allowedColumns.Count > 0)
-            {
-                // Get column mappings for alias support
-                var aliasToDatabase = endpoint.AliasToDatabase;
-                var databaseToAlias = endpoint.DatabaseToAlias;
-
-                // Validate select columns (using aliases)
-                if (!string.IsNullOrEmpty(select))
-                {
-                    var (isValid, invalidAliases) = ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
-
-                    if (!isValid)
-                    {
-                        return PortwayResults.BadRequest($"Selected columns not allowed: {string.Join(", ", invalidAliases)}");
-                    }
-
-                    // Convert aliases to database column names for the SQL query
-                    selectForQuery = ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
-                    Log.Debug("Converted aliases '{Aliases}' to database columns '{DatabaseColumns}'", select, selectForQuery);
-                }
-                else
-                {
-                    // If no select and columns are restricted, use all allowed database columns
-                    var allDatabaseColumns = ColumnMappingHelper.GetDatabaseColumns(databaseToAlias);
-                    selectForQuery = string.Join(",", allDatabaseColumns);
-                    Log.Debug("No select specified, using all allowed database columns: {DatabaseColumns}", selectForQuery);
-                }
-
-                // Convert filter column references from aliases to database columns
-                if (!string.IsNullOrEmpty(filter))
-                {
-                    filterForQuery = ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
-                    if (filterForQuery != filter)
-                    {
-                        Log.Debug("Converted filter aliases: '{OriginalFilter}' -> '{ConvertedFilter}'", filter, filterForQuery);
-                    }
-                }
-
-                // Convert orderby column references from aliases to database columns
-                if (!string.IsNullOrEmpty(orderby))
-                {
-                    orderbyForQuery = ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
-                    if (orderbyForQuery != orderby)
-                    {
-                        Log.Debug("Converted orderby aliases: '{OriginalOrderBy}' -> '{ConvertedOrderBy}'", orderby, orderbyForQuery);
-                    }
-                }
-            }
+            var columnProblem = MapODataColumns(endpoint, ref selectForQuery, ref filterForQuery, ref orderbyForQuery);
+            if (columnProblem is not null)
+                return columnProblem;
 
             // Step 6: Prepare OData parameters (using database column names)
             var odataParams = new Dictionary<string, string>
@@ -510,6 +469,38 @@ public sealed partial class SqlRequestHandler
     }
 
     // json keeps query and parameter values unambiguous and the hash is stable across instances
+    /// <summary>
+    /// Converts OData aliases to database columns and restricts the projection to AllowedColumns; returns a problem result when refused
+    /// </summary>
+    private static IActionResult? MapODataColumns(EndpointDefinition endpoint, ref string? select, ref string? filter, ref string? orderby)
+    {
+        if (endpoint.AllowedColumns is not { Count: > 0 })
+            return null;
+
+        var aliasToDatabase = endpoint.AliasToDatabase;
+
+        if (!string.IsNullOrEmpty(select))
+        {
+            var (isValid, invalidAliases) = ColumnMappingHelper.ValidateAliasColumns(select, aliasToDatabase);
+            if (!isValid)
+                return PortwayResults.BadRequest($"Selected columns not allowed: {string.Join(", ", invalidAliases)}");
+
+            select = ColumnMappingHelper.ConvertAliasesToDatabaseColumns(select, aliasToDatabase);
+        }
+        else
+        {
+            select = string.Join(",", ColumnMappingHelper.GetDatabaseColumns(endpoint.DatabaseToAlias));
+        }
+
+        if (!string.IsNullOrEmpty(filter))
+            filter = ColumnMappingHelper.ConvertODataFilterAliases(filter, aliasToDatabase);
+
+        if (!string.IsNullOrEmpty(orderby))
+            orderby = ColumnMappingHelper.ConvertODataOrderByAliases(orderby, aliasToDatabase);
+
+        return null;
+    }
+
     private static string ReadGenerationKey(string env, string endpointName) => $"sql:generation:{env}:{endpointName}";
 
     // new generation hides older entries
