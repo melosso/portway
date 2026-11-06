@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using PortwayApi.Auth;
+using PortwayApi.Classes;
 using PortwayApi.Services;
 using PortwayApi.Services.Mcp.Providers;
 using Serilog;
@@ -31,6 +32,7 @@ public sealed partial class McpChatService
     private readonly IHttpClientFactory _httpFactory;
     private readonly SqlMetadataService? _sqlMetadata;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly EnvironmentSettings _environments;
 
     // Source-generated zero-overhead regexes
     [GeneratedRegex(@"[^a-zA-Z0-9_]")]
@@ -144,6 +146,7 @@ public sealed partial class McpChatService
         McpConfigService configService,
         IHttpClientFactory httpFactory,
         IServiceScopeFactory scopeFactory,
+        EnvironmentSettings environments,
         SqlMetadataService? sqlMetadata = null)
     {
         _registry = registry;
@@ -151,6 +154,7 @@ public sealed partial class McpChatService
         _configService = configService;
         _httpFactory = httpFactory;
         _scopeFactory = scopeFactory;
+        _environments = environments;
         _sqlMetadata = sqlMetadata;
     }
 
@@ -431,6 +435,9 @@ public sealed partial class McpChatService
             return McpToolResult.Failure($"Environment '{environment}' is not allowed for {toolName}. Allowed environments: {string.Join(", ", toolEnvironments)}.");
         }
 
+        if (!_environments.IsEnvironmentAllowed(environment))
+            return McpToolResult.Failure($"Environment '{environment}' is not allowed.");
+
         var query = input?["query"]?.GetValue<string>();
         var body = input?["body"]?.GetValue<string>();
         var method = new HttpMethod(tool.Method.ToUpperInvariant());
@@ -446,7 +453,7 @@ public sealed partial class McpChatService
         }
 
         var endpointPath = tool.RoutePath;
-        var url = $"{baseUrl}/api/{environment}/{endpointPath}";
+        var url = $"{baseUrl}/api/{Uri.EscapeDataString(environment)}/{endpointPath}";
         if (!string.IsNullOrEmpty(query))
             url += $"?{query.TrimStart('?')}";
 
