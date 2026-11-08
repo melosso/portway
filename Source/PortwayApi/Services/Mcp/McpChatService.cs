@@ -311,16 +311,50 @@ public sealed partial class McpChatService
     }
 
     /// <summary>
-    /// Truncates the content of tool-result history messages from early rounds to keep the total history size manageable across many tool-use rounds
+    /// Summarises tool results before the given history index, keeping total history size bounded across tool rounds
     /// </summary>
     internal static void TrimEarlyToolResultsInHistory(List<ChatMessage> history, int before, int maxChars)
     {
         for (var i = 0; i < before; i++)
         {
             var msg = history[i];
-            if (msg.Role == ChatMessage.Tool && msg.Content.Length > maxChars)
-                history[i] = msg with { Content = msg.Content[..maxChars] + "\n[...earlier tool results compressed]" };
+            if (msg.Role == ChatMessage.Tool && msg.Content.Length > maxChars && !msg.Content.StartsWith(EarlierResult, StringComparison.Ordinal))
+                history[i] = msg with { Content = SummariseToolResult(msg.Content, maxChars) };
         }
+    }
+
+    private const string EarlierResult = "[earlier result]";
+
+    /// <summary>
+    /// Keeps the facts of a long tool result: row counts, field names, the error, then the first rows within maxChars
+    /// </summary>
+    internal static string SummariseToolResult(string content, int maxChars)
+    {
+        var facts = new List<string>();
+        var rest = content;
+        try
+        {
+            if (JsonNode.Parse(content) is JsonObject result)
+            {
+                if (result["value"] is JsonArray rows)
+                {
+                    facts.Add($"rows: {rows.Count}");
+                    if (result["totalCount"] is JsonValue total) facts.Add($"totalCount: {total.ToJsonString()}");
+                    if (rows.FirstOrDefault() is JsonObject first) facts.Add($"fields: {string.Join(", ", first.Select(p => p.Key))}");
+                    rest = rows.ToJsonString();
+                }
+                else if (result["error"] is JsonValue error)
+                {
+                    facts.Add($"error: {error.ToJsonString()}");
+                    rest = string.Empty;
+                }
+            }
+        }
+        catch (JsonException) { }
+
+        var head = $"{EarlierResult} {string.Join("; ", facts)}".TrimEnd() + "\n";
+        var room = Math.Max(0, maxChars - head.Length);
+        return head + (rest.Length > room ? rest[..room] + " [...]" : rest);
     }
 
     // internal, reused by mcp tool call
