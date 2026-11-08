@@ -5,6 +5,11 @@ public sealed record EndpointMcpInfo
     public string Name { get; init; } = string.Empty;
     public string? Namespace { get; init; }
     public string? Version { get; init; }
+    public bool Deprecated { get; init; }
+    /// <summary>
+    /// Relationship names accepted by $expand
+    /// </summary>
+    public IReadOnlyList<string> Expandable { get; init; } = [];
     public IReadOnlyList<string> Methods { get; init; } = [];
     public IReadOnlyList<string>? AllowedEnvironments { get; init; }
     public IReadOnlyList<string>? AvailableFields { get; init; }

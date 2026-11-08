@@ -16,6 +16,8 @@ public sealed record McpToolDescriptor
     public string EndpointName { get; init; } = string.Empty;
     public string? Namespace { get; init; }
     public string? Version { get; init; }
+    public bool Deprecated { get; init; }
+    public IReadOnlyList<string> Expandable { get; init; } = [];
 
     private string BasePath => string.IsNullOrEmpty(Namespace) ? EndpointName : $"{Namespace}/{EndpointName}";
 

@@ -171,4 +171,37 @@ public class McpRegistryStartupExtensionsTests
         Assert.Equal("Account/Accounts", unversioned.RoutePath);
         Assert.Equal(2, registry.ToolsByInvokeName.Count);
     }
+
+    private static EndpointDefinition SqlEndpoint(string objectType = "Table", List<string>? columns = null) => new()
+    {
+        FolderName = "Products",
+        Namespace = "Inventory",
+        Type = EndpointType.SQL,
+        DatabaseObjectName = "Products",
+        DatabaseObjectType = objectType,
+        Methods = ["GET"],
+        AllowedColumns = columns ?? ["ProductId", "CategoryId"],
+        Relationships = [new EndpointRelationship { Name = "Category", Target = "Categories", LocalColumn = "CategoryId", TargetColumn = "CategoryId" }],
+        Mcp = new McpSettings { Exposed = true }
+    };
+
+    [Fact]
+    public void Relationships_OnSqlTable_AreExpandable()
+    {
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new() { ["Inventory/Products"] = SqlEndpoint() }));
+
+        Assert.Equal(["Category"], info.Expandable);
+    }
+
+    [Theory]
+    [InlineData("TableValuedFunction", true)]
+    [InlineData("Table", false)]
+    public void Relationships_WithoutExpandSupport_AreNotListed(string objectType, bool withColumns)
+    {
+        var endpoint = SqlEndpoint(objectType, withColumns ? null : []);
+
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new() { ["Inventory/Products"] = endpoint }));
+
+        Assert.Empty(info.Expandable);
+    }
 }

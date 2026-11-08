@@ -43,87 +43,6 @@ public sealed partial class McpChatService
     [GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*$")]
     private static partial Regex ODataIdentifierPattern();
 
-    private static readonly string _systemPromptBase = """
-        You are a helpful assistant connected to Portway, a business API gateway.
-
-        LANGUAGE RULE (highest priority):
-        Always reply in the exact language the user wrote their message in.
-        Determine language by the words the user typed — NOT by the topic they asked about.
-        Example: "Tell me about the netherlands" is written in English → reply in English.
-        Tool results, field values, or data in any other language do not change your reply language.
-
-        TOOL RULE (always applies):
-        Before answering any question — including general knowledge questions — scan the available tools.
-        If any tool's name or description is relevant to what the user is asking about, call it first.
-        Use real data from the tool to inform your answer rather than relying on general knowledge.
-        Only answer from general knowledge if no tool is relevant at all.
-
-        OData query building — the "query" parameter is appended as a query string to the GET URL.
-        Field names are case-sensitive: use the exact casing from [fields: ...] in the tool description.
-        CRITICAL: When [fields: ...] is listed for a tool, you MUST only use those exact field names in
-        $filter, $select, and $orderby. NEVER infer, guess, or use field names not in the list.
-        If you are unsure which field to sort or filter on, use $top=N with no $filter or $orderby first,
-        then inspect the returned data to find the correct field name before retrying.
-
-        Clauses (combine with &):
-        - Limit rows:          $top=20
-        - Specific fields:     $select=Name,Code
-        - Skip rows:           $skip=20  (use with $top for pagination)
-        - Count total:         $count=true
-        - Sort ascending:      $orderby=Name asc
-        - Sort descending:     $orderby=Quantity desc
-
-        Filter operators ($filter=...):
-        - Equals:              Field eq 'Value'        e.g. $filter=Status eq 'Active'
-        - Not equals:          Field ne 'Value'        e.g. $filter=Country ne 'NL'
-        - Greater than:        Field gt Value          e.g. $filter=QuantityInStock gt 100
-        - Greater or equal:    Field ge Value          e.g. $filter=QuantityInStock ge 1
-        - Less than:           Field lt Value          e.g. $filter=QuantityInStock lt 10
-        - Less or equal:       Field le Value          e.g. $filter=Price le 99.99
-        - Boolean/numeric:     Field eq true           e.g. $filter=IsActive eq true
-        - Null check:          Field eq null           e.g. $filter=Region ne null
-        - Contains text:       contains(Field,'text')  e.g. $filter=contains(Name,'Smith')
-        - Starts with:         startswith(Field,'x')   e.g. $filter=startswith(Code,'WH')
-        - Ends with:           endswith(Field,'x')     e.g. $filter=endswith(Code,'001')
-        - Combine (and):       (A eq 'x') and (B gt 5) e.g. $filter=IsActive eq true and QuantityInStock gt 0
-        - Combine (or):        (A eq 'x') or (A eq 'y')
-
-        Examples:
-        - "active items with stock":  $filter=IsActive eq true and QuantityInStock gt 0&$top=20
-        - "top 5 highest stock":      $orderby=QuantityInStock desc&$top=5
-        - "names only":               $select=Name&$top=20
-        - "count all active":         $filter=IsActive eq true&$count=true&$top=0
-        - "search by name":           $filter=contains(Name,'keyword')&$top=20
-
-        Cross-endpoint queries:
-        When the user's question spans multiple tools (e.g. "show stock per warehouse"), call each relevant
-        tool separately and combine the results in your response — Portway endpoints do not support joins.
-
-        Rules:
-        - ALWAYS scan tools before answering. If any tool name or description matches the topic (even loosely), call it. Do not answer from general knowledge when a relevant tool exists.
-        - ALWAYS call a tool when the user asks about data. Never refuse by saying you lack the capability.
-        - Always include $top (e.g. $top=20) unless the user explicitly asks for all records.
-        - When the user asks for specific fields, use $select with only those fields.
-        - When the user asks to filter, search, or find the highest/lowest/most/least, use $filter or $orderby.
-        - Use $orderby=Field desc&$top=N for "highest/most" and $orderby=Field asc&$top=N for "lowest/least".
-        - If a tool has NO [fields: ...] annotation, call it with $top=5 first (no $filter or $orderby) to
-          discover what fields actually exist, then use those real field names for any follow-up queries.
-        - If a tool returns an empty result, report "no records found" and STOP.
-        - If a tool returns an error, explain it clearly and do not retry unless the user asks.
-        - Never call the same tool with the same parameters more than once per turn.
-        - Summarise results in plain language — use a short table or list, never dump raw JSON.
-        - ALWAYS reply in the same language the user used in their message. The language of data returned
-          by tools (e.g. Dutch field values, French descriptions) must never change your response language.
-          If the user writes in English, reply in English — even when tool results contain non-English text.
-
-        Non-JSON responses:
-        - If a tool result starts with "[Content-Type: text/csv]", the data is CSV. Present it as a markdown table.
-        - If a tool result starts with "[Content-Type: text/xml]" or "[Content-Type: application/xml]", summarise the structure in plain language — do not dump raw XML.
-        - If a tool result starts with "[Content-Type: text/plain]", present it as readable text.
-        - If a tool result starts with "[Binary content:]", tell the user the file cannot be shown in chat and they should download it directly from the Portway API.
-        - Never return raw CSV or XML to the user — always convert to a human-readable format.
-        """;
-
     // Minimal JSON Schema for tool inputs; each tool accepts env + optional query/body
     private static readonly string _toolInputSchema = """
         {
@@ -187,7 +106,7 @@ public sealed partial class McpChatService
 
     private IReadOnlyList<ToolDefinition> BuildToolDefinitions(ImmutableList<McpToolDescriptor> registered) =>
         registered
-            .GroupBy(t => (t.Namespace, t.EndpointName))
+            .GroupBy(t => (t.Namespace, t.EndpointName, t.Version))
             .Select(g =>
             {
                 var methods = string.Join(", ", g.Select(t => t.Method));
@@ -207,6 +126,9 @@ public sealed partial class McpChatService
                 var ctHint = first.ContentType is not null && !first.ContentType.Contains("json")
                     ? $" [returns: {first.ContentType}]"
                     : string.Empty;
+                var versionInfo = (first.Version is null ? "" : $" [version: {first.Version}]")
+                    + (first.Deprecated ? " [deprecated]" : "")
+                    + (first.Expandable.Count > 0 ? $" [expand: {string.Join(", ", first.Expandable)}]" : "");
                 // Human label: aggregate per-method summaries, e.g. "Retrieve product stock"
                 var displayParts = g
                     .Select(t => t.DisplayDescription)
@@ -224,10 +146,10 @@ public sealed partial class McpChatService
 
                 return new ToolDefinition(
                     // Sanitise name for LLM: namespace_endpoint, lowercase, underscores only
-                    Name: SanitiseName(string.IsNullOrEmpty(first.Namespace)
+                    Name: SanitiseName((string.IsNullOrEmpty(first.Namespace)
                         ? first.EndpointName
-                        : $"{first.Namespace}_{first.EndpointName}"),
-                    Description: $"{first.Description} (methods: {methods}){fieldInfo}{envInfo}{ctHint}",
+                        : $"{first.Namespace}_{first.EndpointName}") + (first.Version is null ? "" : $"_{first.Version}")),
+                    Description: $"{first.Description} (methods: {methods}){versionInfo}{fieldInfo}{envInfo}{ctHint}",
                     InputSchema: _toolInputSchema,
                     DisplayDescription: displayDesc,
                     ReadOnly: isReadOnly,
@@ -290,7 +212,7 @@ public sealed partial class McpChatService
         var tools = GetToolDefinitions();
 
         // Build a locale-aware system prompt so the LLM formats numbers correctly
-        var systemPrompt = BuildSystemPrompt(locale);
+        var systemPrompt = new ChatMessage("system", McpChatSystemPrompt.Build(locale));
 
         var mutableHistory = new List<ChatMessage> { systemPrompt };
         mutableHistory.AddRange(history);
@@ -721,28 +643,6 @@ public sealed partial class McpChatService
             message = "Result truncated. Ask for fewer results or apply a filter.",
             partial
         }, _jsonOpts);
-
-    private static ChatMessage BuildSystemPrompt(string? locale)
-    {
-        var localeHint = string.Empty;
-        if (!string.IsNullOrWhiteSpace(locale))
-        {
-            try
-            {
-                var culture = System.Globalization.CultureInfo.GetCultureInfo(locale);
-                var nf = culture.NumberFormat;
-                localeHint = $"\nNumber formatting (locale '{locale}'): " +
-                             $"thousands separator '{nf.NumberGroupSeparator}', decimal separator '{nf.NumberDecimalSeparator}'. " +
-                             $"Apply this to all numbers in your responses.";
-            }
-            catch (System.Globalization.CultureNotFoundException ex)
-            {
-                Log.Debug(ex, "Unknown locale {Locale}, omitting number formatting hint", locale);
-            }
-        }
-
-        return new ChatMessage("system", _systemPromptBase + localeHint);
-    }
 
     private async Task<IChatProvider?> BuildProviderAsync(CancellationToken ct)
     {

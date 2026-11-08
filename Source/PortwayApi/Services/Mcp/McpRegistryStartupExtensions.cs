@@ -56,6 +56,13 @@ public static class McpRegistryStartupExtensions
                 Name = kvp.Value.EndpointName,
                 Namespace = kvp.Value.EffectiveNamespace,
                 Version = EndpointVersion.IsDefault(kvp.Value.Version) ? null : kvp.Value.Version,
+                Deprecated = kvp.Value.Deprecated,
+                // matches the SqlRequestHandler gate: tables and views with AllowedColumns
+                Expandable = kvp.Value.Type == EndpointType.SQL
+                    && kvp.Value.DatabaseObjectType != "TableValuedFunction"
+                    && kvp.Value.AllowedColumns is { Count: > 0 }
+                    ? kvp.Value.Relationships?.Select(r => r.Name).ToList() ?? []
+                    : [],
                 Methods = kvp.Value.Mcp?.AllowedMethods is { Count: > 0 } allowed
                     ? kvp.Value.Methods.Where(m => allowed.Contains(m, StringComparer.OrdinalIgnoreCase)).ToList()
                     : kvp.Value.Methods.Take(1).ToList(),

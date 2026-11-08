@@ -80,6 +80,8 @@ public class McpEndpointRegistry
                     EndpointName = ep.Name,
                     Namespace = ep.Namespace,
                     Version = ep.Version,
+                    Deprecated = ep.Deprecated,
+                    Expandable = ep.Expandable,
                     Method = method,
                     AllowedEnvironments = ep.AllowedEnvironments,
                     TenantHeaders = ep.TenantHeaders,
