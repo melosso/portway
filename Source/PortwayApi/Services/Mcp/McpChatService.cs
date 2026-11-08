@@ -209,6 +209,22 @@ public sealed partial class McpChatService
             return;
         }
 
+        await RunTurnAsync(provider, history, defaultEnvironment, writer, baseUrl, authToken, locale, ct);
+    }
+
+    /// <summary>
+    /// Runs one chat turn against the given provider
+    /// </summary>
+    internal async Task RunTurnAsync(
+        IChatProvider provider,
+        IReadOnlyList<ChatMessage> history,
+        string defaultEnvironment,
+        TextWriter writer,
+        string baseUrl,
+        string? authToken,
+        string? locale,
+        CancellationToken ct)
+    {
         var tools = GetToolDefinitions();
         var question = history.LastOrDefault(m => m.Role == ChatMessage.User)?.Content ?? string.Empty;
         var requestedTools = new HashSet<string>(StringComparer.Ordinal);
@@ -700,16 +716,17 @@ public sealed partial class McpChatService
 
         var apiKey = cfg.ApiKey!;
         var model = string.IsNullOrWhiteSpace(cfg.Model) ? "claude-sonnet-4-6" : cfg.Model;
-        var provider = cfg.Provider;
-
-        return provider.ToLowerInvariant() switch
-        {
-            "openai" => new OpenAiCompatibleChatProvider("OpenAI", apiKey, model, OpenAiCompatibleChatProvider.OpenAiUrl, _httpFactory),
-            "gemini" => new GeminiChatProvider(apiKey, model, _httpFactory),
-            "mistral" => new OpenAiCompatibleChatProvider("Mistral", apiKey, model, OpenAiCompatibleChatProvider.MistralUrlFor(model), _httpFactory),
-            _ => new AnthropicChatProvider(apiKey, model, _httpFactory)
-        };
+        return CreateProvider(cfg.Provider, apiKey, model, _httpFactory);
     }
+
+    internal static IChatProvider CreateProvider(string provider, string apiKey, string model, IHttpClientFactory httpFactory) =>
+        provider.ToLowerInvariant() switch
+        {
+            "openai" => new OpenAiCompatibleChatProvider("OpenAI", apiKey, model, OpenAiCompatibleChatProvider.OpenAiUrl, httpFactory),
+            "gemini" => new GeminiChatProvider(apiKey, model, httpFactory),
+            "mistral" => new OpenAiCompatibleChatProvider("Mistral", apiKey, model, OpenAiCompatibleChatProvider.MistralUrlFor(model), httpFactory),
+            _ => new AnthropicChatProvider(apiKey, model, httpFactory)
+        };
 
     private static async Task WriteSseAsync(TextWriter writer, ChatDelta delta, CancellationToken ct)
     {
