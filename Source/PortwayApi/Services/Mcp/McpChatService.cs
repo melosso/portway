@@ -219,9 +219,10 @@ public sealed partial class McpChatService
 
         // Per-turn deduplication: skip re-executing identical (toolName, inputJson) pairs
         var seenToolCalls = new HashSet<(string, string)>();
+        var previousRoundStart = mutableHistory.Count;
 
-        // Tool-use loop; LLM may request multiple sequential tool calls
-        for (var round = 0; round < McpChatSystemPrompt.MaxToolRounds; round++)
+        // the pass after the last round answers from the results; its tool calls do not run
+        for (var round = 0; round <= McpChatSystemPrompt.MaxToolRounds; round++)
         {
             if (ct.IsCancellationRequested) break;
 
@@ -229,7 +230,8 @@ public sealed partial class McpChatService
             if (round > 0)
                 await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Thinking }, ct);
 
-            var pendingToolCalls = new List<(string name, string input)>();
+            var pendingToolCalls = new List<ChatToolCall>();
+            var roundText = new StringBuilder();
 
             await foreach (var delta in provider.StreamAsync(mutableHistory, tools, ct))
             {
@@ -237,7 +239,11 @@ public sealed partial class McpChatService
                 {
                     case ChatDeltaType.ToolCall:
                         // Collect tool calls; execute after the stream ends for this round
-                        pendingToolCalls.Add((delta.ToolName!, delta.ToolInput ?? "{}"));
+                        pendingToolCalls.Add(new ChatToolCall(
+                            delta.ToolCallId ?? $"call_{round}_{pendingToolCalls.Count}",
+                            delta.ToolName!,
+                            string.IsNullOrWhiteSpace(delta.ToolInput) ? "{}" : delta.ToolInput,
+                            delta.ToolSignature));
                         break;
 
                     case ChatDeltaType.Done:
@@ -250,6 +256,7 @@ public sealed partial class McpChatService
                         return;
 
                     default:
+                        if (delta.Type == ChatDeltaType.Text) roundText.Append(delta.Delta);
                         await WriteSseAsync(writer, delta, ct);
                         break;
                 }
@@ -257,49 +264,47 @@ public sealed partial class McpChatService
                 if (delta.Type == ChatDeltaType.Done) break;
             }
 
-            if (pendingToolCalls.Count == 0) break;
+            if (pendingToolCalls.Count == 0 || round == McpChatSystemPrompt.MaxToolRounds) break;
 
-            // Execute tool calls and feed results back into history, truncated to avoid blowing the model's context window
+            // Compress earlier rounds' tool results before appending this turn, to keep history bloat bounded
+            if (round >= 2)
+                TrimEarlyToolResultsInHistory(mutableHistory, previousRoundStart, maxChars: 500);
+            previousRoundStart = mutableHistory.Count;
+
+            // Tool results go back as tool turns: the provider keeps them apart from the assistant's own words
+            mutableHistory.Add(new ChatMessage(ChatMessage.Assistant, roundText.ToString()) { ToolCalls = pendingToolCalls });
+
             var maxChars = _mcpOptions.MaxToolResultChars;
-            var toolResultParts = new StringBuilder();
-            var assistantParts = new StringBuilder("I called the following tools:\n");
-
-            foreach (var (name, inputJson) in pendingToolCalls)
+            foreach (var call in pendingToolCalls)
             {
                 // Server-side deduplication: skip identical calls within this turn
-                var callKey = (name, inputJson);
-                if (!seenToolCalls.Add(callKey))
+                if (!seenToolCalls.Add((call.Name, call.Input)))
                 {
-                    Log.Debug("MCP: skipping duplicate tool call {Tool} with same parameters", name);
+                    Log.Debug("MCP: skipping duplicate tool call {Tool} with same parameters", call.Name);
+                    mutableHistory.Add(ChatMessage.ToolResult(call, "Duplicate call skipped. The result of the identical earlier call applies."));
                     continue;
                 }
 
-                var result = (await ExecuteToolAsync(name, inputJson, defaultEnvironment, baseUrl, authToken, ct)).Text;
+                var result = (await ExecuteToolAsync(call.Name, call.Input, defaultEnvironment, baseUrl, authToken, ct)).Text;
 
                 // Truncate for history to stay within context window limits
                 var historyResult = result.Length > maxChars
                     ? result[..maxChars] + $"\n[...truncated: {result.Length - maxChars} additional characters omitted. Ask for fewer results or apply a filter.]"
                     : result;
 
-                toolResultParts.AppendLine($"[{name}]: {historyResult}");
-                assistantParts.AppendLine($"- {name}({inputJson}) → {historyResult}");
+                mutableHistory.Add(ChatMessage.ToolResult(call, historyResult));
 
                 // Stream full (untruncated) result to the client for display
                 await WriteSseAsync(writer, new ChatDelta
                 {
                     Type = ChatDeltaType.ToolCall,
-                    ToolName = name,
-                    ToolInput = inputJson,
+                    ToolName = call.Name,
+                    ToolInput = call.Input,
                     ToolResult = result
                 }, ct);
             }
 
-            // Compress earlier rounds' tool results before appending this turn, to keep history bloat bounded
-            if (round >= 2)
-                TrimEarlyToolResultsInHistory(mutableHistory, maxChars: 500);
-
-            mutableHistory.Add(new ChatMessage("assistant", assistantParts.ToString()));
-            mutableHistory.Add(new ChatMessage("user", McpChatSystemPrompt.Continuation));
+            mutableHistory.Add(new ChatMessage(ChatMessage.User, McpChatSystemPrompt.Continuation));
         }
 
         await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Done }, ct);
@@ -308,21 +313,13 @@ public sealed partial class McpChatService
     /// <summary>
     /// Truncates the content of tool-result history messages from early rounds to keep the total history size manageable across many tool-use rounds
     /// </summary>
-    private static void TrimEarlyToolResultsInHistory(List<ChatMessage> history, int maxChars)
+    internal static void TrimEarlyToolResultsInHistory(List<ChatMessage> history, int before, int maxChars)
     {
-        // Compress only messages before the last 4 entries (current + previous round pairs); the system prompt is never touched
-        var trimBefore = history.Count - 4;
-        for (var i = 1; i < trimBefore; i++)
+        for (var i = 0; i < before; i++)
         {
             var msg = history[i];
-            if (msg.Role == "assistant" && msg.Content.StartsWith("I called", StringComparison.Ordinal)
-                && msg.Content.Length > maxChars)
-            {
-                history[i] = msg with
-                {
-                    Content = msg.Content[..maxChars] + "\n[...earlier tool results compressed]"
-                };
-            }
+            if (msg.Role == ChatMessage.Tool && msg.Content.Length > maxChars)
+                history[i] = msg with { Content = msg.Content[..maxChars] + "\n[...earlier tool results compressed]" };
         }
     }
 
