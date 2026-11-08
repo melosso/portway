@@ -221,8 +221,7 @@ public sealed partial class McpChatService
         var seenToolCalls = new HashSet<(string, string)>();
 
         // Tool-use loop; LLM may request multiple sequential tool calls
-        const int MaxToolRounds = 5;
-        for (var round = 0; round < MaxToolRounds; round++)
+        for (var round = 0; round < McpChatSystemPrompt.MaxToolRounds; round++)
         {
             if (ct.IsCancellationRequested) break;
 
@@ -300,7 +299,7 @@ public sealed partial class McpChatService
                 TrimEarlyToolResultsInHistory(mutableHistory, maxChars: 500);
 
             mutableHistory.Add(new ChatMessage("assistant", assistantParts.ToString()));
-            mutableHistory.Add(new ChatMessage("user", "Please continue based on those tool results."));
+            mutableHistory.Add(new ChatMessage("user", McpChatSystemPrompt.Continuation));
         }
 
         await WriteSseAsync(writer, new ChatDelta { Type = ChatDeltaType.Done }, ct);
