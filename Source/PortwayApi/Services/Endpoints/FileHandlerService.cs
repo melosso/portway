@@ -471,7 +471,6 @@ public class FileHandlerService : IDisposable
     /// </summary>
     private void InvalidateCached(string fileId)
     {
-        // ponytail: one global generation, a write anywhere skips caching for reads in flight, per-file counters if write-heavy
         Interlocked.Increment(ref _writeGeneration);
         Evict(fileId);
     }
