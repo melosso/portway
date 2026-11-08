@@ -155,7 +155,7 @@ public static partial class WebUiEndpointExtensions
 
             Log.Information("Console sign-in as {Username} through {Provider}", account.Username, provider.Name);
 
-            IssueSessionCookies(ctx, account.Id, secureCookies);
+            IssueSessionCookies(ctx, account, secureCookies);
             return Results.Redirect($"{ctx.Request.PathBase}/_/dashboard");
         }).ExcludeFromDescription();
 

@@ -78,37 +78,47 @@ public static class WebUiAuthHelper
     }
 
     /// <summary>
-    /// Signs a session cookie carrying the account id
+    /// Signs a session cookie carrying the account id and a stamp of its password
     /// </summary>
-    public static string IssueSessionCookie(int userId, int expiryHours)
+    public static string IssueSessionCookie(int userId, string passwordHash, TimeSpan lifetime)
     {
-        var expiry = DateTimeOffset.UtcNow.AddHours(expiryHours).ToUnixTimeSeconds().ToString();
-        return $"{userId}.{expiry}.{SignSession(userId, expiry)}";
+        var expiry = DateTimeOffset.UtcNow.Add(lifetime).ToUnixTimeSeconds().ToString();
+        var stamp = SessionStamp(passwordHash);
+        return $"{userId}.{expiry}.{stamp}.{SignSession($"{userId}:{expiry}:{stamp}")}";
     }
 
     /// <summary>
-    /// The account id in a valid, unexpired session cookie, or null
+    /// The account id and password stamp in a valid, unexpired session cookie, or null
     /// </summary>
-    public static int? ResolveSession(string? token)
+    public static (int UserId, string Stamp)? ResolveSession(string? token)
     {
         if (string.IsNullOrEmpty(token)) return null;
 
         var parts = token.Split('.');
-        if (parts.Length != 3) return null;
+        if (parts.Length != 4) return null;
         if (!int.TryParse(parts[0], out var userId)) return null;
         if (!long.TryParse(parts[1], out var expiry) ||
             DateTimeOffset.FromUnixTimeSeconds(expiry) < DateTimeOffset.UtcNow) return null;
 
-        var expected = SignSession(userId, parts[1]);
+        var expected = SignSession($"{userId}:{parts[1]}:{parts[2]}");
         return CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(expected),
-            Encoding.UTF8.GetBytes(parts[2])) ? userId : null;
+            Encoding.UTF8.GetBytes(parts[3])) ? (userId, parts[2]) : null;
     }
 
-    private static string SignSession(int userId, string expiry)
+    /// <summary>
+    /// Derives the session stamp from a password hash; a password change ends every session
+    /// </summary>
+    public static string SessionStamp(string passwordHash)
     {
         using var hmac = new HMACSHA256(SessionKeyProvider.Key);
-        return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
+        return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"stamp:{passwordHash}")), 0, 8);
+    }
+
+    private static string SignSession(string payload)
+    {
+        using var hmac = new HMACSHA256(SessionKeyProvider.Key);
+        return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(payload)));
     }
 
     /// <summary>

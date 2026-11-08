@@ -98,14 +98,12 @@ public class PrometheusScrapeEndpointTests : IDisposable
     private readonly string _authDbPath;
     private readonly string _mcpDbPath;
 
-    // Generates a session cookie matching the format expected by WebUiAuthHelper.ResolveSession
-    private static string MintSessionCookie()
+    // signs a session for the seeded account
+    private string MintSessionCookie()
     {
-        const int userId = 1;
-        var expiry = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString();
-        using var hmac = new System.Security.Cryptography.HMACSHA256(PortwayApi.Helpers.SessionKeyProvider.Key);
-        var sig = Convert.ToBase64String(hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{userId}:{expiry}")));
-        return Uri.EscapeDataString($"{userId}.{expiry}.{sig}");
+        using var scope = _factory.Services.CreateScope();
+        var account = scope.ServiceProvider.GetRequiredService<PortwayApi.Auth.AuthDbContext>().AdminUsers.First();
+        return Uri.EscapeDataString(PortwayApi.Helpers.WebUiAuthHelper.IssueSessionCookie(account.Id, account.PasswordHash, TimeSpan.FromHours(1)));
     }
 
     public PrometheusScrapeEndpointTests()

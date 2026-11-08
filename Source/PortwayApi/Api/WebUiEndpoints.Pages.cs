@@ -16,6 +16,9 @@ public static partial class WebUiEndpointExtensions
     /// <summary>
     /// Reads a JSON object of text fields, or null.
     /// </summary>
+    private static bool Remember(JsonElement body) =>
+        body.TryGetProperty("remember", out var r) && r.ValueKind == JsonValueKind.True;
+
     private static async Task<JsonElement?> ReadSignInBodyAsync(HttpRequest request)
     {
         if (!request.HasJsonContentType())
@@ -24,7 +27,7 @@ public static partial class WebUiEndpointExtensions
         try
         {
             var body = await request.ReadFromJsonAsync<JsonElement>(request.HttpContext.RequestAborted);
-            return body.ValueKind == JsonValueKind.Object && body.EnumerateObject().All(field => field.Value.ValueKind is JsonValueKind.String or JsonValueKind.Null)
+            return body.ValueKind == JsonValueKind.Object && body.EnumerateObject().All(field => field.Name == "remember" ? field.Value.ValueKind is JsonValueKind.True or JsonValueKind.False : field.Value.ValueKind is JsonValueKind.String or JsonValueKind.Null)
                 ? body
                 : null;
         }
@@ -96,7 +99,7 @@ public static partial class WebUiEndpointExtensions
             // Consume the CSRF token (one-time use)
             WebUiAuthHelper.ConsumeCsrfToken(csrfToken!);
 
-            IssueSessionCookies(context, account.Id, secureCookies);
+            IssueSessionCookies(context, account, secureCookies, Remember(body));
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 
@@ -138,7 +141,7 @@ public static partial class WebUiEndpointExtensions
             var account = await users.FindAsync(username);
             Log.Information("Console account {Username} set its own password", username);
 
-            IssueSessionCookies(context, account!.Id, secureCookies);
+            IssueSessionCookies(context, account!, secureCookies, Remember(body));
             return Results.Ok(new { ok = true });
         }).ExcludeFromDescription();
 

@@ -84,6 +84,10 @@
       <div class="field-help">At least 12 characters.</div>
     </div>
 
+    <label class="dialog-checkbox signin-remember">
+      <input type="checkbox" id="rememberInput"><span>Remember me for 30 days</span>
+    </label>
+
     <div class="signin-error" id="authError" role="alert" aria-live="assertive">Invalid username or password</div>
 
     <button type="submit" class="btn btn-primary btn-block signin-submit" id="signInBtn">
@@ -165,6 +169,7 @@
     const username = document.getElementById('usernameInput').value;
     const password = document.getElementById('passwordInput').value;
     const newPassword = document.getElementById('newPasswordInput').value;
+    const remember = document.getElementById('rememberInput').checked;
     const btn = document.getElementById('signInBtn');
     const err = document.getElementById('authError');
     err.style.display = 'none';
@@ -177,7 +182,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, newPassword, csrf: csrfToken })
+        body: JSON.stringify({ username, password, newPassword, remember, csrf: csrfToken })
       });
       const d = await r.json().catch(() => ({}));
 

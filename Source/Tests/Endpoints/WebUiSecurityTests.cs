@@ -183,6 +183,48 @@ public class WebUiSecurityTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData(true, 30 * 24)]
+    [InlineData(false, 12)]
+    public async Task SignIn_RememberSetsSessionLifetime(bool remember, int hours)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = CreateClient();
+        await LoginAsync(client);
+
+        var csrf = (await client.GetFromJsonAsync<JsonElement>("/_/api/auth/csrf", ct)).GetProperty("csrf").GetString();
+        var login = await client.PostAsJsonAsync("/_/api/auth", new { username = "admin", password = SeededPassword, csrf, remember }, ct);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+
+        var setCookie = login.Headers.GetValues("Set-Cookie").First(c => c.StartsWith("portway_auth="));
+        var signedExpiry = DateTimeOffset.FromUnixTimeSeconds(long.Parse(Uri.UnescapeDataString(setCookie.Split(';')[0]["portway_auth=".Length..]).Split('.')[1]));
+        var lifetime = TimeSpan.FromHours(hours);
+        Assert.InRange(signedExpiry - DateTimeOffset.UtcNow, lifetime - TimeSpan.FromMinutes(1), lifetime);
+        Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task PasswordChange_EndsExistingSessions()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = CreateClient();
+        var (auth, _) = await LoginAsync(client);
+
+        using (var before = AuthedRequest(HttpMethod.Get, "/_/api/users/me", auth))
+            Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(before, ct)).StatusCode);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<PortwayApi.Auth.AuthDbContext>();
+            var admin = await db.AdminUsers.FirstAsync(u => u.Username == "admin", ct);
+            admin.PasswordHash = PortwayApi.Auth.AdminUserService.HashPassword("An0ther-console-pw-1");
+            await db.SaveChangesAsync(ct);
+        }
+
+        using var after = AuthedRequest(HttpMethod.Get, "/_/api/users/me", auth);
+        Assert.Equal(HttpStatusCode.Found, (await client.SendAsync(after, ct)).StatusCode);
+    }
+
     [Fact]
     public async Task UnauthenticatedUiApiRequest_RedirectsToLogin()
     {
@@ -555,6 +597,8 @@ public class WebUiSecurityTests : IDisposable
     [InlineData("/_/api/auth", """{"username":1,"password":"x"}""", "application/json")]
     [InlineData("/_/api/auth", """{"username":"admin","password":{}}""", "application/json")]
     [InlineData("/_/api/auth", """{"username":"admin","csrf":[]}""", "application/json")]
+    [InlineData("/_/api/auth", """{"username":true,"password":"x"}""", "application/json")]
+    [InlineData("/_/api/auth", """{"username":"admin","password":"x","remember":"yes"}""", "application/json")]
     [InlineData("/_/api/auth", "[]", "application/json")]
     [InlineData("/_/api/auth", "not json", "application/json")]
     [InlineData("/_/api/auth/password", """{"username":1}""", "application/json")]
