@@ -210,6 +210,8 @@ public sealed partial class McpChatService
         }
 
         var tools = GetToolDefinitions();
+        var question = history.LastOrDefault(m => m.Role == ChatMessage.User)?.Content ?? string.Empty;
+        var requestedTools = new HashSet<string>(StringComparer.Ordinal);
 
         // Build a locale-aware system prompt so the LLM formats numbers correctly
         var systemPrompt = new ChatMessage("system", McpChatSystemPrompt.Build(locale));
@@ -233,7 +235,7 @@ public sealed partial class McpChatService
             var pendingToolCalls = new List<ChatToolCall>();
             var roundText = new StringBuilder();
 
-            await foreach (var delta in provider.StreamAsync(mutableHistory, tools, ct))
+            await foreach (var delta in provider.StreamAsync(mutableHistory, McpChatToolSelector.Select(tools, question, requestedTools), ct))
             {
                 switch (delta.Type)
                 {
@@ -244,6 +246,8 @@ public sealed partial class McpChatService
                             delta.ToolName!,
                             string.IsNullOrWhiteSpace(delta.ToolInput) ? "{}" : delta.ToolInput,
                             delta.ToolSignature));
+                        // a called tool stays in the list for the rest of the turn
+                        requestedTools.Add(delta.ToolName!);
                         break;
 
                     case ChatDeltaType.Done:
@@ -285,7 +289,15 @@ public sealed partial class McpChatService
                     continue;
                 }
 
-                var result = (await ExecuteToolAsync(call.Name, call.Input, defaultEnvironment, baseUrl, authToken, ct)).Text;
+                string result;
+                if (call.Name == McpChatToolSelector.FindToolsName)
+                {
+                    var found = McpChatToolSelector.Find(tools, call.Input);
+                    requestedTools.UnionWith(found.Select(t => t.Name));
+                    result = McpChatToolSelector.Describe(found);
+                }
+                else
+                    result = (await ExecuteToolAsync(call.Name, call.Input, defaultEnvironment, baseUrl, authToken, ct)).Text;
 
                 // Truncate for history to stay within context window limits
                 var historyResult = result.Length > maxChars

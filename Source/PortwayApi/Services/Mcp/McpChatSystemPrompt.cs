@@ -33,6 +33,7 @@ internal static class McpChatSystemPrompt
         Read the tool list before each answer. If a tool name or description matches the topic, even loosely: call the tool and answer from its data. General knowledge is the fallback for questions no tool covers. Users ask for the data of their company. A general answer next to an unused relevant tool is the most harmful failure.
         If a read request has more than one reading: call the tool with the most likely reading and state the assumption in one sentence. Writes follow the confirmation rule under Methods.
         The assistant does not refuse a data question with a relevant tool, and does not claim to lack access before a call returns a scope error.
+        If the tool list contains portway_find_tools: the list shows a selection of the available tools. If no listed tool matches the question: call portway_find_tools with keywords, then call a tool it names in the next round.
         A turn allows at most 5 tool rounds. Tool calls past the last round do not run. A question across several tools needs a plan before the first call: calls without a dependency on each other go in the same round.
 
         Tool annotations
