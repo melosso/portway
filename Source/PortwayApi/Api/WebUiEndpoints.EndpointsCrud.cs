@@ -1,6 +1,6 @@
-using PortwayApi.Auth;
 namespace PortwayApi.Endpoints;
 
+using PortwayApi.Auth;
 using Serilog;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -57,7 +57,7 @@ public static partial class WebUiEndpointExtensions
                     var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(movedJson)!;
                     dict.Remove("Namespace");
                     await File.WriteAllTextAsync(newFilePath!,
-                        JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true }));
+                        JsonSerializer.Serialize(dict, SharedJsonOptions.Indented));
                 }
             }
             catch (Exception ex) { Log.Warning(ex, "Renamed endpoint to {NewName} but could not clear doubled Namespace from entity.json", newName); }
@@ -123,7 +123,7 @@ public static partial class WebUiEndpointExtensions
             try
             {
                 using var doc = JsonDocument.Parse(rawContent);
-                rawContent = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+                rawContent = JsonSerializer.Serialize(doc.RootElement, IndentedJson);
             }
             catch (JsonException ex) { return Results.Json(new { error = $"Invalid JSON: {ex.Message}" }, statusCode: 400); }
 

@@ -720,7 +720,7 @@ public sealed partial class SettingsWriteService
     {
         ConfigBackupService.Backup(OverridesPath);
 
-        await AtomicFile.WriteAllTextAsync(OverridesPath, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        await AtomicFile.WriteAllTextAsync(OverridesPath, root.ToJsonString(SharedJsonOptions.Indented));
     }
 
     private static JsonObject? Parent(JsonObject root, string key, bool create)

@@ -1,5 +1,6 @@
 namespace PortwayApi.Classes;
 
+using PortwayApi.Helpers;
 using System.Text.Json;
 using Serilog;
 
@@ -12,11 +13,6 @@ public static partial class EndpointHandler
     private static volatile Dictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
     private static volatile Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
-
-    // Shared so a reload builds the serializer metadata cache once, not per endpoint file
-    private static readonly JsonSerializerOptions CaseInsensitiveOptions = new() { PropertyNameCaseInsensitive = true };
-
-    private static readonly JsonSerializerOptions IndentedOptions = new() { WriteIndented = true };
 
     private static readonly EndpointLoaderSpec ProxyLoaderSpec = new(
         "Proxy", "proxy", "", "*.json", NamespaceAware: true,
@@ -243,13 +239,6 @@ public static partial class EndpointHandler
     /// </summary>
     private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, WebhookLoaderSpec, previous);
-
-
-
-
-
-
-
 
     /// <summary>
     /// Reloads all endpoint definitions from disk

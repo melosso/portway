@@ -1,6 +1,7 @@
-using System.Collections.Frozen;
 namespace PortwayApi.Auth;
 
+using PortwayApi.Helpers;
+using System.Collections.Frozen;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -278,7 +279,7 @@ public class TokenService
                 Usage = "Use this token in the Authorization header as: Bearer <token>"
             };
 
-            var options = new JsonSerializerOptions { WriteIndented = true };
+            var options = SharedJsonOptions.Indented;
             string tokenJson = JsonSerializer.Serialize(tokenInfo, options);
             await File.WriteAllTextAsync(filePath, tokenJson);
 

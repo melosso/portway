@@ -64,13 +64,7 @@ public class FileTrafficLogStorage : ITrafficLogStorage
 
             foreach (var log in logs)
             {
-                // Use JSON format for all details
-                string logJson = JsonSerializer.Serialize(log, new JsonSerializerOptions
-                {
-                    WriteIndented = false
-                });
-
-                linesToWrite.Add(logJson);
+                linesToWrite.Add(JsonSerializer.Serialize(log));
             }
 
             // Write to file with lock to prevent concurrent access issues

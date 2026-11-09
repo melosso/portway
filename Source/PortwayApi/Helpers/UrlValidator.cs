@@ -20,7 +20,7 @@ public class UrlValidator
 
         var config = JsonSerializer.Deserialize<HostConfig>(
             File.ReadAllText(configPath),
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            SharedJsonOptions.CaseInsensitive
         );
 
         if (config == null)

@@ -10,7 +10,6 @@ using Serilog;
 
 public class CompositeEndpointHandler
 {
-    private static readonly JsonSerializerOptions CaseInsensitiveOptions = new() { PropertyNameCaseInsensitive = true };
     private static readonly JsonSerializerOptions CaseInsensitiveIndentedOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 
     private readonly IHttpClientFactory _httpClientFactory;
@@ -352,7 +351,7 @@ public class CompositeEndpointHandler
             {
                 // Try to parse the response as JSON
                 parsedError = JsonSerializer.Deserialize<object>(responseContent,
-                    CaseInsensitiveOptions);
+                    SharedJsonOptions.CaseInsensitive);
 
                 // Already-JSON responses are kept out of the string field so the error response serializes them structured, not escaped
                 errorDetail = "See structured error details";
@@ -383,7 +382,7 @@ public class CompositeEndpointHandler
         {
             // Try to parse as JSON object
             var jsonResponse = JsonSerializer.Deserialize<object>(responseContent,
-                CaseInsensitiveOptions);
+                SharedJsonOptions.CaseInsensitive);
 
             return jsonResponse!;
         }
@@ -522,7 +521,7 @@ public class CompositeEndpointHandler
             try
             {
                 var shaped = HttpResponseTransformHelper.Apply(JsonSerializer.Serialize(stepResult), transforms);
-                result.StepResults[step.Name] = JsonSerializer.Deserialize<object>(shaped, CaseInsensitiveOptions) ?? stepResult;
+                result.StepResults[step.Name] = JsonSerializer.Deserialize<object>(shaped, SharedJsonOptions.CaseInsensitive) ?? stepResult;
             }
             catch (Exception ex)
             {

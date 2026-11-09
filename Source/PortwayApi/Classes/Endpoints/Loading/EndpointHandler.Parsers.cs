@@ -39,7 +39,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<FileEndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null)
             return null;
@@ -69,7 +69,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<StaticEndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null)
             return null;
@@ -114,7 +114,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null || string.IsNullOrWhiteSpace(entity.Url))
             return null;
@@ -146,7 +146,7 @@ public static partial class EndpointHandler
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, CaseInsensitiveOptions);
+        var entity = JsonSerializer.Deserialize<EndpointEntity>(json, SharedJsonOptions.CaseInsensitive);
 
         if (entity == null || string.IsNullOrWhiteSpace(entity.DatabaseObjectName))
             return null;

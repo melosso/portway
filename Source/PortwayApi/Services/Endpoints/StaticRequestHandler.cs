@@ -21,7 +21,6 @@ public sealed class StaticRequestHandler
         _cacheManager = cacheManager;
     }
 
-    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
 
     /// <summary>
     /// Serves a resolved static endpoint request
@@ -204,7 +203,7 @@ public sealed class StaticRequestHandler
             // Build result in the correct API format
             var result = CollectionResponse<object>.Of(items.Select(SerializeJsonElement).ToList()!);
 
-            var resultJson = JsonSerializer.Serialize(result, IndentedJsonOptions);
+            var resultJson = JsonSerializer.Serialize(result, SharedJsonOptions.Indented);
             var resultBytes = Encoding.UTF8.GetBytes(resultJson);
 
             Log.Debug("JSON filtering applied successfully: {Count} items returned", items.Count);
