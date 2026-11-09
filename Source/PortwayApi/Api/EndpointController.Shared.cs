@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using PortwayApi.Classes;
 using PortwayApi.Helpers;
@@ -11,30 +12,33 @@ public partial class EndpointController
     /// <summary>
     /// Resolves an endpoint via the central resolver; returns an error result when not found
     /// </summary>
-    private IActionResult? TryResolveEndpoint(
+    private bool TryResolveEndpoint(
         EndpointType type,
         string endpointName,
         string? namespaceName,
-        out EndpointDefinition endpoint,
+        [NotNullWhen(true)] out EndpointDefinition? endpoint,
+        [NotNullWhen(false)] out IActionResult? error,
         string? notFoundMessage = null)
     {
-        if (_endpointResolver.TryResolve(type, namespaceName, endpointName, out var found))
+        endpoint = null;
+        if (!_endpointResolver.TryResolve(type, namespaceName, endpointName, out var found))
         {
-            endpoint = found!;
-
-            // Resolved but switched off: report the outage instead of serving
-            if (!endpoint.Enabled)
-            {
-                Log.Debug("Endpoint disabled: {EndpointName}", endpointName);
-                return DisabledEndpoint.Result(this);
-            }
-
-            return null;
+            Log.Warning("Endpoint not found: {EndpointName}", endpointName);
+            error = PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
+            return false;
         }
 
-        endpoint = null!;
-        Log.Warning("Endpoint not found: {EndpointName}", endpointName);
-        return PortwayResults.NotFound(notFoundMessage ?? $"Endpoint '{endpointName}' not found");
+        // Resolved but switched off: report the outage instead of serving
+        if (!found.Enabled)
+        {
+            Log.Debug("Endpoint disabled: {EndpointName}", endpointName);
+            error = DisabledEndpoint.Result(this);
+            return false;
+        }
+
+        endpoint = found;
+        error = null;
+        return true;
     }
 
     /// <summary>

@@ -10,10 +10,10 @@ public sealed class RedisCacheProviderTests
 {
     private sealed record Item(string Name);
 
-    private static readonly RedisConnectionException ConnectionLost = new(ConnectionFailureType.SocketFailure, "connection lost");
+    private static readonly RedisConnectionException ConnectionLost = new(ConnectionFailureType.SocketFailure, CommandFlags.None, "connection lost", null, CommandStatus.Unknown);
 
     private static ConnectionFailedEventArgs NodeEvent() =>
-        new(null, new System.Net.DnsEndPoint("redis", 6379), ConnectionType.Interactive, ConnectionFailureType.None, null, "redis");
+        new(new object(), new System.Net.DnsEndPoint("redis", 6379), ConnectionType.Interactive, ConnectionFailureType.None, ConnectionLost, "redis");
 
     private static (RedisCacheProvider Provider, Mock<IDatabase> Db, Mock<IConnectionMultiplexer> Redis, MemoryCacheProvider Fallback) Create(bool fallback = true, bool connected = true)
     {

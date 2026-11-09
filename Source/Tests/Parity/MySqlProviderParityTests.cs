@@ -14,14 +14,14 @@ public sealed class MySqlProviderParityTests(MySqlParityFixture fixture)
     {
         var provider = new MySqlProvider();
         var ct = TestContext.Current.CancellationToken;
-        await using var connection = new MySqlConnection(fixture.ConnectionString);
+        await using var connection = new MySqlConnection(Fixture.ConnectionString);
         await connection.OpenAsync(ct);
 
         async Task<IEnumerable<string>> AddMissing()
         {
             var parameters = new DynamicParameters();
             parameters.Add("@Method", "GET");
-            await provider.AddMissingProcedureArgumentsAsync(connection, fixture.ProcedureSchema, fixture.GuidKeyProcedureName, parameters, ct);
+            await provider.AddMissingProcedureArgumentsAsync(connection, Fixture.ProcedureSchema, Fixture.GuidKeyProcedureName, parameters, ct);
             return parameters.ParameterNames;
         }
 

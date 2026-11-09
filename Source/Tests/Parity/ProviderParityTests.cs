@@ -15,6 +15,8 @@ public abstract class ProviderParityTests<TFixture>(TFixture fixture) : IClassFi
 {
     private readonly TFixture _fixture = fixture;
 
+    protected TFixture Fixture => _fixture;
+
     private ODataToSqlConverter CreateConverter() => new(
         [new PortwayApi.Services.Providers.MsSqlProvider(), new PortwayApi.Services.Providers.PostgreSqlProvider(),
          new PortwayApi.Services.Providers.MySqlProvider(), new PortwayApi.Services.Providers.SqliteProvider()]);

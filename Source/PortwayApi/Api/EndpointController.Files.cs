@@ -68,7 +68,7 @@ public partial class EndpointController
             endpointName += EndpointVersion.Suffix(version);
 
             // Check if this endpoint exists
-            if (TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint) is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint, out var resolveError))
             {
                 return resolveError;
             }
@@ -193,7 +193,7 @@ public partial class EndpointController
             }
 
             // Check if this endpoint exists
-            if (TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint) is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint, out var resolveError))
             {
                 return resolveError;
             }
@@ -254,7 +254,7 @@ public partial class EndpointController
             }
 
             // Check if this endpoint exists
-            if (TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint) is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint, out var resolveError))
             {
                 return resolveError;
             }
@@ -308,7 +308,7 @@ public partial class EndpointController
         try
         {
             // Check if this endpoint exists (namespace-aware)
-            if (TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint) is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Files, endpointName, namespaceName, out var endpoint, out var resolveError))
             {
                 return resolveError;
             }

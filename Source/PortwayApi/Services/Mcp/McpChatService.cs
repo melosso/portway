@@ -608,18 +608,18 @@ public sealed partial class McpChatService
             return hasKey || hasPath ? null : tool.EndpointKind == "file" && method == HttpMethod.Get ? $"{tool.RoutePath}/list" : tool.RoutePath;
 
         var route = tool.RoutePath;
-        if (hasKey)
+        if (key is { Length: > 0 })
         {
-            if (!IsSafeSegment(key!) || key!.AsSpan().ContainsAny("'()"))
+            if (!IsSafeSegment(key) || key.AsSpan().ContainsAny("'()"))
                 return null;
 
             var isBare = key.All(char.IsAsciiDigit) || Guid.TryParse(key, out _);
             route += isBare ? $"({key})" : $"('{Uri.EscapeDataString(key)}')";
         }
 
-        if (hasPath)
+        if (path is { Length: > 0 })
         {
-            var segments = path!.Trim('/').Split('/');
+            var segments = path.Trim('/').Split('/');
             if (!segments.All(IsSafeSegment))
                 return null;
 

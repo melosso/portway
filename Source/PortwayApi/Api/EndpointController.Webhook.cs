@@ -33,8 +33,8 @@ public partial class EndpointController
             }
 
             // Load webhook endpoint configuration using the namespace-aware key
-            if (TryResolveEndpoint(EndpointType.Webhook, webhookEndpointKey, null, out var endpointConfig,
-                $"Endpoint '{webhookEndpointKey}' is not configured properly.") is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Webhook, webhookEndpointKey, null, out var endpointConfig, out var resolveError,
+                $"Endpoint '{webhookEndpointKey}' is not configured properly."))
             {
                 return resolveError;
             }

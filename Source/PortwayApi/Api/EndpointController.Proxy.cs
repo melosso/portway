@@ -15,7 +15,7 @@ public partial class EndpointController
         string remainingPath,
         string method)
     {
-        if (TryResolveEndpoint(EndpointType.Proxy, endpointName, null, out var endpointDefinition) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.Proxy, endpointName, null, out var endpointDefinition, out var resolveError))
         {
             return resolveError;
         }

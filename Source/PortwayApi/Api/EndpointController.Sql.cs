@@ -16,7 +16,7 @@ public partial class EndpointController
         ODataReadOptions options,
         string httpMethod = "GET")
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -39,7 +39,7 @@ public partial class EndpointController
         string endpointName,
         JsonElement data)
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -56,7 +56,7 @@ public partial class EndpointController
         string endpointName,
         JsonElement data)
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -74,7 +74,7 @@ public partial class EndpointController
         JsonDocument requestBody,
         string method = "PATCH")
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }
@@ -91,7 +91,7 @@ public partial class EndpointController
         string endpointName,
         string id)
     {
-        if (TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint) is { } resolveError)
+        if (!TryResolveEndpoint(EndpointType.SQL, endpointName, null, out var endpoint, out var resolveError))
         {
             return resolveError;
         }

@@ -40,7 +40,7 @@ public class OdataExpandResponseShaperTests
         var result = OdataExpandResponseShaper.Nest(rows,
             new[] { Nav("Category", ("AssortmentID", "CategoryId"), ("Name", "CategoryName")) });
 
-        var nested = (Dictionary<string, object>)result[0]["Category"];
+        var nested = Assert.IsType<Dictionary<string, object>>(result[0]["Category"]);
         Assert.Equal(10, nested["CategoryId"]);
         Assert.Equal("Tools", nested["CategoryName"]);
     }
@@ -52,7 +52,7 @@ public class OdataExpandResponseShaperTests
 
         var result = OdataExpandResponseShaper.Nest(rows, new[] { Nav("Category", ("Name", "CategoryName")) });
 
-        var nested = (Dictionary<string, object>)result[0]["Category"];
+        var nested = Assert.IsType<Dictionary<string, object>>(result[0]["Category"]);
         Assert.Equal(1, nested["Extra"]);
     }
 
@@ -66,8 +66,8 @@ public class OdataExpandResponseShaperTests
 
         var result = OdataExpandResponseShaper.Nest(rows, new[] { Nav("Category"), Nav("Supplier") });
 
-        Assert.Equal("Tools", ((Dictionary<string, object>)result[0]["Category"])["Name"]);
-        Assert.Equal("Acme", ((Dictionary<string, object>)result[0]["Supplier"])["Name"]);
+        Assert.Equal("Tools", (Assert.IsType<Dictionary<string, object>>(result[0]["Category"]))["Name"]);
+        Assert.Equal("Acme", (Assert.IsType<Dictionary<string, object>>(result[0]["Supplier"]))["Name"]);
         Assert.Equal(1, result[0]["Id"]);
     }
 

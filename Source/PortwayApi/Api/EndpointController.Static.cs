@@ -19,7 +19,7 @@ public partial class EndpointController
     {
         try
         {
-            if (TryResolveEndpoint(EndpointType.Static, endpointName, null, out var endpoint) is { } resolveError)
+            if (!TryResolveEndpoint(EndpointType.Static, endpointName, null, out var endpoint, out var resolveError))
             {
                 return resolveError;
             }
