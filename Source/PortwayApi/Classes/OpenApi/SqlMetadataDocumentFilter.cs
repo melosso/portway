@@ -300,7 +300,7 @@ public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     }
 
     private JsonNode? CreateExampleObjectFromObjectMetadata(
-        List<ColumnMetadata>? metadata,
+        IReadOnlyList<ColumnMetadata>? metadata,
         EndpointDefinition definition)
     {
         if (metadata == null || !metadata.Any())
@@ -352,7 +352,7 @@ public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an OpenAPI schema from object metadata (table/view columns)
     /// </summary>
     private OpenApiSchema CreateSchemaFromObjectMetadata(
-        List<ColumnMetadata> metadata,
+        IReadOnlyList<ColumnMetadata> metadata,
         bool excludePrimaryKey = false,
         EndpointDefinition? endpoint = null,
         bool isRequest = false)
@@ -395,7 +395,7 @@ public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an OpenAPI schema from procedure metadata
     /// </summary>
     private OpenApiSchema CreateSchemaFromProcedureMetadata(
-        List<ParameterMetadata> parameters,
+        IReadOnlyList<ParameterMetadata> parameters,
         EndpointDefinition endpoint,
         string method)
     {
@@ -701,7 +701,7 @@ public sealed class SqlMetadataDocumentFilter : IOpenApiDocumentTransformer
     /// Creates an example object from procedure parameters
     /// </summary>
     private JsonNode? CreateExampleObjectFromProcedure(
-        List<ParameterMetadata> parameters,
+        IReadOnlyList<ParameterMetadata> parameters,
         string method,
         EndpointDefinition definition)
     {

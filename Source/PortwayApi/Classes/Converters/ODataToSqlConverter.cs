@@ -169,7 +169,7 @@ public class ODataToSqlConverter : IODataToSqlConverter
         string expandValue,
         IReadOnlyList<EndpointRelationship> relationships,
         ISqlProvider provider,
-        Dictionary<string, EndpointDefinition> sqlEndpoints)
+        IReadOnlyDictionary<string, EndpointDefinition> sqlEndpoints)
     {
         var specs = new List<RelationalExpandSpec>();
 

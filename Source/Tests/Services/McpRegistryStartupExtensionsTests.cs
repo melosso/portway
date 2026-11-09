@@ -188,7 +188,7 @@ public class McpRegistryStartupExtensionsTests
     [Fact]
     public void Relationships_OnSqlTable_AreExpandable()
     {
-        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new() { ["Inventory/Products"] = SqlEndpoint() }));
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new Dictionary<string, EndpointDefinition> { ["Inventory/Products"] = SqlEndpoint() }));
 
         Assert.Equal(["Category"], info.Expandable);
     }
@@ -200,7 +200,7 @@ public class McpRegistryStartupExtensionsTests
     {
         var endpoint = SqlEndpoint(objectType, withColumns ? null : []);
 
-        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new() { ["Inventory/Products"] = endpoint }));
+        var info = Assert.Single(McpRegistryStartupExtensions.BuildEndpointMcpInfos(new Dictionary<string, EndpointDefinition> { ["Inventory/Products"] = endpoint }));
 
         Assert.Empty(info.Expandable);
     }

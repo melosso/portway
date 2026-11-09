@@ -52,7 +52,7 @@ public sealed class SqlMetadataRefreshTests : IDisposable
         var service = new SqlMetadataService(new SqlConnectionPoolService(new SqlPoolingOptions(0, 10, 15, true, "test"), factory), factory);
         var key = EndpointHandler.GetSqlEndpoints().Keys.Single(k => k.EndsWith("Items") && k.Contains("MetaRefresh"));
         await service.InitializeAsync(
-            new() { [key] = EndpointHandler.GetSqlEndpoints()[key] },
+            new Dictionary<string, EndpointDefinition> { [key] = EndpointHandler.GetSqlEndpoints()[key] },
             new EnvironmentSettings(),
             _ => Task.FromResult($"Data Source={_dbPath}"),
             TestContext.Current.CancellationToken);
@@ -62,5 +62,29 @@ public sealed class SqlMetadataRefreshTests : IDisposable
         await service.RefreshAsync(TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(service.GetObjectMetadata(key)!, c => c.ColumnName == "Secret");
+    }
+
+    [Fact]
+    public async Task ConcurrentInitialize_LoadsOnce()
+    {
+        WriteEndpoint("Id", "Name");
+        var key = EndpointHandler.GetSqlEndpoints().Keys.Single(k => k.EndsWith("Items") && k.Contains("MetaRefresh"));
+        var endpoints = new Dictionary<string, EndpointDefinition> { [key] = EndpointHandler.GetSqlEndpoints()[key] };
+
+        async Task<int> CountLookups(int callers)
+        {
+            var factory = new SqlProviderFactory([new SqliteProvider()]);
+            var service = new SqlMetadataService(new SqlConnectionPoolService(new SqlPoolingOptions(0, 10, 15, true, "test"), factory), factory);
+            var lookups = 0;
+            await Task.WhenAll(Enumerable.Range(0, callers).Select(_ => service.InitializeAsync(endpoints, new EnvironmentSettings(), async _ =>
+            {
+                Interlocked.Increment(ref lookups);
+                await Task.Delay(50, TestContext.Current.CancellationToken);
+                return $"Data Source={_dbPath}";
+            }, TestContext.Current.CancellationToken)));
+            return lookups;
+        }
+
+        Assert.Equal(await CountLookups(1), await CountLookups(4));
     }
 }

@@ -1,17 +1,18 @@
 namespace PortwayApi.Classes;
 
 using PortwayApi.Helpers;
+using System.Collections.Frozen;
 using System.Text.Json;
 using Serilog;
 
 public static partial class EndpointHandler
 {
     // Cache for loaded endpoints to avoid multiple loads
-    private static volatile Dictionary<string, EndpointDefinition>? _loadedProxyEndpoints = null;
-    private static volatile Dictionary<string, EndpointDefinition>? _loadedSqlEndpoints = null;
-    private static volatile Dictionary<string, EndpointDefinition>? _loadedSqlWebhookEndpoints = null;
-    private static volatile Dictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
-    private static volatile Dictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
+    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedProxyEndpoints = null;
+    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedSqlEndpoints = null;
+    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedSqlWebhookEndpoints = null;
+    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedFileEndpoints = null;
+    private static volatile FrozenDictionary<string, EndpointDefinition>? _loadedStaticEndpoints = null;
     private static readonly object _loadLock = new object();
 
     private static readonly EndpointLoaderSpec ProxyLoaderSpec = new(
@@ -92,7 +93,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Gets SQL endpoints from the /endpoints/SQL directory
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> GetSqlEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetSqlEndpoints()
     {
         string sqlEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "SQL");
         return LoadSqlEndpointsIfNeeded(sqlEndpointsDirectory);
@@ -101,7 +102,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Gets SQL webhook endpoints from the /endpoints/Webhooks directory
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> GetSqlWebhookEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetSqlWebhookEndpoints()
     {
         string sqlWebhookEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Webhooks");
         return LoadSqlWebhookEndpointsIfNeeded(sqlWebhookEndpointsDirectory);
@@ -110,7 +111,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Gets Proxy endpoints from the /endpoints/Proxy directory
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> GetProxyEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetProxyEndpoints()
     {
         string proxyEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Proxy");
         return LoadProxyEndpointsIfNeeded(proxyEndpointsDirectory);
@@ -141,7 +142,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Loads file endpoints if they haven't been loaded yet
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadFileEndpointsIfNeeded(string endpointsDirectory)
+    private static FrozenDictionary<string, EndpointDefinition> LoadFileEndpointsIfNeeded(string endpointsDirectory)
     {
         if (_loadedFileEndpoints is { } loaded)
             return loaded;
@@ -152,7 +153,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Loads static endpoints if they haven't been loaded yet
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadStaticEndpointsIfNeeded(string endpointsDirectory)
+    private static FrozenDictionary<string, EndpointDefinition> LoadStaticEndpointsIfNeeded(string endpointsDirectory)
     {
         if (_loadedStaticEndpoints is { } loaded)
             return loaded;
@@ -192,7 +193,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Internal method to load proxy endpoints if they haven't been loaded yet
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadProxyEndpointsIfNeeded(string endpointsDirectory)
+    private static FrozenDictionary<string, EndpointDefinition> LoadProxyEndpointsIfNeeded(string endpointsDirectory)
     {
         if (_loadedProxyEndpoints is { } loaded)
             return loaded;
@@ -203,7 +204,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Internal method to load SQL endpoints if they haven't been loaded yet
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadSqlEndpointsIfNeeded(string endpointsDirectory)
+    private static FrozenDictionary<string, EndpointDefinition> LoadSqlEndpointsIfNeeded(string endpointsDirectory)
     {
         if (_loadedSqlEndpoints is { } loaded)
             return loaded;
@@ -214,7 +215,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Internal method to load SQL endpoints if they haven't been loaded yet
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpointsIfNeeded(string endpointsDirectory)
+    private static FrozenDictionary<string, EndpointDefinition> LoadSqlWebhookEndpointsIfNeeded(string endpointsDirectory)
     {
         if (_loadedSqlWebhookEndpoints is { } loaded)
             return loaded;
@@ -225,19 +226,19 @@ public static partial class EndpointHandler
     /// <summary>
     /// Internal method to load all proxy endpoints from the endpoints directory
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadProxyEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadProxyEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, ProxyLoaderSpec, previous);
 
     /// <summary>
     /// Internal method to load all SQL endpoints from the endpoints directory
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadSqlEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, SqlLoaderSpec, previous);
 
     /// <summary>
     /// Internal method to load all webhook endpoints from the endpoints directory (namespace-aware)
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadSqlWebhookEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, WebhookLoaderSpec, previous);
 
     /// <summary>
@@ -299,7 +300,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Forces immediate reload of SQL endpoints
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> ReloadSqlEndpoints()
+    private static FrozenDictionary<string, EndpointDefinition> ReloadSqlEndpoints()
     {
         var sqlEndpointsDirectory = Path.Combine(EndpointsBasePath, "SQL");
         return LoadSqlEndpoints(sqlEndpointsDirectory, _loadedSqlEndpoints);
@@ -308,7 +309,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Forces immediate reload of proxy endpoints
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> ReloadProxyEndpoints()
+    private static FrozenDictionary<string, EndpointDefinition> ReloadProxyEndpoints()
     {
         var proxyEndpointsDirectory = Path.Combine(EndpointsBasePath, "Proxy");
         return LoadProxyEndpoints(proxyEndpointsDirectory, _loadedProxyEndpoints);
@@ -317,7 +318,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Forces immediate reload of file endpoints
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> ReloadFileEndpoints()
+    private static FrozenDictionary<string, EndpointDefinition> ReloadFileEndpoints()
     {
         var fileEndpointsDirectory = Path.Combine(EndpointsBasePath, "Files");
         return LoadFileEndpoints(fileEndpointsDirectory, _loadedFileEndpoints);
@@ -326,7 +327,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Forces immediate reload of webhook endpoints
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> ReloadWebhookEndpoints()
+    private static FrozenDictionary<string, EndpointDefinition> ReloadWebhookEndpoints()
     {
         var webhookEndpointsDirectory = Path.Combine(EndpointsBasePath, "Webhooks");
         return LoadSqlWebhookEndpoints(webhookEndpointsDirectory, _loadedSqlWebhookEndpoints);
@@ -335,7 +336,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Forces immediate reload of static endpoints
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> ReloadStaticEndpoints()
+    private static FrozenDictionary<string, EndpointDefinition> ReloadStaticEndpoints()
     {
         var staticEndpointsDirectory = Path.Combine(EndpointsBasePath, "Static");
         return LoadStaticEndpoints(staticEndpointsDirectory, _loadedStaticEndpoints);

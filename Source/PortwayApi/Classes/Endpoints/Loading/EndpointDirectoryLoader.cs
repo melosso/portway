@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using PortwayApi.Helpers;
 using Serilog;
 using System.Text.Json;
@@ -12,7 +13,10 @@ internal static class EndpointDirectoryLoader
     /// <summary>
     /// Scans the folder; a file that is not valid JSON keeps its definition from previous so a save in progress keeps the endpoint live
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    public static FrozenDictionary<string, EndpointDefinition> Load(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous = null) =>
+        Scan(endpointsDirectory, spec, previous).ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+
+    private static Dictionary<string, EndpointDefinition> Scan(string endpointsDirectory, EndpointLoaderSpec spec, IReadOnlyDictionary<string, EndpointDefinition>? previous)
     {
         var endpoints = new Dictionary<string, EndpointDefinition>(StringComparer.OrdinalIgnoreCase);
 

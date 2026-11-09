@@ -1,5 +1,6 @@
 namespace PortwayApi.Classes;
 
+using System.Collections.Frozen;
 using PortwayApi.Helpers;
 using System.Text.Json;
 using Serilog;
@@ -22,13 +23,13 @@ public static partial class EndpointHandler
     /// <summary>
     /// Internal method to load all file endpoints from the endpoints directory
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadFileEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, FileLoaderSpec, previous);
 
     /// <summary>
     /// Internal method to load all static endpoints from the endpoints directory
     /// </summary>
-    private static Dictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
+    private static FrozenDictionary<string, EndpointDefinition> LoadStaticEndpoints(string endpointsDirectory, IReadOnlyDictionary<string, EndpointDefinition>? previous = null)
         => EndpointDirectoryLoader.Load(endpointsDirectory, StaticLoaderSpec, previous);
 
     /// <summary>
@@ -91,7 +92,7 @@ public static partial class EndpointHandler
         return definition;
     }
 
-    public static Dictionary<string, EndpointDefinition> GetFileEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetFileEndpoints()
     {
         string fileEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Files");
         return LoadFileEndpointsIfNeeded(fileEndpointsDirectory);
@@ -100,7 +101,7 @@ public static partial class EndpointHandler
     /// <summary>
     /// Gets Static endpoints from the /endpoints/Static directory
     /// </summary>
-    public static Dictionary<string, EndpointDefinition> GetStaticEndpoints()
+    public static IReadOnlyDictionary<string, EndpointDefinition> GetStaticEndpoints()
     {
         string staticEndpointsDirectory = Path.Combine(GetEndpointsBasePath(), "Static");
         return LoadStaticEndpointsIfNeeded(staticEndpointsDirectory);

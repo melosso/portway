@@ -38,7 +38,7 @@ public static class McpRegistryStartupExtensions
         return app;
     }
 
-    internal static IEnumerable<EndpointMcpInfo> BuildEndpointMcpInfos(Dictionary<string, EndpointDefinition> endpoints)
+    internal static IEnumerable<EndpointMcpInfo> BuildEndpointMcpInfos(IReadOnlyDictionary<string, EndpointDefinition> endpoints)
     {
         foreach (var kvp in endpoints)
         {
