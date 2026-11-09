@@ -47,6 +47,7 @@ public sealed partial class SqlRequestHandler
         var provider = _providerFactory.GetProvider(connectionString);
         var (schema, name) = ParseProcedureName(procedure, provider, connection);
 
+        // writes ignore client aborts once started, a cancelled write leaves its outcome unknown
         await provider.AddMissingProcedureArgumentsAsync(connection, schema, name, parameters, CancellationToken.None);
 
         var (commandText, commandType) = provider.BuildProcedureInvocation(schema, name, parameters.ParameterNames.ToList());
@@ -623,7 +624,7 @@ public sealed partial class SqlRequestHandler
             {
                 writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
-                await tableConnection.OpenAsync();
+                await tableConnection.OpenAsync(context.RequestAborted);
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Insert, data, null, tenantPredicates);
             }
 
@@ -650,7 +651,7 @@ public sealed partial class SqlRequestHandler
             // Execute stored procedure
             writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(context.RequestAborted);
 
             // Intentional user errors (RAISERROR and friends) are caught below
             try
@@ -668,6 +669,10 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            return new StatusCodeResult(499);
         }
         catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
         {
@@ -761,7 +766,7 @@ public sealed partial class SqlRequestHandler
             {
                 writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
-                await tableConnection.OpenAsync();
+                await tableConnection.OpenAsync(context.RequestAborted);
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
             }
 
@@ -791,7 +796,7 @@ public sealed partial class SqlRequestHandler
             // Step 8: Execute stored procedure
             writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(context.RequestAborted);
 
             // Intentional user errors (RAISERROR and friends) are caught below
             try
@@ -811,6 +816,10 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            return new StatusCodeResult(499);
         }
         catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
         {
@@ -902,7 +911,7 @@ public sealed partial class SqlRequestHandler
             {
                 writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
-                await tableConnection.OpenAsync();
+                await tableConnection.OpenAsync(context.RequestAborted);
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Update, data, null, tenantPredicates);
             }
 
@@ -932,7 +941,7 @@ public sealed partial class SqlRequestHandler
             // Step 8: Execute stored procedure
             writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(context.RequestAborted);
 
             // Intentional user errors (RAISERROR and friends) are caught below
             try
@@ -952,6 +961,10 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            return new StatusCodeResult(499);
         }
         catch (DbException dbEx) when (SqlErrorClassifier.IsDuplicateKey(dbEx))
         {
@@ -1028,7 +1041,7 @@ public sealed partial class SqlRequestHandler
             {
                 writeAttempted = true;
                 await using var tableConnection = _connectionPoolService.CreateConnection(connectionString);
-                await tableConnection.OpenAsync();
+                await tableConnection.OpenAsync(context.RequestAborted);
                 return await ExecuteTableWriteAsync(tableConnection, connectionString, env, endpoint, endpointName, TableWriteKind.Delete, null, id, tenantPredicates);
             }
 
@@ -1066,7 +1079,7 @@ public sealed partial class SqlRequestHandler
             // Execute stored procedure
             writeAttempted = true;
             await using var connection = _connectionPoolService.CreateConnection(connectionString);
-            await connection.OpenAsync();
+            await connection.OpenAsync(context.RequestAborted);
 
             // Intentional user errors (RAISERROR and friends) are caught below
             try
@@ -1086,6 +1099,10 @@ public sealed partial class SqlRequestHandler
                 Log.Warning("Intentional database error for {Endpoint}: {ErrorMessage}", endpointName, SqlErrorClassifier.GetUserMessage(dbEx));
                 return PortwayResults.BadRequest(SqlErrorClassifier.GetUserMessage(dbEx));
             }
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            return new StatusCodeResult(499);
         }
         catch (DbException dbEx) when (endpoint.UsesTableWrites && SqlErrorClassifier.IsTypeMismatch(dbEx))
         {
