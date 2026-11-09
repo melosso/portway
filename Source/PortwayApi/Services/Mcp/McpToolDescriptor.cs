@@ -17,7 +17,17 @@ public sealed record McpToolDescriptor
     public string? Namespace { get; init; }
     public string? Version { get; init; }
     public bool Deprecated { get; init; }
+    public DateTimeOffset? Sunset { get; init; }
     public IReadOnlyList<string> Expandable { get; init; } = [];
+
+    /// <summary>
+    /// Lifecycle tags for tool descriptions
+    /// </summary>
+    public string LifecycleTags =>
+        (Version is null ? "" : $" [version: {Version}]")
+        + (Deprecated ? " [deprecated]" : "")
+        + (Sunset is { } sunset ? $" [sunset: {sunset.UtcDateTime:yyyy-MM-dd}]" : "")
+        + (Expandable.Count > 0 ? $" [expand: {string.Join(", ", Expandable)}]" : "");
 
     private string BasePath => string.IsNullOrEmpty(Namespace) ? EndpointName : $"{Namespace}/{EndpointName}";
 

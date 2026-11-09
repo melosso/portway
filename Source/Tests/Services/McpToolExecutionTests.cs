@@ -124,6 +124,38 @@ public class McpToolExecutionTests
         Assert.Empty(handler.Calls);
     }
 
+    [Fact]
+    public async Task ProxyGet_SendsNoPageLimit()
+    {
+        var (service, handler) = Build(Endpoint("GET") with { IsProxy = true });
+
+        var result = await Call(service, new { environment = "500" });
+
+        Assert.False(result.IsError);
+        Assert.DoesNotContain("top", Assert.Single(handler.Calls).Request.RequestUri!.Query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SqlGet_KeepsPageLimit()
+    {
+        var (service, handler) = Build(Endpoint("GET"));
+
+        await Call(service, new { environment = "500" });
+
+        Assert.Contains("$top=50", Uri.UnescapeDataString(Assert.Single(handler.Calls).Request.RequestUri!.Query));
+    }
+
+    [Fact]
+    public async Task EmptySuccess_ConfirmsStatusAndMethod()
+    {
+        var (service, _) = Build(Endpoint("DELETE"), status: HttpStatusCode.NoContent, response: "");
+
+        var result = await Call(service, new { environment = "500", method = "DELETE", key = "1" });
+
+        Assert.False(result.IsError);
+        Assert.Equal("[HTTP 204] DELETE succeeded with no content.", result.Text);
+    }
+
     [Theory]
     [InlineData("%24top=900", "$top=200")]
     [InlineData("$top=900", "$top=200")]

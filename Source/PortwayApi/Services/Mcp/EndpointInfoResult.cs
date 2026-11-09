@@ -7,6 +7,10 @@ public sealed record EndpointInfoResult
     public string? InvokeName { get; init; }
     public string? Name { get; init; }
     public string? Ns { get; init; }
+    public string? Version { get; init; }
+    public bool Deprecated { get; init; }
+    public DateTimeOffset? Sunset { get; init; }
+    public IReadOnlyList<string> Expandable { get; init; } = [];
     public string? Method { get; init; }
     public IReadOnlyList<string> Methods { get; init; } = [];
     public string? Description { get; init; }

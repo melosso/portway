@@ -126,9 +126,7 @@ public sealed partial class McpChatService
                 var ctHint = first.ContentType is not null && !first.ContentType.Contains("json")
                     ? $" [returns: {first.ContentType}]"
                     : string.Empty;
-                var versionInfo = (first.Version is null ? "" : $" [version: {first.Version}]")
-                    + (first.Deprecated ? " [deprecated]" : "")
-                    + (first.Expandable.Count > 0 ? $" [expand: {string.Join(", ", first.Expandable)}]" : "");
+                var versionInfo = first.LifecycleTags;
                 // Human label: aggregate per-method summaries, e.g. "Retrieve product stock"
                 var displayParts = g
                     .Select(t => t.DisplayDescription)
@@ -439,7 +437,7 @@ public sealed partial class McpChatService
             body = tool.IsProxy
                 ? (string.IsNullOrWhiteSpace(body) ? "{}" : body)
                 : EnforceQueryBodyLimit(body, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
-        else if (method == HttpMethod.Get && tool.EndpointKind != "file")
+        else if (method == HttpMethod.Get && tool.EndpointKind != "file" && !tool.IsProxy)
             query = EnforceTopLimit(query ?? string.Empty, _mcpOptions.DefaultPageSize, _mcpOptions.MaxPageSize);
 
         var endpointPath = tool.RoutePath;
@@ -494,6 +492,8 @@ public sealed partial class McpChatService
 
                 // If the endpoint returned an empty JSON array, give the LLM an explicit signal so it doesn't retry with rephrased queries
                 var trimmed = content.AsSpan().Trim();
+                if (trimmed.IsEmpty)
+                    return new McpToolResult($"[HTTP {(int)resp.StatusCode}] {method.Method} succeeded with no content.");
                 if (trimmed.Length >= 2 && trimmed[0] == '[' && trimmed[^1] == ']' && trimmed[1..^1].IsWhiteSpace())
                     return new McpToolResult("[No records found] The endpoint returned an empty result for this query. Do not retry.");
 

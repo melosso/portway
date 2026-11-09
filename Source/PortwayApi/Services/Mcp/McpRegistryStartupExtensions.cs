@@ -57,6 +57,7 @@ public static class McpRegistryStartupExtensions
                 Namespace = kvp.Value.EffectiveNamespace,
                 Version = EndpointVersion.IsDefault(kvp.Value.Version) ? null : kvp.Value.Version,
                 Deprecated = kvp.Value.Deprecated,
+                Sunset = kvp.Value.Sunset,
                 // matches the SqlRequestHandler gate: tables and views with AllowedColumns
                 Expandable = kvp.Value.Type == EndpointType.SQL
                     && kvp.Value.DatabaseObjectType != "TableValuedFunction"

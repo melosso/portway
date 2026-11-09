@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using PortwayApi.Auth;
+using PortwayApi.Classes;
 using System.ComponentModel;
 using System.Text.Json;
 
@@ -57,7 +58,7 @@ public static class PortwayMcpTools
             sb.AppendLine($"## {group.Key}");
             foreach (var (invokeName, tool) in group)
             {
-                sb.AppendLine($"- **{invokeName}**: {tool.Description}");
+                sb.AppendLine($"- **{invokeName}**: {tool.Description}{tool.LifecycleTags}");
             }
             sb.AppendLine();
         }
@@ -67,7 +68,7 @@ public static class PortwayMcpTools
 
     [McpServerTool(ReadOnly = true, Idempotent = true, OpenWorld = false), Description("Get details about a specific endpoint including methods, fields and description. Pass the name shown by ListEndpoints")]
     public static async Task<EndpointInfoResult> GetEndpointInfo(
-        IHttpContextAccessor httpContextAccessor, TokenService tokenService, string endpointName)
+        IHttpContextAccessor httpContextAccessor, TokenService tokenService, EnvironmentSettings environmentSettings, string endpointName)
     {
         if (_registry is null)
             return new EndpointInfoResult { Error = "MCP not initialized" };
@@ -81,19 +82,28 @@ public static class PortwayMcpTools
         if (caller is null || !caller.HasAccessToEndpoint(ScopeKey(tool)))
             return new EndpointInfoResult { Error = $"Endpoint '{endpointName}' not found" };
 
-        return new EndpointInfoResult
-        {
-            InvokeName = endpointName,
-            Name = tool.EndpointName,
-            Ns = tool.Namespace,
-            Method = tool.Method,
-            Methods = _registry.MethodsOf(tool),
-            Description = tool.Description,
-            AvailableFields = tool.AvailableFields ?? [],
-            AllowedEnvironments = tool.AllowedEnvironments ?? [],
-            TenantHeaders = tool.TenantHeaders
-        };
+        return Describe(endpointName, tool, _registry.MethodsOf(tool), environmentSettings.AllowedEnvironments);
     }
+
+    /// <summary>
+    /// Endpoint details for GetEndpointInfo
+    /// </summary>
+    internal static EndpointInfoResult Describe(string invokeName, McpToolDescriptor tool, IReadOnlyList<string> methods, IReadOnlyList<string> allowedEnvironments) => new()
+    {
+        InvokeName = invokeName,
+        Name = tool.EndpointName,
+        Ns = tool.Namespace,
+        Version = tool.Version,
+        Deprecated = tool.Deprecated,
+        Sunset = tool.Sunset,
+        Expandable = tool.Expandable,
+        Method = tool.Method,
+        Methods = methods,
+        Description = tool.Description,
+        AvailableFields = tool.AvailableFields ?? [],
+        AllowedEnvironments = tool.AllowedEnvironments is { Count: > 0 } own ? own : allowedEnvironments,
+        TenantHeaders = tool.TenantHeaders
+    };
 
     [McpServerTool(Destructive = true, OpenWorld = false),
      Description("Call a registered Portway endpoint. Use ListEndpoints/GetEndpointInfo first to find the endpoint name, methods and allowed environments.")]

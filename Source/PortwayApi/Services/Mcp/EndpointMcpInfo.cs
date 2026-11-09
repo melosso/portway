@@ -6,6 +6,7 @@ public sealed record EndpointMcpInfo
     public string? Namespace { get; init; }
     public string? Version { get; init; }
     public bool Deprecated { get; init; }
+    public DateTimeOffset? Sunset { get; init; }
     /// <summary>
     /// Relationship names accepted by $expand
     /// </summary>
