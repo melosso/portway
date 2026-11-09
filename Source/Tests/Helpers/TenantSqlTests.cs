@@ -50,6 +50,28 @@ public sealed class TenantSqlTests : IAsyncLifetime
         Assert.DoesNotContain(4L, ids);
     }
 
+    [Theory]
+    [InlineData("not (Id eq Id)")]
+    [InlineData("not (length('abc') eq 3)")]
+    [InlineData("not (Total add 1 gt 0)")]
+    public async Task NegatedUnsupportedFilterCannotWiden(string filter)
+    {
+        var ids = new List<long>();
+        var refused = await Record.ExceptionAsync(async () => ids = await Ids(new() { ["select"] = "Id", ["filter"] = filter }, Acme));
+
+        Assert.True(refused is null or NotSupportedException, refused?.ToString());
+        Assert.DoesNotContain(3L, ids);
+        Assert.DoesNotContain(4L, ids);
+    }
+
+    [Fact]
+    public void ApplyIgnoresPendingNegation()
+    {
+        var sql = new SqlKata.Compilers.SqliteCompiler().Compile(TenantSql.Apply(new SqlKata.Query("Orders").Not(), "Orders", Acme)).Sql;
+
+        Assert.DoesNotContain("NOT", sql, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public async Task CountIsConfined()
     {

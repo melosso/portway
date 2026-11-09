@@ -35,6 +35,9 @@ public static class TenantSql
         if (predicates.Count == 0)
             return query;
 
+        // Clear a pending Not-operator from builders
+        query.Not(false);
+
         var existing = query.GetComponents("where");
         if (existing.Count > 0)
         {
