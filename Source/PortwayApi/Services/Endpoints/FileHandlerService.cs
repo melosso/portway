@@ -16,14 +16,11 @@ public class FileHandlerService : IDisposable
     private readonly CacheManager _cacheManager;
     private readonly ConcurrentDictionary<string, byte[]> _memoryCache = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastAccessTimes = new();
-    private readonly Timer _evictTimer;
-    private readonly Timer _indexRefreshTimer;
+    private readonly CancellationTokenSource _shutdown = new();
     private readonly FileSystemIndex _fileSystemIndex;
     private readonly Serilog.ILogger _logger;
     private long _currentMemoryUsage = 0;
     private long _writeGeneration;
-    private int _evictRunning;
-    private int _refreshRunning;
     private bool _disposed = false;
 
     /// <summary>
@@ -60,10 +57,8 @@ public class FileHandlerService : IDisposable
 
         DeletePartialFiles(_optionsMonitor.CurrentValue.StorageDirectory);
 
-        _evictTimer = new Timer(EvictExpired, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
-
-        // Start a timer to refresh the file indices periodically
-        _indexRefreshTimer = new Timer(RefreshIndices, null, TimeSpan.FromMinutes(20), TimeSpan.FromMinutes(20));
+        _ = RunPeriodicAsync(TimeSpan.FromSeconds(30), () => { EvictExpired(); return Task.CompletedTask; }, "Error evicting the file memory cache", _shutdown.Token);
+        _ = RunPeriodicAsync(TimeSpan.FromMinutes(20), _fileSystemIndex.RefreshAllIndicesAsync, "Error refreshing file indices", _shutdown.Token);
     }
 
     /// <summary>
@@ -279,54 +274,40 @@ public class FileHandlerService : IDisposable
         return fileId;
     }
 
-    /// <summary>
-    /// Timer callback to refresh file system indices
-    /// </summary>
-    private async void RefreshIndices(object? state)
+    private async Task RunPeriodicAsync(TimeSpan period, Func<Task> work, string failureMessage, CancellationToken cancellationToken)
     {
-        // Timer does not await the callback, so a slow pass would otherwise overlap the next tick
-        if (Interlocked.Exchange(ref _refreshRunning, 1) == 1)
-            return;
-
+        using var timer = new PeriodicTimer(period);
         try
         {
-            await _fileSystemIndex.RefreshAllIndicesAsync();
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                try
+                {
+                    await work();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, failureMessage);
+                }
+            }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            _logger.Error(ex, "Error refreshing file indices");
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _refreshRunning, 0);
         }
     }
 
     /// <summary>
-    /// Timer callback that evicts cached files not read within MemoryCacheDurationSeconds
+    /// Evicts cached files not read within MemoryCacheDurationSeconds
     /// </summary>
-    private async void EvictExpired(object? state)
+    private void EvictExpired()
     {
-        if (Interlocked.Exchange(ref _evictRunning, 1) == 1)
-            return;
-
-        try
-        {
-            var expired = _lastAccessTimes
-                .Where(kv => (DateTime.UtcNow - kv.Value).TotalSeconds > _optionsMonitor.CurrentValue.MemoryCacheDurationSeconds)
-                .Select(kv => kv.Key)
-                .ToList();
-            foreach (var fileId in expired)
-                Evict(fileId);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "Error evicting the file memory cache");
-        }
-        finally
-        {
-            Interlocked.Exchange(ref _evictRunning, 0);
-        }
+        var maxAge = _optionsMonitor.CurrentValue.MemoryCacheDurationSeconds;
+        var expired = _lastAccessTimes
+            .Where(kv => (DateTime.UtcNow - kv.Value).TotalSeconds > maxAge)
+            .Select(kv => kv.Key)
+            .ToList();
+        foreach (var fileId in expired)
+            Evict(fileId);
     }
 
     /// <summary>
@@ -679,8 +660,8 @@ public class FileHandlerService : IDisposable
 
         if (disposing)
         {
-            _evictTimer?.Dispose();
-            _indexRefreshTimer?.Dispose();
+            _shutdown.Cancel();
+            _shutdown.Dispose();
 
             _memoryCache.Clear();
             _lastAccessTimes.Clear();
